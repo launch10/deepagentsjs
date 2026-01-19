@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { getLLM, getLLMFallbacks, LLMManager } from "@core";
 import { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { DatabaseSnapshotter } from "@services";
@@ -7,6 +7,7 @@ describe("LLM Fallbacks", () => {
   beforeEach(async () => {
     await DatabaseSnapshotter.restoreSnapshot("basic_account");
     LLMManager.reset();
+    LLMManager.setIgnoreEnvMaxTier(true);
   });
 
   describe("getLLM", () => {
@@ -91,8 +92,10 @@ describe("LLM Fallbacks", () => {
 });
 
 describe("Usage-Based LLM Filtering", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
     LLMManager.reset();
+    LLMManager.setIgnoreEnvMaxTier(true);
   });
 
   describe("getLLMFallbacks with usagePercent parameter", () => {
@@ -154,43 +157,16 @@ describe("Usage-Based LLM Filtering", () => {
 });
 
 describe("Price Tier Filtering", () => {
-  // Use explicit test config to ensure predictable tier testing
-  // This bypasses Rails API and uses a known configuration
-  const tierTestConfig = {
-    models: {
-      groq: { enabled: true, maxUsagePercent: 100, costIn: 1.25, costOut: 10, modelCard: "llama-3.3-70b-versatile", provider: "groq" as const, priceTier: 2 },
-      haiku: { enabled: true, maxUsagePercent: 100, costIn: 1, costOut: 5, modelCard: "claude-haiku-4-5", provider: "anthropic" as const, priceTier: 3 },
-      haiku3: { enabled: true, maxUsagePercent: 100, costIn: 0.25, costOut: 1.25, modelCard: "claude-3-5-haiku-latest", provider: "anthropic" as const, priceTier: 4 },
-      sonnet: { enabled: true, maxUsagePercent: 90, costIn: 3, costOut: 15, modelCard: "claude-sonnet-4-5", provider: "anthropic" as const, priceTier: 2 },
-    },
-    preferences: {
-      free: { blazing: { planning: [], writing: [], coding: [], reasoning: [] }, fast: { planning: [], writing: [], coding: [], reasoning: [] }, slow: { planning: [], writing: [], coding: [], reasoning: [] } },
-      paid: {
-        blazing: { planning: ["groq", "haiku", "haiku3"], writing: ["groq", "haiku", "haiku3"], coding: ["groq", "haiku", "haiku3"], reasoning: ["groq", "haiku", "haiku3"] },
-        fast: { planning: ["haiku", "sonnet"], writing: ["haiku"], coding: ["haiku", "sonnet"], reasoning: ["haiku", "sonnet"] },
-        slow: { planning: ["sonnet", "haiku"], writing: ["sonnet", "haiku"], coding: ["sonnet", "haiku"], reasoning: ["sonnet", "haiku"] },
-      },
-    },
-    updatedAt: new Date().toISOString(),
-  };
-
-  beforeEach(() => {
+  beforeEach(async () => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
     LLMManager.reset();
-    LLMManager.setConfigForTesting(tierTestConfig);
-  });
-
-  afterEach(() => {
-    LLMManager.clearTestConfig();
+    LLMManager.setIgnoreEnvMaxTier(true);
   });
 
   describe("getLLM with maxTier parameter", () => {
-    it.only("returns model within tier limit", async () => {
-      // paid/slow/coding has: opus (disabled), sonnet (tier 2), haiku (tier 3)
-      // maxTier=3 allows tier 3+ models (haiku, haiku3)
-      const tier1LLM = await getLLM({ skill: "coding", speed: "slow", cost: "paid", maxTier: 1 });
-      expect(tier1LLM).toBeInstanceOf(BaseChatModel);
-      expect(tier1LLM.lc_kwargs.model).toBe("claude-sonnet-4-5");
-
+    it("returns model within tier limit", async () => {
+      // paid/slow/coding preference order from database: sonnet (tier 2), haiku (tier 3), haiku3 (tier 4)
+      // maxTier filters to only allow models with tier >= maxTier
       const tier2LLM = await getLLM({ skill: "coding", speed: "slow", cost: "paid", maxTier: 2 });
       expect(tier2LLM).toBeInstanceOf(BaseChatModel);
       expect(tier2LLM.lc_kwargs.model).toBe("claude-sonnet-4-5");
@@ -201,41 +177,27 @@ describe("Price Tier Filtering", () => {
 
       const tier4LLM = await getLLM({ skill: "coding", speed: "slow", cost: "paid", maxTier: 4 });
       expect(tier4LLM).toBeInstanceOf(BaseChatModel);
-      expect(tier4LLM.lc_kwargs.model).toBe("claude-haiku-4-5");
-
-      const tier5LLM = await getLLM({ skill: "coding", speed: "slow", cost: "paid", maxTier: 5 });
-      expect(tier5LLM).toBeInstanceOf(BaseChatModel);
-      expect(tier5LLM.lc_kwargs.model).toBe("claude-haiku-4-5");
+      expect(tier4LLM.lc_kwargs.model).toBe("claude-3-5-haiku-latest");
     });
 
     it("throws when no models available at tier", async () => {
-      // maxTier=5 only allows tier 5 (cheapest)
-      // paid/blazing/coding has only tier 2, 3, 4 models - no tier 5
+      // maxTier=5 only allows tier 5 (cheapest) - no tier 5 models configured
       await expect(
-        getLLM({ skill: "coding", speed: "blazing", cost: "paid", maxTier: 5 })
+        getLLM({ skill: "coding", speed: "slow", cost: "paid", maxTier: 5 })
       ).rejects.toThrow(/No available model/);
     });
   });
 
   describe("getLLMFallbacks with maxTier parameter", () => {
     it("filters out models above tier limit", async () => {
-      // paid/blazing/coding has: groq (tier 2), haiku (tier 3), haiku3 (tier 4)
-      const allFallbacks = await getLLMFallbacks({ skill: "coding", speed: "blazing", cost: "paid" });
-      // maxTier=3 filters out groq (tier 2), keeps haiku (tier 3) and haiku3 (tier 4)
-      const tier3Fallbacks = await getLLMFallbacks({ skill: "coding", speed: "blazing", cost: "paid", maxTier: 3 });
+      const allFallbacks = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid" });
+      const tier3Fallbacks = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid", maxTier: 3 });
 
-      // Should have fewer models when tier is restricted
+      // maxTier=3 filters out sonnet (tier 2), keeps haiku (tier 3) and haiku3 (tier 4)
       expect(tier3Fallbacks.length).toBeLessThan(allFallbacks.length);
     });
 
-    it("returns only models at or below tier", async () => {
-      // maxTier=4 allows tiers 4 and 5, which should include haiku3
-      const fallbacks = await getLLMFallbacks({ skill: "coding", speed: "blazing", cost: "paid", maxTier: 4 });
-      expect(fallbacks.length).toBeGreaterThanOrEqual(1);
-    });
-
     it("combines with usagePercent filtering", async () => {
-      // paid/slow/coding has: sonnet (tier 2), haiku (tier 3)
       const noFilters = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid" });
       const withTier = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid", maxTier: 3 });
       const withBoth = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid", maxTier: 3, usagePercent: 90 });

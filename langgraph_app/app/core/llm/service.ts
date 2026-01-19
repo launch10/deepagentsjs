@@ -1,4 +1,4 @@
-import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatGroq } from "@langchain/groq";
@@ -47,171 +47,39 @@ const MODEL_PROVIDERS: Record<string, LLMProvider> = {
   gemini_flash: "openai",
 };
 
+type ModelWithDetails = {
+  model: BaseChatModel,
+  config: ModelConfig
+}
+
 /**
  * Unified LLM service - fetches config from Rails and creates model instances.
  * Uses Redis for caching to minimize API overhead.
  */
 class LLMService {
   private mode: "test" | "regular" = "regular";
-  private testConfig: ModelConfigurationResponse | null = null;
+  private _ignoreEnvMaxTier: boolean = false;
 
   // ============ Config Fetching ============
 
   private async fetchConfig(): Promise<ModelConfigurationResponse> {
-    // In test mode with custom config, return it directly (bypass cache and API)
-    if (this.testConfig) {
-      return this.testConfig;
-    }
-
     return cache.fetch(
       CACHE_KEY,
       async () => {
-        try {
-          const jwt = env.NODE_ENV === "test" ? "test-jwt" : "service-call";
-          const client = await createRailsApiClient({ jwt });
-          // TODO: Add rswag specs to Rails controller so this endpoint is in generated types
-          const response = await client.GET("/api/v1/model_configuration" as any, {});
-          if (response.data) {
-            return response.data as ModelConfigurationResponse;
-          }
-        } catch (error) {
-          console.error("Failed to fetch model configuration from Rails", error);
+        // Use internal service call auth (signature only, no JWT) for service-to-service communication
+        const client = await createRailsApiClient({ internalServiceCall: true });
+        // TODO: Add rswag specs to Rails controller so this endpoint is in generated types
+        const response = await client.GET("/api/v1/model_configuration" as any, {});
+        if (response.data) {
+          return response.data as ModelConfigurationResponse;
         }
-        return this.getDefaults();
+        throw new Error(
+          "Failed to fetch model configuration from Rails. " +
+          "Ensure Rails is running and the /api/v1/model_configuration endpoint is available."
+        );
       },
       CACHE_TTL_SECONDS
     );
-  }
-
-  private getDefaults(): ModelConfigurationResponse {
-    return {
-      models: {
-        opus: {
-          enabled: false,
-          maxUsagePercent: 80,
-          costIn: 15.0,
-          costOut: 75.0,
-          modelCard: "claude-opus-4-5",
-          provider: "anthropic",
-          priceTier: 1, // 15 + (75 * 4) = 315
-        },
-        sonnet: {
-          enabled: true,
-          maxUsagePercent: 90,
-          costIn: 3.0,
-          costOut: 15.0,
-          modelCard: "claude-sonnet-4-5",
-          provider: "anthropic",
-          priceTier: 2, // 3 + (15 * 4) = 63
-        },
-        haiku: {
-          enabled: true,
-          maxUsagePercent: 95,
-          costIn: 1.0,
-          costOut: 5.0,
-          modelCard: "claude-haiku-4-5",
-          provider: "anthropic",
-          priceTier: 3, // 1 + (5 * 4) = 21
-        },
-        haiku3: {
-          enabled: true,
-          maxUsagePercent: 100,
-          costIn: 0.25,
-          costOut: 1.25,
-          modelCard: "claude-3-5-haiku-latest",
-          provider: "anthropic",
-          priceTier: 4, // 0.25 + (1.25 * 4) = 5.25
-        },
-        groq: {
-          enabled: true,
-          maxUsagePercent: 90,
-          costIn: 1.25,
-          costOut: 10.0,
-          modelCard: "openai/gpt-oss-120b",
-          provider: "groq",
-          priceTier: 2, // 1.25 + (10 * 4) = 41.25
-        },
-        gpt5: {
-          enabled: true,
-          maxUsagePercent: 100,
-          costIn: 1.25,
-          costOut: 10.0,
-          modelCard: "gpt-5",
-          provider: "openai",
-          priceTier: 2, // 1.25 + (10 * 4) = 41.25
-        },
-        gpt5_mini: {
-          enabled: true,
-          maxUsagePercent: 100,
-          costIn: 0.25,
-          costOut: 2.0,
-          modelCard: "gpt-5-mini",
-          provider: "openai",
-          priceTier: 4, // 0.25 + (2 * 4) = 8.25
-        },
-        gpt_oss: {
-          enabled: true,
-          maxUsagePercent: 100,
-          costIn: 0,
-          costOut: 0,
-          modelCard: "gpt-oss:20b",
-          provider: "ollama",
-          priceTier: 5, // 0 + (0 * 4) = 0
-        },
-        gemini_flash: {
-          enabled: true,
-          maxUsagePercent: 100,
-          costIn: 0.3,
-          costOut: 2.5,
-          modelCard: "gemini-1.5-flash-latest",
-          provider: "openai",
-          priceTier: 4, // 0.3 + (2.5 * 4) = 10.3
-        },
-      },
-      preferences: {
-        free: {
-          blazing: {
-            planning: ["gpt_oss"],
-            writing: ["gpt_oss"],
-            coding: ["gpt_oss"],
-            reasoning: ["gpt_oss"],
-          },
-          fast: {
-            planning: ["gpt_oss"],
-            writing: ["gpt_oss"],
-            coding: ["gpt_oss"],
-            reasoning: ["gpt_oss"],
-          },
-          slow: {
-            planning: ["gpt_oss"],
-            writing: ["gpt_oss"],
-            coding: ["gpt_oss"],
-            reasoning: ["gpt_oss"],
-          },
-        },
-        paid: {
-          blazing: {
-            planning: ["groq", "haiku", "haiku3"],
-            writing: ["groq", "haiku", "haiku3"],
-            coding: ["groq", "haiku", "haiku3"],
-            reasoning: ["groq", "haiku", "haiku3"],
-          },
-          fast: {
-            planning: ["sonnet", "haiku", "gpt5"],
-            writing: ["haiku", "gpt5_mini"],
-            coding: ["haiku", "sonnet", "gpt5"],
-            reasoning: ["haiku", "sonnet", "gpt5"],
-          },
-          slow: {
-            planning: ["opus", "sonnet", "haiku", "gpt5"],
-            writing: ["sonnet", "haiku", "gpt5"],
-            coding: ["opus", "sonnet", "haiku", "gpt5"],
-            reasoning: ["opus", "sonnet", "haiku", "gpt5"],
-          },
-        },
-      },
-      updatedAt: new Date().toISOString(),
-    };
   }
 
   // ============ Model Creation ============
@@ -263,12 +131,43 @@ class LLMService {
     usagePercent: number = 0,
     maxTier?: number
   ): Promise<BaseChatModel> {
+    const models = await this.getModels(skill, speed, cost, usagePercent, maxTier)
+    const modelWithConfig = models.at(0)
+    if (!modelWithConfig) {
+      const tierMsg = maxTier !== undefined ? ` with maxTier=${maxTier}` : "";
+      throw new Error(`No available model for ${skill}/${speed}/${cost} at ${usagePercent}% usage${tierMsg}`);
+    }
+    console.log(`Using model tier ${modelWithConfig.config.priceTier} model: ${modelWithConfig.config.modelCard}`)
+    return modelWithConfig.model
+  }
+
+  /**
+   * Get all available models for fallback chains.
+   * Returns models in priority order (first is primary).
+   *
+   * @param skill - The skill needed (planning, writing, coding, reasoning)
+   * @param speed - Speed preference (blazing, fast, slow)
+   * @param cost - Cost tier (free or paid)
+   * @param usagePercent - Current user's usage percentage (0-100)
+   * @param maxTier - Maximum price tier allowed (1=premium only, 5=any tier). Models with higher tier numbers (cheaper) are allowed.
+   */
+  async getModels(
+    skill: LLMSkill,
+    speed: LLMSpeed,
+    cost: LLMCost,
+    usagePercent: number = 0,
+    maxTier?: number
+  ): Promise<ModelWithDetails[]> {
     if (this.useTest()) {
-      return LLMTestResponder.get();
+      return [{
+        model: LLMTestResponder.get(),
+        config: {} as any
+      }];
     }
 
     const config = await this.fetchConfig();
     const modelKeys = config.preferences[cost]?.[speed]?.[skill] ?? [];
+    const models: ModelWithDetails[] = [];
 
     for (const key of modelKeys) {
       const modelConfig = config.models[key];
@@ -277,103 +176,21 @@ class LLMService {
       // Filter by maxTier: only allow models with tier >= maxTier (higher tier = cheaper)
       if (maxTier !== undefined && modelConfig.priceTier < maxTier) continue;
 
-      console.log(`Using tier ${modelConfig.priceTier} model ${key}`);
       const model = this.createModel(key, modelConfig);
-      if (model) return model;
+      if (model) models.push({
+        model,
+        config: modelConfig
+      });
     }
 
-    const tierMsg = maxTier !== undefined ? ` with maxTier=${maxTier}` : "";
-    throw new Error(`No available model for ${skill}/${speed}/${cost} at ${usagePercent}% usage${tierMsg}`);
-  }
-
-  /**
-   * Get the model key that would be selected for the given parameters.
-   * Useful for testing to verify which model is selected without needing API keys.
-   * When testConfig is set, skips API key validation.
-   *
-   * @param skill - The skill needed (planning, writing, coding, reasoning)
-   * @param speed - Speed preference (blazing, fast, slow)
-   * @param cost - Cost tier (free or paid)
-   * @param usagePercent - Current user's usage percentage (0-100)
-   * @param maxTier - Maximum price tier allowed (1=premium only, 5=any tier). Models with higher tier numbers (cheaper) are allowed.
-   */
-  async getModelKey(
-    skill: LLMSkill,
-    speed: LLMSpeed,
-    cost: LLMCost,
-    usagePercent: number = 0,
-    maxTier?: number
-  ): Promise<string> {
-    const config = await this.fetchConfig();
-    const modelKeys = config.preferences[cost]?.[speed]?.[skill] ?? [];
-    const skipApiKeyCheck = this.testConfig !== null;
-
-    for (const key of modelKeys) {
-      const modelConfig = config.models[key];
-      if (!modelConfig?.enabled) continue;
-      if (usagePercent > (modelConfig.maxUsagePercent ?? 100)) continue;
-      // Filter by maxTier: only allow models with tier >= maxTier (higher tier = cheaper)
-      if (maxTier !== undefined && modelConfig.priceTier < maxTier) continue;
-
-      // Check if this model could be created (has valid provider config)
-      const provider = modelConfig.provider ?? MODEL_PROVIDERS[key];
-      if (!provider) continue;
-
-      const providerConfig = PROVIDERS[provider];
-      if (!providerConfig) continue;
-
-      // For API providers, we need a valid API key (unless in test mode with test config)
-      if (!skipApiKeyCheck && provider !== "ollama" && !providerConfig.apiKey) continue;
-
-      return key;
+    if (models.length === 0) {
+      const tierMsg = maxTier !== undefined ? ` with maxTier=${maxTier}` : "";
+      throw new Error(
+        `No available models for ${skill}/${speed}/${cost} at ${usagePercent}% usage${tierMsg}`
+      );
     }
 
-    const tierMsg = maxTier !== undefined ? ` with maxTier=${maxTier}` : "";
-    throw new Error(`No available model for ${skill}/${speed}/${cost} at ${usagePercent}% usage${tierMsg}`);
-  }
-
-  /**
-   * Get all available model keys for the given parameters.
-   * Useful for testing fallback chains.
-   * When testConfig is set, skips API key validation.
-   *
-   * @param skill - The skill needed (planning, writing, coding, reasoning)
-   * @param speed - Speed preference (blazing, fast, slow)
-   * @param cost - Cost tier (free or paid)
-   * @param usagePercent - Current user's usage percentage (0-100)
-   * @param maxTier - Maximum price tier allowed (1=premium only, 5=any tier). Models with higher tier numbers (cheaper) are allowed.
-   */
-  async getModelKeys(
-    skill: LLMSkill,
-    speed: LLMSpeed,
-    cost: LLMCost,
-    usagePercent: number = 0,
-    maxTier?: number
-  ): Promise<string[]> {
-    const config = await this.fetchConfig();
-    const modelKeys = config.preferences[cost]?.[speed]?.[skill] ?? [];
-    const availableKeys: string[] = [];
-    const skipApiKeyCheck = this.testConfig !== null;
-
-    for (const key of modelKeys) {
-      const modelConfig = config.models[key];
-      if (!modelConfig?.enabled) continue;
-      if (usagePercent > (modelConfig.maxUsagePercent ?? 100)) continue;
-      // Filter by maxTier: only allow models with tier >= maxTier (higher tier = cheaper)
-      if (maxTier !== undefined && modelConfig.priceTier < maxTier) continue;
-
-      const provider = modelConfig.provider ?? MODEL_PROVIDERS[key];
-      if (!provider) continue;
-
-      const providerConfig = PROVIDERS[provider];
-      if (!providerConfig) continue;
-
-      if (!skipApiKeyCheck && provider !== "ollama" && !providerConfig.apiKey) continue;
-
-      availableKeys.push(key);
-    }
-
-    return availableKeys;
+    return models;
   }
 
   /**
@@ -393,33 +210,8 @@ class LLMService {
     usagePercent: number = 0,
     maxTier?: number
   ): Promise<BaseChatModel[]> {
-    if (this.useTest()) {
-      return [LLMTestResponder.get()];
-    }
-
-    const config = await this.fetchConfig();
-    const modelKeys = config.preferences[cost]?.[speed]?.[skill] ?? [];
-    const models: BaseChatModel[] = [];
-
-    for (const key of modelKeys) {
-      const modelConfig = config.models[key];
-      if (!modelConfig?.enabled) continue;
-      if (usagePercent > (modelConfig.maxUsagePercent ?? 100)) continue;
-      // Filter by maxTier: only allow models with tier >= maxTier (higher tier = cheaper)
-      if (maxTier !== undefined && modelConfig.priceTier < maxTier) continue;
-
-      const model = this.createModel(key, modelConfig);
-      if (model) models.push(model);
-    }
-
-    if (models.length === 0) {
-      const tierMsg = maxTier !== undefined ? ` with maxTier=${maxTier}` : "";
-      throw new Error(
-        `No available models for ${skill}/${speed}/${cost} at ${usagePercent}% usage${tierMsg}`
-      );
-    }
-
-    return models;
+    return await this.getModels(skill, speed, cost, usagePercent, maxTier)
+                     .then(models => models.map(model => model.model));
   }
 
   // ============ Test Support ============
@@ -432,29 +224,29 @@ class LLMService {
     }
   }
 
-  /**
-   * Set a custom configuration for testing. Bypasses cache and API.
-   * Only callable in test environment.
-   */
-  setConfigForTesting(config: ModelConfigurationResponse) {
-    if (env.NODE_ENV !== "test") {
-      throw new Error("setConfigForTesting() can only be called in test environment");
-    }
-    this.testConfig = config;
-  }
-
-  /**
-   * Clear the test configuration.
-   */
-  clearTestConfig() {
-    this.testConfig = null;
-  }
-
   reset() {
     this.mode = "regular";
-    this.testConfig = null;
+    this._ignoreEnvMaxTier = false;
     // Clear cache synchronously via fire-and-forget to ensure fresh config on next fetch
     cache.delete(CACHE_KEY).catch(() => {});
+  }
+
+  /**
+   * Check if env max tier should be ignored (for testing).
+   */
+  get ignoreEnvMaxTier(): boolean {
+    return this._ignoreEnvMaxTier;
+  }
+
+  /**
+   * Set whether to ignore the LLM_MAX_TIER env var.
+   * Only callable in test environment.
+   */
+  setIgnoreEnvMaxTier(value: boolean) {
+    if (env.NODE_ENV !== "test") {
+      throw new Error("setIgnoreEnvMaxTier() can only be called in test environment");
+    }
+    this._ignoreEnvMaxTier = value;
   }
 
   useTest() {

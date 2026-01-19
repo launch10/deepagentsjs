@@ -39,10 +39,10 @@ module Core
         {cost_tier: "paid", speed_tier: "fast", skill: "coding", model_keys: %w[haiku sonnet gpt5]},
         {cost_tier: "paid", speed_tier: "fast", skill: "reasoning", model_keys: %w[haiku sonnet gpt5]},
         # Slow - quality is priority
-        {cost_tier: "paid", speed_tier: "slow", skill: "planning", model_keys: %w[opus sonnet haiku gpt5]},
-        {cost_tier: "paid", speed_tier: "slow", skill: "writing", model_keys: %w[sonnet haiku gpt5]},
-        {cost_tier: "paid", speed_tier: "slow", skill: "coding", model_keys: %w[opus sonnet haiku gpt5]},
-        {cost_tier: "paid", speed_tier: "slow", skill: "reasoning", model_keys: %w[opus sonnet haiku gpt5]}
+        {cost_tier: "paid", speed_tier: "slow", skill: "planning", model_keys: %w[opus sonnet haiku gpt5 haiku3 groq]},
+        {cost_tier: "paid", speed_tier: "slow", skill: "writing", model_keys: %w[sonnet haiku gpt5 haiku3 groq]},
+        {cost_tier: "paid", speed_tier: "slow", skill: "coding", model_keys: %w[opus sonnet haiku gpt5 haiku3 groq]},
+        {cost_tier: "paid", speed_tier: "slow", skill: "reasoning", model_keys: %w[opus sonnet haiku gpt5 haiku3 groq]}
       ]
 
       all_prefs = free_prefs + paid_prefs

@@ -59,7 +59,8 @@
       "@utils": ["./app/utils/index.ts"],
       "@queues": ["./app/queues/index.ts"],
       "@workers": ["./app/workers/index.ts"],
-      "@server/*": ["./app/server/*"]
+      "@server/*": ["./app/server/*"],
+      "@cache": ["./app/cache/index.ts"]
     },
     // vite takes care of building everything, not tsc
     "incremental": true,

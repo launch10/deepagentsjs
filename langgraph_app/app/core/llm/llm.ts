@@ -12,8 +12,16 @@ const LLM_SKILL_DEFAULT: LLMSkill = "writing";
  * Get the effective maxTier, combining explicit value with env var.
  * Explicit maxTier takes precedence, then falls back to LLM_MAX_TIER env var.
  * The more restrictive (higher number = cheaper) value wins when both are set.
+ *
+ * When LLMManager.ignoreEnvMaxTier is true (testing), the env var is ignored
+ * and only the explicit maxTier is used.
  */
 function getEffectiveMaxTier(explicitMaxTier?: number): number | undefined {
+  // In test mode, ignore the env var if explicitly requested
+  if (LLMManager.ignoreEnvMaxTier) {
+    return explicitMaxTier;
+  }
+
   const envMaxTier = env.LLM_MAX_TIER;
 
   if (explicitMaxTier !== undefined && envMaxTier !== undefined) {
