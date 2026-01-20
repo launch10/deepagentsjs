@@ -58,11 +58,12 @@ module ProjectConcerns
       Project.with_launch_relations.find_by(id: id)
 
       to_ad_campaign_json.merge!({
+        thread_id: deploy.thread_id,
         deploy: {
           id: deploy.id,
           status: deploy.status,
           current_step: deploy.current_step,
-          langgraph_thread_id: deploy.langgraph_thread_id
+          langgraph_thread_id: deploy.thread_id
         }
       })
     end

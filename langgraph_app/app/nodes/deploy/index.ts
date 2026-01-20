@@ -14,7 +14,6 @@ export * from "./verifyGoogleNode";
 export * from "./checkPaymentNode";
 export * from "./enableCampaignNode";
 export * from "./deployCampaignNode";
-export * from "./createChatNode";
 export * from "./initPhasesNode";
 
 // Legacy (will be removed after migration)

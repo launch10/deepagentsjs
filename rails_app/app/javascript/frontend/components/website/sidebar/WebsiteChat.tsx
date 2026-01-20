@@ -9,9 +9,12 @@ import WebsiteChatMessages from "./chat/WebsiteChatMessages";
  */
 export default function WebsiteChat() {
   // Use chat context provided by Chat.Root in Website.tsx
-  const { isLoadingHistory, isStreaming } = useChatContext();
+  const { isLoadingHistory, isStreaming, messages } = useChatContext();
 
   const isReady = !isLoadingHistory && !isStreaming;
+  // Show welcome message when website is ready and user hasn't sent any messages yet
+  const hasUserMessages = messages.some((m) => m.role === "user");
+  const showWelcomeMessage = isReady && !hasUserMessages;
 
   return (
     <div
@@ -22,7 +25,13 @@ export default function WebsiteChat() {
       data-ready={isReady}
     >
       <CardContent className="flex-1 overflow-y-auto px-4 py-4 min-h-0" data-testid="website-chat-messages">
-        <WebsiteChatMessages />
+        {showWelcomeMessage ? (
+          <p className="text-xs text-base-500 leading-4">
+            Your website is ready! Feel free to ask me for any changes.
+          </p>
+        ) : (
+          <WebsiteChatMessages />
+        )}
       </CardContent>
       <CardFooter className="flex-col gap-1 px-4 pb-4 pt-0 w-full shrink-0">
         <WebsiteChatInput />

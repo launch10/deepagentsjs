@@ -30,8 +30,7 @@ RSpec.describe "Chats API", type: :request do
 
       parameter name: :validate_params, in: :body, schema: APISchemas::Chat.validate_params_schema
 
-      response '200', 'thread does not exist - valid for new creation' do
-        schema APISchemas::Chat.validate_response
+      response '403', 'thread does not exist - requires pre-created chat' do
         let(:auth_headers) { auth_headers_for(user1) }
         let(:Authorization) { auth_headers['Authorization'] }
         let(:"X-Signature") { auth_headers['X-Signature'] }
@@ -40,10 +39,8 @@ RSpec.describe "Chats API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data["valid"]).to be true
+          expect(data["valid"]).to be false
           expect(data["exists"]).to be false
-          expect(data["chat_type"]).to be_nil
-          expect(data["project_id"]).to be_nil
         end
       end
 

@@ -33,19 +33,34 @@ function WebsitePaginationFooter({ isLoading }: { isLoading: boolean }) {
   return (
     <div
       className={twMerge(
-        "sticky bottom-0 mt-3",
-        "bg-background border-t border-neutral-200 py-4 px-6",
-        "shadow-[9px_-16px_26.1px_1px_#74767A12]",
+        "shrink-0 relative z-10",
+        "bg-background",
         isLoading && "opacity-50 pointer-events-none"
       )}
     >
-      <div className="flex items-center justify-between">
-        <Button variant="link" disabled>
-          Previous Step
-        </Button>
-        <div className="flex gap-3">
-          <Button disabled>Preview</Button>
-          <Button disabled>Continue</Button>
+      {/* Border line - fades on left, extends to right edge of screen */}
+      <div className="grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%]">
+        <div />
+        <div
+          className="h-px bg-neutral-200 -ml-8 -mr-[2.5vw] shadow-[0px_-16px_26px_0px_rgba(15,17,19,0.06)]"
+          style={{
+            maskImage: "linear-gradient(to right, transparent, black 32px)",
+            WebkitMaskImage: "linear-gradient(to right, transparent, black 32px)",
+          }}
+        />
+      </div>
+
+      {/* Button content */}
+      <div className="grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%] py-4">
+        <div />
+        <div className="flex items-center justify-between pr-[2.5%]">
+          <Button variant="link" disabled>
+            Previous Step
+          </Button>
+          <div className="flex gap-3">
+            <Button disabled>Preview</Button>
+            <Button disabled>Continue</Button>
+          </div>
         </div>
       </div>
     </div>
@@ -104,14 +119,15 @@ export default function Website() {
   return (
     <Chat.Root chat={chat} onSubmit={sendMessage}>
       <div className="h-full flex flex-col">
-        <main className="flex-1 min-h-0 flex gap-14 pl-[72px] pr-[76px] py-3">
-          {/* Left sidebar - fixed width */}
-          <div className="w-[288px] shrink-0 self-stretch">
+        {/* Main content area - no bottom padding so preview extends behind footer */}
+        <main className="flex-1 min-h-0 grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%] pt-[2.5%]">
+          {/* Left sidebar */}
+          <div>
             <WebsiteSidebar isLoading={isLoading} currentStep={0} />
           </div>
 
-          {/* Main preview area - fills remaining space */}
-          <div className="flex-1 min-w-0 self-stretch">
+          {/* Preview content - negative margin extends behind footer, overflow clips rounded corners */}
+          <div className="min-h-0 -mb-20 overflow-hidden">
             {isLoading ? (
               <div className="border-[#D3D2D0] border rounded-2xl bg-white flex items-center justify-center h-full">
                 <WebsiteLoader steps={websiteLoaderSteps} currentStep={0} />
@@ -122,6 +138,7 @@ export default function Website() {
           </div>
         </main>
 
+        {/* Footer - full width background, content aligned with preview */}
         <WebsitePaginationFooter isLoading={isLoading} />
       </div>
     </Chat.Root>

@@ -25,14 +25,18 @@
 class Brainstorm < ApplicationRecord
   belongs_to :website
   has_one :project, through: :website
-  has_one :chat, as: :contextable
 
+  include ChatCreatable
   include BrainstormConcerns::Creation
   include BrainstormConcerns::Updating
   include BrainstormConcerns::Serialization
 
+  def self.chat_type
+    "brainstorm"
+  end
+
   def name
-    chat.name
+    chat&.name || project&.name
   end
 
   def project_id

@@ -31,6 +31,7 @@ class Website < ApplicationRecord
   include WebsiteConcerns::ShasumHashable
   include WebsiteConcerns::FileManagement
   include WebsiteConcerns::ThemeCssInjection
+  include ChatCreatable
   historiographer_mode :snapshot_only
   acts_as_paranoid
   acts_as_tenant :account
@@ -38,6 +39,10 @@ class Website < ApplicationRecord
   belongs_to :project
   has_one :brainstorm
   belongs_to :account
+
+  def self.chat_type
+    "website"
+  end
   belongs_to :template
   belongs_to :theme, optional: true
 

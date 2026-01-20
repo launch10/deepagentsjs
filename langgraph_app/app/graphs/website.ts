@@ -1,7 +1,6 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { WebsiteAnnotation, type WebsiteGraphState } from "@annotation";
 import {
-  createChat,
   buildContext,
   websiteBuilderNode,
   cleanupFilesystemNode,
@@ -12,7 +11,9 @@ import {
 } from "@nodes";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 
-const routeAfterCreateChat = (state: WebsiteGraphState): string => {
+// Route from START based on mode and command
+// Chat is pre-created by Rails via ChatCreatable, no createChat node needed
+const routeFromStart = (state: WebsiteGraphState): string => {
   if (isCacheModeEnabled()) {
     return "cacheMode";
   }
@@ -24,7 +25,6 @@ const routeAfterCreateChat = (state: WebsiteGraphState): string => {
 };
 
 export const websiteGraph = new StateGraph(WebsiteAnnotation)
-  .addNode("createChat", createChat)
   .addNode("buildContext", buildContext)
   .addNode("websiteBuilder", websiteBuilderNode)
   .addNode("cleanupFilesystem", cleanupFilesystemNode)
@@ -38,8 +38,8 @@ export const websiteGraph = new StateGraph(WebsiteAnnotation)
     };
   })
 
-  .addEdge(START, "createChat")
-  .addConditionalEdges("createChat", routeAfterCreateChat, {
+  // Chat is pre-created by Rails, route directly from START
+  .addConditionalEdges(START, routeFromStart, {
     cacheMode: "cacheMode",
     buildContext: "buildContext",
     improveCopy: "improveCopy",

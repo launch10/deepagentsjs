@@ -44,7 +44,7 @@ export function QuickActionsView({
 }: QuickActionsViewProps) {
   return (
     <div className="flex flex-col">
-      <CardHeader className="px-4 py-4">
+      <CardHeader className="px-5 py-5">
         <CardTitle className="text-lg font-semibold font-serif">Landing Page Designer</CardTitle>
         <CardDescription className="flex flex-col gap-1.5">
           <div className="font-medium text-sm text-base-400">Quick Actions</div>

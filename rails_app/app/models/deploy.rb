@@ -33,6 +33,8 @@
 #  fk_rails_...  (website_deploy_id => website_deploys.id)
 #
 class Deploy < ApplicationRecord
+  include ChatCreatable
+
   STATUS = %w[pending running completed failed].freeze
 
   belongs_to :project
@@ -47,7 +49,16 @@ class Deploy < ApplicationRecord
   scope :in_progress, -> { where(status: %w[pending running]) }
   scope :user_recently_active, -> { where(user_active_at: 5.minutes.ago..) }
 
+  def self.chat_type
+    "deploy"
+  end
+
   def touch_user_active!
     update_column(:user_active_at, Time.current)
+  end
+
+  # Delegate thread_id to chat for compatibility
+  def thread_id
+    chat&.thread_id
   end
 end

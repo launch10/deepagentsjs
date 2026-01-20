@@ -1,7 +1,9 @@
 class API::V1::ChatsController < API::BaseController
   # POST /api/v1/chats/validate
   # Validates if a thread_id is valid for the current account
-  # Returns valid: true if thread doesn't exist OR belongs to current account
+  #
+  # Security: Chat must exist and belong to current account.
+  # New thread creation only happens in brainstorm (authenticated via JWT only).
   def validate
     thread_id = params[:thread_id]
 
@@ -13,8 +15,8 @@ class API::V1::ChatsController < API::BaseController
     chat = Chat.unscoped.find_by(thread_id: thread_id)
 
     if chat.nil?
-      # Thread doesn't exist - valid for new thread creation
-      render json: {valid: true, exists: false, chat_type: nil, project_id: nil}
+      # Thread doesn't exist - must be pre-created via ChatCreatable
+      render json: {valid: false, exists: false, chat_type: nil, project_id: nil}, status: :forbidden
     elsif chat.account_id == current_account.id
       # Thread exists and belongs to current account - valid
       render json: {

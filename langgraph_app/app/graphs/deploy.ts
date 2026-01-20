@@ -2,7 +2,6 @@ import { StateGraph, END, START } from "@langchain/langgraph";
 import { DeployAnnotation, type DeployGraphState } from "@annotation";
 import { Deploy } from "@types";
 import {
-  createChatNode,
   initPhasesNode,
   taskExecutorNode,
   taskExecutorRouter,
@@ -18,10 +17,10 @@ import {
  * ┌──────────────────────────────────────────────────────────────────────────┐
  * │ START                                                                    │
  * │   │                                                                      │
- * │   ▼                                                                      │
- * │ createChat (thread ownership validation)                                 │
- * │   │                                                                      │
  * │   ├──[nothing to deploy?]──► END                                         │
+ * │   │                                                                      │
+ * │   ▼                                                                      │
+ * │ initPhases                                                               │
  * │   │                                                                      │
  * │   ▼                                                                      │
  * │ taskExecutor ◄────────────────────────────────────────────┐              │
@@ -32,6 +31,9 @@ import {
  * │   │                                                                      │
  * │   └──[end]──► END (all tasks complete or error)                          │
  * └──────────────────────────────────────────────────────────────────────────┘
+ *
+ * Chat is pre-created by Rails via ChatCreatable when Deploy record is created.
+ * Thread ownership is validated by the route handler before graph execution.
  *
  * The taskExecutor processes tasks in order (defined in TASK_ORDER):
  * 1. ConnectingGoogle (campaign, skippable)
@@ -54,11 +56,6 @@ import {
 
 export const deployGraph = new StateGraph(DeployAnnotation)
   // --------------------------------------------------------------------------
-  // Security: Create Chat for thread ownership validation
-  // --------------------------------------------------------------------------
-  .addNode("createChat", createChatNode)
-
-  // --------------------------------------------------------------------------
   // Init Phases: Compute phases from any pre-existing tasks (for tests)
   // --------------------------------------------------------------------------
   .addNode("initPhases", initPhasesNode)
@@ -72,11 +69,9 @@ export const deployGraph = new StateGraph(DeployAnnotation)
   // ROUTING
   // ==========================================================================
 
-  // Start with chat validation
-  .addEdge(START, "createChat")
-
-  // After chat validation, either end or initialize phases
-  .addConditionalEdges("createChat", (state: DeployGraphState) => {
+  // Chat is pre-created by Rails, route from START
+  // Either end early if nothing to deploy, or initialize phases
+  .addConditionalEdges(START, (state: DeployGraphState) => {
     // Exit early if nothing to deploy
     if (!Deploy.shouldDeployAnything(state)) return END;
     return "initPhases";

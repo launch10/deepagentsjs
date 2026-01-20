@@ -27,34 +27,23 @@ module BrainstormConcerns
             step: "brainstorm"
           )
 
-          # Create website
+          # Create website (ChatCreatable auto-creates its chat)
           website = Website.create!(
             project_id: project.id,
             name: project.name,
             account_id: project.account_id
           )
 
-          # Create brainstorm
+          # Create brainstorm (ChatCreatable auto-creates its chat)
           brainstorm = create!(
-            website_id: website.id,
-            thread_id: brainstorm_params[:thread_id]
-          )
-
-          # Create chat with type 'brainstorm'
-          chat = Chat.create!(
-            name: project.name,
-            chat_type: "brainstorm",
-            thread_id: brainstorm_params[:thread_id],
-            project_id: project.id,
-            account_id: project.account_id,
-            contextable: brainstorm
+            website_id: website.id
           )
 
           {
             project: project,
             website: website,
             brainstorm: brainstorm,
-            chat: chat
+            chat: brainstorm.chat
           }
         end
       end

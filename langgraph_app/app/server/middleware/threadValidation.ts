@@ -12,11 +12,10 @@ export interface ThreadValidationResult {
 
 /**
  * Validates that a thread belongs to the authenticated account.
- * A thread is valid if:
- * 1. It doesn't exist yet (new thread)
- * 2. It exists and belongs to the current account
+ * The chat must already exist (pre-created via ChatCreatable).
  *
- * Returns 403 if the thread exists but belongs to a different account.
+ * Note: Brainstorm POST route skips this validation entirely - it only
+ * requires JWT auth since new threads are created during graph execution.
  */
 export async function validateThreadOwnership(
   threadId: string,
@@ -36,11 +35,11 @@ export async function validateThreadOwnership(
       project_id: result.project_id ?? null,
     };
   } catch (error) {
-    // Check if it's a 403 error (thread belongs to different account)
+    // Check if it's a 403 error (thread doesn't exist or belongs to different account)
     if (error instanceof Error && error.message.includes("403")) {
       return {
         valid: false,
-        exists: true,
+        exists: false,
         chat_type: null,
         project_id: null,
       };
@@ -53,11 +52,13 @@ export async function validateThreadOwnership(
  * Middleware helper that validates thread ownership and returns an error response if invalid.
  * Use this in route handlers after extracting threadId from the request.
  *
+ * The chat must already exist (pre-created via ChatCreatable callback).
+ * For brainstorm POST (new conversations), skip this validation - JWT auth is sufficient.
+ *
  * @example
  * ```ts
  * const validationError = await validateThreadOrError(c, threadId, auth);
  * if (validationError) return validationError;
- * // Continue with the request...
  * ```
  */
 export async function validateThreadOrError(
@@ -69,12 +70,18 @@ export async function validateThreadOrError(
     const result = await validateThreadOwnership(threadId, auth);
 
     if (!result.valid) {
-      return c.json({ error: "Forbidden: Thread belongs to a different account" }, 403);
+      return c.json(
+        { error: "Forbidden: Unauthorized" },
+        403
+      );
     }
 
     return null; // No error, validation passed
   } catch (error) {
     console.error("Thread validation error:", error);
-    return c.json({ error: "Thread validation failed", details: String(error) }, 500);
+    return c.json(
+      { error: "Thread validation failed", details: String(error) },
+      500
+    );
   }
 }
