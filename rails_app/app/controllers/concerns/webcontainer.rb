@@ -18,10 +18,11 @@ module Webcontainer
   #
   # SharedArrayBuffer is used by WebContainers for efficient multi-threading.
   # COOP: 'same-origin' restricts window interactions with cross-origin documents.
-  # COEP: 'require-corp' ensures all cross-origin resources explicitly grant permission to be embedded.
+  # COEP: 'credentialless' enables cross-origin isolation while allowing external resources
+  #       (images, fonts, CDNs) to load without requiring CORP headers.
   #
   def set_webcontainer_headers
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
-    response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+    response.headers["Cross-Origin-Embedder-Policy"] = "credentialless"
   end
 end

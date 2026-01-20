@@ -18,7 +18,7 @@ export interface WebsiteChatMessagesViewProps {
 /**
  * Pure presentation component for website chat messages.
  * Uses Chat compound components for consistent styling.
- * Follows the same pattern as AdsChatMessages.
+ * Follows the same pattern as BrainstormMessages.
  */
 export function WebsiteChatMessagesView({ messages, isStreaming }: WebsiteChatMessagesViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -30,6 +30,17 @@ export function WebsiteChatMessagesView({ messages, isStreaming }: WebsiteChatMe
       container.scrollTop = container.scrollHeight;
     }
   }, [messages]);
+
+  // Show thinking indicator when streaming with no messages yet
+  // This handles the initial load case where backend is generating response
+  if (messages.length === 0 && isStreaming) {
+    return <Chat.ThinkingIndicator text="Building your website" className="text-xs" />;
+  }
+
+  // Empty state when not streaming - waiting for backend to start
+  if (messages.length === 0) {
+    return <Chat.ThinkingIndicator text="Getting ready" className="text-xs" />;
+  }
 
   return (
     <Chat.Messages.List ref={containerRef} className="space-y-4">
@@ -74,6 +85,7 @@ export function WebsiteChatMessagesView({ messages, isStreaming }: WebsiteChatMe
  */
 export default function WebsiteChatMessages() {
   const { messages, isStreaming } = useChatContext();
+  console.log(messages)
 
   return <WebsiteChatMessagesView messages={messages} isStreaming={isStreaming} />;
 }

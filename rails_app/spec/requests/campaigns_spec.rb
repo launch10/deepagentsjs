@@ -82,8 +82,7 @@ RSpec.describe "Campaigns API", type: :request do
             campaign: {
               name: "Test Campaign",
               project_id: project1.id,
-              website_id: website1.id,
-              thread_id: "campaign_thread_123"
+              website_id: website1.id
             }
           }
         end
@@ -99,7 +98,7 @@ RSpec.describe "Campaigns API", type: :request do
           expect(campaign.stage).to eq("content")
           expect(campaign.ad_groups.count).to eq(1)
           expect(campaign.ad_groups.first.ads.count).to eq(1)
-          expect(data.dig("thread_id")).to eq("campaign_thread_123")
+          expect(data.dig("thread_id")).to eq(campaign.thread_id)
         end
       end
 
@@ -114,8 +113,7 @@ RSpec.describe "Campaigns API", type: :request do
             campaign: {
               name: "Test Campaign",
               project_id: project1.id,
-              website_id: website1.id,
-              thread_id: "campaign_thread_123"
+              website_id: website1.id
             }
           }
         end
@@ -124,8 +122,7 @@ RSpec.describe "Campaigns API", type: :request do
           result = Campaign.create_campaign!(user1_account, {
             name: "Test Campaign",
             project_id: project1.id,
-            website_id: website1.id,
-            thread_id: "existing_campaign_thread"
+            website_id: website1.id
           })
           result[:campaign]
         end
@@ -177,27 +174,6 @@ RSpec.describe "Campaigns API", type: :request do
         end
       end
 
-      response '422', 'invalid request - missing thread_id' do
-        schema APISchemas::Campaign.error_response
-        let(:auth_headers) { auth_headers_for(user1) }
-        let(:Authorization) { auth_headers['Authorization'] }
-        let(:"X-Signature") { auth_headers['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-        let(:campaign_params) do
-          {
-            campaign: {
-              name: "Test Campaign",
-              project_id: project1.id,
-              website_id: website1.id
-            }
-          }
-        end
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data["errors"]).to include("Missing thread_id")
-        end
-      end
     end
   end
 

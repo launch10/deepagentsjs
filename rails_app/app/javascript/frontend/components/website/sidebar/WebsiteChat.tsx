@@ -1,5 +1,6 @@
 import { CardContent, CardFooter } from "@components/ui/card";
-import { Chat, useChatContext } from "@components/shared/chat/Chat";
+import { useChatContext } from "@components/shared/chat/Chat";
+import { useWebsiteChatIsLoadingHistory } from "@hooks/website";
 import WebsiteChatInput from "./chat/WebsiteChatInput";
 import WebsiteChatMessages from "./chat/WebsiteChatMessages";
 
@@ -8,13 +9,9 @@ import WebsiteChatMessages from "./chat/WebsiteChatMessages";
  * Uses Chat compound components for consistent styling.
  */
 export default function WebsiteChat() {
-  // Use chat context provided by Chat.Root in Website.tsx
-  const { isLoadingHistory, isStreaming, messages } = useChatContext();
-
-  const isReady = !isLoadingHistory && !isStreaming;
-  // Show welcome message when website is ready and user hasn't sent any messages yet
-  const hasUserMessages = messages.some((m) => m.role === "user");
-  const showWelcomeMessage = isReady && !hasUserMessages;
+  // Use chat context for messages/streaming, domain hook for isLoadingHistory
+  const { isStreaming } = useChatContext();
+  const isLoadingHistory = useWebsiteChatIsLoadingHistory();
 
   return (
     <div
@@ -22,16 +19,9 @@ export default function WebsiteChat() {
       data-testid="website-chat"
       data-loading-history={isLoadingHistory}
       data-streaming={isStreaming}
-      data-ready={isReady}
     >
       <CardContent className="flex-1 overflow-y-auto px-4 py-4 min-h-0" data-testid="website-chat-messages">
-        {showWelcomeMessage ? (
-          <p className="text-xs text-base-500 leading-4">
-            Your website is ready! Feel free to ask me for any changes.
-          </p>
-        ) : (
-          <WebsiteChatMessages />
-        )}
+        <WebsiteChatMessages />
       </CardContent>
       <CardFooter className="flex-col gap-1 px-4 pb-4 pt-0 w-full shrink-0">
         <WebsiteChatInput />

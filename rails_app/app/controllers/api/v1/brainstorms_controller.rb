@@ -49,11 +49,11 @@ class API::V1::BrainstormsController < API::BaseController
   private
 
   def current_brainstorm
-    current_account.brainstorms.find_by(thread_id: params[:thread_id])
+    current_account.brainstorms.joins(:chat).find_by(chats: { thread_id: params[:thread_id] })
   end
 
   def brainstorm_params
-    params.require(:brainstorm).permit(:name, :thread_id, :account_id, project_attributes: [:uuid])
+    params.require(:brainstorm).permit(:name, :account_id, :thread_id, project_attributes: [:uuid])
   end
 
   def update_params

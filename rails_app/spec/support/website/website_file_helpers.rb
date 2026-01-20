@@ -41,7 +41,6 @@ module WebsiteFileHelpers
     {
       website: {
         name: "Test Landing Page",
-        thread_id: "thread_#{SecureRandom.hex(8)}",
         website_files_attributes: website_files_attributes
       }.merge(overrides)
     }
@@ -53,7 +52,6 @@ module WebsiteFileHelpers
 
     website = Website.create!(
       name: "Test Website",
-      thread_id: "thread_#{SecureRandom.hex(8)}",
       account: account,
       project: project,
       template: template

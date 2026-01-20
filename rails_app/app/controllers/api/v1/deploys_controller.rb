@@ -42,7 +42,7 @@ class API::V1::DeploysController < API::BaseController
   end
 
   def deploy_params
-    params.permit(:status, :current_step, :is_live, :langgraph_thread_id, :stacktrace)
+    params.permit(:status, :current_step, :is_live, :stacktrace)
   end
 
   def deploy_json(deploy)
@@ -52,7 +52,7 @@ class API::V1::DeploysController < API::BaseController
       status: deploy.status,
       current_step: deploy.current_step,
       is_live: deploy.is_live,
-      langgraph_thread_id: deploy.langgraph_thread_id,
+      thread_id: deploy.thread_id,
       created_at: deploy.created_at,
       updated_at: deploy.updated_at
     }

@@ -34,14 +34,6 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
   let!(:website) { create(:website, account: account, project: project, template: template) }
   let!(:brainstorm) { create(:brainstorm, website: website, project: project) }
   let!(:workflow) { create(:project_workflow, project: project, workflow_type: 'launch', step: 'ad_campaign', substep: 'content') }
-  let!(:chat) do
-    create(:chat,
-      thread_id: SecureRandom.uuid,
-      chat_type: 'ad_campaign',
-      project: project,
-      account: account,
-      contextable: brainstorm)
-  end
   describe 'GET /projects/:uuid/brainstorm' do
     before do
       workflow.update!(step: 'brainstorm', substep: nil)

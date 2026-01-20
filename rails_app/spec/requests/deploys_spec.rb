@@ -175,14 +175,14 @@ RSpec.describe "Deploys API", type: :request do
         let(:"X-Signature") { auth_headers["X-Signature"] }
         let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
         let(:id) { deploy.id }
-        let(:deploy_params) { { status: "running", current_step: "ConnectingGoogle", langgraph_thread_id: "thread-123" } }
+        let(:deploy_params) { { status: "running", current_step: "ConnectingGoogle" } }
 
         run_test! do |response|
           data = JSON.parse(response.body)
 
           expect(data["status"]).to eq("running")
           expect(data["current_step"]).to eq("ConnectingGoogle")
-          expect(data["langgraph_thread_id"]).to eq("thread-123")
+          expect(data["thread_id"]).to eq(deploy.thread_id)
 
           deploy.reload
           expect(deploy.status).to eq("running")

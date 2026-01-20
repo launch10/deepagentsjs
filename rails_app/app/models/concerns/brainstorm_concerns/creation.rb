@@ -34,9 +34,9 @@ module BrainstormConcerns
             account_id: project.account_id
           )
 
-          # Create brainstorm (ChatCreatable auto-creates its chat)
           brainstorm = create!(
-            website_id: website.id
+            website_id: website.id,
+            initial_thread_id: brainstorm_params[:thread_id]
           )
 
           {

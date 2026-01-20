@@ -5,9 +5,6 @@ class API::V1::CampaignsController < API::BaseController
       if existing_campaign
         render json: campaign_json(existing_campaign), status: :ok and return
       end
-      if !create_params[:thread_id]
-        render json: {errors: ["Missing thread_id"]}, status: :unprocessable_entity and return
-      end
       result = Campaign.create_campaign!(current_account, create_params)
       campaign = result[:campaign]
     rescue ActiveRecord::RecordInvalid => e
@@ -82,7 +79,7 @@ class API::V1::CampaignsController < API::BaseController
   end
 
   def create_params
-    params.require(:campaign).permit(:name, :project_id, :website_id, :thread_id)
+    params.require(:campaign).permit(:name, :project_id, :website_id)
   end
 
   def campaign_params
