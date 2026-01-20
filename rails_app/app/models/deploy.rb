@@ -2,24 +2,22 @@
 #
 # Table name: deploys
 #
-#  id                  :bigint           not null, primary key
-#  current_step        :string
-#  is_live             :boolean          default(FALSE)
-#  stacktrace          :text
-#  status              :string           default("pending"), not null
-#  user_active_at      :datetime
-#  created_at          :datetime         not null
-#  updated_at          :datetime         not null
-#  campaign_deploy_id  :bigint
-#  langgraph_thread_id :string
-#  project_id          :bigint           not null
-#  website_deploy_id   :bigint
+#  id                 :bigint           not null, primary key
+#  current_step       :string
+#  is_live            :boolean          default(FALSE)
+#  stacktrace         :text
+#  status             :string           default("pending"), not null
+#  user_active_at     :datetime
+#  created_at         :datetime         not null
+#  updated_at         :datetime         not null
+#  campaign_deploy_id :bigint
+#  project_id         :bigint           not null
+#  website_deploy_id  :bigint
 #
 # Indexes
 #
 #  index_deploys_on_campaign_deploy_id      (campaign_deploy_id)
 #  index_deploys_on_is_live                 (is_live)
-#  index_deploys_on_langgraph_thread_id     (langgraph_thread_id)
 #  index_deploys_on_project_id              (project_id)
 #  index_deploys_on_project_id_and_is_live  (project_id,is_live)
 #  index_deploys_on_project_id_and_status   (project_id,status)
@@ -55,10 +53,5 @@ class Deploy < ApplicationRecord
 
   def touch_user_active!
     update_column(:user_active_at, Time.current)
-  end
-
-  # Delegate thread_id to chat for compatibility
-  def thread_id
-    chat&.thread_id
   end
 end

@@ -11,7 +11,6 @@
 #  project_id  :bigint
 #  template_id :bigint
 #  theme_id    :integer
-#  thread_id   :string
 #
 # Indexes
 #
@@ -22,7 +21,6 @@
 #  index_websites_on_project_id   (project_id)
 #  index_websites_on_template_id  (template_id)
 #  index_websites_on_theme_id     (theme_id)
-#  index_websites_on_thread_id    (thread_id) UNIQUE
 #
 
 class Website < ApplicationRecord

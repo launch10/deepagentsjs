@@ -12,10 +12,66 @@ Radix UI primitives with CVA for variants.
 **Icons (user-generated sites):** Lucide icons.
 **Illustrations:** Streamline Milano style (PNG, free tier).
 File uploads validated client-side before upload, with immediate upload on selection.
+**CSS Effects:** Use CSS `mask-image` with gradients for fade effects on borders/shadows.
 
 ---
 
 ## Decision Log
+
+### 2025-01-20: CSS Mask Fade Technique for Border/Shadow Effects
+
+**Context:** Website builder footer needed a border and shadow that:
+- Fades out smoothly on the left side (no hard edge)
+- Extends fully to the right edge of the screen
+- Keeps button content aligned with the preview column
+
+**Decision:** Use CSS `mask-image` with a gradient to create fade effects on borders and shadows.
+
+**Implementation:**
+
+1. **Separate border from container** - Create a dedicated div for the border line instead of using `border-t` on the container:
+```tsx
+<div
+  className="h-px bg-neutral-200 -ml-8 -mr-[2.5vw] shadow-[...]"
+  style={{
+    maskImage: "linear-gradient(to right, transparent, black 32px)",
+    WebkitMaskImage: "linear-gradient(to right, transparent, black 32px)",
+  }}
+/>
+```
+
+2. **Gradient mask** - The mask transitions from `transparent` (hidden) to `black` (visible) over 32px:
+   - `transparent` at start = border invisible
+   - `black` at 32px = border fully visible
+   - Both the border AND shadow fade together
+
+3. **Negative margins for reach**:
+   - `-ml-8` extends 32px left (into the fade zone)
+   - `-mr-[2.5vw]` extends to the right screen edge
+
+4. **Overlap technique** - Preview uses negative bottom margin to slide behind the footer for seamless visual transition.
+
+**Why:**
+- Clean visual effect without complex SVG or canvas
+- Works with any border color or shadow
+- GPU-accelerated (compositing layer)
+- Pure CSS, no JavaScript needed
+- Shadow fades naturally with the same mask
+
+**Alternatives considered:**
+- **Gradient border-image**: Can't apply to shadows, only borders. Rejected.
+- **Pseudo-element with gradient background**: More complex, harder to maintain. Rejected.
+- **SVG mask**: Overkill for a simple linear fade. Rejected.
+
+**Trade-offs:**
+- Requires vendor prefix (`-webkit-mask-image`) for Safari
+- Mask prevents interaction with masked area (not an issue for decorative borders)
+
+**Used in:** `WebsitePaginationFooter` component (`Website.tsx`)
+
+**Status:** Current
+
+---
 
 ### 2025-12-30: Icon and Illustration Libraries
 

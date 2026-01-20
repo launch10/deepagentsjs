@@ -24,6 +24,11 @@ module ChatCreatable
     after_create :create_chat!
   end
 
+  # Delegate thread_id to chat - single source of truth
+  def thread_id
+    chat&.thread_id
+  end
+
   private
 
   def create_chat!

@@ -11,14 +11,12 @@
 #  solution      :string
 #  created_at    :datetime         not null
 #  updated_at    :datetime         not null
-#  thread_id     :string
 #  website_id    :bigint
 #
 # Indexes
 #
 #  index_brainstorms_on_completed_at  (completed_at)
 #  index_brainstorms_on_created_at    (created_at)
-#  index_brainstorms_on_thread_id     (thread_id) UNIQUE
 #  index_brainstorms_on_website_id    (website_id) UNIQUE
 #
 
