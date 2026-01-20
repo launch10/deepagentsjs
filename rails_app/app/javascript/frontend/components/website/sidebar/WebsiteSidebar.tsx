@@ -14,7 +14,7 @@ export function WebsiteSidebarView({
   currentStep = 0,
 }: WebsiteSidebarViewProps) {
   return (
-    <Card className="shadow-[0px_0px_8px_4px_rgba(167,165,161,0.08)] bg-background border-neutral-300 rounded-2xl sticky top-24 z-0 py-0 gap-0">
+    <Card className="shadow-[0px_0px_8px_4px_rgba(167,165,161,0.08)] bg-background border-neutral-300 rounded-2xl z-0 py-0 gap-0 h-full flex flex-col">
       {isLoading ? (
         <WebsiteSidebarLoading currentStep={currentStep} />
       ) : (

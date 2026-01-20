@@ -2,6 +2,8 @@ import WebsiteLoader from "@components/website/WebsiteLoader";
 import WebsiteSidebar from "@components/website/sidebar/WebsiteSidebar";
 import { WebsitePreview } from "@components/website/preview";
 import { Chat } from "@components/shared/chat/Chat";
+import { Button } from "@components/ui/button";
+import { twMerge } from "tailwind-merge";
 import { useEffect, useEffectEvent, useRef } from "react";
 import { usePage } from "@inertiajs/react";
 import {
@@ -18,6 +20,37 @@ type WebsitePageProps =
   InertiaProps.paths["/projects/{uuid}/website"]["get"]["responses"]["200"]["content"]["application/json"];
 
 const websiteLoaderSteps = [{ id: "1", label: "Setting up branding & colors" }];
+
+/**
+ * Website-specific pagination footer with disabled/muted styling.
+ * Shows "Previous Step", "Preview", and "Continue" buttons in a faded state
+ * while the website is being generated.
+ *
+ * Note: This is a standalone component that doesn't use the shared
+ * PaginationFooterView because that component has Ads-specific hooks.
+ */
+function WebsitePaginationFooter({ isLoading }: { isLoading: boolean }) {
+  return (
+    <div
+      className={twMerge(
+        "sticky bottom-0 mt-3",
+        "bg-background border-t border-neutral-200 py-4 px-6",
+        "shadow-[9px_-16px_26.1px_1px_#74767A12]",
+        isLoading && "opacity-50 pointer-events-none"
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <Button variant="link" disabled>
+          Previous Step
+        </Button>
+        <div className="flex gap-3">
+          <Button disabled>Preview</Button>
+          <Button disabled>Continue</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Auto-initialize the website generation when the page loads.
@@ -70,20 +103,27 @@ export default function Website() {
 
   return (
     <Chat.Root chat={chat} onSubmit={sendMessage}>
-      <main className="mx-auto container max-w-7xl grid grid-cols-[288px_1fr] gap-8 px-8 py-2">
-        <div>
-          <WebsiteSidebar isLoading={isLoading} currentStep={0} />
-        </div>
-        <div className="max-w-[948px] h-[calc(100vh-120px)]">
-          {isLoading ? (
-            <div className="border-[#D3D2D0] border rounded-2xl bg-white flex items-center justify-center h-full">
-              <WebsiteLoader steps={websiteLoaderSteps} currentStep={0} />
-            </div>
-          ) : (
-            <WebsitePreview />
-          )}
-        </div>
-      </main>
+      <div className="h-full flex flex-col">
+        <main className="flex-1 min-h-0 flex gap-14 pl-[72px] pr-[76px] py-3">
+          {/* Left sidebar - fixed width */}
+          <div className="w-[288px] shrink-0 self-stretch">
+            <WebsiteSidebar isLoading={isLoading} currentStep={0} />
+          </div>
+
+          {/* Main preview area - fills remaining space */}
+          <div className="flex-1 min-w-0 self-stretch">
+            {isLoading ? (
+              <div className="border-[#D3D2D0] border rounded-2xl bg-white flex items-center justify-center h-full">
+                <WebsiteLoader steps={websiteLoaderSteps} currentStep={0} />
+              </div>
+            ) : (
+              <WebsitePreview />
+            )}
+          </div>
+        </main>
+
+        <WebsitePaginationFooter isLoading={isLoading} />
+      </div>
     </Chat.Root>
   );
 }

@@ -23,7 +23,7 @@ export default function QuickActionButton({
       onClick={onClick}
       size="sm"
       className={cn(
-        "justify-start bg-white border-neutral-300",
+        "w-full justify-start bg-white border-neutral-300",
         isActive ? "border-base-600" : "hover:border-neutral-500"
       )}
     >
