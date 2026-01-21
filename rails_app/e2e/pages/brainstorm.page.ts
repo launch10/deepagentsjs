@@ -186,6 +186,16 @@ export class BrainstormPage {
   }
 
   /**
+   * Wait for conversation history to load after navigation/reload.
+   * Unlike waitForResponse() which expects a NEW AI response (thinking → message),
+   * this just waits for existing AI messages to be visible from history.
+   * This indicates Langgraph state has synced and websiteId is available.
+   */
+  async waitForConversationLoaded(timeout: number = 15000): Promise<void> {
+    await this.aiMessages.first().waitFor({ state: "visible", timeout });
+  }
+
+  /**
    * Get the last AI message content
    */
   async getLastAIMessage(): Promise<string> {
