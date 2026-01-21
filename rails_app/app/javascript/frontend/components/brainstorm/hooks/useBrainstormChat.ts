@@ -26,26 +26,32 @@ function useBrainstormChatOptions() {
   const { thread_id, jwt, langgraph_path, root_path } = usePage<BrainstormPageProps>().props;
 
   const onThreadIdAvailable = useCallback((threadId: string) => {
-    // We use native pushState instead of Inertia's router.replace for several reasons:
+    // Defensive check - prevent navigation with undefined threadId
+    if (!threadId || threadId === "undefined" || threadId === "null") {
+      console.error("[useBrainstormChat] onThreadIdAvailable called with invalid threadId:", threadId, new Error().stack);
+      return;
+    }
+
+    // We use native pushState to update the URL without making a server request.
     //
+    // Why pushState instead of router.visit:
     // 1. Stream continuity: When the user sends their first message, the backend starts
-    //    streaming a response. Inertia's router.replace triggers page lifecycle callbacks
-    //    (onSuccess, onFinish) and updates Inertia's internal page state, which can cause
-    //    React re-renders that interrupt the active stream connection.
+    //    streaming a response. Even router.visit with only: [] makes a server request,
+    //    which would fail because the project doesn't exist in Rails yet (it's being
+    //    created by Langgraph).
+    // 2. The project is created asynchronously by Langgraph, so we need to update the
+    //    URL immediately without waiting for Rails to know about it.
     //
-    // 2. No server request needed: Inertia v2's router.replace({ url }) is client-side only,
-    //    but it still updates Inertia's page object and triggers lifecycle hooks. We only
-    //    need to update the browser URL without any side effects.
+    // Back/forward navigation handling:
+    // When users press back then forward, Inertia won't have cached state for this URL.
+    // This is handled by the popstate listener in WorkflowProvider, which detects URLs
+    // that need fresh data and triggers an Inertia reload. The reload happens AFTER
+    // we've returned to the URL, so the project will exist by then.
     //
-    // 3. Integration with WorkflowProvider: The app's WorkflowProvider already patches
-    //    history.pushState to dispatch custom 'urlchange' events, ensuring the workflow
-    //    store stays in sync. Using native pushState integrates with this existing pattern.
+    // We include the current Inertia page state in history.state so Inertia can
+    // partially restore the page while the reload happens.
     //
-    // 4. Back button consistency: pushState adds a history entry, allowing users to
-    //    navigate back to /projects/new. This is intentional - starting a new brainstorm
-    //    creates a recoverable navigation point.
-    //
-    // Investigated as part of TODO-003. See: v2 Inertia docs on router.push/replace.
+    // Investigated as part of TODO-003. See: https://github.com/inertiajs/inertia/discussions/1809
     const newUrl = `/projects/${threadId}/brainstorm`;
     window.history.pushState({ threadId }, "", newUrl);
   }, []);

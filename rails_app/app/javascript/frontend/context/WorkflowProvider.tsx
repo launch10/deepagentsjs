@@ -51,6 +51,46 @@ interface WorkflowProviderProps {
   children: ReactNode;
 }
 
+/**
+ * Check if history.state contains a valid Inertia page object for the current URL.
+ *
+ * Important: We must check that the Inertia state URL matches the current URL.
+ * When Inertia navigates away from a pushState URL, it saves its current page state
+ * to history.state (via replaceState). This overwrites our pushState state, but
+ * the saved state has the WRONG URL (the original Inertia URL, not our pushState URL).
+ *
+ * For example:
+ * 1. User at /projects/new (Inertia state with url="/projects/new")
+ * 2. Chat creates thread, pushState to /projects/{uuid}/brainstorm (state = { threadId })
+ * 3. User clicks "+" button, Inertia replaces state before navigating
+ *    - history.state now has Inertia state with url="/projects/new" (wrong!)
+ * 4. User presses back to /projects/{uuid}/brainstorm
+ *    - URL is /projects/{uuid}/brainstorm
+ *    - But history.state.url is "/projects/new"
+ *
+ * We detect this mismatch and trigger a reload.
+ */
+function hasValidInertiaPageState(): boolean {
+  const state = window.history.state;
+  // Inertia page objects have these properties, and the URL should match
+  return (
+    state &&
+    typeof state === "object" &&
+    "component" in state &&
+    "props" in state &&
+    "url" in state &&
+    state.url === window.location.pathname + window.location.search
+  );
+}
+
+/**
+ * Check if the current URL is a project brainstorm page that needs data.
+ */
+function isProjectBrainstormUrl(): boolean {
+  const path = window.location.pathname;
+  return /^\/projects\/[^/]+\/brainstorm$/.test(path) && !path.includes("/projects/new");
+}
+
 export function WorkflowProvider({ children }: WorkflowProviderProps) {
   const [store] = useState(() => createWorkflowStore());
 
@@ -58,13 +98,33 @@ export function WorkflowProvider({ children }: WorkflowProviderProps) {
   useEffect(() => {
     const syncFromUrl = () => store.getState().syncFromUrl();
 
+    // Handle popstate (back/forward) - may need to reload if Inertia doesn't have state
+    const handlePopstate = () => {
+      syncFromUrl();
+
+      // If we navigated to a project brainstorm URL but Inertia doesn't have valid page state
+      // for this URL, we need to fetch the page data from the server.
+      //
+      // This handles several scenarios:
+      // 1. Pure browser back/forward after pushState (no Inertia state at all)
+      // 2. Back after Inertia navigation (Inertia state exists but for wrong URL)
+      //
+      // We use router.visit instead of router.reload because the current Inertia page state
+      // may be for a different URL entirely. router.reload preserves the current page component,
+      // but we need to fetch and render the correct page.
+      if (isProjectBrainstormUrl() && !hasValidInertiaPageState()) {
+        // Navigate to this URL via Inertia to fetch fresh data and render correct page
+        router.visit(window.location.href, { preserveScroll: true });
+      }
+    };
+
     // Browser back/forward
-    window.addEventListener("popstate", syncFromUrl);
+    window.addEventListener("popstate", handlePopstate);
     // pushState/replaceState (from chat hooks, workflow navigation, etc.)
     window.addEventListener(URL_CHANGE_EVENT, syncFromUrl);
 
     return () => {
-      window.removeEventListener("popstate", syncFromUrl);
+      window.removeEventListener("popstate", handlePopstate);
       window.removeEventListener(URL_CHANGE_EVENT, syncFromUrl);
     };
   }, [store]);
