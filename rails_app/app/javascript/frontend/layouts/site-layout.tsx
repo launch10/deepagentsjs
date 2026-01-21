@@ -5,12 +5,23 @@ import { usePage } from "@inertiajs/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WorkflowProvider } from "@context/WorkflowProvider";
 import { Toaster } from "@components/ui/sonner";
+import { useCoreEntityStore } from "~/stores/coreEntityStore";
 
 const queryClient = new QueryClient();
 
 export const SiteLayout = ({ children }: { children: React.ReactNode }): React.ReactNode => {
-  const { url } = usePage().props;
+  const page = usePage();
+  const url = page.url; // Use Inertia's standard URL property, not props.url
   const mainRef = useRef<HTMLElement>(null);
+  const lastUrlRef = useRef<string | null>(null);
+
+  // Reset core entity store when URL changes.
+  // This runs synchronously during render (before children render),
+  // ensuring the store is clean before page components hydrate it.
+  if (lastUrlRef.current !== null && lastUrlRef.current !== url) {
+    useCoreEntityStore.getState().reset();
+  }
+  lastUrlRef.current = url;
 
   // Scroll to top on route change
   useEffect(() => {

@@ -7,42 +7,42 @@ module Core
       ActiveRecord::Base.establish_connection
 
       # Default preferences matching langgraph_app/app/core/llm/core.ts
-      # Free tier uses local models only
+      # Free tier uses cheap OpenAI models (gpt5_mini has proper tool calling)
       free_prefs = [
         # Blazing speed
-        {cost_tier: "free", speed_tier: "blazing", skill: "planning", model_keys: %w[gpt_oss]},
-        {cost_tier: "free", speed_tier: "blazing", skill: "writing", model_keys: %w[gpt_oss]},
-        {cost_tier: "free", speed_tier: "blazing", skill: "coding", model_keys: %w[gpt_oss]},
-        {cost_tier: "free", speed_tier: "blazing", skill: "reasoning", model_keys: %w[gpt_oss]},
+        {cost_tier: "free", speed_tier: "blazing", skill: "planning", model_keys: %w[gpt5_mini]},
+        {cost_tier: "free", speed_tier: "blazing", skill: "writing", model_keys: %w[gpt5_mini]},
+        {cost_tier: "free", speed_tier: "blazing", skill: "coding", model_keys: %w[gpt5_mini]},
+        {cost_tier: "free", speed_tier: "blazing", skill: "reasoning", model_keys: %w[gpt5_mini]},
         # Fast
-        {cost_tier: "free", speed_tier: "fast", skill: "planning", model_keys: %w[gpt_oss]},
-        {cost_tier: "free", speed_tier: "fast", skill: "writing", model_keys: %w[gpt_oss]},
-        {cost_tier: "free", speed_tier: "fast", skill: "coding", model_keys: %w[gpt_oss]},
-        {cost_tier: "free", speed_tier: "fast", skill: "reasoning", model_keys: %w[gpt_oss]},
+        {cost_tier: "free", speed_tier: "fast", skill: "planning", model_keys: %w[gpt5_mini]},
+        {cost_tier: "free", speed_tier: "fast", skill: "writing", model_keys: %w[gpt5_mini]},
+        {cost_tier: "free", speed_tier: "fast", skill: "coding", model_keys: %w[gpt5_mini]},
+        {cost_tier: "free", speed_tier: "fast", skill: "reasoning", model_keys: %w[gpt5_mini]},
         # Slow
-        {cost_tier: "free", speed_tier: "slow", skill: "planning", model_keys: %w[gpt_oss]},
-        {cost_tier: "free", speed_tier: "slow", skill: "writing", model_keys: %w[gpt_oss]},
-        {cost_tier: "free", speed_tier: "slow", skill: "coding", model_keys: %w[gpt_oss]},
-        {cost_tier: "free", speed_tier: "slow", skill: "reasoning", model_keys: %w[gpt_oss]}
+        {cost_tier: "free", speed_tier: "slow", skill: "planning", model_keys: %w[gpt5_mini]},
+        {cost_tier: "free", speed_tier: "slow", skill: "writing", model_keys: %w[gpt5_mini]},
+        {cost_tier: "free", speed_tier: "slow", skill: "coding", model_keys: %w[gpt5_mini]},
+        {cost_tier: "free", speed_tier: "slow", skill: "reasoning", model_keys: %w[gpt5_mini]}
       ]
 
       # Paid tier uses API models with fallbacks
       paid_prefs = [
         # Blazing speed - speed is priority
-        {cost_tier: "paid", speed_tier: "blazing", skill: "planning", model_keys: %w[groq haiku haiku3]},
-        {cost_tier: "paid", speed_tier: "blazing", skill: "writing", model_keys: %w[groq haiku haiku3]},
-        {cost_tier: "paid", speed_tier: "blazing", skill: "coding", model_keys: %w[groq haiku haiku3]},
-        {cost_tier: "paid", speed_tier: "blazing", skill: "reasoning", model_keys: %w[groq haiku haiku3]},
+        {cost_tier: "paid", speed_tier: "blazing", skill: "planning", model_keys: %w[haiku gpt5_mini ]},
+        {cost_tier: "paid", speed_tier: "blazing", skill: "writing", model_keys: %w[haiku gpt5_mini]},
+        {cost_tier: "paid", speed_tier: "blazing", skill: "coding", model_keys: %w[haiku gpt5_mini]},
+        {cost_tier: "paid", speed_tier: "blazing", skill: "reasoning", model_keys: %w[haiku gpt5_mini]},
         # Fast - fast models first
-        {cost_tier: "paid", speed_tier: "fast", skill: "planning", model_keys: %w[sonnet haiku gpt5]},
-        {cost_tier: "paid", speed_tier: "fast", skill: "writing", model_keys: %w[haiku haiku3 gpt5_mini]},
-        {cost_tier: "paid", speed_tier: "fast", skill: "coding", model_keys: %w[haiku sonnet gpt5]},
-        {cost_tier: "paid", speed_tier: "fast", skill: "reasoning", model_keys: %w[haiku sonnet gpt5]},
+        {cost_tier: "paid", speed_tier: "fast", skill: "planning", model_keys: %w[sonnet haiku gpt5_mini]},
+        {cost_tier: "paid", speed_tier: "fast", skill: "writing", model_keys: %w[sonnet haiku gpt5_mini]},
+        {cost_tier: "paid", speed_tier: "fast", skill: "coding", model_keys: %w[sonnet haiku gpt5_mini]},
+        {cost_tier: "paid", speed_tier: "fast", skill: "reasoning", model_keys: %w[sonnet haiku gpt5_mini]},
         # Slow - quality is priority
-        {cost_tier: "paid", speed_tier: "slow", skill: "planning", model_keys: %w[opus sonnet haiku gpt5 haiku3 groq]},
-        {cost_tier: "paid", speed_tier: "slow", skill: "writing", model_keys: %w[sonnet haiku gpt5 haiku3 groq]},
-        {cost_tier: "paid", speed_tier: "slow", skill: "coding", model_keys: %w[opus sonnet haiku gpt5 haiku3 groq]},
-        {cost_tier: "paid", speed_tier: "slow", skill: "reasoning", model_keys: %w[opus sonnet haiku gpt5 haiku3 groq]}
+        {cost_tier: "paid", speed_tier: "slow", skill: "planning", model_keys: %w[opus sonnet haiku gpt5_mini]},
+        {cost_tier: "paid", speed_tier: "slow", skill: "writing", model_keys: %w[opus sonnet haiku gpt5_mini]},
+        {cost_tier: "paid", speed_tier: "slow", skill: "coding", model_keys: %w[opus sonnet haiku gpt5_mini]},
+        {cost_tier: "paid", speed_tier: "slow", skill: "reasoning", model_keys: %w[opus sonnet haiku gpt5_mini]}
       ]
 
       all_prefs = free_prefs + paid_prefs

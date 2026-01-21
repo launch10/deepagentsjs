@@ -15,6 +15,8 @@
 #  idx_model_preferences_unique  (cost_tier,speed_tier,skill) UNIQUE
 #
 class ModelPreference < ApplicationRecord
+  include LanggraphCacheClearable
+
   # Valid values for each tier/skill
   COST_TIERS = %w[free paid].freeze
   SPEED_TIERS = %w[blazing fast slow].freeze

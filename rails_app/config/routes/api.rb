@@ -63,8 +63,7 @@ namespace :api, defaults: {format: :json} do
       get "payment_status", to: "google#payment_status"
     end
 
-    scope "projects/:project_uuid" do
-      resource :website, only: [:show, :update]
+    scope "projects/:project_id" do
       resources :social_links, only: [:index, :show, :create, :update, :destroy] do
         collection do
           post :bulk_upsert
@@ -72,7 +71,7 @@ namespace :api, defaults: {format: :json} do
       end
     end
 
-    resources :websites, only: [] do
+    resources :websites, only: [:show, :update] do
       post "files/write", to: "website_files#write"
       patch "files/edit", to: "website_files#edit"
     end

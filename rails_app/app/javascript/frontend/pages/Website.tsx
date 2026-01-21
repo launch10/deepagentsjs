@@ -13,7 +13,9 @@ import {
   useWebsiteChatActions,
   useWebsiteSendMessage,
   useWebsiteChatIsStreaming,
+  useSyncWebsiteEntities,
 } from "@hooks/website";
+import { useSyncPageProps } from "~/stores/useSyncCoreEntities";
 import type { InertiaProps } from "@shared";
 
 type WebsitePageProps =
@@ -102,11 +104,15 @@ function useWebsiteInit() {
 }
 
 export default function Website() {
+  const pageProps = usePage().props;
   const chat = useWebsiteChat();
   const { sendMessage } = useWebsiteSendMessage();
-  const status = useWebsiteChatState("status");
   const isLoadingHistory = useWebsiteChatIsLoadingHistory();
   const isStreaming = useWebsiteChatIsStreaming();
+
+  // Sync page props (once on mount) and Langgraph entity IDs (individual keys)
+  useSyncPageProps(pageProps);
+  useSyncWebsiteEntities();
 
   // Auto-init website generation on first load
   useWebsiteInit();

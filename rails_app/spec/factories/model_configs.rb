@@ -3,6 +3,8 @@
 # Table name: model_configs
 #
 #  id                :bigint           not null, primary key
+#  cache_reads       :decimal(10, 4)
+#  cache_writes      :decimal(10, 4)
 #  cost_in           :decimal(10, 4)
 #  cost_out          :decimal(10, 4)
 #  enabled           :boolean          default(TRUE), not null

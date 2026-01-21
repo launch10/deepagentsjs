@@ -309,11 +309,12 @@ test.describe("Brainstorm URL Handling", () => {
 
     await brainstormPage.sendMessage("Bookmark test message");
 
-    // Wait for URL update
-    await page.waitForFunction(
-      () => window.location.href.includes("/projects/"),
-      { timeout: 10000 }
-    );
+    // Wait for response
+    await brainstormPage.waitForResponse();
+
+    // Verify AI message appears
+    const aiMessageCount = await brainstormPage.getAIMessageCount();
+    expect(aiMessageCount).toBeGreaterThan(0);
 
     const url = page.url();
 
@@ -1472,7 +1473,7 @@ test.describe("Workflow Progress Stepper", () => {
     await expect(page.getByText("Brainstorm")).toBeVisible();
     await expect(page.getByText("Landing Page")).toBeVisible();
     await expect(page.getByText("Ad Campaign")).toBeVisible();
-    await expect(page.getByText("Launch")).toBeVisible();
+    await expect(page.getByText("Deploy")).toBeVisible();
   });
 
   test("clicking New Project button resets workflow state and hides stepper", async ({ page }) => {
@@ -1588,7 +1589,7 @@ test.describe("Brainstorm Loading States", () => {
   let brainstormPage: BrainstormPage;
 
   test.beforeEach(async ({ page }) => {
-    await DatabaseSnapshotter.restoreSnapshot("basic_account");
+    await DatabaseSnapshotter.restoreSnapshot("brainstorm_step");
     await loginUser(page);
     brainstormPage = new BrainstormPage(page);
   });

@@ -12,6 +12,7 @@ import {
   type GetWebsiteResponse,
   type UpdateWebsiteResponse,
 } from "@rails_api_base";
+import { useWebsiteId as useCoreWebsiteId } from "~/stores/coreEntityStore";
 
 // Re-export for backwards compatibility
 export { WebsiteAPIService as WebsiteService } from "@rails_api_base";
@@ -23,7 +24,7 @@ export { WebsiteAPIService as WebsiteService } from "@rails_api_base";
 export const websiteKeys = {
   all: ["websites"] as const,
   details: () => [...websiteKeys.all, "detail"] as const,
-  detail: (projectUuid: string) => [...websiteKeys.details(), projectUuid] as const,
+  detail: (websiteId: number) => [...websiteKeys.details(), websiteId] as const,
 };
 
 // ============================================================================
@@ -40,12 +41,11 @@ export function useWebsiteService() {
 }
 
 /**
- * Hook to get the current project UUID from page props.
- * Works on both Brainstorm and Website pages.
+ * Hook to get the current website ID from the core entity store.
+ * The store is populated from page props and Langgraph state.
  */
-function useProjectUuid(): string | null {
-  const { project } = usePage<{ project?: { uuid: string } }>().props;
-  return project?.uuid ?? null;
+function useWebsiteId(): number | null {
+  return useCoreWebsiteId();
 }
 
 // ============================================================================
@@ -66,14 +66,14 @@ type WebsiteQueryOptions = Omit<UseQueryOptions<GetWebsiteResponse, Error>, "que
  */
 export function useWebsite(options?: WebsiteQueryOptions) {
   const service = useWebsiteService();
-  const projectUuid = useProjectUuid();
+  const websiteId = useWebsiteId();
   // Get initial data from Inertia props if available
   const { website: initialWebsite } = usePage<{ website?: GetWebsiteResponse }>().props;
 
   return useQuery({
-    queryKey: websiteKeys.detail(projectUuid ?? ""),
-    queryFn: () => service.get(projectUuid!),
-    enabled: !!projectUuid,
+    queryKey: websiteKeys.detail(websiteId ?? 0),
+    queryFn: () => service.get(websiteId!),
+    enabled: !!websiteId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     // Use Inertia props as initial data if available
     initialData: initialWebsite ?? undefined,
@@ -110,20 +110,20 @@ export function useUpdateWebsiteTheme(
   options?: MutationOptions<UpdateWebsiteResponse, UpdateWebsiteThemeVariables>
 ) {
   const service = useWebsiteService();
-  const projectUuid = useProjectUuid();
+  const websiteId = useWebsiteId();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ themeId }: UpdateWebsiteThemeVariables) => {
-      if (!projectUuid) {
-        throw new Error("Project UUID is required");
+      if (!websiteId) {
+        throw new Error("Website ID is required");
       }
-      return service.update(projectUuid, { theme_id: themeId });
+      return service.update(websiteId, { theme_id: themeId });
     },
     onSuccess: (data) => {
       // Update the website cache if needed
-      if (projectUuid) {
-        queryClient.setQueryData(websiteKeys.detail(projectUuid), data);
+      if (websiteId) {
+        queryClient.setQueryData(websiteKeys.detail(websiteId), data);
       }
     },
     ...options,

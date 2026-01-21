@@ -1,7 +1,8 @@
 CarrierWave.configure do |config|
-  # Use local file storage for test environment or when explicitly requested
-  # Set USE_LOCAL_STORAGE=true for E2E tests to avoid hitting R2
-  use_local_storage = Rails.env.test? || ENV["USE_LOCAL_STORAGE"] == "true"
+  # R2 storage for production, development, and e2e tests (Playwright)
+  # Local storage for RSpec tests (speed) unless USE_R2_STORAGE is set
+  # E2E tests set PLAYWRIGHT=true to use R2
+  use_local_storage = Rails.env.test? && ENV["PLAYWRIGHT"] != "true" && ENV["USE_R2_STORAGE"] != "true"
 
   if use_local_storage
     config.storage = :file

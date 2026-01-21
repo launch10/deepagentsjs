@@ -94,13 +94,6 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description invalid request - missing thread_id */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
             };
         };
         delete?: never;
@@ -493,21 +486,6 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
-                };
-                /** @description invalid request - missing thread_id */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @description Single error message */
-                            error?: string;
-                            errors?: string[] | {
-                                [key: string]: string[];
-                            };
-                        };
-                    };
                 };
             };
         };
@@ -1011,160 +989,6 @@ export interface paths {
                     content?: never;
                 };
                 /** @description missing thread_id */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/chats": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Creates a chat for thread ownership */
-        post: {
-            parameters: {
-                query?: never;
-                header?: {
-                    Authorization?: string;
-                    "X-Signature"?: string;
-                    "X-Timestamp"?: string;
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        chat: {
-                            /** @description Thread ID from Langgraph */
-                            thread_id: string;
-                            /**
-                             * @description Type of chat
-                             * @enum {string}
-                             */
-                            chat_type: "brainstorm" | "website" | "ad_campaign" | "deploy";
-                            /** @description Project ID to associate the chat with */
-                            project_id: number;
-                            /**
-                             * @description Polymorphic type of the contextable record
-                             * @enum {string}
-                             */
-                            contextable_type: "Brainstorm" | "Website" | "Campaign" | "Deploy";
-                            /** @description ID of the contextable record */
-                            contextable_id: number;
-                            /** @description Optional name for the chat */
-                            name?: string;
-                        };
-                    };
-                };
-            };
-            responses: {
-                /** @description chat already exists for same account - returns existing */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @description Unique identifier */
-                            id: number;
-                            /**
-                             * Format: uuid
-                             * @description UUID identifier
-                             */
-                            thread_id: string;
-                            /** @description Type of chat (brainstorm, website, ad_campaign, deploy) */
-                            chat_type: string;
-                            /** @description Unique identifier */
-                            project_id: number;
-                            /** @description Unique identifier */
-                            account_id: number;
-                            /** @description Chat name */
-                            name?: string | null;
-                            /**
-                             * Format: date-time
-                             * @description Timestamp
-                             */
-                            created_at: string;
-                            /**
-                             * Format: date-time
-                             * @description Timestamp
-                             */
-                            updated_at: string;
-                        };
-                    };
-                };
-                /** @description chat created for deploy type */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @description Unique identifier */
-                            id: number;
-                            /**
-                             * Format: uuid
-                             * @description UUID identifier
-                             */
-                            thread_id: string;
-                            /** @description Type of chat (brainstorm, website, ad_campaign, deploy) */
-                            chat_type: string;
-                            /** @description Unique identifier */
-                            project_id: number;
-                            /** @description Unique identifier */
-                            account_id: number;
-                            /** @description Chat name */
-                            name?: string | null;
-                            /**
-                             * Format: date-time
-                             * @description Timestamp
-                             */
-                            created_at: string;
-                            /**
-                             * Format: date-time
-                             * @description Timestamp
-                             */
-                            updated_at: string;
-                        };
-                    };
-                };
-                /** @description unauthorized - missing token */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description thread already exists for different account */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description project not found or belongs to different account */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description missing required fields */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -1704,6 +1528,87 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/domains/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Searches for domain availability */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description Array of domain names to check availability (max 10) */
+                        candidates: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description normalizes domain inputs */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            results: {
+                                /** @description Domain name */
+                                domain: string;
+                                /**
+                                 * @description Availability status
+                                 * @enum {string}
+                                 */
+                                status: "existing" | "unavailable" | "available";
+                                /** @description ID of existing domain if owned by current account */
+                                existing_id?: number | null;
+                            }[];
+                            platform_subdomain_credits: {
+                                /** @description Maximum platform subdomains allowed */
+                                limit: number;
+                                /** @description Number of platform subdomains used */
+                                used: number;
+                                /** @description Remaining platform subdomains */
+                                remaining: number;
+                            };
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description exceeds maximum candidates */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/domains/{id}": {
         parameters: {
             query?: never;
@@ -2224,6 +2129,8 @@ export interface paths {
                                     costOut?: number | null;
                                     /** @description Model card identifier */
                                     modelCard?: string | null;
+                                    /** @description Price tier (1=premium, 5=cheap) based on weighted effective cost */
+                                    priceTier: number;
                                 };
                             };
                             /** @description Nested map of cost_tier -> speed_tier -> skill -> model_keys array */
@@ -2425,13 +2332,13 @@ export interface paths {
         };
         trace?: never;
     };
-    "/api/v1/projects/{project_uuid}/social_links": {
+    "/api/v1/projects/{project_id}/social_links": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Project UUID */
-                project_uuid: string;
+                /** @description Project ID */
+                project_id: number;
             };
             cookie?: never;
         };
@@ -2445,8 +2352,8 @@ export interface paths {
                     "X-Timestamp"?: string;
                 };
                 path: {
-                    /** @description Project UUID */
-                    project_uuid: string;
+                    /** @description Project ID */
+                    project_id: number;
                 };
                 cookie?: never;
             };
@@ -2512,8 +2419,8 @@ export interface paths {
                     "X-Timestamp"?: string;
                 };
                 path: {
-                    /** @description Project UUID */
-                    project_uuid: string;
+                    /** @description Project ID */
+                    project_id: number;
                 };
                 cookie?: never;
             };
@@ -2590,13 +2497,13 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/projects/{project_uuid}/social_links/{id}": {
+    "/api/v1/projects/{project_id}/social_links/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Project UUID */
-                project_uuid: string;
+                /** @description Project ID */
+                project_id: number;
                 /** @description Social Link ID */
                 id: number;
             };
@@ -2612,8 +2519,8 @@ export interface paths {
                     "X-Timestamp"?: string;
                 };
                 path: {
-                    /** @description Project UUID */
-                    project_uuid: string;
+                    /** @description Project ID */
+                    project_id: number;
                     /** @description Social Link ID */
                     id: number;
                 };
@@ -2682,8 +2589,8 @@ export interface paths {
                     "X-Timestamp"?: string;
                 };
                 path: {
-                    /** @description Project UUID */
-                    project_uuid: string;
+                    /** @description Project ID */
+                    project_id: number;
                     /** @description Social Link ID */
                     id: number;
                 };
@@ -2726,8 +2633,8 @@ export interface paths {
                     "X-Timestamp"?: string;
                 };
                 path: {
-                    /** @description Project UUID */
-                    project_uuid: string;
+                    /** @description Project ID */
+                    project_id: number;
                     /** @description Social Link ID */
                     id: number;
                 };
@@ -2802,13 +2709,13 @@ export interface paths {
         };
         trace?: never;
     };
-    "/api/v1/projects/{project_uuid}/social_links/bulk_upsert": {
+    "/api/v1/projects/{project_id}/social_links/bulk_upsert": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Project UUID */
-                project_uuid: string;
+                /** @description Project ID */
+                project_id: number;
             };
             cookie?: never;
         };
@@ -2824,8 +2731,8 @@ export interface paths {
                     "X-Timestamp"?: string;
                 };
                 path: {
-                    /** @description Project UUID */
-                    project_uuid: string;
+                    /** @description Project ID */
+                    project_id: number;
                 };
                 cookie?: never;
             };
@@ -3966,6 +3873,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/website_urls/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Searches for website URL availability */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description Domain ID to search within */
+                        domain_id: number;
+                        /** @description Array of paths to check availability (max 10) */
+                        candidates: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description normalizes path inputs */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            domain_id: number;
+                            /** @description Domain name */
+                            domain: string;
+                            results: {
+                                /** @description URL path */
+                                path: string;
+                                /**
+                                 * @description Availability status
+                                 * @enum {string}
+                                 */
+                                status: "existing" | "unavailable" | "available";
+                                /** @description ID of existing website URL if owned by current account */
+                                existing_id?: number | null;
+                                /** @description Website ID of existing URL if owned by current account */
+                                existing_website_id?: number | null;
+                            }[];
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description domain belongs to another account */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description exceeds maximum candidates */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/website_urls/{id}": {
         parameters: {
             query?: never;
@@ -4126,13 +4121,13 @@ export interface paths {
         };
         trace?: never;
     };
-    "/api/v1/projects/{project_uuid}/website": {
+    "/api/v1/websites/{id}": {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                /** @description Project UUID */
-                project_uuid: string;
+                /** @description Website ID */
+                id: number;
             };
             cookie?: never;
         };
@@ -4146,8 +4141,8 @@ export interface paths {
                     "X-Timestamp"?: string;
                 };
                 path: {
-                    /** @description Project UUID */
-                    project_uuid: string;
+                    /** @description Website ID */
+                    id: number;
                 };
                 cookie?: never;
             };
@@ -4176,7 +4171,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description website not found for project */
+                /** @description website not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -4200,8 +4195,8 @@ export interface paths {
                     "X-Timestamp"?: string;
                 };
                 path: {
-                    /** @description Project UUID */
-                    project_uuid: string;
+                    /** @description Website ID */
+                    id: number;
                 };
                 cookie?: never;
             };
@@ -4239,7 +4234,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description project not found for other account */
+                /** @description website not found for other account */
                 404: {
                     headers: {
                         [name: string]: unknown;

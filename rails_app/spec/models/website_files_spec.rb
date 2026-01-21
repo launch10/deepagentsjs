@@ -94,7 +94,6 @@ RSpec.describe Website, type: :model do
     it "accepts nested attributes for website_files" do
       website = Website.create!(
         name: "Test",
-        thread_id: "thread_123",
         account: account,
         project: project,
         template: template,

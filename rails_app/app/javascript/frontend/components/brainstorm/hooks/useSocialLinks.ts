@@ -12,7 +12,7 @@ import {
   type GetSocialLinksResponse,
   type BulkUpsertSocialLinksResponse,
 } from "@rails_api_base";
-import { useBrainstormChatThreadId } from "./useBrainstormChat";
+import { useProjectId as useCoreProjectId } from "~/stores/coreEntityStore";
 
 // Re-export for backwards compatibility
 export { SocialLinksAPIService as SocialLinksService } from "@rails_api_base";
@@ -24,7 +24,7 @@ export { SocialLinksAPIService as SocialLinksService } from "@rails_api_base";
 export const socialLinksKeys = {
   all: ["socialLinks"] as const,
   lists: () => [...socialLinksKeys.all, "list"] as const,
-  list: (projectUuid: string) => [...socialLinksKeys.lists(), projectUuid] as const,
+  list: (projectId: number) => [...socialLinksKeys.lists(), projectId] as const,
 };
 
 // ============================================================================
@@ -41,18 +41,11 @@ export function useSocialLinksService() {
 }
 
 /**
- * Hook to get the current project UUID - uses chat state (primary) with page props fallback.
- *
- * When navigating from / to /projects/{uuid}/brainstorm via pushState (after sending
- * the first message), the Inertia props don't update. We use the chat's threadId
- * (which IS the project UUID) as the primary source.
+ * Hook to get the current project ID from the core entity store.
+ * The store is populated from page props and Langgraph state.
  */
-function useProjectUuid(): string | null {
-  const chatThreadId = useBrainstormChatThreadId();
-  const { project } = usePage<{ project?: { uuid: string } }>().props;
-  const propsProjectUuid = project?.uuid ?? null;
-
-  return chatThreadId ?? propsProjectUuid;
+function useProjectId(): number | null {
+  return useCoreProjectId();
 }
 
 // ============================================================================
@@ -74,12 +67,12 @@ type SocialLinksQueryOptions = Omit<
  */
 export function useSocialLinks(options?: SocialLinksQueryOptions) {
   const service = useSocialLinksService();
-  const projectUuid = useProjectUuid();
+  const projectId = useProjectId();
 
   return useQuery({
-    queryKey: socialLinksKeys.list(projectUuid ?? ""),
-    queryFn: () => service.get(projectUuid!),
-    enabled: !!projectUuid,
+    queryKey: socialLinksKeys.list(projectId ?? 0),
+    queryFn: () => service.get(projectId!),
+    enabled: !!projectId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     ...options,
   });
@@ -122,22 +115,22 @@ export function useBulkUpsertSocialLinks(
   options?: MutationOptions<BulkUpsertSocialLinksResponse, BulkUpsertSocialLinksVariables>
 ) {
   const service = useSocialLinksService();
-  const projectUuid = useProjectUuid();
+  const projectId = useProjectId();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ socialLinks }: BulkUpsertSocialLinksVariables) => {
-      if (!projectUuid) {
-        throw new Error("Project UUID is required");
+      if (!projectId) {
+        throw new Error("Project ID is required");
       }
-      return service.bulkUpsert(projectUuid, socialLinks);
+      return service.bulkUpsert(projectId, socialLinks);
     },
     ...options,
     onSuccess: (...args) => {
       const [data] = args;
       // Always update the cache with the new data
-      if (projectUuid) {
-        queryClient.setQueryData(socialLinksKeys.list(projectUuid), data);
+      if (projectId) {
+        queryClient.setQueryData(socialLinksKeys.list(projectId), data);
       }
       // Then call user's onSuccess if provided
       options?.onSuccess?.(...args);
@@ -163,23 +156,23 @@ export function useDeleteSocialLink(
   options?: MutationOptions<void, DeleteSocialLinkVariables>
 ) {
   const service = useSocialLinksService();
-  const projectUuid = useProjectUuid();
+  const projectId = useProjectId();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ socialLinkId }: DeleteSocialLinkVariables) => {
-      if (!projectUuid) {
-        throw new Error("Project UUID is required");
+      if (!projectId) {
+        throw new Error("Project ID is required");
       }
-      return service.delete(projectUuid, socialLinkId);
+      return service.delete(projectId, socialLinkId);
     },
     ...options,
     onSuccess: (...args) => {
       const [, variables] = args;
       // Remove the deleted link from the cache
-      if (projectUuid) {
+      if (projectId) {
         queryClient.setQueryData<GetSocialLinksResponse>(
-          socialLinksKeys.list(projectUuid),
+          socialLinksKeys.list(projectId),
           (oldData) => oldData?.filter((link) => link.id !== variables.socialLinkId) ?? []
         );
       }

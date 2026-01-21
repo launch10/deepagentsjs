@@ -12,7 +12,7 @@ import {
   type GetUploadsResponse,
   type CreateUploadResponse,
 } from "@rails_api_base";
-import { useWebsite } from "./websites.hooks";
+import { useWebsiteId } from "~/stores/coreEntityStore";
 
 // Re-export for backwards compatibility
 export { UploadsAPIService as UploadService } from "@rails_api_base";
@@ -35,15 +35,6 @@ export const uploadsKeys = {
 export function useUploadService() {
   const { jwt, root_path } = usePage<{ jwt: string; root_path: string }>().props;
   return useMemo(() => new UploadsAPIService({ jwt, baseUrl: root_path }), [jwt, root_path]);
-}
-
-/**
- * Hook to get website ID from page props.
- * Works on both Brainstorm and Website pages.
- */
-function useWebsiteId(): number | null {
-  const { data: website } = useWebsite();
-  return website?.id ?? null;
 }
 
 // ============================================================================
@@ -152,9 +143,9 @@ export function useUploadLogo(options?: MutationOptions<UploadResult, UploadLogo
       };
     },
     onSuccess: () => {
-      if (websiteId) {
-        queryClient.invalidateQueries({ queryKey: uploadsKeys.websiteUploads(websiteId) });
-      }
+      // Invalidate all uploads list queries to ensure UI updates
+      // This avoids stale closure issues where websiteId might be null on first render
+      queryClient.invalidateQueries({ queryKey: uploadsKeys.lists() });
     },
     ...options,
   });
@@ -191,9 +182,9 @@ export function useUploadProjectImage(
       };
     },
     onSuccess: () => {
-      if (websiteId) {
-        queryClient.invalidateQueries({ queryKey: uploadsKeys.websiteUploads(websiteId) });
-      }
+      // Invalidate all uploads list queries to ensure UI updates
+      // This avoids stale closure issues where websiteId might be null on first render
+      queryClient.invalidateQueries({ queryKey: uploadsKeys.lists() });
     },
     ...options,
   });
@@ -209,20 +200,15 @@ interface DeleteUploadVariables {
  */
 export function useDeleteUpload(options?: MutationOptions<void, DeleteUploadVariables>) {
   const service = useUploadService();
-  const websiteId = useWebsiteId();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ uploadId }: DeleteUploadVariables) => {
       await service.delete(uploadId);
     },
-    onSuccess: (_, { uploadId }) => {
-      if (websiteId) {
-        queryClient.setQueryData<GetUploadsResponse>(
-          uploadsKeys.websiteUploads(websiteId),
-          (oldData) => oldData?.filter((upload) => upload.id !== uploadId) ?? []
-        );
-      }
+    onSuccess: () => {
+      // Invalidate all uploads list queries to ensure UI updates
+      queryClient.invalidateQueries({ queryKey: uploadsKeys.lists() });
     },
     ...options,
   });

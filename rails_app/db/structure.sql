@@ -2485,7 +2485,9 @@ CREATE TABLE public.model_configs (
     cost_out numeric(10,4),
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    model_card character varying
+    model_card character varying,
+    cache_writes numeric(10,4),
+    cache_reads numeric(10,4)
 );
 
 
@@ -10099,6 +10101,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260120194521'),
 ('20260120155753'),
 ('20260117001808'),
 ('20260116143258'),

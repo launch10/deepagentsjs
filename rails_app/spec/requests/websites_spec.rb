@@ -16,8 +16,8 @@ RSpec.describe "Websites API", type: :request do
     switch_account_to(account)
   end
 
-  path '/api/v1/projects/{project_uuid}/website' do
-    parameter name: :project_uuid, in: :path, type: :string, description: 'Project UUID'
+  path '/api/v1/websites/{id}' do
+    parameter name: :id, in: :path, type: :integer, description: 'Website ID'
 
     get 'Retrieves a website' do
       tags 'Websites'
@@ -27,7 +27,7 @@ RSpec.describe "Websites API", type: :request do
       parameter name: 'X-Signature', in: :header, type: :string, required: false
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
 
-      let(:project_uuid) { project.uuid }
+      let(:id) { website.id }
 
       response '200', 'website found' do
         schema APISchemas::Website.response
@@ -55,26 +55,12 @@ RSpec.describe "Websites API", type: :request do
         end
       end
 
-      response '404', 'project not found' do
+      response '404', 'website not found' do
         let(:auth_headers) { auth_headers_for(user) }
         let(:Authorization) { auth_headers['Authorization'] }
         let(:"X-Signature") { auth_headers['X-Signature'] }
         let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-        let(:project_uuid) { 'non-existent-uuid' }
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data['error']).to eq('Record not found')
-        end
-      end
-
-      response '404', 'website not found for project' do
-        let(:auth_headers) { auth_headers_for(user) }
-        let(:Authorization) { auth_headers['Authorization'] }
-        let(:"X-Signature") { auth_headers['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-        let!(:project_without_website) { create(:project, account: account) }
-        let(:project_uuid) { project_without_website.uuid }
+        let(:id) { 999999 }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -93,7 +79,7 @@ RSpec.describe "Websites API", type: :request do
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
       parameter name: :website_params, in: :body, schema: APISchemas::Website.update_params_schema
 
-      let(:project_uuid) { project.uuid }
+      let(:id) { website.id }
 
       response '200', 'website updated successfully' do
         schema APISchemas::Website.response
@@ -164,33 +150,12 @@ RSpec.describe "Websites API", type: :request do
         end
       end
 
-      response '404', 'project not found' do
+      response '404', 'website not found' do
         let(:auth_headers) { auth_headers_for(user) }
         let(:Authorization) { auth_headers['Authorization'] }
         let(:"X-Signature") { auth_headers['X-Signature'] }
         let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-        let(:project_uuid) { 'non-existent-uuid' }
-        let(:website_params) do
-          {
-            website: {
-              theme_id: theme.id
-            }
-          }
-        end
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data['error']).to eq('Record not found')
-        end
-      end
-
-      response '404', 'website not found for project' do
-        let(:auth_headers) { auth_headers_for(user) }
-        let(:Authorization) { auth_headers['Authorization'] }
-        let(:"X-Signature") { auth_headers['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-        let!(:project_without_website) { create(:project, account: account) }
-        let(:project_uuid) { project_without_website.uuid }
+        let(:id) { 999999 }
         let(:website_params) do
           {
             website: {
@@ -218,8 +183,8 @@ RSpec.describe "Websites API", type: :request do
       subscribe_account(other_account, plan_name: 'pro')
     end
 
-    path '/api/v1/projects/{project_uuid}/website' do
-      parameter name: :project_uuid, in: :path, type: :string, description: 'Project UUID'
+    path '/api/v1/websites/{id}' do
+      parameter name: :id, in: :path, type: :integer, description: 'Website ID'
 
       patch 'Cannot update other account website' do
         tags 'Websites'
@@ -231,12 +196,12 @@ RSpec.describe "Websites API", type: :request do
         parameter name: 'X-Timestamp', in: :header, type: :string, required: false
         parameter name: :website_params, in: :body, schema: APISchemas::Website.update_params_schema
 
-        response '404', 'project not found for other account' do
+        response '404', 'website not found for other account' do
           let(:auth_headers) { auth_headers_for(user) }
           let(:Authorization) { auth_headers['Authorization'] }
           let(:"X-Signature") { auth_headers['X-Signature'] }
           let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-          let(:project_uuid) { other_project.uuid }
+          let(:id) { other_website.id }
           let(:website_params) do
             {
               website: {

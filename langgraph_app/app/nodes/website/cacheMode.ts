@@ -1,6 +1,7 @@
 import { type WebsiteGraphState } from "@annotation";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { AIMessage } from "@langchain/core/messages";
+import { toStructuredMessage } from "langgraph-ai-sdk";
 import {
   getSchedulingToolFiles,
   getSchedulingToolMinorEditFiles,
@@ -84,10 +85,13 @@ export const cacheModeNode = async (
       ? `improve-copy-${state.improveCopyStyle || "default"}`
       : "edit";
 
-  const aiMessage = new AIMessage({
+  const rawMessage = new AIMessage({
     content: aiMessageContent,
     id: `cache-mode-${commandType}-${Date.now()}`,
   });
+
+  // Transform to structured message format so it has parsed_blocks in response_metadata
+  const [aiMessage] = await toStructuredMessage(rawMessage);
 
   return {
     messages: [...(state.messages || []), aiMessage],

@@ -7,6 +7,7 @@ import type { CampaignProps } from "@components/ads/workflow-panel/workflow-budd
 import { useChatRegistration } from "@hooks/useChatRegistration";
 import { UploadsAPIService } from "@rails_api_base";
 import { validateFile } from "~/types/attachment";
+import { syncLanggraphToStore } from "~/stores/useSyncCoreEntities";
 
 export type AdsSnapshot = ChatSnapshot<AdsGraphState>;
 
@@ -103,4 +104,18 @@ export function useAdsChatIsStreaming() {
     const { status } = s;
     return status === "streaming" || status === "submitted";
   });
+}
+
+/**
+ * Syncs entity IDs from Langgraph state to the core entity store.
+ * Call this once in the page component that uses the ads chat.
+ */
+export function useSyncCampaignEntities() {
+  const websiteId = useAdsChatState("websiteId");
+  const projectId = useAdsChatState("projectId");
+  const campaignId = useAdsChatState("campaignId");
+
+  syncLanggraphToStore("websiteId", websiteId);
+  syncLanggraphToStore("projectId", projectId);
+  syncLanggraphToStore("campaignId", campaignId);
 }

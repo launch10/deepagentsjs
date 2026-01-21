@@ -1,5 +1,6 @@
 import Rollbar from "rollbar";
 
+
 const ROLLBAR_ACCESS_TOKEN = process.env.ROLLBAR_ACCESS_TOKEN;
 const ENABLED = !!process.env.ROLLBAR_ACCESS_TOKEN;
 

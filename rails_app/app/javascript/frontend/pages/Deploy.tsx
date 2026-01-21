@@ -4,10 +4,15 @@ import { PhaseProgress, type Phase } from "@components/deploy";
 import LogoSpinner from "@components/ui/logo-spinner";
 import WorkflowPanel from "@components/ads/WorkflowPanel";
 import { useDeployChatWithPolling, type DeployProps } from "@hooks/useDeployChat";
+import { useSyncPageProps } from "~/stores/useSyncCoreEntities";
 
 export default function Deploy() {
-  const { deploy } = usePage<DeployProps>().props;
+  const pageProps = usePage<DeployProps>().props;
+  const { deploy } = pageProps;
   const { state, isLoading, isPolling, error, startDeploy } = useDeployChatWithPolling();
+
+  // Sync page props to core entity store
+  useSyncPageProps(pageProps);
 
   // Auto-start deploy if it's a new deploy (pending status, no thread)
   useEffect(() => {

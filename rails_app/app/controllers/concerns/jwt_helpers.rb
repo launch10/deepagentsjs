@@ -67,7 +67,7 @@ module JwtHelpers
 
   def test_jwt_account
     return unless test_jwt_valid?
-    Account.find_by(subdomain: "test") # TODO: Update, this is only for Langgraph testing
+    test_jwt_user&.owned_account
   end
 
   def test_jwt_valid?

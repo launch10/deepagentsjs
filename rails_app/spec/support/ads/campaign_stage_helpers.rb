@@ -32,8 +32,7 @@ module CampaignStageHelpers
     created_records = Campaign.create_campaign!(account, {
       name: attrs[:name] || "Test Campaign",
       website_id: website_id,
-      project_id: project_id,
-      thread_id: attrs[:thread_id] || "campaign_thread_#{SecureRandom.hex(8)}"
+      project_id: project_id
     })
 
     [created_records[:campaign], created_records[:ad_group], created_records[:ad]]

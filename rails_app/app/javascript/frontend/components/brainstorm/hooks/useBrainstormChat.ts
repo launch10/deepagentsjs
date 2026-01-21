@@ -4,6 +4,7 @@ import { useLanggraph, type ChatSnapshot } from "langgraph-ai-sdk-react";
 import type { BrainstormBridgeType, BrainstormGraphState, InertiaProps } from "@shared";
 import { UploadsAPIService } from "@rails_api_base";
 import { validateFile } from "~/types/attachment";
+import { syncLanggraphToStore } from "~/stores/useSyncCoreEntities";
 
 type NewBrainstormProps =
   InertiaProps.paths["/projects/new"]["get"]["responses"]["200"]["content"]["application/json"];
@@ -159,4 +160,18 @@ export function useBrainstormChatIsStreaming() {
     const { status } = s;
     return status === "streaming" || status === "submitted";
   });
+}
+
+/**
+ * Syncs entity IDs from Langgraph state to the core entity store.
+ * Call this once in the page component that uses the brainstorm chat.
+ *
+ * This subscribes to individual state keys (not full state) for efficiency.
+ */
+export function useSyncBrainstormEntities() {
+  const websiteId = useBrainstormChatState("websiteId");
+  const projectId = useBrainstormChatState("projectId");
+
+  syncLanggraphToStore("websiteId", websiteId);
+  syncLanggraphToStore("projectId", projectId);
 }

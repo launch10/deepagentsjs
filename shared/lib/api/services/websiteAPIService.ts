@@ -6,15 +6,15 @@ import type { Simplify } from "type-fest";
 // ============================================================================
 
 export type GetWebsiteResponse = NonNullable<
-  paths["/api/v1/projects/{project_uuid}/website"]["get"]["responses"][200]["content"]["application/json"]
+  paths["/api/v1/websites/{id}"]["get"]["responses"][200]["content"]["application/json"]
 >;
 
 export type UpdateWebsiteRequest = NonNullable<
-  paths["/api/v1/projects/{project_uuid}/website"]["patch"]["requestBody"]
+  paths["/api/v1/websites/{id}"]["patch"]["requestBody"]
 >["content"]["application/json"];
 
 export type UpdateWebsiteResponse = NonNullable<
-  paths["/api/v1/projects/{project_uuid}/website"]["patch"]["responses"][200]["content"]["application/json"]
+  paths["/api/v1/websites/{id}"]["patch"]["responses"][200]["content"]["application/json"]
 >;
 
 // ============================================================================
@@ -29,11 +29,11 @@ export class WebsiteAPIService extends RailsAPIBase {
     super(options);
   }
 
-  async get(projectUuid: string): Promise<GetWebsiteResponse> {
+  async get(websiteId: number): Promise<GetWebsiteResponse> {
     const client = await this.getClient();
-    const response = await client.GET("/api/v1/projects/{project_uuid}/website", {
+    const response = await client.GET("/api/v1/websites/{id}", {
       params: {
-        path: { project_uuid: projectUuid },
+        path: { id: websiteId },
       },
     });
 
@@ -49,13 +49,13 @@ export class WebsiteAPIService extends RailsAPIBase {
   }
 
   async update(
-    projectUuid: string,
+    websiteId: number,
     website: UpdateWebsiteRequest["website"]
   ): Promise<UpdateWebsiteResponse> {
     const client = await this.getClient();
-    const response = await client.PATCH("/api/v1/projects/{project_uuid}/website", {
+    const response = await client.PATCH("/api/v1/websites/{id}", {
       params: {
-        path: { project_uuid: projectUuid },
+        path: { id: websiteId },
       },
       body: { website },
     });

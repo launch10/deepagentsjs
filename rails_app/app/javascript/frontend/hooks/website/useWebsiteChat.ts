@@ -4,6 +4,7 @@ import { useLanggraph, type ChatSnapshot } from "langgraph-ai-sdk-react";
 import type { WebsiteBridgeType, WebsiteGraphState, InertiaProps } from "@shared";
 import { UploadsAPIService } from "@rails_api_base";
 import { validateFile } from "~/types/attachment";
+import { syncLanggraphToStore } from "~/stores/useSyncCoreEntities";
 
 type WebsitePageProps =
   InertiaProps.paths["/projects/{uuid}/website"]["get"]["responses"]["200"]["content"]["application/json"];
@@ -99,4 +100,16 @@ export function useWebsiteChatIsStreaming() {
     const { status } = s;
     return status === "streaming" || status === "submitted";
   });
+}
+
+/**
+ * Syncs entity IDs from Langgraph state to the core entity store.
+ * Call this once in the page component that uses the website chat.
+ */
+export function useSyncWebsiteEntities() {
+  const websiteId = useWebsiteChatState("websiteId");
+  const projectId = useWebsiteChatState("projectId");
+
+  syncLanggraphToStore("websiteId", websiteId);
+  syncLanggraphToStore("projectId", projectId);
 }
