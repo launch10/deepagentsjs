@@ -37,10 +37,6 @@ deployRoutes.post("/stream", authMiddleware, async (c) => {
   if (validationError) return validationError;
 
   try {
-    // CRITICAL: Persist threadId to database FIRST, before starting the stream.
-    // This ensures the frontend can reconnect to the same thread after a page refresh.
-    await DeployService.saveThreadId(deployId, threadId);
-
     // Build initial state from request
     const initialState = {
       threadId,
