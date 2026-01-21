@@ -2097,7 +2097,7 @@ test.describe("Brainstorm to Website Redirect", () => {
 
     // Now "Do the rest" should be available as a command
     // This will complete the remaining questions (audience, solution, social proof)
-    await brainstormPage.sendMessage("Do the rest for me");
+    await brainstormPage.sendMessage("Please do the rest for me");
     await brainstormPage.waitForResponse();
 
     // Now we should be at the lookAndFeel stage with "Build My Site" available
@@ -2130,7 +2130,7 @@ test.describe("Brainstorm to Website Redirect", () => {
     expect(threadId).not.toBeNull();
 
     // Complete the brainstorm
-    await brainstormPage.sendMessage("Do the rest for me");
+    await brainstormPage.sendMessage("Please do the rest for me");
     await brainstormPage.waitForResponse();
 
     // Verify workflow stepper is visible

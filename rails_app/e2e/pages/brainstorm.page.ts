@@ -114,9 +114,10 @@ export class BrainstormPage {
     this.chatAttachmentList = page.getByTestId("attachment-list");
     this.chatAttachmentItems = page.getByTestId("attachment-item");
 
-    // Command buttons for workflow actions - scope to command buttons container to avoid matching examples panel
+    // Command buttons for workflow actions - use last() since multiple AI messages may have command-buttons containers
     this.buildMySiteButton = page
       .getByTestId("command-buttons")
+      .last()
       .getByRole("button", { name: "Build My Site" });
 
     // Custom theme elements
