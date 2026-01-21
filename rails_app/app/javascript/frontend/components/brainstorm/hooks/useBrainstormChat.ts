@@ -1,5 +1,5 @@
-import { usePage } from "@inertiajs/react";
-import { useMemo, useCallback } from "react";
+import { usePage, router } from "@inertiajs/react";
+import { useMemo, useCallback, useRef } from "react";
 import { useLanggraph, type ChatSnapshot } from "langgraph-ai-sdk-react";
 import type { BrainstormBridgeType, BrainstormGraphState, InertiaProps } from "@shared";
 import { UploadsAPIService } from "@rails_api_base";
@@ -15,15 +15,29 @@ type BrainstormPageProps = NewBrainstormProps | UpdateBrainstormProps;
 export type BrainstormSnapshot = ChatSnapshot<BrainstormGraphState>;
 
 /**
- * Extract threadId from URL path like /projects/{uuid}/brainstorm
+ * Check if URL already contains this threadId (prevents duplicate navigation)
  */
-function getThreadIdFromUrl(): string | undefined {
+function isAlreadyAtThreadUrl(threadId: string): boolean {
   const match = window.location.pathname.match(/^\/projects\/([^/]+)\/brainstorm$/);
-  return match?.[1];
+  return match?.[1] === threadId;
+}
+
+const urlThreadId = () => {
+  const match = window.location.pathname.match(/^\/projects\/([^/]+)\/brainstorm$/);
+  return match?.[1]
 }
 
 function useBrainstormChatOptions() {
-  const { thread_id, jwt, langgraph_path, root_path } = usePage<BrainstormPageProps>().props;
+  // const page = usePage<BrainstormPageProps>();
+  // const { thread_id, jwt, langgraph_path, root_path } = page.props;
+  const jwt = `eyJhbGciOiJIUzI1NiJ9.eyJqdGkiOiI1NTc3MWVkYy04ZjAxLTQ1MzUtYTdiNy1jMDc2ZDZhNWI3MDQiLCJzdWIiOjEsImFjY291bnRfaWQiOjEsImV4cCI6MTc2OTA4OTEzOSwiaWF0IjoxNzY5MDAyNzM5fQ.FWkdGXTf9L7fpA_zsbqbeZbM-AeovoXcjS1DwPeZch0`;
+  const thread_id = urlThreadId();
+  const langgraph_path = `http://localhost:4000`;
+  const root_path = `http://localhost:3000`;
+
+  // Use ref to capture current page state for router.push without causing re-renders
+  // const pageRef = useRef(page);
+  // pageRef.current = page;
 
   const onThreadIdAvailable = useCallback((threadId: string) => {
     // Defensive check - prevent navigation with undefined threadId
@@ -32,28 +46,20 @@ function useBrainstormChatOptions() {
       return;
     }
 
-    // We use native pushState to update the URL without making a server request.
-    //
-    // Why pushState instead of router.visit:
-    // 1. Stream continuity: When the user sends their first message, the backend starts
-    //    streaming a response. Even router.visit with only: [] makes a server request,
-    //    which would fail because the project doesn't exist in Rails yet (it's being
-    //    created by Langgraph).
-    // 2. The project is created asynchronously by Langgraph, so we need to update the
-    //    URL immediately without waiting for Rails to know about it.
-    //
-    // Back/forward navigation handling:
-    // When users press back then forward, Inertia won't have cached state for this URL.
-    // This is handled by the popstate listener in WorkflowProvider, which detects URLs
-    // that need fresh data and triggers an Inertia reload. The reload happens AFTER
-    // we've returned to the URL, so the project will exist by then.
-    //
-    // We include the current Inertia page state in history.state so Inertia can
-    // partially restore the page while the reload happens.
-    //
-    // Investigated as part of TODO-003. See: https://github.com/inertiajs/inertia/discussions/1809
+    // Guard: don't navigate if URL already has this threadId
+    if (isAlreadyAtThreadUrl(threadId)) {
+      return;
+    }
+
+    // Use Inertia's router.push for client-side URL update without server request.
+    // This properly integrates with Inertia's history tracking, so back/forward
+    // navigation works correctly.
     const newUrl = `/projects/${threadId}/brainstorm`;
-    window.history.pushState({ threadId }, "", newUrl);
+    router.push({
+      url: newUrl,
+      component: "Brainstorm",
+      props: { thread_id: threadId },
+    });
   }, []);
 
   return useMemo(() => {
@@ -66,8 +72,7 @@ function useBrainstormChatOptions() {
         "Content-Type": "application/json",
         Authorization: `Bearer ${jwt}`,
       },
-      // Check URL first (for after history.pushState), then fall back to Inertia props
-      getInitialThreadId: () => getThreadIdFromUrl() ?? (thread_id ? thread_id : undefined),
+      getInitialThreadId: () => (thread_id ? thread_id : undefined),
       onThreadIdAvailable,
       // Composer attachments config - uploads return URLs and original filename
       attachments: {
