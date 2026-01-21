@@ -1,8 +1,8 @@
 import { CardContent, CardFooter } from "@components/ui/card";
-import { useChatContext } from "@components/shared/chat/Chat";
 import { useWebsiteChatIsLoadingHistory } from "@hooks/website";
 import WebsiteChatInput from "./chat/WebsiteChatInput";
 import WebsiteChatMessages from "./chat/WebsiteChatMessages";
+import { useChatMessages, useChatIsStreaming } from "@components/shared/chat/ChatContext";
 
 /**
  * Website chat component following the same pattern as AdsChat.
@@ -10,7 +10,7 @@ import WebsiteChatMessages from "./chat/WebsiteChatMessages";
  */
 export default function WebsiteChat() {
   // Use chat context for messages/streaming, domain hook for isLoadingHistory
-  const { isStreaming } = useChatContext();
+  const isStreaming = useChatIsStreaming();
   const isLoadingHistory = useWebsiteChatIsLoadingHistory();
 
   return (

@@ -1,51 +1,150 @@
-import { createContext, useContext, useMemo, type ReactNode } from "react";
-import type { ChatSnapshot, ChatActions } from "langgraph-ai-sdk-react";
+import { createContext, useContext, useMemo, useCallback, type ReactNode } from "react";
+import type { UIMessage } from "ai";
+import type { ChatSnapshot, ChatActions, LanggraphChat } from "langgraph-ai-sdk-react";
+import { useChatSelector, ChatSelectors } from "langgraph-ai-sdk-react";
 import type { Composer, AnyMessageWithBlocks } from "langgraph-ai-sdk-types";
 
 /**
- * Chat context value - wraps a ChatSnapshot and provides convenience accessors.
- * The chat instance IS the state - we don't duplicate, just expose.
+ * Chat context value - stores the chat INSTANCE (stable reference).
+ *
+ * The chat instance is the source of truth. It's stable across renders,
+ * so the context value itself doesn't cause re-renders.
+ *
+ * Child components use `useChatContextSelector` to subscribe to specific
+ * pieces of data, achieving fine-grained reactivity.
  */
 export interface ChatContextValue<TState extends Record<string, unknown> = Record<string, unknown>> {
-  // The raw chat snapshot
-  snapshot: ChatSnapshot<TState>;
-
-  // Convenience accessors (subcomponents use these)
-  messages: AnyMessageWithBlocks[];
-  composer: Composer;
-  status: ChatSnapshot<TState>["status"];
-  isStreaming: boolean;
-  isLoading: boolean;
-
-  // Actions
-  /** Raw sendMessage from snapshot - use `submit` for UI components */
-  sendMessage: ChatSnapshot<TState>["sendMessage"];
-  /** Submit action for UI components - uses custom onSubmit if provided, else sendMessage */
-  submit: () => void;
-  stop: ChatSnapshot<TState>["stop"];
+  /** The chat instance (stable reference) */
+  chat: LanggraphChat<UIMessage, TState>;
+  /** Optional custom submit handler for Chat.Input components */
+  onSubmit?: ChatActions<TState>["sendMessage"];
 }
 
 const ChatContext = createContext<ChatContextValue | null>(null);
 
 /**
- * Main hook to access the full chat context.
- * Throws if used outside Chat.Root.
+ * Get the chat instance from context.
+ * Use this when you need direct access to the chat or to pass it to useChatSelector.
+ *
+ * @throws Error if used outside Chat.Root
+ *
+ * @example
+ * ```tsx
+ * function MyComponent() {
+ *   const chat = useChatFromContext();
+ *   const messages = useChatSelector(chat, s => s.messages);
+ * }
+ * ```
  */
-export function useChatContext<TState extends Record<string, unknown> = Record<string, unknown>>(): ChatContextValue<TState> {
+export function useChatFromContext<TState extends Record<string, unknown> = Record<string, unknown>>(): LanggraphChat<UIMessage, TState> {
   const ctx = useContext(ChatContext);
   if (!ctx) {
-    throw new Error("useChatContext must be used within Chat.Root");
+    throw new Error("useChatFromContext must be used within Chat.Root");
   }
-  return ctx as ChatContextValue<TState>;
+  return ctx.chat as LanggraphChat<UIMessage, TState>;
 }
 
-// Provider component props
+/**
+ * Subscribe to a specific piece of chat state using a selector.
+ * This is the recommended way to access chat data in components.
+ *
+ * Components only re-render when the selected data changes (shallow equality).
+ *
+ * @example
+ * ```tsx
+ * function MessageList() {
+ *   const messages = useChatContextSelector(s => s.messages);
+ *   // Only re-renders when messages change
+ * }
+ *
+ * function StatusIndicator() {
+ *   const isStreaming = useChatContextSelector(s => s.status === 'streaming' || s.status === 'submitted');
+ *   // Only re-renders when streaming state changes
+ * }
+ * ```
+ */
+export function useChatContextSelector<
+  TState extends Record<string, unknown> = Record<string, unknown>,
+  TSelected = unknown
+>(
+  selector: (snapshot: ChatSnapshot<TState>) => TSelected
+): TSelected {
+  const chat = useChatFromContext<TState>();
+  return useChatSelector(chat, selector);
+}
+
+/**
+ * Convenience hooks for common patterns.
+ * These use the pre-built ChatSelectors for optimal performance.
+ */
+
+export function useChatMessages() {
+  return useChatContextSelector(ChatSelectors.messages);
+}
+
+export function useChatComposer() {
+  return useChatContextSelector(ChatSelectors.composer);
+}
+
+export function useChatStatus() {
+  return useChatContextSelector(ChatSelectors.status);
+}
+
+export function useChatIsStreaming() {
+  return useChatContextSelector(ChatSelectors.isStreaming);
+}
+
+export function useChatIsLoading() {
+  return useChatContextSelector(ChatSelectors.isLoading);
+}
+
+export function useChatIsReady() {
+  return useChatContextSelector(ChatSelectors.isReady);
+}
+
+export function useChatActions<TState extends Record<string, unknown> = Record<string, unknown>>() {
+  return useChatContextSelector<TState, ChatActions<TState>>(ChatSelectors.actions);
+}
+
+export function useChatError() {
+  return useChatContextSelector(ChatSelectors.error);
+}
+
+export function useChatThreadId() {
+  return useChatContextSelector(ChatSelectors.threadId);
+}
+
+export function useChatStop() {
+  return useChatContextSelector(ChatSelectors.stop);
+}
+
+export function useChatState<TState extends Record<string, unknown> = Record<string, unknown>>(): Partial<TState> {
+  return useChatContextSelector<TState, Partial<TState>>(ChatSelectors.state);
+}
+
+/**
+ * Get the submit function, using custom onSubmit if provided to Chat.Root.
+ * This is what Chat.Input components should use.
+ */
+export function useChatSubmit<TState extends Record<string, unknown> = Record<string, unknown>>() {
+  const ctx = useContext(ChatContext);
+  if (!ctx) {
+    throw new Error("useChatSubmit must be used within Chat.Root");
+  }
+
+  const actions = useChatContextSelector<TState, ChatActions<TState>>(ChatSelectors.actions);
+
+  // If custom onSubmit is provided, use it; otherwise use default sendMessage
+  return ctx.onSubmit ?? (() => actions.sendMessage());
+}
+
 export interface ChatProviderProps<TState extends Record<string, unknown>> {
-  snapshot: ChatSnapshot<TState>;
+  /** The chat instance (from createChat or similar) */
+  chat: LanggraphChat<UIMessage, TState>;
   children: ReactNode;
   /**
    * Optional custom submit handler. When provided, all Chat.Input components
-   * will use this instead of the snapshot's sendMessage for submit actions.
+   * will use this instead of the chat's sendMessage for submit actions.
    * Useful for wrapping sendMessage with additional behavior (e.g., workflow sync).
    */
   onSubmit?: ChatActions<TState>["sendMessage"];
@@ -53,40 +152,19 @@ export interface ChatProviderProps<TState extends Record<string, unknown>> {
 
 /**
  * Internal provider component - used by Chat.Root.
+ * The context value is stable (chat instance + optional onSubmit),
+ * so it doesn't cause unnecessary re-renders.
  */
 export function ChatProvider<TState extends Record<string, unknown>>({
-  snapshot,
+  chat,
   children,
   onSubmit,
 }: ChatProviderProps<TState>) {
-  // Type cast explanation:
-  // ChatSnapshot.messages is typed as MessageWithBlocks<LanggraphData<ValidGraphState, undefined>>[]
-  // which has blocks typed as MessageBlock<T>[]. When T has undefined schema, StructuredMessageBlock<T>
-  // has `data: string` (from InferMessage<T> fallback). However, AnyMessageWithBlocks expects
-  // `data: Record<string, unknown>` in AnyStructuredMessageBlock.
-  //
-  // At runtime, structured blocks always contain object data (parsed JSON), so the types are compatible.
-  // The type mismatch is a library design issue where the undefined schema case falls back to `string`
-  // instead of a more permissive type. The double cast is necessary because TypeScript correctly
-  // identifies that `string` is not assignable to `Record<string, unknown>`.
-  const messages = snapshot.messages as unknown as AnyMessageWithBlocks[];
-
-  // Submit uses custom handler if provided, otherwise raw sendMessage
-  const submit = onSubmit ?? (() => snapshot.sendMessage());
-
+  // Create a stable context value - the chat instance is stable,
+  // and onSubmit should be memoized by the caller
   const value = useMemo<ChatContextValue<TState>>(
-    () => ({
-      snapshot,
-      messages,
-      composer: snapshot.composer,
-      status: snapshot.status,
-      isStreaming: snapshot.status === "streaming" || snapshot.status === "submitted",
-      isLoading: snapshot.isLoading,
-      sendMessage: snapshot.sendMessage,
-      submit,
-      stop: snapshot.stop,
-    }),
-    [snapshot, onSubmit]
+    () => ({ chat, onSubmit }),
+    [chat, onSubmit]
   );
 
   return (

@@ -32,7 +32,6 @@
 // Context and hooks
 export {
   ChatProvider,
-  useChatContext,
   type ChatContextValue,
 } from "./ChatContext";
 

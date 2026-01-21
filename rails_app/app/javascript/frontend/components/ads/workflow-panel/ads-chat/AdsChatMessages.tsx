@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { Chat, useChatContext } from "@components/shared/chat/Chat";
+import { Chat } from "@components/shared/chat/Chat";
+import { useChatMessages, useChatIsStreaming } from "@components/shared/chat/ChatContext";
 
 /**
  * Props for the AdsChatMessagesView presentation component.
@@ -72,7 +73,8 @@ export function AdsChatMessagesView({ messages, isStreaming }: AdsChatMessagesVi
  * Uses Chat context for portability and consistency.
  */
 export default function AdsChatMessages() {
-  const { messages, isStreaming } = useChatContext();
+  const messages = useChatMessages();
+  const isStreaming = useChatIsStreaming();
 
   return <AdsChatMessagesView messages={messages} isStreaming={isStreaming} />;
 }

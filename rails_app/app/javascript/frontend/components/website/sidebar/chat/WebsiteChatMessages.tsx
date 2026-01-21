@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { Chat, useChatContext } from "@components/shared/chat/Chat";
+import { Chat } from "@components/shared/chat/Chat";
+import { useChatMessages, useChatIsStreaming } from "@components/shared/chat/ChatContext";
 
 /**
  * Props for the WebsiteChatMessagesView presentation component.
@@ -84,8 +85,8 @@ export function WebsiteChatMessagesView({ messages, isStreaming }: WebsiteChatMe
  * Uses Chat context for portability and consistency.
  */
 export default function WebsiteChatMessages() {
-  const { messages, isStreaming } = useChatContext();
-  console.log(messages)
+  const messages = useChatMessages();
+  const isStreaming = useChatIsStreaming();
 
   return <WebsiteChatMessagesView messages={messages} isStreaming={isStreaming} />;
 }

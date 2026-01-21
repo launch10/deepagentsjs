@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { twMerge } from "tailwind-merge";
-import { useChatContext } from "../ChatContext";
+import { useChatComposer, useChatIsStreaming, useChatSubmit, useChatStop } from "../ChatContext";
 
 export interface SubmitButtonProps extends Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
@@ -48,7 +48,10 @@ export function SubmitButton({
   stopIcon,
   ...props
 }: SubmitButtonProps) {
-  const { composer, isStreaming, submit, stop } = useChatContext();
+  const composer = useChatComposer()
+  const isStreaming = useChatIsStreaming()
+  const submit = useChatSubmit()
+  const stop = useChatStop()
 
   // When stopIcon is provided, button is enabled during streaming for stop action
   const hasStopMode = stopIcon !== undefined;

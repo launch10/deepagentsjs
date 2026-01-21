@@ -117,22 +117,6 @@ export const useCoreEntityStore = create<CoreEntityStore>()(
   }))
 );
 
-// Debug logging - subscribe to all state changes
-// TODO: Remove or gate behind env flag before production
-useCoreEntityStore.subscribe(
-  (state) => ({
-    projectId: state.projectId,
-    projectUuid: state.projectUuid,
-    websiteId: state.websiteId,
-    brainstormId: state.brainstormId,
-    campaignId: state.campaignId,
-  }),
-  (current, prev) => {
-    console.log("[CoreEntityStore] State changed", { ...current });
-  },
-  { equalityFn: (a, b) => JSON.stringify(a) === JSON.stringify(b) }
-);
-
 // ============================================================================
 // Selectors - use these in components for optimal re-renders
 // ============================================================================

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useChatContext } from "../ChatContext";
+import { useChatComposer } from "../ChatContext";
 import { BaseAttachmentList } from "../attachments/BaseAttachmentList";
 import { toDisplayAttachment, type ChatAttachment } from "../attachments/types";
 
@@ -30,7 +30,7 @@ export interface AttachmentListProps {
  * ```
  */
 export function AttachmentList({ className, onRemove }: AttachmentListProps) {
-  const { composer } = useChatContext();
+  const composer = useChatComposer()
 
   // Map composer attachments to display format
   const displayAttachments: ChatAttachment[] = useMemo(

@@ -1,29 +1,21 @@
+import { useEffect } from "react";
 import { usePage } from "@inertiajs/react";
-import {
-  useBrainstormChat,
-  useBrainstormIsNewConversation,
-  useSyncBrainstormEntities,
-} from "@components/brainstorm/hooks";
-import { useBrainstormSendMessage } from "@components/brainstorm/hooks";
+import { useBrainstormChat, useBrainstormIsNewConversation } from "@components/brainstorm/hooks";
 import { Chat } from "@components/shared/chat/Chat";
-import { BrainstormLandingPage, BrainstormConversationPage } from "@components/brainstorm";
+import { BrainstormConversationPage, BrainstormLandingPage } from "@components/brainstorm";
 import { useSyncPageProps } from "~/stores/useSyncCoreEntities";
+import { syncBrainstormToLanggraphStore } from "@components/brainstorm/hooks";
 
-/**
- * Brainstorm page (Landing page or Conversation based on chat state)
- */
 export default function Brainstorm() {
   const pageProps = usePage().props;
   const chat = useBrainstormChat();
   const isNewConversation = useBrainstormIsNewConversation();
-  const { sendMessage } = useBrainstormSendMessage();
 
-  // Sync page props (once on mount) and Langgraph entity IDs (individual keys)
   useSyncPageProps(pageProps);
-  useSyncBrainstormEntities();
+  syncBrainstormToLanggraphStore()
 
   return (
-    <Chat.Root chat={chat} onSubmit={sendMessage}>
+    <Chat.Root chat={chat}>
       {isNewConversation ? <BrainstormLandingPage /> : <BrainstormConversationPage />}
     </Chat.Root>
   );
