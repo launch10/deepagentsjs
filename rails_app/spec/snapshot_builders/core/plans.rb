@@ -15,26 +15,58 @@ module Core
       pro_tier = PlanTier.find_by!(name: "pro")
 
       plans = [
+        # Starter Plans: $79/month, $59/month billed annually ($708/year)
         {
-          name: "starter",
-          amount: 4900,
+          name: "starter_monthly",
+          amount: 7900,
           interval: "month",
           stripe_id: Rails.application.credentials.dig(:stripe, :plans, :starter, :monthly),
-          currency: "usd"
+          currency: "usd",
+          plan_tier_id: starter_tier.id
         },
         {
-          name: "pro",
-          amount: 9900,
+          name: "starter_annual",
+          amount: 70800,
+          interval: "year",
+          stripe_id: Rails.application.credentials.dig(:stripe, :plans, :starter, :annual),
+          currency: "usd",
+          plan_tier_id: starter_tier.id
+        },
+
+        # Growth Plans: $149/month, $119/month billed annually ($1,428/year)
+        {
+          name: "growth_monthly",
+          amount: 14900,
+          interval: "month",
+          stripe_id: Rails.application.credentials.dig(:stripe, :plans, :growth, :monthly),
+          currency: "usd",
+          plan_tier_id: growth_tier.id
+        },
+        {
+          name: "growth_annual",
+          amount: 142800,
+          interval: "year",
+          stripe_id: Rails.application.credentials.dig(:stripe, :plans, :growth, :annual),
+          currency: "usd",
+          plan_tier_id: growth_tier.id
+        },
+
+        # Pro Plans: $399/month, $299/month billed annually ($3,588/year)
+        {
+          name: "pro_monthly",
+          amount: 39900,
           interval: "month",
           stripe_id: Rails.application.credentials.dig(:stripe, :plans, :pro, :monthly),
-          currency: "usd"
+          currency: "usd",
+          plan_tier_id: pro_tier.id
         },
         {
-          name: "enterprise",
-          amount: 24900,
-          interval: "month",
-          stripe_id: Rails.application.credentials.dig(:stripe, :plans, :enterprise, :monthly),
-          currency: "usd"
+          name: "pro_annual",
+          amount: 358800,
+          interval: "year",
+          stripe_id: Rails.application.credentials.dig(:stripe, :plans, :pro, :annual),
+          currency: "usd",
+          plan_tier_id: pro_tier.id
         }
       ]
 
