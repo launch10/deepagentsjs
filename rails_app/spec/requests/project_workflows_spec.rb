@@ -19,9 +19,9 @@ RSpec.describe "Project Workflows API", type: :request do
 
   before do
     ensure_plans_exist
-    subscribe_account(user1_owned_account, plan_name: 'pro')
-    subscribe_account(user1_team_account, plan_name: 'pro')
-    subscribe_account(user2_owned_account, plan_name: 'pro')
+    subscribe_account(user1_owned_account, plan_name: "growth_monthly")
+    subscribe_account(user1_team_account, plan_name: "growth_monthly")
+    subscribe_account(user2_owned_account, plan_name: "growth_monthly")
   end
 
   path '/api/v1/projects/{project_uuid}/workflows/{id}' do

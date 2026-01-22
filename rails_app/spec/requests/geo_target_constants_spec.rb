@@ -6,7 +6,7 @@ RSpec.describe "Geo Target Constants API", type: :request do
 
   before do
     ensure_plans_exist
-    subscribe_account(account, plan_name: 'pro')
+    subscribe_account(account, plan_name: "growth_monthly")
   end
 
   let!(:usa) { GeoTargetConstant.create!(criteria_id: 2840, name: "United States", canonical_name: "United States", target_type: "Country", status: "Active", country_code: "US") }

@@ -78,7 +78,7 @@ class API::V1::DomainsController < API::BaseController
   end
 
   def platform_subdomain_credits
-    limit = current_account.plan_limits.find { |pl| pl.limit_type == "platform_subdomains" }&.limit || 0
+    limit = current_account.plan&.limit_for("platform_subdomains") || 0
     used = current_account.domains.platform_subdomains.count
     {
       limit: limit,

@@ -7,7 +7,7 @@ RSpec.describe "Deploys API", type: :request do
 
   before do
     ensure_plans_exist
-    subscribe_account(account, plan_name: "pro")
+    subscribe_account(account, plan_name: "growth_monthly")
   end
 
   def auth_headers
@@ -140,7 +140,7 @@ RSpec.describe "Deploys API", type: :request do
 
         before do
           ensure_plans_exist
-          subscribe_account(other_account, plan_name: "pro")
+          subscribe_account(other_account, plan_name: "growth_monthly")
         end
 
         run_test! do |response|
@@ -263,7 +263,7 @@ RSpec.describe "Deploys API", type: :request do
 
         before do
           ensure_plans_exist
-          subscribe_account(other_account, plan_name: "pro")
+          subscribe_account(other_account, plan_name: "growth_monthly")
         end
 
         run_test! do |response|

@@ -21,7 +21,7 @@ RSpec.describe "Projects", type: :request, inertia: true do
 
   before do
     ensure_plans_exist
-    subscribe_account(account, plan_name: 'pro')
+    subscribe_account(account, plan_name: "growth_monthly")
     sign_in user
   end
 
@@ -58,7 +58,7 @@ RSpec.describe "Projects", type: :request, inertia: true do
 
       before do
         ensure_plans_exist
-        subscribe_account(other_account, plan_name: 'pro')
+        subscribe_account(other_account, plan_name: "growth_monthly")
       end
 
       it "returns 404 when trying to access another account's project" do
@@ -100,7 +100,7 @@ RSpec.describe "Projects", type: :request, inertia: true do
 
       before do
         ensure_plans_exist
-        subscribe_account(test_account, plan_name: 'pro')
+        subscribe_account(test_account, plan_name: "growth_monthly")
       end
 
       def test_mode_headers

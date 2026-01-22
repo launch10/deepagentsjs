@@ -235,8 +235,8 @@ RSpec.describe Domain, type: :model do
 
     before do
       ensure_plans_exist
-      subscribe_account(account, plan_name: 'starter')
-      create_plan_limit(account.plan, 'platform_subdomains', 3)
+      subscribe_account(account, plan_name: "starter_monthly")
+      create_plan_limit(account.plan, "platform_subdomains", 3)
     end
 
     context 'when under subdomain limit' do

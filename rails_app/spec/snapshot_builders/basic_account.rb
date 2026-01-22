@@ -28,11 +28,11 @@ class BasicAccount < BaseBuilder
     account = user.owned_account
     account.set_payment_processor :fake_processor, allow_fake: true
 
-    plan = Plan.find_by(name: "pro") || Plan.last
+    plan = Plan.find_by(name: "growth_monthly") || Plan.last
     raise "No plans found - core_data snapshot may be missing" unless plan
 
     unless account.plan&.present?
-      plan.update!(fake_processor_id: "pro_plan") unless plan.fake_processor_id.present?
+      plan.update!(fake_processor_id: "growth_monthly") unless plan.fake_processor_id.present?
       subscription = account.payment_processor.subscribe(
         plan: plan.fake_processor_id,
         ends_at: nil
@@ -64,7 +64,7 @@ class BasicAccount < BaseBuilder
     admin_account.set_payment_processor :fake_processor, allow_fake: true
 
     unless admin_account.plan&.present?
-      plan = Plan.find_by(name: "pro") || Plan.last
+      plan = Plan.find_by(name: "growth_monthly") || Plan.last
       subscription = admin_account.payment_processor.subscribe(
         plan: plan.fake_processor_id,
         ends_at: nil

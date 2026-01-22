@@ -2926,24 +2926,24 @@ ALTER SEQUENCE public.pay_webhooks_id_seq OWNED BY public.pay_webhooks.id;
 
 
 --
--- Name: plan_limits; Type: TABLE; Schema: public; Owner: -
+-- Name: plan_tiers; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.plan_limits (
+CREATE TABLE public.plan_tiers (
     id bigint NOT NULL,
-    plan_id bigint,
-    limit_type character varying,
-    "limit" integer,
+    name character varying NOT NULL,
+    description character varying,
+    details jsonb DEFAULT '{}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
 );
 
 
 --
--- Name: plan_limits_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: plan_tiers_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.plan_limits_id_seq
+CREATE SEQUENCE public.plan_tiers_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -2952,10 +2952,10 @@ CREATE SEQUENCE public.plan_limits_id_seq
 
 
 --
--- Name: plan_limits_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: plan_tiers_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.plan_limits_id_seq OWNED BY public.plan_limits.id;
+ALTER SEQUENCE public.plan_tiers_id_seq OWNED BY public.plan_tiers.id;
 
 
 --
@@ -2983,7 +2983,8 @@ CREATE TABLE public.plans (
     paddle_classic_id character varying,
     lemon_squeezy_id character varying,
     fake_processor_id character varying,
-    contact_url character varying
+    contact_url character varying,
+    plan_tier_id bigint
 );
 
 
@@ -3363,6 +3364,39 @@ CREATE TABLE public.threads (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
+
+
+--
+-- Name: tier_limits; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tier_limits (
+    id bigint NOT NULL,
+    limit_type character varying,
+    "limit" integer,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    tier_id bigint
+);
+
+
+--
+-- Name: tier_limits_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.tier_limits_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: tier_limits_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.tier_limits_id_seq OWNED BY public.tier_limits.id;
 
 
 --
@@ -4437,10 +4471,10 @@ ALTER TABLE ONLY public.pay_webhooks ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
--- Name: plan_limits id; Type: DEFAULT; Schema: public; Owner: -
+-- Name: plan_tiers id; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.plan_limits ALTER COLUMN id SET DEFAULT nextval('public.plan_limits_id_seq'::regclass);
+ALTER TABLE ONLY public.plan_tiers ALTER COLUMN id SET DEFAULT nextval('public.plan_tiers_id_seq'::regclass);
 
 
 --
@@ -4511,6 +4545,13 @@ ALTER TABLE ONLY public.themes ALTER COLUMN id SET DEFAULT nextval('public.theme
 --
 
 ALTER TABLE ONLY public.themes_to_theme_labels ALTER COLUMN id SET DEFAULT nextval('public.themes_to_theme_labels_id_seq'::regclass);
+
+
+--
+-- Name: tier_limits id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tier_limits ALTER COLUMN id SET DEFAULT nextval('public.tier_limits_id_seq'::regclass);
 
 
 --
@@ -5375,11 +5416,11 @@ ALTER TABLE ONLY public.pay_webhooks
 
 
 --
--- Name: plan_limits plan_limits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: plan_tiers plan_tiers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.plan_limits
-    ADD CONSTRAINT plan_limits_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.plan_tiers
+    ADD CONSTRAINT plan_tiers_pkey PRIMARY KEY (id);
 
 
 --
@@ -5500,6 +5541,14 @@ ALTER TABLE ONLY public.themes_to_theme_labels
 
 ALTER TABLE ONLY public.threads
     ADD CONSTRAINT threads_pkey PRIMARY KEY (thread_id);
+
+
+--
+-- Name: tier_limits tier_limits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tier_limits
+    ADD CONSTRAINT tier_limits_pkey PRIMARY KEY (id);
 
 
 --
@@ -7968,38 +8017,10 @@ CREATE INDEX index_pay_subscriptions_on_pause_starts_at ON public.pay_subscripti
 
 
 --
--- Name: index_plan_limits_on_created_at; Type: INDEX; Schema: public; Owner: -
+-- Name: index_plan_tiers_on_name; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_plan_limits_on_created_at ON public.plan_limits USING btree (created_at);
-
-
---
--- Name: index_plan_limits_on_limit; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_plan_limits_on_limit ON public.plan_limits USING btree ("limit");
-
-
---
--- Name: index_plan_limits_on_limit_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_plan_limits_on_limit_type ON public.plan_limits USING btree (limit_type);
-
-
---
--- Name: index_plan_limits_on_plan_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_plan_limits_on_plan_id ON public.plan_limits USING btree (plan_id);
-
-
---
--- Name: index_plan_limits_on_plan_id_and_limit_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_plan_limits_on_plan_id_and_limit_type ON public.plan_limits USING btree (plan_id, limit_type);
+CREATE UNIQUE INDEX index_plan_tiers_on_name ON public.plan_tiers USING btree (name);
 
 
 --
@@ -8014,6 +8035,13 @@ CREATE INDEX index_plans_on_created_at ON public.plans USING btree (created_at);
 --
 
 CREATE UNIQUE INDEX index_plans_on_name ON public.plans USING btree (name);
+
+
+--
+-- Name: index_plans_on_plan_tier_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_plans_on_plan_tier_id ON public.plans USING btree (plan_tier_id);
 
 
 --
@@ -8315,6 +8343,41 @@ CREATE INDEX index_themes_to_theme_labels_on_theme_id_and_theme_label_id ON publ
 --
 
 CREATE INDEX index_themes_to_theme_labels_on_theme_label_id ON public.themes_to_theme_labels USING btree (theme_label_id);
+
+
+--
+-- Name: index_tier_limits_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tier_limits_on_created_at ON public.tier_limits USING btree (created_at);
+
+
+--
+-- Name: index_tier_limits_on_limit; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tier_limits_on_limit ON public.tier_limits USING btree ("limit");
+
+
+--
+-- Name: index_tier_limits_on_limit_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tier_limits_on_limit_type ON public.tier_limits USING btree (limit_type);
+
+
+--
+-- Name: index_tier_limits_on_tier_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_tier_limits_on_tier_id ON public.tier_limits USING btree (tier_id);
+
+
+--
+-- Name: index_tier_limits_on_tier_id_and_limit_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_tier_limits_on_tier_id_and_limit_type ON public.tier_limits USING btree (tier_id, limit_type);
 
 
 --
@@ -10101,6 +10164,10 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260122190035'),
+('20260122150349'),
+('20260122150336'),
+('20260122150323'),
 ('20260120194521'),
 ('20260120155753'),
 ('20260117001808'),

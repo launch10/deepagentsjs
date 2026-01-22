@@ -56,8 +56,8 @@ RSpec.describe "Campaigns API", type: :request do
 
   before do
     ensure_plans_exist
-    subscribe_account(user1_account, plan_name: 'pro')
-    subscribe_account(user2_account, plan_name: 'pro')
+    subscribe_account(user1_account, plan_name: "growth_monthly")
+    subscribe_account(user2_account, plan_name: "growth_monthly")
   end
 
   path '/api/v1/campaigns' do

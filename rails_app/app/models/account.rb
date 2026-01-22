@@ -105,6 +105,6 @@ class Account < ApplicationRecord
   end
 
   def plan_limits
-    plan&.plan_limits || []
+    plan&.plan_tier&.tier_limits || TierLimit.none
   end
 end

@@ -15,8 +15,8 @@ RSpec.describe "Themes API", type: :request do
 
   before do
     ensure_plans_exist
-    subscribe_account(account, plan_name: 'pro')
-    subscribe_account(account2, plan_name: 'pro')
+    subscribe_account(account, plan_name: "growth_monthly")
+    subscribe_account(account2, plan_name: "growth_monthly")
   end
 
   path '/api/v1/themes' do

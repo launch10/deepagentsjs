@@ -1,6 +1,6 @@
 # Helper methods for managing subscriptions in tests
 module SubscriptionHelpers
-  def create_subscribed_user(plan_name: 'pro')
+  def create_subscribed_user(plan_name: "growth_monthly")
     user = create(:user)
     account = user.owned_account || create(:account, owner: user)
 
@@ -16,12 +16,12 @@ module SubscriptionHelpers
     user
   end
 
-  def subscribe_user(user, plan_name: 'pro', processor: :fake_processor)
+  def subscribe_user(user, plan_name: "growth_monthly", processor: :fake_processor)
     account = user.owned_account || create(:account, owner: user)
     subscribe_account(account, plan_name: plan_name, processor: processor)
   end
 
-  def subscribe_account(account, plan_name: 'pro', processor: :fake_processor)
+  def subscribe_account(account, plan_name: "growth_monthly", processor: :fake_processor)
     if account.plan.present?
       return account.reload if account.plan.name == plan_name
       unsubscribe_account(account) # Unsubscribe from existing plan before subscribing to new plan
@@ -55,7 +55,7 @@ module SubscriptionHelpers
     account
   end
 
-  def ensure_subscribed(user, plan_name: 'pro')
+  def ensure_subscribed(user, plan_name: "growth_monthly")
     account = user.owned_account || create(:account, owner: user)
     subscribe_account(account, plan_name: plan_name) unless account.payment_processor&.subscribed?
     account

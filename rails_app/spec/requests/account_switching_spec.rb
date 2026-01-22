@@ -7,8 +7,8 @@ RSpec.describe "Account Switching via JWT", type: :request do
 
   before do
     ensure_plans_exist
-    subscribe_account(owned_account, plan_name: 'pro')
-    subscribe_account(team_account, plan_name: 'pro')
+    subscribe_account(owned_account, plan_name: "growth_monthly")
+    subscribe_account(team_account, plan_name: "growth_monthly")
   end
 
   it "defaults to owned account when no account specified" do

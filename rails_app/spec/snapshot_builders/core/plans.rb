@@ -6,58 +6,81 @@ module Core
       ActiveRecord::Base.connection_handler.clear_all_connections!
       ActiveRecord::Base.establish_connection
 
-      plan_limits = {
-        requests_per_month: {
-          starter: 1_000_000,
-          pro: 5_000_000,
-          enterprise: 20_000_000
-        },
-        platform_subdomains: {
-          starter: 1,
-          pro: 2,
-          enterprise: 3
-        }
-      }
+      # Ensure tiers and limits exist first
+      PlanTiers.new.seed
+      TierLimits.new.seed
+
+      starter_tier = PlanTier.find_by!(name: "starter")
+      growth_tier = PlanTier.find_by!(name: "growth")
+      pro_tier = PlanTier.find_by!(name: "pro")
 
       plans = [
+        # Starter Plans: $79/month, $59/month billed annually ($708/year)
         {
-          name: "starter",
-          amount: 4900,
+          name: "starter_monthly",
+          amount: 7900,
           interval: "month",
           stripe_id: Rails.application.credentials.dig(:stripe, :plans, :starter, :monthly),
-          currency: "usd"
+          currency: "usd",
+          plan_tier_id: starter_tier.id
         },
         {
-          name: "pro",
-          amount: 9900,
+          name: "starter_annual",
+          amount: 70800,
+          interval: "year",
+          stripe_id: Rails.application.credentials.dig(:stripe, :plans, :starter, :annual),
+          currency: "usd",
+          plan_tier_id: starter_tier.id
+        },
+
+        # Growth Plans: $149/month, $119/month billed annually ($1,428/year)
+        {
+          name: "growth_monthly",
+          amount: 14900,
+          interval: "month",
+          stripe_id: Rails.application.credentials.dig(:stripe, :plans, :growth, :monthly),
+          currency: "usd",
+          plan_tier_id: growth_tier.id
+        },
+        {
+          name: "growth_annual",
+          amount: 142800,
+          interval: "year",
+          stripe_id: Rails.application.credentials.dig(:stripe, :plans, :growth, :annual),
+          currency: "usd",
+          plan_tier_id: growth_tier.id
+        },
+
+        # Pro Plans: $399/month, $299/month billed annually ($3,588/year)
+        {
+          name: "pro_monthly",
+          amount: 39900,
           interval: "month",
           stripe_id: Rails.application.credentials.dig(:stripe, :plans, :pro, :monthly),
-          currency: "usd"
+          currency: "usd",
+          plan_tier_id: pro_tier.id
         },
         {
-          name: "enterprise",
-          amount: 24900,
-          interval: "month",
-          stripe_id: Rails.application.credentials.dig(:stripe, :plans, :enterprise, :monthly),
-          currency: "usd"
+          name: "pro_annual",
+          amount: 358800,
+          interval: "year",
+          stripe_id: Rails.application.credentials.dig(:stripe, :plans, :pro, :annual),
+          currency: "usd",
+          plan_tier_id: pro_tier.id
         }
       ]
 
-      Plan.import(plans, on_duplicate_key_update: {conflict_target: :name})
-
-      limits_to_import = plan_limits.map do |limit_type, limits|
-        limits.map do |plan_name, limit|
-          {
-            plan_id: Plan.find_by(name: plan_name).id,
-            limit_type: limit_type,
-            limit: limit
-          }
+      plans.each do |plan_attrs|
+        Plan.find_or_create_by!(name: plan_attrs[:name]) do |plan|
+          plan.amount = plan_attrs[:amount]
+          plan.interval = plan_attrs[:interval]
+          plan.stripe_id = plan_attrs[:stripe_id]
+          plan.currency = plan_attrs[:currency]
+          plan.plan_tier_id = plan_attrs[:plan_tier_id]
         end
       end
 
-      PlanLimit.import(limits_to_import.flatten, on_duplicate_key_update: {conflict_target: [:plan_id, :limit_type]})
-
-      puts "Plans seeded: #{Plan.count} plans, #{PlanLimit.count} limits"
+      puts "Plans seeded: #{Plan.count} plans"
     end
   end
 end

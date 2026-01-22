@@ -96,18 +96,18 @@ class AccountRequestCount < ApplicationRecord
 
   # Get the percentage of limit used
   def usage_percentage
-    plan_limit = PlanLimit.find_by(limit_type: "requests_per_month")
-    return 0 unless plan_limit&.limit&.positive?
+    limit = account&.plan&.limit_for("requests_per_month")
+    return 0 unless limit && limit > 0
 
-    ((request_count.to_f / plan_limit.limit) * 100).round(2)
+    ((request_count.to_f / limit) * 100).round(2)
   end
 
   # Get remaining requests for the month
   def remaining_requests
-    plan_limit = PlanLimit.find_by(limit_type: "requests_per_month")
-    return nil unless plan_limit
+    limit = account&.plan&.limit_for("requests_per_month")
+    return nil unless limit
 
-    [plan_limit.limit - request_count, 0].max
+    [limit - request_count, 0].max
   end
 
   # Class method to get top accounts by usage for a given month
@@ -120,7 +120,7 @@ class AccountRequestCount < ApplicationRecord
 
   # Class method to find accounts approaching their limits (e.g., > 80% usage)
   def self.approaching_limit(threshold_percentage: 80)
-    includes(account: {account: {plan: :plan_limits}})
+    includes(account: {subscriptions: {plan: :plan_tier}})
       .current_month
       .select do |counter|
         counter.usage_percentage >= threshold_percentage

@@ -116,6 +116,6 @@ class Domain < ApplicationRecord
   end
 
   def subdomain_limit
-    account.plan_limits.find { |pl| pl.limit_type == "platform_subdomains" }&.limit
+    account.plan&.limit_for("platform_subdomains")
   end
 end

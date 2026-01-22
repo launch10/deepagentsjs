@@ -6,9 +6,9 @@ class PlanResource < Madmin::Resource
 
   # Attributes
   attribute :id, form: false
+  attribute :plan_tier, index: true
   attribute :hidden, index: true
   attribute :name, description: "User-facing name for this plan"
-  attribute :description, description: "A short description for this plan"
   attribute :amount, description: "Amount in cents for the plan", index: true
   attribute :currency
   attribute :interval, :select, collection: ["month", "year"], index: true

@@ -22,22 +22,32 @@
 #  lemon_squeezy_id  :string
 #  paddle_billing_id :string
 #  paddle_classic_id :string
+#  plan_tier_id      :bigint
 #  stripe_id         :string
 #
 # Indexes
 #
-#  index_plans_on_created_at  (created_at)
-#  index_plans_on_name        (name) UNIQUE
+#  index_plans_on_created_at    (created_at)
+#  index_plans_on_name          (name) UNIQUE
+#  index_plans_on_plan_tier_id  (plan_tier_id)
 #
 
 class Plan < ApplicationRecord
   include Atlas::Plan
   has_prefix_id :plan
 
-  has_many :plan_limits, dependent: :destroy
-  alias_method :limits, :plan_limits
+  belongs_to :plan_tier, optional: true
 
-  store_accessor :details, :features, :stripe_tax
+  # Delegate tier-level attributes
+  delegate :description, :features, :credits, :display_name, to: :plan_tier, allow_nil: true
+  delegate :tier_limits, :limits, to: :plan_tier, allow_nil: true
+
+  # Backward compatibility: returns tier limits or empty relation
+  def plan_limits
+    plan_tier&.tier_limits || TierLimit.none
+  end
+
+  store_accessor :details, :stripe_tax
   attribute :currency, default: "usd"
   normalizes :currency, with: ->(currency) { currency.downcase }
 
@@ -58,10 +68,6 @@ class Plan < ApplicationRecord
     plan = where(name: "Free").first_or_initialize
     plan.update(hidden: true, amount: 0, currency: :usd, interval: :month, trial_period_days: 0, fake_processor_id: :free)
     plan
-  end
-
-  def features
-    Array.wrap(super)
   end
 
   def has_trial?
@@ -108,10 +114,19 @@ class Plan < ApplicationRecord
     send(:"#{processor_name}_id")
   end
 
+  # Convenience method for limit lookups
+  def limit_for(limit_type)
+    plan_tier&.limit_for(limit_type) || 0
+  end
+
   # Get the usage limit for requests per month
   def monthly_request_limit
-    limit = plan_limits.find_by(limit_type: "requests_per_month")
-    limit&.limit || 0
+    limit_for("requests_per_month")
   end
   alias_method :usage_limit, :monthly_request_limit
+
+  # Extract tier name from plan name (fallback if no plan_tier)
+  def tier_name
+    plan_tier&.name || name.gsub(/_monthly|_annual|_yearly/, "")
+  end
 end
