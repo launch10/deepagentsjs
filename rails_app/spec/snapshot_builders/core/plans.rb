@@ -24,21 +24,21 @@ module Core
           name: "starter",
           amount: 4900,
           interval: "month",
-          stripe_id: Rails.application.credentials.dig(:stripe, :plans, :starter),
+          stripe_id: Rails.application.credentials.dig(:stripe, :plans, :starter, :monthly),
           currency: "usd"
         },
         {
           name: "pro",
           amount: 9900,
           interval: "month",
-          stripe_id: Rails.application.credentials.dig(:stripe, :plans, :pro),
+          stripe_id: Rails.application.credentials.dig(:stripe, :plans, :pro, :monthly),
           currency: "usd"
         },
         {
           name: "enterprise",
           amount: 24900,
           interval: "month",
-          stripe_id: Rails.application.credentials.dig(:stripe, :plans, :enterprise),
+          stripe_id: Rails.application.credentials.dig(:stripe, :plans, :enterprise, :monthly),
           currency: "usd"
         }
       ]

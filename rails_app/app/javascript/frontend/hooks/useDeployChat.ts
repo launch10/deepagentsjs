@@ -1,7 +1,8 @@
 import { usePage } from "@inertiajs/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useLanggraph, type ChatSnapshot } from "langgraph-ai-sdk-react";
 import { Deploy } from "@shared";
+import { useChatOptions } from "@hooks/useChatOptions";
 
 export interface DeployProps {
   thread_id: string | null;
@@ -22,21 +23,14 @@ export interface DeployProps {
 export type DeploySnapshot = ChatSnapshot<Deploy.DeployGraphState>;
 
 function useDeployChatOptions() {
-  const { jwt, langgraph_path, deploy } = usePage<DeployProps>().props;
+  const { deploy } = usePage<DeployProps>().props;
 
-  return useMemo(() => {
-    const url = langgraph_path ? new URL("api/deploy/stream", langgraph_path).toString() : "";
-
-    return {
-      api: url,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${jwt}`,
-      },
-      merge: Deploy.MergeReducer as any,
-      getInitialThreadId: () => deploy.langgraph_thread_id ?? undefined,
-    };
-  }, [jwt, langgraph_path, deploy.langgraph_thread_id]);
+  return useChatOptions<Deploy.DeployBridgeType>({
+    apiPath: "api/deploy/stream",
+    merge: Deploy.MergeReducer as any,
+    getInitialThreadId: () => deploy.langgraph_thread_id ?? undefined,
+    includeAttachments: false,
+  });
 }
 
 export function useDeployChat<TSelected = DeploySnapshot>(

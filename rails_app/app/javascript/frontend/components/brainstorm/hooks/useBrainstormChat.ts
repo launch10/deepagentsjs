@@ -124,7 +124,10 @@ function useBrainstormChatOptions(): UseLanggraphOptions<BrainstormBridgeType> {
  */
 export function useBrainstormChat(): LanggraphChat<UIMessage, BrainstormGraphState> {
   const options = useBrainstormChatOptions();
-  return useLanggraph(options, (s) => s.chat);
+  const chat = useLanggraph(options, (s) => s.chat);
+  syncBrainstormToStore();
+
+  return chat;
 }
 
 export const useBrainstormSelector = <TSelected>(selector: (snapshot: BrainstormSnapshot) => TSelected) => {
@@ -188,7 +191,7 @@ export function useBrainstormIsStreaming() {
  * Syncs entity IDs from Langgraph state to the core entity store.
  * Call this once in the page component that uses the brainstorm chat.
  */
-export function syncBrainstormToCoreStore() {
+export function syncBrainstormToStore() {
   const websiteId = useBrainstormSelector((s) => s.state.websiteId);
   const projectId = useBrainstormSelector((s) => s.state.projectId);
 

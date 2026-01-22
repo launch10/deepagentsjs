@@ -1,87 +1,58 @@
-import { usePage } from "@inertiajs/react";
-import { useMemo } from "react";
-import { useLanggraph, type ChatSnapshot } from "langgraph-ai-sdk-react";
-import type { WebsiteBridgeType, WebsiteGraphState, InertiaProps } from "@shared";
-import { UploadsAPIService } from "@rails_api_base";
-import { validateFile } from "~/types/attachment";
+import { useLanggraph, type ChatSnapshot, type LanggraphChat } from "langgraph-ai-sdk-react";
+import type { UIMessage } from "ai";
+import type { WebsiteBridgeType, WebsiteGraphState } from "@shared";
 import { syncLanggraphToStore } from "~/stores/useSyncCoreEntities";
-
-type WebsitePageProps =
-  InertiaProps.paths["/projects/{uuid}/website"]["get"]["responses"]["200"]["content"]["application/json"];
+import { useChatOptions } from "@hooks/useChatOptions";
 
 export type WebsiteSnapshot = ChatSnapshot<WebsiteGraphState>;
 
 function useWebsiteChatOptions() {
-  const { thread_id, jwt, langgraph_path, root_path } = usePage<WebsitePageProps>().props;
-
-  return useMemo(() => {
-    const url = langgraph_path ? new URL("api/website/stream", langgraph_path).toString() : "";
-    const uploadService = new UploadsAPIService({ jwt, baseUrl: root_path });
-
-    return {
-      api: url,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${jwt}`,
-      },
-      getInitialThreadId: () => (thread_id ? thread_id : undefined),
-      // Composer attachments config - uploads return URLs and original filename
-      attachments: {
-        upload: async (file: File) => {
-          const response = await uploadService.create({
-            file,
-            isLogo: false,
-          });
-          return {
-            url: response.url,
-            meta: { filename: response.filename },
-          };
-        },
-        validate: validateFile,
-      },
-    };
-  }, [thread_id, jwt, langgraph_path, root_path]);
+  return useChatOptions<WebsiteBridgeType>({ apiPath: "api/website/stream" });
 }
 
-export function useWebsiteChat<TSelected = WebsiteSnapshot>(
-  selector?: (snapshot: WebsiteSnapshot) => TSelected
-): TSelected {
+export function useWebsiteChat(): LanggraphChat<UIMessage, WebsiteGraphState> {
   const options = useWebsiteChatOptions();
-  const snapshot = useLanggraph<WebsiteBridgeType>(options);
+  const chat = useLanggraph(options, (s) => s.chat);
+  syncWebsiteToStore();
 
-  return (selector ? selector(snapshot) : snapshot) as TSelected;
+  return chat;
 }
+
+export const useWebsiteSelector = <TSelected>(selector: (snapshot: WebsiteSnapshot) => TSelected) => {
+  const options = useWebsiteChatOptions();
+  return useLanggraph(options, selector);
+};
 
 export function useWebsiteChatMessages() {
-  return useWebsiteChat((s) => s.messages);
+  return useWebsiteSelector((s) => s.messages);
 }
 
 export function useWebsiteChatState<K extends keyof WebsiteGraphState>(key: K) {
-  return useWebsiteChat((s) => s.state[key]);
+  return useWebsiteSelector((s) => s.state[key]);
 }
 
 export function useWebsiteChatFullState() {
-  return useWebsiteChat((s) => s.state);
+  return useWebsiteSelector((s) => s.state);
 }
 
 export function useWebsiteChatStatus() {
-  return useWebsiteChat((s) => s.status);
+  return useWebsiteSelector((s) => s.status);
 }
 
 export function useWebsiteChatIsLoading() {
-  return useWebsiteChat((s) => s.isLoading);
+  return useWebsiteSelector((s) => s.isLoading);
 }
 
 export function useWebsiteChatIsLoadingHistory() {
-  return useWebsiteChat((s) => s.isLoadingHistory);
+  return useWebsiteSelector((s) => s.isLoadingHistory);
 }
 
 export function useWebsiteChatActions() {
-  return useWebsiteChat((s) => s.actions);
+  return useWebsiteSelector((s) => s.actions);
 }
 
 export function useWebsiteChatThreadId() {
-  return useWebsiteChat((s) => s.threadId);
+  return useWebsiteSelector((s) => s.threadId);
 }
 
 /**
@@ -89,14 +60,14 @@ export function useWebsiteChatThreadId() {
  * Use composer.text, composer.setText, etc.
  */
 export function useWebsiteChatComposer() {
-  return useWebsiteChat((s) => s.composer);
+  return useWebsiteSelector((s) => s.composer);
 }
 
 /**
  * Returns whether the chat is currently streaming a response.
  */
 export function useWebsiteChatIsStreaming() {
-  return useWebsiteChat((s) => {
+  return useWebsiteSelector((s) => {
     const { status } = s;
     return status === "streaming" || status === "submitted";
   });
@@ -106,7 +77,7 @@ export function useWebsiteChatIsStreaming() {
  * Syncs entity IDs from Langgraph state to the core entity store.
  * Call this once in the page component that uses the website chat.
  */
-export function useSyncWebsiteEntities() {
+export function syncWebsiteToStore() {
   const websiteId = useWebsiteChatState("websiteId");
   const projectId = useWebsiteChatState("projectId");
 

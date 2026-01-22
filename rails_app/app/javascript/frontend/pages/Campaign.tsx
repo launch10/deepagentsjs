@@ -1,7 +1,7 @@
 import { usePage } from "@inertiajs/react";
 import AdCampaignTabSwitcher from "@components/ads/AdCampaignTabSwitcher";
 import LogoSpinner from "@components/ui/logo-spinner";
-import { useAdsChatIsLoadingHistory, useSyncCampaignEntities } from "@components/ads/hooks";
+import { useAdsChatIsLoadingHistory } from "@components/ads/hooks";
 import AdPreview from "@components/ads/AdPreview";
 import AdsForm from "@components/ads/forms/AdsForm";
 import { PaginationFooter } from "@components/shared/pagination-footer";
@@ -11,13 +11,11 @@ import { cn } from "@lib/utils";
 import { useSyncPageProps } from "~/stores/useSyncCoreEntities";
 
 export default function Campaign() {
-  const pageProps = usePage().props;
+  useSyncPageProps(usePage().props);
+
   const isLoadingHistory = useAdsChatIsLoadingHistory();
   const substep = useWorkflow(selectSubstep);
 
-  // Sync page props (once on mount) and Langgraph entity IDs (individual keys)
-  useSyncPageProps(pageProps);
-  useSyncCampaignEntities();
   const shouldHideTabSwitcher = substep === "launch" || substep === "review"; // Hide tab switcher on Launch/Review steps
 
   return (

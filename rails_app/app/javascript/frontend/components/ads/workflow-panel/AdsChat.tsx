@@ -1,22 +1,22 @@
 import { CardContent, CardFooter } from "@components/ui/card";
-import { useAdsChat } from "@components/ads/hooks";
+import { useAdsChat, useAdsChatIsReady, useAdsChatIsStreaming, useAdsChatIsLoadingHistory } from "@components/ads/hooks";
 import { Chat } from "@components/shared/chat/Chat";
 import AdsChatMessages from "./ads-chat/AdsChatMessages";
 import AdsChatInput from "./ads-chat/AdsChatInput";
 
 export default function AdsChat() {
-  // Get the full chat snapshot to pass to Chat.Root
   const chat = useAdsChat();
 
-  const isStreaming = chat.status === "streaming" || chat.status === "submitted";
-  const isReady = !chat.isLoadingHistory && !isStreaming;
+  const isLoadingHistory = useAdsChatIsLoadingHistory();
+  const isStreaming = useAdsChatIsStreaming();
+  const isReady = useAdsChatIsReady();
 
   return (
     <Chat.Root chat={chat}>
       <div
         className="bg-background rounded-b-2xl  flex flex-col"
         data-testid="ads-chat"
-        data-loading-history={chat.isLoadingHistory}
+        data-loading-history={isLoadingHistory}
         data-streaming={isStreaming}
         data-ready={isReady}
       >

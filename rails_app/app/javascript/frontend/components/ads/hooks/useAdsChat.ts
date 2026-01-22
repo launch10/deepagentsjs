@@ -1,91 +1,66 @@
-import { usePage } from "@inertiajs/react";
-import { useMemo } from "react";
-import { useLanggraph, type ChatSnapshot } from "langgraph-ai-sdk-react";
+import { useLanggraph, type ChatSnapshot, type LanggraphChat } from "langgraph-ai-sdk-react";
+import type { UIMessage } from "ai";
 import type { AdsBridgeType, AdsGraphState } from "@shared";
 import { Ads } from "@shared";
-import type { CampaignProps } from "@components/ads/workflow-panel/workflow-buddy/ad-campaign.types";
 import { useChatRegistration } from "@hooks/useChatRegistration";
-import { UploadsAPIService } from "@rails_api_base";
-import { validateFile } from "~/types/attachment";
+import { useChatOptions } from "@hooks/useChatOptions";
 import { syncLanggraphToStore } from "~/stores/useSyncCoreEntities";
 
 export type AdsSnapshot = ChatSnapshot<AdsGraphState>;
 
 function useAdsChatOptions() {
-  const { thread_id, jwt, langgraph_path, root_path } = usePage<CampaignProps>().props;
-
-  return useMemo(() => {
-    const url = new URL("api/ads/stream", langgraph_path).toString();
-    const uploadService = new UploadsAPIService({ jwt, baseUrl: root_path });
-
-    return {
-      api: url,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${jwt}`,
-      },
-      merge: Ads.MergeReducer as any,
-      getInitialThreadId: () => (thread_id ? thread_id : undefined),
-      // Composer attachments config - uploads return URLs and original filename
-      attachments: {
-        upload: async (file: File) => {
-          const response = await uploadService.create({
-            file,
-            isLogo: false,
-          });
-          return {
-            url: response.url,
-            meta: { filename: response.filename },
-          };
-        },
-        validate: validateFile,
-      },
-    };
-  }, [thread_id, jwt, langgraph_path, root_path]);
+  return useChatOptions<AdsBridgeType>({
+    apiPath: "api/ads/stream",
+    merge: Ads.MergeReducer as any,
+  });
 }
 
-export function useAdsChat<TSelected = AdsSnapshot>(
-  selector?: (snapshot: AdsSnapshot) => TSelected
-): TSelected {
+export function useAdsChat(): LanggraphChat<UIMessage, AdsGraphState> {
   const options = useAdsChatOptions();
-  const snapshot = useLanggraph<AdsBridgeType>(options);
+  const chat = useLanggraph(options, (s) => s.chat);
 
   // Register the "ad campaign chat" so we can sync state to current chat from other components
-  useChatRegistration("ad_campaign", snapshot.chat);
+  useChatRegistration("ad_campaign", chat);
+  syncCampaignToStore();
 
-  return (selector ? selector(snapshot) : snapshot) as TSelected;
+  return chat;
 }
 
+export const useAdsSelector = <TSelected>(selector: (snapshot: AdsSnapshot) => TSelected) => {
+  const options = useAdsChatOptions();
+  return useLanggraph(options, selector);
+};
+
 export function useAdsChatMessages() {
-  return useAdsChat((s) => s.messages);
+  return useAdsSelector((s) => s.messages);
 }
 
 export function useAdsChatState<K extends keyof AdsGraphState>(key: K) {
-  return useAdsChat((s) => s.state[key]);
+  return useAdsSelector((s) => s.state[key]);
 }
 
 export function useAdsChatFullState() {
-  return useAdsChat((s) => s.state);
+  return useAdsSelector((s) => s.state);
 }
 
 export function useAdsChatStatus() {
-  return useAdsChat((s) => s.status);
+  return useAdsSelector((s) => s.status);
 }
 
 export function useAdsChatIsLoading() {
-  return useAdsChat((s) => s.isLoading);
+  return useAdsSelector((s) => s.isLoading);
 }
 
 export function useAdsChatIsLoadingHistory() {
-  return useAdsChat((s) => s.isLoadingHistory);
+  return useAdsSelector((s) => s.isLoadingHistory);
 }
 
 export function useAdsChatActions() {
-  return useAdsChat((s) => s.actions);
+  return useAdsSelector((s) => s.actions);
 }
 
 export function useAdsChatThreadId() {
-  return useAdsChat((s) => s.threadId);
+  return useAdsSelector((s) => s.threadId);
 }
 
 /**
@@ -93,24 +68,31 @@ export function useAdsChatThreadId() {
  * Use composer.text, composer.setText, etc.
  */
 export function useAdsChatComposer() {
-  return useAdsChat((s) => s.composer);
+  return useAdsSelector((s) => s.composer);
 }
 
 /**
  * Returns whether the chat is currently streaming a response.
  */
 export function useAdsChatIsStreaming() {
-  return useAdsChat((s) => {
+  return useAdsSelector((s) => {
     const { status } = s;
     return status === "streaming" || status === "submitted";
   });
+}
+
+export function useAdsChatIsReady() {
+  const isLoadingHistory = useAdsChatIsLoadingHistory();
+  const isStreaming = useAdsChatIsStreaming();
+
+  return !isLoadingHistory && !isStreaming;
 }
 
 /**
  * Syncs entity IDs from Langgraph state to the core entity store.
  * Call this once in the page component that uses the ads chat.
  */
-export function useSyncCampaignEntities() {
+export function syncCampaignToStore() {
   const websiteId = useAdsChatState("websiteId");
   const projectId = useAdsChatState("projectId");
   const campaignId = useAdsChatState("campaignId");

@@ -11,9 +11,7 @@ import {
   useWebsiteChatState,
   useWebsiteChatIsLoadingHistory,
   useWebsiteChatActions,
-  useWebsiteSendMessage,
   useWebsiteChatIsStreaming,
-  useSyncWebsiteEntities,
 } from "@hooks/website";
 import { useSyncPageProps } from "~/stores/useSyncCoreEntities";
 import type { InertiaProps } from "@shared";
@@ -104,15 +102,11 @@ function useWebsiteInit() {
 }
 
 export default function Website() {
-  const pageProps = usePage().props;
+  useSyncPageProps(usePage().props);
+
   const chat = useWebsiteChat();
-  const { sendMessage } = useWebsiteSendMessage();
   const isLoadingHistory = useWebsiteChatIsLoadingHistory();
   const isStreaming = useWebsiteChatIsStreaming();
-
-  // Sync page props (once on mount) and Langgraph entity IDs (individual keys)
-  useSyncPageProps(pageProps);
-  useSyncWebsiteEntities();
 
   // Auto-init website generation on first load
   useWebsiteInit();
@@ -123,7 +117,7 @@ export default function Website() {
   const isLoading = isLoadingHistory || isStreaming;
 
   return (
-    <Chat.Root chat={chat} onSubmit={sendMessage}>
+    <Chat.Root chat={chat}>
       <div className="h-full flex flex-col">
         {/* Main content area - no bottom padding so preview extends behind footer */}
         <main className="flex-1 min-h-0 grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%] pt-[2.5%]">
