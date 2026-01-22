@@ -6,18 +6,13 @@ module Core
       ActiveRecord::Base.connection_handler.clear_all_connections!
       ActiveRecord::Base.establish_connection
 
-      plan_limits = {
-        requests_per_month: {
-          starter: 1_000_000,
-          pro: 5_000_000,
-          enterprise: 20_000_000
-        },
-        platform_subdomains: {
-          starter: 1,
-          pro: 2,
-          enterprise: 3
-        }
-      }
+      # Ensure tiers and limits exist first
+      PlanTiers.new.seed
+      TierLimits.new.seed
+
+      starter_tier = PlanTier.find_by!(name: "starter")
+      growth_tier = PlanTier.find_by!(name: "growth")
+      pro_tier = PlanTier.find_by!(name: "pro")
 
       plans = [
         {
@@ -43,21 +38,17 @@ module Core
         }
       ]
 
-      Plan.import(plans, on_duplicate_key_update: {conflict_target: :name})
-
-      limits_to_import = plan_limits.map do |limit_type, limits|
-        limits.map do |plan_name, limit|
-          {
-            plan_id: Plan.find_by(name: plan_name).id,
-            limit_type: limit_type,
-            limit: limit
-          }
+      plans.each do |plan_attrs|
+        Plan.find_or_create_by!(name: plan_attrs[:name]) do |plan|
+          plan.amount = plan_attrs[:amount]
+          plan.interval = plan_attrs[:interval]
+          plan.stripe_id = plan_attrs[:stripe_id]
+          plan.currency = plan_attrs[:currency]
+          plan.plan_tier_id = plan_attrs[:plan_tier_id]
         end
       end
 
-      PlanLimit.import(limits_to_import.flatten, on_duplicate_key_update: {conflict_target: [:plan_id, :limit_type]})
-
-      puts "Plans seeded: #{Plan.count} plans, #{PlanLimit.count} limits"
+      puts "Plans seeded: #{Plan.count} plans"
     end
   end
 end

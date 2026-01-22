@@ -22,12 +22,14 @@
 #  lemon_squeezy_id  :string
 #  paddle_billing_id :string
 #  paddle_classic_id :string
+#  plan_tier_id      :bigint
 #  stripe_id         :string
 #
 # Indexes
 #
-#  index_plans_on_created_at  (created_at)
-#  index_plans_on_name        (name) UNIQUE
+#  index_plans_on_created_at    (created_at)
+#  index_plans_on_name          (name) UNIQUE
+#  index_plans_on_plan_tier_id  (plan_tier_id)
 #
 
 require "test_helper"
