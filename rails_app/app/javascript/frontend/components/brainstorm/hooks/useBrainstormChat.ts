@@ -5,12 +5,12 @@ import {
   type ChatSnapshot,
   type LanggraphChat,
   type UseLanggraphOptions,
-  useLanggraph
+  useLanggraph,
 } from "langgraph-ai-sdk-react";
 import type { BrainstormGraphState, InertiaProps, BrainstormBridgeType } from "@shared";
 import { UploadsAPIService } from "@rails_api_base";
 import { validateFile } from "~/types/attachment";
-import { syncLanggraphToStore } from "~/stores/useSyncCoreEntities";
+import { syncLanggraphToStore } from "~/stores/useSyncProject";
 
 type NewBrainstormProps =
   InertiaProps.paths["/projects/new"]["get"]["responses"]["200"]["content"]["application/json"];
@@ -41,35 +41,42 @@ function useBrainstormChatOptions(): UseLanggraphOptions<BrainstormBridgeType> {
   const page = usePage<BrainstormPageProps>();
   const { thread_id, jwt, langgraph_path, root_path, project } = page.props;
 
-  const onThreadIdAvailable = useCallback((threadId: string) => {
-    // Defensive check - prevent navigation with undefined threadId
-    if (!threadId || threadId === "undefined" || threadId === "null") {
-      console.error("[useBrainstormChat] onThreadIdAvailable called with invalid threadId:", threadId, new Error().stack);
-      return;
-    }
+  const onThreadIdAvailable = useCallback(
+    (threadId: string) => {
+      // Defensive check - prevent navigation with undefined threadId
+      if (!threadId || threadId === "undefined" || threadId === "null") {
+        console.error(
+          "[useBrainstormChat] onThreadIdAvailable called with invalid threadId:",
+          threadId,
+          new Error().stack
+        );
+        return;
+      }
 
-    // Guard: don't navigate if URL already has this threadId
-    if (isAlreadyAtThreadUrl(threadId)) {
-      return;
-    }
+      // Guard: don't navigate if URL already has this threadId
+      if (isAlreadyAtThreadUrl(threadId)) {
+        return;
+      }
 
-    // Use Inertia's router.push for client-side URL update without server request.
-    const newUrl = `/projects/${threadId}/brainstorm`;
-    router.push({
-      url: newUrl,
-      component: "Brainstorm",
-      props: {
-        thread_id: threadId,
-        jwt,
-        langgraph_path,
-        root_path,
-        project: {
-          ...project,
-          uuid: threadId
-        }
-      },
-    });
-  }, [jwt, langgraph_path, root_path, project]);
+      // Use Inertia's router.push for client-side URL update without server request.
+      const newUrl = `/projects/${threadId}/brainstorm`;
+      router.push({
+        url: newUrl,
+        component: "Brainstorm",
+        props: {
+          thread_id: threadId,
+          jwt,
+          langgraph_path,
+          root_path,
+          project: {
+            ...project,
+            uuid: threadId,
+          },
+        },
+      });
+    },
+    [jwt, langgraph_path, root_path, project]
+  );
 
   return useMemo(() => {
     const url = langgraph_path ? new URL("api/brainstorm/stream", langgraph_path).toString() : "";
@@ -130,7 +137,9 @@ export function useBrainstormChat(): LanggraphChat<UIMessage, BrainstormGraphSta
   return chat;
 }
 
-export const useBrainstormSelector = <TSelected>(selector: (snapshot: BrainstormSnapshot) => TSelected) => {
+export const useBrainstormSelector = <TSelected>(
+  selector: (snapshot: BrainstormSnapshot) => TSelected
+) => {
   const options = useBrainstormChatOptions();
   return useLanggraph(options, selector);
 };
@@ -147,7 +156,9 @@ export function useBrainstormIsLoading() {
   return useBrainstormSelector((s) => s.isLoading);
 }
 
-export function useBrainstormIsLoadingHistory(chat: LanggraphChat<UIMessage, BrainstormGraphState>) {
+export function useBrainstormIsLoadingHistory(
+  chat: LanggraphChat<UIMessage, BrainstormGraphState>
+) {
   return useBrainstormSelector((s) => s.isLoadingHistory);
 }
 
@@ -169,13 +180,15 @@ export function useBrainstormWebsiteId() {
 
 /**
  * Returns whether this is a new conversation (should show landing page).
- * Uses messages.length === 0 as the source of truth for routing.
+ * Uses page props thread_id as the primary check, falls back to SDK messages.
  */
 export function useBrainstormIsNewConversation() {
   const { thread_id } = usePage<BrainstormPageProps>().props;
-  if (thread_id) return false;
-
+  // Call hooks unconditionally to follow Rules of Hooks
   const hasNoMessages = useBrainstormSelector((s) => s.messages.length === 0);
+
+  // If page props has thread_id, it's not a new conversation
+  if (thread_id) return false;
   return hasNoMessages;
 }
 

@@ -25,10 +25,6 @@ brainstormRoutes.post("/stream", authMiddleware, async (c) => {
     return c.json({ error: "Missing required fields: messages, threadId" }, 400);
   }
 
-  // No thread validation for brainstorm POST - JWT auth is sufficient.
-  // This is the only route that creates new threads (via createBrainstorm node).
-  // Chat is created during graph execution via ChatCreatable callback.
-
   let stateObj = state || {};
 
   return BrainstormAPI.stream({

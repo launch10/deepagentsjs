@@ -14,11 +14,6 @@ class BrainstormStep < BaseBuilder
       account = user.owned_account
     end
 
-    data = Brainstorm.create_brainstorm!(account, name: "Test Project", thread_id: SecureRandom.uuid)
-    project = data[:project]
-    website = project.website
-
-    puts "Created website with brainstorm: #{brainstorm.id}"
-    puts "Website ID: #{website.id}, Theme ID: #{website.theme_id}"
+    Brainstorm.create_brainstorm!(account, name: "Test Project", thread_id: SecureRandom.uuid)
   end
 end

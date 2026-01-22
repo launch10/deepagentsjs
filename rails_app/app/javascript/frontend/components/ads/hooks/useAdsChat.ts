@@ -4,7 +4,7 @@ import type { AdsBridgeType, AdsGraphState } from "@shared";
 import { Ads } from "@shared";
 import { useChatRegistration } from "@hooks/useChatRegistration";
 import { useChatOptions } from "@hooks/useChatOptions";
-import { syncLanggraphToStore } from "~/stores/useSyncCoreEntities";
+import { syncLanggraphToStore } from "~/stores/useSyncProject";
 
 export type AdsSnapshot = ChatSnapshot<AdsGraphState>;
 

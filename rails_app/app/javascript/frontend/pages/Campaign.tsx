@@ -1,4 +1,3 @@
-import { usePage } from "@inertiajs/react";
 import AdCampaignTabSwitcher from "@components/ads/AdCampaignTabSwitcher";
 import LogoSpinner from "@components/ui/logo-spinner";
 import { useAdsChatIsLoadingHistory } from "@components/ads/hooks";
@@ -8,11 +7,8 @@ import { PaginationFooter } from "@components/shared/pagination-footer";
 import WorkflowPanel from "@components/ads/WorkflowPanel";
 import { selectSubstep, useWorkflow } from "@context/WorkflowProvider";
 import { cn } from "@lib/utils";
-import { useSyncPageProps } from "~/stores/useSyncCoreEntities";
 
 export default function Campaign() {
-  useSyncPageProps(usePage().props);
-
   const isLoadingHistory = useAdsChatIsLoadingHistory();
   const substep = useWorkflow(selectSubstep);
 
@@ -20,7 +16,9 @@ export default function Campaign() {
 
   return (
     <main className="mx-auto container max-w-7xl grid grid-cols-[288px_1fr] gap-8 px-8">
-      <div><WorkflowPanel /></div>
+      <div>
+        <WorkflowPanel />
+      </div>
       <div className="max-w-[948px]">
         <AdPreview className="mb-8" />
         {!shouldHideTabSwitcher && <AdCampaignTabSwitcher disabled={isLoadingHistory} />}

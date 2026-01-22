@@ -4,15 +4,10 @@ import { PhaseProgress, type Phase } from "@components/deploy";
 import LogoSpinner from "@components/ui/logo-spinner";
 import WorkflowPanel from "@components/ads/WorkflowPanel";
 import { useDeployChatWithPolling, type DeployProps } from "@hooks/useDeployChat";
-import { useSyncPageProps } from "~/stores/useSyncCoreEntities";
 
 export default function Deploy() {
-  const pageProps = usePage<DeployProps>().props;
-  const { deploy } = pageProps;
+  const { deploy } = usePage<DeployProps>().props;
   const { state, isLoading, isPolling, error, startDeploy } = useDeployChatWithPolling();
-
-  // Sync page props to core entity store
-  useSyncPageProps(pageProps);
 
   // Auto-start deploy if it's a new deploy (pending status, no thread)
   useEffect(() => {
@@ -73,7 +68,9 @@ export default function Deploy() {
 
             {needsOAuth && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-                <h2 className="text-lg font-medium text-blue-900 mb-2">Connect Your Google Account</h2>
+                <h2 className="text-lg font-medium text-blue-900 mb-2">
+                  Connect Your Google Account
+                </h2>
                 <p className="text-blue-700 mb-4">
                   To deploy your Google Ads campaign, we need to connect your Google account.
                 </p>
@@ -88,10 +85,12 @@ export default function Deploy() {
 
             {awaitingInvite && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
-                <h2 className="text-lg font-medium text-yellow-900 mb-2">Accept Google Ads Invitation</h2>
+                <h2 className="text-lg font-medium text-yellow-900 mb-2">
+                  Accept Google Ads Invitation
+                </h2>
                 <p className="text-yellow-700 mb-4">
-                  We&apos;ve sent an invitation to your email. Please check your inbox and accept the
-                  invitation to continue.
+                  We&apos;ve sent an invitation to your email. Please check your inbox and accept
+                  the invitation to continue.
                 </p>
                 <div className="flex items-center justify-center gap-2 text-yellow-600">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600" />
@@ -105,7 +104,9 @@ export default function Deploy() {
                 <LogoSpinner />
                 <p className="text-base-600">
                   Deploying your campaign...
-                  {isPolling && <span className="text-base-400 text-sm ml-2">(checking status)</span>}
+                  {isPolling && (
+                    <span className="text-base-400 text-sm ml-2">(checking status)</span>
+                  )}
                 </p>
               </div>
             )}

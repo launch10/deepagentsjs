@@ -9,6 +9,7 @@ Introduce a `PlanTier` model to normalize tier-level data (description, features
 ## Architecture Overview
 
 ### Before
+
 ```
 Plan (starter_monthly)     Plan (starter_annual)
 ├── description            ├── description         ← DUPLICATED
@@ -24,6 +25,7 @@ PlanLimit (starter_monthly)    PlanLimit (starter_annual)
 ```
 
 ### After
+
 ```
 PlanTier (starter)
 ├── name: "starter"
@@ -46,6 +48,7 @@ Plan (starter_monthly)         Plan (starter_annual)
 ## Database Migrations
 
 ### Migration 1: Create plan_tiers table
+
 ```ruby
 # db/migrate/YYYYMMDDHHMMSS_create_plan_tiers.rb
 class CreatePlanTiers < ActiveRecord::Migration[8.0]
@@ -63,6 +66,7 @@ end
 ```
 
 ### Migration 2: Add plan_tier_id to plans
+
 ```ruby
 # db/migrate/YYYYMMDDHHMMSS_add_plan_tier_to_plans.rb
 class AddPlanTierToPlans < ActiveRecord::Migration[8.0]
@@ -72,90 +76,45 @@ class AddPlanTierToPlans < ActiveRecord::Migration[8.0]
 end
 ```
 
-### Migration 3: Create tier_limits table (rename from plan_limits)
-```ruby
-# db/migrate/YYYYMMDDHHMMSS_create_tier_limits.rb
-class CreateTierLimits < ActiveRecord::Migration[8.0]
-  def change
-    create_table :tier_limits do |t|
-      t.references :plan_tier, null: false, foreign_key: true
-      t.string :limit_type, null: false
-      t.integer :limit, null: false, default: 0
-      t.timestamps
-    end
+### Migration 3: Rename plan_limits to tier_limits (add plan_tier_id FK)
 
+```ruby
+# db/migrate/YYYYMMDDHHMMSS_rename_plan_limits_to_tier_limits.rb
+class RenamePlanLimitsToTierLimits < ActiveRecord::Migration[8.0]
+  def change
+    # Add new FK column first
+    add_reference :plan_limits, :plan_tier, foreign_key: true
+
+    # Rename the table
+    rename_table :plan_limits, :tier_limits
+  end
+end
+```
+
+### Migration 5: Remove plan_id from tier_limits (after verification)
+
+```ruby
+# db/migrate/YYYYMMDDHHMMSS_cleanup_tier_limits.rb
+class CleanupTierLimits < ActiveRecord::Migration[8.0]
+  def up
+    # Remove old index and column
+    remove_index :tier_limits, [:plan_id, :limit_type]
+    remove_column :tier_limits, :plan_id
+
+    # Add new unique index
     add_index :tier_limits, [:plan_tier_id, :limit_type], unique: true
   end
-end
-```
-
-### Migration 4: Data migration
-```ruby
-# db/migrate/YYYYMMDDHHMMSS_migrate_plans_to_tiers.rb
-class MigratePlansToTiers < ActiveRecord::Migration[8.0]
-  def up
-    # Create tiers from existing plans
-    tier_data = {
-      'starter' => Plan.find_by("name LIKE 'starter%'"),
-      'growth' => Plan.find_by("name LIKE 'growth%'"),
-      'pro' => Plan.find_by("name LIKE 'pro%'")
-    }
-
-    tier_data.each do |tier_name, plan|
-      next unless plan
-
-      tier = PlanTier.create!(
-        name: tier_name,
-        description: plan.description,
-        details: {
-          features: plan.features,
-          credits: plan.details&.dig('credits') || 0
-        }
-      )
-
-      # Migrate limits from this plan to the tier
-      PlanLimit.where(plan_id: plan.id).find_each do |pl|
-        TierLimit.create!(
-          plan_tier_id: tier.id,
-          limit_type: pl.limit_type,
-          limit: pl.limit
-        )
-      end
-
-      # Associate all plans of this tier
-      Plan.where("name LIKE ?", "#{tier_name}%").update_all(plan_tier_id: tier.id)
-    end
-  end
 
   def down
-    Plan.update_all(plan_tier_id: nil)
-    TierLimit.delete_all
-    PlanTier.delete_all
+    add_column :tier_limits, :plan_id, :bigint
+    add_index :tier_limits, [:plan_id, :limit_type], unique: true
+    remove_index :tier_limits, [:plan_tier_id, :limit_type]
   end
 end
 ```
 
-### Migration 5: Remove plan_limits table (after verification)
-```ruby
-# db/migrate/YYYYMMDDHHMMSS_drop_plan_limits.rb
-class DropPlanLimits < ActiveRecord::Migration[8.0]
-  def up
-    drop_table :plan_limits
-  end
+### Migration 6 (Optional): Remove redundant columns from plans
 
-  def down
-    create_table :plan_limits do |t|
-      t.references :plan, null: false, foreign_key: true
-      t.string :limit_type, null: false
-      t.integer :limit, null: false, default: 0
-      t.timestamps
-    end
-    add_index :plan_limits, [:plan_id, :limit_type], unique: true
-  end
-end
-```
-
-### Migration 6: Remove redundant columns from plans (optional, after verification)
 ```ruby
 # db/migrate/YYYYMMDDHHMMSS_remove_tier_data_from_plans.rb
 class RemoveTierDataFromPlans < ActiveRecord::Migration[8.0]
@@ -174,10 +133,9 @@ end
 ## Model Changes
 
 ### New: app/models/plan_tier.rb
+
 ```ruby
 class PlanTier < ApplicationRecord
-  include Atlas::PlanTier  # If Atlas sync needed at tier level
-
   has_many :plans, dependent: :nullify
   has_many :tier_limits, dependent: :destroy
   alias_method :limits, :tier_limits
@@ -207,24 +165,18 @@ end
 ```
 
 ### New: app/models/tier_limit.rb
+
 ```ruby
 class TierLimit < ApplicationRecord
   belongs_to :plan_tier, touch: true
 
   validates :limit_type, presence: true, uniqueness: { scope: :plan_tier_id }
   validates :limit, presence: true, numericality: { greater_than_or_equal_to: 0 }
-
-  after_commit :sync_tier_to_atlas
-
-  private
-
-  def sync_tier_to_atlas
-    plan_tier.sync_to_atlas if plan_tier.respond_to?(:sync_to_atlas)
-  end
 end
 ```
 
 ### Modified: app/models/plan.rb
+
 ```ruby
 class Plan < ApplicationRecord
   include Atlas::Plan
@@ -282,34 +234,8 @@ end
 
 ---
 
-## Service & Controller Changes
-
-### app/services/credit_service.rb
-```ruby
-# Change from:
-StripeConfig.credits_for_plan_model(plan)
-
-# To:
-plan.credits
-# or
-plan.plan_tier.credits
-```
-
-### config/initializers/stripe_config.rb
-```ruby
-# REMOVE the PLAN_TO_TIER and TIER_CREDITS constants
-# They're now in the database
-
-module StripeConfig
-  # Keep any Stripe-specific config that's not tier-related
-  # Remove:
-  # - TIER_CREDITS
-  # - PLAN_TO_TIER
-  # - credits_for_plan methods
-end
-```
-
 ### app/models/account.rb
+
 ```ruby
 # Update limit access
 def plan_limits
@@ -327,6 +253,7 @@ end
 ```
 
 ### app/models/domain.rb
+
 ```ruby
 def subdomain_limit
   # Change from:
@@ -338,6 +265,7 @@ end
 ```
 
 ### app/controllers/api/v1/domains_controller.rb
+
 ```ruby
 def platform_subdomain_credits
   limit = current_account.plan&.limit_for('platform_subdomains') || 0
@@ -347,6 +275,7 @@ end
 ```
 
 ### app/models/account_request_count.rb
+
 ```ruby
 def over_limit?
   return false unless limit
@@ -367,81 +296,29 @@ end
 
 ---
 
-## Atlas Integration Changes
+## Atlas Integration - NO CHANGES NEEDED
 
-### app/models/concerns/atlas/plan.rb
-```ruby
-# Update to sync tier-level data
-def atlas_plan_params
-  {
-    id: id,
-    name: tier_name,
-    usageLimit: monthly_request_limit  # Now from tier
-  }
-end
-```
+After examining the Atlas worker code (`atlas/src/`), Atlas does NOT use plan or limit data:
 
-### Consider: app/models/concerns/atlas/plan_tier.rb (new)
-```ruby
-module Atlas
-  module PlanTier
-    extend ActiveSupport::Concern
+1. **Public Worker** (`index-public.tsx`): Only looks up Website/Domain for routing, serves files from R2. Does NOT check accounts, plans, or usage limits.
 
-    included do
-      after_create_commit :sync_tier_to_atlas
-      after_update_commit :sync_tier_to_atlas
-    end
+2. **Rate Limiting**: Handled entirely by Rails + direct Cloudflare API:
+   - Rails checks `account.over_monthly_request_limit?`
+   - Rails calls `Cloudflare::FirewallService` to block/unblock domains
+   - Atlas is not involved
 
-    def sync_tier_to_atlas
-      # Sync all plans of this tier
-      plans.each(&:sync_to_atlas)
-    end
-  end
-end
-```
+3. **FirewallDO**: Literally a stub class that returns 501 ("to be deleted")
 
----
+4. **What Atlas stores but doesn't use**: Account data (with `planId`), Plan data (with `usageLimit`)
 
-## Langgraph Schema Updates
-
-### langgraph_app/app/db/schema.ts
-```typescript
-// Add planTiers table
-export const planTiers = pgTable("plan_tiers", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull().unique(),
-  description: text("description"),
-  details: jsonb("details").default({}),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
-
-// Add tierLimits table
-export const tierLimits = pgTable("tier_limits", {
-  id: serial("id").primaryKey(),
-  planTierId: integer("plan_tier_id").notNull().references(() => planTiers.id),
-  limitType: varchar("limit_type", { length: 255 }).notNull(),
-  limit: integer("limit").notNull().default(0),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (table) => ({
-  uniqueLimit: unique().on(table.planTierId, table.limitType),
-}));
-
-// Update plans table
-export const plans = pgTable("plans", {
-  // ... existing fields
-  planTierId: integer("plan_tier_id").references(() => planTiers.id),
-});
-
-// Remove planLimits table after migration
-```
+**Conclusion**: The `Atlas::Plan` concern syncs data but Atlas ignores it. No changes needed. The sync is harmless but could be removed in future cleanup.
 
 ---
 
 ## Seed/Factory Updates
 
 ### spec/snapshot_builders/core/plan_tiers.rb (new)
+
 ```ruby
 module SnapshotBuilders
   module Core
@@ -478,6 +355,7 @@ end
 ```
 
 ### spec/snapshot_builders/core/tier_limits.rb (new)
+
 ```ruby
 module SnapshotBuilders
   module Core
@@ -503,6 +381,7 @@ end
 ```
 
 ### spec/snapshot_builders/core/plans.rb (updated)
+
 ```ruby
 module SnapshotBuilders
   module Core
@@ -537,6 +416,7 @@ end
 ```
 
 ### spec/factories/plan_tier.rb (new)
+
 ```ruby
 FactoryBot.define do
   factory :plan_tier do
@@ -566,6 +446,7 @@ end
 ```
 
 ### spec/factories/tier_limit.rb (new)
+
 ```ruby
 FactoryBot.define do
   factory :tier_limit do
@@ -582,6 +463,7 @@ end
 ```
 
 ### spec/factories/plan.rb (updated)
+
 ```ruby
 FactoryBot.define do
   factory :plan do
@@ -608,6 +490,7 @@ end
 ## Admin UI Changes
 
 ### app/madmin/resources/plan_tier_resource.rb (new)
+
 ```ruby
 class PlanTierResource < Madmin::Resource
   attribute :id, form: false
@@ -624,6 +507,7 @@ end
 ```
 
 ### app/madmin/resources/tier_limit_resource.rb (new)
+
 ```ruby
 class TierLimitResource < Madmin::Resource
   attribute :id, form: false
@@ -640,9 +524,9 @@ end
 ## Files to Modify (Complete List)
 
 ### New Files
+
 - `app/models/plan_tier.rb`
 - `app/models/tier_limit.rb`
-- `app/models/concerns/atlas/plan_tier.rb` (optional)
 - `app/madmin/resources/plan_tier_resource.rb`
 - `app/madmin/resources/tier_limit_resource.rb`
 - `spec/factories/plan_tier.rb`
@@ -651,16 +535,15 @@ end
 - `spec/snapshot_builders/core/tier_limits.rb`
 - `db/migrate/*_create_plan_tiers.rb`
 - `db/migrate/*_add_plan_tier_to_plans.rb`
-- `db/migrate/*_create_tier_limits.rb`
+- `db/migrate/*_rename_plan_limits_to_tier_limits.rb`
 - `db/migrate/*_migrate_plans_to_tiers.rb`
-- `db/migrate/*_drop_plan_limits.rb`
 
 ### Modified Files
+
 - `app/models/plan.rb` - Add belongs_to, delegation, remove has_many :plan_limits
 - `app/models/account.rb` - Update plan_limits method
 - `app/models/domain.rb` - Update subdomain_limit
 - `app/models/account_request_count.rb` - Update limit lookup
-- `app/models/concerns/atlas/plan.rb` - Update sync params
 - `app/controllers/api/v1/domains_controller.rb` - Update limit lookup
 - `app/services/credit_service.rb` - Use plan.credits
 - `config/initializers/stripe_config.rb` - Remove tier constants
@@ -668,7 +551,10 @@ end
 - `spec/factories/plan.rb` - Add plan_tier association
 - `langgraph_app/app/db/schema.ts` - Add new tables
 
+**Note:** `app/models/concerns/atlas/plan.rb` does NOT need changes - Atlas doesn't use plan/limit data.
+
 ### Files to Delete (after migration verified)
+
 - `app/models/plan_limit.rb`
 - `spec/factories/plan_limit.rb`
 - `spec/snapshot_builders/core/plan_limits.rb` (if exists)
@@ -679,6 +565,7 @@ end
 ## Testing Strategy
 
 ### Unit Tests
+
 ```ruby
 # spec/models/plan_tier_spec.rb
 RSpec.describe PlanTier do
@@ -716,12 +603,14 @@ end
 ```
 
 ### Integration Tests
+
 ```ruby
 # spec/features/subscriptions_spec.rb
 # Ensure subscription flow still works with new architecture
 ```
 
 ### Migration Tests
+
 ```ruby
 # Run in development first
 rails db:migrate
@@ -739,28 +628,36 @@ Plan.first.monthly_request_limit # => non-nil
 
 ## Rollout Plan
 
-### Phase 1: Add new tables (non-breaking)
-1. Create plan_tiers table
-2. Create tier_limits table
-3. Add plan_tier_id to plans
-4. Deploy - no code changes needed yet
+### Phase 1: Schema changes (non-breaking)
 
-### Phase 2: Migrate data
-1. Run data migration to populate tiers and tier_limits
-2. Associate plans with tiers
-3. Verify all plans have tier associations
+1. Create plan_tiers table
+2. Add plan_tier_id to plans table
+3. Add plan_tier_id to plan_limits table
+4. Rename plan_limits → tier_limits
+5. Deploy - no code changes needed yet
+
+### Phase 2: Data migration
+
+1. Create PlanTier records for starter/growth/pro
+2. Associate all plans with their tiers (update plan_tier_id)
+3. Point tier_limits to tiers (update plan_tier_id)
+4. Deduplicate limits (keep one set per tier, delete duplicates)
+5. Verify all plans have tier associations
 
 ### Phase 3: Update code
+
 1. Add PlanTier and TierLimit models
 2. Update Plan model with delegation
 3. Update services and controllers
-4. Deploy
+4. Rename PlanLimit → TierLimit references
+5. Deploy
 
 ### Phase 4: Cleanup (after verification)
-1. Drop plan_limits table
+
+1. Remove plan_id column from tier_limits
 2. Remove description column from plans (optional)
 3. Remove StripeConfig tier constants
-4. Delete old model/factory files
+4. Delete old model/factory files (plan_limit.rb, etc.)
 
 ---
 
@@ -773,9 +670,11 @@ Plan.first.monthly_request_limit # => non-nil
 - [ ] `account.plan_limits` returns tier limits
 - [ ] Domain subdomain limit checks work
 - [ ] AccountRequestCount limit checks work
+- [ ] Firewall blocking/unblocking works (via direct Cloudflare API, not Atlas)
 - [ ] CreditService allocates correct credits
 - [ ] Subscription creation still works (Pay gem unchanged)
-- [ ] Atlas sync includes correct usage limits
 - [ ] Admin can view/edit PlanTiers
 - [ ] Seeds create tiers before plans
 - [ ] All tests pass
+
+**Note:** Atlas sync verification removed - Atlas doesn't use plan/limit data (see Atlas Integration section above).

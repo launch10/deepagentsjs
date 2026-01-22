@@ -1,19 +1,16 @@
-import { usePage } from "@inertiajs/react";
 import { useMemo } from "react";
+import { usePage } from "@inertiajs/react";
 import type { UseLanggraphOptions } from "langgraph-ai-sdk-react";
 import type { Bridge } from "langgraph-ai-sdk-types";
 import { UploadsAPIService } from "@rails_api_base";
 import { validateFile } from "~/types/attachment";
 
-/**
- * Base props that all chat pages provide.
- */
-export interface BaseChatPageProps {
-  thread_id: string | null;
-  jwt: string;
-  langgraph_path: string;
-  root_path: string;
-  [key: string]: unknown;
+/** Common page props for chat pages */
+interface ChatPageProps {
+  thread_id?: string;
+  jwt?: string;
+  langgraph_path?: string;
+  root_path?: string;
 }
 
 export interface UseChatOptionsConfig<TBridge extends Bridge<any, any, any>> {
@@ -31,7 +28,7 @@ export interface UseChatOptionsConfig<TBridge extends Bridge<any, any, any>> {
 
 /**
  * Shared hook for creating langgraph chat options.
- * Extracts common props from the page and builds standard options.
+ * Reads directly from page props - simple and stable.
  *
  * @example
  * ```ts
@@ -50,7 +47,9 @@ export interface UseChatOptionsConfig<TBridge extends Bridge<any, any, any>> {
 export function useChatOptions<TBridge extends Bridge<any, any, any>>(
   config: UseChatOptionsConfig<TBridge>
 ): UseLanggraphOptions<TBridge> {
-  const { thread_id, jwt, langgraph_path, root_path } = usePage<BaseChatPageProps>().props;
+  // Read directly from page props - simple and stable
+  const page = usePage<ChatPageProps>();
+  const { thread_id, jwt, langgraph_path, root_path } = page.props;
   const {
     apiPath,
     merge,
@@ -62,7 +61,7 @@ export function useChatOptions<TBridge extends Bridge<any, any, any>>(
   return useMemo(() => {
     const url = langgraph_path ? new URL(apiPath, langgraph_path).toString() : "";
     const uploadService = includeAttachments
-      ? new UploadsAPIService({ jwt, baseUrl: root_path })
+      ? new UploadsAPIService({ jwt: jwt ?? "", baseUrl: root_path ?? "" })
       : null;
 
     const options: UseLanggraphOptions<TBridge> = {
@@ -71,7 +70,7 @@ export function useChatOptions<TBridge extends Bridge<any, any, any>>(
         "Content-Type": "application/json",
         Authorization: `Bearer ${jwt}`,
       },
-      getInitialThreadId: customGetInitialThreadId ?? (() => (thread_id ? thread_id : undefined)),
+      getInitialThreadId: customGetInitialThreadId ?? (() => thread_id),
     };
 
     if (merge) {

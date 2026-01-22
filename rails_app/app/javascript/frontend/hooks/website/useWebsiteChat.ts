@@ -1,7 +1,7 @@
 import { useLanggraph, type ChatSnapshot, type LanggraphChat } from "langgraph-ai-sdk-react";
 import type { UIMessage } from "ai";
 import type { WebsiteBridgeType, WebsiteGraphState } from "@shared";
-import { syncLanggraphToStore } from "~/stores/useSyncCoreEntities";
+import { syncLanggraphToStore } from "~/stores/useSyncProject";
 import { useChatOptions } from "@hooks/useChatOptions";
 
 export type WebsiteSnapshot = ChatSnapshot<WebsiteGraphState>;
@@ -18,7 +18,9 @@ export function useWebsiteChat(): LanggraphChat<UIMessage, WebsiteGraphState> {
   return chat;
 }
 
-export const useWebsiteSelector = <TSelected>(selector: (snapshot: WebsiteSnapshot) => TSelected) => {
+export const useWebsiteSelector = <TSelected>(
+  selector: (snapshot: WebsiteSnapshot) => TSelected
+) => {
   const options = useWebsiteChatOptions();
   return useLanggraph(options, selector);
 };

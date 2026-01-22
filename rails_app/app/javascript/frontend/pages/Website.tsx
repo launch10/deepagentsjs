@@ -13,11 +13,11 @@ import {
   useWebsiteChatActions,
   useWebsiteChatIsStreaming,
 } from "@hooks/website";
-import { useSyncPageProps } from "~/stores/useSyncCoreEntities";
-import type { InertiaProps } from "@shared";
 
-type WebsitePageProps =
-  InertiaProps.paths["/projects/{uuid}/website"]["get"]["responses"]["200"]["content"]["application/json"];
+interface WebsitePageProps {
+  website?: { id?: number };
+  project?: { id?: number };
+}
 
 const websiteLoaderSteps = [{ id: "1", label: "Setting up branding & colors" }];
 
@@ -75,8 +75,11 @@ function WebsitePaginationFooter({ isLoading }: { isLoading: boolean }) {
  * updateState reference changes causing infinite re-renders.
  */
 function useWebsiteInit() {
+  // Read directly from page props - simple and stable
   const { website, project } = usePage<WebsitePageProps>().props;
-  const projectId = project?.id!;
+  const websiteId = website?.id;
+  const projectId = project?.id;
+
   const { updateState } = useWebsiteChatActions();
   const isStreaming = useWebsiteChatIsStreaming();
   const chatId = useWebsiteChatState("chatId");
@@ -86,24 +89,22 @@ function useWebsiteInit() {
     // Only initialize once, and only if status is pending (no generation started)
     if (hasInitialized.current) return;
     if (isStreaming) return;
-    if (!website?.id) return;
+    if (!websiteId || !projectId) return;
 
     hasInitialized.current = true;
     updateState({
       command: "create",
-      websiteId: website.id,
+      websiteId,
       projectId,
     });
   });
 
   useEffect(() => {
     maybeInit();
-  }, [website?.id, projectId]);
+  }, [websiteId, projectId]);
 }
 
 export default function Website() {
-  useSyncPageProps(usePage().props);
-
   const chat = useWebsiteChat();
   const isLoadingHistory = useWebsiteChatIsLoadingHistory();
   const isStreaming = useWebsiteChatIsStreaming();

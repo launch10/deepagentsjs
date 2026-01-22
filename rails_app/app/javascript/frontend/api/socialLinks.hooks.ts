@@ -6,13 +6,13 @@ import {
   type UseMutationOptions,
 } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { usePage } from "@inertiajs/react";
 import {
   SocialLinksAPIService,
   type GetSocialLinksResponse,
   type BulkUpsertSocialLinksResponse,
 } from "@rails_api_base";
-import { useProjectId } from "~/stores/coreEntityStore";
+import { useProjectId } from "~/stores/projectStore";
+import { useJwt, useRootPath } from "~/stores/sessionStore";
 
 // Re-export for backwards compatibility
 export { SocialLinksAPIService as SocialLinksService } from "@rails_api_base";
@@ -33,13 +33,16 @@ export const socialLinksKeys = {
 
 /**
  * Hook that provides a memoized SocialLinksService instance
- * Uses JWT from page props for authentication
+ * Reads from sessionStore instead of page props - stores are hydrated in SiteLayout.
  */
 export function useSocialLinksService() {
-  const { jwt, root_path } = usePage<{ jwt: string; root_path: string }>().props;
-  return useMemo(() => new SocialLinksAPIService({ jwt, baseUrl: root_path }), [jwt, root_path]);
+  const jwt = useJwt();
+  const rootPath = useRootPath();
+  return useMemo(
+    () => new SocialLinksAPIService({ jwt: jwt ?? "", baseUrl: rootPath ?? "" }),
+    [jwt, rootPath]
+  );
 }
-
 
 // ============================================================================
 // Query Hooks
@@ -80,7 +83,15 @@ type MutationOptions<TData, TVariables> = Omit<
   "mutationFn"
 >;
 
-export type SocialPlatform = "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
+export type SocialPlatform =
+  | "twitter"
+  | "instagram"
+  | "facebook"
+  | "linkedin"
+  | "youtube"
+  | "tiktok"
+  | "website"
+  | "other";
 
 interface BulkUpsertSocialLinksVariables {
   socialLinks: Array<{
@@ -145,9 +156,7 @@ interface DeleteSocialLinkVariables {
  * mutate({ socialLinkId: 123 });
  * ```
  */
-export function useDeleteSocialLink(
-  options?: MutationOptions<void, DeleteSocialLinkVariables>
-) {
+export function useDeleteSocialLink(options?: MutationOptions<void, DeleteSocialLinkVariables>) {
   const service = useSocialLinksService();
   const projectId = useProjectId();
   const queryClient = useQueryClient();

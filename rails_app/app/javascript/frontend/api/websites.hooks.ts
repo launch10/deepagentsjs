@@ -12,7 +12,8 @@ import {
   type GetWebsiteResponse,
   type UpdateWebsiteResponse,
 } from "@rails_api_base";
-import { useWebsiteId as useCoreWebsiteId } from "~/stores/coreEntityStore";
+import { useWebsiteId as useCoreWebsiteId } from "~/stores/projectStore";
+import { useJwt, useRootPath } from "~/stores/sessionStore";
 
 // Re-export for backwards compatibility
 export { WebsiteAPIService as WebsiteService } from "@rails_api_base";
@@ -33,11 +34,15 @@ export const websiteKeys = {
 
 /**
  * Hook that provides a memoized WebsiteService instance
- * Uses JWT from page props for authentication
+ * Reads from sessionStore instead of page props - stores are hydrated in SiteLayout.
  */
 export function useWebsiteService() {
-  const { jwt, root_path } = usePage<{ jwt: string; root_path: string }>().props;
-  return useMemo(() => new WebsiteAPIService({ jwt, baseUrl: root_path }), [jwt, root_path]);
+  const jwt = useJwt();
+  const rootPath = useRootPath();
+  return useMemo(
+    () => new WebsiteAPIService({ jwt: jwt ?? "", baseUrl: rootPath ?? "" }),
+    [jwt, rootPath]
+  );
 }
 
 /**

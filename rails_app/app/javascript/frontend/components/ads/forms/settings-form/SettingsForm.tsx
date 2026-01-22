@@ -2,6 +2,8 @@ import { useEffect, useEffectEvent } from "react";
 import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { usePage } from "@inertiajs/react";
+import { AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@components/ui/alert";
 import { FieldSet } from "@components/ui/field";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { useSettingsFormStore } from "@stores/settingsFormStore";
@@ -51,17 +53,22 @@ export default function SettingsForm() {
     return () => subscription.unsubscribe();
   }, [methods, setValues]);
 
-  const { getData } = useAutosaveCampaign<SettingsFormData>({
+  const { getData, autosaveError } = useAutosaveCampaign<SettingsFormData>({
     methods,
     formId: "settings",
     transformFn: transformSettingsFormToApi,
   });
 
+  const rootError = methods.formState.errors.root?.message || autosaveError?.message;
+
   useFormRegistration("settings", methods, getData);
 
   return (
     <FormProvider {...methods}>
-      <div className="border border-neutral-300 border-t-0 rounded-b-2xl bg-white" data-testid="settings-form">
+      <div
+        className="border border-neutral-300 border-t-0 rounded-b-2xl bg-white"
+        data-testid="settings-form"
+      >
         <div className="py-8 pl-9 pr-[97px] flex flex-col gap-6">
           <div className="flex flex-col gap-0.5">
             <h2 className="text-lg font-semibold leading-[22px]">Settings</h2>
@@ -70,6 +77,12 @@ export default function SettingsForm() {
               ones helps your ads reach the right customers at the right time.
             </p>
           </div>
+          {rootError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{rootError}</AlertDescription>
+            </Alert>
+          )}
           <FieldSet>
             <LocationTargeting />
             <AdSchedule />
