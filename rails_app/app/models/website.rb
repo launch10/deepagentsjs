@@ -11,7 +11,6 @@
 #  project_id  :bigint
 #  template_id :bigint
 #  theme_id    :integer
-#  thread_id   :string
 #
 # Indexes
 #
@@ -22,7 +21,6 @@
 #  index_websites_on_project_id   (project_id)
 #  index_websites_on_template_id  (template_id)
 #  index_websites_on_theme_id     (theme_id)
-#  index_websites_on_thread_id    (thread_id) UNIQUE
 #
 
 class Website < ApplicationRecord
@@ -31,6 +29,7 @@ class Website < ApplicationRecord
   include WebsiteConcerns::ShasumHashable
   include WebsiteConcerns::FileManagement
   include WebsiteConcerns::ThemeCssInjection
+  include ChatCreatable
   historiographer_mode :snapshot_only
   acts_as_paranoid
   acts_as_tenant :account
@@ -38,6 +37,10 @@ class Website < ApplicationRecord
   belongs_to :project
   has_one :brainstorm
   belongs_to :account
+
+  def self.chat_type
+    "website"
+  end
   belongs_to :template
   belongs_to :theme, optional: true
 

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useChatContext } from "../ChatContext";
+import { useChatComposer, useChatIsStreaming } from "../ChatContext";
 import { BaseDropZone } from "../attachments/BaseDropZone";
 
 export interface DropZoneProps {
@@ -38,7 +38,8 @@ export interface DropZoneProps {
  * ```
  */
 export function DropZone({ children, onDrop, disabled, className }: DropZoneProps) {
-  const { composer, isStreaming } = useChatContext();
+  const composer = useChatComposer()
+  const isStreaming = useChatIsStreaming()
 
   const handleDrop = (files: FileList) => {
     if (onDrop) {

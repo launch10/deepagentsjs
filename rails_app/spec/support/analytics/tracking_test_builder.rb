@@ -107,7 +107,6 @@ class TrackingTestBuilder
         w.name = "Tracking Test Website"
         w.account = account
         w.template_id = template.id
-        w.thread_id = "tracking-test-thread-#{SecureRandom.hex(8)}"
       end
 
       # Load files from example directory into WebsiteFiles

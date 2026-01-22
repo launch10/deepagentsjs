@@ -32,15 +32,11 @@ deployRoutes.post("/stream", authMiddleware, async (c) => {
     return c.json({ error: "Missing required field: deployId" }, 400);
   }
 
-  // Validate thread ownership before processing
+  // Validate thread ownership - chat must exist (pre-created via ChatCreatable)
   const validationError = await validateThreadOrError(c, threadId, auth);
   if (validationError) return validationError;
 
   try {
-    // CRITICAL: Persist threadId to database FIRST, before starting the stream.
-    // This ensures the frontend can reconnect to the same thread after a page refresh.
-    await DeployService.saveThreadId(deployId, threadId);
-
     // Build initial state from request
     const initialState = {
       threadId,
@@ -98,7 +94,7 @@ deployRoutes.get("/stream", authMiddleware, async (c) => {
     return c.json({ error: "Missing threadId" }, 400);
   }
 
-  // Validate thread ownership before processing
+  // Validate thread ownership - chat must exist (pre-created via ChatCreatable)
   const validationError = await validateThreadOrError(c, threadId, auth);
   if (validationError) return validationError;
 

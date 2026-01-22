@@ -40,10 +40,9 @@ const MODEL_PROVIDERS: Record<string, LLMProvider> = {
   sonnet: "anthropic",
   haiku: "anthropic",
   haiku3: "anthropic",
-  groq: "groq",
   gpt5: "openai",
   gpt5_mini: "openai",
-  gpt_oss: "ollama",
+  gpt_oss: "groq",
   gemini_flash: "openai",
 };
 
@@ -96,11 +95,16 @@ class LLMService {
     if (provider !== "ollama" && !providerConfig.apiKey) return null;
 
     const { Client, apiKey } = providerConfig;
+    const modelCard = config.modelCard ?? modelKey;
+
+    // Some models (like GPT-5 mini) don't support temperature=0
+    const modelsWithFixedTemperature = ["gpt-5-mini", "gpt-5"];
+    const temperature = modelsWithFixedTemperature.includes(modelCard) ? undefined : 0;
 
     const model = new Client({
       apiKey: apiKey ?? undefined,
-      model: config.modelCard ?? modelKey,
-      temperature: 0,
+      model: modelCard,
+      temperature,
     } as any);
 
     // WORKAROUND: @langchain/anthropic bug where topP/topK default to -1 for newer models

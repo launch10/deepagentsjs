@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useChatContext } from "../ChatContext";
+import { useChatMessages } from "../ChatContext";
 
 export interface ScrollAnchorProps {
   /**
@@ -32,7 +32,7 @@ export function ScrollAnchor({
   behavior = "smooth",
   disabled = false,
 }: ScrollAnchorProps) {
-  const { messages } = useChatContext();
+  const messages = useChatMessages()
   const anchorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

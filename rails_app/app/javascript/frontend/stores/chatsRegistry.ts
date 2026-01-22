@@ -50,6 +50,9 @@ export const chatsRegistryStore = createStore<ChatsRegistryStore>()(
       return get().chats[page];
     },
 
+    // A big part of the ads workflow is ensuring the stage is present in the
+    // chat whenever the user navigates. Other workflows can use this if
+    // necessary just be registering with the chat store like useAdsChat does.
     syncStageToChat: (page, stage) => {
       const chat = get().chats[page];
       chat?.setState({ stage });

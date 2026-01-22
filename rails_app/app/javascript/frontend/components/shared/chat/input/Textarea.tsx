@@ -1,6 +1,6 @@
 import { forwardRef, type TextareaHTMLAttributes } from "react";
 import { twMerge } from "tailwind-merge";
-import { useChatContext } from "../ChatContext";
+import { useChatComposer, useChatIsStreaming, useChatSubmit } from "../ChatContext";
 
 export interface TextareaProps extends Omit<
   TextareaHTMLAttributes<HTMLTextAreaElement>,
@@ -33,7 +33,9 @@ export interface TextareaProps extends Omit<
  */
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
   ({ className, placeholder, value, onChange, onKeyDown, disabled, ...props }, ref) => {
-    const { composer, isStreaming, submit } = useChatContext();
+    const composer = useChatComposer()
+    const isStreaming = useChatIsStreaming()
+    const submit = useChatSubmit()
 
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       if (onChange) {

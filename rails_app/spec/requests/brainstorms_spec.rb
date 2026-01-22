@@ -20,11 +20,12 @@ RSpec.describe "Brainstorms API", type: :request do
     subscribe_account(user2_owned_account, plan_name: 'pro')
   end
 
+  let(:thread_id) { SecureRandom.uuid }
   def valid_brainstorm_params(name:, project_uuid: nil)
     {
       brainstorm: {
         name: name,
-        thread_id: SecureRandom.uuid,
+        thread_id: thread_id,
         project_attributes: project_uuid ? { uuid: project_uuid } : { uuid: UUID7.generate }
       }
     }
@@ -62,6 +63,7 @@ RSpec.describe "Brainstorms API", type: :request do
           expect(brainstorm.name).to eq("Brainstorm in Owned Account")
           expect(brainstorm.website.account_id).to eq(user1_owned_account.id)
           expect(brainstorm.chat.account_id).to eq(user1_owned_account.id)
+          expect(brainstorm.chat.thread_id).to eq(thread_id)
 
           expect(brainstorm.project.workflows.launch.first.step).to eq("brainstorm")
           expect(brainstorm.project.workflows.launch.first.substep).to be_nil
@@ -118,25 +120,6 @@ RSpec.describe "Brainstorms API", type: :request do
           expect(response.code).to eq("401")
         end
       end
-
-      response '422', 'invalid request - missing thread_id' do
-        let(:auth_headers) { auth_headers_for(user1) }
-        let(:Authorization) { auth_headers['Authorization'] }
-        let(:"X-Signature") { auth_headers['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-        let(:brainstorm_params) do
-          {
-            brainstorm: {
-              name: "Test Brainstorm"
-            }
-          }
-        end
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data["errors"]).to include("Thread ID is required")
-        end
-      end
     end
   end
 
@@ -154,11 +137,8 @@ RSpec.describe "Brainstorms API", type: :request do
       let!(:website1_owned) { create(:website, account: user1_owned_account, project: project1_owned, name: "Owned Website", template: template) }
       let!(:website1_team) { create(:website, account: user1_team_account, project: project1_team, name: "Team Website", template: template) }
 
-      let!(:brainstorm1_owned) { create(:brainstorm, website: website1_owned, thread_id: "123", project: project1_owned) }
-      let!(:brainstorm1_team) { create(:brainstorm, website: website1_team, thread_id: "456", project: project1_team) }
-
-      let!(:chat1_owned) { create(:chat, thread_id: "123", project: project1_owned, account: user1_owned_account, contextable: brainstorm1_owned) }
-      let!(:chat1_team) { create(:chat, thread_id: "456", project: project1_team, account: user1_team_account, contextable: brainstorm1_team) }
+      let!(:brainstorm1_owned) { create(:brainstorm, website: website1_owned, project: project1_owned) }
+      let!(:brainstorm1_team) { create(:brainstorm, website: website1_team, project: project1_team) }
 
       response '200', 'brainstorm found in owned account' do
         schema APISchemas::Brainstorm.response
@@ -166,12 +146,12 @@ RSpec.describe "Brainstorms API", type: :request do
         let(:Authorization) { auth_headers['Authorization'] }
         let(:"X-Signature") { auth_headers['X-Signature'] }
         let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-        let(:thread_id) { "123" }
+        let(:thread_id) { brainstorm1_owned.chat.thread_id }
 
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data["id"]).to eq(brainstorm1_owned.id)
-          expect(data["thread_id"]).to eq(brainstorm1_owned.thread_id)
+          expect(data["thread_id"]).to eq(brainstorm1_owned.chat.thread_id)
         end
       end
 
@@ -180,7 +160,7 @@ RSpec.describe "Brainstorms API", type: :request do
         let(:Authorization) { auth_headers['Authorization'] }
         let(:"X-Signature") { auth_headers['X-Signature'] }
         let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-        let(:thread_id) { "456" }
+        let(:thread_id) { brainstorm1_team.chat.thread_id }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -194,7 +174,7 @@ RSpec.describe "Brainstorms API", type: :request do
         let(:Authorization) { auth_headers['Authorization'] }
         let(:"X-Signature") { auth_headers['X-Signature'] }
         let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-        let(:thread_id) { "456" }
+        let(:thread_id) { brainstorm1_team.chat.thread_id }
 
         before do
           switch_account_to(user1_team_account)
@@ -238,16 +218,13 @@ RSpec.describe "Brainstorms API", type: :request do
       let!(:brainstorm1_owned) { create(:brainstorm, website: website1_owned) }
       let!(:brainstorm1_team) { create(:brainstorm, website: website1_team) }
 
-      let!(:chat1_owned) { create(:chat, thread_id: brainstorm1_owned.thread_id, project: project1_owned, account: user1_owned_account, contextable: brainstorm1_owned) }
-      let!(:chat1_team) { create(:chat, thread_id: brainstorm1_team.thread_id, project: project1_team, account: user1_team_account, contextable: brainstorm1_team) }
-
       response '200', 'brainstorm updated in owned account' do
         schema APISchemas::Brainstorm.response
         let(:auth_headers) { auth_headers_for(user1) }
         let(:Authorization) { auth_headers['Authorization'] }
         let(:"X-Signature") { auth_headers['X-Signature'] }
         let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-        let(:thread_id) { brainstorm1_owned.thread_id }
+        let(:thread_id) { brainstorm1_owned.chat.thread_id }
         let(:brainstorm_params) { { brainstorm: { idea: "Updated idea" } } }
 
         run_test! do |response|
@@ -261,7 +238,7 @@ RSpec.describe "Brainstorms API", type: :request do
         let(:Authorization) { auth_headers['Authorization'] }
         let(:"X-Signature") { auth_headers['X-Signature'] }
         let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-        let(:thread_id) { brainstorm1_team.thread_id }
+        let(:thread_id) { brainstorm1_team.chat.thread_id }
         let(:brainstorm_params) { { brainstorm: { idea: "Should not update" } } }
 
         run_test! do |response|
@@ -279,7 +256,7 @@ RSpec.describe "Brainstorms API", type: :request do
         let(:Authorization) { auth_headers['Authorization'] }
         let(:"X-Signature") { auth_headers['X-Signature'] }
         let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-        let(:thread_id) { brainstorm1_team.thread_id }
+        let(:thread_id) { brainstorm1_team.chat.thread_id }
         let(:brainstorm_params) { { brainstorm: { idea: "Team idea" } } }
 
         before do

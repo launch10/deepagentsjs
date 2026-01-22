@@ -62,7 +62,7 @@ class API::V1::SocialLinksController < API::BaseController
   private
 
   def set_project
-    @project = current_account.projects.find_by!(uuid: params[:project_uuid])
+    @project = current_account.projects.find(params[:project_id])
   end
 
   def set_social_link

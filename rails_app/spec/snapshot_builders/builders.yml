@@ -11,6 +11,11 @@ basic_account:
   base_snapshot: core_data
   description: "Creates a subscribed test user account"
 
+brainstorm_step:
+  class: BrainstormStep
+  base_snapshot: basic_account
+  description: "Creates a brainstorm project"
+
 website_step:
   class: WebsiteStep
   base_snapshot: basic_account

@@ -11,11 +11,14 @@ import { cn } from "@lib/utils";
 export default function Campaign() {
   const isLoadingHistory = useAdsChatIsLoadingHistory();
   const substep = useWorkflow(selectSubstep);
+
   const shouldHideTabSwitcher = substep === "launch" || substep === "review"; // Hide tab switcher on Launch/Review steps
 
   return (
     <main className="mx-auto container max-w-7xl grid grid-cols-[288px_1fr] gap-8 px-8">
-      <div><WorkflowPanel /></div>
+      <div>
+        <WorkflowPanel />
+      </div>
       <div className="max-w-[948px]">
         <AdPreview className="mb-8" />
         {!shouldHideTabSwitcher && <AdCampaignTabSwitcher disabled={isLoadingHistory} />}

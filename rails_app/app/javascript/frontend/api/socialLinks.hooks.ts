@@ -6,13 +6,13 @@ import {
   type UseMutationOptions,
 } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { usePage } from "@inertiajs/react";
 import {
   SocialLinksAPIService,
   type GetSocialLinksResponse,
   type BulkUpsertSocialLinksResponse,
 } from "@rails_api_base";
-import { useBrainstormChatThreadId } from "@components/brainstorm/hooks/useBrainstormChat";
+import { useProjectId } from "~/stores/projectStore";
+import { useJwt, useRootPath } from "~/stores/sessionStore";
 
 // Re-export for backwards compatibility
 export { SocialLinksAPIService as SocialLinksService } from "@rails_api_base";
@@ -24,7 +24,7 @@ export { SocialLinksAPIService as SocialLinksService } from "@rails_api_base";
 export const socialLinksKeys = {
   all: ["socialLinks"] as const,
   lists: () => [...socialLinksKeys.all, "list"] as const,
-  list: (projectUuid: string) => [...socialLinksKeys.lists(), projectUuid] as const,
+  list: (projectId: number) => [...socialLinksKeys.lists(), projectId] as const,
 };
 
 // ============================================================================
@@ -33,29 +33,15 @@ export const socialLinksKeys = {
 
 /**
  * Hook that provides a memoized SocialLinksService instance
- * Uses JWT from page props for authentication
+ * Reads from sessionStore instead of page props - stores are hydrated in SiteLayout.
  */
 export function useSocialLinksService() {
-  const { jwt, root_path } = usePage<{ jwt: string; root_path: string }>().props;
-  return useMemo(() => new SocialLinksAPIService({ jwt, baseUrl: root_path }), [jwt, root_path]);
-}
-
-/**
- * Hook to get the current project UUID - uses chat state (primary) with page props fallback.
- *
- * Previously, we only used Inertia props. However, when navigating from / to
- * /projects/{uuid}/brainstorm via pushState (after sending the first message),
- * the Inertia props don't update, so API calls were disabled.
- *
- * Now we use the chat's threadId (which IS the project UUID) as the primary source,
- * falling back to Inertia props.
- */
-function useProjectUuid(): string | null {
-  const chatThreadId = useBrainstormChatThreadId();
-  const { project } = usePage<{ project?: { uuid: string } }>().props;
-  const propsProjectUuid = project?.uuid ?? null;
-
-  return chatThreadId ?? propsProjectUuid;
+  const jwt = useJwt();
+  const rootPath = useRootPath();
+  return useMemo(
+    () => new SocialLinksAPIService({ jwt: jwt ?? "", baseUrl: rootPath ?? "" }),
+    [jwt, rootPath]
+  );
 }
 
 // ============================================================================
@@ -77,12 +63,12 @@ type SocialLinksQueryOptions = Omit<
  */
 export function useSocialLinks(options?: SocialLinksQueryOptions) {
   const service = useSocialLinksService();
-  const projectUuid = useProjectUuid();
+  const projectId = useProjectId();
 
   return useQuery({
-    queryKey: socialLinksKeys.list(projectUuid ?? ""),
-    queryFn: () => service.get(projectUuid!),
-    enabled: !!projectUuid,
+    queryKey: socialLinksKeys.list(projectId ?? 0),
+    queryFn: () => service.get(projectId!),
+    enabled: !!projectId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     ...options,
   });
@@ -97,7 +83,15 @@ type MutationOptions<TData, TVariables> = Omit<
   "mutationFn"
 >;
 
-export type SocialPlatform = "twitter" | "instagram" | "facebook" | "linkedin" | "youtube" | "tiktok" | "website" | "other";
+export type SocialPlatform =
+  | "twitter"
+  | "instagram"
+  | "facebook"
+  | "linkedin"
+  | "youtube"
+  | "tiktok"
+  | "website"
+  | "other";
 
 interface BulkUpsertSocialLinksVariables {
   socialLinks: Array<{
@@ -125,22 +119,22 @@ export function useBulkUpsertSocialLinks(
   options?: MutationOptions<BulkUpsertSocialLinksResponse, BulkUpsertSocialLinksVariables>
 ) {
   const service = useSocialLinksService();
-  const projectUuid = useProjectUuid();
+  const projectId = useProjectId();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ socialLinks }: BulkUpsertSocialLinksVariables) => {
-      if (!projectUuid) {
-        throw new Error("Project UUID is required");
+      if (!projectId) {
+        throw new Error("Project ID is required");
       }
-      return service.bulkUpsert(projectUuid, socialLinks);
+      return service.bulkUpsert(projectId, socialLinks);
     },
     ...options,
     onSuccess: (...args) => {
       const [data] = args;
       // Always update the cache with the new data
-      if (projectUuid) {
-        queryClient.setQueryData(socialLinksKeys.list(projectUuid), data);
+      if (projectId) {
+        queryClient.setQueryData(socialLinksKeys.list(projectId), data);
       }
       // Then call user's onSuccess if provided
       options?.onSuccess?.(...args);
@@ -162,27 +156,25 @@ interface DeleteSocialLinkVariables {
  * mutate({ socialLinkId: 123 });
  * ```
  */
-export function useDeleteSocialLink(
-  options?: MutationOptions<void, DeleteSocialLinkVariables>
-) {
+export function useDeleteSocialLink(options?: MutationOptions<void, DeleteSocialLinkVariables>) {
   const service = useSocialLinksService();
-  const projectUuid = useProjectUuid();
+  const projectId = useProjectId();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ socialLinkId }: DeleteSocialLinkVariables) => {
-      if (!projectUuid) {
-        throw new Error("Project UUID is required");
+      if (!projectId) {
+        throw new Error("Project ID is required");
       }
-      return service.delete(projectUuid, socialLinkId);
+      return service.delete(projectId, socialLinkId);
     },
     ...options,
     onSuccess: (...args) => {
       const [, variables] = args;
       // Remove the deleted link from the cache
-      if (projectUuid) {
+      if (projectId) {
         queryClient.setQueryData<GetSocialLinksResponse>(
-          socialLinksKeys.list(projectUuid),
+          socialLinksKeys.list(projectId),
           (oldData) => oldData?.filter((link) => link.id !== variables.socialLinkId) ?? []
         );
       }

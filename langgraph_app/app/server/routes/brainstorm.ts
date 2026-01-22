@@ -25,10 +25,6 @@ brainstormRoutes.post("/stream", authMiddleware, async (c) => {
     return c.json({ error: "Missing required fields: messages, threadId" }, 400);
   }
 
-  // Validate thread ownership before processing
-  const validationError = await validateThreadOrError(c, threadId, auth);
-  if (validationError) return validationError;
-
   let stateObj = state || {};
 
   return BrainstormAPI.stream({
@@ -50,7 +46,7 @@ brainstormRoutes.get("/stream", authMiddleware, async (c) => {
     return c.json({ error: "Missing threadId" }, 400);
   }
 
-  // Validate thread ownership before processing
+  // Validate thread ownership for loading history - chat must exist
   const validationError = await validateThreadOrError(c, threadId, auth);
   if (validationError) return validationError;
 

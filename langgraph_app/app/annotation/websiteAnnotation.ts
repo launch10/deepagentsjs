@@ -2,11 +2,17 @@ import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 import type { PrimaryKeyType } from "@types";
 import { Brainstorm, Website, Core, type ConsoleError } from "@types";
+import { createBridge } from "langgraph-ai-sdk";
 
 export const WebsiteAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
 
   command: Annotation<Website.CommandName | undefined>({
+    default: () => undefined,
+    reducer: (current, next) => next,
+  }),
+
+  improveCopyStyle: Annotation<Website.ImproveCopyStyle | undefined>({
     default: () => undefined,
     reducer: (current, next) => next,
   }),
@@ -55,3 +61,9 @@ export const WebsiteAnnotation = Annotation.Root({
 });
 
 export type WebsiteGraphState = typeof WebsiteAnnotation.State;
+
+// Bridge from Langgraph -> the AI SDK for streaming to frontend
+export const WebsiteBridge = createBridge({
+  endpoint: "/api/website/stream",
+  stateAnnotation: WebsiteAnnotation,
+});

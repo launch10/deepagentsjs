@@ -109,6 +109,8 @@ export async function createRailsApiClient(options: RailsApiClientOptions = {}) 
   const client = createClient<paths>({
     baseUrl,
     headers: headers(jwtToken, internalServiceCall),
+    // Include credentials (cookies) for frontend requests to enable session auth
+    ...(isFrontend() && { credentials: 'include' }),
   });
 
   return client;

@@ -1,17 +1,17 @@
-import { describe, it, expect, vi, type Mock } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { BrainstormInput } from "../shared/BrainstormInput";
-import { ChatContext, type ChatContextValue } from "@components/shared/chat/ChatContext";
+import { ChatProvider } from "@components/shared/chat/ChatContext";
 import type { ReactNode } from "react";
+import type { UIMessage } from "ai";
+import type { LanggraphChat, ChatSnapshot } from "langgraph-ai-sdk-react";
 
 // Mock the hooks used by BrainstormInput
-vi.mock("@components/brainstorm/hooks/useBrainstormChat", () => ({
-  useBrainstormChatState: () => null, // No custom placeholder
-}));
-
-vi.mock("@components/brainstorm/hooks/useBrainstormSendMessage", () => ({
-  useBrainstormSendMessage: () => ({
-    sendMessage: vi.fn(),
+vi.mock("@components/brainstorm/hooks", () => ({
+  useBrainstormSelector: vi.fn((selector) => {
+    // Return placeholder text for the state.placeholderText selector
+    const mockState = { placeholderText: null };
+    return selector({ state: mockState });
   }),
 }));
 
@@ -19,38 +19,129 @@ vi.mock("@lib/brainstormTextarea", () => ({
   setTextareaRef: vi.fn(),
 }));
 
-// Create mock context value
-const createMockContext = (): ChatContextValue => ({
-  snapshot: {} as ChatContextValue["snapshot"],
-  messages: [],
-  composer: {
+// Mock the langgraph-ai-sdk-react module
+vi.mock("langgraph-ai-sdk-react", async (importOriginal) => {
+  const actual = await importOriginal() as any;
+  return {
+    ...actual,
+    useChatSelector: vi.fn((chat, selector) => {
+      // Mock the snapshot and apply the selector
+      const mockSnapshot = createMockSnapshot(chat);
+      return selector(mockSnapshot);
+    }),
+    useChatSnapshot: vi.fn((chat) => createMockSnapshot(chat)),
+    createSnapshot: vi.fn((chat) => createMockSnapshot(chat)),
+    ChatSelectors: {
+      messages: (s: any) => s.messages,
+      composer: (s: any) => s.composer,
+      status: (s: any) => s.status,
+      isStreaming: (s: any) => s.status === "streaming" || s.status === "submitted",
+      isLoading: (s: any) => s.isLoading,
+      isReady: (s: any) => s.isReady,
+      actions: (s: any) => s.actions,
+      error: (s: any) => s.error,
+      threadId: (s: any) => s.threadId,
+      state: (s: any) => s.state,
+      stop: (s: any) => s.stop ?? s.actions?.stop,
+    },
+  };
+});
+
+// Mock composer for testing
+function createMockComposer() {
+  return {
     text: "",
-    setText: vi.fn(),
     attachments: [],
-    addFiles: vi.fn(),
-    removeAttachment: vi.fn(),
-    retryAttachment: vi.fn(),
-    addImageUrl: vi.fn(),
-    clear: vi.fn(),
-    isReady: false,
     isUploading: false,
     hasErrors: false,
+    isReady: false,
     isEmpty: true,
-  } as unknown as ChatContextValue["composer"],
-  status: "idle" as ChatContextValue["status"],
-  isStreaming: false,
-  isLoading: false,
-  sendMessage: vi.fn() as unknown as ChatContextValue["sendMessage"],
-  submit: vi.fn(),
-  stop: vi.fn() as unknown as ChatContextValue["stop"],
-});
+    setText: vi.fn(),
+    addFiles: vi.fn(),
+    addFileUrl: vi.fn(),
+    addImageUrl: vi.fn(),
+    addAttachment: vi.fn(),
+    removeAttachment: vi.fn(),
+    retryAttachment: vi.fn(),
+    clear: vi.fn(),
+  };
+}
+
+// Mock chat snapshot for testing
+function createMockSnapshot(chat?: any): ChatSnapshot<Record<string, unknown>> {
+  const composer = createMockComposer();
+  return {
+    messages: chat?._testMessages ?? [],
+    state: {},
+    status: chat?._testStatus ?? "ready",
+    error: undefined,
+    tools: [],
+    events: [],
+    isLoadingHistory: false,
+    isLoading: false,
+    isReady: true,
+    threadId: "test-thread",
+    rawMessages: [],
+    composer,
+    chat: chat ?? ({} as any),
+    actions: {
+      sendMessage: vi.fn(),
+      updateState: vi.fn(),
+      setState: vi.fn(),
+      stop: vi.fn(),
+      clearError: vi.fn(),
+      setMessages: vi.fn(),
+    },
+    sendMessage: vi.fn(),
+    updateState: vi.fn(),
+    setState: vi.fn(),
+    stop: vi.fn(),
+    clearError: vi.fn(),
+    setMessages: vi.fn(),
+  } as ChatSnapshot<Record<string, unknown>>;
+}
+
+// Mock chat instance for testing
+function createMockChat(overrides?: Record<string, any>): LanggraphChat<UIMessage, Record<string, unknown>> {
+  return {
+    threadId: "test-thread",
+    isNewChat: false,
+    messages: [],
+    langgraphMessages: [],
+    langgraphState: {},
+    status: "ready",
+    error: undefined,
+    isLoading: false,
+    isLoadingHistory: false,
+    historyLoaded: true,
+    composer: createMockComposer(),
+    tools: [],
+    events: [],
+    exposedThreadId: "test-thread",
+    sendLanggraphMessage: vi.fn(),
+    runStateOnly: vi.fn(),
+    setState: vi.fn(),
+    loadState: vi.fn(),
+    stop: vi.fn(),
+    clearError: vi.fn(),
+    loadHistoryOnce: vi.fn(),
+    abortHistoryLoad: vi.fn(),
+    setIsLoadingHistory: vi.fn(),
+    clearPersistedState: vi.fn(),
+    onEstablished: vi.fn(() => () => {}),
+    generateId: vi.fn(() => "test-id"),
+    sendMessage: vi.fn(),
+    ...overrides,
+  } as unknown as LanggraphChat<UIMessage, Record<string, unknown>>;
+}
 
 // Wrapper that provides Chat context
 function ChatContextWrapper({ children }: { children: ReactNode }) {
+  const mockChat = createMockChat();
   return (
-    <ChatContext.Provider value={createMockContext()}>
+    <ChatProvider chat={mockChat}>
       {children}
-    </ChatContext.Provider>
+    </ChatProvider>
   );
 }
 

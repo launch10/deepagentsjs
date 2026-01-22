@@ -1305,7 +1305,6 @@ CREATE TABLE public.brainstorms (
     social_proof character varying,
     look_and_feel character varying,
     website_id bigint,
-    thread_id character varying,
     completed_at timestamp without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL
@@ -1645,7 +1644,6 @@ CREATE TABLE public.websites (
     account_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    thread_id character varying,
     template_id bigint,
     theme_id integer,
     deleted_at timestamp(6) without time zone
@@ -1848,7 +1846,6 @@ CREATE TABLE public.deploys (
     current_step character varying,
     is_live boolean DEFAULT false,
     stacktrace text,
-    langgraph_thread_id character varying,
     website_deploy_id bigint,
     campaign_deploy_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
@@ -2488,7 +2485,9 @@ CREATE TABLE public.model_configs (
     cost_out numeric(10,4),
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    model_card character varying
+    model_card character varying,
+    cache_writes numeric(10,4),
+    cache_reads numeric(10,4)
 );
 
 
@@ -7220,13 +7219,6 @@ CREATE INDEX index_brainstorms_on_created_at ON public.brainstorms USING btree (
 
 
 --
--- Name: index_brainstorms_on_thread_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_brainstorms_on_thread_id ON public.brainstorms USING btree (thread_id);
-
-
---
 -- Name: index_brainstorms_on_website_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7560,13 +7552,6 @@ CREATE INDEX index_deploys_on_campaign_deploy_id ON public.deploys USING btree (
 --
 
 CREATE INDEX index_deploys_on_is_live ON public.deploys USING btree (is_live);
-
-
---
--- Name: index_deploys_on_langgraph_thread_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_langgraph_thread_id ON public.deploys USING btree (langgraph_thread_id);
 
 
 --
@@ -8827,13 +8812,6 @@ CREATE INDEX index_websites_on_template_id ON public.websites USING btree (templ
 --
 
 CREATE INDEX index_websites_on_theme_id ON public.websites USING btree (theme_id);
-
-
---
--- Name: index_websites_on_thread_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_websites_on_thread_id ON public.websites USING btree (thread_id);
 
 
 --
@@ -10123,6 +10101,8 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260120194521'),
+('20260120155753'),
 ('20260117001808'),
 ('20260116143258'),
 ('20260115181801'),

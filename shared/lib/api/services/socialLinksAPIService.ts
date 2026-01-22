@@ -6,15 +6,15 @@ import type { Simplify } from "type-fest";
 // ============================================================================
 
 export type GetSocialLinksResponse = NonNullable<
-  paths["/api/v1/projects/{project_uuid}/social_links"]["get"]["responses"][200]["content"]["application/json"]
+  paths["/api/v1/projects/{project_id}/social_links"]["get"]["responses"][200]["content"]["application/json"]
 >;
 
 export type BulkUpsertSocialLinksRequest = NonNullable<
-  paths["/api/v1/projects/{project_uuid}/social_links/bulk_upsert"]["post"]["requestBody"]
+  paths["/api/v1/projects/{project_id}/social_links/bulk_upsert"]["post"]["requestBody"]
 >["content"]["application/json"];
 
 export type BulkUpsertSocialLinksResponse = NonNullable<
-  paths["/api/v1/projects/{project_uuid}/social_links/bulk_upsert"]["post"]["responses"][200]["content"]["application/json"]
+  paths["/api/v1/projects/{project_id}/social_links/bulk_upsert"]["post"]["responses"][200]["content"]["application/json"]
 >;
 
 export type SocialLink = GetSocialLinksResponse[number];
@@ -31,11 +31,11 @@ export class SocialLinksAPIService extends RailsAPIBase {
     super(options);
   }
 
-  async get(projectUuid: string): Promise<GetSocialLinksResponse> {
+  async get(projectId: number): Promise<GetSocialLinksResponse> {
     const client = await this.getClient();
-    const response = await client.GET("/api/v1/projects/{project_uuid}/social_links", {
+    const response = await client.GET("/api/v1/projects/{project_id}/social_links", {
       params: {
-        path: { project_uuid: projectUuid },
+        path: { project_id: projectId },
       },
     });
 
@@ -51,13 +51,13 @@ export class SocialLinksAPIService extends RailsAPIBase {
   }
 
   async bulkUpsert(
-    projectUuid: string,
+    projectId: number,
     socialLinks: BulkUpsertSocialLinksRequest["social_links"]
   ): Promise<BulkUpsertSocialLinksResponse> {
     const client = await this.getClient();
-    const response = await client.POST("/api/v1/projects/{project_uuid}/social_links/bulk_upsert", {
+    const response = await client.POST("/api/v1/projects/{project_id}/social_links/bulk_upsert", {
       params: {
-        path: { project_uuid: projectUuid },
+        path: { project_id: projectId },
       },
       body: { social_links: socialLinks },
     });
@@ -73,11 +73,11 @@ export class SocialLinksAPIService extends RailsAPIBase {
     return response.data satisfies BulkUpsertSocialLinksResponse;
   }
 
-  async delete(projectUuid: string, socialLinkId: number): Promise<void> {
+  async delete(projectId: number, socialLinkId: number): Promise<void> {
     const client = await this.getClient();
-    const response = await client.DELETE("/api/v1/projects/{project_uuid}/social_links/{id}", {
+    const response = await client.DELETE("/api/v1/projects/{project_id}/social_links/{id}", {
       params: {
-        path: { project_uuid: projectUuid, id: socialLinkId },
+        path: { project_id: projectId, id: socialLinkId },
       },
     });
 

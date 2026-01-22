@@ -48,6 +48,7 @@ class Campaign < ApplicationRecord
   include CampaignConcerns::GooglePlatformSettings
   include CampaignConcerns::MetaPlatformSettings
   include CampaignConcerns::GoogleSyncable
+  include ChatCreatable
 
   acts_as_paranoid
   acts_as_tenant :account
@@ -63,7 +64,10 @@ class Campaign < ApplicationRecord
   has_many :campaign_deploys, dependent: :destroy
   has_one :launch_workflow, -> { where(workflow_type: "launch") }, through: :project, source: :workflows
   has_many :ad_schedules, dependent: :destroy
-  has_one :chat, as: :contextable, class_name: "Chat"
+
+  def self.chat_type
+    "ad_campaign"
+  end
 
   # Ad creative
   has_many :callouts, class_name: "AdCallout", dependent: :destroy

@@ -88,7 +88,7 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
 
     context 'when website is created' do
       it 'syncs to Atlas with account_id' do
-        website = build(:website, project: project, account: account, thread_id: 'thread_123')
+        website = build(:website, project: project, account: account)
 
         expect(atlas_websites).to receive(:create).with(
           hash_including(
@@ -103,7 +103,7 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
 
     context 'when website is destroyed' do
       it 'removes from Atlas' do
-        website = create(:website, project: project, account: account, thread_id: 'thread_456')
+        website = create(:website, project: project, account: account)
 
         expect(atlas_websites).to receive(:destroy).with(website.id)
 
@@ -115,7 +115,7 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
   describe 'Domain Atlas sync' do
     let(:account) { create(:account) }
     let(:project) { create(:project, account: account) }
-    let(:website) { create(:website, project: project, account: account, thread_id: 'thread_789') }
+    let(:website) { create(:website, project: project, account: account) }
 
     context 'when domain is created' do
       it 'syncs to Atlas with domain and website_id' do

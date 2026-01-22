@@ -14,8 +14,8 @@ RSpec.describe "Social Links API", type: :request do
     switch_account_to(account)
   end
 
-  path '/api/v1/projects/{project_uuid}/social_links' do
-    parameter name: :project_uuid, in: :path, type: :string, description: 'Project UUID'
+  path '/api/v1/projects/{project_id}/social_links' do
+    parameter name: :project_id, in: :path, type: :integer, description: 'Project ID'
 
     get 'Lists social links for a project' do
       tags 'Social Links'
@@ -25,7 +25,7 @@ RSpec.describe "Social Links API", type: :request do
       parameter name: 'X-Signature', in: :header, type: :string, required: false
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
 
-      let(:project_uuid) { project.uuid }
+      let(:project_id) { project.id }
 
       let!(:twitter_link) { create(:social_link, :twitter, project: project) }
       let!(:instagram_link) { create(:social_link, :instagram, project: project) }
@@ -58,7 +58,7 @@ RSpec.describe "Social Links API", type: :request do
         let(:Authorization) { auth_headers['Authorization'] }
         let(:"X-Signature") { auth_headers['X-Signature'] }
         let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-        let(:project_uuid) { 'non-existent-uuid' }
+        let(:project_id) { 999999 }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -77,7 +77,7 @@ RSpec.describe "Social Links API", type: :request do
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
       parameter name: :social_link_params, in: :body, schema: APISchemas::SocialLink.params_schema
 
-      let(:project_uuid) { project.uuid }
+      let(:project_id) { project.id }
 
       response '201', 'social link created successfully' do
         schema APISchemas::SocialLink.response
@@ -266,11 +266,11 @@ RSpec.describe "Social Links API", type: :request do
     end
   end
 
-  path '/api/v1/projects/{project_uuid}/social_links/{id}' do
-    parameter name: :project_uuid, in: :path, type: :string, description: 'Project UUID'
+  path '/api/v1/projects/{project_id}/social_links/{id}' do
+    parameter name: :project_id, in: :path, type: :integer, description: 'Project ID'
     parameter name: :id, in: :path, type: :integer, description: 'Social Link ID'
 
-    let(:project_uuid) { project.uuid }
+    let(:project_id) { project.id }
     let!(:social_link) { create(:social_link, :twitter, project: project) }
 
     get 'Retrieves a social link' do
@@ -460,8 +460,8 @@ RSpec.describe "Social Links API", type: :request do
     end
   end
 
-  path '/api/v1/projects/{project_uuid}/social_links/bulk_upsert' do
-    parameter name: :project_uuid, in: :path, type: :string, description: 'Project UUID'
+  path '/api/v1/projects/{project_id}/social_links/bulk_upsert' do
+    parameter name: :project_id, in: :path, type: :integer, description: 'Project ID'
 
     post 'Bulk upsert social links' do
       tags 'Social Links'
@@ -473,7 +473,7 @@ RSpec.describe "Social Links API", type: :request do
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
       parameter name: :bulk_params, in: :body, schema: APISchemas::SocialLink.bulk_upsert_params_schema
 
-      let(:project_uuid) { project.uuid }
+      let(:project_id) { project.id }
 
       response '200', 'all social links created/updated successfully' do
         schema APISchemas::SocialLink.bulk_upsert_response
@@ -572,8 +572,8 @@ RSpec.describe "Social Links API", type: :request do
       subscribe_account(other_account, plan_name: 'pro')
     end
 
-    path '/api/v1/projects/{project_uuid}/social_links' do
-      parameter name: :project_uuid, in: :path, type: :string, description: 'Project UUID'
+    path '/api/v1/projects/{project_id}/social_links' do
+      parameter name: :project_id, in: :path, type: :integer, description: 'Project ID'
 
       get 'Cannot access other account project social links' do
         tags 'Social Links'
@@ -588,7 +588,7 @@ RSpec.describe "Social Links API", type: :request do
           let(:Authorization) { auth_headers['Authorization'] }
           let(:"X-Signature") { auth_headers['X-Signature'] }
           let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-          let(:project_uuid) { other_project.uuid }
+          let(:project_id) { other_project.id }
 
           run_test! do |response|
             data = JSON.parse(response.body)

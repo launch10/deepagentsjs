@@ -12,19 +12,18 @@ module CampaignConcerns
             campaign = project.campaigns.first
             ad_group = campaign.ad_groups.first
             ad = ad_group.ads.first
-            chat = campaign.chat
 
             return {
               campaign: campaign,
               ad_group: ad_group,
               ad: ad,
-              chat: chat
+              chat: campaign.chat
             }
           end
 
           website_id = campaign_params.key?(:website_id) ? campaign_params[:website_id] : Website.find_by(project_id: campaign_params[:project_id])&.id
-          thread_id = campaign_params[:thread_id] || SecureRandom.uuid
 
+          # ChatCreatable auto-creates the chat on campaign creation
           campaign = account.campaigns.create!(
             name: campaign_params[:name],
             project_id: campaign_params[:project_id],
@@ -39,24 +38,11 @@ module CampaignConcerns
 
           campaign.launch_workflow.update!(step: "ad_campaign", substep: "content")
 
-          # Create chat for this campaign
-          unless campaign.chat.present?
-            chat = campaign.build_chat(
-              name: "Ad Campaign Chat",
-              chat_type: "ad_campaign", # Comes from WorkflowConfig
-              contextable: campaign,
-              thread_id: thread_id,
-              project: campaign.project,
-              account: account
-            )
-            chat.save!
-          end
-
           {
             campaign: campaign,
             ad_group: ad_group,
             ad: ad,
-            chat: chat
+            chat: campaign.chat
           }
         end
       end

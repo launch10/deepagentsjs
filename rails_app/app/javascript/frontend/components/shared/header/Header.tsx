@@ -6,7 +6,7 @@ export default function Header() {
   return (
     <>
       <ImpersonationBanner />
-      <header className="bg-background py-5 sticky top-0 z-10 relative">
+      <header className="bg-background py-6 sticky top-0 z-10 relative border-b border-base-200">
         {/* Logo and User at actual edges - NO max-width constraint */}
         <div className="flex justify-between items-center px-6">
           <img src="/images/launch10-logo.svg" alt="Launch10" className="h-8" />

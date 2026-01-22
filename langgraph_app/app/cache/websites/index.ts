@@ -1,2 +1,7 @@
-export { schedulingToolFiles } from "./schedulingTool";
-export { schedulingToolMinorEditFiles } from "./schedulingToolMinorEdit";
+export { getSchedulingToolFiles, readExampleFiles } from "./readExampleFiles";
+export { getSchedulingToolMinorEditFiles } from "./schedulingToolMinorEdit";
+export {
+  getSchedulingToolProfessionalFiles,
+  getSchedulingToolFriendlyFiles,
+  getSchedulingToolShorterFiles,
+} from "./schedulingToolImproveCopy";

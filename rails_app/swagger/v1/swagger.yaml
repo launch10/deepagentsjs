@@ -73,8 +73,6 @@ paths:
                 - updated_at
         '401':
           description: unauthorized - missing token
-        '422':
-          description: invalid request - missing thread_id
       requestBody:
         content:
           application/json:
@@ -616,29 +614,6 @@ paths:
                 - updated_at
         '401':
           description: unauthorized - missing token
-        '422':
-          description: invalid request - missing thread_id
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  error:
-                    type: string
-                    description: Single error message
-                  errors:
-                    oneOf:
-                    - type: array
-                      items:
-                        type: string
-                      description: Array of error messages
-                    - type: object
-                      additionalProperties:
-                        type: array
-                        items:
-                          type: string
-                      description: Object with field paths as keys and arrays of error
-                        messages as values
       requestBody:
         content:
           application/json:
@@ -1256,6 +1231,8 @@ paths:
         schema:
           type: string
       responses:
+        '403':
+          description: thread exists but belongs to different account - invalid
         '200':
           description: thread exists and belongs to current account - valid
           content:
@@ -1280,8 +1257,6 @@ paths:
                 required:
                 - valid
                 - exists
-        '403':
-          description: thread exists but belongs to different account - invalid
         '422':
           description: missing thread_id
         '401':
@@ -1297,169 +1272,6 @@ paths:
                   description: Thread ID to validate
               required:
               - thread_id
-  "/api/v1/chats":
-    post:
-      summary: Creates a chat for thread ownership
-      tags:
-      - Chats
-      security:
-      - bearer_auth: []
-      parameters:
-      - name: Authorization
-        in: header
-        required: false
-        schema:
-          type: string
-      - name: X-Signature
-        in: header
-        required: false
-        schema:
-          type: string
-      - name: X-Timestamp
-        in: header
-        required: false
-        schema:
-          type: string
-      responses:
-        '201':
-          description: chat created for deploy type
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                    description: Unique identifier
-                  thread_id:
-                    type: string
-                    format: uuid
-                    description: UUID identifier
-                  chat_type:
-                    type: string
-                    description: Type of chat (brainstorm, website, ad_campaign, deploy)
-                  project_id:
-                    type: integer
-                    description: Unique identifier
-                  account_id:
-                    type: integer
-                    description: Unique identifier
-                  name:
-                    type: string
-                    nullable: true
-                    description: Chat name
-                  created_at:
-                    type: string
-                    format: date-time
-                    description: Timestamp
-                  updated_at:
-                    type: string
-                    format: date-time
-                    description: Timestamp
-                required:
-                - id
-                - thread_id
-                - chat_type
-                - project_id
-                - account_id
-                - created_at
-                - updated_at
-        '200':
-          description: chat already exists for same account - returns existing
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                    description: Unique identifier
-                  thread_id:
-                    type: string
-                    format: uuid
-                    description: UUID identifier
-                  chat_type:
-                    type: string
-                    description: Type of chat (brainstorm, website, ad_campaign, deploy)
-                  project_id:
-                    type: integer
-                    description: Unique identifier
-                  account_id:
-                    type: integer
-                    description: Unique identifier
-                  name:
-                    type: string
-                    nullable: true
-                    description: Chat name
-                  created_at:
-                    type: string
-                    format: date-time
-                    description: Timestamp
-                  updated_at:
-                    type: string
-                    format: date-time
-                    description: Timestamp
-                required:
-                - id
-                - thread_id
-                - chat_type
-                - project_id
-                - account_id
-                - created_at
-                - updated_at
-        '403':
-          description: thread already exists for different account
-        '404':
-          description: project not found or belongs to different account
-        '422':
-          description: missing required fields
-        '401':
-          description: unauthorized - missing token
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                chat:
-                  type: object
-                  properties:
-                    thread_id:
-                      type: string
-                      description: Thread ID from Langgraph
-                    chat_type:
-                      type: string
-                      enum:
-                      - brainstorm
-                      - website
-                      - ad_campaign
-                      - deploy
-                      description: Type of chat
-                    project_id:
-                      type: integer
-                      description: Project ID to associate the chat with
-                    contextable_type:
-                      type: string
-                      enum:
-                      - Brainstorm
-                      - Website
-                      - Campaign
-                      - Deploy
-                      description: Polymorphic type of the contextable record
-                    contextable_id:
-                      type: integer
-                      description: ID of the contextable record
-                    name:
-                      type: string
-                      description: Optional name for the chat
-                  required:
-                  - thread_id
-                  - chat_type
-                  - project_id
-                  - contextable_type
-                  - contextable_id
-              required:
-              - chat
   "/api/v1/websites/{website_id}/context":
     get:
       summary: Retrieves context for a website
@@ -2066,6 +1878,95 @@ paths:
                 - domains
         '401':
           description: unauthorized - missing token
+  "/api/v1/domains/search":
+    post:
+      summary: Searches for domain availability
+      tags:
+      - Domains
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: normalizes domain inputs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        domain:
+                          type: string
+                          description: Domain name
+                        status:
+                          type: string
+                          enum:
+                          - existing
+                          - unavailable
+                          - available
+                          description: Availability status
+                        existing_id:
+                          type: integer
+                          nullable: true
+                          description: ID of existing domain if owned by current account
+                      required:
+                      - domain
+                      - status
+                  platform_subdomain_credits:
+                    type: object
+                    properties:
+                      limit:
+                        type: integer
+                        description: Maximum platform subdomains allowed
+                      used:
+                        type: integer
+                        description: Number of platform subdomains used
+                      remaining:
+                        type: integer
+                        description: Remaining platform subdomains
+                    required:
+                    - limit
+                    - used
+                    - remaining
+                required:
+                - results
+                - platform_subdomain_credits
+        '422':
+          description: exceeds maximum candidates
+        '401':
+          description: unauthorized - missing token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                candidates:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of domain names to check availability (max 10)
+              required:
+              - candidates
   "/api/v1/domains/{id}":
     parameters:
     - name: id
@@ -2551,9 +2452,14 @@ paths:
                           type: string
                           nullable: true
                           description: Model card identifier
+                        priceTier:
+                          type: integer
+                          description: Price tier (1=premium, 5=cheap) based on weighted
+                            effective cost
                       required:
                       - enabled
                       - maxUsagePercent
+                      - priceTier
                   preferences:
                     type: object
                     description: Nested map of cost_tier -> speed_tier -> skill ->
@@ -2747,14 +2653,14 @@ paths:
           description: already at final step
         '404':
           description: workflow not found
-  "/api/v1/projects/{project_uuid}/social_links":
+  "/api/v1/projects/{project_id}/social_links":
     parameters:
-    - name: project_uuid
+    - name: project_id
       in: path
-      description: Project UUID
+      description: Project ID
       required: true
       schema:
-        type: string
+        type: integer
     get:
       summary: Cannot access other account project social links
       tags:
@@ -2944,14 +2850,14 @@ paths:
                   - url
               required:
               - social_link
-  "/api/v1/projects/{project_uuid}/social_links/{id}":
+  "/api/v1/projects/{project_id}/social_links/{id}":
     parameters:
-    - name: project_uuid
+    - name: project_id
       in: path
-      description: Project UUID
+      description: Project ID
       required: true
       schema:
-        type: string
+        type: integer
     - name: id
       in: path
       description: Social Link ID
@@ -3174,14 +3080,14 @@ paths:
           description: social link not found
         '401':
           description: unauthorized - missing token
-  "/api/v1/projects/{project_uuid}/social_links/bulk_upsert":
+  "/api/v1/projects/{project_id}/social_links/bulk_upsert":
     parameters:
-    - name: project_uuid
+    - name: project_id
       in: path
-      description: Project UUID
+      description: Project ID
       required: true
       schema:
-        type: string
+        type: integer
     post:
       summary: Bulk upsert social links
       tags:
@@ -4510,6 +4416,98 @@ paths:
                 - website_urls
         '401':
           description: unauthorized - missing token
+  "/api/v1/website_urls/search":
+    post:
+      summary: Searches for website URL availability
+      tags:
+      - WebsiteUrls
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: normalizes path inputs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  domain_id:
+                    type: integer
+                    description: Unique identifier
+                  domain:
+                    type: string
+                    description: Domain name
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        path:
+                          type: string
+                          description: URL path
+                        status:
+                          type: string
+                          enum:
+                          - existing
+                          - unavailable
+                          - available
+                          description: Availability status
+                        existing_id:
+                          type: integer
+                          nullable: true
+                          description: ID of existing website URL if owned by current
+                            account
+                        existing_website_id:
+                          type: integer
+                          nullable: true
+                          description: Website ID of existing URL if owned by current
+                            account
+                      required:
+                      - path
+                      - status
+                required:
+                - domain_id
+                - domain
+                - results
+        '404':
+          description: domain belongs to another account
+        '422':
+          description: exceeds maximum candidates
+        '401':
+          description: unauthorized - missing token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                domain_id:
+                  type: integer
+                  description: Domain ID to search within
+                candidates:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of paths to check availability (max 10)
+              required:
+              - domain_id
+              - candidates
   "/api/v1/website_urls/{id}":
     parameters:
     - name: id
@@ -4680,14 +4678,14 @@ paths:
                   - path
               required:
               - website_url
-  "/api/v1/projects/{project_uuid}/website":
+  "/api/v1/websites/{id}":
     parameters:
-    - name: project_uuid
+    - name: id
       in: path
-      description: Project UUID
+      description: Website ID
       required: true
       schema:
-        type: string
+        type: integer
     get:
       summary: Retrieves a website
       tags:
@@ -4734,7 +4732,7 @@ paths:
         '401':
           description: unauthorized - missing token
         '404':
-          description: website not found for project
+          description: website not found
     patch:
       summary: Cannot update other account website
       tags:
@@ -4781,7 +4779,7 @@ paths:
         '401':
           description: unauthorized - missing token
         '404':
-          description: project not found for other account
+          description: website not found for other account
       requestBody:
         content:
           application/json:

@@ -237,6 +237,301 @@ test.describe("Brainstorm Social Links", () => {
     await brainstormPage.openBrandPanel();
     await expect(brainstormPage.socialLinksSection).toBeVisible();
   });
+
+  test("create Twitter link, reload page, link should still be saved", async ({ page }) => {
+    // 1. Start on root route and create a conversation
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("I want to start a coffee subscription service");
+
+    // 2. Wait for conversation to be created
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+    await brainstormPage.waitForResponse();
+
+    // 3. Open brand panel and add Twitter link
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+    await brainstormPage.openBrandPanel();
+
+    // Wait for social links section to load (no skeleton)
+    await page.waitForFunction(
+      () => {
+        const section = document.querySelector('[data-testid="social-links"]');
+        return section && !section.querySelector('[data-slot="skeleton"]');
+      },
+      { timeout: 10000 }
+    );
+
+    // Fill in Twitter link
+    const twitterInput = page.getByTestId("social-link-twitter");
+    await twitterInput.fill("https://twitter.com/testcoffee");
+
+    // Wait for debounced autosave (750ms) plus API call
+    await page.waitForTimeout(1500);
+
+    // Verify checkmark appears (indicates saved)
+    const checkmark = page.locator('[data-testid="social-links"] svg.text-green-500');
+    await expect(checkmark.first()).toBeVisible({ timeout: 5000 });
+
+    // 4. Reload the page
+    await page.reload();
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    // 5. Open brand panel again
+    await brainstormPage.openBrandPanel();
+
+    // Wait for social links to load
+    await page.waitForFunction(
+      () => {
+        const section = document.querySelector('[data-testid="social-links"]');
+        return section && !section.querySelector('[data-slot="skeleton"]');
+      },
+      { timeout: 10000 }
+    );
+
+    // 6. Verify Twitter link is still there
+    const twitterInputAfter = page.getByTestId("social-link-twitter");
+    await expect(twitterInputAfter).toHaveValue("https://twitter.com/testcoffee");
+  });
+
+  test("create Twitter link, reload, create Instagram link, reload, both links saved", async ({ page }) => {
+    // 1. Start on root route and create a conversation
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("I want to start a fitness coaching business");
+
+    // 2. Wait for conversation
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+    await brainstormPage.waitForResponse();
+
+    // 3. Open brand panel and add Twitter link
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+    await brainstormPage.openBrandPanel();
+
+    await page.waitForFunction(
+      () => {
+        const section = document.querySelector('[data-testid="social-links"]');
+        return section && !section.querySelector('[data-slot="skeleton"]');
+      },
+      { timeout: 10000 }
+    );
+
+    const twitterInput = page.getByTestId("social-link-twitter");
+    await twitterInput.fill("https://twitter.com/fitcoach");
+    await page.waitForTimeout(1500); // Wait for debounced save
+
+    // Verify saved
+    await expect(page.locator('[data-testid="social-links"] svg.text-green-500').first()).toBeVisible({ timeout: 5000 });
+
+    // 4. Reload the page
+    await page.reload();
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    // 5. Open brand panel and verify Twitter is saved, then add Instagram
+    await brainstormPage.openBrandPanel();
+
+    await page.waitForFunction(
+      () => {
+        const section = document.querySelector('[data-testid="social-links"]');
+        return section && !section.querySelector('[data-slot="skeleton"]');
+      },
+      { timeout: 10000 }
+    );
+
+    // Verify Twitter is still there
+    const twitterInputAfterFirstReload = page.getByTestId("social-link-twitter");
+    await expect(twitterInputAfterFirstReload).toHaveValue("https://twitter.com/fitcoach");
+
+    // Add Instagram link
+    const instagramInput = page.getByTestId("social-link-instagram");
+    await instagramInput.fill("https://instagram.com/fitcoach");
+    await page.waitForTimeout(1500); // Wait for debounced save
+
+    // 6. Reload again
+    await page.reload();
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    // 7. Open brand panel and verify BOTH links are saved
+    await brainstormPage.openBrandPanel();
+
+    await page.waitForFunction(
+      () => {
+        const section = document.querySelector('[data-testid="social-links"]');
+        return section && !section.querySelector('[data-slot="skeleton"]');
+      },
+      { timeout: 10000 }
+    );
+
+    const twitterInputFinal = page.getByTestId("social-link-twitter");
+    const instagramInputFinal = page.getByTestId("social-link-instagram");
+
+    await expect(twitterInputFinal).toHaveValue("https://twitter.com/fitcoach");
+    await expect(instagramInputFinal).toHaveValue("https://instagram.com/fitcoach");
+  });
+
+  test("social links available immediately after navigating from Landing to Conversation", async ({ page }) => {
+    // This test verifies that after the URL changes via pushState (no full page reload),
+    // the social links API can still be called because projectId is synced from Langgraph
+
+    // 1. Start on root (landing page)
+    await brainstormPage.goto();
+
+    // Verify we're on landing (no thread ID)
+    expect(page.url()).not.toContain("/projects/");
+
+    // 2. Send message - this triggers URL change via pushState
+    await brainstormPage.sendMessage("I want to start a podcast editing service");
+
+    // 3. Wait for URL to update (pushState, not full navigation)
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+
+    // 4. Wait for AI response to complete (this triggers Langgraph state sync)
+    await brainstormPage.waitForResponse();
+
+    // 5. Open brand panel and try to add social link IMMEDIATELY
+    // This should work because projectId is synced from Langgraph state
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+    await brainstormPage.openBrandPanel();
+
+    // Wait for social links section to load
+    await page.waitForFunction(
+      () => {
+        const section = document.querySelector('[data-testid="social-links"]');
+        return section && !section.querySelector('[data-slot="skeleton"]');
+      },
+      { timeout: 10000 }
+    );
+
+    // Add a social link
+    const youtubeInput = page.getByTestId("social-link-youtube");
+    await youtubeInput.fill("https://youtube.com/@podcastpro");
+
+    // Wait for save
+    await page.waitForTimeout(1500);
+
+    // Verify it saved (checkmark appears)
+    const checkmark = page.locator('[data-testid="social-links"] svg.text-green-500');
+    await expect(checkmark.first()).toBeVisible({ timeout: 5000 });
+
+    // 6. Reload to confirm persistence
+    await page.reload();
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+    await brainstormPage.openBrandPanel();
+
+    await page.waitForFunction(
+      () => {
+        const section = document.querySelector('[data-testid="social-links"]');
+        return section && !section.querySelector('[data-slot="skeleton"]');
+      },
+      { timeout: 10000 }
+    );
+
+    const youtubeInputAfter = page.getByTestId("social-link-youtube");
+    await expect(youtubeInputAfter).toHaveValue("https://youtube.com/@podcastpro");
+  });
+
+  test("navigating between two conversations shows correct social links for each", async ({ page }) => {
+    // 1. Create first conversation with Twitter link
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("First project: pet grooming service");
+
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+    await brainstormPage.waitForResponse();
+
+    const firstProjectUrl = page.url();
+
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+    await brainstormPage.openBrandPanel();
+
+    await page.waitForFunction(
+      () => {
+        const section = document.querySelector('[data-testid="social-links"]');
+        return section && !section.querySelector('[data-slot="skeleton"]');
+      },
+      { timeout: 10000 }
+    );
+
+    await page.getByTestId("social-link-twitter").fill("https://twitter.com/petgrooming");
+    await page.waitForTimeout(1500);
+
+    // 2. Create second conversation with Instagram link
+    await page.getByTestId("new-project-link").click();
+    await page.waitForURL("**/projects/new");
+    await brainstormPage.expectChatInputReady();
+
+    await brainstormPage.sendMessage("Second project: yoga studio");
+
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+    await brainstormPage.waitForResponse();
+
+    const secondProjectUrl = page.url();
+
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+    await brainstormPage.openBrandPanel();
+
+    await page.waitForFunction(
+      () => {
+        const section = document.querySelector('[data-testid="social-links"]');
+        return section && !section.querySelector('[data-slot="skeleton"]');
+      },
+      { timeout: 10000 }
+    );
+
+    // Verify Twitter is NOT filled (new project)
+    await expect(page.getByTestId("social-link-twitter")).toHaveValue("");
+
+    // Add Instagram to second project
+    await page.getByTestId("social-link-instagram").fill("https://instagram.com/yogastudio");
+    await page.waitForTimeout(1500);
+
+    // 3. Navigate back to first project
+    await page.goto(firstProjectUrl);
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    await brainstormPage.openBrandPanel();
+
+    await page.waitForFunction(
+      () => {
+        const section = document.querySelector('[data-testid="social-links"]');
+        return section && !section.querySelector('[data-slot="skeleton"]');
+      },
+      { timeout: 10000 }
+    );
+
+    // Verify first project has Twitter but NOT Instagram
+    await expect(page.getByTestId("social-link-twitter")).toHaveValue("https://twitter.com/petgrooming");
+    await expect(page.getByTestId("social-link-instagram")).toHaveValue("");
+
+    // 4. Navigate to second project
+    await page.goto(secondProjectUrl);
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    await brainstormPage.openBrandPanel();
+
+    await page.waitForFunction(
+      () => {
+        const section = document.querySelector('[data-testid="social-links"]');
+        return section && !section.querySelector('[data-slot="skeleton"]');
+      },
+      { timeout: 10000 }
+    );
+
+    // Verify second project has Instagram but NOT Twitter
+    await expect(page.getByTestId("social-link-twitter")).toHaveValue("");
+    await expect(page.getByTestId("social-link-instagram")).toHaveValue("https://instagram.com/yogastudio");
+  });
 });
 
 test.describe("Brainstorm Accessibility", () => {
@@ -309,11 +604,12 @@ test.describe("Brainstorm URL Handling", () => {
 
     await brainstormPage.sendMessage("Bookmark test message");
 
-    // Wait for URL update
-    await page.waitForFunction(
-      () => window.location.href.includes("/projects/"),
-      { timeout: 10000 }
-    );
+    // Wait for response
+    await brainstormPage.waitForResponse();
+
+    // Verify AI message appears
+    const aiMessageCount = await brainstormPage.getAIMessageCount();
+    expect(aiMessageCount).toBeGreaterThan(0);
 
     const url = page.url();
 
@@ -349,6 +645,121 @@ test.describe("Brainstorm URL Handling", () => {
     // Should return to previous page or handle gracefully
     // Wait for chat input instead of networkidle (Vite HMR keeps websocket active)
     await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+  });
+
+  test("back button after creating conversation preserves data on forward", async ({ page }) => {
+    // 1. Start on landing page
+    await brainstormPage.goto();
+
+    // 2. Create a conversation and add personalization
+    await brainstormPage.sendMessage("I want to start a graphic design agency");
+
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+    await brainstormPage.waitForResponse();
+
+    const conversationUrl = page.url();
+
+    // Open brand panel and select a color palette
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+    await brainstormPage.openBrandPanel();
+
+    await page.waitForFunction(
+      () => !document.querySelector('[data-slot="skeleton"]'),
+      { timeout: 10000 }
+    );
+
+    // Select a color palette
+    await brainstormPage.selectColorPalette(0);
+    await page.waitForTimeout(1000); // Wait for mutation
+
+    // Get the selected palette ID
+    const selectedPalette = page.locator('[data-testid^="color-palette-"][data-selected="true"]');
+    const selectedPaletteTestId = await selectedPalette.getAttribute("data-testid");
+
+    // 3. Go back to landing page
+    await page.goBack();
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    // 4. Go forward to conversation
+    await page.goForward();
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    // 5. Verify we're back on the conversation and data is preserved
+    expect(page.url()).toBe(conversationUrl);
+
+    // Open brand panel and verify color palette is still selected
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+    await brainstormPage.openBrandPanel();
+
+    await page.waitForFunction(
+      () => !document.querySelector('[data-slot="skeleton"]'),
+      { timeout: 10000 }
+    );
+
+    const selectedPaletteAfter = page.getByTestId(selectedPaletteTestId!);
+    await expect(selectedPaletteAfter).toHaveAttribute("data-selected", "true");
+  });
+
+  test("clicking + button then back button shows correct data for each page", async ({ page }) => {
+    // 1. Create a conversation with personalization
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("I want to start a meal prep delivery service");
+
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+    await brainstormPage.waitForResponse();
+
+    const firstConversationUrl = page.url();
+
+    // Add Twitter link
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+    await brainstormPage.openBrandPanel();
+
+    await page.waitForFunction(
+      () => {
+        const section = document.querySelector('[data-testid="social-links"]');
+        return section && !section.querySelector('[data-slot="skeleton"]');
+      },
+      { timeout: 10000 }
+    );
+
+    const twitterInput = page.getByTestId("social-link-twitter");
+    await twitterInput.fill("https://twitter.com/mealprep");
+    await page.waitForTimeout(1500);
+
+    // 2. Click + button to start new project
+    await page.getByTestId("new-project-link").click();
+    await page.waitForURL("**/projects/new");
+    await brainstormPage.expectChatInputReady();
+
+    // 3. Verify we're on new project page
+    expect(page.url()).toContain("/projects/new");
+
+    // 4. Go back to first conversation
+    await page.goBack();
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    // 5. Verify we're back on first conversation with data preserved
+    expect(page.url()).toBe(firstConversationUrl);
+
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+    await brainstormPage.openBrandPanel();
+
+    await page.waitForFunction(
+      () => {
+        const section = document.querySelector('[data-testid="social-links"]');
+        return section && !section.querySelector('[data-slot="skeleton"]');
+      },
+      { timeout: 10000 }
+    );
+
+    const twitterInputAfter = page.getByTestId("social-link-twitter");
+    await expect(twitterInputAfter).toHaveValue("https://twitter.com/mealprep");
   });
 });
 
@@ -724,6 +1135,55 @@ test.describe("Brainstorm Color Palette", () => {
     const hasCustomColors = await brainstormPage.hasCustomThemeWithColors(customColors);
     expect(hasCustomColors).toBe(true);
   });
+
+  test("color palette selection persists immediately after pushState navigation", async ({ page }) => {
+    // This tests that websiteId is available from Langgraph state for the update mutation
+    // (no page reload required - pushState navigation from landing to conversation)
+
+    // 1. Start on landing and create conversation
+    await brainstormPage.goto();
+    await brainstormPage.sendMessage("I want to start a photography business");
+
+    await page.waitForFunction(
+      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      { timeout: 10000 }
+    );
+    await brainstormPage.waitForResponse();
+
+    // 2. Open brand panel and select color palette IMMEDIATELY (no reload)
+    await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
+    await brainstormPage.openBrandPanel();
+
+    await page.waitForFunction(
+      () => !document.querySelector('[data-slot="skeleton"]'),
+      { timeout: 10000 }
+    );
+
+    // Select second palette (to test non-default selection)
+    await brainstormPage.selectColorPalette(1);
+
+    // Wait for mutation
+    await page.waitForTimeout(1000);
+
+    // Get selected palette ID
+    const selectedPalette = page.locator('[data-testid^="color-palette-"][data-selected="true"]');
+    const selectedPaletteTestId = await selectedPalette.getAttribute("data-testid");
+    expect(selectedPaletteTestId).not.toBeNull();
+
+    // 3. Reload and verify persistence
+    await page.reload();
+    await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
+
+    await brainstormPage.openBrandPanel();
+
+    await page.waitForFunction(
+      () => !document.querySelector('[data-slot="skeleton"]'),
+      { timeout: 10000 }
+    );
+
+    const selectedPaletteAfter = page.getByTestId(selectedPaletteTestId!);
+    await expect(selectedPaletteAfter).toHaveAttribute("data-selected", "true");
+  });
 });
 
 test.describe("Brand Personalization Panel Auto-Open", () => {
@@ -903,20 +1363,11 @@ test.describe("Brand Personalization Uploads", () => {
     await page.reload();
     await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
 
-    // Set up response waiter BEFORE opening the panel (which triggers the API call)
-    const uploadsPromise = page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/v1/uploads") &&
-        response.request().method() === "GET" &&
-        response.status() === 200,
-      { timeout: 10000 }
-    );
+    // Wait for conversation history to load (indicates Langgraph state synced, websiteId available)
+    await brainstormPage.waitForConversationLoaded();
 
-    // Open the brand panel (this triggers the uploads query)
+    // Open the brand panel
     await brainstormPage.openBrandPanel();
-
-    // Wait for uploads API to complete
-    await uploadsPromise;
 
     // Verify logo is still displayed after reload
     await expect(brainstormPage.logoPreview).toBeVisible({ timeout: 10000 });
@@ -932,17 +1383,16 @@ test.describe("Brand Personalization Uploads", () => {
   test("project images upload persists across page reload", async ({ page }) => {
     // Start a conversation
     await brainstormPage.goto();
-    await brainstormPage.sendMessage("Test message for project images test");
 
-    // Wait for conversation to load
-    await page.waitForFunction(
-      () =>
-        window.location.href.includes("/projects/") &&
-        !window.location.href.includes("/projects/new"),
-      { timeout: 10000 }
-    );
+    // Send a message
+    await brainstormPage.sendMessage("I want to start a pet grooming business");
 
+    // Wait for response
     await brainstormPage.waitForResponse();
+
+    // Verify AI message appears
+    const aiMessageCount = await brainstormPage.getAIMessageCount();
+    expect(aiMessageCount).toBeGreaterThan(0);
 
     // Open brand panel
     await brainstormPage.openBrandPanel();
@@ -966,20 +1416,11 @@ test.describe("Brand Personalization Uploads", () => {
     await page.reload();
     await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
 
-    // Set up response waiter BEFORE opening the panel
-    const uploadsPromise = page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/v1/uploads") &&
-        response.request().method() === "GET" &&
-        response.status() === 200,
-      { timeout: 10000 }
-    );
+    // Wait for conversation history to load (indicates Langgraph state synced, websiteId available)
+    await brainstormPage.waitForConversationLoaded();
 
     // Open brand panel again
     await brainstormPage.openBrandPanel();
-
-    // Wait for uploads to load
-    await uploadsPromise;
 
     // Verify images are still displayed
     await expect(brainstormPage.projectImagesGrid).toBeVisible({ timeout: 10000 });
@@ -1017,20 +1458,11 @@ test.describe("Brand Personalization Uploads", () => {
     await page.goto(conversationUrl);
     await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
 
-    // Set up response waiter BEFORE opening the panel
-    const uploadsPromise = page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/v1/uploads") &&
-        response.request().method() === "GET" &&
-        response.status() === 200,
-      { timeout: 10000 }
-    );
+    // Wait for conversation history to load (indicates Langgraph state synced, websiteId available)
+    await brainstormPage.waitForConversationLoaded();
 
     // Open brand panel
     await brainstormPage.openBrandPanel();
-
-    // Wait for uploads to load
-    await uploadsPromise;
 
     // Verify logo is displayed
     await expect(brainstormPage.logoPreview).toBeVisible({ timeout: 10000 });
@@ -1059,21 +1491,11 @@ test.describe("Brand Personalization Uploads", () => {
     // Navigate directly to the conversation URL without waiting
     await brainstormPage.gotoConversationImmediate(threadId!);
 
-    // Set up response waiter BEFORE opening the panel
-    const uploadsPromise = page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/v1/uploads") &&
-        response.request().method() === "GET" &&
-        response.status() === 200,
-      { timeout: 10000 }
-    );
+    // Wait for conversation history to load (indicates Langgraph state synced, websiteId available)
+    await brainstormPage.waitForConversationLoaded();
 
-    // The brand panel should not show the empty upload area initially
-    // (it should show the preview or be loading)
+    // Open brand panel
     await brainstormPage.openBrandPanel();
-
-    // Wait for uploads to finish loading
-    await uploadsPromise;
 
     // After loading, the logo preview should be visible
     await expect(brainstormPage.logoPreview).toBeVisible({ timeout: 10000 });
@@ -1472,7 +1894,7 @@ test.describe("Workflow Progress Stepper", () => {
     await expect(page.getByText("Brainstorm")).toBeVisible();
     await expect(page.getByText("Landing Page")).toBeVisible();
     await expect(page.getByText("Ad Campaign")).toBeVisible();
-    await expect(page.getByText("Launch")).toBeVisible();
+    await expect(page.getByText("Deploy")).toBeVisible();
   });
 
   test("clicking New Project button resets workflow state and hides stepper", async ({ page }) => {
@@ -1588,7 +2010,7 @@ test.describe("Brainstorm Loading States", () => {
   let brainstormPage: BrainstormPage;
 
   test.beforeEach(async ({ page }) => {
-    await DatabaseSnapshotter.restoreSnapshot("basic_account");
+    await DatabaseSnapshotter.restoreSnapshot("brainstorm_step");
     await loginUser(page);
     brainstormPage = new BrainstormPage(page);
   });
@@ -1675,7 +2097,7 @@ test.describe("Brainstorm to Website Redirect", () => {
 
     // Now "Do the rest" should be available as a command
     // This will complete the remaining questions (audience, solution, social proof)
-    await brainstormPage.sendMessage("Do the rest for me");
+    await brainstormPage.sendMessage("Please do the rest for me");
     await brainstormPage.waitForResponse();
 
     // Now we should be at the lookAndFeel stage with "Build My Site" available
@@ -1708,7 +2130,7 @@ test.describe("Brainstorm to Website Redirect", () => {
     expect(threadId).not.toBeNull();
 
     // Complete the brainstorm
-    await brainstormPage.sendMessage("Do the rest for me");
+    await brainstormPage.sendMessage("Please do the rest for me");
     await brainstormPage.waitForResponse();
 
     // Verify workflow stepper is visible
@@ -1911,20 +2333,11 @@ test.describe("Root Route Workflow Persistence Bugs", () => {
     await page.reload();
     await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
 
-    // Set up response waiter BEFORE opening the panel
-    const uploadsPromise = page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/v1/uploads") &&
-        response.request().method() === "GET" &&
-        response.status() === 200,
-      { timeout: 10000 }
-    );
+    // Wait for conversation history to load (indicates Langgraph state synced, websiteId available)
+    await brainstormPage.waitForConversationLoaded();
 
     // Open brand panel again
     await brainstormPage.openBrandPanel();
-
-    // Wait for uploads to load
-    await uploadsPromise;
 
     // Verify images are still displayed
     await expect(brainstormPage.projectImagesGrid).toBeVisible({ timeout: 10000 });
@@ -1970,20 +2383,11 @@ test.describe("Root Route Workflow Persistence Bugs", () => {
     await page.reload();
     await brainstormPage.chatInput.waitFor({ state: "visible", timeout: 10000 });
 
-    // Set up response waiter BEFORE opening the panel
-    const uploadsPromise = page.waitForResponse(
-      (response) =>
-        response.url().includes("/api/v1/uploads") &&
-        response.request().method() === "GET" &&
-        response.status() === 200,
-      { timeout: 10000 }
-    );
+    // Wait for conversation history to load (indicates Langgraph state synced, websiteId available)
+    await brainstormPage.waitForConversationLoaded();
 
     // Open the brand panel
     await brainstormPage.openBrandPanel();
-
-    // Wait for uploads API to complete
-    await uploadsPromise;
 
     // Verify logo is still displayed after reload
     await expect(brainstormPage.logoPreview).toBeVisible({ timeout: 10000 });
@@ -1995,3 +2399,4 @@ test.describe("Root Route Workflow Persistence Bugs", () => {
     expect(logoSrcAfter).toMatch(/^(https?:\/\/|\/uploads\/)/);
   });
 });
+

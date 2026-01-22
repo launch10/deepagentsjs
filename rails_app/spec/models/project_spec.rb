@@ -48,11 +48,12 @@ RSpec.describe Project, type: :model do
 
       expect(project.current_workflow.step).to eq "brainstorm"
       expect(project.current_chat.chat_type).to eq "brainstorm"
+      expect(project.current_chat.thread_id).to eq "thread_id" # it uses provided thread_id
 
       workflow.next_step!
 
       # TODO: Update this once we build the website_building phase! This should break!
-      expect(project.current_chat).to be_nil
+      expect(project.current_chat).to eq(project.website.chat)
 
       workflow.next_step!
       expect(project.current_workflow.step).to eq "ad_campaign"

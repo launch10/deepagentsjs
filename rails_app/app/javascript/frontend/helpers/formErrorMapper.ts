@@ -4,9 +4,14 @@ import { parseFieldNameFromApi } from "./fieldNameParser";
 /**
  * Standard error response structure from the API.
  * Matches the Rails API error format for validation errors.
+ *
+ * Rails APIs can return errors in multiple formats:
+ * - Record format: { errors: { field_name: ["error1", "error2"] } }
+ * - Array format: { errors: ["error1", "error2"] }
+ * - String format: { error: "Something went wrong" }
  */
 export type ApiErrorResponse = {
-  errors?: Record<string, string[]>;
+  errors?: Record<string, string[]> | string[];
   error?: string;
 };
 
@@ -46,6 +51,11 @@ function extractErrorResponse(error: unknown): ApiErrorResponse | undefined {
  * Maps API validation errors to react-hook-form field errors.
  * Parses nested API field names and sets appropriate error messages.
  *
+ * Handles three error formats from Rails APIs:
+ * 1. Record format: { errors: { field_name: ["error1", "error2"] } } -> maps to specific fields
+ * 2. Array format: { errors: ["error1", "error2"] } -> maps to root error
+ * 3. String format: { error: "Something went wrong" } -> maps to root error
+ *
  * @example
  * ```tsx
  * autosaveMutation.mutate(data, {
@@ -59,18 +69,47 @@ export function mapApiErrorsToForm<TFormData extends FieldValues>(
 ): void {
   const errorResponse = extractErrorResponse(error);
 
-  if (!errorResponse?.errors || typeof errorResponse.errors !== "object") {
+  if (!errorResponse) {
     return;
   }
 
-  Object.entries(errorResponse.errors).forEach(([fieldName, messages]) => {
-    const { fieldNameAndIndex, prettyFieldName } = parseFieldNameFromApi(fieldName);
-
-    methods.setError(fieldNameAndIndex as Path<TFormData>, {
+  // Handle general error string: { error: "Something went wrong" }
+  if (errorResponse.error) {
+    methods.setError("root" as Path<TFormData>, {
       type: "server",
-      message: `${prettyFieldName} ${messages.join(", ")}`,
+      message: errorResponse.error,
     });
-  });
+    return;
+  }
+
+  if (!errorResponse.errors) {
+    return;
+  }
+
+  // Handle array format: { errors: ["msg1", "msg2"] }
+  if (Array.isArray(errorResponse.errors)) {
+    if (errorResponse.errors.length === 0) {
+      return;
+    }
+    const message = errorResponse.errors.join(", ");
+    methods.setError("root" as Path<TFormData>, {
+      type: "server",
+      message,
+    });
+    return;
+  }
+
+  // Handle record format: { errors: { field: ["msg"] } }
+  if (typeof errorResponse.errors === "object") {
+    Object.entries(errorResponse.errors).forEach(([fieldName, messages]) => {
+      const { fieldNameAndIndex, prettyFieldName } = parseFieldNameFromApi(fieldName);
+
+      methods.setError(fieldNameAndIndex as Path<TFormData>, {
+        type: "server",
+        message: `${prettyFieldName} ${messages.join(", ")}`,
+      });
+    });
+  }
 }
 
 /**

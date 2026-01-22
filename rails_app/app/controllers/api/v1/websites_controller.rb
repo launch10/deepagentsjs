@@ -1,5 +1,4 @@
 class API::V1::WebsitesController < API::BaseController
-  before_action :set_project
   before_action :set_website
 
   def show
@@ -16,13 +15,8 @@ class API::V1::WebsitesController < API::BaseController
 
   private
 
-  def set_project
-    @project = current_account.projects.find_by!(uuid: params[:project_uuid])
-  end
-
   def set_website
-    @website = @project.website
-    raise ActiveRecord::RecordNotFound, "Website not found" unless @website
+    @website = current_account.websites.find(params[:id])
   end
 
   def website_params

@@ -1,4 +1,4 @@
-import { useChatContext } from "../ChatContext";
+import { useChatIsStreaming, useChatMessages } from "../ChatContext";
 import { ThinkingIndicator } from "../ThinkingIndicator";
 
 import type { ThinkingIndicatorVariant } from "../ThinkingIndicator";
@@ -40,7 +40,8 @@ export function StreamingIndicator({
   className,
   variant = "default",
 }: StreamingIndicatorProps) {
-  const { messages, isStreaming } = useChatContext();
+  const messages = useChatMessages()
+  const isStreaming = useChatIsStreaming()
 
   // Only show if streaming AND last message is AI with no content
   const lastMessage = messages[messages.length - 1];

@@ -1,12 +1,18 @@
-import { useQuery, useMutation, useQueryClient, type UseQueryOptions, type UseMutationOptions } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type UseQueryOptions,
+  type UseMutationOptions,
+} from "@tanstack/react-query";
 import { useMemo } from "react";
-import { usePage } from "@inertiajs/react";
 import {
   ThemeAPIService,
   type GetThemesResponse,
   type CreateThemeRequest,
   type CreateThemeResponse,
 } from "@rails_api_base";
+import { useJwt, useRootPath } from "~/stores/sessionStore";
 
 // Re-export for backwards compatibility
 export { ThemeAPIService as ThemeService } from "@rails_api_base";
@@ -26,21 +32,22 @@ export const themeKeys = {
 
 /**
  * Hook that provides a memoized ThemeService instance
- * Uses JWT from page props for authentication
+ * Reads from sessionStore instead of page props - stores are hydrated in SiteLayout.
  */
 export function useThemeService() {
-  const { jwt, root_path } = usePage<{ jwt: string; root_path: string }>().props;
-  return useMemo(() => new ThemeAPIService({ jwt, baseUrl: root_path }), [jwt, root_path]);
+  const jwt = useJwt();
+  const rootPath = useRootPath();
+  return useMemo(
+    () => new ThemeAPIService({ jwt: jwt ?? "", baseUrl: rootPath ?? "" }),
+    [jwt, rootPath]
+  );
 }
 
 // ============================================================================
 // Query Hooks
 // ============================================================================
 
-type ThemesQueryOptions = Omit<
-  UseQueryOptions<GetThemesResponse, Error>,
-  "queryKey" | "queryFn"
->;
+type ThemesQueryOptions = Omit<UseQueryOptions<GetThemesResponse, Error>, "queryKey" | "queryFn">;
 
 /**
  * Hook for fetching themes with caching.

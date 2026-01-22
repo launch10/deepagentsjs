@@ -9,11 +9,40 @@
 - **File Storage:** Cloudflare R2 with separate buckets per environment (`uploads` for prod, `dev-uploads` for dev)
 - **Asset Host:** `https://uploads.launch10.ai` (prod), `https://dev-uploads.launch10.ai` (dev)
 - **CORS:** R2 buckets configured with `AllowedOrigins: *`
-- **COEP:** App uses Cross-Origin Embedder Policy, requiring `crossOrigin="anonymous"` on cross-origin images
+- **CORP Header:** Cloudflare Transform Rule adds `Cross-Origin-Resource-Policy: cross-origin` to all R2 responses
+- **WebContainer Compatibility:** Images from R2 load correctly in WebContainer previews
 
 ---
 
 ## Decision Log
+
+### 2025-01-20: Add CORP header via Cloudflare Transform Rule for WebContainer images
+
+**Context:** Images uploaded to R2 and served via `dev-uploads.launch10.ai` / `uploads.launch10.ai` were not displaying in WebContainer previews. WebContainers run on `*.webcontainer-api.io` and enforce strict COEP (`Cross-Origin-Embedder-Policy: require-corp`). Cross-origin resources must explicitly opt-in via the `Cross-Origin-Resource-Policy` header.
+
+**Decision:** Add a Cloudflare Response Header Transform Rule that sets `Cross-Origin-Resource-Policy: cross-origin` on all responses from the uploads subdomains.
+
+**Configuration:**
+- Rule name: "CORP Header for WebContainer Images (WebPreview)"
+- Match: `(http.host wildcard r"dev-uploads.launch10.ai*") or (http.host wildcard r"uploads.launch10.ai*")`
+- Action: Set static header `Cross-Origin-Resource-Policy` = `cross-origin`
+
+**Why:**
+- WebContainers require CORP header for cross-origin resources
+- R2 doesn't natively support custom response headers
+- Cloudflare Transform Rules add headers at the edge with zero latency impact
+- No code changes required
+
+**Security consideration:** Setting CORP to `cross-origin` allows any site to embed these images. This is acceptable because:
+- These are public landing page assets meant to be displayed publicly
+- Images were already embeddable via `<img>` tags (CORP only affects COEP contexts)
+- The deployed landing pages will serve these images on arbitrary customer domains anyway
+
+**Supersedes:** "Use crossOrigin='anonymous' for R2 images with COEP" (2024-12-30) - that approach worked for the Rails app but not for WebContainer previews which have stricter requirements.
+
+**Status:** Current
+
+---
 
 ### 2024-12-30: Use crossOrigin="anonymous" for R2 images with COEP
 
@@ -40,6 +69,6 @@ R2 CORS was already configured with `AllowedOrigins: *`, but the app uses **COEP
 - R2 doesn't easily support custom response headers without Cloudflare Workers
 - Would require additional infrastructure complexity
 
-**Status:** Current
+**Status:** Superseded by "Add CORP header via Cloudflare Transform Rule" (2025-01-20) for WebContainer contexts. Still valid for Rails app image loading.
 
 ---

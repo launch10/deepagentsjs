@@ -1,5 +1,5 @@
 import { useRef, useEffect } from "react";
-import { useBrainstormChatState } from "@components/brainstorm/hooks";
+import { useBrainstormSelector } from "@components/brainstorm/hooks";
 import { Chat } from "@components/shared/chat/Chat";
 import { setTextareaRef } from "@lib/brainstormTextarea";
 import { DocumentPlusIcon, ArrowUpIcon, StopIcon } from "@heroicons/react/24/outline";
@@ -22,7 +22,7 @@ const DEFAULT_PLACEHOLDER =
  * - setTextareaRef: for external focus management (e.g., suggestion clicks)
  */
 export function BrainstormInput() {
-  const placeholderText = useBrainstormChatState("placeholderText");
+  const placeholderText = useBrainstormSelector((s) => s.state.placeholderText);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Register textarea ref for external focus management

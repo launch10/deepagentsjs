@@ -1,8 +1,9 @@
 import { useEffect, useRef, useMemo, useCallback } from "react";
 import type { MessageBlock, InferBridgeData, AnyMessageWithBlocks } from "langgraph-ai-sdk-types";
+import { ChatSelectors } from "langgraph-ai-sdk-react";
 import { Brainstorm, type BrainstormBridgeType } from "@shared";
-import { useBrainstormChatState } from "@components/brainstorm/hooks";
-import { Chat, useChatContext } from "@components/shared/chat/Chat";
+import { useBrainstormSelector } from "@components/brainstorm/hooks";
+import { Chat } from "@components/shared/chat/Chat";
 import { BrainstormAIMessage } from "./BrainstormAIMessage";
 import { QuestionBadge } from "./QuestionBadge";
 import { getTextareaRef } from "@lib/brainstormTextarea";
@@ -168,11 +169,11 @@ export function BrainstormMessagesView({
  * Now uses Chat context instead of direct brainstorm hooks for portability.
  */
 export function BrainstormMessages() {
-  // Use context hooks (requires Chat.Root ancestor)
-  const { messages, isStreaming, sendMessage, composer } = useChatContext();
-
-  // Brainstorm-specific state (available commands comes from backend)
-  const availableCommands = useBrainstormChatState("availableCommands");
+  const messages = useBrainstormSelector((s) => s.messages);
+  const isStreaming = useBrainstormSelector(ChatSelectors.isStreaming);
+  const sendMessage = useBrainstormSelector(ChatSelectors.sendMessage)
+  const composer = useBrainstormSelector(ChatSelectors.composer)
+  const availableCommands = useBrainstormSelector((s) => s.state.availableCommands);
 
   // Handle clicking on example suggestions - memoized to prevent unnecessary re-renders
   const handleExampleClick = useCallback(
@@ -195,7 +196,7 @@ export function BrainstormMessages() {
 
   return (
     <BrainstormMessagesView
-      messages={messages}
+      messages={messages as any}
       isStreaming={isStreaming}
       availableCommands={availableCommands ?? []}
       onExampleClick={handleExampleClick}

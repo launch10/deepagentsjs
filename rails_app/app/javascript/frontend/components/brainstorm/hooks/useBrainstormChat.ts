@@ -1,9 +1,16 @@
-import { usePage } from "@inertiajs/react";
-import { useMemo, useCallback } from "react";
-import { useLanggraph, type ChatSnapshot } from "langgraph-ai-sdk-react";
-import type { BrainstormBridgeType, BrainstormGraphState, InertiaProps } from "@shared";
+import { usePage, router } from "@inertiajs/react";
+import { useMemo, useCallback, useEffect } from "react";
+import type { UIMessage } from "ai";
+import {
+  type ChatSnapshot,
+  type LanggraphChat,
+  type UseLanggraphOptions,
+  useLanggraph,
+} from "langgraph-ai-sdk-react";
+import type { BrainstormGraphState, InertiaProps, BrainstormBridgeType } from "@shared";
 import { UploadsAPIService } from "@rails_api_base";
 import { validateFile } from "~/types/attachment";
+import { syncLanggraphToStore } from "~/stores/useSyncProject";
 
 type NewBrainstormProps =
   InertiaProps.paths["/projects/new"]["get"]["responses"]["200"]["content"]["application/json"];
@@ -14,40 +21,62 @@ type BrainstormPageProps = NewBrainstormProps | UpdateBrainstormProps;
 export type BrainstormSnapshot = ChatSnapshot<BrainstormGraphState>;
 
 /**
- * Extract threadId from URL path like /projects/{uuid}/brainstorm
+ * Check if URL already contains this threadId (prevents duplicate navigation)
  */
+function isAlreadyAtThreadUrl(threadId: string): boolean {
+  const urlThreadId = getThreadIdFromUrl();
+  return urlThreadId === threadId;
+}
+
 function getThreadIdFromUrl(): string | undefined {
   const match = window.location.pathname.match(/^\/projects\/([^/]+)\/brainstorm$/);
   return match?.[1];
 }
 
-function useBrainstormChatOptions() {
-  const { thread_id, jwt, langgraph_path, root_path } = usePage<BrainstormPageProps>().props;
+/**
+ * Get the chat options for the brainstorm chat.
+ * This is a hook that creates stable options based on page props.
+ */
+function useBrainstormChatOptions(): UseLanggraphOptions<BrainstormBridgeType> {
+  const page = usePage<BrainstormPageProps>();
+  const { thread_id, jwt, langgraph_path, root_path, project } = page.props;
 
-  const onThreadIdAvailable = useCallback((threadId: string) => {
-    // We use native pushState instead of Inertia's router.replace for several reasons:
-    //
-    // 1. Stream continuity: When the user sends their first message, the backend starts
-    //    streaming a response. Inertia's router.replace triggers page lifecycle callbacks
-    //    (onSuccess, onFinish) and updates Inertia's internal page state, which can cause
-    //    React re-renders that interrupt the active stream connection.
-    //
-    // 2. No server request needed: Inertia v2's router.replace({ url }) is client-side only,
-    //    but it still updates Inertia's page object and triggers lifecycle hooks. We only
-    //    need to update the browser URL without any side effects.
-    //
-    // 3. Integration with WorkflowProvider: The app's WorkflowProvider already patches
-    //    history.pushState to dispatch custom 'urlchange' events, ensuring the workflow
-    //    store stays in sync. Using native pushState integrates with this existing pattern.
-    //
-    // 4. Back button consistency: pushState adds a history entry, allowing users to
-    //    navigate back to /projects/new. This is intentional - starting a new brainstorm
-    //    creates a recoverable navigation point.
-    //
-    // Investigated as part of TODO-003. See: v2 Inertia docs on router.push/replace.
-    const newUrl = `/projects/${threadId}/brainstorm`;
-    window.history.pushState({ threadId }, "", newUrl);
-  }, []);
+  const onThreadIdAvailable = useCallback(
+    (threadId: string) => {
+      // Defensive check - prevent navigation with undefined threadId
+      if (!threadId || threadId === "undefined" || threadId === "null") {
+        console.error(
+          "[useBrainstormChat] onThreadIdAvailable called with invalid threadId:",
+          threadId,
+          new Error().stack
+        );
+        return;
+      }
+
+      // Guard: don't navigate if URL already has this threadId
+      if (isAlreadyAtThreadUrl(threadId)) {
+        return;
+      }
+
+      // Use Inertia's router.push for client-side URL update without server request.
+      const newUrl = `/projects/${threadId}/brainstorm`;
+      router.push({
+        url: newUrl,
+        component: "Brainstorm",
+        props: {
+          thread_id: threadId,
+          jwt,
+          langgraph_path,
+          root_path,
+          project: {
+            ...project,
+            uuid: threadId,
+          },
+        },
+      });
+    },
+    [jwt, langgraph_path, root_path, project]
+  );
 
   return useMemo(() => {
     const url = langgraph_path ? new URL("api/brainstorm/stream", langgraph_path).toString() : "";
@@ -80,83 +109,105 @@ function useBrainstormChatOptions() {
   }, [thread_id, jwt, langgraph_path, onThreadIdAvailable, root_path]);
 }
 
-export function useBrainstormChat<TSelected = BrainstormSnapshot>(
-  selector?: (snapshot: BrainstormSnapshot) => TSelected
-): TSelected {
+/**
+ * Get or create the brainstorm chat instance.
+ * Returns a stable chat instance that can be passed to Chat.Root.
+ *
+ * This is the REGISTRATION function - it creates/retrieves the chat instance
+ * based on the current page props. The identity is `${api}::${threadId}`.
+ *
+ * @example
+ * ```tsx
+ * function BrainstormPage() {
+ *   const chat = useBrainstormChat();
+ *
+ *   return (
+ *     <Chat.Root chat={chat}>
+ *       <BrainstormContent />
+ *     </Chat.Root>
+ *   );
+ * }
+ * ```
+ */
+export function useBrainstormChat(): LanggraphChat<UIMessage, BrainstormGraphState> {
   const options = useBrainstormChatOptions();
-  const snapshot = useLanggraph<BrainstormBridgeType>(options);
+  const chat = useLanggraph(options, (s) => s.chat);
+  syncBrainstormToStore();
 
-  return (selector ? selector(snapshot) : snapshot) as TSelected;
+  return chat;
 }
 
-export function useBrainstormChatMessages() {
-  return useBrainstormChat((s) => s.messages);
+export const useBrainstormSelector = <TSelected>(
+  selector: (snapshot: BrainstormSnapshot) => TSelected
+) => {
+  const options = useBrainstormChatOptions();
+  return useLanggraph(options, selector);
+};
+
+export function useBrainstormMessages() {
+  return useBrainstormSelector((s) => s.messages);
 }
 
-export function useBrainstormChatState<K extends keyof BrainstormGraphState>(key: K) {
-  return useBrainstormChat((s) => s.state[key]);
+export function useBrainstormStatus() {
+  return useBrainstormSelector((s) => s.status);
 }
 
-export function useBrainstormChatFullState() {
-  return useBrainstormChat((s) => s.state);
+export function useBrainstormIsLoading() {
+  return useBrainstormSelector((s) => s.isLoading);
 }
 
-export function useBrainstormChatStatus() {
-  return useBrainstormChat((s) => s.status);
+export function useBrainstormIsLoadingHistory(
+  chat: LanggraphChat<UIMessage, BrainstormGraphState>
+) {
+  return useBrainstormSelector((s) => s.isLoadingHistory);
 }
 
-export function useBrainstormChatIsLoading() {
-  return useBrainstormChat((s) => s.isLoading);
+export function useBrainstormComposer() {
+  return useBrainstormSelector((s) => s.composer);
 }
 
-export function useBrainstormChatIsLoadingHistory() {
-  return useBrainstormChat((s) => s.isLoadingHistory);
+export function useBrainstormActions() {
+  return useBrainstormSelector((s) => s.actions);
 }
 
-/**
- * Returns the composer for managing message input and attachments.
- * Use composer.text, composer.setText, composer.addFiles, etc.
- */
-export function useBrainstormChatComposer() {
-  return useBrainstormChat((s) => s.composer);
+export function useBrainstormThreadId() {
+  return useBrainstormSelector((s) => s.threadId);
 }
 
-/**
- * Returns chat actions from the snapshot.
- */
-export function useBrainstormChatActions() {
-  return useBrainstormChat((s) => s.actions);
-}
-
-export function useBrainstormChatThreadId() {
-  return useBrainstormChat((s) => s.threadId);
-}
-
-export function useBrainstormChatWebsiteId() {
-  return useBrainstormChat((s) => s.state.websiteId);
+export function useBrainstormWebsiteId() {
+  return useBrainstormSelector((s) => s.state.websiteId);
 }
 
 /**
  * Returns whether this is a new conversation (should show landing page).
- * Uses messages.length === 0 as the source of truth for routing.
- * This allows the UI to switch from Landing to Conversation when the first message is sent,
- * without needing an Inertia navigation.
+ * Uses page props thread_id as the primary check, falls back to SDK messages.
  */
 export function useBrainstormIsNewConversation() {
   const { thread_id } = usePage<BrainstormPageProps>().props;
-  if (thread_id) return false;
+  // Call hooks unconditionally to follow Rules of Hooks
+  const hasNoMessages = useBrainstormSelector((s) => s.messages.length === 0);
 
-  return useBrainstormChat((s) => s.messages.length === 0);
+  // If page props has thread_id, it's not a new conversation
+  if (thread_id) return false;
+  return hasNoMessages;
 }
 
 /**
  * Returns whether the chat is currently streaming a response.
- * Uses message-based detection: streaming when there's only one human message
- * (waiting for the AI response).
  */
-export function useBrainstormChatIsStreaming() {
-  return useBrainstormChat((s) => {
-    const { status } = s;
-    return status === "streaming" || status === "submitted";
-  });
+export function useBrainstormIsStreaming() {
+  const status = useBrainstormSelector((s) => s.status);
+  return status === "streaming" || status === "submitted";
+}
+
+/**
+ * Syncs entity IDs from Langgraph state to the core entity store.
+ * Call this once in the page component that uses the brainstorm chat.
+ */
+export function syncBrainstormToStore() {
+  const websiteId = useBrainstormSelector((s) => s.state.websiteId);
+  const projectId = useBrainstormSelector((s) => s.state.projectId);
+
+  syncLanggraphToStore("websiteId", websiteId);
+  syncLanggraphToStore("projectId", projectId);
 }

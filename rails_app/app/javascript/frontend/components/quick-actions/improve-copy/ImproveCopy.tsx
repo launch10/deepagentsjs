@@ -1,14 +1,17 @@
 import { CardContent } from "@components/ui/card";
 import { Button } from "@components/ui/button";
+import { useWebsiteChatActions, useWebsiteChatIsStreaming } from "@hooks/website";
+import type { Website } from "@shared";
 
 export type CopyOption = {
-  id: string;
+  id: Website.ImproveCopyStyle;
   label: string;
 };
 
 export interface ImproveCopyViewProps {
   options: CopyOption[];
   onOptionSelect?: (option: CopyOption) => void;
+  disabled?: boolean;
 }
 
 const defaultOptions: CopyOption[] = [
@@ -17,7 +20,7 @@ const defaultOptions: CopyOption[] = [
   { id: "shorter", label: "Make copy shorter" },
 ];
 
-export function ImproveCopyView({ options, onOptionSelect }: ImproveCopyViewProps) {
+export function ImproveCopyView({ options, onOptionSelect, disabled }: ImproveCopyViewProps) {
   return (
     <CardContent className="px-4 py-4 flex flex-col gap-3">
       <span className="text-xs font-medium text-base-400">Update Copy</span>
@@ -28,6 +31,7 @@ export function ImproveCopyView({ options, onOptionSelect }: ImproveCopyViewProp
             variant="outline"
             size="sm"
             onClick={() => onOptionSelect?.(option)}
+            disabled={disabled}
             className="justify-start bg-white border-neutral-300 hover:border-neutral-500"
           >
             {option.label}
@@ -39,10 +43,21 @@ export function ImproveCopyView({ options, onOptionSelect }: ImproveCopyViewProp
 }
 
 export default function ImproveCopy() {
+  const { updateState } = useWebsiteChatActions();
+  const isStreaming = useWebsiteChatIsStreaming();
+
   const handleOptionSelect = (option: CopyOption) => {
-    // TODO: Wire up to actual state management / send message to chat
-    console.log("Copy option selected:", option);
+    updateState({
+      command: "improve_copy",
+      improveCopyStyle: option.id,
+    });
   };
 
-  return <ImproveCopyView options={defaultOptions} onOptionSelect={handleOptionSelect} />;
+  return (
+    <ImproveCopyView
+      options={defaultOptions}
+      onOptionSelect={handleOptionSelect}
+      disabled={isStreaming}
+    />
+  );
 }

@@ -4,7 +4,7 @@ import { TextShimmer } from "@components/ui/text-shimmer";
 import { ArrowUp, FilePlus, Sparkles, Square } from "lucide-react";
 import { useAdsChatActions } from "@components/ads/hooks";
 import { Chat } from "@components/shared/chat/Chat";
-import { useChatContext } from "@components/shared/chat/ChatContext";
+import { useChatIsStreaming } from "@components/shared/chat/ChatContext";
 import { useWorkflow, selectSubstep } from "@context/WorkflowProvider";
 import { Ads } from "@shared";
 
@@ -20,7 +20,7 @@ import { Ads } from "@shared";
 export default function AdsChatInput() {
   // Ads-specific actions for refresh suggestions
   const { updateState } = useAdsChatActions();
-  const { isStreaming } = useChatContext();
+  const isStreaming = useChatIsStreaming();
   const substep = useWorkflow(selectSubstep);
 
   const onRefreshSuggestions = useCallback(() => {

@@ -3,11 +3,12 @@
  *
  * URL is the single source of truth. This provider just:
  * 1. Creates the store (which initializes from URL)
- * 2. Handles all URL changes (popstate, pushState, Inertia navigation)
+ * 2. Handles URL changes (popstate, Inertia navigation)
  * 3. Syncs substep to chat registry (so chat knows current stage)
  *
- * No sync from Inertia props.
- * Components read from store, actions change URL.
+ * Note: We use Inertia's router.push() for client-side navigation (useBrainstormChat),
+ * which properly registers with Inertia's history tracking. This eliminates the need
+ * for custom history patching or URL detection hacks.
  */
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { useStore, type StoreApi } from "zustand";
@@ -19,34 +20,6 @@ type WorkflowStoreApi = StoreApi<WorkflowStore>;
 
 const WorkflowContext = createContext<WorkflowStoreApi | null>(null);
 
-// Custom event name for pushState/replaceState URL changes
-const URL_CHANGE_EVENT = "urlchange";
-
-// Patch history methods to dispatch events (only once globally)
-let historyPatched = false;
-function patchHistoryMethods() {
-  if (historyPatched || typeof window === "undefined") return;
-  historyPatched = true;
-
-  const originalPushState = history.pushState.bind(history);
-  const originalReplaceState = history.replaceState.bind(history);
-
-  history.pushState = function (...args) {
-    const result = originalPushState(...args);
-    window.dispatchEvent(new Event(URL_CHANGE_EVENT));
-    return result;
-  };
-
-  history.replaceState = function (...args) {
-    const result = originalReplaceState(...args);
-    window.dispatchEvent(new Event(URL_CHANGE_EVENT));
-    return result;
-  };
-}
-
-// Patch on module load
-patchHistoryMethods();
-
 interface WorkflowProviderProps {
   children: ReactNode;
 }
@@ -54,23 +27,17 @@ interface WorkflowProviderProps {
 export function WorkflowProvider({ children }: WorkflowProviderProps) {
   const [store] = useState(() => createWorkflowStore());
 
-  // Sync from URL on any URL change (popstate, pushState, replaceState)
+  // Sync from URL on browser back/forward
   useEffect(() => {
-    const syncFromUrl = () => store.getState().syncFromUrl();
-
-    // Browser back/forward
-    window.addEventListener("popstate", syncFromUrl);
-    // pushState/replaceState (from chat hooks, workflow navigation, etc.)
-    window.addEventListener(URL_CHANGE_EVENT, syncFromUrl);
-
-    return () => {
-      window.removeEventListener("popstate", syncFromUrl);
-      window.removeEventListener(URL_CHANGE_EVENT, syncFromUrl);
+    const handlePopstate = () => {
+      store.getState().syncFromUrl();
     };
+
+    window.addEventListener("popstate", handlePopstate);
+    return () => window.removeEventListener("popstate", handlePopstate);
   }, [store]);
 
-  // Sync from URL on Inertia navigation (full page component swap)
-  // This handles cross-page navigation that replaces React components
+  // Sync on Inertia navigation (including router.push)
   useEffect(() => {
     return router.on("navigate", () => {
       store.getState().syncFromUrl();

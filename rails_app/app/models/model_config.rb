@@ -3,6 +3,8 @@
 # Table name: model_configs
 #
 #  id                :bigint           not null, primary key
+#  cache_reads       :decimal(10, 4)
+#  cache_writes      :decimal(10, 4)
 #  cost_in           :decimal(10, 4)
 #  cost_out          :decimal(10, 4)
 #  enabled           :boolean          default(TRUE), not null
@@ -18,6 +20,8 @@
 #  index_model_configs_on_model_key   (model_key) UNIQUE
 #
 class ModelConfig < ApplicationRecord
+  include LanggraphCacheClearable
+
   # Known model keys for seeding and reference
   KNOWN_MODELS = %w[opus sonnet haiku haiku3 groq gpt5 gpt5_mini gemini_flash].freeze
 

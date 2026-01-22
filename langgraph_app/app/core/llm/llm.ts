@@ -86,3 +86,7 @@ export async function getLLMFallbacks(options: LLMOptions = {}): Promise<BaseCha
   const effectiveMaxTier = getEffectiveMaxTier(maxTier);
   return LLMManager.getFallbacks(skill, speed, cost, usagePercent, effectiveMaxTier);
 }
+
+export async function clearLLMCache() {
+  return LLMManager.clearCache();
+}

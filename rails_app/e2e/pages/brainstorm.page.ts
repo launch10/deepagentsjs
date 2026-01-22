@@ -114,9 +114,10 @@ export class BrainstormPage {
     this.chatAttachmentList = page.getByTestId("attachment-list");
     this.chatAttachmentItems = page.getByTestId("attachment-item");
 
-    // Command buttons for workflow actions - scope to command buttons container to avoid matching examples panel
+    // Command buttons for workflow actions - use last() since multiple AI messages may have command-buttons containers
     this.buildMySiteButton = page
       .getByTestId("command-buttons")
+      .last()
       .getByRole("button", { name: "Build My Site" });
 
     // Custom theme elements
@@ -183,6 +184,16 @@ export class BrainstormPage {
     else {
       await this.thinkingIndicator.waitFor({ state: "hidden", timeout: 1000 }).catch(() => {});
     }
+  }
+
+  /**
+   * Wait for conversation history to load after navigation/reload.
+   * Unlike waitForResponse() which expects a NEW AI response (thinking → message),
+   * this just waits for existing AI messages to be visible from history.
+   * This indicates Langgraph state has synced and websiteId is available.
+   */
+  async waitForConversationLoaded(timeout: number = 15000): Promise<void> {
+    await this.aiMessages.first().waitFor({ state: "visible", timeout });
   }
 
   /**

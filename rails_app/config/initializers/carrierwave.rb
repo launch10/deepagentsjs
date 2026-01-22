@@ -1,16 +1,23 @@
 CarrierWave.configure do |config|
-  # Use local file storage for test environment or when explicitly requested
-  # Set USE_LOCAL_STORAGE=true for E2E tests to avoid hitting R2
-  use_local_storage = Rails.env.test? || ENV["USE_LOCAL_STORAGE"] == "true"
+  # R2 storage for production and development
+  # Local storage for all tests (RSpec and Playwright E2E)
+  use_local_storage = Rails.env.test? && ENV["USE_R2_STORAGE"] != "true"
 
   if use_local_storage
     config.storage = :file
-    # Disable processing in unit tests for speed, but keep it for E2E (USE_LOCAL_STORAGE)
-    config.enable_processing = ENV["USE_LOCAL_STORAGE"] == "true"
-    # Use dev CDN for asset_host so file.url returns publicly accessible URLs
-    # This is required for APIs that need full URLs (e.g., OpenAI vision API)
-    # Test snapshots use files that already exist on dev-uploads CDN
-    config.asset_host = "https://dev-uploads.launch10.ai"
+    # Store in public/ so Rails serves the files directly
+    config.root = Rails.root.join("public")
+    # Enable processing for E2E tests (PLAYWRIGHT=true), disable for unit tests (speed)
+    config.enable_processing = ENV["PLAYWRIGHT"] == "true"
+    # For E2E tests, use localhost so uploaded files are actually accessible in browser
+    # For unit tests, use CDN (test snapshots reference files that already exist there)
+    if ENV["PLAYWRIGHT"] == "true"
+      # RAILS_PORT is set by config/services.sh (3001 for test, 3000 for dev)
+      rails_port = ENV.fetch("RAILS_PORT", 3001)
+      config.asset_host = "http://localhost:#{rails_port}"
+    else
+      config.asset_host = "https://dev-uploads.launch10.ai"
+    end
   else
     config.storage = :aws
     config.aws_bucket = ENV.fetch("CLOUDFLARE_UPLOADS_BUCKET") do

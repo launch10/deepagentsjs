@@ -1,9 +1,8 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Brainstorm } from "@shared";
-import { useBrainstormChat } from "@components/brainstorm/hooks";
+import { useBrainstormSelector } from "@components/brainstorm/hooks";
 import { useWorkflow, selectContinue } from "@context/WorkflowProvider";
 import { useHasAnyPersonalizations } from "@components/brainstorm/hooks";
-import { useChatContext } from "@components/shared/chat/Chat";
 import { BrainstormMessages } from "./chat/BrainstormMessages";
 import { BrainstormInput } from "../shared/BrainstormInput";
 import { BrandPersonalizationPanel } from "./brand-panel/BrandPersonalizationPanel";
@@ -85,13 +84,9 @@ function BrainstormConversationContent({
  * Chat.Root is provided by parent BrainstormChat component.
  */
 export function BrainstormConversationPage() {
-  // Use context for messages (Chat.Root provided by BrainstormChat)
-  const { messages } = useChatContext();
-
-  // Get additional values from brainstorm-specific hook
-  const chat = useBrainstormChat();
-  const { threadId, isLoadingHistory, state } = chat;
-  const redirect = state.redirect;
+  const messages = useBrainstormSelector((s) => s.messages);
+  const isLoadingHistory = useBrainstormSelector((s) => s.isLoadingHistory);
+  const redirect = useBrainstormSelector((s) => s.state.redirect);
 
   // Compute current question number from messages (memoized)
   const currentQuestionNumber = useMemo(() => computeQuestionNumber(messages), [messages]);

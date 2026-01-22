@@ -12,7 +12,8 @@ import {
   type GetWebsiteResponse,
   type UpdateWebsiteResponse,
 } from "@rails_api_base";
-import { useBrainstormChatThreadId } from "@components/brainstorm/hooks/useBrainstormChat";
+import { useWebsiteId as useCoreWebsiteId } from "~/stores/projectStore";
+import { useJwt, useRootPath } from "~/stores/sessionStore";
 
 // Re-export for backwards compatibility
 export { WebsiteAPIService as WebsiteService } from "@rails_api_base";
@@ -24,7 +25,7 @@ export { WebsiteAPIService as WebsiteService } from "@rails_api_base";
 export const websiteKeys = {
   all: ["websites"] as const,
   details: () => [...websiteKeys.all, "detail"] as const,
-  detail: (projectUuid: string) => [...websiteKeys.details(), projectUuid] as const,
+  detail: (websiteId: number) => [...websiteKeys.details(), websiteId] as const,
 };
 
 // ============================================================================
@@ -33,31 +34,23 @@ export const websiteKeys = {
 
 /**
  * Hook that provides a memoized WebsiteService instance
- * Uses JWT from page props for authentication
+ * Reads from sessionStore instead of page props - stores are hydrated in SiteLayout.
  */
 export function useWebsiteService() {
-  const { jwt, root_path } = usePage<{ jwt: string; root_path: string }>().props;
-  return useMemo(() => new WebsiteAPIService({ jwt, baseUrl: root_path }), [jwt, root_path]);
+  const jwt = useJwt();
+  const rootPath = useRootPath();
+  return useMemo(
+    () => new WebsiteAPIService({ jwt: jwt ?? "", baseUrl: rootPath ?? "" }),
+    [jwt, rootPath]
+  );
 }
 
 /**
- * Hook to get the current project UUID - uses chat state (primary) with page props fallback.
- *
- * Previously, we only used Inertia props to prevent API calls for brand new projects
- * (where website/uploads may not exist yet). However, this caused a bug: when navigating
- * from / to /projects/{uuid}/brainstorm via pushState (after sending the first message),
- * the Inertia props don't update, so API calls were disabled for themes and social links.
- *
- * Now we use the chat's threadId (which IS the project UUID) as the primary source,
- * falling back to Inertia props. The langgraph backend ensures the website record
- * is created before the threadId is set, so 404s are no longer a concern.
+ * Hook to get the current website ID from the core entity store.
+ * The store is populated from page props and Langgraph state.
  */
-function useProjectUuid(): string | null {
-  const chatThreadId = useBrainstormChatThreadId();
-  const { project } = usePage<{ project?: { uuid: string } }>().props;
-  const propsProjectUuid = project?.uuid ?? null;
-
-  return chatThreadId ?? propsProjectUuid;
+function useWebsiteId(): number | null {
+  return useCoreWebsiteId();
 }
 
 // ============================================================================
@@ -78,14 +71,14 @@ type WebsiteQueryOptions = Omit<UseQueryOptions<GetWebsiteResponse, Error>, "que
  */
 export function useWebsite(options?: WebsiteQueryOptions) {
   const service = useWebsiteService();
-  const projectUuid = useProjectUuid();
+  const websiteId = useWebsiteId();
   // Get initial data from Inertia props if available
   const { website: initialWebsite } = usePage<{ website?: GetWebsiteResponse }>().props;
 
   return useQuery({
-    queryKey: websiteKeys.detail(projectUuid ?? ""),
-    queryFn: () => service.get(projectUuid!),
-    enabled: !!projectUuid,
+    queryKey: websiteKeys.detail(websiteId ?? 0),
+    queryFn: () => service.get(websiteId!),
+    enabled: !!websiteId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     // Use Inertia props as initial data if available
     initialData: initialWebsite ?? undefined,
@@ -122,20 +115,20 @@ export function useUpdateWebsiteTheme(
   options?: MutationOptions<UpdateWebsiteResponse, UpdateWebsiteThemeVariables>
 ) {
   const service = useWebsiteService();
-  const projectUuid = useProjectUuid();
+  const websiteId = useWebsiteId();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ themeId }: UpdateWebsiteThemeVariables) => {
-      if (!projectUuid) {
-        throw new Error("Project UUID is required");
+      if (!websiteId) {
+        throw new Error("Website ID is required");
       }
-      return service.update(projectUuid, { theme_id: themeId });
+      return service.update(websiteId, { theme_id: themeId });
     },
     onSuccess: (data) => {
       // Update the website cache if needed
-      if (projectUuid) {
-        queryClient.setQueryData(websiteKeys.detail(projectUuid), data);
+      if (websiteId) {
+        queryClient.setQueryData(websiteKeys.detail(websiteId), data);
       }
     },
     ...options,
