@@ -3,7 +3,6 @@ import { render, screen, renderHook } from "@testing-library/react";
 import type { UIMessage } from "ai";
 import {
   ChatProvider,
-  useChatContext,
   useChatFromContext,
   useChatContextSelector,
   useChatMessages,
@@ -36,6 +35,7 @@ vi.mock("langgraph-ai-sdk-react", async (importOriginal) => {
       error: (s: any) => s.error,
       threadId: (s: any) => s.threadId,
       state: (s: any) => s.state,
+      stop: (s: any) => s.stop ?? s.actions?.stop,
     },
   };
 });
@@ -166,11 +166,11 @@ describe("ChatContext", () => {
     });
   });
 
-  describe("useChatContext (legacy)", () => {
+  describe("useChatContextSelector", () => {
     it("throws error when used outside ChatProvider", () => {
       const { result } = renderHook(() => {
         try {
-          useChatContext();
+          useChatContextSelector((s) => s.status);
           return null;
         } catch (e) {
           return e as Error;
@@ -180,18 +180,13 @@ describe("ChatContext", () => {
       expect((result.current as Error).message).toBe("useChatFromContext must be used within Chat.Root");
     });
 
-    it("returns context value with snapshot and convenience accessors", () => {
+    it("returns selected value from snapshot", () => {
       const chat = createMockChat();
-      const { result } = renderHook(() => useChatContext(), {
+      const { result } = renderHook(() => useChatContextSelector((s) => s.status), {
         wrapper: createWrapper(chat),
       });
 
-      expect(result.current).toBeDefined();
-      expect(result.current.snapshot).toBeDefined();
-      expect(result.current.messages).toBeDefined();
-      expect(result.current.composer).toBeDefined();
-      expect(result.current.status).toBeDefined();
-      expect(result.current.sendMessage).toBeDefined();
+      expect(result.current).toBe("ready");
     });
   });
 

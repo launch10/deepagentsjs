@@ -173,7 +173,6 @@ RSpec.describe "Campaigns API", type: :request do
           expect(data["website_id"]).to eq(website1.id)
         end
       end
-
     end
   end
 

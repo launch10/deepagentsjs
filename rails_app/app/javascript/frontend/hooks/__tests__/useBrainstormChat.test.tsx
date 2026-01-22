@@ -67,6 +67,15 @@ const createMockComposer = (overrides: Partial<MockComposer> = {}): MockComposer
 // Create mock sendMessage
 const mockSendMessage = vi.fn();
 
+// Mock chat instance
+const mockChat = {
+  getSnapshot: () => mockSnapshot,
+  subscribe: vi.fn((_callback: () => void) => {
+    // Return unsubscribe function
+    return () => {};
+  }),
+};
+
 // Create a mock snapshot factory
 const createMockSnapshot = (
   overrides: Partial<{
@@ -78,6 +87,7 @@ const createMockSnapshot = (
     threadId: string | null;
     composer: ReturnType<typeof createMockComposer>;
     actions: { sendMessage: typeof mockSendMessage; [key: string]: any };
+    chat: any;
   }> = {}
 ) => ({
   messages: [],
@@ -102,43 +112,36 @@ const createMockSnapshot = (
     updateState: vi.fn(),
     ...overrides.actions,
   },
+  chat: overrides.chat ?? mockChat,
   ...overrides,
 });
 
 let mockSnapshot = createMockSnapshot();
 
-// Mock chat instance
-const mockChat = {
-  getSnapshot: () => mockSnapshot,
-  subscribe: vi.fn((_callback: () => void) => {
-    // Return unsubscribe function
-    return () => {};
-  }),
-};
-
 // Mock langgraph-ai-sdk-react
 vi.mock("langgraph-ai-sdk-react", () => ({
-  createChat: vi.fn(() => mockChat),
-  useChatSelector: vi.fn((_chat: any, selector: (s: any) => any) => {
-    return selector(mockSnapshot);
+  useLanggraph: vi.fn((_options: any, selector: (s: any) => any) => {
+    // Apply selector to snapshot - if it selects chat, return mockChat
+    const result = selector(mockSnapshot);
+    if (result === mockSnapshot.chat) {
+      return mockChat;
+    }
+    return result;
   }),
-  useChatSnapshot: vi.fn(() => mockSnapshot),
 }));
 
 // Import after mocks are set up
 import {
   useBrainstormChat,
-  useBrainstormChatSelector,
-  useBrainstormChatSnapshot,
-  useBrainstormChatMessages,
-  useBrainstormChatStateWithChat,
-  useBrainstormChatStatus,
-  useBrainstormChatComposer,
-  useBrainstormChatActions,
+  useBrainstormSelector,
+  useBrainstormMessages,
+  useBrainstormStatus,
+  useBrainstormComposer,
+  useBrainstormActions,
   useBrainstormIsNewConversation,
-  useBrainstormChatIsStreaming,
+  useBrainstormIsStreaming,
 } from "@components/brainstorm/hooks/useBrainstormChat";
-import { createChat } from "langgraph-ai-sdk-react";
+import { useLanggraph } from "langgraph-ai-sdk-react";
 
 describe("useBrainstormChat", () => {
   beforeEach(() => {
@@ -162,103 +165,63 @@ describe("useBrainstormChat", () => {
       const { result } = renderHook(() => useBrainstormChat());
 
       expect(result.current).toBe(mockChat);
-      expect(createChat).toHaveBeenCalled();
+      expect(useLanggraph).toHaveBeenCalled();
     });
 
-    it("creates chat with correct options", () => {
+    it("calls useLanggraph with correct options", () => {
       renderHook(() => useBrainstormChat());
 
-      expect(createChat).toHaveBeenCalledWith(
+      expect(useLanggraph).toHaveBeenCalledWith(
         expect.objectContaining({
           api: "http://localhost:3001/api/brainstorm/stream",
-          threadId: "test-thread-123",
           headers: expect.objectContaining({
             Authorization: "Bearer test-jwt-token",
           }),
-        })
+        }),
+        expect.any(Function)
       );
     });
   });
 
-  describe("useBrainstormChatSelector", () => {
+  describe("useBrainstormSelector", () => {
     it("applies selector to snapshot", () => {
-      const { result: chatResult } = renderHook(() => useBrainstormChat());
-
       const { result } = renderHook(() =>
-        useBrainstormChatSelector(chatResult.current, (s) => s.status)
+        useBrainstormSelector((s) => s.status)
       );
 
       expect(result.current).toBe("idle");
     });
   });
 
-  describe("useBrainstormChatSnapshot", () => {
-    it("returns full snapshot", () => {
-      const { result: chatResult } = renderHook(() => useBrainstormChat());
-
-      const { result } = renderHook(() =>
-        useBrainstormChatSnapshot(chatResult.current)
-      );
-
-      expect(result.current).toHaveProperty("messages");
-      expect(result.current).toHaveProperty("state");
-      expect(result.current).toHaveProperty("actions");
-    });
-  });
-
-  describe("useBrainstormChatMessages", () => {
+  describe("useBrainstormMessages", () => {
     it("returns messages from snapshot", () => {
       mockSnapshot = createMockSnapshot({
         messages: [{ role: "human", content: "Hello" }],
       });
 
-      const { result: chatResult } = renderHook(() => useBrainstormChat());
-      const { result } = renderHook(() =>
-        useBrainstormChatMessages(chatResult.current)
-      );
+      const { result } = renderHook(() => useBrainstormMessages());
 
       expect(result.current).toHaveLength(1);
       expect(result.current[0]).toEqual({ role: "human", content: "Hello" });
     });
   });
 
-  describe("useBrainstormChatStateWithChat", () => {
-    it("returns specific state key", () => {
-      mockSnapshot = createMockSnapshot({
-        state: { currentTopic: "audience" },
-      });
-
-      const { result: chatResult } = renderHook(() => useBrainstormChat());
-      const { result } = renderHook(() =>
-        useBrainstormChatStateWithChat(chatResult.current, "currentTopic")
-      );
-
-      expect(result.current).toBe("audience");
-    });
-  });
-
-  describe("useBrainstormChatStatus", () => {
+  describe("useBrainstormStatus", () => {
     it("returns status from snapshot", () => {
       mockSnapshot = createMockSnapshot({ status: "streaming" });
 
-      const { result: chatResult } = renderHook(() => useBrainstormChat());
-      const { result } = renderHook(() =>
-        useBrainstormChatStatus(chatResult.current)
-      );
+      const { result } = renderHook(() => useBrainstormStatus());
 
       expect(result.current).toBe("streaming");
     });
   });
 
-  describe("useBrainstormChatComposer", () => {
+  describe("useBrainstormComposer", () => {
     it("returns composer from snapshot", () => {
       const mockComposer = createMockComposer({ text: "Hello world" });
       mockSnapshot = createMockSnapshot({ composer: mockComposer });
 
-      const { result: chatResult } = renderHook(() => useBrainstormChat());
-      const { result } = renderHook(() =>
-        useBrainstormChatComposer(chatResult.current)
-      );
+      const { result } = renderHook(() => useBrainstormComposer());
 
       expect(result.current.text).toBe("Hello world");
       expect(result.current.setText).toBeDefined();
@@ -279,10 +242,7 @@ describe("useBrainstormChat", () => {
       });
       mockSnapshot = createMockSnapshot({ messages: [], threadId: null });
 
-      const { result: chatResult } = renderHook(() => useBrainstormChat());
-      const { result } = renderHook(() =>
-        useBrainstormIsNewConversation(chatResult.current)
-      );
+      const { result } = renderHook(() => useBrainstormIsNewConversation());
 
       expect(result.current).toBe(true);
     });
@@ -292,10 +252,7 @@ describe("useBrainstormChat", () => {
         messages: [{ role: "human", content: "Hi" }],
       });
 
-      const { result: chatResult } = renderHook(() => useBrainstormChat());
-      const { result } = renderHook(() =>
-        useBrainstormIsNewConversation(chatResult.current)
-      );
+      const { result } = renderHook(() => useBrainstormIsNewConversation());
 
       expect(result.current).toBe(false);
     });
@@ -311,23 +268,17 @@ describe("useBrainstormChat", () => {
       });
       mockSnapshot = createMockSnapshot({ messages: [] });
 
-      const { result: chatResult } = renderHook(() => useBrainstormChat());
-      const { result } = renderHook(() =>
-        useBrainstormIsNewConversation(chatResult.current)
-      );
+      const { result } = renderHook(() => useBrainstormIsNewConversation());
 
       expect(result.current).toBe(false);
     });
   });
 
-  describe("useBrainstormChatIsStreaming", () => {
+  describe("useBrainstormIsStreaming", () => {
     it("returns true when status is streaming", () => {
       mockSnapshot = createMockSnapshot({ status: "streaming" });
 
-      const { result: chatResult } = renderHook(() => useBrainstormChat());
-      const { result } = renderHook(() =>
-        useBrainstormChatIsStreaming(chatResult.current)
-      );
+      const { result } = renderHook(() => useBrainstormIsStreaming());
 
       expect(result.current).toBe(true);
     });
@@ -335,10 +286,7 @@ describe("useBrainstormChat", () => {
     it("returns true when status is submitted", () => {
       mockSnapshot = createMockSnapshot({ status: "submitted" });
 
-      const { result: chatResult } = renderHook(() => useBrainstormChat());
-      const { result } = renderHook(() =>
-        useBrainstormChatIsStreaming(chatResult.current)
-      );
+      const { result } = renderHook(() => useBrainstormIsStreaming());
 
       expect(result.current).toBe(true);
     });
@@ -346,16 +294,13 @@ describe("useBrainstormChat", () => {
     it("returns false when status is idle", () => {
       mockSnapshot = createMockSnapshot({ status: "idle" });
 
-      const { result: chatResult } = renderHook(() => useBrainstormChat());
-      const { result } = renderHook(() =>
-        useBrainstormChatIsStreaming(chatResult.current)
-      );
+      const { result } = renderHook(() => useBrainstormIsStreaming());
 
       expect(result.current).toBe(false);
     });
   });
 
-  describe("useBrainstormChatActions", () => {
+  describe("useBrainstormActions", () => {
     it("returns actions from snapshot", () => {
       const mockStop = vi.fn();
       mockSnapshot = createMockSnapshot({
@@ -365,10 +310,7 @@ describe("useBrainstormChat", () => {
         },
       });
 
-      const { result: chatResult } = renderHook(() => useBrainstormChat());
-      const { result } = renderHook(() =>
-        useBrainstormChatActions(chatResult.current)
-      );
+      const { result } = renderHook(() => useBrainstormActions());
 
       expect(result.current.sendMessage).toBe(mockSendMessage);
       expect(result.current.stop).toBe(mockStop);

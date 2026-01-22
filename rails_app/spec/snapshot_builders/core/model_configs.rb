@@ -12,7 +12,7 @@ module Core
         {model_key: "haiku", model_card: "claude-haiku-4-5", enabled: true, max_usage_percent: 95, cost_in: 1.0, cost_out: 5.0, cache_writes: 2.00, cache_reads: 0.10},
         {model_key: "haiku3", model_card: "claude-3-5-haiku-latest", enabled: true, max_usage_percent: 100, cost_in: 0.80, cost_out: 4.00, cache_writes: 1.60, cache_reads: 0.08 },
         {model_key: "gpt_oss", model_card: "openai/gpt-oss-120b", enabled: true, max_usage_percent: 90, cost_in: 0.15, cost_out: 0.60, cache_writes: nil, cache_reads: nil},
-        {model_key: "gpt5_mini", model_card: "gpt-5-mini", enabled: true, max_usage_percent: 100, cost_in: 0.25, cost_out: 2.0, cache_writes: nil, cache_reads: nil},
+        {model_key: "gpt5_mini", model_card: "gpt-5-mini", enabled: true, max_usage_percent: 100, cost_in: 0.25, cost_out: 2.0, cache_writes: nil, cache_reads: nil}
       ]
 
       ModelConfig.import(model_configs, on_duplicate_key_update: {conflict_target: :model_key})

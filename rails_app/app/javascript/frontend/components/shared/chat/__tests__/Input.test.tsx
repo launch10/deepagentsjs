@@ -51,6 +51,7 @@ vi.mock("langgraph-ai-sdk-react", async (importOriginal) => {
       error: (s: any) => s.error,
       threadId: (s: any) => s.threadId,
       state: (s: any) => s.state,
+      stop: (s: any) => s.stop ?? s.actions?.stop,
     },
   };
 });
@@ -59,6 +60,8 @@ vi.mock("langgraph-ai-sdk-react", async (importOriginal) => {
 function createMockSnapshotFromChat(chat: any): ChatSnapshot<Record<string, unknown>> {
   const composer = chat?._testComposer ?? createMockComposer();
   const status = chat?._testStatus ?? mockSnapshotOverrides.status ?? "ready";
+  const sendMessage = mockSnapshotOverrides.sendMessage ?? vi.fn();
+  const stop = mockSnapshotOverrides.stop ?? vi.fn();
 
   return {
     messages: chat?._testMessages ?? [],
@@ -75,17 +78,17 @@ function createMockSnapshotFromChat(chat: any): ChatSnapshot<Record<string, unkn
     composer: mockSnapshotOverrides.composer ?? composer,
     chat: chat ?? ({} as any),
     actions: {
-      sendMessage: vi.fn(),
+      sendMessage,
       updateState: vi.fn(),
       setState: vi.fn(),
-      stop: vi.fn(),
+      stop,
       clearError: vi.fn(),
       setMessages: vi.fn(),
     },
-    sendMessage: mockSnapshotOverrides.sendMessage ?? vi.fn(),
+    sendMessage,
     updateState: vi.fn(),
     setState: vi.fn(),
-    stop: mockSnapshotOverrides.stop ?? vi.fn(),
+    stop,
     clearError: vi.fn(),
     setMessages: vi.fn(),
     ...mockSnapshotOverrides,

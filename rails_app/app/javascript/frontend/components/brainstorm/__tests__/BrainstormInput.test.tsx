@@ -7,8 +7,12 @@ import type { UIMessage } from "ai";
 import type { LanggraphChat, ChatSnapshot } from "langgraph-ai-sdk-react";
 
 // Mock the hooks used by BrainstormInput
-vi.mock("@components/brainstorm/hooks/useBrainstormChat", () => ({
-  useBrainstormChatState: () => null, // No custom placeholder
+vi.mock("@components/brainstorm/hooks", () => ({
+  useBrainstormSelector: vi.fn((selector) => {
+    // Return placeholder text for the state.placeholderText selector
+    const mockState = { placeholderText: null };
+    return selector({ state: mockState });
+  }),
 }));
 
 vi.mock("@lib/brainstormTextarea", () => ({
@@ -38,6 +42,7 @@ vi.mock("langgraph-ai-sdk-react", async (importOriginal) => {
       error: (s: any) => s.error,
       threadId: (s: any) => s.threadId,
       state: (s: any) => s.state,
+      stop: (s: any) => s.stop ?? s.actions?.stop,
     },
   };
 });

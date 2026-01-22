@@ -120,7 +120,6 @@ RSpec.describe "Brainstorms API", type: :request do
           expect(response.code).to eq("401")
         end
       end
-
     end
   end
 

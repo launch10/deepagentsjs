@@ -29,7 +29,7 @@ module Core
       # Paid tier uses API models with fallbacks
       paid_prefs = [
         # Blazing speed - speed is priority
-        {cost_tier: "paid", speed_tier: "blazing", skill: "planning", model_keys: %w[haiku gpt5_mini ]},
+        {cost_tier: "paid", speed_tier: "blazing", skill: "planning", model_keys: %w[haiku gpt5_mini]},
         {cost_tier: "paid", speed_tier: "blazing", skill: "writing", model_keys: %w[haiku gpt5_mini]},
         {cost_tier: "paid", speed_tier: "blazing", skill: "coding", model_keys: %w[haiku gpt5_mini]},
         {cost_tier: "paid", speed_tier: "blazing", skill: "reasoning", model_keys: %w[haiku gpt5_mini]},
