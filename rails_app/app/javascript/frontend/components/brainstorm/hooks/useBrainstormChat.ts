@@ -188,7 +188,7 @@ export function useBrainstormIsStreaming() {
  * Syncs entity IDs from Langgraph state to the core entity store.
  * Call this once in the page component that uses the brainstorm chat.
  */
-export function syncBrainstormToLanggraphStore() {
+export function syncBrainstormToCoreStore() {
   const websiteId = useBrainstormSelector((s) => s.state.websiteId);
   const projectId = useBrainstormSelector((s) => s.state.projectId);
 
