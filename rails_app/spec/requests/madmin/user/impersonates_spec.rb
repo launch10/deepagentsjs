@@ -8,8 +8,8 @@ RSpec.describe "Madmin::User::Impersonates", type: :request do
 
   before do
     ensure_plans_exist
-    subscribe_account(admin.owned_account, plan_name: 'pro')
-    subscribe_account(target_user.owned_account, plan_name: 'pro')
+    subscribe_account(admin.owned_account, plan_name: "growth_monthly")
+    subscribe_account(target_user.owned_account, plan_name: "growth_monthly")
     sign_in admin
   end
 

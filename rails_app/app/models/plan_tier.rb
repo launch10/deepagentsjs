@@ -3,9 +3,9 @@
 # Table name: plan_tiers
 #
 #  id          :bigint           not null, primary key
-#  name        :string           not null
 #  description :string
-#  details     :jsonb            default({})
+#  details     :jsonb
+#  name        :string           not null
 #  created_at  :datetime         not null
 #  updated_at  :datetime         not null
 #
@@ -16,7 +16,7 @@
 
 class PlanTier < ApplicationRecord
   has_many :plans, dependent: :nullify
-  has_many :tier_limits, dependent: :destroy
+  has_many :tier_limits, foreign_key: :tier_id, dependent: :destroy, inverse_of: :tier
   alias_method :limits, :tier_limits
 
   store_accessor :details, :features, :credits

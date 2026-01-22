@@ -3372,12 +3372,11 @@ CREATE TABLE public.threads (
 
 CREATE TABLE public.tier_limits (
     id bigint NOT NULL,
-    plan_id bigint,
     limit_type character varying,
     "limit" integer,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    plan_tier_id bigint
+    tier_id bigint
 );
 
 
@@ -8368,24 +8367,17 @@ CREATE INDEX index_tier_limits_on_limit_type ON public.tier_limits USING btree (
 
 
 --
--- Name: index_tier_limits_on_plan_id; Type: INDEX; Schema: public; Owner: -
+-- Name: index_tier_limits_on_tier_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_tier_limits_on_plan_id ON public.tier_limits USING btree (plan_id);
-
-
---
--- Name: index_tier_limits_on_plan_id_and_limit_type; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_tier_limits_on_plan_id_and_limit_type ON public.tier_limits USING btree (plan_id, limit_type);
+CREATE INDEX index_tier_limits_on_tier_id ON public.tier_limits USING btree (tier_id);
 
 
 --
--- Name: index_tier_limits_on_plan_tier_id; Type: INDEX; Schema: public; Owner: -
+-- Name: index_tier_limits_on_tier_id_and_limit_type; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX index_tier_limits_on_plan_tier_id ON public.tier_limits USING btree (plan_tier_id);
+CREATE UNIQUE INDEX index_tier_limits_on_tier_id_and_limit_type ON public.tier_limits USING btree (tier_id, limit_type);
 
 
 --
@@ -10172,6 +10164,10 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260122190035'),
+('20260122150349'),
+('20260122150336'),
+('20260122150323'),
 ('20260120194521'),
 ('20260120155753'),
 ('20260117001808'),

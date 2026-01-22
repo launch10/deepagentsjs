@@ -1,3 +1,18 @@
+# == Schema Information
+#
+# Table name: plan_tiers
+#
+#  id          :bigint           not null, primary key
+#  description :string
+#  details     :jsonb
+#  name        :string           not null
+#  created_at  :datetime         not null
+#  updated_at  :datetime         not null
+#
+# Indexes
+#
+#  index_plan_tiers_on_name  (name) UNIQUE
+#
 require "rails_helper"
 
 RSpec.describe PlanTier, type: :model do
@@ -54,7 +69,7 @@ RSpec.describe PlanTier, type: :model do
     let(:tier) { create(:plan_tier) }
 
     it "returns limit for given type" do
-      create(:tier_limit, plan_tier: tier, limit_type: "requests_per_month", limit: 1_000_000)
+      create(:tier_limit, tier: tier, limit_type: "requests_per_month", limit: 1_000_000)
       expect(tier.limit_for("requests_per_month")).to eq(1_000_000)
     end
 
@@ -74,7 +89,7 @@ RSpec.describe PlanTier, type: :model do
     let(:tier) { create(:plan_tier) }
 
     it "aliases tier_limits as limits" do
-      limit = create(:tier_limit, plan_tier: tier)
+      limit = create(:tier_limit, tier: tier)
       expect(tier.limits).to include(limit)
     end
   end

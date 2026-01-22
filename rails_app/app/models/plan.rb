@@ -70,7 +70,6 @@ class Plan < ApplicationRecord
     plan
   end
 
-
   def has_trial?
     trial_period_days > 0
   end

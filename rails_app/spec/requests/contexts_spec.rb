@@ -19,8 +19,8 @@ RSpec.describe "Context API", type: :request do
 
   before do
     ensure_plans_exist
-    subscribe_account(user1_owned_account, plan_name: 'pro')
-    subscribe_account(user2_owned_account, plan_name: 'pro')
+    subscribe_account(user1_owned_account, plan_name: "growth_monthly")
+    subscribe_account(user2_owned_account, plan_name: "growth_monthly")
 
     # Associate uploads with website
     website1.uploads << upload1

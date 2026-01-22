@@ -97,9 +97,9 @@ RSpec.describe User, type: :model do
 
   describe '#plan' do
     it 'returns the active subscription plan' do
-      plan = create(:plan, name: 'pro')
+      plan = create(:plan, :growth_monthly)
       user.save!
-      subscribe_user(user, plan_name: "pro")
+      subscribe_user(user, plan_name: "growth_monthly")
 
       expect(user.plan).to eq(plan)
     end
@@ -113,12 +113,12 @@ RSpec.describe User, type: :model do
 
   describe '#plan_limits' do
     it 'returns plan limits when plan exists' do
-      plan = create(:plan, name: 'pro')
-      plan_limit = create(:plan_limit, plan: plan)
+      plan = create(:plan, :growth_monthly)
+      tier_limit = create(:tier_limit, tier: plan.plan_tier)
       user.save!
-      subscribe_user(user, plan_name: "pro")
+      subscribe_user(user, plan_name: "growth_monthly")
 
-      expect(user.owned_account.plan_limits).to include(plan_limit)
+      expect(user.owned_account.plan_limits).to include(tier_limit)
     end
 
     it 'returns empty array when no plan' do
@@ -240,14 +240,14 @@ RSpec.describe User, type: :model do
 
     it 'uses subscription helpers to enforce one active subscription' do
       # Using the helper to create first subscription
-      subscribe_user(user, plan_name: "starter", processor: "fake_processor")
+      subscribe_user(user, plan_name: "starter_monthly", processor: "fake_processor")
       expect(user.subscriptions.active.count).to eq(1)
-      expect(user.plan.name).to eq("starter")
+      expect(user.plan.name).to eq("starter_monthly")
 
       # Using helper again should replace the subscription (helper handles unsubscribe)
-      subscribe_user(user, plan_name: "professional", processor: "fake_processor")
+      subscribe_user(user, plan_name: "growth_monthly", processor: "fake_processor")
       expect(user.subscriptions.active.count).to eq(1)
-      expect(user.plan.name).to eq("professional")
+      expect(user.plan.name).to eq("growth_monthly")
     end
 
     context 'with non-active subscriptions' do

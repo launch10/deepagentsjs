@@ -11,7 +11,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
 
   before do
     ensure_plans_exist
-    subscribe_account(account, plan_name: 'pro')
+    subscribe_account(account, plan_name: "growth_monthly")
     sign_in user
   end
 

@@ -14,7 +14,7 @@ module Core
       LIMITS.each do |limit_type, tier_values|
         tier_values.each do |tier_name, limit_value|
           tier = PlanTier.find_by!(name: tier_name.to_s)
-          TierLimit.find_or_create_by!(plan_tier: tier, limit_type: limit_type) do |tl|
+          TierLimit.find_or_create_by!(tier: tier, limit_type: limit_type) do |tl|
             tl.limit = limit_value
           end
         end

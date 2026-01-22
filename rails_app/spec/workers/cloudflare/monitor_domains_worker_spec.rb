@@ -4,7 +4,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
   include SubscriptionHelpers
 
   let(:zone_id) { "zone_123abc" }
-  let!(:plan) { create(:plan, name: "starter") }
+  let!(:plan) { create(:plan, :starter_monthly) }
   let(:apples_user) { create_subscribed_user(plan_name: plan.name) }
   let(:bananas_user) { create_subscribed_user(plan_name: plan.name) }
   let(:apples_account) { apples_user.owned_account }
@@ -217,7 +217,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
     end
 
     context "plan limit enforcement" do
-      let!(:plan_limit) { create(:plan_limit, plan: plan, limit_type: "requests_per_month", limit: 50_000) }
+      let!(:plan_limit) { create(:tier_limit, tier: plan.plan_tier, limit_type: "requests_per_month", limit: 50_000) }
 
       let(:traffic_report) do
         {
@@ -368,7 +368,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
   end
 
   describe "Unblocking behavior" do
-    let!(:plan_limit) { create(:plan_limit, plan: plan, limit_type: "requests_per_month", limit: 50_000) }
+    let!(:plan_limit) { create(:tier_limit, tier: plan.plan_tier, limit_type: "requests_per_month", limit: 50_000) }
 
     let(:traffic_report) do
       {
@@ -507,8 +507,8 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
     end
 
     context "when account upgrades plan after being blocked" do
-      let!(:pro_plan) { create(:plan, name: "pro") }
-      let!(:pro_plan_limit) { create(:plan_limit, plan: pro_plan, limit_type: "requests_per_month", limit: 150_000) }
+      let!(:growth_plan) { create(:plan, :growth_monthly) }
+      let!(:growth_plan_limit) { create(:tier_limit, tier: growth_plan.plan_tier, limit_type: "requests_per_month", limit: 150_000) }
 
       let(:upgrade_traffic_report) do
         {
@@ -518,7 +518,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
             "apples.example.com" => 30_000,
             "www.example.com" => 20_000
           },
-          # 11:00 - Same traffic (still 90k total, but now under pro limit)
+          # 11:00 - Same traffic (still 90k total, but now under growth limit)
           "2025-08-01 11:00:00" => {
             "example.com" => 0,
             "apples.example.com" => 0,
@@ -564,11 +564,11 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
           expect(Cloudflare::FirewallRule.where(account: apples_account).blocked.count).to eq(2)
         end
       end
-      it "unblocks account when they upgrade to pro plan with higher limit" do
-        # Still in August, but account upgrades to pro plan
+      it "unblocks account when they upgrade to growth plan with higher limit" do
+        # Still in August, but account upgrades to growth plan
         Timecop.freeze(UTC.parse("2025-08-01 11:00:00")) do
-          # Upgrade account to pro plan
-          subscribe_account(apples_account, plan_name: "pro")
+          # Upgrade account to growth plan
+          subscribe_account(apples_account, plan_name: "growth_monthly")
 
           # Mock both blocking and unblocking responses
           firewall_service = instance_double(Cloudflare::FirewallService)
@@ -593,7 +593,7 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
             mock_api_response(mock_unblock_response)
           )
 
-          # Run monitor worker - should unblock because 90k < 150k pro limit
+          # Run monitor worker - should unblock because 90k < 150k growth limit
           subject.perform(zone_id)
           Sidekiq::Worker.drain_all
 

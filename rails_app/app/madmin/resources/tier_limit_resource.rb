@@ -3,13 +3,13 @@ class TierLimitResource < Madmin::Resource
 
   # Attributes
   attribute :id, form: false
-  attribute :plan_tier
+  attribute :tier
   attribute :limit_type
   attribute :limit
   attribute :created_at, form: false
   attribute :updated_at, form: false
 
   def self.display_name(record)
-    "#{record.plan_tier&.name} - #{record.limit_type}"
+    "#{record.tier&.name} - #{record.limit_type}"
   end
 end

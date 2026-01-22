@@ -12,7 +12,7 @@ RSpec.describe "Websites API", type: :request do
 
   before do
     ensure_plans_exist
-    subscribe_account(account, plan_name: 'pro')
+    subscribe_account(account, plan_name: "growth_monthly")
     switch_account_to(account)
   end
 
@@ -180,7 +180,7 @@ RSpec.describe "Websites API", type: :request do
     let!(:other_website) { create(:website, project: other_project, account: other_account) }
 
     before do
-      subscribe_account(other_account, plan_name: 'pro')
+      subscribe_account(other_account, plan_name: "growth_monthly")
     end
 
     path '/api/v1/websites/{id}' do

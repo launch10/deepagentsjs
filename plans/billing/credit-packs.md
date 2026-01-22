@@ -1,405 +1,578 @@
-# Credit Packs with Rollover - Implementation Plan
+# Credit Packs & Centralized Credits System
 
 ## Overview
 
-Implement AI credit tracking with:
-- **Subscription credits**: Reset monthly per plan allocation
-- **Purchased credits**: Roll over indefinitely until used
-- **Consumption order**: Subscription first, then purchased
+Implement a centralized credits system that:
 
-## Architecture
+1. Grants **monthly plan credits** on billing cycle (reset each period, don't rollover)
+2. Supports **one-off credit pack purchases** (rollover indefinitely until used)
+3. Shows users a single unified "credits remaining" number
+4. Handles plan upgrades/downgrades appropriately
 
-### Rails API Approach
+## Architecture Decisions
 
-Langgraph calls Rails API to check/consume credits. Rails manages all credit logic and persistence.
-
-```
-┌─────────────────┐                  ┌─────────────────┐
-│   Langgraph     │   Rails API      │     Rails       │
-│                 │                  │                 │
-│ withUsageTracking│──── POST ──────▶│ CreditsController│
-│   middleware    │  /credits/consume│                 │
-│                 │                  │ AccountConcerns │
-│                 │◀─── JSON ───────│ ::Credits       │
-│                 │   { balance }    │                 │
-└─────────────────┘                  └────────┬────────┘
-                                              │
-                                     ┌────────▼────────┐
-                                     │   PostgreSQL    │
-                                     │                 │
-                                     │ - accounts      │
-                                     │ - credit_ledger │
-                                     └─────────────────┘
-```
-
----
+| Decision                 | Choice                                                       | Rationale                               |
+| ------------------------ | ------------------------------------------------------------ | --------------------------------------- |
+| Credit storage           | Two columns on Account (`plan_credits`, `purchased_credits`) | Fast reads, clear distinction           |
+| Billing cycle detection  | Stripe `invoice.paid` webhook + daily safety net job         | Most reliable for subscription renewals |
+| Credit consumption order | Plan credits first, then purchased                           | Plan credits expire anyway              |
+| Upgrade handling         | Grant prorated additional credits immediately                | User paid for them                      |
+| Downgrade handling       | Keep current credits until next cycle                        | Better UX, Stripe prorates payment      |
 
 ## Data Model
 
-### Option: Columns on Account + Append-Only Ledger
+### 1. Add Credits to Account Table
 
 ```ruby
-# accounts table (running balances for quick lookup)
-add_column :accounts, :subscription_credits, :integer, default: 0
-add_column :accounts, :purchased_credits, :integer, default: 0
+# Migration: add_credits_to_accounts
+add_column :accounts, :plan_credits, :bigint, default: 0, null: false
+add_column :accounts, :purchased_credits, :bigint, default: 0, null: false
+add_column :accounts, :plan_credits_reset_at, :datetime
+```
 
-# credit_ledger table (append-only audit trail)
-create_table :credit_ledger_entries do |t|
-  t.references :account, null: false
-  t.string :entry_type, null: false  # subscription_reset, purchase, consumption
-  t.integer :amount, null: false     # positive = add, negative = consume
-  t.string :credit_source            # subscription or purchased
-  t.jsonb :metadata, default: {}     # thread_id, model, tokens, pack_id, etc.
+### 2. CreditPack Model (Product Catalog)
+
+```ruby
+# Table: credit_packs
+create_table :credit_packs do |t|
+  t.string :name, null: false
+  t.integer :credits, null: false
+  t.integer :amount, null: false  # cents
+  t.string :currency, default: 'usd'
+  t.string :stripe_price_id
+  t.boolean :visible, default: true
   t.timestamps
 end
 ```
 
-### PlanLimit Extension
-
-Add new limit type for AI credits:
-```ruby
-# Existing limit_types: requests_per_month, platform_subdomains
-# New: ai_credits_per_month
-
-PlanLimit.create!(plan: starter, limit_type: 'ai_credits_per_month', limit: TBD)
-```
-
----
-
-## Key Files to Modify/Create
-
-### Rails Side
-
-| File | Action |
-|------|--------|
-| `db/migrate/xxx_add_credits_to_accounts.rb` | Add subscription_credits, purchased_credits |
-| `db/migrate/xxx_create_credit_ledger_entries.rb` | Append-only ledger |
-| `app/models/credit_ledger_entry.rb` | New model |
-| `app/models/concerns/account_concerns/credits.rb` | Credit logic concern |
-| `app/models/credit_pack.rb` | Credit pack definitions |
-| `app/controllers/credit_packs_controller.rb` | Purchase flow |
-| `config/initializers/pay.rb` | Webhook handler for purchases |
-
-### Langgraph Side
-
-| File | Action |
-|------|--------|
-| `app/core/node/middleware/withUsageTracking.ts` | New middleware |
-| `app/clients/rails.ts` | Add credit API methods |
-| `app/core/errors/InsufficientCreditsError.ts` | New error class |
-
----
-
-## Implementation Details
-
-### 1. Credit Consumption (Rails)
+### 3. CreditTransaction Model (Source of Truth + Audit Log)
 
 ```ruby
-# app/models/concerns/account_concerns/credits.rb
-module AccountConcerns::Credits
-  extend ActiveSupport::Concern
+# Table: credit_transactions
+create_table :credit_transactions do |t|
+  t.references :account, null: false, foreign_key: true
+  t.references :credit_pack, foreign_key: true
+  t.string :transaction_type, null: false  # grant, consume, expire, refund, adjustment
+  t.string :credit_type, null: false       # plan, purchased
+  t.string :reason, null: false            # monthly_renewal, purchase, gift, ai_generation, page_generation, expire, admin_adjustment
+  t.bigint :amount, null: false            # positive=grant, negative=consume
+  t.bigint :balance_after, null: false     # point-in-time snapshot - source of truth
+  t.string :description                    # optional admin notes
+  t.string :reference_type                 # polymorphic (Pay::Charge, Pay::Subscription)
+  t.bigint :reference_id
+  t.jsonb :metadata, default: {}
+  t.timestamps
 
-  def available_credits
-    subscription_credits + purchased_credits
-  end
-
-  def can_consume_credits?
-    # Allow if not already negative (grace for going negative once)
-    available_credits >= 0
-  end
-
-  def consume_credits!(amount, metadata = {})
-    # Block if already negative - must purchase more
-    return { success: false, error: :insufficient_credits } unless can_consume_credits?
-
-    remaining = amount
-
-    transaction do
-      # Consume subscription credits first
-      if subscription_credits > 0
-        from_subscription = [subscription_credits, remaining].min
-        self.subscription_credits -= from_subscription
-        remaining -= from_subscription
-        log_consumption(from_subscription, 'subscription', metadata) if from_subscription > 0
-      end
-
-      # Then purchased credits (may go negative)
-      if remaining > 0
-        self.purchased_credits -= remaining
-        log_consumption(remaining, 'purchased', metadata)
-      end
-
-      save!
-    end
-
-    { success: true, new_balance: available_credits }
-  end
-
-  private
-
-  def log_consumption(amount, source, metadata)
-    credit_ledger_entries.create!(
-      entry_type: 'consumption',
-      amount: -amount,
-      credit_source: source,
-      metadata: metadata
-    )
-  end
+  t.index [:account_id, :created_at]
+  t.index [:reference_type, :reference_id], unique: true, where: "reference_id IS NOT NULL"
 end
 ```
 
-### 1b. Credits API Endpoint (Rails)
+**Example transaction flow:**
+
+```
+date         | reason           | type    | credit_type | amount | balance_after
+-------------|------------------|---------|-------------|--------|---------------
+2025-10-01   | monthly_renewal  | grant   | plan        | +500   | 500
+2025-10-01   | ai_generation    | consume | plan        | -10    | 490
+2025-11-01   | expire           | expire  | plan        | -490   | 0
+2025-11-01   | monthly_renewal  | grant   | plan        | +500   | 500
+2025-11-01   | purchase         | grant   | purchased   | +500   | 1000
+2025-11-02   | ai_generation    | consume | plan        | -10    | 990
+```
+
+**Design: Hybrid Source of Truth + Cache**
+
+- **Transaction log is authoritative** - `balance_after` is the source of truth
+- **Cached balance on Account** - For fast reads during high-frequency checks
+- **Atomic updates** - Transaction creation + Account cache update in same DB transaction
+- **Reconciliation** - Periodic job verifies cache matches `SELECT balance_after FROM credit_transactions WHERE account_id = ? ORDER BY created_at DESC LIMIT 1`
+
+**Linking to Langgraph Messages:**
+
+Messages are stored as JSONB blobs in Langgraph's `checkpoints` table (not individual rows). The linkage chain:
+
+```
+checkpoints.thread_id → Chat.thread_id → Project → Account
+```
+
+For credit transactions, use:
+
+- **`reference_type: "Chat"`** - Links to the conversation (Rails model)
+- **`metadata` JSONB** - Stores granular details:
+  - `run_id`: Langgraph run ID for specific execution
+  - `graph`: Which graph (brainstorm, website, ads)
+  - `message_count`: Messages in this charge (for batched billing)
+  - `checkpoint_id`: Optional, for audit drill-down
+
+Example transaction for AI generation:
 
 ```ruby
-# app/controllers/api/v1/credits_controller.rb
-module Api::V1
-  class CreditsController < BaseController
-    # POST /api/v1/credits/consume
-    def consume
-      result = current_account.consume_credits!(
-        params[:amount].to_i,
-        metadata: params[:metadata]&.permit!&.to_h || {}
-      )
-
-      if result[:success]
-        render json: { success: true, balance: result[:new_balance] }
-      else
-        render json: { success: false, error: result[:error] }, status: :payment_required
-      end
-    end
-
-    # GET /api/v1/credits/balance
-    def balance
-      render json: {
-        available: current_account.available_credits,
-        subscription: current_account.subscription_credits,
-        purchased: current_account.purchased_credits,
-        can_consume: current_account.can_consume_credits?
-      }
-    end
-  end
-end
+CreditTransaction.create!(
+  account: account,
+  transaction_type: "consume",
+  credit_type: "plan",
+  reason: "ai_generation",
+  amount: -10,
+  balance_after: 490,
+  reference: chat,  # Chat model has thread_id linking to Langgraph
+  metadata: { run_id: "abc123", graph: "brainstorm", message_count: 1 }
+)
 ```
 
-### 2. Usage Tracking Middleware (Langgraph)
+### 4. Extend PlanLimit
 
-```typescript
-// app/core/node/middleware/withUsageTracking.ts
-import { getNodeContext } from './withContext';
-import { RailsClient } from '@/clients/rails';
-
-// Cost per 1K tokens (from app/core/llm/types.ts)
-const MODEL_COSTS = {
-  'claude-sonnet': { input: 3.00, output: 15.00 },
-  'claude-haiku': { input: 1.00, output: 5.00 },
-  'gpt-5': { input: 1.25, output: 10.00 },
-  'gpt-5-mini': { input: 0.25, output: 2.00 },
-  // ... etc
-};
-
-function calculateCredits(usage: TokenUsage): number {
-  const costs = MODEL_COSTS[usage.model] || MODEL_COSTS['claude-sonnet'];
-
-  // Calculate actual cost in dollars
-  const inputCost = (usage.input_tokens / 1000) * costs.input;
-  const outputCost = (usage.output_tokens / 1000) * costs.output;
-  const totalCost = inputCost + outputCost;
-
-  // 100 credits = $1 user cost = $0.50 actual cost
-  // So: credits = actualCost * 2 * 100 = actualCost * 200
-  return Math.ceil(totalCost * 200);
-}
-
-export const withUsageTracking = middlewareFactory<UsageTrackingConfig>({
-  name: 'withUsageTracking',
-  wrapper: (config, node) => async (state, nodeConfig) => {
-    // Check credits BEFORE making LLM call
-    if (state.accountId) {
-      const canConsume = await RailsClient.canConsumeCredits(state.accountId);
-      if (!canConsume) {
-        throw new InsufficientCreditsError('Account has insufficient credits');
-      }
-    }
-
-    const result = await node(state, nodeConfig);
-
-    // Extract usage from last AI message
-    const lastMessage = state.messages[state.messages.length - 1];
-    const usage = lastMessage?.response_metadata?.usage;
-
-    if (usage && state.accountId) {
-      const credits = calculateCredits(usage);
-
-      // Call Rails API to consume credits
-      await RailsClient.consumeCredits(state.accountId, credits, {
-        threadId: state.threadId,
-        nodeContext: getNodeContext(),
-        inputTokens: usage.input_tokens,
-        outputTokens: usage.output_tokens,
-        model: usage.model,
-      });
-    }
-
-    return result;
-  }
-});
-```
-
-```typescript
-// app/clients/rails.ts (add to existing client)
-export class RailsClient {
-  static async canConsumeCredits(accountId: string): Promise<boolean> {
-    const response = await this.get(`/api/v1/accounts/${accountId}/credits/balance`);
-    return response.can_consume;
-  }
-
-  static async consumeCredits(
-    accountId: string,
-    amount: number,
-    metadata: Record<string, any>
-  ): Promise<{ success: boolean; balance?: number; error?: string }> {
-    return this.post(`/api/v1/accounts/${accountId}/credits/consume`, {
-      amount,
-      metadata
-    });
-  }
-}
-```
-
-### 3. Credit Pack Purchase Flow
+Add `monthly_credits` as a new `limit_type` value (no schema change needed):
 
 ```ruby
-# app/controllers/credit_packs_controller.rb
-class CreditPacksController < ApplicationController
-  def index
-    @credit_packs = CreditPack.all
-  end
-
-  def checkout
-    @pack = CreditPack.find(params[:id])
-    payment_processor = current_account.set_payment_processor(:stripe)
-
-    @checkout_session = payment_processor.checkout(
-      mode: :payment,
-      line_items: @pack.stripe_price_id,
-      return_url: checkout_return_url(return_to: credit_packs_path),
-      metadata: { credit_pack_id: @pack.id, account_id: current_account.id }
-    )
-  end
-end
-
-# config/initializers/pay.rb (add to existing)
-Pay::Charge.include CreditPackPurchaseHandler
-
-module CreditPackPurchaseHandler
-  extend ActiveSupport::Concern
-
-  included do
-    after_create :handle_credit_pack_purchase
-  end
-
-  def handle_credit_pack_purchase
-    return unless metadata['credit_pack_id'].present?
-
-    pack = CreditPack.find(metadata['credit_pack_id'])
-    account = Account.find(metadata['account_id'])
-
-    account.add_purchased_credits!(pack.credits, charge: self)
-  end
-end
+PlanLimit.create(plan: starter_plan, limit_type: "monthly_credits", limit: 100)
+PlanLimit.create(plan: pro_plan, limit_type: "monthly_credits", limit: 500)
 ```
 
-### 4. Monthly Reset
+## Credit Deduction Architecture
 
-```ruby
-# Via Zhong job or Stripe subscription webhook
-class CreditResetJob
-  def perform(account_id)
-    account = Account.find(account_id)
-    monthly_allocation = account.plan&.ai_credits_per_month || 0
+**Deduction happens in Langgraph at execution time** - more accurate billing, only charges for successful generations.
 
-    account.reset_subscription_credits!(monthly_allocation)
-  end
-end
+**Existing Pattern**: Langgraph already calls Rails via typed API services (`BrainstormAPIService`, `CampaignAPIService`, etc.) using JWT + HMAC authentication.
 
-# In Account concern:
-def reset_subscription_credits!(amount)
-  credit_ledger_entries.create!(
-    entry_type: 'subscription_reset',
-    amount: amount,
-    credit_source: 'subscription',
-    metadata: { previous_balance: subscription_credits }
-  )
-  update!(subscription_credits: amount)
-end
+**New Flow:**
+
+```
+User sends message → Rails → Langgraph
+                              ↓
+                         AI executes
+                              ↓
+                    AccountCreditsAPIService.deductCredits()
+                              ↓
+                         Rails API
+                              ↓
+                    CreditTransaction created
+                              ↓
+                    Response to Langgraph
 ```
 
----
+**New Files (Langgraph side):**
+
+- `shared/lib/api/services/accountCreditsAPIService.ts` - API client for credits
+
+**New Files (Rails side):**
+
+- `app/controllers/api/v1/account_credits_controller.rb` - Deduction endpoint
+- Update OpenAPI schema generation
 
 ## Implementation Phases
 
-### Phase 1: Data Model & API (Rails)
-1. Migration: Add `subscription_credits`, `purchased_credits` to accounts
-2. Migration: Create `credit_ledger_entries` table
-3. Create `CreditLedgerEntry` model
-4. Create `AccountConcerns::Credits` concern
-5. Create `Api::V1::CreditsController` with `balance` and `consume` endpoints
-6. Add routes for credits API
+### Phase 1: Database & Models
 
-### Phase 2: Usage Tracking (Langgraph)
-7. Add `RailsClient.canConsumeCredits` and `consumeCredits` methods
-8. Create `withUsageTracking` middleware with cost calculation
-9. Create `InsufficientCreditsError` class
-10. Apply middleware to LLM-calling nodes (brainstorm, ads, website agents)
+**Files to create:**
 
-### Phase 3: Credit Pack Purchases (Rails)
-11. Create `CreditPack` model with pack definitions (400/$25, 1000/$50, 2500/$100)
-12. Create Stripe products/prices for packs
-13. Create `CreditPacksController` with checkout flow
-14. Add webhook handler in Pay initializer for `checkout.session.completed`
+- `db/migrate/XXXX_add_credits_to_accounts.rb`
+- `db/migrate/XXXX_create_credit_packs.rb`
+- `db/migrate/XXXX_create_credit_transactions.rb`
+- `app/models/credit_pack.rb`
+- `app/models/credit_transaction.rb`
+- `app/models/concerns/account_concerns/credits.rb`
 
-### Phase 4: Monthly Reset (TBD - after plan allocations defined)
-15. Add Zhong job or Stripe webhook handler for reset
-16. Test reset doesn't affect purchased credits
+**Files to modify:**
 
-### Phase 5: UI (Later)
-17. Credits display in header/settings
-18. Purchase UI in Settings > Billing
-19. Low-credit warning modal
+- `app/models/account.rb` - Include Credits concern
+- `spec/snapshot_builders/core/plans.rb` - Add `monthly_credits` to plan limits
 
----
+### Phase 2: Credit Operations
 
-## Verification
+**Credits Concern** (`app/models/concerns/account_concerns/credits.rb`):
+
+- `total_credits` - Returns `plan_credits + purchased_credits`
+- `has_credits?(amount)` - Check if sufficient credits
+- `deduct_credits!(amount, description:)` - Atomic deduction (plan first, then purchased)
+- `grant_plan_credits!(amount)` - Reset and grant plan credits
+- `grant_purchased_credits!(amount, credit_pack:, charge:)` - Add purchased credits
+
+Key: Use `with_lock` for atomic operations (follows `AccountRequestCount` pattern).
+
+### Phase 3: Stripe Integration for Credit Packs
+
+**Files to create:**
+
+- `app/controllers/credit_packs_controller.rb`
+- `app/views/credit_packs/index.html.erb`
+- `app/views/credit_packs/new.html.erb`
+- `app/workers/credits/grant_purchased_credits_worker.rb`
+
+**Files to modify:**
+
+- `config/initializers/pay.rb` - Extend `ChargeExtensions` with `fulfill_credit_pack_purchase`
+- `config/routes/billing.rb` - Add credit_packs routes
+
+**Purchase Flow:**
+
+1. User visits `/credit_packs` and selects a pack
+2. Controller creates Stripe Checkout Session (mode: "payment") with metadata
+3. User completes payment
+4. Pay gem creates `Pay::Charge` record
+5. `ChargeExtensions#fulfill_credit_pack_purchase` callback fires
+6. Worker grants credits with idempotency check
+
+### Phase 4: Billing Cycle Credit Refresh
+
+**Files to create:**
+
+- `app/workers/credits/refresh_plan_credits_worker.rb`
+- `app/workers/credits/refresh_safety_net_worker.rb`
+- `app/workers/credits/handle_plan_change_worker.rb`
+
+**Files to modify:**
+
+- `config/initializers/pay.rb`:
+  - Add `Pay::Webhooks.subscribe "stripe.invoice.paid"` handler
+  - Extend `SubscriptionExtensions` with `after_update :detect_plan_change`
+- `schedule.rb` - Add daily safety net job
+
+**Billing Cycle Flow:**
+
+1. Stripe charges subscription → sends `invoice.paid` webhook
+2. Pay gem processes webhook, updates `Pay::Subscription.current_period_start`
+3. Custom handler triggers `RefreshPlanCreditsWorker`
+4. Worker: expire old plan credits, grant new credits based on plan
+5. Daily safety net catches any missed webhooks
+
+### Phase 5: Plan Change Handling
+
+**Upgrade:**
+
+1. Detect via `saved_change_to_processor_plan?` on `Pay::Subscription`
+2. Calculate prorated additional credits: `(new_limit - old_limit) * (days_remaining / total_days)`
+3. Add to `plan_credits`
+
+**Downgrade:**
+
+1. Log the downgrade
+2. Keep current credits until next billing cycle
+3. Next cycle grants the new (lower) amount
+
+### Phase 6: Langgraph Credit Deduction
+
+**Files to create (shared):**
+
+- `shared/lib/api/services/accountCreditsAPIService.ts`
+
+**Files to modify (Langgraph):**
+
+- `langgraph_app/app/nodes/` - Add credit deduction calls to AI execution nodes
+- `shared/lib/api/services/index.ts` - Export new service
+
+**Files to modify (Rails):**
+
+- `app/controllers/api/v1/account_credits_controller.rb` - Add `deduct` action
+- Regenerate OpenAPI schema
+
+**Deduction Points in Langgraph:**
+
+- Brainstorm graph: After successful AI response
+- Website graph: After page generation
+- Ads graph: After ad copy generation
+
+**API Endpoint:**
+
+```
+POST /api/v1/account_credits/deduct
+{
+  "amount": 10,
+  "reason": "ai_generation",
+  "chat_id": "chat_abc123",
+  "metadata": { "graph": "brainstorm", "run_id": "xyz" }
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "balance": { "total": 490, "plan": 490, "purchased": 0 }
+}
+```
+
+### Phase 7: Frontend Integration
+
+**Files to create:**
+
+- `app/controllers/api/v1/credits_controller.rb` - Read-only balance/history
+- React components for credit display and purchase UI
+
+**API Endpoints:**
+
+- `GET /api/v1/credits` - Returns balance breakdown
+- `GET /api/v1/credits/transactions` - Returns transaction history
+
+## Critical Files Reference
+
+| File                                                    | Purpose                                  |
+| ------------------------------------------------------- | ---------------------------------------- |
+| `rails_app/config/initializers/pay.rb`                  | Extend Pay::Charge and Pay::Subscription |
+| `rails_app/app/models/account.rb`                       | Add Credits concern                      |
+| `rails_app/app/models/account_request_count.rb`         | Pattern for `with_lock` atomic ops       |
+| `rails_app/app/controllers/subscriptions_controller.rb` | Pattern for Stripe Checkout              |
+| `rails_app/spec/snapshot_builders/core/plans.rb`        | Seed plan limits                         |
+| `shared/lib/api/railsApiBase.ts`                        | Base class for API services              |
+| `shared/lib/api/services/`                              | Existing API service patterns            |
+| `langgraph_app/app/nodes/core/`                         | Node patterns for credit deduction       |
+
+## Verification Plan
 
 ### Unit Tests
-- `Account#consume_credits!` with various scenarios
-- `Account#available_credits` calculation
-- Ledger entry creation
+
+- `CreditPack` model validations and scopes
+- `CreditTransaction` creation and audit trail
+- `Account#deduct_credits!` atomic behavior, correct ordering
+- `Account#grant_plan_credits!` reset behavior
 
 ### Integration Tests
+
 - Credit pack purchase flow end-to-end
-- Langgraph middleware writes to ledger
+- Plan upgrade grants additional credits
+- Billing cycle reset clears plan credits and grants new
+- Purchased credits persist across billing cycles
 
 ### Manual Testing
-- Purchase credits via Stripe test mode
-- Trigger LLM calls, verify credits deducted
-- Verify monthly reset preserves purchased credits
 
----
+1. Create test credit packs in Stripe Dashboard
+2. Purchase a credit pack, verify credits added
+3. Use credits, verify deduction order (plan first)
+4. Wait for/simulate billing cycle, verify plan credits reset
+5. Upgrade plan mid-cycle, verify prorated credit grant
 
-## Design Decisions
+## Stripe Setup Required
 
-1. **Token → Credit conversion**: Cost-based
-   - 100 credits = $1 user cost = $0.50 actual LLM cost
-   - Track actual usage cost, multiply by 2 for user credits
-   - Use existing cost data per model (Sonnet, Haiku, etc.)
+1. Create Stripe Products for credit packs in Dashboard
+2. Create Prices for each pack tier
+3. Add Price IDs to Rails credentials:
 
-2. **Zero credits behavior**: Allow negative ONCE
-   - If `available_credits >= 0`: allow request (may go negative)
-   - If `available_credits < 0`: block request, require purchase
-   - Prevents abuse while giving grace for mid-session depletion
+```yaml
+stripe:
+  credit_packs:
+    small: price_xxx
+    medium: price_yyy
+    large: price_zzz
+```
 
-3. **Balance updates**: Rails API call
-   - Langgraph calls Rails API endpoint to consume credits
-   - Better separation of concerns
-   - Rails handles subscription vs purchased logic
+## Confirmed Requirements
+
+- **Credits are for AI generations only** - Page views/traffic continue to use existing `requests_per_month` limits
+- **Plan credits consumed first** - Since they expire at billing cycle, use them before purchased credits
+- **Two parallel systems**: Credits (AI) + Request Limits (traffic) coexist
+- **1 credit = $0.01 (1 cent) of AI spend** - Credits are directly tied to actual AI costs
+
+## Credit Pricing Model
+
+### Conversion Formula
+
+```
+credits_to_deduct = ai_cost_in_dollars * 100
+```
+
+### Example Costs
+
+| AI Action                       | Typical Cost | Credits                   |
+| ------------------------------- | ------------ | ------------------------- |
+| Claude Sonnet message           | ~$0.01       | ~1 credit                 |
+| Claude Haiku message            | ~$0.001      | ~0.1 credits (round to 1) |
+| Page generation (full)          | ~$0.50       | ~50 credits               |
+| Brainstorm session (5 messages) | ~$0.05       | ~5 credits                |
+
+### Final Pricing Model
+
+**Yearly Subscriptions (monthly credits, don't rollover):**
+| Plan | Credits/mo | Price/yr | $/credit | Our Cost | Margin |
+|------|------------|----------|----------|----------|--------|
+| Starter | 2,000 | $59 | $0.0295 | $20 | 66% |
+| Growth | 5,000 | $119 | $0.0238 | $50 | 58% |
+| Pro | 15,000 | $299 | $0.0199 | $150 | 50% |
+
+**Monthly Subscriptions (monthly credits, don't rollover):**
+| Plan | Credits/mo | Price/mo | $/credit | Our Cost | Margin |
+|------|------------|----------|----------|----------|--------|
+| Starter | 2,000 | $79 | $0.0395 | $20 | 75% |
+| Growth | 5,000 | $149 | $0.0298 | $50 | 66% |
+| Pro | 15,000 | $399 | $0.0266 | $150 | 62% |
+
+**Credit Packs (one-time purchase, rollover indefinitely):**
+| Pack | Credits | Price | $/credit | Our Cost | Margin |
+|------|---------|-------|----------|----------|--------|
+| Small | 500 | $25 | $0.05 | $5 | 80% |
+| Mid | 1,250 | $50 | $0.04 | $12.50 | 75% |
+| Big | 3,000 | $100 | $0.033 | $30 | 70% |
+
+**What users get (in terms of page generations @ 50 credits each):**
+
+- Starter: ~40 pages/month
+- Growth: ~100 pages/month
+- Pro: ~300 pages/month
+- Small Pack: ~10 pages
+- Mid Pack: ~25 pages
+- Big Pack: ~60 pages
+
+### Implementation: Cost Tracking in Langgraph
+
+**IMPORTANT**: The final AIMessage does NOT contain cumulative costs. Each AIMessage only contains usage for that specific LLM call. You must sum across ALL AIMessages.
+
+| Question                            | Answer                                                                  |
+| ----------------------------------- | ----------------------------------------------------------------------- |
+| Does final message have total cost? | **No** - only that LLM call's usage                                     |
+| Where is usage stored?              | Each `AIMessage` has its own `usage_metadata`                           |
+| Do ToolMessages have usage?         | **No** - only AIMessage has usage                                       |
+| How to get total?                   | Sum `usage_metadata` across all AIMessages using `mergeUsageMetadata()` |
+
+**Cost Aggregation Pattern:**
+
+```typescript
+import { AIMessage, isAIMessage } from "@langchain/core/messages";
+import { mergeUsageMetadata, UsageMetadata } from "@langchain/core/messages";
+
+// Sum usage across all AIMessages in an agent run
+function aggregateUsage(messages: BaseMessage[]): UsageMetadata | undefined {
+  const aiMessages = messages.filter(isAIMessage);
+  if (aiMessages.length === 0) return undefined;
+
+  let total = aiMessages[0].usage_metadata;
+  for (let i = 1; i < aiMessages.length; i++) {
+    const usage = aiMessages[i].usage_metadata;
+    if (usage) {
+      total = mergeUsageMetadata(total, usage);
+    }
+  }
+  return total;
+}
+
+// Calculate cost from usage
+function calculateCost(
+  usage: UsageMetadata,
+  pricing: { inputPricePerMillion: number; outputPricePerMillion: number }
+): number {
+  const inputCost = (usage.input_tokens / 1_000_000) * pricing.inputPricePerMillion;
+  const outputCost = (usage.output_tokens / 1_000_000) * pricing.outputPricePerMillion;
+  return inputCost + outputCost;
+}
+```
+
+**Wrapper for Agent Runs with Cost Tracking:**
+
+```typescript
+export async function withCostTracking<T extends { messages: BaseMessage[] }>(
+  modelName: string,
+  agentFn: () => Promise<T>
+): Promise<T & { _cost: { tokens: UsageMetadata; dollars: number; llmCalls: number } }> {
+  // Validate model exists in DB - throws if not configured
+  const pricing = await getModelPricing(modelName);
+
+  const result = await agentFn();
+
+  // Sum all AIMessage usage
+  const aiMessages = result.messages.filter(isAIMessage);
+  const tokens = aiMessages.reduce(
+    (acc, msg) => (msg.usage_metadata ? mergeUsageMetadata(acc, msg.usage_metadata) : acc),
+    { input_tokens: 0, output_tokens: 0, total_tokens: 0 }
+  );
+
+  const dollars =
+    (tokens.input_tokens / 1e6) * pricing.inputPricePerMillion +
+    (tokens.output_tokens / 1e6) * pricing.outputPricePerMillion;
+
+  return {
+    ...result,
+    _cost: { tokens, dollars, llmCalls: aiMessages.length },
+  };
+}
+
+// Usage
+const { messages, _cost } = await withCostTracking("claude-sonnet-4-20250514", () =>
+  agent.invoke({ messages: [new HumanMessage("Build me a landing page")] })
+);
+
+// Deduct credits (1 credit = $0.01)
+const credits = Math.ceil(_cost.dollars * 100);
+await creditsAPI.deductCredits({
+  amount: credits,
+  reason: "ai_generation",
+  metadata: {
+    model: "claude-sonnet-4-20250514",
+    input_tokens: _cost.tokens.input_tokens,
+    output_tokens: _cost.tokens.output_tokens,
+    cost_usd: _cost.dollars,
+    llm_calls: _cost.llmCalls,
+  },
+});
+```
+
+### Model Pricing Table (extend existing model_configs)
+
+Existing `model_configs` table needs cache pricing columns:
+
+```ruby
+# Migration: add_cache_pricing_to_model_configs
+add_column :model_configs, :cost_cache_write, :decimal, precision: 10, scale: 4
+add_column :model_configs, :cost_cache_read, :decimal, precision: 10, scale: 4
+```
+
+**Full schema:**
+
+```ruby
+# Table: model_configs
+#  id                :bigint           not null, primary key
+#  model_key         :string           not null
+#  cost_in           :decimal(10, 4)   # Input tokens per 1M
+#  cost_out          :decimal(10, 4)   # Output tokens per 1M
+#  cost_cache_write  :decimal(10, 4)   # Cache creation per 1M (NEW)
+#  cost_cache_read   :decimal(10, 4)   # Cache read per 1M (NEW)
+#  enabled           :boolean          default(TRUE)
+#  max_usage_percent :integer          default(100)
+#  model_card        :string
+```
+
+**Usage metadata from Anthropic:**
+
+```typescript
+usage_metadata: {
+  input_tokens: number;
+  output_tokens: number;
+  cache_creation_input_tokens?: number;  // Written to cache
+  cache_read_input_tokens?: number;       // Read from cache (90% cheaper!)
+}
+```
+
+**Note on image/multimedia tokens:** Image tokens ARE included in `input_tokens` but are NOT broken out separately by the API. LangChain has `input_token_details.image` in types but it's never populated. For flat-rate pricing this is fine - costs are accurate. Differential image pricing would require manual estimation.
+
+**Updated cost calculation:**
+
+```typescript
+function calculateCost(usage: UsageMetadata, pricing: ModelConfig): number {
+  const inputCost = (usage.input_tokens / 1e6) * pricing.cost_in;
+  const outputCost = (usage.output_tokens / 1e6) * pricing.cost_out;
+
+  // Cache costs (if present)
+  const cacheWriteCost = usage.cache_creation_input_tokens
+    ? (usage.cache_creation_input_tokens / 1e6) * pricing.cost_cache_write
+    : 0;
+  const cacheReadCost = usage.cache_read_input_tokens
+    ? (usage.cache_read_input_tokens / 1e6) * pricing.cost_cache_read
+    : 0;
+
+  return inputCost + outputCost + cacheWriteCost + cacheReadCost;
+}
+```
+
+**Anthropic pricing data (January 2025):**
+| Model | Input $/1M | Output $/1M | Cache Write $/1M | Cache Read $/1M |
+|-------|------------|-------------|------------------|-----------------|
+| claude-sonnet-4-20250514 | $3.00 | $15.00 | $3.75 | $0.30 |
+| claude-haiku-35-20241022 | $0.80 | $4.00 | $1.00 | $0.08 |
+| claude-opus-4-5-20251101 | $15.00 | $75.00 | $18.75 | $1.50 |
+
+**Schema is sufficient for Anthropic:** 4 cost columns (in, out, cache_write, cache_read) cover all Anthropic pricing. OpenAI's `reasoning_tokens` can be added later if needed.
+
+## All Requirements Confirmed
+
+- **1 credit = $0.01 (1 cent) of AI spend**
+- **Plan credits**: Starter 2,000 | Growth 5,000 | Pro 15,000 per month
+- **Credit packs**: Small 500 | Mid 1,250 | Big 3,000 (rollover)
+- **Margins**: 50-75% on subscriptions, 70-80% on credit packs

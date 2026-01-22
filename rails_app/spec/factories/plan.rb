@@ -8,62 +8,47 @@ FactoryBot.define do
     stripe_id { "price_test" }
     association :plan_tier
 
-    trait :starter do
-      name { "starter" }
-      amount { 4900 }
-      association :plan_tier, :starter
-    end
-
+    # Starter tier plans ($79/month, $59/month billed annually)
     trait :starter_monthly do
       name { "starter_monthly" }
-      amount { 4900 }
+      amount { 7900 }
       interval { "month" }
       association :plan_tier, :starter
     end
 
     trait :starter_annual do
       name { "starter_annual" }
-      amount { 47000 }
+      amount { 70800 }
       interval { "year" }
       association :plan_tier, :starter
     end
 
-    trait :pro do
-      name { "pro" }
-      amount { 9900 }
-      association :plan_tier, :growth
-    end
-
-    trait :pro_monthly do
-      name { "pro_monthly" }
-      amount { 9900 }
+    # Growth tier plans ($149/month, $119/month billed annually)
+    trait :growth_monthly do
+      name { "growth_monthly" }
+      amount { 14900 }
       interval { "month" }
       association :plan_tier, :growth
     end
 
-    trait :pro_annual do
-      name { "pro_annual" }
-      amount { 95000 }
+    trait :growth_annual do
+      name { "growth_annual" }
+      amount { 142800 }
       interval { "year" }
       association :plan_tier, :growth
     end
 
-    trait :enterprise do
-      name { "enterprise" }
-      amount { 24900 }
-      association :plan_tier, :pro
-    end
-
-    trait :enterprise_monthly do
-      name { "enterprise_monthly" }
-      amount { 24900 }
+    # Pro tier plans ($399/month, $299/month billed annually)
+    trait :pro_monthly do
+      name { "pro_monthly" }
+      amount { 39900 }
       interval { "month" }
       association :plan_tier, :pro
     end
 
-    trait :enterprise_annual do
-      name { "enterprise_annual" }
-      amount { 239000 }
+    trait :pro_annual do
+      name { "pro_annual" }
+      amount { 358800 }
       interval { "year" }
       association :plan_tier, :pro
     end

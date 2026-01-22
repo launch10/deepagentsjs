@@ -1,6 +1,6 @@
 FactoryBot.define do
   factory :tier_limit do
-    association :plan_tier
+    association :tier, factory: :plan_tier
     limit_type { "requests_per_month" }
     limit { 1_000_000 }
 

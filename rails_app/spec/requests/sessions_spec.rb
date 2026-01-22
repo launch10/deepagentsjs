@@ -7,7 +7,7 @@ RSpec.describe "Sessions", type: :request do
 
   before do
     ensure_plans_exist
-    subscribe_account(user.owned_account, plan_name: 'pro')
+    subscribe_account(user.owned_account, plan_name: "growth_monthly")
   end
 
   describe "DELETE /users/sign_out" do

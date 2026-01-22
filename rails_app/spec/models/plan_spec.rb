@@ -1,3 +1,36 @@
+# == Schema Information
+#
+# Table name: plans
+#
+#  id                :bigint           not null, primary key
+#  amount            :integer          default(0), not null
+#  charge_per_unit   :boolean
+#  contact_url       :string
+#  currency          :string
+#  description       :string
+#  details           :jsonb
+#  hidden            :boolean
+#  interval          :string           not null
+#  interval_count    :integer          default(1)
+#  name              :string           not null
+#  trial_period_days :integer          default(0)
+#  unit_label        :string
+#  created_at        :datetime         not null
+#  updated_at        :datetime         not null
+#  braintree_id      :string
+#  fake_processor_id :string
+#  lemon_squeezy_id  :string
+#  paddle_billing_id :string
+#  paddle_classic_id :string
+#  plan_tier_id      :bigint
+#  stripe_id         :string
+#
+# Indexes
+#
+#  index_plans_on_created_at    (created_at)
+#  index_plans_on_name          (name) UNIQUE
+#  index_plans_on_plan_tier_id  (plan_tier_id)
+#
 require "rails_helper"
 
 RSpec.describe Plan, type: :model do
@@ -10,8 +43,8 @@ RSpec.describe Plan, type: :model do
     let(:plan) { create(:plan, plan_tier: tier) }
 
     before do
-      create(:tier_limit, plan_tier: tier, limit_type: "requests_per_month", limit: 1_000_000)
-      create(:tier_limit, plan_tier: tier, limit_type: "platform_subdomains", limit: 1)
+      create(:tier_limit, tier: tier, limit_type: "requests_per_month", limit: 1_000_000)
+      create(:tier_limit, tier: tier, limit_type: "platform_subdomains", limit: 1)
     end
 
     describe "#tier_name" do
@@ -48,7 +81,7 @@ RSpec.describe Plan, type: :model do
     let(:plan) { create(:plan, plan_tier: tier) }
 
     before do
-      create(:tier_limit, plan_tier: tier, limit_type: "requests_per_month", limit: 1_000_000)
+      create(:tier_limit, tier: tier, limit_type: "requests_per_month", limit: 1_000_000)
     end
 
     it "returns limit for given type via tier" do
@@ -70,7 +103,7 @@ RSpec.describe Plan, type: :model do
     let(:plan) { create(:plan, plan_tier: tier) }
 
     before do
-      create(:tier_limit, plan_tier: tier, limit_type: "requests_per_month", limit: 5_000_000)
+      create(:tier_limit, tier: tier, limit_type: "requests_per_month", limit: 5_000_000)
     end
 
     it "returns requests_per_month limit" do
@@ -88,7 +121,7 @@ RSpec.describe Plan, type: :model do
     let(:plan) { create(:plan, plan_tier: tier) }
 
     before do
-      create(:tier_limit, plan_tier: tier, limit_type: "requests_per_month", limit: 1_000_000)
+      create(:tier_limit, tier: tier, limit_type: "requests_per_month", limit: 1_000_000)
     end
 
     it "returns tier_limits through plan_tier" do
@@ -107,7 +140,7 @@ RSpec.describe Plan, type: :model do
     let(:plan) { create(:plan, plan_tier: tier) }
 
     before do
-      create(:tier_limit, plan_tier: tier, limit_type: "requests_per_month", limit: 1_000_000)
+      create(:tier_limit, tier: tier, limit_type: "requests_per_month", limit: 1_000_000)
     end
 
     it "delegates to plan_tier" do
@@ -120,7 +153,7 @@ RSpec.describe Plan, type: :model do
     let(:plan) { create(:plan, plan_tier: tier) }
 
     before do
-      create(:tier_limit, plan_tier: tier, limit_type: "requests_per_month", limit: 1_000_000)
+      create(:tier_limit, tier: tier, limit_type: "requests_per_month", limit: 1_000_000)
     end
 
     it "aliases tier_limits as limits" do

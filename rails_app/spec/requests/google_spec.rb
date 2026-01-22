@@ -6,7 +6,7 @@ RSpec.describe "Google API", type: :request do
 
   before do
     ensure_plans_exist
-    subscribe_account(account, plan_name: "pro")
+    subscribe_account(account, plan_name: "growth_monthly")
   end
 
   def auth_headers

@@ -36,7 +36,7 @@ RSpec.describe CampaignConcerns::Updating, "Updating campaigns + campaign assets
 
   before do
     ensure_plans_exist
-    subscribe_account(account, plan_name: 'pro')
+    subscribe_account(account, plan_name: "growth_monthly")
   end
 
   describe "headlines soft delete" do

@@ -41,44 +41,44 @@ module PlanHelpers
 
     # Create tier limits
     tier_limits_data = [
-      {plan_tier_id: starter_tier.id, limit_type: "requests_per_month", limit: 1_000_000},
-      {plan_tier_id: starter_tier.id, limit_type: "platform_subdomains", limit: 1},
-      {plan_tier_id: growth_tier.id, limit_type: "requests_per_month", limit: 5_000_000},
-      {plan_tier_id: growth_tier.id, limit_type: "platform_subdomains", limit: 2},
-      {plan_tier_id: pro_tier.id, limit_type: "requests_per_month", limit: 20_000_000},
-      {plan_tier_id: pro_tier.id, limit_type: "platform_subdomains", limit: 3}
+      {tier_id: starter_tier.id, limit_type: "requests_per_month", limit: 1_000_000},
+      {tier_id: starter_tier.id, limit_type: "platform_subdomains", limit: 1},
+      {tier_id: growth_tier.id, limit_type: "requests_per_month", limit: 5_000_000},
+      {tier_id: growth_tier.id, limit_type: "platform_subdomains", limit: 2},
+      {tier_id: pro_tier.id, limit_type: "requests_per_month", limit: 20_000_000},
+      {tier_id: pro_tier.id, limit_type: "platform_subdomains", limit: 3}
     ]
 
     tier_limits_data.each do |limit_attrs|
-      TierLimit.find_or_create_by!(plan_tier_id: limit_attrs[:plan_tier_id], limit_type: limit_attrs[:limit_type]) do |tl|
+      TierLimit.find_or_create_by!(tier_id: limit_attrs[:tier_id], limit_type: limit_attrs[:limit_type]) do |tl|
         tl.limit = limit_attrs[:limit]
       end
     end
 
-    # Create plans
+    # Create plans (matching production naming: tier_interval)
     plans_data = [
       {
-        name: "starter",
-        amount: 4900,
+        name: "starter_monthly",
+        amount: 7900,
         interval: "month",
-        stripe_id: "starter",
-        fake_processor_id: "starter",
+        stripe_id: "starter_monthly",
+        fake_processor_id: "starter_monthly",
         plan_tier_id: starter_tier.id
       },
       {
-        name: "pro",
-        amount: 9900,
+        name: "growth_monthly",
+        amount: 14900,
         interval: "month",
-        stripe_id: "pro",
-        fake_processor_id: "pro",
+        stripe_id: "growth_monthly",
+        fake_processor_id: "growth_monthly",
         plan_tier_id: growth_tier.id
       },
       {
-        name: "enterprise",
-        amount: 24900,
+        name: "pro_monthly",
+        amount: 39900,
         interval: "month",
-        stripe_id: "enterprise",
-        fake_processor_id: "enterprise",
+        stripe_id: "pro_monthly",
+        fake_processor_id: "pro_monthly",
         plan_tier_id: pro_tier.id
       }
     ]
@@ -103,21 +103,21 @@ module PlanHelpers
 
   def starter_plan
     ensure_plans_exist
-    Plan.find_by(name: "starter")
+    Plan.find_by(name: "starter_monthly")
+  end
+
+  def growth_plan
+    ensure_plans_exist
+    Plan.find_by(name: "growth_monthly")
   end
 
   def pro_plan
     ensure_plans_exist
-    Plan.find_by(name: "pro")
-  end
-
-  def enterprise_plan
-    ensure_plans_exist
-    Plan.find_by(name: "enterprise")
+    Plan.find_by(name: "pro_monthly")
   end
 
   def create_tier_limit(tier, limit_type, limit)
-    TierLimit.find_or_create_by!(plan_tier: tier, limit_type: limit_type) do |tl|
+    TierLimit.find_or_create_by!(tier: tier, limit_type: limit_type) do |tl|
       tl.limit = limit
     end.tap { |tl| tl.update!(limit: limit) }
   end
