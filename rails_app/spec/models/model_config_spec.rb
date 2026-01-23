@@ -7,6 +7,7 @@
 #  cache_writes      :decimal(10, 4)
 #  cost_in           :decimal(10, 4)
 #  cost_out          :decimal(10, 4)
+#  cost_reasoning    :decimal(10, 4)
 #  enabled           :boolean          default(TRUE), not null
 #  max_usage_percent :integer          default(100)
 #  model_card        :string
@@ -117,6 +118,17 @@ RSpec.describe ModelConfig, type: :model do
     it 'allows nil costs' do
       config = build(:model_config, cost_in: nil, cost_out: nil)
       expect(config).to be_valid
+    end
+
+    it 'stores reasoning cost for o1/o3 models' do
+      config = create(:model_config,
+        model_key: 'o1',
+        cost_in: 15.0,
+        cost_out: 60.0,
+        cost_reasoning: 60.0)
+      config.reload
+
+      expect(config.cost_reasoning).to eq(60.0)
     end
   end
 

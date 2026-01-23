@@ -7,6 +7,7 @@
 #  cache_writes      :decimal(10, 4)
 #  cost_in           :decimal(10, 4)
 #  cost_out          :decimal(10, 4)
+#  cost_reasoning    :decimal(10, 4)
 #  enabled           :boolean          default(TRUE), not null
 #  max_usage_percent :integer          default(100)
 #  model_card        :string
