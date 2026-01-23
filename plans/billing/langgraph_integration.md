@@ -19,7 +19,7 @@ We need to capture **every** LLM call for accurate billing, regardless of where 
 Use LangChain's callback system at two levels:
 
 1. **LLM-level callback** (`usageTracker`): Attached to every model via `getLLM()`, fires `handleLLMEnd` for each LLM call, accumulates usage and messages to AsyncLocalStorage
-2. **Graph-level callback** (`billingCallback`): Passed to `graph.invoke()` or `graph.stream()`, fires `handleChainEnd` when graph completes, persists all accumulated usage to Rails
+2. **Execution wrapper** (`executeWithTracking`): Wraps `graph.invoke()`, writes accumulated usage and traces directly to Postgres after graph completes
 
 This approach is testable via the existing `GraphTestBuilder` infrastructure since all graph tests wrap `graph.invoke()`.
 
@@ -36,7 +36,7 @@ The callback system works identically for `invoke()`, `stream()`, and `streamEve
 ┌───────────────────────────────────────────────────────────────────────────────┐
 │                         Graph Execution ("Run")                               │
 │                                                                               │
-│  graph.invoke(state, { callbacks: [usageTracker, billingCallback] })          │
+│  executeWithTracking() wraps graph.invoke()                                   │
 │                                                                               │
 │  ┌─────────────────────────────────────────────────────────────────────────┐  │
 │  │   runWithUsageTracking() - Sets up AsyncLocalStorage context            │  │
@@ -57,31 +57,39 @@ The callback system works identically for `invoke()`, `stream()`, and `streamEve
 │  │              │   handleLLMEnd() → reads      │                          │  │
 │  │              │   AsyncLocalStorage context   │                          │  │
 │  │              │   → accumulates UsageRecord   │                          │  │
+│  │              │   → accumulates messages      │                          │  │
 │  │              └───────────────────────────────┘                          │  │
 │  │                                                                          │  │
 │  └──────────────────────────────────────────────────────────────────────────┘  │
 │                                                                               │
-│  Graph completes (all nodes done)                                             │
-│                     │                                                         │
-│                     ▼                                                         │
-│  ┌─────────────────────────────────────────────────────────────────────────┐  │
-│  │   billingCallback (Graph-level)                                         │  │
-│  │   Passed to graph.invoke()                                              │  │
-│  │                                                                          │  │
-│  │   handleChainEnd() → reads AsyncLocalStorage                            │  │
-│  │                   → persistUsageToRails(records)                        │  │
-│  │                                                                          │  │
-│  │   handleChainError() → still persist (charge for work done)             │  │
-│  └─────────────────────────────────────────────────────────────────────────┘  │
+│  Graph completes → executeWithTracking() writes to Postgres:                  │
+│     - llm_usage_records (for billing)                                         │
+│     - conversation_traces (for analytics)                                     │
+│                                                                               │
+└───────────────────────────────────────────────────────────────────────────────┘
+
+                              │
+                              ▼
+
+┌───────────────────────────────────────────────────────────────────────────────┐
+│                    Rails Background Job (every minute)                        │
+│                                                                               │
+│  Credits::ProcessUsageJob                                                     │
+│    1. Find unprocessed llm_usage_records (processed_at IS NULL)               │
+│    2. Group by run_id, sum cost_usd                                           │
+│    3. Convert cost → credits                                                  │
+│    4. Create CreditTransaction (reference_id: run_id)                         │
+│    5. Mark records processed                                                  │
+│                                                                               │
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Callback Layers
+### Callback Layer
 
 | Callback | Level | Event | Purpose |
 |----------|-------|-------|---------|
-| `usageTracker` | LLM | `handleLLMEnd` | Accumulate usage for each LLM call |
-| `billingCallback` | Graph | `handleChainEnd` | Persist all accumulated usage to Rails |
+| `usageTracker` | LLM | `handleChatModelStart` | Capture system prompt |
+| `usageTracker` | LLM | `handleLLMEnd` | Accumulate usage records and messages |
 
 ## Implementation
 
@@ -288,59 +296,16 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
 export const usageTracker = new UsageTrackingCallbackHandler();
 ```
 
-### 2. Billing Callback (Graph-Level Persistence)
+### 2. No Billing Callback Needed
 
-```typescript
-// langgraph_app/app/core/billing/billingCallback.ts
+With the simplified architecture, we **don't need a separate billing callback**. Persistence happens in `executeWithTracking()` after the graph completes, not in a callback.
 
-import { BaseCallbackHandler } from "@langchain/core/callbacks/base";
-import type { ChainValues } from "@langchain/core/utils/types";
-import { getUsageContext } from "./usageTracker";
-import { persistUsageToRails } from "./persistUsage";
+The `usageTracker` callback accumulates records to AsyncLocalStorage, and `executeWithTracking()` reads them after the graph finishes and writes directly to Postgres.
 
-class BillingCallbackHandler extends BaseCallbackHandler {
-  name = "billing";
-
-  async handleChainEnd(
-    output: ChainValues,
-    runId: string,
-    parentRunId?: string  // Only persist at root level (no parent)
-  ): Promise<void> {
-    // Only persist at root level - nested chains shouldn't trigger billing
-    if (parentRunId) return;
-
-    const context = getUsageContext();
-    if (!context || context.records.length === 0) return;
-
-    await persistUsageToRails(
-      context.records,
-      context.chatId!,
-      context.graphName
-    );
-  }
-
-  async handleChainError(
-    error: Error,
-    runId: string,
-    parentRunId?: string
-  ): Promise<void> {
-    // Only persist at root level
-    if (parentRunId) return;
-
-    // Still persist usage on error - charge for work done
-    const context = getUsageContext();
-    if (!context || context.records.length === 0) return;
-
-    await persistUsageToRails(
-      context.records,
-      context.chatId!,
-      context.graphName
-    );
-  }
-}
-
-export const billingCallback = new BillingCallbackHandler();
-```
+This is simpler and more explicit - no magic callbacks, just:
+1. Run graph with usage tracking
+2. Write results to database
+3. Return to caller
 
 ### 3. Modify getLLM to Attach Callback
 
@@ -366,40 +331,53 @@ export async function getLLM(options: LLMOptions = {}): Promise<BaseChatModel> {
 
 ### 4. Graph Execution Wrapper
 
-```typescript
-// langgraph_app/app/core/billing/executeWithBilling.ts
+See `conversation_traces.md` for the full `executeWithTracking` implementation. Key points:
 
-import { runWithUsageTracking, usageTracker } from "./usageTracker";
-import { billingCallback } from "./billingCallback";
+- Wraps `runWithUsageTracking()` to set up AsyncLocalStorage context
+- Writes both `llm_usage_records` and `conversation_traces` to Postgres after graph completes
+- No HTTP calls to Rails - direct database writes
+
+```typescript
+// langgraph_app/app/core/billing/executeWithTracking.ts
+
+import { runWithUsageTracking } from "./usageTracker";
+import { persistUsageRecords } from "./persistUsage";
+import { persistTrace } from "../traces/persistTrace";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 
-interface RunOptions {
+interface ExecuteOptions {
   chatId: number;
-  graphName?: string;
+  threadId: string;
+  graphName: string;
+  userInput?: BaseMessage;
 }
 
-export async function executeWithBilling<TInput, TOutput>(
-  graph: CompiledGraph<TInput, TOutput>,
-  input: TInput,
+export async function executeWithTracking<TState extends { messages?: BaseMessage[] }>(
+  graph: CompiledGraph<TState>,
+  state: TState,
   config: LangGraphRunnableConfig,
-  options: RunOptions
-): Promise<TOutput> {
-  const { result } = await runWithUsageTracking(
+  options: ExecuteOptions
+): Promise<TState> {
+  const runId = crypto.randomUUID();
+
+  const { result, usage, systemPrompt, messagesProduced } = await runWithUsageTracking(
     {
       chatId: options.chatId,
-      threadId: config?.configurable?.thread_id,
+      threadId: options.threadId,
       graphName: options.graphName,
     },
-    () =>
-      graph.invoke(input, {
-        ...config,
-        callbacks: [
-          ...(config.callbacks || []),
-          usageTracker,
-          billingCallback,
-        ],
-      })
+    () => graph.invoke(state, config)
   );
+
+  // Write both tables directly to Postgres (no HTTP to Rails)
+  await Promise.all([
+    persistUsageRecords(usage, options.chatId, runId, options.graphName),
+    persistTrace(
+      { chatId: options.chatId, threadId: options.threadId, runId, graphName: options.graphName, systemPrompt },
+      [options.userInput, ...messagesProduced].filter(Boolean) as BaseMessage[],
+      aggregateUsage(usage)
+    ),
+  ]);
 
   return result;
 }
@@ -410,69 +388,147 @@ export async function executeWithBilling<TInput, TOutput>(
 ```typescript
 // In graph invocation handler
 
-const result = await executeWithBilling(
+const result = await executeWithTracking(
   brainstormGraph,
   state,
   { configurable: { thread_id: threadId } },
-  { chatId: chat.id, graphName: "brainstorm" }
+  {
+    chatId: chat.id,
+    threadId,
+    graphName: "brainstorm",
+    userInput: state.messages?.at(-1),  // The user's message
+  }
 );
 
-// Persistence happens in billingCallback.handleChainEnd()
+// Persistence happened synchronously before returning
+// Rails job will process credits in the background
 ```
 
-### 6. Persistence to Rails
+### 6. Persistence to Postgres (Direct Write)
+
+Langgraph writes directly to the shared Postgres database - no HTTP call to Rails.
 
 ```typescript
 // langgraph_app/app/core/billing/persistUsage.ts
 
-import { createRailsApiClient } from "@rails_api";
+import { db } from "@db";
+import { llmUsageRecords } from "@db/schema";
 import type { UsageRecord } from "./usageTracker";
-import { v4 as uuid } from "uuid";
 
-export async function persistUsageToRails(
+export async function persistUsageRecords(
   usage: UsageRecord[],
   chatId: number,
+  runId: string,
   graphName?: string
 ): Promise<void> {
   if (usage.length === 0) return;
 
-  const runId = uuid();
-
-  const totals = usage.reduce(
-    (acc, r) => ({
-      llmCallCount: acc.llmCallCount + 1,
-      totalInputTokens: acc.totalInputTokens + r.inputTokens,
-      totalOutputTokens: acc.totalOutputTokens + r.outputTokens,
-      totalCostUsd: acc.totalCostUsd + r.costUsd,
-    }),
-    { llmCallCount: 0, totalInputTokens: 0, totalOutputTokens: 0, totalCostUsd: 0 }
+  await db.insert(llmUsageRecords).values(
+    usage.map((r) => ({
+      chatId,
+      runId,
+      graphName,
+      modelKey: r.normalizedModel,
+      modelRaw: r.model,
+      inputTokens: r.inputTokens,
+      outputTokens: r.outputTokens,
+      reasoningTokens: r.reasoningTokens,
+      cacheCreationTokens: r.cacheCreationTokens,
+      cacheReadTokens: r.cacheReadTokens,
+      costUsd: r.costUsd,
+      tags: r.tags,
+      metadata: r.metadata,
+      // processedAt: NULL - Rails job will set this when charged
+    }))
   );
-
-  const client = await createRailsApiClient();
-
-  await client.POST("/api/v1/llm_runs", {
-    body: {
-      llm_run: {
-        chat_id: chatId,
-        run_id: runId,
-        graph_name: graphName,
-        ...totals,
-      },
-      usage_records: usage.map((r) => ({
-        model_key: r.normalizedModel,
-        model_raw: r.model,
-        input_tokens: r.inputTokens,
-        output_tokens: r.outputTokens,
-        reasoning_tokens: r.reasoningTokens,
-        cache_creation_tokens: r.cacheCreationTokens,
-        cache_read_tokens: r.cacheReadTokens,
-        cost_usd: r.costUsd,
-        tags: r.tags,
-        metadata: r.metadata,
-      })),
-    },
-  });
 }
+```
+
+### 6b. Rails Background Job (Credit Conversion)
+
+Rails owns the credit conversion logic. A periodic job processes unprocessed records:
+
+```ruby
+# app/jobs/credits/process_usage_job.rb
+
+module Credits
+  class ProcessUsageJob < ApplicationJob
+    queue_as :billing
+
+    def perform
+      # Find unprocessed runs, grouped by run_id
+      unprocessed_runs = LlmUsageRecord
+        .where(processed_at: nil)
+        .group(:run_id, :chat_id, :graph_name)
+        .select(
+          :run_id,
+          :chat_id,
+          :graph_name,
+          "SUM(cost_usd) as total_cost_usd",
+          "COUNT(*) as llm_call_count",
+          "SUM(input_tokens) as total_input_tokens",
+          "SUM(output_tokens) as total_output_tokens"
+        )
+
+      unprocessed_runs.find_each do |run_summary|
+        process_run(run_summary)
+      end
+    end
+
+    private
+
+    def process_run(run_summary)
+      chat = Chat.find(run_summary.chat_id)
+      account = chat.project.account
+
+      credits = convert_cost_to_credits(run_summary.total_cost_usd)
+
+      ApplicationRecord.transaction do
+        # Create credit transaction
+        CreditTransaction.create!(
+          account: account,
+          transaction_type: "consume",
+          credit_type: "plan",
+          reason: "ai_generation",
+          amount: -credits,
+          balance_after: account.credit_balance - credits,
+          reference_type: "llm_run",
+          reference_id: run_summary.run_id,
+          metadata: {
+            graph_name: run_summary.graph_name,
+            llm_call_count: run_summary.llm_call_count,
+            total_tokens: run_summary.total_input_tokens + run_summary.total_output_tokens,
+            cost_usd: run_summary.total_cost_usd.to_f
+          }
+        )
+
+        # Update account balance
+        account.decrement!(:credit_balance, credits)
+
+        # Mark records as processed
+        LlmUsageRecord
+          .where(run_id: run_summary.run_id)
+          .update_all(processed_at: Time.current)
+      end
+    end
+
+    def convert_cost_to_credits(cost_usd)
+      # $0.01 = 1 credit (example conversion rate)
+      (cost_usd * 100).ceil
+    end
+  end
+end
+```
+
+Schedule with Sidekiq-Cron or similar:
+
+```ruby
+# config/initializers/sidekiq_cron.rb
+Sidekiq::Cron::Job.create(
+  name: "Process LLM usage - every minute",
+  cron: "* * * * *",
+  class: "Credits::ProcessUsageJob"
+)
 ```
 
 ### 7. Model Name Normalization
@@ -527,40 +583,26 @@ function calculateCost(input: CostInput): number {
 
 ## Data Model
 
-### llm_runs (Rails)
+### Simplified Architecture
 
-Aggregated per-run summary for billing.
+There is **no `llm_runs` table**. The `run_id` is just a UUID that groups related records together:
 
-```ruby
-create_table :llm_runs do |t|
-  t.references :chat, null: false, foreign_key: true
-  t.string :run_id, null: false, index: { unique: true }
-  t.string :graph_name
-
-  t.integer :llm_call_count, null: false, default: 0
-  t.integer :total_input_tokens, null: false, default: 0
-  t.integer :total_output_tokens, null: false, default: 0
-  t.decimal :total_cost_usd, precision: 10, scale: 6, null: false
-  t.integer :credits_charged, null: false, default: 0
-
-  t.boolean :charged, default: false
-  t.datetime :charged_at
-
-  t.timestamps
-
-  t.index [:chat_id, :created_at]
-  t.index [:charged, :created_at]
-end
+```
+conversation_traces.run_id ←→ llm_usage_records.run_id ←→ credit_transactions (via reference_id)
 ```
 
-### llm_usage_records (Rails)
+- **Langgraph** writes directly to Postgres (no HTTP to Rails)
+- **Rails** owns credit conversion via a periodic background job
+- **`processed_at`** on usage records tracks what's been billed
 
-Individual LLM calls for audit trail.
+### llm_usage_records
+
+Individual LLM calls, written directly by Langgraph to shared Postgres.
 
 ```ruby
 create_table :llm_usage_records do |t|
-  t.references :chat, null: false, foreign_key: true
-  t.string :run_id, null: false, index: true
+  t.references :chat, null: false  # No FK constraint for Langgraph writes
+  t.string :run_id, null: false
   t.string :graph_name
 
   t.string :model_key, null: false
@@ -575,14 +617,19 @@ create_table :llm_usage_records do |t|
   t.string :tags, array: true, default: []
   t.jsonb :metadata
 
+  t.datetime :processed_at  # NULL = not yet charged, set by Rails job
+
   t.timestamps
 
+  t.index :run_id
   t.index [:chat_id, :run_id]
-  t.index :created_at
+  t.index [:processed_at, :created_at]  # For finding unprocessed records
 end
 ```
 
 ### CreditTransaction Reference
+
+Rails job creates transactions referencing the `run_id`:
 
 ```ruby
 CreditTransaction.create!(
@@ -592,9 +639,10 @@ CreditTransaction.create!(
   reason: "ai_generation",
   amount: -credits,
   balance_after: new_balance,
-  reference: llm_run,
+  reference_type: "llm_run",
+  reference_id: run_id,  # UUID string, not a model ID
   metadata: {
-    graph: "brainstorm",
+    graph_name: "brainstorm",
     llm_call_count: 5,
     total_tokens: 12500,
     cost_usd: 0.0234
@@ -607,11 +655,11 @@ CreditTransaction.create!(
 ```
 Request comes in (Hono handler)
     ↓
-executeWithBilling() called
+executeWithTracking() called
     ↓
 runWithUsageTracking() creates AsyncLocalStorage context
     ↓
-graph.invoke(state, { callbacks: [usageTracker, billingCallback] })
+graph.invoke(state, { callbacks: [usageTracker] })
     │
     │  ┌─── During Execution ───────────────────────────────────────────┐
     │  │                                                                 │
@@ -619,6 +667,7 @@ graph.invoke(state, { callbacks: [usageTracker, billingCallback] })
     │  │      └── model.invoke()                                         │
     │  │          └── handleLLMEnd fires                                 │
     │  │              └── UsageRecord added to AsyncLocalStorage         │
+    │  │              └── Message added to messagesProduced              │
     │  │                                                                 │
     │  │  Tool calls getLLM() internally → same flow                     │
     │  │  Middleware calls getLLM() → same flow                          │
@@ -627,25 +676,27 @@ graph.invoke(state, { callbacks: [usageTracker, billingCallback] })
     │
     ↓  Graph completes (success or error)
     │
-    │  ┌─── billingCallback.handleChainEnd() ───────────────────────────┐
+    │  ┌─── executeWithTracking() completion ───────────────────────────┐
     │  │                                                                 │
-    │  │  1. Read UsageRecord[] from AsyncLocalStorage                   │
-    │  │  2. POST to Rails: /api/v1/llm_runs                             │
-    │  │     - Creates LlmRun with aggregated totals                     │
-    │  │     - Bulk inserts LlmUsageRecords for audit                    │
-    │  │     - Enqueues Credits::ChargeRunJob                            │
+    │  │  1. Read usage[], messagesProduced, systemPrompt from context   │
+    │  │  2. Write directly to Postgres (shared with Rails):             │
+    │  │     - INSERT llm_usage_records (processed_at = NULL)            │
+    │  │     - INSERT conversation_traces                                │
     │  │                                                                 │
     │  └─────────────────────────────────────────────────────────────────┘
     ↓
 Result returned to Hono handler
+
+
+[Periodic Rails Job - runs every minute]
     ↓
-    ↓  [Background Job in Rails]
-    ↓
-Credits::ChargeRunJob:
-    1. Load LlmRun (already has totals)
-    2. Calculate credits from cost_usd
-    3. Create CreditTransaction referencing LlmRun
-    4. Mark run as charged: true
+Credits::ProcessUsageJob:
+    1. Find unprocessed records: WHERE processed_at IS NULL
+    2. Group by run_id, SUM(cost_usd)
+    3. For each run_id:
+       a. Convert cost_usd → credits
+       b. Create CreditTransaction (reference_id: run_id)
+       c. UPDATE llm_usage_records SET processed_at = NOW() WHERE run_id = ?
 ```
 
 ## Testing
@@ -734,59 +785,58 @@ OpenAI models report reasoning tokens in `output_token_details.reasoning`. These
 ### LangGraph App
 
 - [ ] Create `core/billing/usageTracker.ts`
-  - [ ] `UsageRecord` and `UsageContext` types (including `systemPrompt` fields)
+  - [ ] `UsageRecord` and `UsageContext` types (including `systemPrompt`, `messagesProduced`)
   - [ ] `usageStorage` AsyncLocalStorage instance
   - [ ] `getUsageContext()` and `runWithUsageTracking()` functions
   - [ ] `UsageTrackingCallbackHandler` class with:
-    - [ ] `handleLLMStart` - captures system prompt on first LLM call
-    - [ ] `handleLLMEnd` - accumulates usage records
+    - [ ] `handleChatModelStart` - captures system prompt on first LLM call
+    - [ ] `handleLLMEnd` - accumulates usage records and messages
   - [ ] `usageTracker` singleton export
-
-- [ ] Create `core/billing/billingCallback.ts`
-  - [ ] `BillingCallbackHandler` class with `handleChainEnd` and `handleChainError`
-  - [ ] `billingCallback` singleton export
 
 - [ ] Create `core/billing/pricing.ts`
   - [ ] `normalizeModelName()` function (longest-prefix matching)
   - [ ] `calculateCost()` function
-  - [ ] `MODEL_PRICING` table (keep in sync with Rails)
+  - [ ] `MODEL_PRICING` table
 
 - [ ] Create `core/billing/persistUsage.ts`
-  - [ ] `persistUsageToRails()` function
+  - [ ] `persistUsageRecords()` - writes directly to Postgres
 
-- [ ] Create `core/billing/executeWithBilling.ts`
-  - [ ] `executeWithBilling()` wrapper function
+- [ ] Create `core/billing/executeWithTracking.ts`
+  - [ ] `executeWithTracking()` wrapper function
+  - [ ] Writes both `llm_usage_records` and `conversation_traces`
 
 - [ ] Modify `core/llm/llm.ts`
   - [ ] Attach `usageTracker` callback in `getLLM()`
 
 - [ ] Update Hono handlers
-  - [ ] Replace `graph.invoke()` with `executeWithBilling()`
+  - [ ] Replace `graph.invoke()` with `executeWithTracking()`
 
 ### Rails App
 
-- [ ] Create migrations
-  - [ ] `llm_runs` table
-  - [ ] `llm_usage_records` table
+- [ ] Create migration for `llm_usage_records` table
+  - [ ] Include `processed_at` column for job tracking
+  - [ ] Index on `[:processed_at, :created_at]` for job queries
 
-- [ ] Create models
-  - [ ] `LlmRun` model
-  - [ ] `LlmUsageRecord` model
-  - [ ] Add `has_many :llm_runs` to `Chat`
+- [ ] Create `LlmUsageRecord` model
+  - [ ] `belongs_to :chat`
+  - [ ] Scopes: `unprocessed`, `for_run`
 
-- [ ] Create API endpoint
-  - [ ] `POST /api/v1/llm_runs` (accepts run + records)
+- [ ] Create `Credits::ProcessUsageJob`
+  - [ ] Find unprocessed records grouped by `run_id`
+  - [ ] Convert `cost_usd` to credits
+  - [ ] Create `CreditTransaction` with `reference_id: run_id`
+  - [ ] Mark records as processed
 
-- [ ] Create background job
-  - [ ] `Credits::ChargeRunJob`
+- [ ] Schedule job (Sidekiq-Cron)
+  - [ ] Run every minute
 
 ### Testing
 
 - [ ] Unit tests for `usageTracker`
-- [ ] Unit tests for `billingCallback`
-- [ ] Add `withBilling()` to `GraphTestBuilder`
-- [ ] Integration tests via `testGraph().withBilling()`
-- [ ] E2E: graph execution → Rails persistence → credit charge
+- [ ] Unit tests for `persistUsageRecords`
+- [ ] Add `withTracking()` to `GraphTestBuilder`
+- [ ] Integration tests via `testGraph().withTracking()`
+- [ ] E2E: graph execution → Postgres write → Rails job → credit charge
 
 ### Validation Script
 

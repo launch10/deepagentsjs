@@ -665,26 +665,9 @@ export async function executeWithTracking<TState extends { messages?: BaseMessag
 }
 ```
 
-### Rails: Notify Endpoint
+### Rails: No Endpoint Needed
 
-Lightweight endpoint that just enqueues a job:
-
-```ruby
-# app/controllers/api/v1/llm_runs_controller.rb
-
-module Api
-  module V1
-    class LlmRunsController < ApiController
-      # POST /api/v1/llm_runs/:run_id/charge
-      def charge
-        # Data already in Postgres, written by Langgraph
-        Credits::ChargeRunJob.perform_later(params[:run_id])
-        head :accepted
-      end
-    end
-  end
-end
-```
+With the simplified architecture, Rails doesn't need an endpoint for Langgraph to call. Instead, Rails runs a periodic job that processes unprocessed records. See `langgraph_integration.md` for the full `Credits::ProcessUsageJob` implementation.
 
 ### Rails: Model (Read-Only from Rails Perspective)
 
@@ -735,12 +718,18 @@ Once traces are captured, they enable:
 
 | Concern | Table | Written By | Used By |
 |---------|-------|------------|---------|
-| Per-LLM-call costs | `llm_usage_records` | Langgraph | Rails (billing) |
-| Per-run aggregates | `llm_runs` | Langgraph | Rails (billing) |
+| Per-LLM-call costs | `llm_usage_records` | Langgraph (direct Postgres) | Rails (billing job) |
 | Credit transactions | `credit_transactions` | Rails | Rails (accounting) |
-| Full message history | `conversation_traces` | Langgraph | Analytics/Learning |
+| Full message history | `conversation_traces` | Langgraph (direct Postgres) | Analytics/Learning |
 
-The billing system (`langgraph_integration.md`) and trace system are **parallel writes** from the same run completion hook. They share `run_id` for correlation but serve different purposes.
+**Key relationships via `run_id`:**
+```
+conversation_traces.run_id ←→ llm_usage_records.run_id ←→ credit_transactions.reference_id
+```
+
+The billing system (`langgraph_integration.md`) and trace system are **parallel writes** from the same `executeWithTracking()` call. They share `run_id` for correlation:
+- Query "what did this conversation cost?" → join traces to usage records on `run_id`
+- Query "what usage drove this charge?" → join transactions to usage records on `reference_id = run_id`
 
 ## Implementation Checklist
 
@@ -761,7 +750,7 @@ The billing system (`langgraph_integration.md`) and trace system are **parallel 
   - [ ] Remove `filterPseudoMessages()` call
   - [ ] Return full messages array
 - [ ] Update any tools using `createPseudoMessage` → `createContextMessage`
-- [ ] Add `handleLLMStart` to `UsageTrackingCallback` for system prompt capture
+- [ ] Add `handleChatModelStart` to `UsageTrackingCallback` for system prompt capture
 
 #### LanggraphAISDK
 
@@ -782,7 +771,8 @@ The billing system (`langgraph_integration.md`) and trace system are **parallel 
 - [ ] Create initial partitions (current month + 2 ahead)
 - [ ] Create `ConversationTrace` model (read-only)
 - [ ] Create `ManageTracePartitionsJob` for monthly maintenance
-- [ ] Add route for `POST /api/v1/llm_runs/:run_id/charge`
+- [ ] Create `Credits::ProcessUsageJob` (see `langgraph_integration.md`)
+- [ ] Schedule job with Sidekiq-Cron (every minute)
 
 #### Langgraph
 
