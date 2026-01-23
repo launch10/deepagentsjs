@@ -239,17 +239,16 @@ import type { AIMessage, BaseMessage } from "@langchain/core/messages";
 export interface UsageRecord {
   runId: string;
   parentRunId?: string;
-  model: string;
-  normalizedModel: string;
+  model: string;           // Raw model name from provider (e.g., "claude-haiku-4-5-20251001")
   inputTokens: number;
   outputTokens: number;
   reasoningTokens: number;
   cacheCreationTokens: number;
   cacheReadTokens: number;
-  costUsd: number;
   timestamp: Date;
   tags?: string[];
   metadata?: Record<string, unknown>;
+  // NOTE: No costUsd - Rails handles all pricing calculation
 }
 
 export interface UsageContext {
@@ -383,8 +382,8 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
     const responseMeta = (message as any).response_metadata || llmOutput || {};
 
     // Model name: OpenAI uses model_name, Anthropic uses model
+    // Store raw model name - Rails handles normalization for pricing
     const model = responseMeta.model_name || responseMeta.model || "unknown";
-    const normalizedModel = normalizeModelName(model);
 
     const inputTokens = usage.input_tokens || 0;
     const outputTokens = usage.output_tokens || 0;
@@ -394,26 +393,16 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
     const cacheReadTokens =
       usage.cache_read_input_tokens || usage.input_token_details?.cache_read || 0;
 
-    const costUsd = calculateCost({
-      model: normalizedModel,
-      inputTokens,
-      outputTokens,
-      reasoningTokens,
-      cacheCreationTokens,
-      cacheReadTokens,
-    });
-
+    // NOTE: No cost calculation here - Rails handles all pricing
     return {
       runId,
       parentRunId,
       model,
-      normalizedModel,
       inputTokens,
       outputTokens,
       reasoningTokens,
       cacheCreationTokens,
       cacheReadTokens,
-      costUsd,
       timestamp: new Date(),
       tags,
       metadata: extraParams?.metadata as Record<string, unknown>,
@@ -558,22 +547,23 @@ export async function persistUsageRecords(
 ): Promise<void> {
   if (usage.length === 0) return;
 
+  // Write raw usage data - Rails calculates cost when processing
   await db.insert(llmUsage).values(
     usage.map((r) => ({
       chatId,
       runId,
       graphName,
-      modelKey: r.normalizedModel,
-      modelRaw: r.model,
+      modelRaw: r.model,  // Raw model name from provider
       inputTokens: r.inputTokens,
       outputTokens: r.outputTokens,
       reasoningTokens: r.reasoningTokens,
       cacheCreationTokens: r.cacheCreationTokens,
       cacheReadTokens: r.cacheReadTokens,
-      costUsd: r.costUsd,
+      // NOTE: No costUsd here - Rails calculates when charging
       tags: r.tags,
       metadata: r.metadata,
       // processedAt: NULL - Rails job will set this when charged
+      // costUsd: NULL - Rails job will calculate and set this
     }))
   );
 }
@@ -661,6 +651,8 @@ return result;
 
 Processes a specific run_id. Idempotent - safe to call multiple times.
 
+**Key responsibility**: Rails calculates cost from raw token counts using pricing service.
+
 ```ruby
 # app/workers/credits/charge_run_worker.rb
 
@@ -673,43 +665,43 @@ module Credits
       # Idempotent: skip if already processed
       return if LlmUsage.where(run_id: run_id).where.not(processed_at: nil).exists?
 
-      records = LlmUsage.where(run_id: run_id, processed_at: nil)
+      records = LlmUsage.where(run_id: run_id, processed_at: nil).to_a
       return if records.empty?
 
-      # Aggregate usage for this run
-      run_summary = records.select(
-        "MIN(chat_id) as chat_id",
-        "MIN(graph_name) as graph_name",
-        "SUM(cost_usd) as total_cost_usd",
-        "COUNT(*) as llm_call_count",
-        "SUM(input_tokens) as total_input_tokens",
-        "SUM(output_tokens) as total_output_tokens"
-      ).first
-
-      chat = Chat.find(run_summary.chat_id)
+      chat = Chat.find(records.first.chat_id)
       account = chat.project.account
-      credits = convert_cost_to_credits(run_summary.total_cost_usd)
 
       ApplicationRecord.transaction do
+        # Calculate cost for each record (Rails owns pricing logic)
+        total_cost_usd = 0
+        records.each do |record|
+          cost = LlmPricingService.calculate_cost(
+            model: record.model_raw,
+            input_tokens: record.input_tokens,
+            output_tokens: record.output_tokens,
+            reasoning_tokens: record.reasoning_tokens,
+            cache_creation_tokens: record.cache_creation_tokens,
+            cache_read_tokens: record.cache_read_tokens
+          )
+          record.update!(cost_usd: cost, processed_at: Time.current)
+          total_cost_usd += cost
+        end
+
+        credits = convert_cost_to_credits(total_cost_usd)
+
         # Use CreditConsumptionService for proper FIFO consumption
-        # - Plan credits consumed first (if positive)
-        # - Pack credits consumed next (if positive)
-        # - Plan goes negative if needed (pack NEVER goes negative)
         CreditConsumptionService.new(account).consume!(
           amount: credits,
           reason: "ai_generation",
           reference_type: "llm_run",
           reference_id: run_id,
           metadata: {
-            graph_name: run_summary.graph_name,
-            llm_call_count: run_summary.llm_call_count,
-            total_tokens: run_summary.total_input_tokens + run_summary.total_output_tokens,
-            cost_usd: run_summary.total_cost_usd.to_f
+            graph_name: records.first.graph_name,
+            llm_call_count: records.count,
+            total_tokens: records.sum(&:input_tokens) + records.sum(&:output_tokens),
+            cost_usd: total_cost_usd
           }
         )
-
-        # Mark all records for this run as processed
-        records.update_all(processed_at: Time.current)
       end
     end
 
@@ -803,55 +795,44 @@ Credits::FindUnprocessedRunsWorker:
   - Idempotent: ChargeRunWorker skips already-processed runs
 ```
 
-### 7. Model Name Normalization
+### 7. Pricing (Rails Only)
 
-Providers return versioned model names (e.g., `gpt-5-mini-2025-08-07`) that don't match the pricing table. Use longest-prefix matching:
+**All pricing logic lives in Rails**, not Langgraph. This makes it easy to update pricing without redeploying Langgraph.
 
-```typescript
-// langgraph_app/app/core/billing/pricing.ts
+```ruby
+# app/services/llm_pricing_service.rb
 
-function normalizeModelName(modelName: string): string {
-  const knownModels = Object.keys(MODEL_PRICING);
-  const matches = knownModels.filter((known) => modelName.startsWith(known));
-  if (matches.length > 0) {
-    return matches.reduce((longest, current) =>
-      current.length > longest.length ? current : longest
-    );
-  }
-  return modelName;
-}
+class LlmPricingService
+  # Normalize versioned model names to base model for pricing lookup
+  # e.g., "claude-haiku-4-5-20251001" -> "claude-haiku-4-5"
+  def self.normalize_model_name(model_raw)
+    ModelConfig.find_by_prefix(model_raw)&.name || model_raw
+  end
+
+  def self.calculate_cost(model:, input_tokens:, output_tokens:, reasoning_tokens: 0,
+                          cache_creation_tokens: 0, cache_read_tokens: 0)
+    config = ModelConfig.find_by_prefix(model)
+    return 0 unless config
+
+    non_reasoning_output = output_tokens - reasoning_tokens
+
+    cost = 0
+    cost += (input_tokens / 1_000_000.0) * config.cost_in
+    cost += (non_reasoning_output / 1_000_000.0) * config.cost_out
+    cost += (reasoning_tokens / 1_000_000.0) * (config.cost_reasoning || config.cost_out)
+    cost += (cache_creation_tokens / 1_000_000.0) * (config.cost_cache_write || 0)
+    cost += (cache_read_tokens / 1_000_000.0) * (config.cost_cache_read || 0)
+
+    cost
+  end
+end
 ```
 
-### 8. Cost Calculation
-
-```typescript
-// langgraph_app/app/core/billing/pricing.ts
-
-interface CostInput {
-  model: string;
-  inputTokens: number;
-  outputTokens: number;
-  reasoningTokens: number;
-  cacheCreationTokens: number;
-  cacheReadTokens: number;
-}
-
-function calculateCost(input: CostInput): number {
-  const pricing = MODEL_PRICING[input.model];
-  if (!pricing) return 0;
-
-  const nonReasoningOutput = input.outputTokens - input.reasoningTokens;
-
-  let cost = 0;
-  cost += (input.inputTokens / 1_000_000) * pricing.cost_in;
-  cost += (nonReasoningOutput / 1_000_000) * pricing.cost_out;
-  cost += (input.reasoningTokens / 1_000_000) * (pricing.cost_reasoning ?? pricing.cost_out);
-  cost += (input.cacheCreationTokens / 1_000_000) * (pricing.cache_writes ?? 0);
-  cost += (input.cacheReadTokens / 1_000_000) * (pricing.cache_reads ?? 0);
-
-  return cost;
-}
-```
+**Benefits of Rails-only pricing**:
+- Update prices in database without deploys
+- Single source of truth for model configs
+- Easy to add new models
+- Pricing logic testable with Rails specs
 
 ## Data Model
 
@@ -871,20 +852,26 @@ conversation_traces.run_id ←→ llm_usage.run_id ←→ credit_transactions (v
 
 Individual LLM calls, written directly by Langgraph to shared Postgres.
 
+**Architecture**: Langgraph writes raw usage (tokens, model). Rails calculates cost when processing.
+
 ```ruby
 create_table :llm_usage do |t|
   t.references :chat, null: false  # No FK constraint for Langgraph writes
   t.string :run_id, null: false
   t.string :graph_name
 
-  t.string :model_key, null: false
-  t.string :model_raw
+  # Model info - Rails normalizes model_raw for pricing lookup
+  t.string :model_raw, null: false  # Raw model name from provider (e.g., "claude-haiku-4-5-20251001")
+
+  # Token counts - written by Langgraph
   t.integer :input_tokens, null: false, default: 0
   t.integer :output_tokens, null: false, default: 0
   t.integer :reasoning_tokens, default: 0
   t.integer :cache_creation_tokens, default: 0
   t.integer :cache_read_tokens, default: 0
-  t.decimal :cost_usd, precision: 10, scale: 8, null: false
+
+  # Cost - calculated and set by Rails when processing
+  t.decimal :cost_usd, precision: 10, scale: 8  # NULL until Rails calculates
 
   t.string :tags, array: true, default: []
   t.jsonb :metadata
@@ -1033,10 +1020,11 @@ it("tracks usage for brainstorm agent", async () => {
   const tracking = builder.getTrackingResult();
   expect(tracking?.usage.length).toBeGreaterThan(0);
 
-  const totalCost = tracking?.usage.reduce((sum, r) => sum + r.costUsd, 0);
-  expect(totalCost).toBeGreaterThan(0);
+  // Verify raw token counts captured (cost calculated by Rails)
+  const totalInputTokens = tracking?.usage.reduce((sum, r) => sum + r.inputTokens, 0);
+  expect(totalInputTokens).toBeGreaterThan(0);
 
-  // Also verify messages and system prompt captured
+  // Verify messages and system prompt captured
   expect(tracking?.messagesProduced.length).toBeGreaterThan(0);
   expect(tracking?.systemPrompt).toBeDefined();
 });
@@ -1129,21 +1117,16 @@ When checking credits before a run and consuming after, there's a window where t
   - [ ] `maybeCheckCredits()` - respects `testCredits` config flag
 
 - [ ] Create `core/billing/usageTracker.ts`
-  - [ ] `UsageRecord` and `UsageContext` types (including `systemPrompt`, `messagesProduced`)
+  - [ ] `UsageRecord` and `UsageContext` types (raw tokens, no cost - Rails handles pricing)
   - [ ] `usageStorage` AsyncLocalStorage instance
   - [ ] `getUsageContext()` and `runWithUsageTracking()` functions
   - [ ] `UsageTrackingCallbackHandler` class with:
     - [ ] `handleChatModelStart` - captures system prompt on first LLM call
-    - [ ] `handleLLMEnd` - accumulates usage records and messages
+    - [ ] `handleLLMEnd` - accumulates usage records (tokens + model) and messages
   - [ ] `usageTracker` singleton export
 
-- [ ] Create `core/billing/pricing.ts`
-  - [ ] `normalizeModelName()` function (longest-prefix matching)
-  - [ ] `calculateCost()` function
-  - [ ] `MODEL_PRICING` table
-
 - [ ] Create `core/billing/persistUsage.ts`
-  - [ ] `persistUsageRecords()` - writes directly to Postgres
+  - [ ] `persistUsageRecords()` - writes raw usage directly to Postgres (no cost calculation)
 
 - [ ] Create `core/billing/notifyRails.ts`
   - [ ] `notifyRailsUsage(runId)` - POST to Rails API (fire-and-forget)
@@ -1184,10 +1167,17 @@ When checking credits before a run and consuming after, there's a window where t
   - [ ] `Api::V1::LlmUsageController#notify`
   - [ ] Receives `run_id`, enqueues `Credits::ChargeRunWorker`
 
+- [ ] Create `LlmPricingService`
+  - [ ] `normalize_model_name()` - longest-prefix matching against ModelConfig
+  - [ ] `calculate_cost()` - all pricing logic in one place
+  - [ ] Uses ModelConfig for pricing lookup
+
 - [ ] Create `Credits::ChargeRunWorker`
   - [ ] Process a specific `run_id`
   - [ ] Idempotent (skip if already processed)
-  - [ ] Aggregate `cost_usd` for run
+  - [ ] **Calculate cost for each record** using `LlmPricingService`
+  - [ ] Update records with calculated `cost_usd`
+  - [ ] Aggregate and convert to credits
   - [ ] Create `CreditTransaction` via `CreditConsumptionService`
   - [ ] Mark records `processed_at = NOW`
 
@@ -1200,11 +1190,18 @@ When checking credits before a run and consuming after, there's a window where t
 
 ### Testing
 
-- [ ] Unit tests for `usageTracker`
-- [ ] Unit tests for `persistUsageRecords`
+**Langgraph (usage tracking only - no pricing)**:
+- [ ] Unit tests for `usageTracker` (AsyncLocalStorage, callback mechanics)
+- [ ] Unit tests for `persistUsageRecords` (raw tokens, no cost)
 - [ ] Add `withTracking()` to `GraphTestBuilder`
 - [ ] Integration tests via `testGraph().withTracking()`
-- [ ] E2E: graph execution → Postgres write → Rails job → credit charge
+
+**Rails (pricing and billing)**:
+- [ ] Unit tests for `LlmPricingService` (model normalization, cost calculation)
+- [ ] Unit tests for `Credits::ChargeRunWorker` (idempotency, cost calculation, credit consumption)
+
+**E2E**:
+- [ ] Graph execution → Postgres write (raw usage) → Rails job (calculate cost) → credit charge
 
 ### Validation Script
 
