@@ -6,7 +6,284 @@ This document describes how to persist full conversation traces for learning and
 
 **Purpose**: Build a data moat by preserving all conversation data for future learning, fine-tuning, eval development, and prompt optimization.
 
-**Key insight**: Langgraph and Rails share the same Postgres database. Langgraph should write traces directly to Postgres, not route large payloads through Rails HTTP APIs.
+**Key insights**:
+1. Langgraph and Rails share the same Postgres database. Langgraph should write traces directly to Postgres, not route large payloads through Rails HTTP APIs.
+2. Context messages (system-injected context for the LLM) should be stored in state.messages and filtered at the SDK layer, not before saving. This preserves full context for analytics while hiding implementation details from users.
+3. Dynamic system prompts should be captured at the LLM callback level for trace completeness.
+
+---
+
+## Key Benefits
+
+| Benefit | How |
+|---------|-----|
+| **LLM sees full context across runs** | Context messages stay in state.messages |
+| **Users see clean conversation** | SDK filters context messages before display |
+| **Full analytics/replay capability** | Traces include everything: messages, context, system prompt |
+| **No data loss from summarization** | Per-run traces preserve original messages |
+| **System prompt versioning** | Captured at callback level, stored in traces |
+
+---
+
+## Context Messages
+
+### The Problem
+
+Previously, "pseudo messages" were filtered out before saving to state:
+
+```typescript
+// OLD: Data lost forever
+const filteredMessages = filterPseudoMessages(messages);
+return { messages: filteredMessages };
+```
+
+This caused two problems:
+1. **Lost analytics data** - Can't understand what context the LLM had
+2. **Lost conversation continuity** - LLM only sees context message once, then forgets
+
+### The Solution: Filter in SDK, Not State
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         Message Flow                                 │
+│                                                                      │
+│  Node creates ContextMessage                                        │
+│      │                                                               │
+│      ▼                                                               │
+│  state.messages includes ContextMessage  ← Stored for analytics     │
+│      │                                                               │
+│      ▼                                                               │
+│  LanggraphAISDK filters ContextMessage   ← Hidden from UI           │
+│      │                                                               │
+│      ▼                                                               │
+│  User sees clean conversation                                        │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### ContextMessage Implementation
+
+Use LangChain's built-in `name` field to mark context messages:
+
+```typescript
+// langgraph_app/app/utils/contextMessages.ts
+
+import { HumanMessage, type BaseMessage, type MessageContent } from "@langchain/core/messages";
+
+/**
+ * Context messages are visible to the model but hidden from the user.
+ * They're stored in state.messages and filtered during SDK translation.
+ *
+ * Benefits:
+ * - LLM sees context across all runs (not just the run it was injected)
+ * - Full context preserved in traces for analytics/replay
+ * - Clean separation: state is truth, SDK is presentation
+ */
+export const CONTEXT_MESSAGE_NAME = "context";
+
+export const isContextMessage = (msg: BaseMessage): boolean => {
+  return (msg as any).name === CONTEXT_MESSAGE_NAME;
+};
+
+export const createContextMessage = (
+  content: string,
+  metadata?: Record<string, unknown>
+): HumanMessage => {
+  return new HumanMessage({
+    content,
+    name: CONTEXT_MESSAGE_NAME,
+    additional_kwargs: {
+      context_type: "system_injected",
+      timestamp: new Date().toISOString(),
+      ...metadata,
+    },
+  });
+};
+
+export const createMultimodalContextMessage = (
+  content: MessageContent,
+  metadata?: Record<string, unknown>
+): HumanMessage => {
+  return new HumanMessage({
+    content,
+    name: CONTEXT_MESSAGE_NAME,
+    additional_kwargs: {
+      context_type: "system_injected",
+      timestamp: new Date().toISOString(),
+      ...metadata,
+    },
+  });
+};
+```
+
+### Migration from PseudoMessages
+
+| Old Pattern | New Pattern |
+|-------------|-------------|
+| `createPseudoMessage(text)` | `createContextMessage(text)` |
+| `createMultimodalPseudoMessage(content)` | `createMultimodalContextMessage(content)` |
+| `isPseudoMessage(msg)` | `isContextMessage(msg)` |
+| `filterPseudoMessages(messages)` | Remove entirely - don't filter in nodes |
+
+### Node Changes
+
+```typescript
+// BEFORE: brainstorm/agent.ts
+const filteredMessages = filterPseudoMessages(messages as BaseMessage[]);
+return {
+  messages: filteredMessages,  // ❌ Lost context
+  ...
+};
+
+// AFTER: brainstorm/agent.ts
+return {
+  messages,  // ✅ Keep everything, including context messages
+  ...
+};
+```
+
+### LanggraphAISDK Changes
+
+Filter context messages during translation to UI format:
+
+```typescript
+// packages/langgraph-ai-sdk/packages/langgraph-ai-sdk/src/contextMessages.ts
+
+import type { BaseMessage } from "@langchain/core/messages";
+
+export const CONTEXT_MESSAGE_NAME = "context";
+
+export const isContextMessage = (msg: BaseMessage): boolean => {
+  return (msg as any).name === CONTEXT_MESSAGE_NAME;
+};
+```
+
+```typescript
+// packages/langgraph-ai-sdk/packages/langgraph-ai-sdk/src/stream.ts
+
+import { isContextMessage } from "./contextMessages";
+
+// In loadThreadHistory:
+export async function loadThreadHistory<...>(...) {
+  ...
+  const messages = (stateSnapshot.values.messages as BaseMessage[]) || [];
+
+  // Filter context messages before translating to UI
+  const visibleMessages = messages.filter(msg => !isContextMessage(msg));
+
+  const uiMessages = visibleMessages.map((msg, idx) => {
+    ...
+  });
+
+  return { messages: uiMessages, state: globalState };
+}
+
+// In RawMessageHandler.handle():
+async handle(chunk: StreamChunk): Promise<void> {
+  ...
+  const [message, metadata] = data as StreamMessageOutput;
+
+  // Skip context messages during streaming
+  if (isContextMessage(message)) return;
+
+  ...
+}
+```
+
+---
+
+## System Prompt Capture
+
+Dynamic system prompts are injected via middleware at LLM call time, not stored in state.messages. To preserve them for traces, we capture at the callback level.
+
+### Callback Enhancement
+
+```typescript
+// In UsageTrackingCallback
+
+async handleLLMStart(
+  llm: Serialized,
+  messages: BaseMessage[],
+  runId: string,
+  parentRunId?: string,
+  extraParams?: Record<string, unknown>
+): Promise<void> {
+  const context = getUsageContext();
+  if (!context) return;
+
+  // Capture system prompt from the first LLM call in this run
+  if (!context.systemPromptCaptured) {
+    const systemMessage = messages.find(m => m._getType() === "system");
+    if (systemMessage) {
+      context.systemPrompt = typeof systemMessage.content === "string"
+        ? systemMessage.content
+        : JSON.stringify(systemMessage.content);
+      context.systemPromptCaptured = true;
+    }
+  }
+
+  // Track LLM inputs for detailed traces (optional)
+  context.llmCalls = context.llmCalls || [];
+  context.llmCalls.push({
+    runId,
+    parentRunId,
+    inputMessageCount: messages.length,
+    hasSystemPrompt: messages.some(m => m._getType() === "system"),
+    timestamp: new Date(),
+  });
+}
+```
+
+### Updated UsageContext
+
+```typescript
+export interface UsageContext {
+  records: UsageRecord[];
+  chatId?: number;
+  threadId?: string;
+  graphName?: string;
+
+  // System prompt capture
+  systemPrompt?: string;
+  systemPromptCaptured?: boolean;
+
+  // LLM call tracking (optional, for detailed traces)
+  llmCalls?: {
+    runId: string;
+    parentRunId?: string;
+    inputMessageCount: number;
+    hasSystemPrompt: boolean;
+    timestamp: Date;
+  }[];
+}
+```
+
+### Updated Trace Schema
+
+```ruby
+create_table :conversation_traces,
+  partition_key: :created_at,
+  partition_type: :range do |t|
+
+  t.references :chat, null: false
+  t.string :thread_id, null: false
+  t.string :run_id, null: false
+  t.string :graph_name
+
+  t.jsonb :messages, null: false        # All messages including context
+  t.text :system_prompt                  # Captured from first LLM call
+  t.jsonb :usage_summary
+  t.jsonb :llm_calls                     # Optional: detailed call tracking
+
+  t.datetime :created_at, null: false
+
+  t.index [:thread_id, :created_at]
+  t.index [:chat_id, :created_at]
+  t.index :run_id, unique: true
+end
+```
+
+---
 
 ## Architecture
 
@@ -92,8 +369,10 @@ create_table :conversation_traces,
   t.string :run_id, null: false
   t.string :graph_name
 
-  t.jsonb :messages, null: false   # Serialized BaseMessage[]
+  t.jsonb :messages, null: false   # Serialized BaseMessage[] (includes context messages)
+  t.text :system_prompt            # Captured from first LLM call via callback
   t.jsonb :usage_summary           # { total_cost_usd, llm_call_count, total_tokens }
+  t.jsonb :llm_calls               # Optional: per-LLM-call details
 
   t.datetime :created_at, null: false
 
@@ -104,6 +383,50 @@ end
 ```
 
 **Note**: No foreign key constraint on `chat_id` to allow partition drops without cascading.
+
+### Message JSONB Structure
+
+Each message in the `messages` array includes:
+
+```json
+{
+  "type": "human",
+  "content": "Make the headline more compelling",
+  "name": null,
+  "id": "msg-123",
+  "additional_kwargs": {},
+  "is_context_message": false
+}
+```
+
+For context messages:
+
+```json
+{
+  "type": "human",
+  "content": "User is now viewing the Pricing page",
+  "name": "context",
+  "id": "msg-124",
+  "additional_kwargs": {
+    "context_type": "system_injected",
+    "timestamp": "2026-01-23T10:30:00Z"
+  },
+  "is_context_message": true
+}
+```
+
+The `is_context_message` flag enables easy filtering in SQL:
+
+```sql
+-- Count context messages per run
+SELECT
+  run_id,
+  COUNT(*) FILTER (WHERE msg->>'is_context_message' = 'true') as context_count,
+  COUNT(*) FILTER (WHERE msg->>'is_context_message' = 'false') as user_count
+FROM conversation_traces,
+     jsonb_array_elements(messages) as msg
+GROUP BY run_id;
+```
 
 ### Partition Management
 
@@ -184,6 +507,7 @@ interface TraceContext {
   threadId: string;
   runId: string;
   graphName: string;
+  systemPrompt?: string;
 }
 
 interface UsageSummary {
@@ -198,7 +522,7 @@ export async function persistTrace(
   newMessages: BaseMessage[],
   usageSummary: UsageSummary
 ): Promise<void> {
-  if (newMessages.length === 0) return;
+  if (newMessages.length === 0 && !context.systemPrompt) return;
 
   await db.insert(conversationTraces).values({
     chatId: context.chatId,
@@ -206,6 +530,7 @@ export async function persistTrace(
     runId: context.runId,
     graphName: context.graphName,
     messages: serializeMessages(newMessages),
+    systemPrompt: context.systemPrompt,
     usageSummary,
     createdAt: new Date(),
   });
@@ -220,7 +545,10 @@ function serializeMessages(messages: BaseMessage[]): object[] {
     tool_call_id: (msg as any).tool_call_id,
     usage_metadata: (msg as any).usage_metadata,
     response_metadata: (msg as any).response_metadata,
+    additional_kwargs: (msg as any).additional_kwargs,
     id: msg.id,
+    // Derived flags for easier querying
+    is_context_message: (msg as any).name === "context",
   }));
 }
 ```
@@ -279,6 +607,7 @@ export async function executeWithTracking<TState extends { messages?: BaseMessag
         threadId: options.threadId,
         runId,
         graphName: options.graphName,
+        systemPrompt: usageContext?.systemPrompt,  // Captured from callback
       },
       newMessages,
       usageSummary
@@ -373,21 +702,63 @@ The billing system (`langgraph_integration.md`) and trace system are **parallel 
 
 ## Implementation Checklist
 
-### Rails
+### Phase 1: Context Message Standardization
+
+#### Langgraph
+
+- [ ] Create `app/utils/contextMessages.ts` with:
+  - [ ] `CONTEXT_MESSAGE_NAME` constant
+  - [ ] `isContextMessage()` function
+  - [ ] `createContextMessage()` function
+  - [ ] `createMultimodalContextMessage()` function
+- [ ] Deprecate `app/utils/pseudoMessages.ts` (keep for backwards compat temporarily)
+- [ ] Update `brainstorm/agent.ts`:
+  - [ ] Remove `filterPseudoMessages()` call
+  - [ ] Return full messages array
+- [ ] Update `ads/agent.ts`:
+  - [ ] Remove `filterPseudoMessages()` call
+  - [ ] Return full messages array
+- [ ] Update any tools using `createPseudoMessage` → `createContextMessage`
+- [ ] Add `handleLLMStart` to `UsageTrackingCallback` for system prompt capture
+
+#### LanggraphAISDK
+
+- [ ] Create `src/contextMessages.ts` with `isContextMessage()`
+- [ ] Update `loadThreadHistory()`:
+  - [ ] Filter context messages before mapping to UI
+- [ ] Update `RawMessageHandler.handle()`:
+  - [ ] Skip context messages during streaming
+- [ ] Export `isContextMessage` for consumer use if needed
+
+### Phase 2: Trace Persistence
+
+#### Rails
 
 - [ ] Create migration for `conversation_traces` (partitioned)
+  - [ ] Include `system_prompt` text column
+  - [ ] Include `llm_calls` JSONB column
 - [ ] Create initial partitions (current month + 2 ahead)
 - [ ] Create `ConversationTrace` model (read-only)
 - [ ] Create `ManageTracePartitionsJob` for monthly maintenance
 - [ ] Add route for `POST /api/v1/llm_runs/:run_id/charge`
 
-### Langgraph
+#### Langgraph
 
 - [ ] Reflect schema to get `conversationTraces` table in Drizzle
 - [ ] Create `persistTrace.ts` with message serialization
-- [ ] Update `executeWithTracking` to capture new messages
+  - [ ] Include `is_context_message` flag in serialized messages
+  - [ ] Include `additional_kwargs` for metadata preservation
+- [ ] Update `executeWithTracking` to:
+  - [ ] Capture new messages
+  - [ ] Pass system prompt from usage context
 - [ ] Write trace in parallel with usage records
 - [ ] Notify Rails with just `run_id` after writes complete
+
+### Phase 3: Cleanup
+
+- [ ] Remove `pseudoMessages.ts` after migration verified
+- [ ] Update tests to use `contextMessages`
+- [ ] Add analytics queries for context message patterns
 
 ### Drizzle Schema
 
@@ -398,9 +769,13 @@ pnpm run db:reflect
 
 This will add `conversationTraces` to the Drizzle schema.
 
+---
+
 ## Future Enhancements
 
 - [ ] Compression for large message arrays (pg_lz4)
 - [ ] Sampling for very high-volume graphs
 - [ ] Export pipeline to data lake for ML training
 - [ ] Trace search/filtering UI in admin panel
+- [ ] Query helpers for "show me runs with N+ context messages"
+- [ ] System prompt versioning and diff tracking
