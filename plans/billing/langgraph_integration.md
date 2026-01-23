@@ -1,104 +1,25 @@
-# Langgraph Credit Integration
+# LangGraph Credit Integration
 
-## Overview
+## Problem
 
-This document describes how to track **all** AI usage in Langgraph and charge credits accordingly.
+LangGraph agents, tools, and middlewares all call LLMs internally. A node-level approach to billing misses these internal calls because:
 
-**Key insight**: Node-level middleware can't catch LLM calls inside agents, tools, or other middlewares. We use LangChain's **callback system** with **AsyncLocalStorage** to intercept every LLM call, regardless of where it happens in the call stack.
+1. **Agents** run multiple LLM calls in a loop (tool call → execution → another LLM call), but nodes only return final state
+2. **Tools** like `saveAnswersTool` call `getLLM()` directly without returning messages
+3. **Middlewares** like `SummarizationMiddleware` use LLMs internally
 
-**Architecture summary**:
-1. `usageTracker` - LLM-level callback attached to all models via `getLLM()`, fires `handleLLMEnd` for each LLM call
-2. `billingCallback` - Graph-level callback passed to `graph.invoke()`, fires `handleChainEnd` when graph completes
-3. `runWithUsageTracking()` - Wraps graph execution, sets up AsyncLocalStorage context
-4. All persistence happens in `handleChainEnd` - no Hono handler logic needed
+We need to capture **every** LLM call for accurate billing, regardless of where it happens in the call stack.
 
-**Why graph-level callbacks?** Billing logic lives with the graph, not scattered to Hono handlers. This makes it testable via our existing `GraphTestBuilder` infrastructure (which wraps `graph.invoke()`).
+## Solution
 
-## Message Flow in Langgraph
+Use LangChain's callback system at two levels:
 
-### Tool Call Sequence
+1. **LLM-level callback** (`usageTracker`): Attached to every model via `getLLM()`, fires `handleLLMEnd` for each LLM call, accumulates usage to AsyncLocalStorage
+2. **Graph-level callback** (`billingCallback`): Passed to `graph.invoke()`, fires `handleChainEnd` when graph completes, persists all accumulated usage to Rails
 
-When an agent calls tools, the message sequence is:
-
-```
-1. AIMessage (has usage_metadata ✓)
-   - tool_calls: [{ id, name, args }]
-   - usage_metadata: { input_tokens, output_tokens, cache_* }
-
-2. ToolMessage(s) - one per tool (NO usage_metadata ✗)
-   - tool_call_id: matches AIMessage tool_call id
-   - content: tool execution result
-
-3. AIMessage (has usage_metadata ✓)
-   - Processes tool results
-   - May call more tools (repeat cycle)
-```
-
-### Usage Metadata
-
-Only `AIMessage` has `usage_metadata`. `ToolMessage` does NOT - it's just the result of executing code, no LLM call involved.
-
-```typescript
-// AIMessage.usage_metadata structure (unified across providers)
-{
-  input_tokens: number;
-  output_tokens: number;
-  total_tokens: number;
-
-  // Provider-specific token details
-  input_token_details?: {
-    cache_creation?: number;  // Anthropic: tokens written to cache
-    cache_read?: number;      // Anthropic: tokens read from cache (90% cheaper)
-    audio?: number;           // OpenAI: audio input tokens
-  };
-
-  output_token_details?: {
-    reasoning?: number;       // OpenAI: reasoning/thinking tokens (included in output_tokens)
-    audio?: number;           // OpenAI: audio output tokens
-  };
-
-  // Legacy fields (some providers use these instead of nested details)
-  cache_creation_input_tokens?: number;
-  cache_read_input_tokens?: number;
-}
-```
-
-**Key insight**: Usage is per-message, not cumulative. To get total cost for a run, sum across all AIMessages.
-
-## What to Persist & Charge
-
-| Message Type | Has Usage? | Charge? | Persist? |
-|--------------|------------|---------|----------|
-| `AIMessage` | ✓ Yes | ✓ Yes | ✓ Yes |
-| `ToolMessage` | ✗ No | ✗ No | ✓ Yes (audit trail) |
-| `HumanMessage` | ✗ No | ✗ No | ✓ Yes (audit trail) |
-
-## Edge Cases
-
-| Scenario | What Happens | Action |
-|----------|--------------|--------|
-| **Node doesn't call LLM** | Returns `{ messages: [] }` or state-only | No charge, nothing to persist |
-| **Agent calls multiple tools** | 1 AIMessage + N ToolMessages + 1 AIMessage | Charge each AIMessage |
-| **Streaming** | Not used in codebase (all `.invoke()`) | N/A |
-| **Retry on error** | `withErrorHandling` catches, stores in state | No new messages = no charge |
-| **Parallel nodes** | Graph handles via edges | Each middleware runs independently |
-| **Pseudo messages** | System-injected, filtered before save | Don't persist or charge |
+This approach is testable via the existing `GraphTestBuilder` infrastructure since all graph tests wrap `graph.invoke()`.
 
 ## Architecture
-
-### Why Node-Level Middleware Isn't Enough
-
-A node-level middleware (wrapping each node to detect new messages) misses LLM calls that happen:
-
-1. **Inside agents**: Agents run multiple internal LLM calls (tool call → tool execution → another LLM call → repeat). The node only returns final state, not intermediate AIMessages.
-
-2. **Inside tools**: Tools like `saveAnswersTool` call `getLLM()` directly to summarize messages. These LLM calls don't produce messages returned to the caller.
-
-3. **Inside middlewares**: `SummarizationMiddleware` and other middlewares use LLMs internally.
-
-### Solution: LLM-Level Callback Tracking
-
-We use LangChain's callback system to intercept **every** LLM call, regardless of where it happens. The callback is a stateless singleton that stores usage to AsyncLocalStorage.
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────┐
@@ -144,16 +65,16 @@ We use LangChain's callback system to intercept **every** LLM call, regardless o
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Two Callback Layers
+### Callback Layers
 
 | Callback | Level | Event | Purpose |
 |----------|-------|-------|---------|
 | `usageTracker` | LLM | `handleLLMEnd` | Accumulate usage for each LLM call |
 | `billingCallback` | Graph | `handleChainEnd` | Persist all accumulated usage to Rails |
 
-### Core Components
+## Implementation
 
-#### 1. UsageTrackingCallback + AsyncLocalStorage Context
+### 1. Usage Tracker (LLM-Level Callback)
 
 ```typescript
 // langgraph_app/app/core/billing/usageTracker.ts
@@ -162,8 +83,6 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { BaseCallbackHandler } from "@langchain/core/callbacks/base";
 import type { LLMResult } from "@langchain/core/outputs";
 import type { AIMessage } from "@langchain/core/messages";
-
-// ----- Types -----
 
 export interface UsageRecord {
   runId: string;
@@ -188,8 +107,6 @@ export interface UsageContext {
   graphName?: string;
 }
 
-// ----- AsyncLocalStorage -----
-
 const usageStorage = new AsyncLocalStorage<UsageContext>();
 
 export function getUsageContext(): UsageContext | undefined {
@@ -207,8 +124,6 @@ export async function runWithUsageTracking<T>(
   });
 }
 
-// ----- Callback Handler (Singleton) -----
-
 class UsageTrackingCallbackHandler extends BaseCallbackHandler {
   name = "usage-tracking";
 
@@ -222,12 +137,18 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
     const context = getUsageContext();
     if (!context) return; // Not in a tracked context - safe no-op
 
-    // Extract usage from generations
     for (const generationBatch of output.generations ?? []) {
       for (const generation of generationBatch) {
         const message = (generation as any).message as AIMessage | undefined;
         if (message?.usage_metadata) {
-          const record = this.extractUsageRecord(message, output.llmOutput, runId, parentRunId, tags, extraParams);
+          const record = this.extractUsageRecord(
+            message,
+            output.llmOutput,
+            runId,
+            parentRunId,
+            tags,
+            extraParams
+          );
           context.records.push(record);
         }
       }
@@ -254,10 +175,12 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
     const reasoningTokens = usage.output_token_details?.reasoning || 0;
     const cacheCreationTokens =
       usage.cache_creation_input_tokens ||
-      usage.input_token_details?.cache_creation || 0;
+      usage.input_token_details?.cache_creation ||
+      0;
     const cacheReadTokens =
       usage.cache_read_input_tokens ||
-      usage.input_token_details?.cache_read || 0;
+      usage.input_token_details?.cache_read ||
+      0;
 
     const costUsd = calculateCost({
       model: normalizedModel,
@@ -286,11 +209,10 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
   }
 }
 
-// Singleton instance - attached to all models
 export const usageTracker = new UsageTrackingCallbackHandler();
 ```
 
-#### 2. BillingCallback (Graph-Level Persistence)
+### 2. Billing Callback (Graph-Level Persistence)
 
 ```typescript
 // langgraph_app/app/core/billing/billingCallback.ts
@@ -303,14 +225,10 @@ import { persistUsageToRails } from "./persistUsage";
 class BillingCallbackHandler extends BaseCallbackHandler {
   name = "billing";
 
-  async handleChainEnd(
-    output: ChainValues,
-    runId: string
-  ): Promise<void> {
+  async handleChainEnd(output: ChainValues, runId: string): Promise<void> {
     const context = getUsageContext();
     if (!context || context.records.length === 0) return;
 
-    // Persist all accumulated usage
     await persistUsageToRails(
       context.records,
       context.chatId!,
@@ -318,11 +236,8 @@ class BillingCallbackHandler extends BaseCallbackHandler {
     );
   }
 
-  async handleChainError(
-    error: Error,
-    runId: string
-  ): Promise<void> {
-    // Still persist usage even on error - charge for work done
+  async handleChainError(error: Error, runId: string): Promise<void> {
+    // Still persist usage on error - charge for work done
     const context = getUsageContext();
     if (!context || context.records.length === 0) return;
 
@@ -334,11 +249,10 @@ class BillingCallbackHandler extends BaseCallbackHandler {
   }
 }
 
-// Singleton instance - passed to graph.invoke()
 export const billingCallback = new BillingCallbackHandler();
 ```
 
-#### 3. Modify getLLM to Attach usageTracker
+### 3. Modify getLLM to Attach Callback
 
 ```typescript
 // langgraph_app/app/core/llm/llm.ts
@@ -360,10 +274,10 @@ export async function getLLM(options: LLMOptions = {}): Promise<BaseChatModel> {
 }
 ```
 
-#### 4. Wrap Graph Execution
+### 4. Graph Execution Wrapper
 
 ```typescript
-// langgraph_app/app/core/billing/withUsageTracking.ts
+// langgraph_app/app/core/billing/executeWithBilling.ts
 
 import { runWithUsageTracking, usageTracker } from "./usageTracker";
 import { billingCallback } from "./billingCallback";
@@ -374,13 +288,6 @@ interface RunOptions {
   graphName?: string;
 }
 
-/**
- * Execute a graph with full billing tracking.
- *
- * - Sets up AsyncLocalStorage context for usage accumulation
- * - Passes both usageTracker and billingCallback to graph
- * - billingCallback handles persistence in handleChainEnd
- */
 export async function executeWithBilling<TInput, TOutput>(
   graph: CompiledGraph<TInput, TOutput>,
   input: TInput,
@@ -393,25 +300,25 @@ export async function executeWithBilling<TInput, TOutput>(
       threadId: config?.configurable?.thread_id,
       graphName: options.graphName,
     },
-    () => graph.invoke(input, {
-      ...config,
-      callbacks: [
-        ...(config.callbacks || []),
-        usageTracker,      // LLM-level: accumulates usage
-        billingCallback,   // Graph-level: persists on completion
-      ],
-    })
+    () =>
+      graph.invoke(input, {
+        ...config,
+        callbacks: [
+          ...(config.callbacks || []),
+          usageTracker,
+          billingCallback,
+        ],
+      })
   );
 
-  // No explicit persistence needed - billingCallback handles it
   return result;
 }
 ```
 
-#### 5. Usage in Hono Server
+### 5. Usage in Hono Server
 
 ```typescript
-// In graph invocation handler - clean and simple
+// In graph invocation handler
 
 const result = await executeWithBilling(
   brainstormGraph,
@@ -420,193 +327,10 @@ const result = await executeWithBilling(
   { chatId: chat.id, graphName: "brainstorm" }
 );
 
-// That's it! Persistence happens in billingCallback.handleChainEnd()
+// Persistence happens in billingCallback.handleChainEnd()
 ```
 
-#### 6. Integration with GraphTestBuilder
-
-The billing system is fully testable via our existing `testGraph()` infrastructure:
-
-```typescript
-// tests/support/graph/graphTester.ts additions
-
-class GraphTestBuilder<TGraphState extends CoreGraphState> {
-  private billingEnabled = false;
-
-  /**
-   * Enable billing tracking for this test.
-   * Usage will be accumulated and can be asserted on after execution.
-   */
-  withBilling(): GraphTestBuilder<TGraphState> {
-    this.billingEnabled = true;
-    return this;
-  }
-
-  async execute(): Promise<NodeTestResult<TGraphState>> {
-    // ... existing setup ...
-
-    if (this.billingEnabled) {
-      // Wrap execution with billing
-      const { result } = await runWithUsageTracking(
-        { chatId: this.initialState.chatId, graphName: this.graph?.name },
-        () => testGraph.invoke(initialState, {
-          ...invokeConfig,
-          callbacks: [usageTracker, billingCallback],
-        })
-      );
-      // ... handle result ...
-    } else {
-      // Existing non-billing path
-      const result = await testGraph.invoke(initialState, invokeConfig);
-      // ...
-    }
-  }
-}
-
-// Usage in tests:
-it("tracks usage for brainstorm agent", async () => {
-  const result = await testGraph()
-    .withGraph(brainstormGraph)
-    .withPrompt("Help me brainstorm ideas for a dog walking app")
-    .withBilling()
-    .execute();
-
-  // Assert usage was captured
-  const context = getUsageContext();
-  expect(context?.records.length).toBeGreaterThan(0);
-
-  // Assert cost calculation
-  const totalCost = context?.records.reduce((sum, r) => sum + r.costUsd, 0);
-  expect(totalCost).toBeGreaterThan(0);
-});
-```
-
-### Data Model
-
-#### New Table: `llm_usage_records`
-
-Stores individual LLM calls (not messages). One run may have many usage records.
-
-```ruby
-create_table :llm_usage_records do |t|
-  t.references :chat, null: false, foreign_key: true
-  t.string :run_id, null: false, index: true    # Groups records from same graph execution
-  t.string :graph_name                           # "brainstorm", "website", "ads"
-
-  # Usage
-  t.string :model_key, null: false               # NORMALIZED name, e.g., "claude-haiku-4-5"
-  t.string :model_raw                            # Raw name from provider for debugging
-  t.integer :input_tokens, null: false, default: 0
-  t.integer :output_tokens, null: false, default: 0
-  t.integer :reasoning_tokens, default: 0        # OpenAI only, included in output_tokens
-  t.integer :cache_creation_tokens, default: 0   # Anthropic only
-  t.integer :cache_read_tokens, default: 0       # Anthropic only
-  t.decimal :cost_usd, precision: 10, scale: 8, null: false
-
-  # Context (from callback metadata/tags)
-  t.string :tags, array: true, default: []       # e.g., ["tool:saveAnswers", "notify"]
-  t.jsonb :metadata                              # skill, maxTier, etc.
-
-  t.timestamps
-
-  t.index [:chat_id, :run_id]
-  t.index :created_at
-end
-```
-
-#### New Table: `llm_runs` (aggregated per-run summary)
-
-```ruby
-create_table :llm_runs do |t|
-  t.references :chat, null: false, foreign_key: true
-  t.string :run_id, null: false, index: { unique: true }
-  t.string :graph_name
-
-  # Aggregated totals
-  t.integer :llm_call_count, null: false, default: 0
-  t.integer :total_input_tokens, null: false, default: 0
-  t.integer :total_output_tokens, null: false, default: 0
-  t.decimal :total_cost_usd, precision: 10, scale: 6, null: false
-  t.integer :credits_charged, null: false, default: 0
-
-  # Billing
-  t.boolean :charged, default: false
-  t.datetime :charged_at
-
-  t.timestamps
-
-  t.index [:chat_id, :created_at]
-  t.index [:charged, :created_at]
-end
-```
-
-#### CreditTransaction Reference
-
-```ruby
-CreditTransaction.create!(
-  account: account,
-  transaction_type: "consume",
-  credit_type: "plan",  # or "purchased"
-  reason: "ai_generation",
-  amount: -credits,
-  balance_after: new_balance,
-  reference: llm_run,  # type: "LlmRun"
-  metadata: {
-    graph: "brainstorm",
-    llm_call_count: 5,
-    total_tokens: 12500,
-    cost_usd: 0.0234
-  }
-)
-```
-
-### Flow
-
-```
-Request comes in (Hono handler)
-    ↓
-executeWithBilling() called
-    ↓
-runWithUsageTracking() creates AsyncLocalStorage context
-    ↓
-graph.invoke(state, { callbacks: [usageTracker, billingCallback] })
-    │
-    │  ┌─── During Execution ───────────────────────────────────────────┐
-    │  │                                                                 │
-    │  │  Node calls getLLM() → model with usageTracker attached         │
-    │  │      └── model.invoke()                                         │
-    │  │          └── handleLLMEnd fires                                 │
-    │  │              └── UsageRecord added to AsyncLocalStorage         │
-    │  │                                                                 │
-    │  │  Tool calls getLLM() internally → same flow                     │
-    │  │  Middleware calls getLLM() → same flow                          │
-    │  │                                                                 │
-    │  └─────────────────────────────────────────────────────────────────┘
-    │
-    ↓  Graph completes (success or error)
-    │
-    │  ┌─── billingCallback.handleChainEnd() ───────────────────────────┐
-    │  │                                                                 │
-    │  │  1. Read UsageRecord[] from AsyncLocalStorage                   │
-    │  │  2. POST to Rails: /api/v1/llm_runs                             │
-    │  │     - Creates LlmRun with aggregated totals                     │
-    │  │     - Bulk inserts LlmUsageRecords for audit                    │
-    │  │     - Enqueues Credits::ChargeRunJob                            │
-    │  │                                                                 │
-    │  └─────────────────────────────────────────────────────────────────┘
-    ↓
-Result returned to Hono handler (no billing logic here!)
-    ↓
-    ↓  [Background Job in Rails]
-    ↓
-Credits::ChargeRunJob:
-    1. Load LlmRun (already has totals)
-    2. Calculate credits from cost_usd
-    3. Create CreditTransaction referencing LlmRun
-    4. Mark run as charged: true
-```
-
-### Persistence to Rails
+### 6. Persistence to Rails
 
 ```typescript
 // langgraph_app/app/core/billing/persistUsage.ts
@@ -624,7 +348,6 @@ export async function persistUsageToRails(
 
   const runId = uuid();
 
-  // Aggregate totals
   const totals = usage.reduce(
     (acc, r) => ({
       llmCallCount: acc.llmCallCount + 1,
@@ -662,143 +385,13 @@ export async function persistUsageToRails(
 }
 ```
 
-## Edge Cases Handled
+### 7. Model Name Normalization
 
-| Scenario | How It's Captured |
-|----------|-------------------|
-| **Agent multi-turn** | `handleLLMEnd` fires for each LLM call in the agent loop |
-| **Tool calls LLM internally** | Callback attached via `getLLM()`, fires normally |
-| **Middleware calls LLM** | Same - callback attached, captured |
-| **Parallel LLM calls** | Each fires independently, all captured to same context |
-| **Nested graphs/subgraphs** | AsyncLocalStorage context preserved through async boundaries |
-| **LLM called outside tracking** | `getUsageContext()` returns undefined, callback safely no-ops |
-| **Streaming** | `handleLLMEnd` still fires at stream completion with full usage |
+Providers return versioned model names (e.g., `gpt-5-mini-2025-08-07`) that don't match the pricing table. Use longest-prefix matching:
 
-## Design Decisions
-
-### 1. Charge Granularity: Per-Run (Batch)
-- **Decision**: Charge once at end of run, not per-LLM-call
-- **Rationale**: Fewer transactions, simpler billing UI, matches user mental model ("I sent one message")
-- **Trade-off**: Slightly less granular audit trail (mitigated by storing individual `LlmUsageRecord`s)
-
-### 2. Callback vs Message Detection
-- **Decision**: Use LangChain callback system, not message inspection
-- **Rationale**: Catches ALL LLM usage (agents, tools, middlewares), not just returned messages
-- **Trade-off**: Less visibility into message content (but we have checkpoints for that)
-
-### 3. No Message Content Storage
-- **Decision**: Don't store message content in usage records
-- **Rationale**: Duplicates checkpoint data, storage cost, privacy concerns
-- **Trade-off**: For auditing message content, query checkpoints instead
-
-### 4. Singleton Callback + AsyncLocalStorage
-- **Decision**: One callback instance reads from AsyncLocalStorage at invoke time
-- **Rationale**: Simple, stateless, no need to thread config through every `getLLM()` call
-- **Trade-off**: Requires wrapping graph execution in `runWithUsageTracking()`
-
-### 5. Graph-Level Callbacks for Persistence (Not Hono Handlers)
-- **Decision**: Persistence happens in `billingCallback.handleChainEnd()`, not in Hono handler code
-- **Rationale**:
-  - **Testable**: All graph tests go through `GraphTestBuilder.execute()` which wraps `graph.invoke()`. Adding callbacks there makes billing fully testable.
-  - **Self-contained**: Billing logic stays with the graph, not scattered to HTTP handlers
-  - **Error handling**: `handleChainError()` ensures we charge for work done even on failures
-- **Trade-off**: Two callbacks instead of one, but cleaner separation of concerns
-
----
-
-## Exploration: Usage Metadata Investigation
-
-**Goal**: Create a test agent that calls tools in sequence, inspect actual usage_metadata structure.
-
-### Test Plan
-
-1. Create simple agent with 2 tools
-2. Prompt it to: call tool 1 → wait → call tool 2 → produce final output
-3. Log all messages with their usage_metadata
-4. Verify assumptions about what has usage and what doesn't
-
-### Expected Message Sequence
-
-```
-HumanMessage: "Use tool1 then tool2 to answer X"
-    ↓
-AIMessage: { tool_calls: [tool1], usage_metadata: {...} }  ← CHARGED
-    ↓
-ToolMessage: { tool_call_id: "...", content: "result1" }   ← NOT CHARGED
-    ↓
-AIMessage: { tool_calls: [tool2], usage_metadata: {...} }  ← CHARGED
-    ↓
-ToolMessage: { tool_call_id: "...", content: "result2" }   ← NOT CHARGED
-    ↓
-AIMessage: { content: "Final answer", usage_metadata: {...} }  ← CHARGED
-```
-
-### Observations
-
-**Verified via `scripts/explore-usage-metadata.ts`** - tested with both OpenAI (gpt-5-mini) and Anthropic (claude-haiku-4-5).
-
-#### 1. Message Sequence Confirmed ✓
-
-The expected sequence was confirmed exactly:
-```
-HumanMessage (no usage) → AIMessage (usage ✓) → ToolMessage (no usage) → AIMessage (usage ✓) → ToolMessage (no usage) → AIMessage (usage ✓)
-```
-
-- **AIMessages with usage_metadata**: 3/3 (100%)
-- **ToolMessages with usage_metadata**: 0/2 (0%)
-
-#### 2. Usage Metadata Structure Varies by Provider
-
-**OpenAI (gpt-5-mini)**:
-```json
-{
-  "output_tokens": 88,
-  "input_tokens": 299,
-  "total_tokens": 387,
-  "input_token_details": {
-    "audio": 0,
-    "cache_read": 0
-  },
-  "output_token_details": {
-    "audio": 0,
-    "reasoning": 64
-  }
-}
-```
-
-**Anthropic (claude-haiku-4-5)**:
-```json
-{
-  "input_tokens": 832,
-  "output_tokens": 73,
-  "total_tokens": 905,
-  "input_token_details": {
-    "cache_creation": 0,
-    "cache_read": 0
-  }
-}
-```
-
-#### 3. Key Differences Between Providers
-
-| Field | OpenAI Location | Anthropic Location |
-|-------|-----------------|-------------------|
-| Model name | `response_metadata.model_name` | `response_metadata.model` |
-| Reasoning tokens | `output_token_details.reasoning` | N/A |
-| Cache creation | `cache_creation_input_tokens` | `input_token_details.cache_creation` |
-| Cache read | `cache_read_input_tokens` | `input_token_details.cache_read` |
-
-#### 4. Model Name Versioning
-
-Providers return versioned model names that don't match our pricing table:
-
-| Requested | Returned by Provider |
-|-----------|---------------------|
-| `gpt-5-mini` | `gpt-5-mini-2025-08-07` |
-| `claude-haiku-4-5` | `claude-haiku-4-5-20251001` |
-
-**Solution**: Match against known model names using longest-prefix matching:
 ```typescript
+// langgraph_app/app/core/billing/pricing.ts
+
 function normalizeModelName(modelName: string): string {
   const knownModels = Object.keys(MODEL_PRICING);
   const matches = knownModels.filter((known) => modelName.startsWith(known));
@@ -811,141 +404,298 @@ function normalizeModelName(modelName: string): string {
 }
 ```
 
-#### 5. Reasoning Tokens (OpenAI)
-
-OpenAI models report reasoning tokens separately in `output_token_details.reasoning`. These are **included in `output_tokens`**, not additional.
-
-**Cost calculation**:
-```typescript
-const reasoningTokens = usage.output_token_details?.reasoning || 0;
-const nonReasoningOutput = outputTokens - reasoningTokens;
-
-// Charge non-reasoning at output rate, reasoning at reasoning rate
-cost += (nonReasoningOutput / 1_000_000) * pricing.cost_out;
-cost += (reasoningTokens / 1_000_000) * (pricing.cost_reasoning ?? pricing.cost_out);
-```
-
-Langsmith confirmed: reasoning tokens charged at the same rate as output tokens ($2/1M for gpt-5-mini).
-
-#### 6. Cost Calculation Formula
+### 8. Cost Calculation
 
 ```typescript
-cost = (input_tokens / 1M) × cost_in
-     + (output_tokens - reasoning_tokens) / 1M × cost_out
-     + (reasoning_tokens / 1M) × cost_reasoning
-     + (cache_creation_tokens / 1M) × cache_writes    // Anthropic only
-     + (cache_read_tokens / 1M) × cache_reads         // Anthropic only
+// langgraph_app/app/core/billing/pricing.ts
+
+interface CostInput {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  reasoningTokens: number;
+  cacheCreationTokens: number;
+  cacheReadTokens: number;
+}
+
+function calculateCost(input: CostInput): number {
+  const pricing = MODEL_PRICING[input.model];
+  if (!pricing) return 0;
+
+  const nonReasoningOutput = input.outputTokens - input.reasoningTokens;
+
+  let cost = 0;
+  cost += (input.inputTokens / 1_000_000) * pricing.cost_in;
+  cost += (nonReasoningOutput / 1_000_000) * pricing.cost_out;
+  cost += (input.reasoningTokens / 1_000_000) * (pricing.cost_reasoning ?? pricing.cost_out);
+  cost += (input.cacheCreationTokens / 1_000_000) * (pricing.cache_writes ?? 0);
+  cost += (input.cacheReadTokens / 1_000_000) * (pricing.cache_reads ?? 0);
+
+  return cost;
+}
 ```
 
-#### 7. Validated Against Langsmith
+## Data Model
 
-Our cost calculations matched Langsmith exactly:
+### llm_runs (Rails)
 
-**OpenAI gpt-5-mini (single message)**:
-- Input: 299 tokens × $0.25/1M = $0.000075
-- Output: 88 tokens × $2.00/1M = $0.000176
-- Reasoning: 64 tokens × $2.00/1M = $0.000128
-- **Total: $0.000251** ✓
+Aggregated per-run summary for billing.
 
----
+```ruby
+create_table :llm_runs do |t|
+  t.references :chat, null: false, foreign_key: true
+  t.string :run_id, null: false, index: { unique: true }
+  t.string :graph_name
+
+  t.integer :llm_call_count, null: false, default: 0
+  t.integer :total_input_tokens, null: false, default: 0
+  t.integer :total_output_tokens, null: false, default: 0
+  t.decimal :total_cost_usd, precision: 10, scale: 6, null: false
+  t.integer :credits_charged, null: false, default: 0
+
+  t.boolean :charged, default: false
+  t.datetime :charged_at
+
+  t.timestamps
+
+  t.index [:chat_id, :created_at]
+  t.index [:charged, :created_at]
+end
+```
+
+### llm_usage_records (Rails)
+
+Individual LLM calls for audit trail.
+
+```ruby
+create_table :llm_usage_records do |t|
+  t.references :chat, null: false, foreign_key: true
+  t.string :run_id, null: false, index: true
+  t.string :graph_name
+
+  t.string :model_key, null: false
+  t.string :model_raw
+  t.integer :input_tokens, null: false, default: 0
+  t.integer :output_tokens, null: false, default: 0
+  t.integer :reasoning_tokens, default: 0
+  t.integer :cache_creation_tokens, default: 0
+  t.integer :cache_read_tokens, default: 0
+  t.decimal :cost_usd, precision: 10, scale: 8, null: false
+
+  t.string :tags, array: true, default: []
+  t.jsonb :metadata
+
+  t.timestamps
+
+  t.index [:chat_id, :run_id]
+  t.index :created_at
+end
+```
+
+### CreditTransaction Reference
+
+```ruby
+CreditTransaction.create!(
+  account: account,
+  transaction_type: "consume",
+  credit_type: "plan",
+  reason: "ai_generation",
+  amount: -credits,
+  balance_after: new_balance,
+  reference: llm_run,
+  metadata: {
+    graph: "brainstorm",
+    llm_call_count: 5,
+    total_tokens: 12500,
+    cost_usd: 0.0234
+  }
+)
+```
+
+## Request Flow
+
+```
+Request comes in (Hono handler)
+    ↓
+executeWithBilling() called
+    ↓
+runWithUsageTracking() creates AsyncLocalStorage context
+    ↓
+graph.invoke(state, { callbacks: [usageTracker, billingCallback] })
+    │
+    │  ┌─── During Execution ───────────────────────────────────────────┐
+    │  │                                                                 │
+    │  │  Node calls getLLM() → model with usageTracker attached         │
+    │  │      └── model.invoke()                                         │
+    │  │          └── handleLLMEnd fires                                 │
+    │  │              └── UsageRecord added to AsyncLocalStorage         │
+    │  │                                                                 │
+    │  │  Tool calls getLLM() internally → same flow                     │
+    │  │  Middleware calls getLLM() → same flow                          │
+    │  │                                                                 │
+    │  └─────────────────────────────────────────────────────────────────┘
+    │
+    ↓  Graph completes (success or error)
+    │
+    │  ┌─── billingCallback.handleChainEnd() ───────────────────────────┐
+    │  │                                                                 │
+    │  │  1. Read UsageRecord[] from AsyncLocalStorage                   │
+    │  │  2. POST to Rails: /api/v1/llm_runs                             │
+    │  │     - Creates LlmRun with aggregated totals                     │
+    │  │     - Bulk inserts LlmUsageRecords for audit                    │
+    │  │     - Enqueues Credits::ChargeRunJob                            │
+    │  │                                                                 │
+    │  └─────────────────────────────────────────────────────────────────┘
+    ↓
+Result returned to Hono handler
+    ↓
+    ↓  [Background Job in Rails]
+    ↓
+Credits::ChargeRunJob:
+    1. Load LlmRun (already has totals)
+    2. Calculate credits from cost_usd
+    3. Create CreditTransaction referencing LlmRun
+    4. Mark run as charged: true
+```
+
+## Testing
+
+Add a `withBilling()` method to `GraphTestBuilder`:
+
+```typescript
+// tests/support/graph/graphTester.ts
+
+class GraphTestBuilder<TGraphState extends CoreGraphState> {
+  private billingEnabled = false;
+
+  withBilling(): GraphTestBuilder<TGraphState> {
+    this.billingEnabled = true;
+    return this;
+  }
+
+  async execute(): Promise<NodeTestResult<TGraphState>> {
+    // ... existing setup ...
+
+    if (this.billingEnabled) {
+      const { result } = await runWithUsageTracking(
+        { chatId: this.initialState.chatId, graphName: this.graph?.name },
+        () =>
+          testGraph.invoke(initialState, {
+            ...invokeConfig,
+            callbacks: [usageTracker, billingCallback],
+          })
+      );
+      // ... handle result ...
+    } else {
+      const result = await testGraph.invoke(initialState, invokeConfig);
+      // ...
+    }
+  }
+}
+```
+
+Example test:
+
+```typescript
+it("tracks usage for brainstorm agent", async () => {
+  const result = await testGraph()
+    .withGraph(brainstormGraph)
+    .withPrompt("Help me brainstorm ideas for a dog walking app")
+    .withBilling()
+    .execute();
+
+  const context = getUsageContext();
+  expect(context?.records.length).toBeGreaterThan(0);
+
+  const totalCost = context?.records.reduce((sum, r) => sum + r.costUsd, 0);
+  expect(totalCost).toBeGreaterThan(0);
+});
+```
+
+## Provider-Specific Notes
+
+### Usage Metadata Location
+
+| Field | OpenAI | Anthropic |
+|-------|--------|-----------|
+| Model name | `response_metadata.model_name` | `response_metadata.model` |
+| Reasoning tokens | `output_token_details.reasoning` | N/A |
+| Cache creation | `cache_creation_input_tokens` | `input_token_details.cache_creation` |
+| Cache read | `cache_read_input_tokens` | `input_token_details.cache_read` |
+
+### Reasoning Tokens (OpenAI)
+
+OpenAI models report reasoning tokens in `output_token_details.reasoning`. These are **included in `output_tokens`**, not additional. Charge non-reasoning at output rate, reasoning at reasoning rate.
+
+## Edge Cases
+
+| Scenario | How It's Handled |
+|----------|------------------|
+| Agent multi-turn | `handleLLMEnd` fires for each LLM call in the loop |
+| Tool calls LLM internally | Callback attached via `getLLM()`, fires normally |
+| Middleware calls LLM | Same - callback attached, captured |
+| Parallel LLM calls | Each fires independently, all captured to same context |
+| Nested graphs/subgraphs | AsyncLocalStorage context preserved through async boundaries |
+| LLM called outside tracking | `getUsageContext()` returns undefined, callback safely no-ops |
+| Graph errors | `handleChainError()` still persists usage |
 
 ## Implementation Checklist
 
-### Langgraph App
+### LangGraph App
 
-- [ ] **Create `core/billing/usageTracker.ts`**
+- [ ] Create `core/billing/usageTracker.ts`
   - [ ] `UsageRecord` and `UsageContext` types
   - [ ] `usageStorage` AsyncLocalStorage instance
   - [ ] `getUsageContext()` and `runWithUsageTracking()` functions
   - [ ] `UsageTrackingCallbackHandler` class with `handleLLMEnd`
   - [ ] `usageTracker` singleton export
-  - [ ] `normalizeModelName()` function (longest-prefix matching)
-  - [ ] `calculateCost()` function with pricing table
 
-- [ ] **Create `core/billing/billingCallback.ts`**
-  - [ ] `BillingCallbackHandler` class extending `BaseCallbackHandler`
-  - [ ] `handleChainEnd()` - persist usage on success
-  - [ ] `handleChainError()` - persist usage on error (charge for work done)
+- [ ] Create `core/billing/billingCallback.ts`
+  - [ ] `BillingCallbackHandler` class with `handleChainEnd` and `handleChainError`
   - [ ] `billingCallback` singleton export
 
-- [ ] **Modify `core/llm/llm.ts`**
-  - [ ] Import `usageTracker` from billing module
-  - [ ] Attach callback in `getLLM()`: `model.withConfig({ callbacks: [usageTracker] })`
-  - [ ] Optionally attach metadata (skill, maxTier) for richer audit trail
+- [ ] Create `core/billing/pricing.ts`
+  - [ ] `normalizeModelName()` function (longest-prefix matching)
+  - [ ] `calculateCost()` function
+  - [ ] `MODEL_PRICING` table (keep in sync with Rails)
 
-- [ ] **Create `core/billing/persistUsage.ts`**
+- [ ] Create `core/billing/persistUsage.ts`
   - [ ] `persistUsageToRails()` function
-  - [ ] Aggregate totals from UsageRecord[]
-  - [ ] POST to Rails API with run + records
 
-- [ ] **Create `core/billing/executeWithBilling.ts`**
+- [ ] Create `core/billing/executeWithBilling.ts`
   - [ ] `executeWithBilling()` wrapper function
-  - [ ] Sets up AsyncLocalStorage context via `runWithUsageTracking()`
-  - [ ] Passes both `usageTracker` and `billingCallback` to graph
 
-- [ ] **Update Hono handlers**
+- [ ] Modify `core/llm/llm.ts`
+  - [ ] Attach `usageTracker` callback in `getLLM()`
+
+- [ ] Update Hono handlers
   - [ ] Replace `graph.invoke()` with `executeWithBilling()`
-  - [ ] No persistence logic in handlers - callbacks handle it
-
-- [ ] **Model name normalization**
-  - [ ] Handle `response_metadata.model_name` (OpenAI) vs `response_metadata.model` (Anthropic)
-  - [ ] Longest-prefix matching against known model names
-
-- [ ] **Token extraction**
-  - [ ] Handle cache tokens in both locations: `cache_*_input_tokens` and `input_token_details.cache_*`
-  - [ ] Track reasoning tokens for OpenAI models
-
-- [ ] **Pricing table**
-  - [ ] Include `cost_reasoning` for models that support it
-  - [ ] Keep in sync with Rails `ModelConfiguration`
 
 ### Rails App
 
-- [ ] **Create migrations**
+- [ ] Create migrations
   - [ ] `llm_runs` table
   - [ ] `llm_usage_records` table
 
-- [ ] **Create models**
-  - [ ] `LlmRun` model with associations
+- [ ] Create models
+  - [ ] `LlmRun` model
   - [ ] `LlmUsageRecord` model
   - [ ] Add `has_many :llm_runs` to `Chat`
 
-- [ ] **Create API endpoint**
-  - [ ] `POST /api/v1/llm_runs` - accepts run + records in single request
-  - [ ] Bulk insert records for efficiency
+- [ ] Create API endpoint
+  - [ ] `POST /api/v1/llm_runs` (accepts run + records)
 
-- [ ] **Create background job**
-  - [ ] `Credits::ChargeRunJob` - charges credits for a completed run
-  - [ ] Handles credit type selection (plan vs purchased)
-  - [ ] Creates `CreditTransaction` referencing the `LlmRun`
-
-- [ ] **Update CreditTransaction**
-  - [ ] Ensure polymorphic `reference` supports `LlmRun`
+- [ ] Create background job
+  - [ ] `Credits::ChargeRunJob`
 
 ### Testing
 
-- [ ] **Unit tests: `core/billing/usageTracker.ts`**
-  - [ ] `UsageTrackingCallback` captures usage correctly
-  - [ ] `runWithUsageTracking()` context isolation
-  - [ ] Callback no-ops safely outside tracked context
-  - [ ] Nested async calls share same context
+- [ ] Unit tests for `usageTracker`
+- [ ] Unit tests for `billingCallback`
+- [ ] Add `withBilling()` to `GraphTestBuilder`
+- [ ] Integration tests via `testGraph().withBilling()`
+- [ ] E2E: graph execution → Rails persistence → credit charge
 
-- [ ] **Unit tests: `core/billing/billingCallback.ts`**
-  - [ ] `handleChainEnd()` persists usage on success
-  - [ ] `handleChainError()` persists usage on error
-  - [ ] No-ops when no usage records exist
+### Validation Script
 
-- [ ] **Integration tests via GraphTestBuilder**
-  - [ ] Add `withBilling()` method to `GraphTestBuilder`
-  - [ ] Test agent multi-turn captures all LLM calls
-  - [ ] Test tool-internal LLM calls are captured
-  - [ ] Test middleware LLM calls are captured
-  - [ ] Test cost calculation matches expected values
-
-- [ ] **E2E tests**
-  - [ ] Graph execution → Rails persistence → credit charge
-  - [ ] Error during graph → usage still persisted
-
-### Existing Resources
-
-- [ ] Test script available at `scripts/explore-usage-metadata.ts` for validation
+Test script available at `scripts/explore-usage-metadata.ts` for validating usage metadata extraction across providers.
