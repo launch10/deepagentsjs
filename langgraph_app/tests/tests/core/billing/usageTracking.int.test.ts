@@ -154,7 +154,7 @@ describe("Usage Tracking Integration", () => {
   });
 
   describe("middleware that calls LLMs", () => {
-    it.only("tracks both agent LLM call and middleware LLM call", async () => {
+    it("tracks both agent LLM call and middleware LLM call", async () => {
       const result = await testGraph<UsageTrackingTestState>()
         .withGraph(compiledGraph)
         .withPrompt("Tell me a joke")
@@ -172,12 +172,20 @@ describe("Usage Tracking Integration", () => {
       // Verify we captured messages from both LLM calls
       expect(result.tracking!.messagesProduced.length).toBeGreaterThanOrEqual(2);
 
-      console.log(result.tracking);
-      // Each usage record should have valid token counts
+      // Each usage record should have valid token counts and a messageId
       for (const record of result.tracking!.usage) {
         expect(record.model).toBeDefined();
+        expect(record.messageId).toBeDefined();
+        expect(record.messageId).not.toBe("");
         expect(record.inputTokens).toBeGreaterThan(0);
         expect(record.outputTokens).toBeGreaterThan(0);
+      }
+
+      // Verify messageId correlates usage records with messages
+      const usageMessageIds = result.tracking!.usage.map((r) => r.messageId);
+      const producedMessageIds = result.tracking!.messagesProduced.map((m) => m.id);
+      for (const messageId of usageMessageIds) {
+        expect(producedMessageIds).toContain(messageId);
       }
     });
 

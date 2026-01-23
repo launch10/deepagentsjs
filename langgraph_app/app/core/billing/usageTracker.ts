@@ -10,8 +10,10 @@ import { generateUUID } from "@types";
  * Rails handles all cost calculations.
  */
 export interface UsageRecord {
-  llmCallId: string; // LangChain's per-LLM-call ID
-  parentLlmCallId?: string;
+  runId: string; // Our graph execution ID - correlates all LLM calls from one request
+  messageId: string; // Provider's message ID (e.g., "msg_01BeRfQurFVC5z4Ysn3xmVt1") - ties usage to AIMessage
+  langchainRunId: string; // LangChain's internal callback run ID (useful for LangSmith)
+  parentLangchainRunId?: string;
   model: string; // Raw model name from provider (e.g., "claude-haiku-4-5-20251001")
   inputTokens: number;
   outputTokens: number;
@@ -159,6 +161,7 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
           // Push usage record for billing
           if (message.usage_metadata) {
             const record = this.extractUsageRecord(
+              context.runId,
               message,
               output.llmOutput,
               llmCallId,
@@ -174,10 +177,11 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
   }
 
   private extractUsageRecord(
+    runId: string,
     message: AIMessage,
     llmOutput: any,
-    llmCallId: string,
-    parentLlmCallId?: string,
+    langchainRunId: string,
+    parentLangchainRunId?: string,
     tags?: string[],
     extraParams?: Record<string, unknown>
   ): UsageRecord {
@@ -187,6 +191,10 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
     // Model name: OpenAI uses model_name, Anthropic uses model
     // Store raw model name - Rails handles normalization for pricing
     const model = responseMeta.model_name || responseMeta.model || "unknown";
+
+    // Message ID from provider (e.g., "msg_01BeRfQurFVC5z4Ysn3xmVt1" for Anthropic)
+    // Ties usage record to the specific AIMessage for trace correlation
+    const messageId = message.id || responseMeta.id || "";
 
     const inputTokens = usage.input_tokens || 0;
     const outputTokens = usage.output_tokens || 0;
@@ -198,8 +206,10 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
 
     // NOTE: No cost calculation here - Rails handles all pricing
     return {
-      llmCallId,
-      parentLlmCallId,
+      runId,
+      messageId,
+      langchainRunId,
+      parentLangchainRunId,
       model,
       inputTokens,
       outputTokens,

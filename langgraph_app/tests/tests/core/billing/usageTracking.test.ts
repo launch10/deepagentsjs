@@ -22,7 +22,9 @@ import {
 describe("UsageContext AsyncLocalStorage", () => {
   // Helper to create a minimal usage record
   const createRecord = (model: string, inputTokens: number): UsageRecord => ({
-    llmCallId: `call-${Date.now()}-${Math.random()}`,
+    runId: "test-run",
+    messageId: `msg_${Date.now()}_${Math.random()}`,
+    langchainRunId: `call-${Date.now()}-${Math.random()}`,
     model,
     inputTokens,
     outputTokens: 50,
@@ -313,9 +315,72 @@ describe("UsageTrackingCallbackHandler", () => {
       });
 
       expect(usage).toHaveLength(1);
-      expect(usage[0]!.llmCallId).toBe("llm-call-123");
+      expect(usage[0]!.langchainRunId).toBe("llm-call-123");
       expect(usage[0]!.inputTokens).toBe(MOCK_ANTHROPIC_USAGE_METADATA.input_tokens);
       expect(usage[0]!.outputTokens).toBe(MOCK_ANTHROPIC_USAGE_METADATA.output_tokens);
+    });
+
+    it("sets runId on each UsageRecord from the context", async () => {
+      const { usage, runId } = await runWithUsageTracking({}, async () => {
+        const aiMessage = createAnthropicAIMessage("Test response");
+        await usageTracker.handleLLMEnd(createLLMResult(aiMessage), "call-1");
+
+        return "done";
+      });
+
+      expect(usage).toHaveLength(1);
+      // The record's runId should match the context's runId
+      expect(usage[0]!.runId).toBe(runId);
+      expect(usage[0]!.runId).toBeDefined();
+    });
+
+    it("sets same runId on all records within a single run", async () => {
+      const { usage, runId } = await runWithUsageTracking({}, async () => {
+        await usageTracker.handleLLMEnd(
+          createLLMResult(createAnthropicAIMessage("Response 1")),
+          "call-1"
+        );
+        await usageTracker.handleLLMEnd(
+          createLLMResult(createAnthropicAIMessage("Response 2")),
+          "call-2"
+        );
+        await usageTracker.handleLLMEnd(
+          createLLMResult(createAnthropicAIMessage("Response 3")),
+          "call-3"
+        );
+
+        return "done";
+      });
+
+      expect(usage).toHaveLength(3);
+      // All records should have the same runId from the context
+      expect(usage[0]!.runId).toBe(runId);
+      expect(usage[1]!.runId).toBe(runId);
+      expect(usage[2]!.runId).toBe(runId);
+    });
+
+    it("different runs have different runIds on their records", async () => {
+      const runA = await runWithUsageTracking({}, async () => {
+        await usageTracker.handleLLMEnd(
+          createLLMResult(createAnthropicAIMessage("Response A")),
+          "call-a"
+        );
+        return "a";
+      });
+
+      const runB = await runWithUsageTracking({}, async () => {
+        await usageTracker.handleLLMEnd(
+          createLLMResult(createAnthropicAIMessage("Response B")),
+          "call-b"
+        );
+        return "b";
+      });
+
+      // Each run's records have their respective runIds
+      expect(runA.usage[0]!.runId).toBe(runA.runId);
+      expect(runB.usage[0]!.runId).toBe(runB.runId);
+      // And they're different from each other
+      expect(runA.usage[0]!.runId).not.toBe(runB.usage[0]!.runId);
     });
 
     it("accumulates multiple records for multi-turn conversations", async () => {
@@ -489,8 +554,8 @@ describe("Multiple Runs Without Double Counting", () => {
     expect(run1.usage).not.toBe(run2.usage);
     expect(run1.usage).toHaveLength(1);
     expect(run2.usage).toHaveLength(1);
-    expect(run1.usage[0]!.llmCallId).toBe("call-1");
-    expect(run2.usage[0]!.llmCallId).toBe("call-2");
+    expect(run1.usage[0]!.langchainRunId).toBe("call-1");
+    expect(run2.usage[0]!.langchainRunId).toBe("call-2");
     // Each run has a unique runId
     expect(run1.runId).not.toBe(run2.runId);
   });
@@ -536,11 +601,11 @@ describe("Multiple Runs Without Double Counting", () => {
 
     // Each has independent records, no contamination
     expect(r1.usage).toHaveLength(1);
-    expect(r1.usage[0]!.llmCallId).toBe("concurrent-1");
+    expect(r1.usage[0]!.langchainRunId).toBe("concurrent-1");
     expect(r2.usage).toHaveLength(1);
-    expect(r2.usage[0]!.llmCallId).toBe("concurrent-2");
+    expect(r2.usage[0]!.langchainRunId).toBe("concurrent-2");
     expect(r3.usage).toHaveLength(1);
-    expect(r3.usage[0]!.llmCallId).toBe("concurrent-3");
+    expect(r3.usage[0]!.langchainRunId).toBe("concurrent-3");
 
     // Total records = sum of individual, not multiplied
     const totalRecords = r1.usage.length + r2.usage.length + r3.usage.length;
@@ -587,12 +652,12 @@ describe("Multiple Runs Without Double Counting", () => {
 
     // Run A should have its own record
     expect(runA.usage).toHaveLength(1);
-    expect(runA.usage[0]!.llmCallId).toBe("run-a");
+    expect(runA.usage[0]!.langchainRunId).toBe("run-a");
 
     // Run B should have 2 records and not be affected
     expect(runB.usage).toHaveLength(2);
-    expect(runB.usage[0]!.llmCallId).toBe("run-b-1");
-    expect(runB.usage[1]!.llmCallId).toBe("run-b-2");
+    expect(runB.usage[0]!.langchainRunId).toBe("run-b-1");
+    expect(runB.usage[1]!.langchainRunId).toBe("run-b-2");
 
     // Run B's context was still intact after A completed
     expect(runBUsageAfterACompletes!).toBe(1);
