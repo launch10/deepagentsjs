@@ -193,7 +193,7 @@ describe("Usage Tracking Integration", () => {
   });
 
   describe("middleware that calls LLMs", () => {
-    it("tracks both agent LLM call and middleware LLM call", async () => {
+    it("agent + middleware LLM calls: each usage matches its AIMessage", async () => {
       const result = await testGraph<UsageTrackingTestState>()
         .withGraph(compiledGraph)
         .withPrompt("Tell me a joke")
@@ -203,32 +203,24 @@ describe("Usage Tracking Integration", () => {
 
       expect(result.error).toBeUndefined();
 
-      // Middleware scenario uses createAgent with explainJokeMiddleware:
-      // - 1 LLM call from the agent (tell a joke)
-      // - 1 LLM call from the middleware (explain why it's funny)
-      expect(result.tracking!.usage.length).toBeGreaterThanOrEqual(2);
+      // Every usage record must have a corresponding AIMessage
+      expect(result.tracking!.usage.length).toBe(result.tracking!.messagesProduced.length);
 
-      // Verify we captured messages from both LLM calls
-      expect(result.tracking!.messagesProduced.length).toBeGreaterThanOrEqual(2);
-
-      // Each usage record should have valid token counts and a messageId
       for (const record of result.tracking!.usage) {
-        expect(record.model).toBeDefined();
-        expect(record.messageId).toBeDefined();
-        expect(record.messageId).not.toBe("");
-        expect(record.inputTokens).toBeGreaterThan(0);
-        expect(record.outputTokens).toBeGreaterThan(0);
+        const message = result.tracking!.messagesProduced.find((m) => m.id === record.messageId);
+        expect(message).toBeDefined();
+
+        const messageUsage = (message as any).usage_metadata;
+        expect(record.inputTokens).toBe(messageUsage.input_tokens);
+        expect(record.outputTokens).toBe(messageUsage.output_tokens);
       }
 
-      // Verify messageId correlates usage records with messages
-      const usageMessageIds = result.tracking!.usage.map((r) => r.messageId);
-      const producedMessageIds = result.tracking!.messagesProduced.map((m) => m.id);
-      for (const messageId of usageMessageIds) {
-        expect(producedMessageIds).toContain(messageId);
-      }
+      // All from same run
+      const runIds = new Set(result.tracking!.usage.map((r) => r.runId));
+      expect(runIds.size).toBe(1);
     });
 
-    it("tracks middleware LLM call with correct token attribution", async () => {
+    it("middleware LLM call usage matches its AIMessage metadata exactly", async () => {
       const result = await testGraph<UsageTrackingTestState>()
         .withGraph(compiledGraph)
         .withPrompt("Tell me something funny")
@@ -238,17 +230,26 @@ describe("Usage Tracking Integration", () => {
 
       expect(result.error).toBeUndefined();
 
-      // Both the agent's LLM call and the middleware's LLM call should be tracked
-      const usageRecords = result.tracking!.usage;
-      expect(usageRecords.length).toBeGreaterThanOrEqual(2);
+      // Every usage record correlates with exactly one AIMessage
+      expect(result.tracking!.usage.length).toBe(result.tracking!.messagesProduced.length);
 
-      // Calculate total tokens across all calls
-      const totalInputTokens = usageRecords.reduce((sum, r) => sum + r.inputTokens, 0);
-      const totalOutputTokens = usageRecords.reduce((sum, r) => sum + r.outputTokens, 0);
+      // Sum tracked usage
+      const totalTrackedInput = result.tracking!.usage.reduce((sum, r) => sum + r.inputTokens, 0);
+      const totalTrackedOutput = result.tracking!.usage.reduce((sum, r) => sum + r.outputTokens, 0);
 
-      // Both LLM calls should contribute to the total
-      expect(totalInputTokens).toBeGreaterThan(usageRecords[0]!.inputTokens);
-      expect(totalOutputTokens).toBeGreaterThan(usageRecords[0]!.outputTokens);
+      // Sum AIMessage usage_metadata
+      const totalMessageInput = result.tracking!.messagesProduced.reduce(
+        (sum, m) => sum + ((m as any).usage_metadata?.input_tokens || 0),
+        0
+      );
+      const totalMessageOutput = result.tracking!.messagesProduced.reduce(
+        (sum, m) => sum + ((m as any).usage_metadata?.output_tokens || 0),
+        0
+      );
+
+      // Tracked totals must match AIMessage totals exactly
+      expect(totalTrackedInput).toBe(totalMessageInput);
+      expect(totalTrackedOutput).toBe(totalMessageOutput);
     });
   });
 });
