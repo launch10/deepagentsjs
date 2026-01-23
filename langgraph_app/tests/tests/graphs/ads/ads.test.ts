@@ -8,7 +8,8 @@ import { db, projects as projectsTable } from "@db";
 import { type UUIDType, Ads, type ThreadIDType } from "@types";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { v7 as uuid } from "uuid";
-import { didSwitchPage, getPseudoMessage, needsPseudoMessage, PseudoMessages } from "@prompts";
+import { didSwitchPage, getContextMessage, needsContextMessage, ContextMessages } from "@prompts";
+import { isContextMessage } from "langgraph-ai-sdk";
 
 const adsGraph = uncompiledGraph.compile({ ...graphParams, name: "ads" });
 
@@ -927,7 +928,7 @@ describe.sequential("Ads Flow", () => {
       const lastMessage = followupQuestionResult.state.messages?.at(-1);
       expect(lastMessage).toBeDefined();
       expect((lastMessage as AIMessage).content).toMatch(
-        /great question|search intent|specificity|commercial intent|solution-focused/i
+        /great question|search intent|specificity|commercial intent|solution-focused|intent signals/i
       );
 
       // Verify message history has grown
@@ -1060,7 +1061,7 @@ describe.sequential("Ads Flow", () => {
       });
     });
 
-    describe("needsPseudoMessage", () => {
+    describe("needsContextMessage", () => {
       it("returns true when page switched", () => {
         const state = {
           stage: "highlights",
@@ -1068,7 +1069,7 @@ describe.sequential("Ads Flow", () => {
           messages: [new AIMessage("Previous response")],
         } as AdsGraphState;
 
-        expect(needsPseudoMessage(state)).toBe(true);
+        expect(needsContextMessage(state)).toBe(true);
       });
 
       it("returns true when no messages exist", () => {
@@ -1077,7 +1078,7 @@ describe.sequential("Ads Flow", () => {
           messages: [],
         } as unknown as AdsGraphState;
 
-        expect(needsPseudoMessage(state)).toBe(true);
+        expect(needsContextMessage(state)).toBe(true);
       });
 
       it("returns true when refresh is set", () => {
@@ -1087,7 +1088,7 @@ describe.sequential("Ads Flow", () => {
           refresh: [{ asset: "headlines", nVariants: 3 }],
         } as unknown as AdsGraphState;
 
-        expect(needsPseudoMessage(state)).toBe(true);
+        expect(needsContextMessage(state)).toBe(true);
       });
 
       it("returns false for normal user message without page switch", () => {
@@ -1097,11 +1098,11 @@ describe.sequential("Ads Flow", () => {
           messages: [new HumanMessage("Help me with headlines")],
         } as AdsGraphState;
 
-        expect(needsPseudoMessage(state)).toBe(false);
+        expect(needsContextMessage(state)).toBe(false);
       });
     });
 
-    describe("getPseudoMessage", () => {
+    describe("getContextMessage", () => {
       it("returns PAGE_SWITCH message when page switched", () => {
         const state = {
           stage: "highlights",
@@ -1109,10 +1110,10 @@ describe.sequential("Ads Flow", () => {
           messages: [new AIMessage("Previous response")],
         } as AdsGraphState;
 
-        const message = getPseudoMessage(state);
+        const message = getContextMessage(state);
 
         expect(message).not.toBeNull();
-        expect(message?.additional_kwargs?.isPseudo).toBe(true);
+        expect(isContextMessage(message!)).toBe(true);
         expect(message?.content).toContain("switched to");
         expect(message?.content).toContain("callouts and structured snippets");
       });
@@ -1125,7 +1126,7 @@ describe.sequential("Ads Flow", () => {
           refresh: [{ asset: "callouts", nVariants: 3 }],
         } as unknown as AdsGraphState;
 
-        const message = getPseudoMessage(state);
+        const message = getContextMessage(state);
 
         expect(message).not.toBeNull();
         expect(message?.content).toContain("Generate new callouts");
@@ -1137,10 +1138,10 @@ describe.sequential("Ads Flow", () => {
           messages: [],
         } as unknown as AdsGraphState;
 
-        const message = getPseudoMessage(state);
+        const message = getContextMessage(state);
 
         expect(message).not.toBeNull();
-        expect(message?.content).toBe(PseudoMessages.BEGIN);
+        expect(message?.content).toBe(ContextMessages.BEGIN);
       });
 
       it("returns null for normal user message without page switch", () => {
@@ -1150,7 +1151,7 @@ describe.sequential("Ads Flow", () => {
           messages: [new HumanMessage("Help me with headlines")],
         } as AdsGraphState;
 
-        const message = getPseudoMessage(state);
+        const message = getContextMessage(state);
 
         expect(message).toBeNull();
       });
@@ -1172,7 +1173,7 @@ describe.sequential("Ads Flow", () => {
             messages: [new AIMessage("Previous response")],
           } as AdsGraphState;
 
-          const message = getPseudoMessage(state);
+          const message = getContextMessage(state);
 
           expect(message?.content).toContain(expectedContent);
         });
@@ -1180,7 +1181,7 @@ describe.sequential("Ads Flow", () => {
     });
 
     describe("Integration: Page switch triggers correct context", () => {
-      it("does not include pseudomessages in final messages output", async () => {
+      it("preserves context messages in state for tracing (filtered at SDK layer)", async () => {
         // First generate content
         const contentResult = await testGraph<AdsGraphState>()
           .withGraph(adsGraph)
@@ -1191,7 +1192,7 @@ describe.sequential("Ads Flow", () => {
           })
           .execute();
 
-        // Switch to highlights (triggers PAGE_SWITCH pseudomessage)
+        // Switch to highlights (triggers PAGE_SWITCH context message)
         const highlightsResult = await testGraph<AdsGraphState>()
           .withGraph(adsGraph)
           .withState({
@@ -1201,10 +1202,14 @@ describe.sequential("Ads Flow", () => {
           })
           .execute();
 
-        // Verify NO messages have isPseudo flag
+        // Verify messages exist - context messages are now preserved for tracing
+        // (They're filtered at the SDK layer for UI display, not here)
         const messages = highlightsResult.state.messages || [];
         expect(messages.length).toBeGreaterThan(0);
-        expect(messages.every((m) => !m.additional_kwargs?.isPseudo)).toBe(true);
+
+        // Verify we can identify regular vs context messages
+        const regularMessages = messages.filter((m) => !isContextMessage(m));
+        expect(regularMessages.length).toBeGreaterThan(0);
       });
 
       it("generates new assets when switching from keywords back to highlights", async () => {

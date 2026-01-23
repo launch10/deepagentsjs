@@ -5,6 +5,7 @@ import { isHumanMessage, getMessageText } from "@types";
 import { Brainstorm } from "@types";
 import { BrainstormNextStepsService } from "@services";
 import { BaseMessage } from "@langchain/core/messages";
+import { getBrainstormMode } from "@prompts";
 
 const getCommand = async (state: BrainstormGraphState): Promise<Brainstorm.Command | undefined> => {
   const lastHumanMessage = state.messages.filter(isHumanMessage).at(-1);
@@ -46,14 +47,26 @@ export const handleCommand = NodeMiddleware.use(
     };
 
     const command = await getCommand(updatedState);
-    if (!command) return updatedState;
+    if (!command) {
+      // Set brainstormMode to current mode if not already set (for mode switch detection)
+      const currentMode = getBrainstormMode(updatedState);
+      return {
+        ...updatedState,
+        brainstormMode: updatedState.brainstormMode ?? currentMode,
+      };
+    }
 
     if (command.name === "skip") {
       return skip(updatedState as BrainstormGraphState);
     }
 
+    // Capture the current mode BEFORE the command changes it
+    // This allows the agent middleware to detect the mode switch
+    const currentMode = getBrainstormMode(updatedState);
+
     return {
       command: command.name,
+      brainstormMode: currentMode, // Store the "before" mode so switch is detectable
     };
   }
 );

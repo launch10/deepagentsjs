@@ -25,17 +25,8 @@ export const ContextMessages = {
     `User switched to ${PAGE_NAMES[stage]}. Focus on these assets now.`,
 } as const;
 
-/** @deprecated Use ContextMessages instead */
-export const PseudoMessages = ContextMessages;
-
 // Re-export the shared utilities
 export { isContextMessage, filterContextMessages };
-
-/** @deprecated Use isContextMessage instead */
-export const isPseudoMessage = isContextMessage;
-
-/** @deprecated Use filterContextMessages instead */
-export const filterPseudoMessages = filterContextMessages;
 
 export const lastMessageIsAIMessage = (state: AdsGraphState): boolean => {
   const lastMessage = state.messages?.at(-1);
@@ -53,9 +44,6 @@ export const needsContextMessage = (state: AdsGraphState): boolean => {
   return !hasMessages || isRefresh || switchedPage;
 };
 
-/** @deprecated Use needsContextMessage instead */
-export const needsPseudoMessage = needsContextMessage;
-
 export const getContextMessage = (state: AdsGraphState): ContextMessage | null => {
   if (state.refresh?.length) {
     const assetNames = state.refresh.map((r) => r.asset).join(" and ");
@@ -71,9 +59,6 @@ export const getContextMessage = (state: AdsGraphState): ContextMessage | null =
   return null;
 };
 
-/** @deprecated Use getContextMessage instead */
-export const getPseudoMessage = getContextMessage;
-
 /**
  * Ads-specific helper that gets the appropriate context message for the current state
  * and injects it into the messages array.
@@ -83,9 +68,3 @@ export const injectAdsContextMessage = (state: AdsGraphState): BaseMessage[] => 
   const contextMsg = getContextMessage(state);
   return injectContextMessage(messages, contextMsg);
 };
-
-/** @deprecated Use injectAdsContextMessage instead */
-export const injectAdsPseudoMessage = injectAdsContextMessage;
-
-/** @deprecated Use injectAdsContextMessage instead */
-export { injectAdsContextMessage as injectPseudoMessage };

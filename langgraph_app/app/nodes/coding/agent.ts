@@ -89,7 +89,6 @@ const getTheme = async (
     const themeAPI = new ThemeAPIService({ jwt: state.jwt });
     const theme = await themeAPI.get(websiteRow.themeId);
 
-    console.log(theme);
     return {
       id: theme.id,
       name: theme.name,
@@ -136,7 +135,6 @@ export async function createCodingAgent(
     systemPrompt ? Promise.resolve(systemPrompt) : buildCodingPrompt(promptState),
     buildCoderSubAgent(promptState),
   ]);
-  console.log(finalSystemPrompt);
 
   return createDeepAgent({
     model: llm as any,
