@@ -1,6 +1,6 @@
 import { type AdsGraphState } from "@state";
 import { HumanMessage } from "@langchain/core/messages";
-import { isPseudoMessage } from "@prompts";
+import { isContextMessage } from "langgraph-ai-sdk";
 import { adsFaqTool } from "@tools";
 
 export const getTools = (state: AdsGraphState) => {
@@ -14,6 +14,6 @@ export const getTools = (state: AdsGraphState) => {
 const shouldIncludeFaqTool = (state: AdsGraphState): boolean => {
   const lastMessage = state.messages?.at(-1);
   const isRealHumanMessage =
-    lastMessage && HumanMessage.isInstance(lastMessage) && !isPseudoMessage(lastMessage);
+    lastMessage && HumanMessage.isInstance(lastMessage) && !isContextMessage(lastMessage);
   return Boolean(isRealHumanMessage);
 };

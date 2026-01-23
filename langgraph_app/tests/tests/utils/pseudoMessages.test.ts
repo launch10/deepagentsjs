@@ -1,42 +1,43 @@
 import { describe, it, expect } from "vitest";
 import { HumanMessage, AIMessage, ToolMessage } from "@langchain/core/messages";
 import {
-  isPseudoMessage,
-  createPseudoMessage,
-  createMultimodalPseudoMessage,
-  filterPseudoMessages,
-  injectPseudoMessage,
-} from "@utils";
+  isContextMessage,
+  createContextMessage,
+  createMultimodalContextMessage,
+  filterContextMessages,
+  injectContextMessage,
+  CONTEXT_MESSAGE_NAME,
+} from "langgraph-ai-sdk";
 
-describe("Pseudo Messages Utility", () => {
-  describe("isPseudoMessage", () => {
-    it("should identify pseudo messages by isPseudo flag", () => {
-      const pseudoMsg = new HumanMessage({
+describe("Context Messages Utility", () => {
+  describe("isContextMessage", () => {
+    it("should identify context messages by name property", () => {
+      const contextMsg = new HumanMessage({
         content: "Generate assets now.",
-        additional_kwargs: { isPseudo: true },
+        name: CONTEXT_MESSAGE_NAME,
       });
-      expect(isPseudoMessage(pseudoMsg)).toBe(true);
+      expect(isContextMessage(contextMsg)).toBe(true);
     });
 
-    it("should identify multimodal pseudo messages by flag", () => {
-      const pseudoMsg = new HumanMessage({
+    it("should identify multimodal context messages by name property", () => {
+      const contextMsg = new HumanMessage({
         content: [
           { type: "text", text: "Here are the images:" },
           { type: "image_url", image_url: { url: "https://example.com/image.jpg" } },
         ],
-        additional_kwargs: { isPseudo: true },
+        name: CONTEXT_MESSAGE_NAME,
       });
-      expect(isPseudoMessage(pseudoMsg)).toBe(true);
+      expect(isContextMessage(contextMsg)).toBe(true);
     });
 
     it("should return false for regular human messages", () => {
       const regularMsg = new HumanMessage("Hello, how are you?");
-      expect(isPseudoMessage(regularMsg)).toBe(false);
+      expect(isContextMessage(regularMsg)).toBe(false);
     });
 
     it("should return false for AI messages", () => {
       const aiMsg = new AIMessage("I'm doing well, thanks!");
-      expect(isPseudoMessage(aiMsg)).toBe(false);
+      expect(isContextMessage(aiMsg)).toBe(false);
     });
 
     it("should return false for tool messages", () => {
@@ -44,73 +45,73 @@ describe("Pseudo Messages Utility", () => {
         content: "Tool result",
         tool_call_id: "call_123",
       });
-      expect(isPseudoMessage(toolMsg)).toBe(false);
+      expect(isContextMessage(toolMsg)).toBe(false);
     });
 
-    it("should return false for multimodal messages without isPseudo flag", () => {
+    it("should return false for multimodal messages without context name", () => {
       const multimodalMsg = new HumanMessage({
         content: [
           { type: "text", text: "Check out this image:" },
           { type: "image_url", image_url: { url: "https://example.com/image.jpg" } },
         ],
       });
-      expect(isPseudoMessage(multimodalMsg)).toBe(false);
+      expect(isContextMessage(multimodalMsg)).toBe(false);
     });
   });
 
-  describe("createPseudoMessage", () => {
-    it("should create a human message with isPseudo flag", () => {
-      const msg = createPseudoMessage("Generate assets now.");
+  describe("createContextMessage", () => {
+    it("should create a human message with context name", () => {
+      const msg = createContextMessage("Generate assets now.");
       expect(msg).toBeInstanceOf(HumanMessage);
       expect(msg.content).toBe("Generate assets now.");
-      expect(msg.additional_kwargs.isPseudo).toBe(true);
+      expect((msg as any).name).toBe(CONTEXT_MESSAGE_NAME);
     });
 
-    it("should be identified as a pseudo message", () => {
-      const msg = createPseudoMessage("Do something");
-      expect(isPseudoMessage(msg)).toBe(true);
+    it("should be identified as a context message", () => {
+      const msg = createContextMessage("Do something");
+      expect(isContextMessage(msg)).toBe(true);
     });
   });
 
-  describe("createMultimodalPseudoMessage", () => {
-    it("should create a human message with multimodal content and isPseudo flag", () => {
+  describe("createMultimodalContextMessage", () => {
+    it("should create a human message with multimodal content and context name", () => {
       const content = [
         { type: "text" as const, text: "Here are 2 images:" },
         { type: "image_url" as const, image_url: { url: "https://example.com/1.jpg" } },
         { type: "image_url" as const, image_url: { url: "https://example.com/2.jpg" } },
       ];
-      const msg = createMultimodalPseudoMessage(content);
+      const msg = createMultimodalContextMessage(content);
 
       expect(msg).toBeInstanceOf(HumanMessage);
       expect(msg.content).toEqual(content);
-      expect(msg.additional_kwargs.isPseudo).toBe(true);
+      expect((msg as any).name).toBe(CONTEXT_MESSAGE_NAME);
     });
 
-    it("should be identified as a pseudo message", () => {
-      const msg = createMultimodalPseudoMessage([
+    it("should be identified as a context message", () => {
+      const msg = createMultimodalContextMessage([
         { type: "text", text: "Image:" },
         { type: "image_url", image_url: { url: "https://example.com/img.jpg" } },
       ]);
-      expect(isPseudoMessage(msg)).toBe(true);
+      expect(isContextMessage(msg)).toBe(true);
     });
   });
 
-  describe("filterPseudoMessages", () => {
-    it("should filter out pseudo messages", () => {
+  describe("filterContextMessages", () => {
+    it("should filter out context messages", () => {
       const messages = [
         new HumanMessage("Hello"),
-        createPseudoMessage("Generate assets."),
+        createContextMessage("Generate assets."),
         new AIMessage("Hi there!"),
-        createPseudoMessage("Refresh content."),
+        createContextMessage("Refresh content."),
       ];
 
-      const filtered = filterPseudoMessages(messages);
+      const filtered = filterContextMessages(messages);
       expect(filtered).toHaveLength(2);
       expect(filtered[0]!.content).toBe("Hello");
       expect(filtered[1]!.content).toBe("Hi there!");
     });
 
-    it("should filter out multimodal pseudo messages", () => {
+    it("should filter out multimodal context messages", () => {
       const regularMultimodal = new HumanMessage({
         content: [
           { type: "text", text: "My logo:" },
@@ -118,7 +119,7 @@ describe("Pseudo Messages Utility", () => {
         ],
       });
 
-      const pseudoMultimodal = createMultimodalPseudoMessage([
+      const contextMultimodal = createMultimodalContextMessage([
         { type: "text", text: "Here are the images:" },
         { type: "image_url", image_url: { url: "https://example.com/fetched.jpg" } },
       ]);
@@ -126,86 +127,87 @@ describe("Pseudo Messages Utility", () => {
       const messages = [
         new HumanMessage("Hello"),
         regularMultimodal,
-        pseudoMultimodal,
+        contextMultimodal,
         new AIMessage("Got it!"),
       ];
 
-      const filtered = filterPseudoMessages(messages);
+      const filtered = filterContextMessages(messages);
       expect(filtered).toHaveLength(3);
       expect(filtered[0]!.content).toBe("Hello");
       expect(filtered[1]).toBe(regularMultimodal);
       expect(filtered[2]!.content).toBe("Got it!");
     });
 
-    it("should filter out both text and multimodal pseudo messages", () => {
+    it("should filter out both text and multimodal context messages", () => {
       const messages = [
         new HumanMessage("User message"),
-        createPseudoMessage("Text pseudo"),
-        createMultimodalPseudoMessage([{ type: "text", text: "Images" }]),
+        createContextMessage("Text context"),
+        createMultimodalContextMessage([{ type: "text", text: "Images" }]),
         new AIMessage("Response"),
       ];
 
-      const filtered = filterPseudoMessages(messages);
+      const filtered = filterContextMessages(messages);
       expect(filtered).toHaveLength(2);
       expect(filtered[0]!.content).toBe("User message");
       expect(filtered[1]!.content).toBe("Response");
     });
 
-    it("should return empty array when all messages are pseudo", () => {
+    it("should return empty array when all messages are context messages", () => {
       const messages = [
-        createPseudoMessage("First"),
-        createPseudoMessage("Second"),
+        createContextMessage("First"),
+        createContextMessage("Second"),
       ];
 
-      const filtered = filterPseudoMessages(messages);
+      const filtered = filterContextMessages(messages);
       expect(filtered).toHaveLength(0);
     });
 
-    it("should return all messages when none are pseudo", () => {
+    it("should return all messages when none are context messages", () => {
       const messages = [
         new HumanMessage("Hello"),
         new AIMessage("Hi!"),
         new HumanMessage("How are you?"),
       ];
 
-      const filtered = filterPseudoMessages(messages);
+      const filtered = filterContextMessages(messages);
       expect(filtered).toHaveLength(3);
     });
   });
 
-  describe("injectPseudoMessage", () => {
-    it("should append pseudo message to end of array when provided", () => {
+  describe("injectContextMessage", () => {
+    it("should append context message to end of array when provided", () => {
       const messages = [
         new HumanMessage("Hello"),
         new AIMessage("Hi!"),
       ];
-      const pseudo = createPseudoMessage("Generate now.");
+      const context = createContextMessage("Generate now.");
 
-      const result = injectPseudoMessage(messages, pseudo);
+      const result = injectContextMessage(messages, context);
       expect(result).toHaveLength(3);
       expect(result[0]!.content).toBe("Hello");
       expect(result[1]!.content).toBe("Hi!");
       expect(result[2]!.content).toBe("Generate now.");
     });
 
-    it("should return original messages when pseudo is null", () => {
+    it("should return original messages when context is null", () => {
       const messages = [
         new HumanMessage("Hello"),
         new AIMessage("Hi!"),
       ];
 
-      const result = injectPseudoMessage(messages, null);
+      const result = injectContextMessage(messages, null);
       expect(result).toHaveLength(2);
       expect(result).toEqual(messages);
     });
 
     it("should not mutate the original array", () => {
       const messages = [new HumanMessage("Hello")];
-      const pseudo = createPseudoMessage("Generate now.");
+      const context = createContextMessage("Generate now.");
 
-      const result = injectPseudoMessage(messages, pseudo);
+      const result = injectContextMessage(messages, context);
       expect(messages).toHaveLength(1);
       expect(result).toHaveLength(2);
     });
   });
+
 });

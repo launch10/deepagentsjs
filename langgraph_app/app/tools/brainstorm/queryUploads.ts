@@ -3,7 +3,7 @@ import { tool, ToolMessage } from "langchain";
 import { getCurrentTaskInput, Command } from "@langchain/langgraph";
 import { type BrainstormGraphState } from "@state";
 import { UploadsAPIService } from "@rails_api";
-import { createMultimodalPseudoMessage } from "@utils";
+import { createMultimodalContextMessage } from "langgraph-ai-sdk";
 
 const queryUploadsSchema = z.object({
   query_type: z
@@ -100,13 +100,13 @@ export const queryUploadsTool = tool(
         name: "query_uploads",
       });
 
-      // If we have images, inject a pseudo message with the actual image blocks
+      // If we have images, inject a context message with the actual image blocks
       // so Claude can "see" the images (not just read URLs as text).
-      // Pseudo messages are filtered from history before saving.
+      // Context messages are preserved in state for tracing and filtered at the SDK presentation layer.
       const messages: ToolMessage[] = [toolMessage];
-      const pseudoMessage =
+      const contextMessage =
         images.length > 0
-          ? createMultimodalPseudoMessage([
+          ? createMultimodalContextMessage([
               {
                 type: "text" as const,
                 text: `Here are the ${images.length} image(s) you requested:`,
@@ -117,7 +117,7 @@ export const queryUploadsTool = tool(
 
       return new Command({
         update: {
-          messages: pseudoMessage ? [...messages, pseudoMessage] : messages,
+          messages: contextMessage ? [...messages, contextMessage] : messages,
         },
       });
     } catch (error) {

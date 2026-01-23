@@ -1,12 +1,13 @@
-import { HumanMessage, type BaseMessage, AIMessage } from "@langchain/core/messages";
+import { type BaseMessage, AIMessage } from "@langchain/core/messages";
 import { type AdsGraphState } from "@state";
 import { Ads } from "@types";
 import {
-  isPseudoMessage,
-  createPseudoMessage,
-  filterPseudoMessages,
-  injectPseudoMessage,
-} from "@utils";
+  isContextMessage,
+  createContextMessage,
+  filterContextMessages,
+  injectContextMessage,
+  type ContextMessage,
+} from "langgraph-ai-sdk";
 
 const PAGE_NAMES: Record<Ads.StageName, string> = {
   content: "the headlines and descriptions page",
@@ -17,15 +18,24 @@ const PAGE_NAMES: Record<Ads.StageName, string> = {
   review: "the review page",
 };
 
-export const PseudoMessages = {
+export const ContextMessages = {
   BEGIN: "Generate the assets now.",
   REFRESH: (asset: string) => `Generate new ${asset} now.`,
   PAGE_SWITCH: (stage: Ads.StageName) =>
     `User switched to ${PAGE_NAMES[stage]}. Focus on these assets now.`,
 } as const;
 
-// Re-export the shared utility for backwards compatibility
-export { isPseudoMessage, filterPseudoMessages };
+/** @deprecated Use ContextMessages instead */
+export const PseudoMessages = ContextMessages;
+
+// Re-export the shared utilities
+export { isContextMessage, filterContextMessages };
+
+/** @deprecated Use isContextMessage instead */
+export const isPseudoMessage = isContextMessage;
+
+/** @deprecated Use filterContextMessages instead */
+export const filterPseudoMessages = filterContextMessages;
 
 export const lastMessageIsAIMessage = (state: AdsGraphState): boolean => {
   const lastMessage = state.messages?.at(-1);
@@ -36,37 +46,46 @@ export const didSwitchPage = (state: AdsGraphState): boolean => {
   return !!state.previousStage && !!state.stage && state.previousStage !== state.stage;
 };
 
-export const needsPseudoMessage = (state: AdsGraphState): boolean => {
+export const needsContextMessage = (state: AdsGraphState): boolean => {
   const hasMessages = (state.messages?.length ?? 0) > 0;
   const isRefresh = !!state.refresh?.length;
   const switchedPage = didSwitchPage(state);
   return !hasMessages || isRefresh || switchedPage;
 };
 
-export const getPseudoMessage = (state: AdsGraphState): HumanMessage | null => {
+/** @deprecated Use needsContextMessage instead */
+export const needsPseudoMessage = needsContextMessage;
+
+export const getContextMessage = (state: AdsGraphState): ContextMessage | null => {
   if (state.refresh?.length) {
     const assetNames = state.refresh.map((r) => r.asset).join(" and ");
-    return createPseudoMessage(PseudoMessages.REFRESH(assetNames));
+    return createContextMessage(ContextMessages.REFRESH(assetNames));
   }
   if (didSwitchPage(state) && state.stage) {
-    return createPseudoMessage(PseudoMessages.PAGE_SWITCH(state.stage));
+    return createContextMessage(ContextMessages.PAGE_SWITCH(state.stage));
   }
   if (state.messages?.length === 0 || lastMessageIsAIMessage(state)) {
-    return createPseudoMessage(PseudoMessages.BEGIN);
+    return createContextMessage(ContextMessages.BEGIN);
   }
   // This should only fall through in the case where the user sent THEIR OWN message
   return null;
 };
 
+/** @deprecated Use getContextMessage instead */
+export const getPseudoMessage = getContextMessage;
+
 /**
- * Ads-specific helper that gets the appropriate pseudo message for the current state
+ * Ads-specific helper that gets the appropriate context message for the current state
  * and injects it into the messages array.
  */
-export const injectAdsPseudoMessage = (state: AdsGraphState): BaseMessage[] => {
+export const injectAdsContextMessage = (state: AdsGraphState): BaseMessage[] => {
   const messages = state.messages ?? [];
-  const pseudo = getPseudoMessage(state);
-  return injectPseudoMessage(messages, pseudo);
+  const contextMsg = getContextMessage(state);
+  return injectContextMessage(messages, contextMsg);
 };
 
-// Backwards compatibility alias
-export { injectAdsPseudoMessage as injectPseudoMessage };
+/** @deprecated Use injectAdsContextMessage instead */
+export const injectAdsPseudoMessage = injectAdsContextMessage;
+
+/** @deprecated Use injectAdsContextMessage instead */
+export { injectAdsContextMessage as injectPseudoMessage };

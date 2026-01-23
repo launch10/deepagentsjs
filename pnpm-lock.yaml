@@ -1072,6 +1072,9 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.3
+      langgraph-ai-sdk:
+        specifier: workspace:*
+        version: link:../packages/langgraph-ai-sdk/packages/langgraph-ai-sdk
       langgraph-ai-sdk-react:
         specifier: workspace:*
         version: link:../packages/langgraph-ai-sdk/packages/langgraph-ai-sdk-react
