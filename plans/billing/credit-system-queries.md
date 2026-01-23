@@ -419,7 +419,7 @@ end
 | Plan vs pack breakdown | Same query, different columns | O(1) with index |
 | Historical balance at time T | Find transaction at time T | O(log n) |
 | Usage percentage | `1 - (plan_balance / plan_tier.credits)` | O(1) |
-| Transactions for a run | `WHERE reference_type='LlmRun' AND reference_id=?` | O(log n) |
+| Transactions for a run | `WHERE reference_type='llm_run' AND reference_id=?` | O(log n) |
 
 ### Cache Strategy
 
@@ -706,7 +706,7 @@ end
 
 5. **Multi-seat accounts**: Credits shared at account level.
 
-6. **Transaction granularity**: Batched at the graph run level (one transaction per `LlmRun`). See [langgraph_integration.md](./langgraph_integration.md).
+6. **Transaction granularity**: Batched at the graph run level (one transaction per run, linked via `run_id`). See [langgraph_integration.md](./langgraph_integration.md).
 
 7. **Plan renewal timing**: Forfeit unused plan credits, keep pack credits, absorb any debt from new allocation.
 

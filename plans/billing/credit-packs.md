@@ -50,7 +50,7 @@ Pay gem internally processes Stripe webhooks and calls `update!` on the subscrip
 | **New subscription (trialing)** | `after_commit on: :create` | `trialing?`                             | Zero out old (expire) + allocate new plan credits  | `Credits::ResetPlanCreditsWorker` |
 | **Trial → Paid**                | `after_commit on: :update` | status `trialing→active`                | No action (already allocated)                      | —                                 |
 | **Renewal (monthly sub)**       | `after_commit on: :update` | `current_period_end` ↑ (not from trial) | Zero out old (expire) + allocate new plan credits  | `Credits::ResetPlanCreditsWorker` |
-| **Monthly reset (yearly sub)**  | `DailyReconciliationJob`   | No reset transaction in last month      | Zero out old (expire) + allocate new plan credits  | `Credits::ResetPlanCreditsWorker` |
+| **Monthly reset (yearly sub)**  | `DailyReconciliationWorker`   | No reset transaction in last month      | Zero out old (expire) + allocate new plan credits  | `Credits::ResetPlanCreditsWorker` |
 | **Upgrade**                     | `after_commit on: :update` | `processor_plan` changed + credits ↑    | Zero out old (expire) + allocate new (higher) plan | `Credits::ResetPlanCreditsWorker` |
 | **Downgrade**                   | `after_commit on: :update` | `processor_plan` changed + credits ↓    | Zero out old + allocate new (lower) plan           | `Credits::ResetPlanCreditsWorker` |
 | **Cancel scheduled**            | `after_commit on: :update` | `ends_at` set                           | No action                                          | —                                 |
@@ -123,7 +123,7 @@ Credits::FindUnprocessedRunsWorker.perform_async
 Yearly subscriptions only trigger Stripe events once per year, but credits reset monthly. We handle this with a **daily batch job**:
 
 ```
-DailyReconciliationJob (runs daily)
+DailyReconciliationWorker (runs daily)
     ↓
 Query: "Which accounts need monthly reset?"
     - Active yearly subscription
@@ -433,7 +433,7 @@ Pay gem creates Pay::Charge record
          ↓
 ChargeExtensions#after_commit callback fires
          ↓
-Credits::GrantPurchasedCreditsJob enqueued (idempotent)
+Credits::GrantPurchasedCreditsWorker enqueued (idempotent)
          ↓
 Job grants credits to account.purchased_credits
 ```
@@ -445,7 +445,7 @@ Job grants credits to account.purchased_credits
 - `app/models/credit_pack.rb` - Model with validations
 - `app/controllers/credit_packs_controller.rb` - Index + checkout session creation
 - `app/views/credit_packs/` - Purchase UI (or React components)
-- `app/jobs/credits/grant_purchased_credits_job.rb` - Idempotent credit granting
+- `app/workers/credits/grant_purchased_credits_worker.rb` - Idempotent credit granting
 
 **Files to modify:**
 
@@ -470,7 +470,7 @@ module ChargeExtensions
   def fulfill_credit_pack_purchase
     return unless data&.dig("metadata", "credit_pack_id")
 
-    Credits::GrantPurchasedCreditsJob.perform_later(
+    Credits::GrantPurchasedCreditsWorker.perform_async(
       charge_id: id,
       idempotency_key: "credit_pack_purchase:#{id}"
     )
@@ -522,7 +522,7 @@ end
 - `db/migrate/XXXX_create_llm_usage.rb`
 - `app/models/credit_pack.rb`
 - `app/models/credit_transaction.rb`
-- `app/models/llm_usage_record.rb`
+- `app/models/llm_usage.rb`
 - `app/services/credit_balance.rb`
 - `app/services/credit_consumption_service.rb`
 - `app/services/credit_allocation_service.rb`
@@ -572,7 +572,8 @@ See the [Credit Packs](#credit-packs) section above for complete details on:
 - `app/workers/credits/reset_plan_credits_worker.rb` - Idempotent worker: zeros out subscription allocations, creates new allocations
 - `app/workers/credits/charge_run_worker.rb` - Processes LLM run and creates credit transactions
 - `app/workers/credits/find_unprocessed_runs_worker.rb` - Backup polling for missed notifications
-- `app/jobs/credits/daily_reconciliation_job.rb` - Batch job for monthly resets (yearly subs) + catch-up
+- `app/workers/credits/daily_reconciliation_worker.rb` - Batch job for monthly resets (yearly subs) + catch-up
+- `app/workers/credits/grant_purchased_credits_worker.rb` - Grants credits from pack purchases
 - `app/models/concerns/pay_subscription_credits.rb` - Concern with `after_commit` hooks
 
 **Files to modify:**
@@ -721,74 +722,92 @@ end
 2. Consume from pack credits (if positive and still need more)
 3. If still remaining, plan goes negative (pack NEVER goes negative)
 
-### Phase 5: Langgraph Credit Deduction
+#### Credits::GrantPurchasedCreditsWorker
 
-**Files to create (shared):**
-
-- `shared/lib/api/services/accountCreditsAPIService.ts`
-
-**Files to modify (Langgraph):**
-
-- `langgraph_app/app/nodes/` - Add credit deduction calls to AI execution nodes
-- `shared/lib/api/services/index.ts` - Export new service
-
-**Files to modify (Rails):**
-
-- `app/controllers/api/v1/account_credits_controller.rb` - Add `deduct` action
-- Regenerate OpenAPI schema
-
-**Deduction Points in Langgraph:**
-
-- Brainstorm graph: After successful AI response
-- Website graph: After page generation
-- Ads graph: After ad copy generation
-
-**API Endpoint:**
-
-```
-POST /api/v1/account_credits/deduct
-{
-  "amount": 10,
-  "reason": "ai_generation",
-  "chat_id": "chat_abc123",
-  "metadata": { "graph": "brainstorm", "run_id": "xyz" }
-}
-```
-
-Rails controller enqueues `DebitCreditsJob` with idempotency key and returns immediately:
+Grants credits from credit pack purchases. Called after Stripe checkout completion.
 
 ```ruby
-# app/controllers/api/v1/account_credits_controller.rb
-def deduct
-  Credits::DebitCreditsJob.perform_later(
-    account_id: current_account.id,
-    amount: params[:amount],
-    reason: params[:reason],
-    reference_type: "Chat",
-    reference_id: params[:chat_id],
-    metadata: params[:metadata] || {},
-    idempotency_key: "debit:#{current_account.id}:#{params[:reason]}:Chat:#{params[:chat_id]}"
-  )
+# app/workers/credits/grant_purchased_credits_worker.rb
+module Credits
+  class GrantPurchasedCreditsWorker
+    include Sidekiq::Worker
+    sidekiq_options queue: :credits
 
-  render json: {
-    success: true,
-    balance: {
-      total: current_account.total_credits,
-      plan: current_account.plan_credits,
-      purchased: current_account.purchased_credits
-    }
-  }
+    def perform(charge_id, options = {})
+      idempotency_key = options["idempotency_key"]
+
+      # Skip if already processed (idempotency)
+      return if idempotency_key && CreditTransaction.exists?(idempotency_key: idempotency_key)
+
+      charge = Pay::Charge.find(charge_id)
+      credit_pack_id = charge.data&.dig("metadata", "credit_pack_id")
+      account_id = charge.data&.dig("metadata", "account_id")
+
+      return unless credit_pack_id && account_id
+
+      credit_pack = CreditPack.find(credit_pack_id)
+      account = Account.find(account_id)
+
+      Account.transaction do
+        account.lock!
+
+        # Get current balances
+        current = account.credit_transactions
+          .order(created_at: :desc)
+          .pick(:balance_after, :plan_balance_after, :pack_balance_after) || [0, 0, 0]
+
+        current_total, current_plan, current_pack = current
+
+        # Add pack credits
+        new_pack = current_pack + credit_pack.credits
+        new_total = current_total + credit_pack.credits
+
+        CreditTransaction.create!(
+          account: account,
+          transaction_type: "purchase",
+          credit_type: "pack",
+          reason: "pack_purchase",
+          amount: credit_pack.credits,
+          balance_after: new_total,
+          plan_balance_after: current_plan,
+          pack_balance_after: new_pack,
+          reference_type: "CreditPack",
+          reference_id: credit_pack.id.to_s,
+          idempotency_key: idempotency_key,
+          metadata: {
+            pack_name: credit_pack.name,
+            price_cents: credit_pack.amount,
+            charge_id: charge.id
+          }
+        )
+
+        # Invalidate cache synchronously
+        Rails.cache.delete("credit_balance:#{account.id}")
+      end
+    end
+  end
 end
 ```
 
-**Response:**
+### Phase 5: Langgraph Credit Integration
 
-```json
-{
-  "success": true,
-  "balance": { "total": 490, "plan": 490, "purchased": 0 }
-}
-```
+Credit deduction is handled by the Langgraph integration architecture. See [langgraph_integration.md](./langgraph_integration.md) for the complete implementation.
+
+**Summary:**
+
+1. Langgraph writes `llm_usage` records directly to Postgres after each graph run
+2. Langgraph calls `POST /api/v1/llm_usage/notify` with the `run_id`
+3. Rails enqueues `Credits::ChargeRunWorker` to process the run
+4. Worker aggregates `cost_usd`, converts to credits, and creates `CreditTransaction`
+5. Backup polling (`Credits::FindUnprocessedRunsWorker`) catches any missed notifications
+
+**Key files:**
+
+- `langgraph_app/app/core/billing/executeWithTracking.ts` - Wraps graph execution
+- `langgraph_app/app/core/billing/persistUsage.ts` - Writes to `llm_usage`
+- `langgraph_app/app/core/billing/notifyRails.ts` - Notifies Rails after write
+- `rails_app/app/controllers/api/v1/llm_usage_controller.rb` - Receives notification
+- `rails_app/app/workers/credits/charge_run_worker.rb` - Processes run and charges credits
 
 ### Phase 6: Frontend Integration
 
@@ -824,8 +843,9 @@ end
 
 - `CreditPack` model validations and scopes
 - `CreditTransaction` creation and audit trail
-- `ResetPlanCreditsJob` - idempotency, zeros out old credits, allocates new
-- `DebitCreditsJob` - idempotency, plan-first consumption, insufficient credits handling
+- `ResetPlanCreditsWorker` - idempotency, zeros out old credits, allocates new
+- `ChargeRunWorker` - idempotency, plan-first consumption, FIFO credit order
+- `GrantPurchasedCreditsWorker` - idempotency, pack credit allocation
 
 ### Integration Tests
 

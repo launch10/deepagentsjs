@@ -669,8 +669,8 @@ export async function executeWithTracking<TState extends { messages?: BaseMessag
 Langgraph notifies Rails after writing to Postgres. Rails has both primary notification handling and backup polling for reliability. See `langgraph_integration.md` sections 6b-6e for:
 
 - `POST /api/v1/llm_usage/notify` - API endpoint
-- `Credits::ChargeRunJob` - Processes a specific run
-- `Credits::FindUnprocessedRunsJob` - Backup polling (catches missed notifications)
+- `Credits::ChargeRunWorker` - Processes a specific run
+- `Credits::FindUnprocessedRunsWorker` - Backup polling (catches missed notifications)
 
 ### Rails: Model (Read-Only from Rails Perspective)
 
@@ -774,7 +774,7 @@ The billing system (`langgraph_integration.md`) and trace system are **parallel 
 - [ ] Create initial partitions (current month + 2 ahead)
 - [ ] Create `ConversationTrace` model (read-only)
 - [ ] Create `ManageTracePartitionsJob` for monthly maintenance
-- [ ] Create `Credits::ProcessUsageJob` (see `langgraph_integration.md`)
+- [ ] Create `Credits::ChargeRunWorker` (see `langgraph_integration.md`)
 - [ ] Schedule job with Sidekiq-Cron (every minute)
 
 #### Langgraph

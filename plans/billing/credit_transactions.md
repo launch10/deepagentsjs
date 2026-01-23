@@ -11,7 +11,7 @@ create_table :credit_transactions do |t|
   t.references :account, null: false, foreign_key: true
 
   # Transaction classification
-  t.string :transaction_type, null: false  # allocate, consume, purchase, refund, adjust
+  t.string :transaction_type, null: false  # allocate, consume, purchase, refund, gift
   t.string :credit_type, null: false       # plan, pack
   t.string :reason, null: false            # ai_generation, plan_renewal, pack_purchase, support_credit
 
@@ -109,14 +109,14 @@ end
 
 ## Transaction Types
 
-| Type | Credit Type | Reason | Amount | Reference |
-|------|-------------|--------|--------|-----------|
-| `allocate` | `plan` | `plan_renewal` | + PlanTier.details[:credits] | Pay::Subscription |
-| `consume` | `plan` | `ai_generation` | - credits used | llm_run (run_id UUID) |
-| `consume` | `pack` | `ai_generation` | - credits used | llm_run (run_id UUID) |
-| `purchase` | `pack` | `pack_purchase` | + pack credits | CreditPack |
-| `refund` | `pack` | `refund` | + refunded amount | Pay::Charge (or nil) |
-| `gift` | `pack` | `gift` | + amount_cents | nil (admin in metadata) |
+| Type       | Credit Type | Reason          | Amount                       | Reference               |
+| ---------- | ----------- | --------------- | ---------------------------- | ----------------------- |
+| `allocate` | `plan`      | `plan_renewal`  | + PlanTier.details[:credits] | Pay::Subscription       |
+| `consume`  | `plan`      | `ai_generation` | - credits used               | llm_run (run_id UUID)   |
+| `consume`  | `pack`      | `ai_generation` | - credits used               | llm_run (run_id UUID)   |
+| `purchase` | `pack`      | `pack_purchase` | + pack credits               | CreditPack              |
+| `refund`   | `pack`      | `refund`        | + refunded amount            | Pay::Charge (or nil)    |
+| `gift`     | `pack`      | `gift`          | + amount_cents               | nil (admin in metadata) |
 
 > **Important**: `PlanTier.details[:credits]` is the authoritative source for plan credit amounts. Do not use `TierLimit` or `PlanLimit`.
 
@@ -531,7 +531,7 @@ class Credits::FindUnprocessedRunsWorker
 
     stale_run_ids.each do |run_id|
       # Enqueue each run separately - idempotent, safe to re-enqueue
-      ChargeRunWorker.perform_async(run_id)
+      Credits::ChargeRunWorker.perform_async(run_id)
     end
 
     Rails.logger.info("[FindUnprocessedRunsWorker] Enqueued #{stale_run_ids.count} stale runs")
