@@ -321,7 +321,7 @@ Messages and usage are captured via the same LLM callbacks (see `langgraph_integ
 │      │                                                               │
 │      └── On completion (returns usage, messagesProduced, systemPrompt):
 │              │                                                       │
-│              ├── persistUsageRecords() ──→ llm_usage_records        │
+│              ├── persistUsageRecords() ──→ llm_usage        │
 │              ├── persistTrace() ─────────→ conversation_traces      │
 │              └── notifyRails(run_id) ────→ Rails charges credits    │
 │                                                                      │
@@ -332,7 +332,7 @@ Messages and usage are captured via the same LLM callbacks (see `langgraph_integ
 │                         Postgres (shared)                            │
 │                                                                      │
 │  ┌─────────────────────┐  ┌─────────────────────┐                   │
-│  │ llm_usage_records   │  │ conversation_traces │                   │
+│  │ llm_usage   │  │ conversation_traces │                   │
 │  │ (billing)           │  │ (learning)          │                   │
 │  │                     │  │                     │                   │
 │  │ - Small, structured │  │ - Larger, JSONB     │                   │
@@ -721,13 +721,13 @@ Once traces are captured, they enable:
 
 | Concern | Table | Written By | Used By |
 |---------|-------|------------|---------|
-| Per-LLM-call costs | `llm_usage_records` | Langgraph (direct Postgres) | Rails (billing job) |
+| Per-LLM-call costs | `llm_usage` | Langgraph (direct Postgres) | Rails (billing job) |
 | Credit transactions | `credit_transactions` | Rails | Rails (accounting) |
 | Full message history | `conversation_traces` | Langgraph (direct Postgres) | Analytics/Learning |
 
 **Key relationships via `run_id`:**
 ```
-conversation_traces.run_id ←→ llm_usage_records.run_id ←→ credit_transactions.reference_id
+conversation_traces.run_id ←→ llm_usage.run_id ←→ credit_transactions.reference_id
 ```
 
 The billing system (`langgraph_integration.md`) and trace system are **parallel writes** from the same `executeWithTracking()` call. They share `run_id` for correlation:

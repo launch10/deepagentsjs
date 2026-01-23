@@ -90,7 +90,7 @@ This worker is the workhorse for plan credit allocation. It handles ALL plan cre
 
 #### Credits::ChargeRunWorker
 
-Processes a specific `run_id` after Langgraph notifies Rails. Aggregates `cost_usd` from `llm_usage_records` and creates a `CreditTransaction`.
+Processes a specific `run_id` after Langgraph notifies Rails. Aggregates `cost_usd` from `llm_usage` and creates a `CreditTransaction`.
 
 ```ruby
 # Called via POST /api/v1/llm_usage/notify from Langgraph
@@ -519,7 +519,7 @@ end
 
 - `db/migrate/XXXX_create_credit_packs.rb`
 - `db/migrate/XXXX_create_credit_transactions.rb`
-- `db/migrate/XXXX_create_llm_usage_records.rb`
+- `db/migrate/XXXX_create_llm_usage.rb`
 - `app/models/credit_pack.rb`
 - `app/models/credit_transaction.rb`
 - `app/models/llm_usage_record.rb`

@@ -465,7 +465,7 @@ class CreditConsumptionService
     @account = account
   end
 
-  # Called by Credits::ChargeRunWorker after llm_usage_records are written
+  # Called by Credits::ChargeRunWorker after llm_usage are written
   # Returns array of transactions created
   #
   # IMPORTANT: Negative balance rules:
@@ -575,7 +575,7 @@ end
 ### Integration with Langgraph
 
 ```ruby
-# Credits::ChargeRunWorker - called after llm_usage_records are written to Postgres
+# Credits::ChargeRunWorker - called after llm_usage are written to Postgres
 module Credits
   class ChargeRunWorker
     include Sidekiq::Worker

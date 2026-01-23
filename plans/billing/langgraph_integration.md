@@ -64,7 +64,7 @@ The callback system works identically for `invoke()`, `stream()`, and `streamEve
 │  └──────────────────────────────────────────────────────────────────────────┘  │
 │                                                                               │
 │  Graph completes → executeWithTracking() writes to Postgres:                  │
-│     - llm_usage_records (for billing)                                         │
+│     - llm_usage (for billing)                                         │
 │     - conversation_traces (for analytics)                                     │
 │                                                                               │
 └───────────────────────────────────────────────────────────────────────────────┘
@@ -76,7 +76,7 @@ The callback system works identically for `invoke()`, `stream()`, and `streamEve
 │                    Rails Background Workers                                   │
 │                                                                               │
 │  Credits::ChargeRunWorker (triggered by POST /api/v1/llm_usage/notify)        │
-│    1. Find unprocessed llm_usage_records for run_id (processed_at IS NULL)    │
+│    1. Find unprocessed llm_usage for run_id (processed_at IS NULL)    │
 │    2. Aggregate cost_usd for the run                                          │
 │    3. Convert cost → credits                                                  │
 │    4. Create CreditTransaction (reference_type: "llm_run", reference_id: UUID)│
@@ -95,6 +95,127 @@ The callback system works identically for `invoke()`, `stream()`, and `streamEve
 | -------------- | ----- | ---------------------- | ------------------------------------- |
 | `usageTracker` | LLM   | `handleChatModelStart` | Capture system prompt                 |
 | `usageTracker` | LLM   | `handleLLMEnd`         | Accumulate usage records and messages |
+
+## Pre-Graph Credit Check
+
+Before executing any graph, Langgraph checks the user's credit balance to determine:
+1. Whether to allow the run (block at 100% if no pack credits)
+2. Which models are available based on usage percentage
+
+### Pre-Graph Hook
+
+```typescript
+// langgraph_app/app/core/billing/preGraphHook.ts
+
+import { createRailsApiClient } from "@rails_api";
+
+interface CreditBalance {
+  total: number;
+  plan: number;
+  pack: number;
+  usagePercentage: number;
+}
+
+export async function checkCreditBalance(accountId: number): Promise<CreditBalance> {
+  const client = await createRailsApiClient();
+  const response = await client.GET("/api/v1/credits/balance");
+  return response.data;
+}
+
+export function canStartRun(balance: CreditBalance): boolean {
+  // Block if at 100% usage AND no pack credits
+  if (balance.usagePercentage >= 100 && balance.pack <= 0) {
+    return false;
+  }
+  return true;
+}
+
+export function getAvailableModels(balance: CreditBalance): string[] {
+  // Example thresholds - adjust as needed
+  if (balance.usagePercentage < 50) {
+    return ["opus", "sonnet", "haiku"];  // All models
+  } else if (balance.usagePercentage < 80) {
+    return ["sonnet", "haiku"];  // No Opus
+  } else {
+    return ["haiku"];  // Only Haiku
+  }
+}
+```
+
+### CoreGraphState Extension
+
+Add `usagePercentage` to CoreGraphState so graphs can access credit status:
+
+```typescript
+// langgraph_app/app/lib/shared/state/coreGraphState.ts
+
+export interface CoreGraphState {
+  // ... existing fields ...
+
+  /**
+   * Credit usage percentage (0-100+).
+   * Set by pre-graph hook from GET /api/v1/credits/balance.
+   * Used for model selection and UI warnings.
+   */
+  usagePercentage?: number;
+}
+```
+
+### Test Mode: Skip Credit Checks
+
+In non-production environments, skip credit checks using `testCredits` config flag:
+
+```typescript
+// Usage in graph invocation
+const result = await graph.invoke(
+  state,
+  config.withConfig({ testCredits: true })  // Skips credit checks
+);
+
+// In pre-graph hook
+export async function maybeCheckCredits(
+  accountId: number,
+  config: LangGraphRunnableConfig
+): Promise<CreditBalance | null> {
+  // Skip in test mode
+  if (config.configurable?.testCredits) {
+    return null;
+  }
+
+  // Skip in non-production (optional, based on env)
+  if (process.env.NODE_ENV !== "production" && !process.env.ENFORCE_CREDITS) {
+    return null;
+  }
+
+  return checkCreditBalance(accountId);
+}
+```
+
+### Rails API Endpoint
+
+```ruby
+# app/controllers/api/v1/credits_controller.rb
+
+module Api
+  module V1
+    class CreditsController < ApiController
+      # GET /api/v1/credits/balance
+      # Returns credit balance for pre-graph authorization check
+      def balance
+        balance = CreditBalance.for(current_account)
+        plan_tier = current_account.plan&.plan_tier
+
+        render json: {
+          total: balance.total,
+          plan: balance.plan,
+          pack: balance.pack,
+          usagePercentage: plan_tier ? balance.usage_percentage(plan_tier.credits) : 0
+        }
+      end
+    end
+  end
+end
+```
 
 ## Implementation
 
@@ -336,7 +457,7 @@ export async function getLLM(options: LLMOptions = {}): Promise<BaseChatModel> {
 See `conversation_traces.md` for the full `executeWithTracking` implementation. Key points:
 
 - Wraps `runWithUsageTracking()` to set up AsyncLocalStorage context
-- Writes both `llm_usage_records` and `conversation_traces` to Postgres after graph completes
+- Writes both `llm_usage` and `conversation_traces` to Postgres after graph completes
 - No HTTP calls to Rails - direct database writes
 
 ```typescript
@@ -420,7 +541,7 @@ Langgraph writes directly to the shared Postgres database - no HTTP call to Rail
 // langgraph_app/app/core/billing/persistUsage.ts
 
 import { db } from "@db";
-import { llmUsageRecords } from "@db/schema";
+import { llmUsage } from "@db/schema";
 import type { UsageRecord } from "./usageTracker";
 
 export async function persistUsageRecords(
@@ -431,7 +552,7 @@ export async function persistUsageRecords(
 ): Promise<void> {
   if (usage.length === 0) return;
 
-  await db.insert(llmUsageRecords).values(
+  await db.insert(llmUsage).values(
     usage.map((r) => ({
       chatId,
       runId,
@@ -454,7 +575,7 @@ export async function persistUsageRecords(
 
 ### 6b. Rails API Endpoint (Notify)
 
-Langgraph calls this endpoint after writing to Postgres. Rails enqueues a job to process the run.
+Langgraph calls this endpoint after writing to Postgres. Rails enqueues a worker to process the run.
 
 ```ruby
 # app/controllers/api/v1/llm_usage_controller.rb
@@ -463,19 +584,19 @@ module Api
   module V1
     class LlmUsageController < ApiController
       # POST /api/v1/llm_usage/notify
-      # Called by Langgraph after writing llm_usage_records to Postgres
+      # Called by Langgraph after writing llm_usage to Postgres
       #
       # Parameters:
       #   run_id: string (required) - UUID of the run to process
       #
       # Response:
-      #   202 Accepted - Job enqueued
+      #   202 Accepted - Worker enqueued
       #   422 Unprocessable Entity - Missing run_id
       def notify
         run_id = params.require(:run_id)
 
-        # Enqueue job to process this specific run
-        Credits::ChargeRunJob.perform_later(run_id)
+        # Enqueue worker to process this specific run
+        Credits::ChargeRunWorker.perform_async(run_id)
 
         head :accepted
       end
@@ -530,22 +651,23 @@ notifyRailsUsage(runId);
 return result;
 ```
 
-### 6d. Rails Job: Charge Run (Primary)
+### 6d. Rails Worker: Charge Run (Primary)
 
 Processes a specific run_id. Idempotent - safe to call multiple times.
 
 ```ruby
-# app/jobs/credits/charge_run_job.rb
+# app/workers/credits/charge_run_worker.rb
 
 module Credits
-  class ChargeRunJob < ApplicationJob
-    queue_as :billing
+  class ChargeRunWorker
+    include Sidekiq::Worker
+    sidekiq_options queue: :billing
 
     def perform(run_id)
       # Idempotent: skip if already processed
-      return if LlmUsageRecord.where(run_id: run_id).where.not(processed_at: nil).exists?
+      return if LlmUsage.where(run_id: run_id).where.not(processed_at: nil).exists?
 
-      records = LlmUsageRecord.where(run_id: run_id, processed_at: nil)
+      records = LlmUsage.where(run_id: run_id, processed_at: nil)
       return if records.empty?
 
       # Aggregate usage for this run
@@ -563,13 +685,13 @@ module Credits
       credits = convert_cost_to_credits(run_summary.total_cost_usd)
 
       ApplicationRecord.transaction do
-        CreditTransaction.create!(
-          account: account,
-          transaction_type: "consume",
-          credit_type: "plan",
+        # Use CreditConsumptionService for proper FIFO consumption
+        # - Plan credits consumed first (if positive)
+        # - Pack credits consumed next (if positive)
+        # - Plan goes negative if needed (pack NEVER goes negative)
+        CreditConsumptionService.new(account).consume!(
+          amount: credits,
           reason: "ai_generation",
-          amount: -credits,
-          balance_after: account.credit_balance - credits,
           reference_type: "llm_run",
           reference_id: run_id,
           metadata: {
@@ -580,8 +702,6 @@ module Credits
           }
         )
 
-        account.decrement!(:credit_balance, credits)
-
         # Mark all records for this run as processed
         records.update_all(processed_at: Time.current)
       end
@@ -590,30 +710,31 @@ module Credits
     private
 
     def convert_cost_to_credits(cost_usd)
-      # $0.01 = 1 credit (example conversion rate)
+      # $0.01 = 1 credit
       (cost_usd * 100).ceil
     end
   end
 end
 ```
 
-### 6e. Rails Job: Backup Polling (Catch Missed)
+### 6e. Rails Worker: Backup Polling (Catch Missed)
 
-Safety net for any records that didn't get processed (API call failed, job failed, etc.).
+Safety net for any records that didn't get processed (API call failed, worker failed, etc.).
 
 ```ruby
-# app/jobs/credits/find_unprocessed_runs_job.rb
+# app/workers/credits/find_unprocessed_runs_worker.rb
 
 module Credits
-  class FindUnprocessedRunsJob < ApplicationJob
-    queue_as :billing
+  class FindUnprocessedRunsWorker
+    include Sidekiq::Worker
+    sidekiq_options queue: :billing
 
     STALE_THRESHOLD = 2.minutes
 
     def perform
       # Find run_ids where records are unprocessed and older than threshold
       # This catches any runs where the API notification failed
-      stale_run_ids = LlmUsageRecord
+      stale_run_ids = LlmUsage
         .where(processed_at: nil)
         .where("created_at < ?", STALE_THRESHOLD.ago)
         .distinct
@@ -621,10 +742,10 @@ module Credits
 
       stale_run_ids.each do |run_id|
         # Enqueue each run separately - idempotent, safe to re-enqueue
-        ChargeRunJob.perform_later(run_id)
+        ChargeRunWorker.perform_async(run_id)
       end
 
-      Rails.logger.info("[FindUnprocessedRunsJob] Enqueued #{stale_run_ids.count} stale runs")
+      Rails.logger.info("[FindUnprocessedRunsWorker] Enqueued #{stale_run_ids.count} stale runs")
     end
   end
 end
@@ -634,7 +755,7 @@ Schedule with Zhong (schedule.rb):
 
 ```ruby
 every(1.minute, "find unprocessed llm usage") do
-  Credits::FindUnprocessedRunsJob.perform_async
+  Credits::FindUnprocessedRunsWorker.perform_async
 end
 ```
 
@@ -643,26 +764,26 @@ end
 ```
 Langgraph completes graph execution
     │
-    ├── 1. Write llm_usage_records to Postgres (processed_at = NULL)
+    ├── 1. Write llm_usage to Postgres (processed_at = NULL)
     ├── 2. Write conversation_traces to Postgres
     └── 3. POST /api/v1/llm_usage/notify { run_id }
                 │
                 ▼
-        Rails enqueues ChargeRunJob(run_id)
+        Rails enqueues Credits::ChargeRunWorker(run_id)
                 │
                 ▼
-        ChargeRunJob processes run:
+        ChargeRunWorker processes run:
           - Aggregate cost_usd
-          - Create CreditTransaction
+          - Create CreditTransaction via CreditConsumptionService
           - Mark records processed_at = NOW
 
 [Backup: Every minute]
         │
         ▼
-FindUnprocessedRunsJob:
+Credits::FindUnprocessedRunsWorker:
   - Find records WHERE processed_at IS NULL AND created_at < 2 minutes ago
-  - Enqueue ChargeRunJob for each stale run_id
-  - Idempotent: ChargeRunJob skips already-processed runs
+  - Enqueue ChargeRunWorker for each stale run_id
+  - Idempotent: ChargeRunWorker skips already-processed runs
 ```
 
 ### 7. Model Name Normalization
@@ -722,19 +843,19 @@ function calculateCost(input: CostInput): number {
 There is **no `llm_runs` table**. The `run_id` is just a UUID that groups related records together:
 
 ```
-conversation_traces.run_id ←→ llm_usage_records.run_id ←→ credit_transactions (via reference_id)
+conversation_traces.run_id ←→ llm_usage.run_id ←→ credit_transactions (via reference_id)
 ```
 
 - **Langgraph** writes directly to Postgres (no HTTP to Rails)
 - **Rails** owns credit conversion via a periodic background job
 - **`processed_at`** on usage records tracks what's been billed
 
-### llm_usage_records
+### llm_usage
 
 Individual LLM calls, written directly by Langgraph to shared Postgres.
 
 ```ruby
-create_table :llm_usage_records do |t|
+create_table :llm_usage do |t|
   t.references :chat, null: false  # No FK constraint for Langgraph writes
   t.string :run_id, null: false
   t.string :graph_name
@@ -814,7 +935,7 @@ graph.invoke(state, { callbacks: [usageTracker] })
     │  │                                                                 │
     │  │  1. Read usage[], messagesProduced, systemPrompt from context   │
     │  │  2. Write directly to Postgres (shared with Rails):             │
-    │  │     - INSERT llm_usage_records (processed_at = NULL)            │
+    │  │     - INSERT llm_usage (processed_at = NULL)            │
     │  │     - INSERT conversation_traces                                │
     │  │  3. POST /api/v1/llm_usage/notify { run_id }                    │
     │  │                                                                 │
@@ -824,19 +945,19 @@ Result returned to Hono handler
     │
     │  [Rails receives notify]
     │      ↓
-    │  Enqueues Credits::ChargeRunJob(run_id)
+    │  Enqueues Credits::ChargeRunWorker(run_id)
     │      ↓
-    │  Job processes run:
+    │  Worker processes run:
     │    - Aggregate cost_usd for run_id
-    │    - Create CreditTransaction
+    │    - Create CreditTransaction via CreditConsumptionService
     │    - Mark records processed_at = NOW
     │
     │  [Backup: Every minute]
     │      ↓
-    │  Credits::FindUnprocessedRunsJob:
+    │  Credits::FindUnprocessedRunsWorker:
     │    - Find records WHERE processed_at IS NULL AND created_at < 2 min ago
-    │    - Enqueue ChargeRunJob for each stale run_id
-    │    - Idempotent: ChargeRunJob skips already-processed runs
+    │    - Enqueue ChargeRunWorker for each stale run_id
+    │    - Idempotent: ChargeRunWorker skips already-processed runs
 ```
 
 ## Testing
@@ -930,12 +1051,18 @@ OpenAI models report reasoning tokens in `output_token_details.reasoning`. These
 | Nested graphs/subgraphs     | AsyncLocalStorage context preserved through async boundaries  |
 | LLM called outside tracking | `getUsageContext()` returns undefined, callback safely no-ops |
 | Graph errors                | Still writes to Postgres, still notifies Rails                |
-| API notification fails      | Backup polling job catches stale records after 2 minutes      |
-| ChargeRunJob fails          | Records remain unprocessed, backup job re-enqueues            |
+| API notification fails      | Backup polling worker catches stale records after 2 minutes   |
+| ChargeRunWorker fails       | Records remain unprocessed, backup worker re-enqueues         |
 
 ## Implementation Checklist
 
 ### LangGraph App
+
+- [ ] Create `core/billing/preGraphHook.ts`
+  - [ ] `checkCreditBalance()` - GET /api/v1/credits/balance
+  - [ ] `canStartRun()` - block at 100% usage if no pack credits
+  - [ ] `getAvailableModels()` - model selection based on usage %
+  - [ ] `maybeCheckCredits()` - respects `testCredits` config flag
 
 - [ ] Create `core/billing/usageTracker.ts`
   - [ ] `UsageRecord` and `UsageContext` types (including `systemPrompt`, `messagesProduced`)
@@ -959,42 +1086,52 @@ OpenAI models report reasoning tokens in `output_token_details.reasoning`. These
 
 - [ ] Create `core/billing/executeWithTracking.ts`
   - [ ] `executeWithTracking()` wrapper function
-  - [ ] Writes both `llm_usage_records` and `conversation_traces`
+  - [ ] Calls `maybeCheckCredits()` before execution
+  - [ ] Sets `usagePercentage` in state
+  - [ ] Writes both `llm_usage` and `conversation_traces`
   - [ ] Calls `notifyRailsUsage(runId)` after writes
+
+- [ ] Update `shared/state/coreGraphState.ts`
+  - [ ] Add `usagePercentage?: number` field
 
 - [ ] Modify `core/llm/llm.ts`
   - [ ] Attach `usageTracker` callback in `getLLM()`
 
 - [ ] Update Hono handlers
   - [ ] Replace `graph.invoke()` with `executeWithTracking()`
+  - [ ] Support `testCredits` config flag for non-prod testing
 
 ### Rails App
 
-- [ ] Create migration for `llm_usage_records` table
-  - [ ] Include `processed_at` column for job tracking
-  - [ ] Index on `[:processed_at, :created_at]` for job queries
-  - [ ] Index on `run_id` for job lookups
+- [ ] Create migration for `llm_usage` table
+  - [ ] Include `processed_at` column for worker tracking
+  - [ ] Index on `[:processed_at, :created_at]` for worker queries
+  - [ ] Index on `run_id` for worker lookups
 
-- [ ] Create `LlmUsageRecord` model
+- [ ] Create `LlmUsage` model
   - [ ] `belongs_to :chat`
   - [ ] Scopes: `unprocessed`, `for_run`
 
+- [ ] Create API endpoint `GET /api/v1/credits/balance`
+  - [ ] Returns `{ total:, plan:, pack:, usagePercentage: }` for pre-graph hook
+  - [ ] Used by Langgraph to determine model availability
+
 - [ ] Create API endpoint `POST /api/v1/llm_usage/notify`
   - [ ] `Api::V1::LlmUsageController#notify`
-  - [ ] Receives `run_id`, enqueues `ChargeRunJob`
+  - [ ] Receives `run_id`, enqueues `Credits::ChargeRunWorker`
 
-- [ ] Create `Credits::ChargeRunJob`
+- [ ] Create `Credits::ChargeRunWorker`
   - [ ] Process a specific `run_id`
   - [ ] Idempotent (skip if already processed)
   - [ ] Aggregate `cost_usd` for run
-  - [ ] Create `CreditTransaction` with `reference_id: run_id`
+  - [ ] Create `CreditTransaction` via `CreditConsumptionService`
   - [ ] Mark records `processed_at = NOW`
 
-- [ ] Create `Credits::FindUnprocessedRunsJob` (backup)
+- [ ] Create `Credits::FindUnprocessedRunsWorker` (backup)
   - [ ] Find records WHERE `processed_at IS NULL AND created_at < 2 minutes ago`
-  - [ ] Enqueue `ChargeRunJob` for each stale `run_id`
+  - [ ] Enqueue `ChargeRunWorker` for each stale `run_id`
 
-- [ ] Schedule backup job (Zhong/Sidekiq-Cron)
+- [ ] Schedule backup worker (Zhong/Sidekiq-Cron)
   - [ ] Run every minute
 
 ### Testing

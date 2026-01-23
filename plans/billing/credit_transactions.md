@@ -23,7 +23,7 @@ create_table :credit_transactions do |t|
 
   # Reference to source record
   # Note: For LLM usage, reference_type = "llm_run" and reference_id = run_id (UUID string)
-  # No LlmRun model exists - run_id is a grouping key linking llm_usage_records to transactions
+  # No LlmRun model exists - run_id is a grouping key linking llm_usage to transactions
   t.string :reference_type   # "llm_run", "CreditPack", "Pay::Subscription", etc.
   t.string :reference_id     # UUID string for runs, integer ID for models
 
@@ -445,7 +445,7 @@ end
 
 ### Credits::ChargeRunWorker
 
-Called after Langgraph persists usage records to `llm_usage_records`. Processes a specific `run_id`.
+Called after Langgraph persists usage records to `llm_usage`. Processes a specific `run_id`.
 
 ```ruby
 class Credits::ChargeRunWorker
@@ -454,9 +454,9 @@ class Credits::ChargeRunWorker
 
   def perform(run_id)
     # Idempotent: skip if already processed
-    return if LlmUsageRecord.where(run_id: run_id).where.not(processed_at: nil).exists?
+    return if LlmUsage.where(run_id: run_id).where.not(processed_at: nil).exists?
 
-    records = LlmUsageRecord.where(run_id: run_id, processed_at: nil)
+    records = LlmUsage.where(run_id: run_id, processed_at: nil)
     return if records.empty?
 
     # Aggregate usage for this run
@@ -523,7 +523,7 @@ class Credits::FindUnprocessedRunsWorker
 
   def perform
     # Find run_ids where records are unprocessed and older than threshold
-    stale_run_ids = LlmUsageRecord
+    stale_run_ids = LlmUsage
       .where(processed_at: nil)
       .where("created_at < ?", STALE_THRESHOLD.ago)
       .distinct
@@ -564,7 +564,7 @@ end
 
 ### POST /api/v1/llm_usage/notify
 
-Called by Langgraph after writing `llm_usage_records` directly to Postgres. Rails enqueues a job to process the run.
+Called by Langgraph after writing `llm_usage` directly to Postgres. Rails enqueues a job to process the run.
 
 > **Note**: Langgraph writes usage records directly to Postgres (shared database). This endpoint simply notifies Rails to process credits. There is no `LlmRun` model - the `run_id` is a UUID grouping key.
 
@@ -574,7 +574,7 @@ module Api
   module V1
     class LlmUsageController < Api::V1::BaseController
       # POST /api/v1/llm_usage/notify
-      # Called by Langgraph after writing llm_usage_records to Postgres
+      # Called by Langgraph after writing llm_usage to Postgres
       #
       # Parameters:
       #   run_id: string (required) - UUID of the run to process
