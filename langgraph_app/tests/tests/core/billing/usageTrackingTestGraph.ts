@@ -52,6 +52,11 @@ export const UsageTrackingTestAnnotation = Annotation.Root({
     default: () => undefined,
     reducer: (current, next) => next,
   }),
+  // Max tier for LLM selection (3=haiku, 4=gpt-5-mini, etc.)
+  maxTier: Annotation<number | undefined>({
+    default: () => undefined,
+    reducer: (current, next) => next,
+  }),
   // Track whether the tool saw the context (for validation)
   toolSawContext: Annotation<boolean | undefined>({
     default: () => undefined,
@@ -79,7 +84,7 @@ async function directLLMNode(
   state: UsageTrackingTestState,
   config: LangGraphRunnableConfig
 ): Promise<Partial<UsageTrackingTestState>> {
-  const model = await getLLM({ cost: "paid", speed: "fast" });
+  const model = await getLLM({ cost: "paid", speed: "fast", maxTier: state.maxTier });
 
   const lastMessage = state.messages.at(-1);
   const prompt = lastMessage?.content || "Say hello";

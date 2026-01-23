@@ -564,4 +564,161 @@ describe("Usage Tracking Integration", () => {
       }
     });
   });
+
+  // =====================================================
+  // Cross-Provider Verification
+  // =====================================================
+  // Tests that usage tracking works correctly across different LLM providers.
+  // This validates that our callback handler correctly extracts usage from
+  // both Anthropic and OpenAI response formats.
+  describe("cross-provider verification", () => {
+    it("Anthropic (tier 3): tracked usage matches AIMessage.usage_metadata exactly", async () => {
+      const result = await testGraph<UsageTrackingTestState>()
+        .withGraph(compiledGraph)
+        .withPrompt("Say 'hello from Anthropic'")
+        .withState({ scenario: "direct", maxTier: 3 })
+        .withTracking()
+        .execute();
+
+      expect(result.error).toBeUndefined();
+      expect(result.tracking).toBeDefined();
+      expect(result.tracking!.usage.length).toBeGreaterThan(0);
+      expect(result.tracking!.messagesProduced.length).toBe(result.tracking!.usage.length);
+
+      // Verify each tracked record matches its AIMessage exactly
+      for (const record of result.tracking!.usage) {
+        const message = result.tracking!.messagesProduced.find((m) => m.id === record.messageId);
+        expect(message).toBeDefined();
+
+        const messageUsage = (message as any).usage_metadata;
+        expect(record.inputTokens).toBe(messageUsage.input_tokens);
+        expect(record.outputTokens).toBe(messageUsage.output_tokens);
+        expect(record.reasoningTokens).toBe(messageUsage.output_token_details?.reasoning || 0);
+
+        // Verify cache tokens (Anthropic format)
+        const expectedCacheCreation =
+          messageUsage.cache_creation_input_tokens ||
+          messageUsage.input_token_details?.cache_creation ||
+          0;
+        const expectedCacheRead =
+          messageUsage.cache_read_input_tokens ||
+          messageUsage.input_token_details?.cache_read ||
+          0;
+        expect(record.cacheCreationTokens).toBe(expectedCacheCreation);
+        expect(record.cacheReadTokens).toBe(expectedCacheRead);
+
+        // Model should be captured
+        expect(record.model).toContain("claude");
+      }
+    });
+
+    it("OpenAI (tier 4): tracked usage matches AIMessage.usage_metadata exactly", async () => {
+      const result = await testGraph<UsageTrackingTestState>()
+        .withGraph(compiledGraph)
+        .withPrompt("Say 'hello from OpenAI'")
+        .withState({ scenario: "direct", maxTier: 4 })
+        .withTracking()
+        .execute();
+
+      expect(result.error).toBeUndefined();
+      expect(result.tracking).toBeDefined();
+      expect(result.tracking!.usage.length).toBeGreaterThan(0);
+      expect(result.tracking!.messagesProduced.length).toBe(result.tracking!.usage.length);
+
+      // Verify each tracked record matches its AIMessage exactly
+      for (const record of result.tracking!.usage) {
+        const message = result.tracking!.messagesProduced.find((m) => m.id === record.messageId);
+        expect(message).toBeDefined();
+
+        const messageUsage = (message as any).usage_metadata;
+        expect(record.inputTokens).toBe(messageUsage.input_tokens);
+        expect(record.outputTokens).toBe(messageUsage.output_tokens);
+
+        // OpenAI may include reasoning tokens (for o1/o3 models) or not
+        const expectedReasoning = messageUsage.output_token_details?.reasoning || 0;
+        expect(record.reasoningTokens).toBe(expectedReasoning);
+
+        // OpenAI cache tokens (may be in different format)
+        const expectedCacheCreation =
+          messageUsage.cache_creation_input_tokens ||
+          messageUsage.input_token_details?.cache_creation ||
+          0;
+        const expectedCacheRead =
+          messageUsage.cache_read_input_tokens ||
+          messageUsage.input_token_details?.cache_read ||
+          0;
+        expect(record.cacheCreationTokens).toBe(expectedCacheCreation);
+        expect(record.cacheReadTokens).toBe(expectedCacheRead);
+
+        // Model should be captured
+        expect(record.model).toContain("gpt");
+      }
+    });
+
+    it("both providers: totals match when summed across all records", async () => {
+      // Test with Anthropic
+      const anthropicResult = await testGraph<UsageTrackingTestState>()
+        .withGraph(compiledGraph)
+        .withPrompt("Count to three")
+        .withState({ scenario: "direct", maxTier: 3 })
+        .withTracking()
+        .execute();
+
+      expect(anthropicResult.error).toBeUndefined();
+
+      // Sum tracked totals
+      const anthropicTrackedInput = anthropicResult.tracking!.usage.reduce(
+        (sum, r) => sum + r.inputTokens,
+        0
+      );
+      const anthropicTrackedOutput = anthropicResult.tracking!.usage.reduce(
+        (sum, r) => sum + r.outputTokens,
+        0
+      );
+
+      // Sum from AIMessage.usage_metadata directly
+      const anthropicExpectedInput = anthropicResult.tracking!.messagesProduced.reduce(
+        (sum, m) => sum + ((m as any).usage_metadata?.input_tokens || 0),
+        0
+      );
+      const anthropicExpectedOutput = anthropicResult.tracking!.messagesProduced.reduce(
+        (sum, m) => sum + ((m as any).usage_metadata?.output_tokens || 0),
+        0
+      );
+
+      expect(anthropicTrackedInput).toBe(anthropicExpectedInput);
+      expect(anthropicTrackedOutput).toBe(anthropicExpectedOutput);
+
+      // Test with OpenAI
+      const openaiResult = await testGraph<UsageTrackingTestState>()
+        .withGraph(compiledGraph)
+        .withPrompt("Count to three")
+        .withState({ scenario: "direct", maxTier: 4 })
+        .withTracking()
+        .execute();
+
+      expect(openaiResult.error).toBeUndefined();
+
+      const openaiTrackedInput = openaiResult.tracking!.usage.reduce(
+        (sum, r) => sum + r.inputTokens,
+        0
+      );
+      const openaiTrackedOutput = openaiResult.tracking!.usage.reduce(
+        (sum, r) => sum + r.outputTokens,
+        0
+      );
+
+      const openaiExpectedInput = openaiResult.tracking!.messagesProduced.reduce(
+        (sum, m) => sum + ((m as any).usage_metadata?.input_tokens || 0),
+        0
+      );
+      const openaiExpectedOutput = openaiResult.tracking!.messagesProduced.reduce(
+        (sum, m) => sum + ((m as any).usage_metadata?.output_tokens || 0),
+        0
+      );
+
+      expect(openaiTrackedInput).toBe(openaiExpectedInput);
+      expect(openaiTrackedOutput).toBe(openaiExpectedOutput);
+    });
+  });
 });
