@@ -369,8 +369,10 @@ Credit packs are one-time purchases that grant credits which rollover indefinite
 
 ### Data Model
 
+> **Two Tables**: `CreditPack` defines pack types (like `Plan`), `CreditPackPurchase` tracks individual purchases (like `Pay::Subscription`). Purchases are reflected in `CreditTransaction` with `credit_type=pack`.
+
 ```ruby
-# Table: credit_packs
+# Table: credit_packs (Pack TYPE definitions - like Plan)
 create_table :credit_packs do |t|
   t.string :name, null: false           # "Small", "Mid", "Big"
   t.integer :credits, null: false       # 500, 1250, 3000
@@ -380,7 +382,38 @@ create_table :credit_packs do |t|
   t.boolean :visible, default: true     # Show in UI
   t.timestamps
 end
+
+# Table: credit_pack_purchases (Individual purchases - like Pay::Subscription)
+create_table :credit_pack_purchases do |t|
+  t.references :account, null: false, foreign_key: true
+  t.references :credit_pack, null: false, foreign_key: true
+  t.references :pay_charge, foreign_key: { to_table: :pay_charges }
+
+  t.integer :credits_purchased, null: false  # Snapshot of pack.credits at purchase time
+  t.integer :price_cents, null: false        # Snapshot of pack.amount at purchase time
+  t.boolean :is_used, null: false, default: false  # True when fully consumed
+
+  t.timestamps
+
+  t.index [:account_id, :is_used]  # For calculating total active allocation
+  t.index [:account_id, :created_at]
+end
 ```
+
+**Why `is_used` matters for usage_percentage:**
+
+The `is_used` flag tracks when a pack purchase is fully consumed. This is essential for calculating usage percentage correctly:
+
+```ruby
+# Total allocation = plan credits + sum of ACTIVE (not fully used) pack purchases
+total_allocation = plan_tier.credits +
+  account.credit_pack_purchases.where(is_used: false).sum(:credits_purchased)
+
+# Usage percentage = (allocation - remaining) / allocation * 100
+usage_percentage = ((total_allocation - total_balance) / total_allocation.to_f * 100).round(2)
+```
+
+Once a pack is fully consumed (`is_used: true`), it no longer contributes to the denominator. This prevents the percentage from being skewed by historical purchases.
 
 ### Stripe Setup
 
@@ -435,14 +468,48 @@ ChargeExtensions#after_commit callback fires
          ↓
 Credits::GrantPurchasedCreditsWorker enqueued (idempotent)
          ↓
-Job grants credits to account.purchased_credits
+Job creates:
+  1. CreditPackPurchase record (is_used: false)
+  2. CreditTransaction (type: purchase, credit_type: pack)
+```
+
+**On failure**: Sidekiq will retry the worker with exponential backoff. The worker is idempotent (checks for existing CreditPackPurchase with same charge_id).
+
+### Models
+
+```ruby
+# app/models/credit_pack.rb
+class CreditPack < ApplicationRecord
+  has_many :credit_pack_purchases
+
+  validates :name, presence: true, uniqueness: true
+  validates :credits, presence: true, numericality: { greater_than: 0 }
+  validates :amount, presence: true, numericality: { greater_than: 0 }
+  validates :stripe_price_id, presence: true
+
+  scope :visible, -> { where(visible: true) }
+end
+
+# app/models/credit_pack_purchase.rb
+class CreditPackPurchase < ApplicationRecord
+  belongs_to :account
+  belongs_to :credit_pack
+  belongs_to :pay_charge, class_name: "Pay::Charge", optional: true
+
+  validates :credits_purchased, presence: true, numericality: { greater_than: 0 }
+  validates :price_cents, presence: true, numericality: { greater_than: 0 }
+
+  scope :active, -> { where(is_used: false) }
+  scope :consumed, -> { where(is_used: true) }
+end
 ```
 
 ### Implementation Files
 
 **Files to create:**
 
-- `app/models/credit_pack.rb` - Model with validations
+- `app/models/credit_pack.rb` - Pack type definitions
+- `app/models/credit_pack_purchase.rb` - Purchase instances
 - `app/controllers/credit_packs_controller.rb` - Index + checkout session creation
 - `app/views/credit_packs/` - Purchase UI (or React components)
 - `app/workers/credits/grant_purchased_credits_worker.rb` - Idempotent credit granting
@@ -517,10 +584,12 @@ end
 
 **Files to create:**
 
-- `db/migrate/XXXX_create_credit_packs.rb`
+- `db/migrate/XXXX_create_credit_packs.rb` - Pack type definitions
+- `db/migrate/XXXX_create_credit_pack_purchases.rb` - Purchase instances with `is_used` flag
 - `db/migrate/XXXX_create_credit_transactions.rb`
 - `db/migrate/XXXX_create_llm_usage.rb`
 - `app/models/credit_pack.rb`
+- `app/models/credit_pack_purchase.rb`
 - `app/models/credit_transaction.rb`
 - `app/models/llm_usage.rb`
 - `app/services/credit_balance.rb`
@@ -726,6 +795,8 @@ end
 
 Grants credits from credit pack purchases. Called after Stripe checkout completion.
 
+Creates both a `CreditPackPurchase` record (to track the purchase instance) and a `CreditTransaction` (for the ledger).
+
 ```ruby
 # app/workers/credits/grant_purchased_credits_worker.rb
 module Credits
@@ -736,8 +807,8 @@ module Credits
     def perform(charge_id, options = {})
       idempotency_key = options["idempotency_key"]
 
-      # Skip if already processed (idempotency)
-      return if idempotency_key && CreditTransaction.exists?(idempotency_key: idempotency_key)
+      # Skip if already processed (idempotency via CreditPackPurchase)
+      return if CreditPackPurchase.exists?(pay_charge_id: charge_id)
 
       charge = Pay::Charge.find(charge_id)
       credit_pack_id = charge.data&.dig("metadata", "credit_pack_id")
@@ -751,14 +822,23 @@ module Credits
       Account.transaction do
         account.lock!
 
-        # Get current balances
+        # 1. Create CreditPackPurchase record (instance of this purchase)
+        purchase = CreditPackPurchase.create!(
+          account: account,
+          credit_pack: credit_pack,
+          pay_charge_id: charge.id,
+          credits_purchased: credit_pack.credits,  # Snapshot at purchase time
+          price_cents: credit_pack.amount,         # Snapshot at purchase time
+          is_used: false
+        )
+
+        # 2. Get current balances and create transaction
         current = account.credit_transactions
           .order(created_at: :desc)
           .pick(:balance_after, :plan_balance_after, :pack_balance_after) || [0, 0, 0]
 
         current_total, current_plan, current_pack = current
 
-        # Add pack credits
         new_pack = current_pack + credit_pack.credits
         new_total = current_total + credit_pack.credits
 
@@ -771,8 +851,8 @@ module Credits
           balance_after: new_total,
           plan_balance_after: current_plan,
           pack_balance_after: new_pack,
-          reference_type: "CreditPack",
-          reference_id: credit_pack.id.to_s,
+          reference_type: "CreditPackPurchase",
+          reference_id: purchase.id.to_s,
           idempotency_key: idempotency_key,
           metadata: {
             pack_name: credit_pack.name,
@@ -781,13 +861,31 @@ module Credits
           }
         )
 
-        # Invalidate cache synchronously
+        # 3. Invalidate cache synchronously
         Rails.cache.delete("credit_balance:#{account.id}")
       end
     end
   end
 end
 ```
+
+#### Marking Packs as Fully Consumed
+
+When pack credits are consumed, check if the pack is fully depleted and mark `is_used: true`:
+
+```ruby
+# In CreditConsumptionService, after consuming pack credits:
+def maybe_mark_pack_as_used(account)
+  # A pack is "used" when pack_balance reaches 0
+  # This is a simplification - we mark ALL active packs as used since
+  # pack credits are fungible and we can't track which pack they came from
+  if pack_balance_after == 0
+    account.credit_pack_purchases.where(is_used: false).update_all(is_used: true)
+  end
+end
+```
+
+Note: Since pack credits are fungible (we don't track which specific pack a credit came from), we mark all active packs as used when pack balance hits 0. This is simpler than FIFO tracking per-pack.
 
 ### Phase 5: Langgraph Credit Integration
 
@@ -1077,3 +1175,62 @@ function calculateCost(usage: UsageMetadata, pricing: ModelConfig): number {
 - **Plan credits**: Starter 2,000 | Growth 5,000 | Pro 15,000 per month
 - **Credit packs**: See [Credit Packs](#credit-packs) section (Small 500 | Mid 1,250 | Big 3,000, rollover indefinitely)
 - **Margins**: 50-75% on subscriptions, 70-80% on credit packs
+
+## Resolved Decisions (Q&A Summary)
+
+This section documents decisions made during planning Q&A sessions.
+
+### Data Model
+
+| Question | Decision |
+|----------|----------|
+| Where is model pricing stored? | Langgraph reads from Rails DB (`model_configs` table), can cache with short TTL |
+| How to sync Drizzle schema with Rails? | CI validation after `db:reflect` |
+| CreditPack vs CreditPackPurchase? | Two tables: `CreditPack` (type definition like Plan) + `CreditPackPurchase` (instance like Subscription) |
+| What is `is_used` flag for? | Marks fully-consumed pack purchases; drops them from usage % calculation |
+
+### Credit Consumption
+
+| Question | Decision |
+|----------|----------|
+| What happens when plan=negative and pack>0? | Consume from pack, plan stays negative |
+| What happens when plan=0, pack=0? | Plan goes negative (debt absorbed next month) |
+| Is there a debt limit? | No limit; Langgraph responsible for blocking at 100% if no pack credits |
+| Consumption order | FIFO: Plan → Pack → Plan goes negative |
+
+### Usage Percentage & Model Selection
+
+| Question | Decision |
+|----------|----------|
+| What's the denominator for usage %? | Total allocation: plan credits + sum of active pack purchases (is_used: false) |
+| Does usage % affect model selection? | Yes, based on TOTAL usage (plan + pack) |
+| Why total instead of plan-only? | Power users who buy packs deserve access to best models |
+
+### Operational
+
+| Question | Decision |
+|----------|----------|
+| How are monthly credits reset for yearly subs? | Zhong/Sidekiq-Cron scheduled job (same day each month) |
+| How are partitions created? | Zhong/Sidekiq-Cron scheduled job |
+| What if pack fulfillment fails? | Sidekiq retry with exponential backoff |
+| Where is Pay::Charge extended? | `config/initializers/pay.rb` |
+| How is OpenAPI spec generated? | rswag/swagger for Rails, Langgraph uses openapi-typescript |
+| How is testCredits kept safe? | Environment check (skip in non-prod or when ENFORCE_CREDITS set) |
+| Where is admin UI? | Madmin (Jumpstart Pro's admin panel) |
+| What if Postgres write fails? | Retry with exponential backoff |
+| What about race conditions on credit balance? | Accept them - rare and negative balance allowed |
+
+### Refunds
+
+| Question | Decision |
+|----------|----------|
+| How do refunds work? | **PUNITIVE**: Refunds DEDUCT credits if customer used them then refunded |
+| Why punitive? | We incurred the AI cost; if they refund after using, we claw back credits |
+| What transaction type? | `refund` with negative amount (debit) |
+
+### Stale Threshold
+
+| Question | Decision |
+|----------|----------|
+| What's the 2-minute stale threshold for? | Rails processing time after Langgraph writes records |
+| Does it need to account for long-running graphs? | No - records written AFTER graph completes, not during |

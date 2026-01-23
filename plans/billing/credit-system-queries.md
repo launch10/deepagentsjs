@@ -191,18 +191,28 @@ credit_transactions
     ├── (reference_type, reference_id) -- find transactions for a given resource
     └── (idempotency_key) UNIQUE WHERE NOT NULL
 
-credit_packs
+credit_packs (pack TYPE definitions - like Plan)
+├── id (bigint, PK)
+├── name (string, not null, unique) -- "Small", "Mid", "Big"
+├── credits (integer, not null) -- 500, 1250, 3000
+├── amount (integer, not null) -- price in cents (2500, 5000, 10000)
+├── currency (string, default 'usd')
+├── stripe_price_id (string) -- links to Stripe Price
+├── visible (boolean, default true) -- show in UI
+└── timestamps
+
+credit_pack_purchases (purchase INSTANCES - like Pay::Subscription)
 ├── id (bigint, PK)
 ├── account_id (FK, not null)
-├── credits_purchased (integer, not null)
-├── credits_remaining (integer, not null)
-├── price_cents (integer) -- what they paid
-├── purchased_at (timestamp)
-├── expires_at (timestamp, nullable) -- null = never expires
-├── stripe_payment_intent_id (string, nullable)
+├── credit_pack_id (FK, not null)
+├── pay_charge_id (FK, nullable) -- links to Pay::Charge
+├── credits_purchased (integer, not null) -- snapshot at purchase time
+├── price_cents (integer, not null) -- snapshot at purchase time
+├── is_used (boolean, default false) -- true when fully consumed
+├── timestamps
 └── INDEXES:
-    ├── (account_id, credits_remaining > 0) -- active packs
-    └── (account_id, purchased_at) -- FIFO ordering
+    ├── (account_id, is_used) -- for calculating active allocation
+    └── (account_id, created_at) -- ordering
 ```
 
 ### Transaction Examples
@@ -237,7 +247,7 @@ CreditTransaction.create!(
   metadata: { graph: "brainstorm", llm_call_count: 3, cost_usd: 0.0234 }
 )
 
-# Credit pack purchase
+# Credit pack purchase (references CreditPackPurchase, not CreditPack)
 CreditTransaction.create!(
   account: account,
   transaction_type: "purchase",
@@ -247,8 +257,9 @@ CreditTransaction.create!(
   balance_after: 2490,
   plan_balance_after: 1990,
   pack_balance_after: 500,
-  reference: credit_pack,
-  metadata: { pack_size: "small", price_cents: 4900 }
+  reference_type: "CreditPackPurchase",
+  reference_id: credit_pack_purchase.id.to_s,
+  metadata: { pack_name: "Small", price_cents: 2500, charge_id: charge.id }
 )
 
 # Large generation that exhausts plan and dips into pack
@@ -702,7 +713,7 @@ end
 
 3. **Negative balance**: ALLOWED. Pre-run check in Langgraph gates at 100% usage, but if a run goes over, we allow negative balance. Debt is absorbed by next month's plan allocation.
 
-4. **Refunds**: Always as pack credits (simpler).
+4. **Refunds**: PUNITIVE - deducts credits when customer refunds after using (we incurred the cost).
 
 5. **Multi-seat accounts**: Credits shared at account level.
 
@@ -712,11 +723,7 @@ end
 
 ## Open Questions
 
-1. **Credit-to-cost ratio**: What's the conversion rate? $1 = 100 credits? Needs business decision.
-
-2. **Usage percentage thresholds**: At what % do we downgrade models? 50%? 75%? 90%?
-
-3. **Alert thresholds**: Just 90%? Or also 50%, 75%?
+All open questions have been resolved. See [credit-packs.md](./credit-packs.md#resolved-decisions-qa-summary) for the full Q&A summary.
 
 ---
 

@@ -54,7 +54,7 @@ class CreditTransaction < ApplicationRecord
     allocate: "allocate",   # monthly plan credits
     consume: "consume",     # usage (LLM calls)
     purchase: "purchase",   # bought a credit pack
-    refund: "refund",       # money back (adds credits)
+    refund: "refund",       # PUNITIVE: deducts credits when customer refunds after using
     gift: "gift"            # admin-issued gift credits
   }, prefix: true
 
@@ -115,7 +115,7 @@ end
 | `consume`  | `plan`      | `ai_generation` | - credits used               | llm_run (run_id UUID)   |
 | `consume`  | `pack`      | `ai_generation` | - credits used               | llm_run (run_id UUID)   |
 | `purchase` | `pack`      | `pack_purchase` | + pack credits               | CreditPack              |
-| `refund`   | `pack`      | `refund`        | + refunded amount            | Pay::Charge (or nil)    |
+| `refund`   | `pack`      | `refund`        | - credits DEDUCTED (punitive) | Pay::Charge (or nil)    |
 | `gift`     | `pack`      | `gift`          | + amount_cents               | nil (admin in metadata) |
 
 > **Important**: `PlanTier.details[:credits]` is the authoritative source for plan credit amounts. Do not use `TierLimit` or `PlanLimit`.
@@ -158,14 +158,30 @@ class CreditBalance
     { total: total, plan: plan, pack: pack }
   end
 
-  # Usage percentage for this billing period
+  # Usage percentage based on TOTAL allocation (plan + active pack purchases)
   # Returns 0-100+ (can exceed 100 if negative balance)
+  #
+  # Formula: ((total_allocation - total_balance) / total_allocation) * 100
+  #
+  # Why total usage matters for model selection:
+  # - Power users who buy packs deserve access to best models
+  # - Someone with 5000 plan + 3000 pack purchase who's used 4000 credits
+  #   is at 50% usage (4000/8000), not 80% (4000/5000)
+  #
+  # The is_used flag on CreditPackPurchase ensures fully-consumed packs
+  # don't skew the percentage. Once a pack is exhausted, it drops out
+  # of the allocation calculation.
   def usage_percentage
     plan_allocation = @account.plan&.plan_tier&.credits || 0
-    return 0 if plan_allocation == 0
+    pack_allocation = @account.credit_pack_purchases
+      .where(is_used: false)
+      .sum(:credits_purchased)
 
-    plan_used = plan_allocation - plan
-    ((plan_used.to_f / plan_allocation) * 100).round(2)
+    total_allocation = plan_allocation + pack_allocation
+    return 0 if total_allocation == 0
+
+    total_used = total_allocation - total
+    ((total_used.to_f / total_allocation) * 100).round(2)
   end
 
   def invalidate!
@@ -387,6 +403,55 @@ class CreditAllocationService
           price_cents: credit_pack.price_cents
         }
       )
+
+      CreditBalance.for(@account).invalidate!
+    end
+  end
+
+  # Process a refund - PUNITIVE: deducts credits
+  #
+  # When a customer refunds after using credits, we DEDUCT those credits
+  # because we already incurred the AI cost. This is NOT restorative.
+  #
+  # Example: Customer buys $50 pack (1250 credits), uses 500 credits, then refunds.
+  # We deduct 1250 credits (what they got). If they don't have enough pack credits,
+  # the deduction comes from plan credits or goes negative.
+  def process_refund!(credit_pack_purchase:, admin: nil)
+    credits_to_deduct = credit_pack_purchase.credits_purchased
+
+    Account.transaction do
+      @account.lock!
+
+      total, plan_bal, pack_bal = current_balances
+
+      # Deduct from pack first, then plan if needed
+      pack_deducted = [credits_to_deduct, [pack_bal, 0].max].min
+      remaining = credits_to_deduct - pack_deducted
+      plan_deducted = remaining  # Plan absorbs the rest (can go negative)
+
+      new_pack = pack_bal - pack_deducted
+      new_plan = plan_bal - plan_deducted
+      new_total = new_pack + new_plan
+
+      create_transaction!(
+        transaction_type: "refund",
+        credit_type: pack_deducted > 0 ? "pack" : "plan",
+        reason: "refund",
+        amount: -credits_to_deduct,  # Negative = deduction
+        balance_after: new_total,
+        plan_balance_after: new_plan,
+        pack_balance_after: new_pack,
+        reference: credit_pack_purchase.pay_charge,
+        metadata: {
+          credit_pack_purchase_id: credit_pack_purchase.id,
+          credits_refunded: credits_to_deduct,
+          admin_id: admin&.id,
+          note: "Punitive refund: credits deducted for refunded purchase"
+        }
+      )
+
+      # Mark the pack purchase as used (it's been refunded)
+      credit_pack_purchase.update!(is_used: true)
 
       CreditBalance.for(@account).invalidate!
     end
@@ -645,3 +710,5 @@ account.credit_transactions
 
 - [credit-system-queries.md](./credit-system-queries.md) - Query patterns and requirements
 - [langgraph_integration.md](./langgraph_integration.md) - How Langgraph tracks and reports usage
+- [credit-packs.md](./credit-packs.md) - Pack definitions and purchase flow
+- [credit-packs.md#resolved-decisions-qa-summary](./credit-packs.md#resolved-decisions-qa-summary) - All resolved Q&A decisions

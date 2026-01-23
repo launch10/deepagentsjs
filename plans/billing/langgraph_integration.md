@@ -131,7 +131,13 @@ export function canStartRun(balance: CreditBalance): boolean {
 }
 
 export function getAvailableModels(balance: CreditBalance): string[] {
-  // Example thresholds - adjust as needed
+  // Model selection based on TOTAL usage (plan + pack)
+  // Power users who buy packs deserve access to best models
+  //
+  // Example: User with 5000 plan + 3000 pack purchase at 4000 credits used
+  //          = 50% usage (4000/8000), gets all models
+  //
+  // Thresholds - adjust as needed:
   if (balance.usagePercentage < 50) {
     return ["opus", "sonnet", "haiku"];  // All models
   } else if (balance.usagePercentage < 80) {
@@ -729,6 +735,17 @@ module Credits
     include Sidekiq::Worker
     sidekiq_options queue: :billing
 
+    # Stale threshold: How long to wait before considering a record "missed"
+    #
+    # This is about RAILS PROCESSING TIME, not graph execution time.
+    # Langgraph writes records immediately after graph completion. The 2-minute
+    # threshold accounts for:
+    # - API notification delay/failure
+    # - Rails job queue latency
+    # - Worker processing time
+    #
+    # It does NOT need to account for long-running graphs because records
+    # are only written AFTER the graph completes.
     STALE_THRESHOLD = 2.minutes
 
     def perform
@@ -1053,6 +1070,53 @@ OpenAI models report reasoning tokens in `output_token_details.reasoning`. These
 | Graph errors                | Still writes to Postgres, still notifies Rails                |
 | API notification fails      | Backup polling worker catches stale records after 2 minutes   |
 | ChargeRunWorker fails       | Records remain unprocessed, backup worker re-enqueues         |
+| Postgres write fails        | Retry with exponential backoff (see below)                    |
+| Concurrent credit updates   | Accept race condition - rare and negative balance allowed     |
+
+## Operational Decisions
+
+### Postgres Write Failures
+
+If `persistUsageRecords()` fails to write to Postgres, retry with exponential backoff:
+
+```typescript
+// In persistUsage.ts
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 100;
+
+export async function persistUsageRecords(
+  usage: UsageRecord[],
+  chatId: number,
+  runId: string,
+  graphName?: string
+): Promise<void> {
+  if (usage.length === 0) return;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      await db.insert(llmUsage).values(/* ... */);
+      return; // Success
+    } catch (error) {
+      if (attempt === MAX_RETRIES) {
+        console.error(`Failed to persist usage after ${MAX_RETRIES} attempts:`, error);
+        throw error;
+      }
+      const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+```
+
+### Credit Balance Race Conditions
+
+When checking credits before a run and consuming after, there's a window where two concurrent requests could both pass the pre-check but together exceed the balance.
+
+**Decision**: Accept this race condition.
+- It's rare in practice (requires near-simultaneous requests)
+- Plan credits can go negative (debt absorbed next month)
+- The cost of preventing it (pessimistic locking) outweighs the benefit
+- If needed later, add optimistic locking with retry on conflict
 
 ## Implementation Checklist
 
