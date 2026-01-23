@@ -370,4 +370,198 @@ describe("Usage Tracking Integration", () => {
       }
     });
   });
+
+  // =====================================================
+  // Error Scenarios
+  // =====================================================
+  // Tests that usage is captured even when the graph fails.
+  // This is critical for billing - we pay for LLM calls that succeed,
+  // even if downstream processing fails.
+  describe("error scenarios", () => {
+    it("captures usage for successful LLM calls before an error", async () => {
+      const result = await testGraph<UsageTrackingTestState>()
+        .withGraph(compiledGraph)
+        .withPrompt("Say hello before the error")
+        .withState({ scenario: "error-after-success" })
+        .withTracking()
+        .execute();
+
+      // The graph should have thrown an error
+      expect(result.error).toBeDefined();
+      expect(result.error!.message).toContain("Intentional test error");
+
+      // But usage should still be captured - this is the key assertion!
+      expect(result.tracking).toBeDefined();
+      expect(result.tracking!.usage.length).toBeGreaterThan(0);
+
+      // The successful LLM call before the error was tracked
+      const record = result.tracking!.usage[0]!;
+      expect(record.inputTokens).toBeGreaterThan(0);
+      expect(record.outputTokens).toBeGreaterThan(0);
+      expect(record.runId).toBeDefined();
+    });
+
+    it("returns partial usage when graph throws after multiple LLM calls", async () => {
+      // This tests that we don't lose any usage data on error
+      const result = await testGraph<UsageTrackingTestState>()
+        .withGraph(compiledGraph)
+        .withPrompt("Process this before failing")
+        .withState({ scenario: "error-after-success" })
+        .withTracking()
+        .execute();
+
+      expect(result.error).toBeDefined();
+
+      // Each usage record should still have valid data
+      for (const record of result.tracking!.usage) {
+        expect(record.model).toBeDefined();
+        expect(record.runId).toBeDefined();
+        expect(record.messageId).toBeDefined();
+        expect(record.inputTokens).toBeGreaterThanOrEqual(0);
+        expect(record.outputTokens).toBeGreaterThanOrEqual(0);
+      }
+
+      // Messages produced should match usage records
+      expect(result.tracking!.messagesProduced.length).toBe(result.tracking!.usage.length);
+      expect(result.tracking!.messagesProduced.length).toBeGreaterThan(0);
+    });
+  });
+
+  // =====================================================
+  // Subgraph/Nested Graph Support
+  // =====================================================
+  // Tests that AsyncLocalStorage context is preserved through subgraph invocations.
+  // This is critical because production graphs use subgraphs (e.g., website builder
+  // calls coding subgraph).
+  describe("subgraph support", () => {
+    it("AsyncLocalStorage context survives into subgraph", async () => {
+      const result = await testGraph<UsageTrackingTestState>()
+        .withGraph(compiledGraph)
+        .withPrompt("Test subgraph context")
+        .withState({ scenario: "subgraph" })
+        .withTracking()
+        .execute();
+
+      expect(result.error).toBeUndefined();
+
+      // The subgraph's node set toolSawContext=true if it could access getUsageContext()
+      expect(result.state.toolSawContext).toBe(true);
+    });
+
+    it("LLM calls in subgraph are attributed to parent run", async () => {
+      const result = await testGraph<UsageTrackingTestState>()
+        .withGraph(compiledGraph)
+        .withPrompt("Test subgraph tracking")
+        .withState({ scenario: "subgraph" })
+        .withTracking()
+        .execute();
+
+      expect(result.error).toBeUndefined();
+      expect(result.tracking).toBeDefined();
+
+      // Should have at least 2 usage records:
+      // 1. Parent's LLM call ("I am the parent")
+      // 2. Child subgraph's LLM call ("I am the child subgraph")
+      expect(result.tracking!.usage.length).toBeGreaterThanOrEqual(2);
+
+      // All LLM calls share the same runId (attributed to parent)
+      const runIds = new Set(result.tracking!.usage.map((r) => r.runId));
+      expect(runIds.size).toBe(1);
+
+      // Each usage record matches its corresponding AIMessage
+      for (const record of result.tracking!.usage) {
+        const message = result.tracking!.messagesProduced.find((m) => m.id === record.messageId);
+        expect(message).toBeDefined();
+
+        const messageUsage = (message as any).usage_metadata;
+        expect(record.inputTokens).toBe(messageUsage.input_tokens);
+        expect(record.outputTokens).toBe(messageUsage.output_tokens);
+      }
+
+      expect(result.tracking?.messagesProduced.at(0)?.content).toBe("I am the parent");
+      expect(result.tracking?.messagesProduced.at(-1)?.content).toBe("I am the child subgraph");
+    });
+
+    it("subgraph messages are captured in tracking results", async () => {
+      const result = await testGraph<UsageTrackingTestState>()
+        .withGraph(compiledGraph)
+        .withPrompt("Test subgraph messages")
+        .withState({ scenario: "subgraph" })
+        .withTracking()
+        .execute();
+
+      expect(result.error).toBeUndefined();
+
+      // Messages from both parent and child should be captured
+      expect(result.tracking!.messagesProduced.length).toBeGreaterThanOrEqual(2);
+
+      // Usage count should match message count
+      expect(result.tracking!.usage.length).toBe(result.tracking!.messagesProduced.length);
+    });
+  });
+
+  // =====================================================
+  // Cache Token Handling
+  // =====================================================
+  // Tests that cache tokens are correctly extracted from provider responses.
+  // Anthropic returns cache_creation_input_tokens and cache_read_input_tokens,
+  // while OpenAI may not include these fields.
+  describe("cache token handling", () => {
+    it("extracts cache tokens when present in usage_metadata", async () => {
+      const result = await testGraph<UsageTrackingTestState>()
+        .withGraph(compiledGraph)
+        .withPrompt("Say hello for cache test")
+        .withState({ scenario: "direct" })
+        .withTracking()
+        .execute();
+
+      expect(result.error).toBeUndefined();
+      expect(result.tracking!.usage.length).toBeGreaterThan(0);
+
+      const record = result.tracking!.usage[0]!;
+
+      // Cache tokens should be numbers (may be 0 if caching not triggered)
+      expect(typeof record.cacheCreationTokens).toBe("number");
+      expect(typeof record.cacheReadTokens).toBe("number");
+      expect(record.cacheCreationTokens).toBeGreaterThanOrEqual(0);
+      expect(record.cacheReadTokens).toBeGreaterThanOrEqual(0);
+    });
+
+    it("handles missing cache tokens gracefully", async () => {
+      const result = await testGraph<UsageTrackingTestState>()
+        .withGraph(compiledGraph)
+        .withPrompt("Simple response")
+        .withState({ scenario: "direct" })
+        .withTracking()
+        .execute();
+
+      expect(result.error).toBeUndefined();
+
+      // Even if provider doesn't return cache tokens, we should have valid 0 values
+      for (const record of result.tracking!.usage) {
+        expect(record.cacheCreationTokens).toBeGreaterThanOrEqual(0);
+        expect(record.cacheReadTokens).toBeGreaterThanOrEqual(0);
+        // Should not be undefined or null
+        expect(record.cacheCreationTokens).not.toBeUndefined();
+        expect(record.cacheReadTokens).not.toBeUndefined();
+      }
+    });
+
+    it("includes reasoning tokens field", async () => {
+      const result = await testGraph<UsageTrackingTestState>()
+        .withGraph(compiledGraph)
+        .withPrompt("Test reasoning tokens")
+        .withState({ scenario: "direct" })
+        .withTracking()
+        .execute();
+
+      expect(result.error).toBeUndefined();
+
+      for (const record of result.tracking!.usage) {
+        // Reasoning tokens should be a number (may be 0 for non-reasoning models)
+        expect(typeof record.reasoningTokens).toBe("number");
+        expect(record.reasoningTokens).toBeGreaterThanOrEqual(0);
+      }
+    });
+  });
 });

@@ -14,7 +14,7 @@ import { z } from "zod";
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { createAgent, createMiddleware } from "langchain";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLLM, getUsageContext } from "@core";
+import { getLLM, getUsageContext, NodeMiddleware } from "@core";
 import { BaseAnnotation } from "@annotation";
 import type { CoreGraphState } from "@state";
 
@@ -24,8 +24,16 @@ import type { CoreGraphState } from "@state";
  * - agent: Multi-turn agent with tool loops
  * - tool-llm: Tool that internally calls getLLM()
  * - middleware: Node with middleware that calls LLM
+ * - error-after-success: LLM call succeeds, then node throws
+ * - subgraph: Parent graph invokes child subgraph with LLM calls
  */
-export type UsageTrackingScenario = "direct" | "agent" | "tool-llm" | "middleware";
+export type UsageTrackingScenario =
+  | "direct"
+  | "agent"
+  | "tool-llm"
+  | "middleware"
+  | "error-after-success"
+  | "subgraph";
 
 /**
  * Extended state for usage tracking tests
@@ -250,6 +258,88 @@ async function middlewareLLMNode(
 }
 
 /**
+ * Error scenario: LLM call succeeds, then node throws.
+ * Tests that usage is captured even when the graph fails.
+ */
+async function errorAfterSuccessNode(
+  state: UsageTrackingTestState,
+  config: LangGraphRunnableConfig
+): Promise<Partial<UsageTrackingTestState>> {
+  const model = await getLLM({ cost: "paid", speed: "fast" });
+
+  const lastMessage = state.messages.at(-1);
+  const prompt = lastMessage?.content || "Say hello";
+
+  // This LLM call should succeed and be tracked
+  const response = await model.invoke([new HumanMessage(String(prompt))], config);
+
+  // Store the response in state before throwing
+  // This simulates a real scenario where usage is captured but processing fails
+  const newMessages = [response as AIMessage];
+
+  // Now throw an error - the usage should still be captured
+  throw new Error("Intentional test error after successful LLM call");
+
+  // This return is unreachable but satisfies TypeScript
+  return { messages: newMessages };
+}
+
+/**
+ * Subgraph that makes its own LLM call.
+ * Used to test AsyncLocalStorage context preservation across graph boundaries.
+ */
+const childSubgraph = new StateGraph(UsageTrackingTestAnnotation)
+  .addNode("childLLMNode", async (state: UsageTrackingTestState, config: LangGraphRunnableConfig) => {
+    // Verify context is available in subgraph
+    const context = getUsageContext();
+
+    const model = await getLLM({ cost: "paid", speed: "fast" });
+    const response = await model.invoke(
+      [new HumanMessage("Say 'I am the child subgraph'")],
+      config
+    );
+
+    return {
+      messages: [response as AIMessage],
+      toolSawContext: context !== undefined,
+    };
+  })
+  .addEdge(START, "childLLMNode")
+  .addEdge("childLLMNode", END);
+
+const compiledChildSubgraph = childSubgraph.compile();
+
+/**
+ * Parent node that invokes a subgraph.
+ * Tests that AsyncLocalStorage context is preserved through subgraph invocation.
+ */
+async function subgraphNode(
+  state: UsageTrackingTestState,
+  config: LangGraphRunnableConfig
+): Promise<Partial<UsageTrackingTestState>> {
+  // First make an LLM call in the parent
+  const model = await getLLM({ cost: "paid", speed: "fast" });
+  const parentResponse = await model.invoke(
+    [new HumanMessage("Say 'I am the parent'")],
+    config
+  );
+
+  // Then invoke the child subgraph
+  const subgraphResult = await compiledChildSubgraph.invoke(
+    {
+      ...state,
+      messages: [parentResponse as AIMessage],
+    },
+    config
+  );
+
+  return {
+    messages: [...(state.messages || []), parentResponse as AIMessage, ...(subgraphResult.messages || [])],
+    toolSawContext: subgraphResult.toolSawContext,
+  };
+}
+
+/**
  * Router function that directs to the appropriate node based on scenario
  */
 function routeByScenario(state: UsageTrackingTestState): string {
@@ -262,20 +352,27 @@ function routeByScenario(state: UsageTrackingTestState): string {
       return "toolWithInternalLLMNode";
     case "middleware":
       return "middlewareLLMNode";
+    case "error-after-success":
+      return "errorAfterSuccessNode";
+    case "subgraph":
+      return "subgraphNode";
     default:
       return "directLLMNode";
   }
 }
 
 /**
- * The test graph for usage tracking validation
+ * The test graph for usage tracking validation.
+ * All nodes are wrapped with NodeMiddleware.use() to enable Polly HTTP recording/replay.
  */
 export const usageTrackingTestGraph = new StateGraph(UsageTrackingTestAnnotation)
   .addNode("entryNode", entryNode)
-  .addNode("directLLMNode", directLLMNode)
-  .addNode("agentNode", agentNode)
-  .addNode("toolWithInternalLLMNode", toolWithInternalLLMNode)
-  .addNode("middlewareLLMNode", middlewareLLMNode)
+  .addNode("directLLMNode", NodeMiddleware.use({}, directLLMNode))
+  .addNode("agentNode", NodeMiddleware.use({}, agentNode))
+  .addNode("toolWithInternalLLMNode", NodeMiddleware.use({}, toolWithInternalLLMNode))
+  .addNode("middlewareLLMNode", NodeMiddleware.use({}, middlewareLLMNode))
+  .addNode("errorAfterSuccessNode", NodeMiddleware.use({}, errorAfterSuccessNode))
+  .addNode("subgraphNode", NodeMiddleware.use({}, subgraphNode))
 
   .addEdge(START, "entryNode")
   .addConditionalEdges("entryNode", routeByScenario, [
@@ -283,8 +380,12 @@ export const usageTrackingTestGraph = new StateGraph(UsageTrackingTestAnnotation
     "agentNode",
     "toolWithInternalLLMNode",
     "middlewareLLMNode",
+    "errorAfterSuccessNode",
+    "subgraphNode",
   ])
   .addEdge("directLLMNode", END)
   .addEdge("agentNode", END)
   .addEdge("toolWithInternalLLMNode", END)
-  .addEdge("middlewareLLMNode", END);
+  .addEdge("middlewareLLMNode", END)
+  .addEdge("errorAfterSuccessNode", END)
+  .addEdge("subgraphNode", END);
