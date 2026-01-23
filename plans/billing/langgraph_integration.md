@@ -29,12 +29,27 @@ When an agent calls tools, the message sequence is:
 Only `AIMessage` has `usage_metadata`. `ToolMessage` does NOT - it's just the result of executing code, no LLM call involved.
 
 ```typescript
-// AIMessage.usage_metadata structure
+// AIMessage.usage_metadata structure (unified across providers)
 {
   input_tokens: number;
   output_tokens: number;
-  cache_creation_input_tokens?: number;  // Anthropic cache write
-  cache_read_input_tokens?: number;      // Anthropic cache read (90% cheaper)
+  total_tokens: number;
+
+  // Provider-specific token details
+  input_token_details?: {
+    cache_creation?: number;  // Anthropic: tokens written to cache
+    cache_read?: number;      // Anthropic: tokens read from cache (90% cheaper)
+    audio?: number;           // OpenAI: audio input tokens
+  };
+
+  output_token_details?: {
+    reasoning?: number;       // OpenAI: reasoning/thinking tokens (included in output_tokens)
+    audio?: number;           // OpenAI: audio output tokens
+  };
+
+  // Legacy fields (some providers use these instead of nested details)
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
 }
 ```
 
@@ -112,10 +127,11 @@ create_table :langgraph_messages do |t|
   # Usage (only populated for AIMessage)
   t.integer :input_tokens
   t.integer :output_tokens
-  t.integer :cache_creation_tokens
-  t.integer :cache_read_tokens
+  t.integer :reasoning_tokens              # OpenAI only, included in output_tokens
+  t.integer :cache_creation_tokens         # Anthropic only
+  t.integer :cache_read_tokens             # Anthropic only
   t.decimal :cost_usd, precision: 10, scale: 6
-  t.string :model_key                      # e.g., claude-sonnet-4-20250514
+  t.string :model_key                      # NORMALIZED name, e.g., "claude-haiku-4-5" not "claude-haiku-4-5-20251001"
 
   # Audit
   t.jsonb :content_summary                 # truncated for audit
@@ -229,13 +245,127 @@ AIMessage: { content: "Final answer", usage_metadata: {...} }  ← CHARGED
 
 ### Observations
 
-*To be filled in after exploration...*
+**Verified via `scripts/explore-usage-metadata.ts`** - tested with both OpenAI (gpt-5-mini) and Anthropic (claude-haiku-4-5).
+
+#### 1. Message Sequence Confirmed ✓
+
+The expected sequence was confirmed exactly:
+```
+HumanMessage (no usage) → AIMessage (usage ✓) → ToolMessage (no usage) → AIMessage (usage ✓) → ToolMessage (no usage) → AIMessage (usage ✓)
+```
+
+- **AIMessages with usage_metadata**: 3/3 (100%)
+- **ToolMessages with usage_metadata**: 0/2 (0%)
+
+#### 2. Usage Metadata Structure Varies by Provider
+
+**OpenAI (gpt-5-mini)**:
+```json
+{
+  "output_tokens": 88,
+  "input_tokens": 299,
+  "total_tokens": 387,
+  "input_token_details": {
+    "audio": 0,
+    "cache_read": 0
+  },
+  "output_token_details": {
+    "audio": 0,
+    "reasoning": 64
+  }
+}
+```
+
+**Anthropic (claude-haiku-4-5)**:
+```json
+{
+  "input_tokens": 832,
+  "output_tokens": 73,
+  "total_tokens": 905,
+  "input_token_details": {
+    "cache_creation": 0,
+    "cache_read": 0
+  }
+}
+```
+
+#### 3. Key Differences Between Providers
+
+| Field | OpenAI Location | Anthropic Location |
+|-------|-----------------|-------------------|
+| Model name | `response_metadata.model_name` | `response_metadata.model` |
+| Reasoning tokens | `output_token_details.reasoning` | N/A |
+| Cache creation | `cache_creation_input_tokens` | `input_token_details.cache_creation` |
+| Cache read | `cache_read_input_tokens` | `input_token_details.cache_read` |
+
+#### 4. Model Name Versioning
+
+Providers return versioned model names that don't match our pricing table:
+
+| Requested | Returned by Provider |
+|-----------|---------------------|
+| `gpt-5-mini` | `gpt-5-mini-2025-08-07` |
+| `claude-haiku-4-5` | `claude-haiku-4-5-20251001` |
+
+**Solution**: Match against known model names using longest-prefix matching:
+```typescript
+function normalizeModelName(modelName: string): string {
+  const knownModels = Object.keys(MODEL_PRICING);
+  const matches = knownModels.filter((known) => modelName.startsWith(known));
+  if (matches.length > 0) {
+    return matches.reduce((longest, current) =>
+      current.length > longest.length ? current : longest
+    );
+  }
+  return modelName;
+}
+```
+
+#### 5. Reasoning Tokens (OpenAI)
+
+OpenAI models report reasoning tokens separately in `output_token_details.reasoning`. These are **included in `output_tokens`**, not additional.
+
+**Cost calculation**:
+```typescript
+const reasoningTokens = usage.output_token_details?.reasoning || 0;
+const nonReasoningOutput = outputTokens - reasoningTokens;
+
+// Charge non-reasoning at output rate, reasoning at reasoning rate
+cost += (nonReasoningOutput / 1_000_000) * pricing.cost_out;
+cost += (reasoningTokens / 1_000_000) * (pricing.cost_reasoning ?? pricing.cost_out);
+```
+
+Langsmith confirmed: reasoning tokens charged at the same rate as output tokens ($2/1M for gpt-5-mini).
+
+#### 6. Cost Calculation Formula
 
 ```typescript
-// Placeholder for actual usage_metadata inspection
-// Run test agent and log:
-// - message.constructor.name
-// - message.usage_metadata
-// - message.response_metadata
-// - message.additional_kwargs
+cost = (input_tokens / 1M) × cost_in
+     + (output_tokens - reasoning_tokens) / 1M × cost_out
+     + (reasoning_tokens / 1M) × cost_reasoning
+     + (cache_creation_tokens / 1M) × cache_writes    // Anthropic only
+     + (cache_read_tokens / 1M) × cache_reads         // Anthropic only
 ```
+
+#### 7. Validated Against Langsmith
+
+Our cost calculations matched Langsmith exactly:
+
+**OpenAI gpt-5-mini (single message)**:
+- Input: 299 tokens × $0.25/1M = $0.000075
+- Output: 88 tokens × $2.00/1M = $0.000176
+- Reasoning: 64 tokens × $2.00/1M = $0.000128
+- **Total: $0.000251** ✓
+
+---
+
+## Implementation Checklist
+
+Based on exploration findings:
+
+- [ ] Store `model_key` as the **normalized** name (e.g., `claude-haiku-4-5`), not the versioned name
+- [ ] Handle both `response_metadata.model_name` (OpenAI) and `response_metadata.model` (Anthropic)
+- [ ] Handle cache tokens in both locations: `cache_*_input_tokens` and `input_token_details.cache_*`
+- [ ] Track reasoning tokens for OpenAI models (separate from regular output for cost breakdown)
+- [ ] Pricing table must include `cost_reasoning` for models that support it
+- [ ] Test script available at `scripts/explore-usage-metadata.ts` for future validation
