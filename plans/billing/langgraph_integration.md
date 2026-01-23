@@ -448,47 +448,117 @@ export async function persistUsageRecords(
 }
 ```
 
-### 6b. Rails Background Job (Credit Conversion)
+### 6b. Rails API Endpoint (Notify)
 
-Rails owns the credit conversion logic. A periodic job processes unprocessed records:
+Langgraph calls this endpoint after writing to Postgres. Rails enqueues a job to process the run.
 
 ```ruby
-# app/jobs/credits/process_usage_job.rb
+# app/controllers/api/v1/llm_usage_controller.rb
 
-module Credits
-  class ProcessUsageJob < ApplicationJob
-    queue_as :billing
+module Api
+  module V1
+    class LlmUsageController < ApiController
+      # POST /api/v1/llm_usage/notify
+      # Called by Langgraph after writing llm_usage_records to Postgres
+      #
+      # Parameters:
+      #   run_id: string (required) - UUID of the run to process
+      #
+      # Response:
+      #   202 Accepted - Job enqueued
+      #   422 Unprocessable Entity - Missing run_id
+      def notify
+        run_id = params.require(:run_id)
 
-    def perform
-      # Find unprocessed runs, grouped by run_id
-      unprocessed_runs = LlmUsageRecord
-        .where(processed_at: nil)
-        .group(:run_id, :chat_id, :graph_name)
-        .select(
-          :run_id,
-          :chat_id,
-          :graph_name,
-          "SUM(cost_usd) as total_cost_usd",
-          "COUNT(*) as llm_call_count",
-          "SUM(input_tokens) as total_input_tokens",
-          "SUM(output_tokens) as total_output_tokens"
-        )
+        # Enqueue job to process this specific run
+        Credits::ChargeRunJob.perform_later(run_id)
 
-      unprocessed_runs.find_each do |run_summary|
-        process_run(run_summary)
+        head :accepted
       end
     end
+  end
+end
+```
 
-    private
+```ruby
+# config/routes.rb
+namespace :api do
+  namespace :v1 do
+    post "llm_usage/notify", to: "llm_usage#notify"
+  end
+end
+```
 
-    def process_run(run_summary)
+### 6c. Langgraph: Call Notify API
+
+After writing to Postgres, notify Rails:
+
+```typescript
+// langgraph_app/app/core/billing/notifyRails.ts
+
+import { createRailsApiClient } from "@rails_api";
+
+export async function notifyRailsUsage(runId: string): Promise<void> {
+  try {
+    const client = await createRailsApiClient();
+    await client.POST("/api/v1/llm_usage/notify", {
+      body: { run_id: runId },
+    });
+  } catch (error) {
+    // Log but don't throw - backup polling will catch it
+    console.error(`Failed to notify Rails for run ${runId}:`, error);
+  }
+}
+```
+
+Update `executeWithTracking` to call this:
+
+```typescript
+// In executeWithTracking, after Postgres writes:
+await Promise.all([
+  persistUsageRecords(usage, options.chatId, runId, options.graphName),
+  persistTrace(...),
+]);
+
+// Notify Rails (fire-and-forget, backup polling exists)
+notifyRailsUsage(runId);
+
+return result;
+```
+
+### 6d. Rails Job: Charge Run (Primary)
+
+Processes a specific run_id. Idempotent - safe to call multiple times.
+
+```ruby
+# app/jobs/credits/charge_run_job.rb
+
+module Credits
+  class ChargeRunJob < ApplicationJob
+    queue_as :billing
+
+    def perform(run_id)
+      # Idempotent: skip if already processed
+      return if LlmUsageRecord.where(run_id: run_id).where.not(processed_at: nil).exists?
+
+      records = LlmUsageRecord.where(run_id: run_id, processed_at: nil)
+      return if records.empty?
+
+      # Aggregate usage for this run
+      run_summary = records.select(
+        "MIN(chat_id) as chat_id",
+        "MIN(graph_name) as graph_name",
+        "SUM(cost_usd) as total_cost_usd",
+        "COUNT(*) as llm_call_count",
+        "SUM(input_tokens) as total_input_tokens",
+        "SUM(output_tokens) as total_output_tokens"
+      ).first
+
       chat = Chat.find(run_summary.chat_id)
       account = chat.project.account
-
       credits = convert_cost_to_credits(run_summary.total_cost_usd)
 
       ApplicationRecord.transaction do
-        # Create credit transaction
         CreditTransaction.create!(
           account: account,
           transaction_type: "consume",
@@ -497,7 +567,7 @@ module Credits
           amount: -credits,
           balance_after: account.credit_balance - credits,
           reference_type: "llm_run",
-          reference_id: run_summary.run_id,
+          reference_id: run_id,
           metadata: {
             graph_name: run_summary.graph_name,
             llm_call_count: run_summary.llm_call_count,
@@ -506,15 +576,14 @@ module Credits
           }
         )
 
-        # Update account balance
         account.decrement!(:credit_balance, credits)
 
-        # Mark records as processed
-        LlmUsageRecord
-          .where(run_id: run_summary.run_id)
-          .update_all(processed_at: Time.current)
+        # Mark all records for this run as processed
+        records.update_all(processed_at: Time.current)
       end
     end
+
+    private
 
     def convert_cost_to_credits(cost_usd)
       # $0.01 = 1 credit (example conversion rate)
@@ -524,12 +593,72 @@ module Credits
 end
 ```
 
-Schedule with Zhong (schedule.rb)
+### 6e. Rails Job: Backup Polling (Catch Missed)
+
+Safety net for any records that didn't get processed (API call failed, job failed, etc.).
 
 ```ruby
-every(1.minute, "process llm usage") do
+# app/jobs/credits/find_unprocessed_runs_job.rb
+
+module Credits
+  class FindUnprocessedRunsJob < ApplicationJob
+    queue_as :billing
+
+    STALE_THRESHOLD = 2.minutes
+
+    def perform
+      # Find run_ids where records are unprocessed and older than threshold
+      # This catches any runs where the API notification failed
+      stale_run_ids = LlmUsageRecord
+        .where(processed_at: nil)
+        .where("created_at < ?", STALE_THRESHOLD.ago)
+        .distinct
+        .pluck(:run_id)
+
+      stale_run_ids.each do |run_id|
+        # Enqueue each run separately - idempotent, safe to re-enqueue
+        ChargeRunJob.perform_later(run_id)
+      end
+
+      Rails.logger.info("[FindUnprocessedRunsJob] Enqueued #{stale_run_ids.count} stale runs")
+    end
+  end
+end
+```
+
+Schedule with Zhong (schedule.rb):
+
+```ruby
+every(1.minute, "find unprocessed llm usage") do
   Credits::FindUnprocessedRunsJob.perform_async
 end
+```
+
+### Billing Flow Summary
+
+```
+Langgraph completes graph execution
+    │
+    ├── 1. Write llm_usage_records to Postgres (processed_at = NULL)
+    ├── 2. Write conversation_traces to Postgres
+    └── 3. POST /api/v1/llm_usage/notify { run_id }
+                │
+                ▼
+        Rails enqueues ChargeRunJob(run_id)
+                │
+                ▼
+        ChargeRunJob processes run:
+          - Aggregate cost_usd
+          - Create CreditTransaction
+          - Mark records processed_at = NOW
+
+[Backup: Every minute]
+        │
+        ▼
+FindUnprocessedRunsJob:
+  - Find records WHERE processed_at IS NULL AND created_at < 2 minutes ago
+  - Enqueue ChargeRunJob for each stale run_id
+  - Idempotent: ChargeRunJob skips already-processed runs
 ```
 
 ### 7. Model Name Normalization
@@ -683,21 +812,27 @@ graph.invoke(state, { callbacks: [usageTracker] })
     │  │  2. Write directly to Postgres (shared with Rails):             │
     │  │     - INSERT llm_usage_records (processed_at = NULL)            │
     │  │     - INSERT conversation_traces                                │
+    │  │  3. POST /api/v1/llm_usage/notify { run_id }                    │
     │  │                                                                 │
     │  └─────────────────────────────────────────────────────────────────┘
     ↓
 Result returned to Hono handler
-
-
-[Periodic Rails Job - runs every minute]
-    ↓
-Credits::ProcessUsageJob:
-    1. Find unprocessed records: WHERE processed_at IS NULL
-    2. Group by run_id, SUM(cost_usd)
-    3. For each run_id:
-       a. Convert cost_usd → credits
-       b. Create CreditTransaction (reference_id: run_id)
-       c. UPDATE llm_usage_records SET processed_at = NOW() WHERE run_id = ?
+    │
+    │  [Rails receives notify]
+    │      ↓
+    │  Enqueues Credits::ChargeRunJob(run_id)
+    │      ↓
+    │  Job processes run:
+    │    - Aggregate cost_usd for run_id
+    │    - Create CreditTransaction
+    │    - Mark records processed_at = NOW
+    │
+    │  [Backup: Every minute]
+    │      ↓
+    │  Credits::FindUnprocessedRunsJob:
+    │    - Find records WHERE processed_at IS NULL AND created_at < 2 min ago
+    │    - Enqueue ChargeRunJob for each stale run_id
+    │    - Idempotent: ChargeRunJob skips already-processed runs
 ```
 
 ## Testing
@@ -790,7 +925,9 @@ OpenAI models report reasoning tokens in `output_token_details.reasoning`. These
 | Parallel LLM calls          | Each fires independently, all captured to same context        |
 | Nested graphs/subgraphs     | AsyncLocalStorage context preserved through async boundaries  |
 | LLM called outside tracking | `getUsageContext()` returns undefined, callback safely no-ops |
-| Graph errors                | `handleChainError()` still persists usage                     |
+| Graph errors                | Still writes to Postgres, still notifies Rails                |
+| API notification fails      | Backup polling job catches stale records after 2 minutes      |
+| ChargeRunJob fails          | Records remain unprocessed, backup job re-enqueues            |
 
 ## Implementation Checklist
 
@@ -813,9 +950,13 @@ OpenAI models report reasoning tokens in `output_token_details.reasoning`. These
 - [ ] Create `core/billing/persistUsage.ts`
   - [ ] `persistUsageRecords()` - writes directly to Postgres
 
+- [ ] Create `core/billing/notifyRails.ts`
+  - [ ] `notifyRailsUsage(runId)` - POST to Rails API (fire-and-forget)
+
 - [ ] Create `core/billing/executeWithTracking.ts`
   - [ ] `executeWithTracking()` wrapper function
   - [ ] Writes both `llm_usage_records` and `conversation_traces`
+  - [ ] Calls `notifyRailsUsage(runId)` after writes
 
 - [ ] Modify `core/llm/llm.ts`
   - [ ] Attach `usageTracker` callback in `getLLM()`
@@ -828,18 +969,28 @@ OpenAI models report reasoning tokens in `output_token_details.reasoning`. These
 - [ ] Create migration for `llm_usage_records` table
   - [ ] Include `processed_at` column for job tracking
   - [ ] Index on `[:processed_at, :created_at]` for job queries
+  - [ ] Index on `run_id` for job lookups
 
 - [ ] Create `LlmUsageRecord` model
   - [ ] `belongs_to :chat`
   - [ ] Scopes: `unprocessed`, `for_run`
 
-- [ ] Create `Credits::ProcessUsageJob`
-  - [ ] Find unprocessed records grouped by `run_id`
-  - [ ] Convert `cost_usd` to credits
-  - [ ] Create `CreditTransaction` with `reference_id: run_id`
-  - [ ] Mark records as processed
+- [ ] Create API endpoint `POST /api/v1/llm_usage/notify`
+  - [ ] `Api::V1::LlmUsageController#notify`
+  - [ ] Receives `run_id`, enqueues `ChargeRunJob`
 
-- [ ] Schedule job (Sidekiq-Cron)
+- [ ] Create `Credits::ChargeRunJob`
+  - [ ] Process a specific `run_id`
+  - [ ] Idempotent (skip if already processed)
+  - [ ] Aggregate `cost_usd` for run
+  - [ ] Create `CreditTransaction` with `reference_id: run_id`
+  - [ ] Mark records `processed_at = NOW`
+
+- [ ] Create `Credits::FindUnprocessedRunsJob` (backup)
+  - [ ] Find records WHERE `processed_at IS NULL AND created_at < 2 minutes ago`
+  - [ ] Enqueue `ChargeRunJob` for each stale `run_id`
+
+- [ ] Schedule backup job (Zhong/Sidekiq-Cron)
   - [ ] Run every minute
 
 ### Testing
