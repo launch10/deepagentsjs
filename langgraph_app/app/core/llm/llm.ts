@@ -2,6 +2,7 @@ import type { BaseChatModel } from "@langchain/core/language_models/chat_models"
 import type { LLMSkill, LLMSpeed, LLMCost, LLMOptions } from "./types";
 import { LLMManager } from "./service";
 import { env } from "@core";
+import { usageTracker } from "../billing/usageTracker";
 
 // Lazy getters for defaults to avoid issues with env not being initialized at module load time
 const getSpeedDefault = (): LLMSpeed => env.LLM_SPEED === "fast" ? "fast" : "slow";
@@ -58,7 +59,14 @@ export async function getLLM(options: LLMOptions = {}): Promise<BaseChatModel> {
   const maxTier = options.maxTier;
 
   const effectiveMaxTier = getEffectiveMaxTier(maxTier);
-  return LLMManager.get(skill, speed, cost, usagePercent, effectiveMaxTier);
+  const model = await LLMManager.get(skill, speed, cost, usagePercent, effectiveMaxTier);
+
+  // Attach usage tracking callback to all models
+  // Callback safely no-ops when not inside runWithUsageTracking()
+  // withConfig returns Runnable but the model is still a BaseChatModel
+  return model.withConfig({
+    callbacks: [usageTracker],
+  }) as BaseChatModel;
 }
 
 /**
