@@ -1,6 +1,6 @@
 # == Schema Information
 #
-# Table name: conversation_traces
+# Table name: llm_conversation_traces
 #
 #  id            :bigint           not null, primary key
 #  graph_name    :string
@@ -15,11 +15,11 @@
 #
 # Indexes
 #
-#  conversation_traces_chat_id_created_at_idx    (chat_id,created_at)
-#  conversation_traces_run_id_created_at_idx     (run_id,created_at) UNIQUE
-#  conversation_traces_thread_id_created_at_idx  (thread_id,created_at)
+#  llm_conversation_traces_chat_id_created_at_idx    (chat_id,created_at)
+#  llm_conversation_traces_run_id_created_at_idx     (run_id,created_at) UNIQUE
+#  llm_conversation_traces_thread_id_created_at_idx  (thread_id,created_at)
 #
-class ConversationTrace < ApplicationRecord
+class LlmConversationTrace < ApplicationRecord
   belongs_to :chat, optional: true
 
   validates :thread_id, presence: true

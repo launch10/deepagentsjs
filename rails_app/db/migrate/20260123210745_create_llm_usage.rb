@@ -4,6 +4,7 @@ class CreateLlmUsage < ActiveRecord::Migration[8.0]
   def change
     create_table :llm_usage do |t|
       t.bigint :chat_id, null: false
+      t.string :thread_id, null: false
       t.string :run_id, null: false
       t.string :message_id
       t.string :langchain_run_id
@@ -25,6 +26,7 @@ class CreateLlmUsage < ActiveRecord::Migration[8.0]
 
     add_index :llm_usage, :run_id, algorithm: :concurrently
     add_index :llm_usage, [:chat_id, :run_id], algorithm: :concurrently
+    add_index :llm_usage, [:thread_id, :created_at], algorithm: :concurrently
     add_index :llm_usage, [:processed_at, :created_at], algorithm: :concurrently
   end
 end

@@ -21,12 +21,14 @@
 #  message_id              :string
 #  parent_langchain_run_id :string
 #  run_id                  :string           not null
+#  thread_id               :string           not null
 #
 # Indexes
 #
 #  index_llm_usage_on_chat_id_and_run_id           (chat_id,run_id)
 #  index_llm_usage_on_processed_at_and_created_at  (processed_at,created_at)
 #  index_llm_usage_on_run_id                       (run_id)
+#  index_llm_usage_on_thread_id_and_created_at     (thread_id,created_at)
 #
 require "rails_helper"
 
@@ -36,6 +38,7 @@ RSpec.describe LlmUsage, type: :model do
   end
 
   describe "validations" do
+    it { is_expected.to validate_presence_of(:thread_id) }
     it { is_expected.to validate_presence_of(:run_id) }
     it { is_expected.to validate_presence_of(:model_raw) }
   end
@@ -72,6 +75,15 @@ RSpec.describe LlmUsage, type: :model do
 
       it "filters by run_id" do
         expect(described_class.for_run("run-123")).to contain_exactly(usage1)
+      end
+    end
+
+    describe ".for_thread" do
+      let!(:usage1) { create(:llm_usage, thread_id: "thread-123") }
+      let!(:usage2) { create(:llm_usage, thread_id: "thread-456") }
+
+      it "filters by thread_id" do
+        expect(described_class.for_thread("thread-123")).to contain_exactly(usage1)
       end
     end
   end

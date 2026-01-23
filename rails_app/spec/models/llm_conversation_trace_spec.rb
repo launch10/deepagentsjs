@@ -1,6 +1,6 @@
 # == Schema Information
 #
-# Table name: conversation_traces
+# Table name: llm_conversation_traces
 #
 #  id            :bigint           not null, primary key
 #  graph_name    :string
@@ -15,13 +15,13 @@
 #
 # Indexes
 #
-#  conversation_traces_chat_id_created_at_idx    (chat_id,created_at)
-#  conversation_traces_run_id_created_at_idx     (run_id,created_at) UNIQUE
-#  conversation_traces_thread_id_created_at_idx  (thread_id,created_at)
+#  llm_conversation_traces_chat_id_created_at_idx    (chat_id,created_at)
+#  llm_conversation_traces_run_id_created_at_idx     (run_id,created_at) UNIQUE
+#  llm_conversation_traces_thread_id_created_at_idx  (thread_id,created_at)
 #
 require "rails_helper"
 
-RSpec.describe ConversationTrace, type: :model do
+RSpec.describe LlmConversationTrace, type: :model do
   describe "associations" do
     it { is_expected.to belong_to(:chat).optional }
   end
@@ -34,8 +34,8 @@ RSpec.describe ConversationTrace, type: :model do
 
   describe "scopes" do
     describe ".for_thread" do
-      let!(:trace1) { create(:conversation_trace, thread_id: "thread-123") }
-      let!(:trace2) { create(:conversation_trace, thread_id: "thread-456") }
+      let!(:trace1) { create(:llm_conversation_trace, thread_id: "thread-123") }
+      let!(:trace2) { create(:llm_conversation_trace, thread_id: "thread-456") }
 
       it "filters by thread_id" do
         expect(described_class.for_thread("thread-123")).to contain_exactly(trace1)
@@ -44,8 +44,8 @@ RSpec.describe ConversationTrace, type: :model do
 
     describe ".for_chat" do
       let(:chat) { create(:chat) }
-      let!(:mine) { create(:conversation_trace, chat: chat) }
-      let!(:other) { create(:conversation_trace) }
+      let!(:mine) { create(:llm_conversation_trace, chat: chat) }
+      let!(:other) { create(:llm_conversation_trace) }
 
       it "filters by chat" do
         expect(described_class.for_chat(chat)).to contain_exactly(mine)
@@ -53,8 +53,8 @@ RSpec.describe ConversationTrace, type: :model do
     end
 
     describe ".recent" do
-      let!(:old) { create(:conversation_trace, created_at: 2.days.ago) }
-      let!(:new) { create(:conversation_trace, created_at: 1.day.ago) }
+      let!(:old) { create(:llm_conversation_trace, created_at: 2.days.ago) }
+      let!(:new) { create(:llm_conversation_trace, created_at: 1.day.ago) }
 
       it "orders by created_at descending" do
         expect(described_class.recent.to_a).to eq([new, old])
@@ -64,24 +64,24 @@ RSpec.describe ConversationTrace, type: :model do
 
   describe "#llm_call_count" do
     it "returns count of llm_calls when present" do
-      trace = build(:conversation_trace, llm_calls: [{ model: "gpt-4" }, { model: "claude" }])
+      trace = build(:llm_conversation_trace, llm_calls: [{ model: "gpt-4" }, { model: "claude" }])
       expect(trace.llm_call_count).to eq(2)
     end
 
     it "returns 0 when llm_calls is nil" do
-      trace = build(:conversation_trace, llm_calls: nil)
+      trace = build(:llm_conversation_trace, llm_calls: nil)
       expect(trace.llm_call_count).to eq(0)
     end
   end
 
   describe "#total_cost_cents" do
     it "returns cost from usage_summary when present" do
-      trace = build(:conversation_trace, usage_summary: { "total_cost_microcents" => 150_000 })
+      trace = build(:llm_conversation_trace, usage_summary: { "total_cost_microcents" => 150_000 })
       expect(trace.total_cost_cents).to eq(15.0)
     end
 
     it "returns 0 when usage_summary is nil" do
-      trace = build(:conversation_trace, usage_summary: nil)
+      trace = build(:llm_conversation_trace, usage_summary: nil)
       expect(trace.total_cost_cents).to eq(0)
     end
   end

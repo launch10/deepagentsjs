@@ -21,16 +21,19 @@
 #  message_id              :string
 #  parent_langchain_run_id :string
 #  run_id                  :string           not null
+#  thread_id               :string           not null
 #
 # Indexes
 #
 #  index_llm_usage_on_chat_id_and_run_id           (chat_id,run_id)
 #  index_llm_usage_on_processed_at_and_created_at  (processed_at,created_at)
 #  index_llm_usage_on_run_id                       (run_id)
+#  index_llm_usage_on_thread_id_and_created_at     (thread_id,created_at)
 #
 FactoryBot.define do
   factory :llm_usage do
     association :chat
+    thread_id { SecureRandom.uuid }
     run_id { SecureRandom.uuid }
     message_id { "msg_#{SecureRandom.hex(12)}" }
     langchain_run_id { SecureRandom.uuid }

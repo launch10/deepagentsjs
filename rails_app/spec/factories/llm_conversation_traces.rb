@@ -1,6 +1,6 @@
 # == Schema Information
 #
-# Table name: conversation_traces
+# Table name: llm_conversation_traces
 #
 #  id            :bigint           not null, primary key
 #  graph_name    :string
@@ -15,12 +15,12 @@
 #
 # Indexes
 #
-#  conversation_traces_chat_id_created_at_idx    (chat_id,created_at)
-#  conversation_traces_run_id_created_at_idx     (run_id,created_at) UNIQUE
-#  conversation_traces_thread_id_created_at_idx  (thread_id,created_at)
+#  llm_conversation_traces_chat_id_created_at_idx    (chat_id,created_at)
+#  llm_conversation_traces_run_id_created_at_idx     (run_id,created_at) UNIQUE
+#  llm_conversation_traces_thread_id_created_at_idx  (thread_id,created_at)
 #
 FactoryBot.define do
-  factory :conversation_trace do
+  factory :llm_conversation_trace do
     association :chat
     thread_id { SecureRandom.uuid }
     run_id { SecureRandom.uuid }
