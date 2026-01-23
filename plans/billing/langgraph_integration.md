@@ -26,6 +26,7 @@ This approach is testable via the existing `GraphTestBuilder` infrastructure sin
 ### Streaming Support
 
 The callback system works identically for `invoke()`, `stream()`, and `streamEvents()`:
+
 - Callbacks attached at graph level propagate to all nested LLM calls
 - `handleChainEnd` fires once after the stream is fully consumed
 - Use `!parentRunId` check to ensure we only persist at root level (not nested chains)
@@ -86,10 +87,10 @@ The callback system works identically for `invoke()`, `stream()`, and `streamEve
 
 ### Callback Layer
 
-| Callback | Level | Event | Purpose |
-|----------|-------|-------|---------|
-| `usageTracker` | LLM | `handleChatModelStart` | Capture system prompt |
-| `usageTracker` | LLM | `handleLLMEnd` | Accumulate usage records and messages |
+| Callback       | Level | Event                  | Purpose                               |
+| -------------- | ----- | ---------------------- | ------------------------------------- |
+| `usageTracker` | LLM   | `handleChatModelStart` | Capture system prompt                 |
+| `usageTracker` | LLM   | `handleLLMEnd`         | Accumulate usage records and messages |
 
 ## Implementation
 
@@ -133,7 +134,7 @@ export interface UsageContext {
   // Message capture for traces (see conversation_traces.md)
   // Pushed via handleLLMEnd - avoids fragile before/after state diffs
   messagesProduced: BaseMessage[];
-  userInput?: BaseMessage;  // Set at run start, not from callback
+  userInput?: BaseMessage; // Set at run start, not from callback
 }
 
 const usageStorage = new AsyncLocalStorage<UsageContext>();
@@ -181,7 +182,7 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
    */
   async handleChatModelStart(
     llm: Serialized,
-    messages: BaseMessage[][],  // Note: 2D array - messages[0] is the conversation
+    messages: BaseMessage[][], // Note: 2D array - messages[0] is the conversation
     runId: string,
     parentRunId?: string,
     extraParams?: Record<string, unknown>,
@@ -258,13 +259,9 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
     const outputTokens = usage.output_tokens || 0;
     const reasoningTokens = usage.output_token_details?.reasoning || 0;
     const cacheCreationTokens =
-      usage.cache_creation_input_tokens ||
-      usage.input_token_details?.cache_creation ||
-      0;
+      usage.cache_creation_input_tokens || usage.input_token_details?.cache_creation || 0;
     const cacheReadTokens =
-      usage.cache_read_input_tokens ||
-      usage.input_token_details?.cache_read ||
-      0;
+      usage.cache_read_input_tokens || usage.input_token_details?.cache_read || 0;
 
     const costUsd = calculateCost({
       model: normalizedModel,
@@ -303,6 +300,7 @@ With the simplified architecture, we **don't need a separate billing callback**.
 The `usageTracker` callback accumulates records to AsyncLocalStorage, and `executeWithTracking()` reads them after the graph finishes and writes directly to Postgres.
 
 This is simpler and more explicit - no magic callbacks, just:
+
 1. Run graph with usage tracking
 2. Write results to database
 3. Return to caller
@@ -373,7 +371,13 @@ export async function executeWithTracking<TState extends { messages?: BaseMessag
   await Promise.all([
     persistUsageRecords(usage, options.chatId, runId, options.graphName),
     persistTrace(
-      { chatId: options.chatId, threadId: options.threadId, runId, graphName: options.graphName, systemPrompt },
+      {
+        chatId: options.chatId,
+        threadId: options.threadId,
+        runId,
+        graphName: options.graphName,
+        systemPrompt,
+      },
       [options.userInput, ...messagesProduced].filter(Boolean) as BaseMessage[],
       aggregateUsage(usage)
     ),
@@ -396,7 +400,7 @@ const result = await executeWithTracking(
     chatId: chat.id,
     threadId,
     graphName: "brainstorm",
-    userInput: state.messages?.at(-1),  // The user's message
+    userInput: state.messages?.at(-1), // The user's message
   }
 );
 
@@ -520,15 +524,12 @@ module Credits
 end
 ```
 
-Schedule with Sidekiq-Cron or similar:
+Schedule with Zhong (schedule.rb)
 
 ```ruby
-# config/initializers/sidekiq_cron.rb
-Sidekiq::Cron::Job.create(
-  name: "Process LLM usage - every minute",
-  cron: "* * * * *",
-  class: "Credits::ProcessUsageJob"
-)
+every(1.minute, "process llm usage") do
+  Credits::FindUnprocessedRunsJob.perform_async
+end
 ```
 
 ### 7. Model Name Normalization
@@ -701,36 +702,42 @@ Credits::ProcessUsageJob:
 
 ## Testing
 
-Add a `withBilling()` method to `GraphTestBuilder`:
+Add a `withTracking()` method to `GraphTestBuilder`:
 
 ```typescript
 // tests/support/graph/graphTester.ts
 
 class GraphTestBuilder<TGraphState extends CoreGraphState> {
-  private billingEnabled = false;
+  private trackingEnabled = false;
+  private trackingResult?: {
+    usage: UsageRecord[];
+    messagesProduced: BaseMessage[];
+    systemPrompt?: string;
+  };
 
-  withBilling(): GraphTestBuilder<TGraphState> {
-    this.billingEnabled = true;
+  withTracking(): GraphTestBuilder<TGraphState> {
+    this.trackingEnabled = true;
     return this;
   }
 
   async execute(): Promise<NodeTestResult<TGraphState>> {
     // ... existing setup ...
 
-    if (this.billingEnabled) {
-      const { result } = await runWithUsageTracking(
+    if (this.trackingEnabled) {
+      const { result, usage, messagesProduced, systemPrompt } = await runWithUsageTracking(
         { chatId: this.initialState.chatId, graphName: this.graph?.name },
-        () =>
-          testGraph.invoke(initialState, {
-            ...invokeConfig,
-            callbacks: [usageTracker, billingCallback],
-          })
+        () => testGraph.invoke(initialState, invokeConfig)
       );
+      this.trackingResult = { usage, messagesProduced, systemPrompt };
       // ... handle result ...
     } else {
       const result = await testGraph.invoke(initialState, invokeConfig);
       // ...
     }
+  }
+
+  getTrackingResult() {
+    return this.trackingResult;
   }
 }
 ```
@@ -739,17 +746,22 @@ Example test:
 
 ```typescript
 it("tracks usage for brainstorm agent", async () => {
-  const result = await testGraph()
+  const builder = testGraph()
     .withGraph(brainstormGraph)
     .withPrompt("Help me brainstorm ideas for a dog walking app")
-    .withBilling()
-    .execute();
+    .withTracking();
 
-  const context = getUsageContext();
-  expect(context?.records.length).toBeGreaterThan(0);
+  await builder.execute();
 
-  const totalCost = context?.records.reduce((sum, r) => sum + r.costUsd, 0);
+  const tracking = builder.getTrackingResult();
+  expect(tracking?.usage.length).toBeGreaterThan(0);
+
+  const totalCost = tracking?.usage.reduce((sum, r) => sum + r.costUsd, 0);
   expect(totalCost).toBeGreaterThan(0);
+
+  // Also verify messages and system prompt captured
+  expect(tracking?.messagesProduced.length).toBeGreaterThan(0);
+  expect(tracking?.systemPrompt).toBeDefined();
 });
 ```
 
@@ -757,12 +769,12 @@ it("tracks usage for brainstorm agent", async () => {
 
 ### Usage Metadata Location
 
-| Field | OpenAI | Anthropic |
-|-------|--------|-----------|
-| Model name | `response_metadata.model_name` | `response_metadata.model` |
-| Reasoning tokens | `output_token_details.reasoning` | N/A |
-| Cache creation | `cache_creation_input_tokens` | `input_token_details.cache_creation` |
-| Cache read | `cache_read_input_tokens` | `input_token_details.cache_read` |
+| Field            | OpenAI                           | Anthropic                            |
+| ---------------- | -------------------------------- | ------------------------------------ |
+| Model name       | `response_metadata.model_name`   | `response_metadata.model`            |
+| Reasoning tokens | `output_token_details.reasoning` | N/A                                  |
+| Cache creation   | `cache_creation_input_tokens`    | `input_token_details.cache_creation` |
+| Cache read       | `cache_read_input_tokens`        | `input_token_details.cache_read`     |
 
 ### Reasoning Tokens (OpenAI)
 
@@ -770,15 +782,15 @@ OpenAI models report reasoning tokens in `output_token_details.reasoning`. These
 
 ## Edge Cases
 
-| Scenario | How It's Handled |
-|----------|------------------|
-| Agent multi-turn | `handleLLMEnd` fires for each LLM call in the loop |
-| Tool calls LLM internally | Callback attached via `getLLM()`, fires normally |
-| Middleware calls LLM | Same - callback attached, captured |
-| Parallel LLM calls | Each fires independently, all captured to same context |
-| Nested graphs/subgraphs | AsyncLocalStorage context preserved through async boundaries |
+| Scenario                    | How It's Handled                                              |
+| --------------------------- | ------------------------------------------------------------- |
+| Agent multi-turn            | `handleLLMEnd` fires for each LLM call in the loop            |
+| Tool calls LLM internally   | Callback attached via `getLLM()`, fires normally              |
+| Middleware calls LLM        | Same - callback attached, captured                            |
+| Parallel LLM calls          | Each fires independently, all captured to same context        |
+| Nested graphs/subgraphs     | AsyncLocalStorage context preserved through async boundaries  |
 | LLM called outside tracking | `getUsageContext()` returns undefined, callback safely no-ops |
-| Graph errors | `handleChainError()` still persists usage |
+| Graph errors                | `handleChainError()` still persists usage                     |
 
 ## Implementation Checklist
 
