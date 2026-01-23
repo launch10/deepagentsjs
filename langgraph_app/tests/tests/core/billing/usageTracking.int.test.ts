@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll } from "vitest";
 import { testGraph } from "@support";
+import { DatabaseSnapshotter } from "@services";
 import {
   usageTrackingTestGraph,
   type UsageTrackingTestState,
@@ -18,6 +19,11 @@ import { MemorySaver } from "@langchain/langgraph";
 // - middleware: Node with middleware that calls LLM
 
 describe("Usage Tracking Integration", () => {
+  // Restore database snapshot with valid LLM configurations
+  beforeAll(async () => {
+    await DatabaseSnapshotter.restoreSnapshot("basic_account");
+  }, 30000);
+
   // Compile the graph once for all integration tests
   const compiledGraph = usageTrackingTestGraph.compile({
     checkpointer: new MemorySaver(),
@@ -250,6 +256,118 @@ describe("Usage Tracking Integration", () => {
       // Tracked totals must match AIMessage totals exactly
       expect(totalTrackedInput).toBe(totalMessageInput);
       expect(totalTrackedOutput).toBe(totalMessageOutput);
+    });
+  });
+
+  describe("multi-turn state resumption (no double-counting)", () => {
+    it("run2 resuming from run1 state: each run tracks only its own LLM calls", async () => {
+      // Run 1: Initial conversation turn
+      const run1 = await testGraph<UsageTrackingTestState>()
+        .withGraph(compiledGraph)
+        .withPrompt("Say hello")
+        .withState({ scenario: "direct" })
+        .withTracking()
+        .execute();
+
+      expect(run1.error).toBeUndefined();
+      const run1RecordCount = run1.tracking!.usage.length;
+      const run1MessageCount = run1.tracking!.messagesProduced.length;
+      expect(run1RecordCount).toBe(run1MessageCount);
+
+      // Run 2: Resume from run1's state with a new message
+      const run2 = await testGraph<UsageTrackingTestState>()
+        .withGraph(compiledGraph)
+        .withState({
+          ...run1.state,
+          scenario: "direct",
+        })
+        .withPrompt("Now say goodbye")
+        .withTracking()
+        .execute();
+
+      expect(run2.error).toBeUndefined();
+      const run2RecordCount = run2.tracking!.usage.length;
+      const run2MessageCount = run2.tracking!.messagesProduced.length;
+
+      // CRITICAL: Run 2 should only track its own LLM calls, not run1's
+      expect(run2RecordCount).toBe(run2MessageCount);
+
+      // Different runIds
+      expect(run1.tracking!.usage[0]!.runId).not.toBe(run2.tracking!.usage[0]!.runId);
+
+      // Run 2's usage should NOT include run1's records
+      const run1MessageIds = new Set(run1.tracking!.usage.map((r) => r.messageId));
+      const run2MessageIds = new Set(run2.tracking!.usage.map((r) => r.messageId));
+
+      // No overlap in messageIds - proves no double-counting
+      for (const id of run2MessageIds) {
+        expect(run1MessageIds.has(id)).toBe(false);
+      }
+    });
+
+    it("three sequential turns: each run isolated with distinct runIds", async () => {
+      // Turn 1
+      const turn1 = await testGraph<UsageTrackingTestState>()
+        .withGraph(compiledGraph)
+        .withPrompt("Count to 1")
+        .withState({ scenario: "direct" })
+        .withTracking()
+        .execute();
+
+      expect(turn1.error).toBeUndefined();
+
+      // Turn 2: resume from turn1
+      const turn2 = await testGraph<UsageTrackingTestState>()
+        .withGraph(compiledGraph)
+        .withState({ ...turn1.state, scenario: "direct" })
+        .withPrompt("Count to 2")
+        .withTracking()
+        .execute();
+
+      expect(turn2.error).toBeUndefined();
+
+      // Turn 3: resume from turn2
+      const turn3 = await testGraph<UsageTrackingTestState>()
+        .withGraph(compiledGraph)
+        .withState({ ...turn2.state, scenario: "direct" })
+        .withPrompt("Count to 3")
+        .withTracking()
+        .execute();
+
+      expect(turn3.error).toBeUndefined();
+
+      // Each turn has distinct runId
+      const runIds = [
+        turn1.tracking!.usage[0]!.runId,
+        turn2.tracking!.usage[0]!.runId,
+        turn3.tracking!.usage[0]!.runId,
+      ];
+      expect(new Set(runIds).size).toBe(3);
+
+      // Each turn's usage count matches its messages
+      expect(turn1.tracking!.usage.length).toBe(turn1.tracking!.messagesProduced.length);
+      expect(turn2.tracking!.usage.length).toBe(turn2.tracking!.messagesProduced.length);
+      expect(turn3.tracking!.usage.length).toBe(turn3.tracking!.messagesProduced.length);
+
+      // No messageId overlap across turns
+      const allMessageIds = [
+        ...turn1.tracking!.usage.map((r) => r.messageId),
+        ...turn2.tracking!.usage.map((r) => r.messageId),
+        ...turn3.tracking!.usage.map((r) => r.messageId),
+      ];
+      expect(new Set(allMessageIds).size).toBe(allMessageIds.length);
+
+      // Each turn's usage matches its AIMessage metadata exactly
+      for (const turn of [turn1, turn2, turn3]) {
+        for (const record of turn.tracking!.usage) {
+          const message = turn.tracking!.messagesProduced.find((m) => m.id === record.messageId);
+          expect(message).toBeDefined();
+
+          const messageUsage = (message as any).usage_metadata;
+          expect(record.inputTokens).toBe(messageUsage.input_tokens);
+          expect(record.outputTokens).toBe(messageUsage.output_tokens);
+        }
+      }
     });
   });
 });
