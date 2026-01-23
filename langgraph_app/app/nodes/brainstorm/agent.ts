@@ -55,7 +55,8 @@ export const brainstormAgent = NodeMiddleware.use(
       throw new Error("websiteId is required");
     }
 
-    const llm = (await getLLM({maxTier: 3})).withConfig({ tags: ["notify"] });
+    // maxTier controlled by LLM_MAX_TIER env var (default: tier 3/Haiku, tests use tier 2/Sonnet)
+    const llm = (await getLLM()).withConfig({ tags: ["notify"] });
     const tools = [saveAnswersTool, finishedTool, queryUploadsTool];
 
     const agent = await createAgent({

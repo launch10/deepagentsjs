@@ -1,7 +1,9 @@
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import { RunnableBinding, type RunnableConfig } from "@langchain/core/runnables";
 import type { LLMSkill, LLMSpeed, LLMCost, LLMOptions } from "./types";
 import { LLMManager } from "./service";
 import { env } from "@core";
+import { usageTracker } from "../billing/usageTracker";
 
 // Lazy getters for defaults to avoid issues with env not being initialized at module load time
 const getSpeedDefault = (): LLMSpeed => env.LLM_SPEED === "fast" ? "fast" : "slow";
@@ -58,7 +60,27 @@ export async function getLLM(options: LLMOptions = {}): Promise<BaseChatModel> {
   const maxTier = options.maxTier;
 
   const effectiveMaxTier = getEffectiveMaxTier(maxTier);
-  return LLMManager.get(skill, speed, cost, usagePercent, effectiveMaxTier);
+  const model = await LLMManager.get(skill, speed, cost, usagePercent, effectiveMaxTier);
+
+  // Attach usage tracking callback using configFactories.
+  // This ensures the callback is always included at invoke time, even when
+  // LangGraph or createAgent pass their own config with an empty callbacks array.
+  // Using configFactories (vs withConfig) survives through bindTools and other
+  // RunnableBinding transformations that would otherwise replace callbacks.
+  return new RunnableBinding({
+    bound: model,
+    config: {},
+    configFactories: [
+      (config: RunnableConfig) => {
+        // Ensure callbacks is always an array before spreading
+        const existingCallbacks = Array.isArray(config?.callbacks) ? config.callbacks : [];
+        return {
+          ...config,
+          callbacks: [...existingCallbacks, usageTracker],
+        };
+      },
+    ],
+  }) as unknown as BaseChatModel;
 }
 
 /**
