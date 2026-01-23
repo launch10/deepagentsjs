@@ -20,8 +20,9 @@ This document describes how to persist full conversation traces for learning and
 | **LLM sees full context across runs** | Context messages stay in state.messages |
 | **Users see clean conversation** | SDK filters context messages before display |
 | **Full analytics/replay capability** | Traces include everything: messages, context, system prompt |
-| **No data loss from summarization** | Per-run traces preserve original messages |
+| **Summarization-safe** | Messages captured via `handleLLMEnd`, not state diffs |
 | **System prompt versioning** | Captured at callback level, stored in traces |
+| **Shared infrastructure** | Same callbacks power both billing and traces |
 
 ---
 
@@ -198,22 +199,31 @@ Dynamic system prompts are injected via middleware at LLM call time, not stored 
 
 ### Callback Enhancement
 
+Use `handleChatModelStart` (not `handleLLMStart`) for chat models. See `langgraph_integration.md` for the authoritative implementation.
+
 ```typescript
 // In UsageTrackingCallback
 
-async handleLLMStart(
+/**
+ * NOTE: Use handleChatModelStart (not handleLLMStart) for chat models.
+ * - handleLLMStart: Traditional LLMs (string completion), receives prompts: string[]
+ * - handleChatModelStart: Chat models (Anthropic, OpenAI chat), receives messages: BaseMessage[][]
+ */
+async handleChatModelStart(
   llm: Serialized,
-  messages: BaseMessage[],
+  messages: BaseMessage[][],  // Note: 2D array - messages[0] is the conversation
   runId: string,
   parentRunId?: string,
-  extraParams?: Record<string, unknown>
+  extraParams?: Record<string, unknown>,
+  tags?: string[],
+  metadata?: Record<string, unknown>
 ): Promise<void> {
   const context = getUsageContext();
   if (!context) return;
 
   // Capture system prompt from the first LLM call in this run
-  if (!context.systemPromptCaptured) {
-    const systemMessage = messages.find(m => m._getType() === "system");
+  if (!context.systemPromptCaptured && messages[0]) {
+    const systemMessage = messages[0].find(m => m._getType() === "system");
     if (systemMessage) {
       context.systemPrompt = typeof systemMessage.content === "string"
         ? systemMessage.content
@@ -227,14 +237,16 @@ async handleLLMStart(
   context.llmCalls.push({
     runId,
     parentRunId,
-    inputMessageCount: messages.length,
-    hasSystemPrompt: messages.some(m => m._getType() === "system"),
+    inputMessageCount: messages[0]?.length ?? 0,
+    hasSystemPrompt: messages[0]?.some(m => m._getType() === "system") ?? false,
     timestamp: new Date(),
   });
 }
 ```
 
 ### Updated UsageContext
+
+Shared with billing (see `langgraph_integration.md`). Messages are pushed via `handleLLMEnd`, avoiding fragile before/after state diffs.
 
 ```typescript
 export interface UsageContext {
@@ -246,6 +258,11 @@ export interface UsageContext {
   // System prompt capture
   systemPrompt?: string;
   systemPromptCaptured?: boolean;
+
+  // Message capture for traces - pushed via handleLLMEnd callback
+  // This is summarization-safe: captures LLM outputs, not state deltas
+  messagesProduced: BaseMessage[];
+  userInput?: BaseMessage;  // Set at run start, not from callback
 
   // LLM call tracking (optional, for detailed traces)
   llmCalls?: {
@@ -287,16 +304,22 @@ end
 
 ## Architecture
 
+Messages and usage are captured via the same LLM callbacks (see `langgraph_integration.md`), then persisted in parallel:
+
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         Graph Execution                              │
 │                                                                      │
-│  runWithUsageTracking()                                             │
+│  runWithUsageTracking({ userInput })                                │
 │      │                                                               │
-│      ├── Track new messages (before/after count)                    │
-│      ├── Track usage via LLM callback                               │
+│      │  ┌─── handleLLMEnd callback ───────────────────────────────┐ │
+│      │  │                                                          │ │
+│      │  │  context.records.push(usageRecord)      ← For billing   │ │
+│      │  │  context.messagesProduced.push(message) ← For traces    │ │
+│      │  │                                                          │ │
+│      │  └──────────────────────────────────────────────────────────┘ │
 │      │                                                               │
-│      └── On completion:                                              │
+│      └── On completion (returns usage, messagesProduced, systemPrompt):
 │              │                                                       │
 │              ├── persistUsageRecords() ──→ llm_usage_records        │
 │              ├── persistTrace() ─────────→ conversation_traces      │
@@ -324,7 +347,16 @@ end
 
 ### Per-Run Traces (Not Per-Conversation)
 
-Each run saves **only the new messages from that run**, not the full conversation history:
+Each run saves **only the messages from that run**:
+- `userInput`: The user's message (known at run start)
+- `messagesProduced`: LLM outputs captured via `handleLLMEnd` callback
+
+**ToolMessages**: When an agent calls tools, the flow is:
+1. LLM returns AIMessage with tool_calls → captured via `handleLLMEnd`
+2. Tool executes → ToolMessage created
+3. LLM called again with ToolMessage → captured via `handleLLMEnd`
+
+ToolMessages may or may not appear in `handleLLMEnd` directly (TBD during implementation). If not, they can be reconstructed from the tool_call + tool output, or captured via `handleToolEnd`.
 
 ```
 Run 1: User asks question
@@ -345,6 +377,8 @@ ORDER BY created_at
 ```
 
 **No duplication.** Each message stored exactly once.
+
+**Summarization-safe.** We capture via callbacks, not state diffs. Even if summarization mutates `state.messages`, we've already captured the LLM outputs directly.
 
 ### Summarization Safety
 
@@ -555,6 +589,8 @@ function serializeMessages(messages: BaseMessage[]): object[] {
 
 ### Langgraph: Integration with Run Wrapper
 
+Messages are captured via `handleLLMEnd` callback (see `langgraph_integration.md`), not before/after state diffs. This is **summarization-safe** - we capture exactly what the LLM produced, regardless of state mutations.
+
 ```typescript
 // langgraph_app/app/core/billing/executeWithTracking.ts
 
@@ -566,6 +602,7 @@ interface ExecuteOptions {
   chatId: number;
   threadId: string;
   graphName: string;
+  userInput?: BaseMessage;  // The user's input message (known upfront)
   onComplete?: (runId: string) => Promise<void>;
 }
 
@@ -576,19 +613,24 @@ export async function executeWithTracking<TState extends { messages?: BaseMessag
   options: ExecuteOptions
 ): Promise<TState> {
   const runId = crypto.randomUUID();
-  const beforeCount = state.messages?.length ?? 0;
 
-  const { result, usage } = await runWithUsageTracking(
+  // Messages are captured via handleLLMEnd callback - no before/after diffing needed
+  // This is summarization-safe: we capture LLM outputs, not state deltas
+  const { result, usage, systemPrompt, messagesProduced } = await runWithUsageTracking(
     {
       chatId: options.chatId,
       threadId: options.threadId,
       graphName: options.graphName,
+      userInput: options.userInput,
     },
     () => graph.invoke(state, config)
   );
 
-  // Extract new messages
-  const newMessages = result.messages?.slice(beforeCount) ?? [];
+  // Combine user input (known upfront) with LLM-produced messages
+  const traceMessages = [
+    options.userInput,
+    ...messagesProduced,
+  ].filter(Boolean) as BaseMessage[];
 
   // Aggregate usage for summary
   const usageSummary = {
@@ -607,9 +649,9 @@ export async function executeWithTracking<TState extends { messages?: BaseMessag
         threadId: options.threadId,
         runId,
         graphName: options.graphName,
-        systemPrompt: usageContext?.systemPrompt,  // Captured from callback
+        systemPrompt,  // Captured from handleLLMStart callback
       },
-      newMessages,
+      traceMessages,
       usageSummary
     ),
   ]);

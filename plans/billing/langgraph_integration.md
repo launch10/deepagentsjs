@@ -1,5 +1,9 @@
 # LangGraph Credit Integration
 
+## Related Plans
+
+- **[conversation_traces.md](./conversation_traces.md)** - Full trace persistence strategy for learning/analytics. The usage tracking callbacks here also capture system prompts for trace completeness.
+
 ## Problem
 
 LangGraph agents, tools, and middlewares all call LLMs internally. A node-level approach to billing misses these internal calls because:
@@ -14,10 +18,17 @@ We need to capture **every** LLM call for accurate billing, regardless of where 
 
 Use LangChain's callback system at two levels:
 
-1. **LLM-level callback** (`usageTracker`): Attached to every model via `getLLM()`, fires `handleLLMEnd` for each LLM call, accumulates usage to AsyncLocalStorage
-2. **Graph-level callback** (`billingCallback`): Passed to `graph.invoke()`, fires `handleChainEnd` when graph completes, persists all accumulated usage to Rails
+1. **LLM-level callback** (`usageTracker`): Attached to every model via `getLLM()`, fires `handleLLMEnd` for each LLM call, accumulates usage and messages to AsyncLocalStorage
+2. **Graph-level callback** (`billingCallback`): Passed to `graph.invoke()` or `graph.stream()`, fires `handleChainEnd` when graph completes, persists all accumulated usage to Rails
 
 This approach is testable via the existing `GraphTestBuilder` infrastructure since all graph tests wrap `graph.invoke()`.
+
+### Streaming Support
+
+The callback system works identically for `invoke()`, `stream()`, and `streamEvents()`:
+- Callbacks attached at graph level propagate to all nested LLM calls
+- `handleChainEnd` fires once after the stream is fully consumed
+- Use `!parentRunId` check to ensure we only persist at root level (not nested chains)
 
 ## Architecture
 
@@ -81,8 +92,9 @@ This approach is testable via the existing `GraphTestBuilder` infrastructure sin
 
 import { AsyncLocalStorage } from "node:async_hooks";
 import { BaseCallbackHandler } from "@langchain/core/callbacks/base";
+import type { Serialized } from "@langchain/core/load/serializable";
 import type { LLMResult } from "@langchain/core/outputs";
-import type { AIMessage } from "@langchain/core/messages";
+import type { AIMessage, BaseMessage } from "@langchain/core/messages";
 
 export interface UsageRecord {
   runId: string;
@@ -105,6 +117,15 @@ export interface UsageContext {
   chatId?: number;
   threadId?: string;
   graphName?: string;
+
+  // System prompt capture (see conversation_traces.md for full trace strategy)
+  systemPrompt?: string;
+  systemPromptCaptured?: boolean;
+
+  // Message capture for traces (see conversation_traces.md)
+  // Pushed via handleLLMEnd - avoids fragile before/after state diffs
+  messagesProduced: BaseMessage[];
+  userInput?: BaseMessage;  // Set at run start, not from callback
 }
 
 const usageStorage = new AsyncLocalStorage<UsageContext>();
@@ -116,16 +137,64 @@ export function getUsageContext(): UsageContext | undefined {
 export async function runWithUsageTracking<T>(
   context: Partial<UsageContext>,
   fn: () => T | Promise<T>
-): Promise<{ result: T; usage: UsageRecord[] }> {
-  const fullContext: UsageContext = { records: [], ...context };
+): Promise<{
+  result: T;
+  usage: UsageRecord[];
+  systemPrompt?: string;
+  messagesProduced: BaseMessage[];
+}> {
+  const fullContext: UsageContext = {
+    records: [],
+    messagesProduced: [],
+    ...context,
+  };
   return usageStorage.run(fullContext, async () => {
     const result = await fn();
-    return { result, usage: fullContext.records };
+    return {
+      result,
+      usage: fullContext.records,
+      systemPrompt: fullContext.systemPrompt,
+      messagesProduced: fullContext.messagesProduced,
+    };
   });
 }
 
 class UsageTrackingCallbackHandler extends BaseCallbackHandler {
   name = "usage-tracking";
+
+  /**
+   * Capture the system prompt on the first LLM call of a run.
+   * This ensures traces have the dynamic system prompt for replay/analysis.
+   * See conversation_traces.md for the full trace persistence strategy.
+   *
+   * NOTE: Use handleChatModelStart (not handleLLMStart) for chat models.
+   * - handleLLMStart: Traditional LLMs (string completion), receives prompts: string[]
+   * - handleChatModelStart: Chat models (Anthropic, OpenAI chat), receives messages: BaseMessage[][]
+   */
+  async handleChatModelStart(
+    llm: Serialized,
+    messages: BaseMessage[][],  // Note: 2D array - messages[0] is the conversation
+    runId: string,
+    parentRunId?: string,
+    extraParams?: Record<string, unknown>,
+    tags?: string[],
+    metadata?: Record<string, unknown>
+  ): Promise<void> {
+    const context = getUsageContext();
+    if (!context) return;
+
+    // Only capture once per run (system prompt is typically constant)
+    if (!context.systemPromptCaptured && messages[0]) {
+      const systemMessage = messages[0].find((m) => m._getType() === "system");
+      if (systemMessage) {
+        context.systemPrompt =
+          typeof systemMessage.content === "string"
+            ? systemMessage.content
+            : JSON.stringify(systemMessage.content);
+        context.systemPromptCaptured = true;
+      }
+    }
+  }
 
   async handleLLMEnd(
     output: LLMResult,
@@ -140,16 +209,23 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
     for (const generationBatch of output.generations ?? []) {
       for (const generation of generationBatch) {
         const message = (generation as any).message as AIMessage | undefined;
-        if (message?.usage_metadata) {
-          const record = this.extractUsageRecord(
-            message,
-            output.llmOutput,
-            runId,
-            parentRunId,
-            tags,
-            extraParams
-          );
-          context.records.push(record);
+        if (message) {
+          // Push message for traces (see conversation_traces.md)
+          // This captures all LLM outputs without relying on state diffs
+          context.messagesProduced.push(message);
+
+          // Push usage record for billing
+          if (message.usage_metadata) {
+            const record = this.extractUsageRecord(
+              message,
+              output.llmOutput,
+              runId,
+              parentRunId,
+              tags,
+              extraParams
+            );
+            context.records.push(record);
+          }
         }
       }
     }
@@ -225,7 +301,14 @@ import { persistUsageToRails } from "./persistUsage";
 class BillingCallbackHandler extends BaseCallbackHandler {
   name = "billing";
 
-  async handleChainEnd(output: ChainValues, runId: string): Promise<void> {
+  async handleChainEnd(
+    output: ChainValues,
+    runId: string,
+    parentRunId?: string  // Only persist at root level (no parent)
+  ): Promise<void> {
+    // Only persist at root level - nested chains shouldn't trigger billing
+    if (parentRunId) return;
+
     const context = getUsageContext();
     if (!context || context.records.length === 0) return;
 
@@ -236,7 +319,14 @@ class BillingCallbackHandler extends BaseCallbackHandler {
     );
   }
 
-  async handleChainError(error: Error, runId: string): Promise<void> {
+  async handleChainError(
+    error: Error,
+    runId: string,
+    parentRunId?: string
+  ): Promise<void> {
+    // Only persist at root level
+    if (parentRunId) return;
+
     // Still persist usage on error - charge for work done
     const context = getUsageContext();
     if (!context || context.records.length === 0) return;
@@ -644,10 +734,12 @@ OpenAI models report reasoning tokens in `output_token_details.reasoning`. These
 ### LangGraph App
 
 - [ ] Create `core/billing/usageTracker.ts`
-  - [ ] `UsageRecord` and `UsageContext` types
+  - [ ] `UsageRecord` and `UsageContext` types (including `systemPrompt` fields)
   - [ ] `usageStorage` AsyncLocalStorage instance
   - [ ] `getUsageContext()` and `runWithUsageTracking()` functions
-  - [ ] `UsageTrackingCallbackHandler` class with `handleLLMEnd`
+  - [ ] `UsageTrackingCallbackHandler` class with:
+    - [ ] `handleLLMStart` - captures system prompt on first LLM call
+    - [ ] `handleLLMEnd` - accumulates usage records
   - [ ] `usageTracker` singleton export
 
 - [ ] Create `core/billing/billingCallback.ts`
