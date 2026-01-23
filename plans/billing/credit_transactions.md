@@ -15,14 +15,17 @@ create_table :credit_transactions do |t|
   t.string :credit_type, null: false       # plan, pack
   t.string :reason, null: false            # ai_generation, plan_renewal, pack_purchase, support_credit
 
-  # Amount and running balances
+  # Amount and running balances (denormalized per row)
   t.integer :amount, null: false           # positive = credit, negative = debit
   t.integer :balance_after, null: false    # total balance after this transaction
   t.integer :plan_balance_after, null: false
   t.integer :pack_balance_after, null: false
 
-  # Polymorphic reference to source record
-  t.references :reference, polymorphic: true, null: true  # LlmRun, CreditPack, Subscription, etc.
+  # Reference to source record
+  # Note: For LLM usage, reference_type = "llm_run" and reference_id = run_id (UUID string)
+  # No LlmRun model exists - run_id is a grouping key linking llm_usage_records to transactions
+  t.string :reference_type   # "llm_run", "CreditPack", "Pay::Subscription", etc.
+  t.string :reference_id     # UUID string for runs, integer ID for models
 
   # Context
   t.jsonb :metadata, default: {}
@@ -41,7 +44,10 @@ add_index :credit_transactions, :idempotency_key, unique: true, where: "idempote
 ```ruby
 class CreditTransaction < ApplicationRecord
   belongs_to :account
-  belongs_to :reference, polymorphic: true, optional: true
+
+  # Note: reference_type/reference_id are string columns, not polymorphic associations
+  # For LLM usage: reference_type = "llm_run", reference_id = UUID string
+  # For purchases: reference_type = "CreditPack", reference_id = model ID as string
 
   # Enums
   enum :transaction_type, {
@@ -49,7 +55,7 @@ class CreditTransaction < ApplicationRecord
     consume: "consume",     # usage (LLM calls)
     purchase: "purchase",   # bought a credit pack
     refund: "refund",       # money back (adds credits)
-    adjust: "adjust"        # manual adjustment (support)
+    gift: "gift"            # admin-issued gift credits
   }, prefix: true
 
   enum :credit_type, {
@@ -62,7 +68,7 @@ class CreditTransaction < ApplicationRecord
     ai_generation
     plan_renewal
     pack_purchase
-    support_credit
+    gift
     refund
   ].freeze
 
@@ -78,9 +84,11 @@ class CreditTransaction < ApplicationRecord
   scope :debits, -> { where("amount < 0") }
   scope :for_period, ->(start_date, end_date) { where(created_at: start_date..end_date) }
   scope :by_reason, ->(reason) { where(reason: reason) }
+  scope :for_run, ->(run_id) { where(reference_type: "llm_run", reference_id: run_id) }
 
   # Callbacks
   validate :balances_are_consistent
+  validate :pack_balance_never_negative
 
   private
 
@@ -90,6 +98,12 @@ class CreditTransaction < ApplicationRecord
       errors.add(:balance_after, "must equal plan_balance_after + pack_balance_after")
     end
   end
+
+  def pack_balance_never_negative
+    if pack_balance_after.present? && pack_balance_after < 0
+      errors.add(:pack_balance_after, "pack credits can never go negative")
+    end
+  end
 end
 ```
 
@@ -97,26 +111,30 @@ end
 
 | Type | Credit Type | Reason | Amount | Reference |
 |------|-------------|--------|--------|-----------|
-| `allocate` | `plan` | `plan_renewal` | + plan_tier.credits | Subscription |
-| `consume` | `plan` | `ai_generation` | - credits used | LlmRun |
-| `consume` | `pack` | `ai_generation` | - credits used | LlmRun |
+| `allocate` | `plan` | `plan_renewal` | + PlanTier.details[:credits] | Pay::Subscription |
+| `consume` | `plan` | `ai_generation` | - credits used | llm_run (run_id UUID) |
+| `consume` | `pack` | `ai_generation` | - credits used | llm_run (run_id UUID) |
 | `purchase` | `pack` | `pack_purchase` | + pack credits | CreditPack |
 | `refund` | `pack` | `refund` | + refunded amount | Pay::Charge (or nil) |
-| `adjust` | `pack` | `support_credit` | +/- adjustment | nil |
+| `gift` | `pack` | `gift` | + amount_cents | nil (admin in metadata) |
+
+> **Important**: `PlanTier.details[:credits]` is the authoritative source for plan credit amounts. Do not use `TierLimit` or `PlanLimit`.
 
 ## CreditBalance Query Class
 
+> **Cache Strategy**: Cache is invalidated synchronously on every write operation. No TTL-based drift.
+> This ensures accurate balances during rapid usage, at the cost of more cache churn.
+
 ```ruby
 class CreditBalance
-  CACHE_TTL = 60.seconds
-
   def initialize(account)
     @account = account
   end
 
   # Returns [total, plan, pack]
+  # Cached until invalidate! is called (synchronous invalidation on writes)
   def current
-    Rails.cache.fetch(cache_key, expires_in: CACHE_TTL) do
+    Rails.cache.fetch(cache_key) do
       @account.credit_transactions
         .order(created_at: :desc)
         .pick(:balance_after, :plan_balance_after, :pack_balance_after) || [0, 0, 0]
@@ -190,9 +208,13 @@ class CreditConsumptionService
   end
 
   # Consume credits for an LLM run
-  # FIFO: plan credits first, then pack credits
-  # Allows negative balance (debt absorbed next month)
-  def consume!(amount:, reference:, metadata: {})
+  # FIFO order: plan credits first, then pack credits
+  #
+  # IMPORTANT: Negative balance rules:
+  # - Plan credits CAN go negative (debt absorbed next month)
+  # - Pack credits can NEVER go negative
+  # - Order: deplete plan → deplete pack → plan goes negative
+  def consume!(amount:, reference_id:, reference_type:, metadata: {})
     transactions = []
 
     Account.transaction do
@@ -202,7 +224,7 @@ class CreditConsumptionService
 
       remaining = amount
 
-      # 1. Consume from plan first
+      # 1. Consume from plan credits first (if positive)
       if plan_bal > 0 && remaining > 0
         plan_consumed = [remaining, plan_bal].min
         remaining -= plan_consumed
@@ -218,31 +240,58 @@ class CreditConsumptionService
           balance_after: new_total,
           plan_balance_after: new_plan,
           pack_balance_after: pack_bal,
-          reference: reference,
+          reference_id: reference_id,
+          reference_type: reference_type,
           metadata: metadata
         )
 
         total, plan_bal = new_total, new_plan
       end
 
-      # 2. Consume from pack (can go negative)
-      if remaining > 0
-        new_pack = pack_bal - remaining
-        new_total = total - remaining
+      # 2. Consume from pack credits (if positive and still need more)
+      if pack_bal > 0 && remaining > 0
+        pack_consumed = [remaining, pack_bal].min
+        remaining -= pack_consumed
+
+        new_pack = pack_bal - pack_consumed
+        new_total = total - pack_consumed
 
         transactions << create_transaction!(
           transaction_type: "consume",
           credit_type: "pack",
           reason: "ai_generation",
-          amount: -remaining,
+          amount: -pack_consumed,
           balance_after: new_total,
           plan_balance_after: plan_bal,
           pack_balance_after: new_pack,
-          reference: reference,
+          reference_id: reference_id,
+          reference_type: reference_type,
           metadata: metadata
+        )
+
+        total, pack_bal = new_total, new_pack
+      end
+
+      # 3. If still remaining, plan goes negative (pack NEVER goes negative)
+      if remaining > 0
+        new_plan = plan_bal - remaining  # Plan absorbs the debt
+        new_total = total - remaining
+
+        transactions << create_transaction!(
+          transaction_type: "consume",
+          credit_type: "plan",
+          reason: "ai_generation",
+          amount: -remaining,
+          balance_after: new_total,
+          plan_balance_after: new_plan,
+          pack_balance_after: pack_bal,  # Pack stays at 0
+          reference_id: reference_id,
+          reference_type: reference_type,
+          metadata: metadata.merge(debt_incurred: remaining)
         )
       end
 
+      # Invalidate cache synchronously (not TTL-based)
       CreditBalance.for(@account).invalidate!
     end
 
@@ -343,27 +392,33 @@ class CreditAllocationService
     end
   end
 
-  # Manual adjustment (support credits, corrections)
-  def adjust!(amount:, reason:, metadata: {})
+  # Gift credits (customer support, partnership, testing, etc.)
+  # Credits = amount_cents (e.g., $1.00 gift = 100 credits)
+  def gift!(amount_cents:, gift_reason:, admin:, notes: nil)
     Account.transaction do
       @account.lock!
 
       total, plan_bal, pack_bal = current_balances
 
-      # Adjustments always go to pack balance
-      new_pack = pack_bal + amount
-      new_total = total + amount
+      # Gifts always go to pack balance (never expire)
+      new_pack = pack_bal + amount_cents
+      new_total = total + amount_cents
 
       create_transaction!(
-        transaction_type: "adjust",
+        transaction_type: "gift",
         credit_type: "pack",
-        reason: reason,
-        amount: amount,
+        reason: "gift",
+        amount: amount_cents,
         balance_after: new_total,
         plan_balance_after: plan_bal,
         pack_balance_after: new_pack,
         reference: nil,
-        metadata: metadata
+        metadata: {
+          gift_reason: gift_reason,
+          admin_id: admin.id,
+          admin_email: admin.email,
+          notes: notes
+        }
       )
 
       CreditBalance.for(@account).invalidate!
@@ -384,51 +439,102 @@ class CreditAllocationService
 end
 ```
 
-## Background Jobs
+## Background Workers
 
-### Credits::ChargeRunJob
+> **Naming Convention**: All credit-related Sidekiq workers use the `Credits::` namespace with a `Worker` suffix following Sidekiq conventions.
 
-Called after Langgraph persists an `LlmRun` to Rails.
+### Credits::ChargeRunWorker
+
+Called after Langgraph persists usage records to `llm_usage_records`. Processes a specific `run_id`.
 
 ```ruby
-class Credits::ChargeRunJob < ApplicationJob
-  def perform(llm_run_id)
-    llm_run = LlmRun.find(llm_run_id)
-    return if llm_run.charged?
+class Credits::ChargeRunWorker
+  include Sidekiq::Worker
+  sidekiq_options queue: :billing
 
-    account = llm_run.chat.project.account
-    credits = CreditCalculator.credits_for_cost(llm_run.total_cost_usd)
+  def perform(run_id)
+    # Idempotent: skip if already processed
+    return if LlmUsageRecord.where(run_id: run_id).where.not(processed_at: nil).exists?
 
-    CreditConsumptionService.new(account).consume!(
-      amount: credits,
-      reference: llm_run,
-      metadata: {
-        graph: llm_run.graph_name,
-        llm_call_count: llm_run.llm_call_count,
-        cost_usd: llm_run.total_cost_usd
-      }
-    )
+    records = LlmUsageRecord.where(run_id: run_id, processed_at: nil)
+    return if records.empty?
 
-    llm_run.update!(
-      charged: true,
-      charged_at: Time.current,
-      credits_charged: credits
-    )
+    # Aggregate usage for this run
+    run_summary = records.select(
+      "MIN(chat_id) as chat_id",
+      "MIN(graph_name) as graph_name",
+      "SUM(cost_usd) as total_cost_usd",
+      "COUNT(*) as llm_call_count",
+      "SUM(input_tokens) as total_input_tokens",
+      "SUM(output_tokens) as total_output_tokens"
+    ).first
+
+    chat = Chat.find(run_summary.chat_id)
+    account = chat.project.account
+    credits = CreditCalculator.credits_for_cost(run_summary.total_cost_usd)
+
+    ApplicationRecord.transaction do
+      CreditConsumptionService.new(account).consume!(
+        amount: credits,
+        reference_id: run_id,
+        reference_type: "llm_run",
+        metadata: {
+          graph_name: run_summary.graph_name,
+          llm_call_count: run_summary.llm_call_count,
+          cost_usd: run_summary.total_cost_usd.to_f
+        }
+      )
+
+      # Mark all records for this run as processed
+      records.update_all(processed_at: Time.current)
+    end
   end
 end
 ```
 
-### Credits::AllocatePlanCreditsJob
+### Credits::ResetPlanCreditsWorker
 
-Triggered on subscription renewal.
+Triggered on subscription renewal or plan changes.
 
 ```ruby
-class Credits::AllocatePlanCreditsJob < ApplicationJob
+class Credits::ResetPlanCreditsWorker
+  include Sidekiq::Worker
+  sidekiq_options queue: :billing
+
   def perform(account_id, billing_period:)
     account = Account.find(account_id)
     CreditAllocationService.new(account).allocate_plan_credits!(
       billing_period: billing_period
     )
+  end
+end
+```
+
+### Credits::FindUnprocessedRunsWorker
+
+Backup polling job. Catches any runs where the API notification failed.
+
+```ruby
+class Credits::FindUnprocessedRunsWorker
+  include Sidekiq::Worker
+  sidekiq_options queue: :billing
+
+  STALE_THRESHOLD = 2.minutes
+
+  def perform
+    # Find run_ids where records are unprocessed and older than threshold
+    stale_run_ids = LlmUsageRecord
+      .where(processed_at: nil)
+      .where("created_at < ?", STALE_THRESHOLD.ago)
+      .distinct
+      .pluck(:run_id)
+
+    stale_run_ids.each do |run_id|
+      # Enqueue each run separately - idempotent, safe to re-enqueue
+      ChargeRunWorker.perform_async(run_id)
+    end
+
+    Rails.logger.info("[FindUnprocessedRunsWorker] Enqueued #{stale_run_ids.count} stale runs")
   end
 end
 ```
@@ -456,37 +562,34 @@ class Api::V1::CreditsController < Api::V1::BaseController
 end
 ```
 
-### POST /api/v1/llm_runs
+### POST /api/v1/llm_usage/notify
 
-Called by Langgraph after graph completion. Creates run and enqueues charge job.
+Called by Langgraph after writing `llm_usage_records` directly to Postgres. Rails enqueues a job to process the run.
+
+> **Note**: Langgraph writes usage records directly to Postgres (shared database). This endpoint simply notifies Rails to process credits. There is no `LlmRun` model - the `run_id` is a UUID grouping key.
 
 ```ruby
-# app/controllers/api/v1/llm_runs_controller.rb
-class Api::V1::LlmRunsController < Api::V1::BaseController
-  def create
-    llm_run = LlmRun.create!(llm_run_params)
+# app/controllers/api/v1/llm_usage_controller.rb
+module Api
+  module V1
+    class LlmUsageController < Api::V1::BaseController
+      # POST /api/v1/llm_usage/notify
+      # Called by Langgraph after writing llm_usage_records to Postgres
+      #
+      # Parameters:
+      #   run_id: string (required) - UUID of the run to process
+      #
+      # Response:
+      #   202 Accepted - Job enqueued
+      def notify
+        run_id = params.require(:run_id)
 
-    # Bulk insert usage records
-    if params[:usage_records].present?
-      records = params[:usage_records].map do |r|
-        r.merge(llm_run_id: llm_run.id, created_at: Time.current, updated_at: Time.current)
+        # Enqueue job to process this specific run
+        Credits::ChargeRunWorker.perform_async(run_id)
+
+        head :accepted
       end
-      LlmUsageRecord.insert_all(records)
     end
-
-    # Enqueue credit charge
-    Credits::ChargeRunJob.perform_later(llm_run.id)
-
-    render json: { id: llm_run.id, run_id: llm_run.run_id }, status: :created
-  end
-
-  private
-
-  def llm_run_params
-    params.require(:llm_run).permit(
-      :chat_id, :run_id, :graph_name,
-      :llm_call_count, :total_input_tokens, :total_output_tokens, :total_cost_usd
-    )
   end
 end
 ```
@@ -523,17 +626,18 @@ account.credit_transactions
 ### Transactions for a Specific Run
 
 ```ruby
-CreditTransaction.where(reference: llm_run)
+# run_id is a UUID string, not a model ID
+CreditTransaction.where(reference_type: "llm_run", reference_id: run_id)
 ```
 
 ### Feature-Level Breakdown
 
 ```ruby
+# Query via metadata (graph_name is stored in transaction metadata)
 account.credit_transactions
   .where(transaction_type: "consume")
   .for_period(period_start, period_end)
-  .joins("LEFT JOIN llm_runs ON llm_runs.id = credit_transactions.reference_id AND credit_transactions.reference_type = 'LlmRun'")
-  .group("llm_runs.graph_name")
+  .group("metadata->>'graph_name'")
   .sum(:amount)
 ```
 

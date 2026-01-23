@@ -181,8 +181,8 @@ credit_transactions
 ├── balance_after (integer) -- total running balance (plan + pack)
 ├── plan_balance_after (integer) -- plan credits remaining after this transaction
 ├── pack_balance_after (integer) -- pack credits remaining after this transaction
-├── reference_type (string, nullable) -- polymorphic: "LlmRun", "CreditPack", "Subscription", etc.
-├── reference_id (bigint, nullable)
+├── reference_type (string, nullable) -- string-based: "llm_run", "CreditPack", "Pay::Subscription", etc.
+├── reference_id (string, nullable) -- UUID for llm_run, integer as string for models
 ├── metadata (jsonb) -- contextual data (run_id, graph, model, etc.)
 ├── created_at (timestamp)
 ├── idempotency_key (string, unique, nullable) -- prevent duplicate transactions
@@ -222,7 +222,7 @@ CreditTransaction.create!(
   metadata: { plan_tier: "starter", billing_period: "2025-02" }
 )
 
-# AI generation consuming plan credits (references LlmRun, not Chat)
+# AI generation consuming plan credits (references run_id, not a model)
 CreditTransaction.create!(
   account: account,
   transaction_type: "consume",
@@ -232,7 +232,8 @@ CreditTransaction.create!(
   balance_after: 1990,
   plan_balance_after: 1990,
   pack_balance_after: 0,
-  reference: llm_run,  # LlmRun has chat_id, run aggregates all LLM calls
+  reference_type: "llm_run",
+  reference_id: run_id,  # UUID string, not a model ID
   metadata: { graph: "brainstorm", llm_call_count: 3, cost_usd: 0.0234 }
 )
 
@@ -262,7 +263,8 @@ CreditTransaction.create!(
   balance_after: 500,
   plan_balance_after: 0,
   pack_balance_after: 500,
-  reference: llm_run,
+  reference_type: "llm_run",
+  reference_id: run_id,
   metadata: { graph: "website", partial: true }
 )
 # Transaction 2: Consume from pack for remainder
@@ -275,21 +277,24 @@ CreditTransaction.create!(
   balance_after: 400,
   plan_balance_after: 0,
   pack_balance_after: 400,
-  reference: llm_run,  # same run
-  metadata: { graph: "website", pack_id: credit_pack.id }
+  reference_type: "llm_run",
+  reference_id: run_id,  # same run
+  metadata: { graph: "website" }
 )
 
-# Going negative (allowed - user will "owe" next month)
+# Going negative (allowed - PLAN goes negative, pack NEVER goes negative)
+# When pack is exhausted, further consumption causes plan to go negative
 CreditTransaction.create!(
   account: account,
   transaction_type: "consume",
-  credit_type: "pack",  # or plan if they had plan credits
+  credit_type: "plan",  # plan absorbs debt, pack is already at 0
   reason: "ai_generation",
   amount: -450,
   balance_after: -50,
-  plan_balance_after: 0,
-  pack_balance_after: -50,  # pack went negative (or plan, depending on which was consumed)
-  reference: llm_run,
+  plan_balance_after: -50,  # plan goes negative
+  pack_balance_after: 0,    # pack stays at 0, NEVER goes negative
+  reference_type: "llm_run",
+  reference_id: run_id,
   metadata: { graph: "ads" }
 )
 
@@ -302,9 +307,10 @@ CreditTransaction.create!(
   reason: "plan_renewal",
   amount: 2000,
   balance_after: 1950,  # -50 + 2000 = 1950
-  plan_balance_after: 1950,  # new plan credits minus debt
-  pack_balance_after: 0,  # pack was at -50, now 0 (debt moved to plan)
-  reference: subscription,
+  plan_balance_after: 1950,  # new plan credits minus debt (2000 - 50 = 1950)
+  pack_balance_after: 0,  # pack was already at 0 (pack NEVER goes negative)
+  reference_type: "Pay::Subscription",
+  reference_id: subscription.id.to_s,
   metadata: { plan_tier: "starter", billing_period: "2025-03", debt_absorbed: 50 }
 )
 
@@ -338,10 +344,11 @@ The most recent transaction IS the current state. No checkpoint layer needed.
 
 ```ruby
 class CreditBalance
-  CACHE_TTL = 60.seconds
+  # No TTL - cache is invalidated synchronously on every write
+  # This ensures accurate balances during rapid usage
 
   def self.for_account(account)
-    Rails.cache.fetch("credit_balance:#{account.id}", expires_in: CACHE_TTL) do
+    Rails.cache.fetch("credit_balance:#{account.id}") do
       account.credit_transactions
         .order(created_at: :desc)
         .pick(:balance_after, :plan_balance_after, :pack_balance_after) || [0, 0, 0]
@@ -416,9 +423,10 @@ end
 
 ### Cache Strategy
 
-- **Hot path (pre-LLM check)**: Cache all three balances with 60s TTL
-- **Invalidation**: Delete cache key on any write
+- **Hot path (pre-LLM check)**: Cache all three balances (no TTL)
+- **Invalidation**: Delete cache key synchronously on every write (not TTL-based)
 - **Cache miss**: Single indexed query returning 3 columns
+- **Why synchronous**: Ensures accurate balances during rapid usage - TTL would cause drift
 
 ### Partitioning (Future)
 
@@ -430,11 +438,12 @@ If transactions table grows huge, partition by `created_at` (monthly). Current b
 
 ### For Pre-Run Check (Query #1 & #2)
 
-The cache can drift during the TTL window (max 60s stale). This is acceptable because:
+With synchronous cache invalidation, balances are accurate immediately after writes. The pre-run check:
 
-1. **We check at run START**: User might start a run at 98% cached, actually be at 101%. That's fine - run completes, debt absorbed next month.
-2. **Negative balance allowed**: No hard cutoff means slight staleness doesn't cause user-facing errors.
-3. **Model selection is soft**: If user gets Sonnet instead of Opus due to stale data, it's not a critical failure.
+1. **Checks at run START**: If user is at 98% and run pushes them to 105%, that's fine - run completes, debt absorbed next month.
+2. **Negative balance allowed for plan**: No hard cutoff on plan credits - they can go negative (debt absorbed next month).
+3. **Pack credits protected**: Pack credits can NEVER go negative - consumption stops at 0.
+4. **Model selection is soft**: If user gets Sonnet instead of Opus based on usage %, it's not a critical failure.
 
 ### For 90% Alert (Query #3)
 
@@ -456,9 +465,14 @@ class CreditConsumptionService
     @account = account
   end
 
-  # Called by Credits::ChargeRunJob after LlmRun is persisted from Langgraph
+  # Called by Credits::ChargeRunWorker after llm_usage_records are written
   # Returns array of transactions created
-  def consume!(amount:, reason:, reference:, metadata: {})
+  #
+  # IMPORTANT: Negative balance rules:
+  # - Plan credits CAN go negative (debt absorbed next month)
+  # - Pack credits can NEVER go negative
+  # - Consumption order: plan (if positive) → pack (if positive) → plan goes negative
+  def consume!(amount:, reason:, reference_id:, reference_type:, metadata: {})
     transactions = []
     remaining = amount
 
@@ -472,10 +486,7 @@ class CreditConsumptionService
 
       total_balance, plan_balance, pack_balance = current
 
-      # Note: We allow negative balance (debt absorbed next month)
-      # Pre-run check in Langgraph gates based on usage %, not hard cutoff here
-
-      # 1. Consume from plan credits first (FIFO)
+      # Step 1: Consume from plan credits first (if positive)
       if plan_balance > 0 && remaining > 0
         plan_consumed = [remaining, plan_balance].min
         remaining -= plan_consumed
@@ -492,35 +503,59 @@ class CreditConsumptionService
           balance_after: new_total,
           plan_balance_after: new_plan,
           pack_balance_after: pack_balance,
-          reference: reference,
+          reference_type: reference_type,
+          reference_id: reference_id,
           metadata: metadata
         )
 
-        # Update running state for next transaction
         total_balance = new_total
         plan_balance = new_plan
       end
 
-      # 2. Consume from pack credits if plan exhausted
-      if remaining > 0
-        new_pack = pack_balance - remaining
-        new_total = total_balance - remaining
+      # Step 2: Consume from pack credits (if positive and still need more)
+      if pack_balance > 0 && remaining > 0
+        pack_consumed = [remaining, pack_balance].min  # NEVER exceed pack balance
+        remaining -= pack_consumed
+
+        new_pack = pack_balance - pack_consumed
+        new_total = total_balance - pack_consumed
 
         transactions << CreditTransaction.create!(
           account: @account,
           transaction_type: "consume",
           credit_type: "pack",
           reason: reason,
-          amount: -remaining,
+          amount: -pack_consumed,
           balance_after: new_total,
           plan_balance_after: plan_balance,
           pack_balance_after: new_pack,
-          reference: reference,
+          reference_type: reference_type,
+          reference_id: reference_id,
           metadata: metadata
         )
 
-        # Note: new_pack can go negative - that's allowed
-        # Debt will be absorbed by next month's plan allocation
+        total_balance = new_total
+        pack_balance = new_pack
+      end
+
+      # Step 3: If still remaining, plan goes negative (pack NEVER goes negative)
+      if remaining > 0
+        new_plan = plan_balance - remaining  # plan goes negative
+        new_total = total_balance - remaining
+
+        transactions << CreditTransaction.create!(
+          account: @account,
+          transaction_type: "consume",
+          credit_type: "plan",
+          reason: reason,
+          amount: -remaining,
+          balance_after: new_total,
+          plan_balance_after: new_plan,  # negative!
+          pack_balance_after: pack_balance,  # stays at 0, NEVER negative
+          reference_type: reference_type,
+          reference_id: reference_id,
+          metadata: metadata.merge(debt: true)
+        )
       end
 
       invalidate_balance_cache!
@@ -540,34 +575,55 @@ end
 ### Integration with Langgraph
 
 ```ruby
-# Credits::ChargeRunJob - called after LlmRun is persisted
-class Credits::ChargeRunJob < ApplicationJob
-  def perform(llm_run_id)
-    llm_run = LlmRun.find(llm_run_id)
-    return if llm_run.charged?
+# Credits::ChargeRunWorker - called after llm_usage_records are written to Postgres
+module Credits
+  class ChargeRunWorker
+    include Sidekiq::Worker
+    sidekiq_options queue: :billing
 
-    account = llm_run.chat.project.account
-    credits = calculate_credits(llm_run.total_cost_usd)
+    def perform(run_id)
+      # Idempotent: skip if already processed
+      return if LlmUsage.where(run_id: run_id).where.not(processed_at: nil).exists?
 
-    CreditConsumptionService.new(account).consume!(
-      amount: credits,
-      reason: "ai_generation",
-      reference: llm_run,
-      metadata: {
-        graph: llm_run.graph_name,
-        llm_call_count: llm_run.llm_call_count,
-        cost_usd: llm_run.total_cost_usd
-      }
-    )
+      records = LlmUsage.where(run_id: run_id, processed_at: nil)
+      return if records.empty?
 
-    llm_run.update!(charged: true, charged_at: Time.current, credits_charged: credits)
-  end
+      # Aggregate usage for this run
+      run_summary = records.select(
+        "MIN(chat_id) as chat_id",
+        "MIN(graph_name) as graph_name",
+        "SUM(cost_usd) as total_cost_usd",
+        "COUNT(*) as llm_call_count"
+      ).first
 
-  private
+      chat = Chat.find(run_summary.chat_id)
+      account = chat.project.account
+      credits = calculate_credits(run_summary.total_cost_usd)
 
-  def calculate_credits(cost_usd)
-    # Example: $1 = 100 credits
-    (cost_usd * 100).ceil
+      ApplicationRecord.transaction do
+        CreditConsumptionService.new(account).consume!(
+          amount: credits,
+          reason: "ai_generation",
+          reference_type: "llm_run",
+          reference_id: run_id,
+          metadata: {
+            graph: run_summary.graph_name,
+            llm_call_count: run_summary.llm_call_count,
+            cost_usd: run_summary.total_cost_usd.to_f
+          }
+        )
+
+        # Mark all records for this run as processed
+        records.update_all(processed_at: Time.current)
+      end
+    end
+
+    private
+
+    def calculate_credits(cost_usd)
+      # $0.01 = 1 credit
+      (cost_usd * 100).ceil
+    end
   end
 end
 ```
@@ -575,51 +631,62 @@ end
 ### Monthly Plan Allocation (Renewal)
 
 ```ruby
-class Credits::AllocatePlanCreditsJob < ApplicationJob
-  def perform(account_id, billing_period:)
-    account = Account.find(account_id)
-    plan_tier = account.plan&.plan_tier
-    return unless plan_tier
+module Credits
+  class ResetPlanCreditsWorker
+    include Sidekiq::Worker
+    sidekiq_options queue: :credits
 
-    Account.transaction do
-      account.lock!
+    def perform(account_id, options = {})
+      idempotency_key = options["idempotency_key"]
 
-      # Get current state
-      current = account.credit_transactions
-        .order(created_at: :desc)
-        .pick(:balance_after, :plan_balance_after, :pack_balance_after) || [0, 0, 0]
+      # Skip if already processed (idempotency)
+      return if idempotency_key && CreditTransaction.exists?(idempotency_key: idempotency_key)
 
-      current_total, current_plan, current_pack = current
+      account = Account.find(account_id)
+      plan_tier = account.plan&.plan_tier
+      return unless plan_tier
 
-      # Forfeit unused plan credits, keep pack credits
-      # If total is negative, debt carries over into new plan allocation
-      debt = [current_total, 0].min.abs  # e.g., if total is -50, debt is 50
+      Account.transaction do
+        account.lock!
 
-      new_plan_credits = plan_tier.credits
-      new_plan = new_plan_credits - debt  # debt absorbed by new allocation
-      new_pack = [current_pack, 0].max    # pack can't go negative from this operation
-      new_total = new_plan + new_pack
+        # Get current state
+        current = account.credit_transactions
+          .order(created_at: :desc)
+          .pick(:balance_after, :plan_balance_after, :pack_balance_after) || [0, 0, 0]
 
-      CreditTransaction.create!(
-        account: account,
-        transaction_type: "allocate",
-        credit_type: "plan",
-        reason: "plan_renewal",
-        amount: new_plan_credits,
-        balance_after: new_total,
-        plan_balance_after: new_plan,
-        pack_balance_after: new_pack,
-        reference: account.subscription,
-        metadata: {
-          plan_tier: plan_tier.name,
-          billing_period: billing_period,
-          credits_allocated: new_plan_credits,
-          debt_absorbed: debt,
-          plan_credits_forfeited: [current_plan, 0].max
-        }
-      )
+        current_total, current_plan, current_pack = current
 
-      Rails.cache.delete("credit_balance:#{account.id}")
+        # Forfeit unused plan credits, keep pack credits
+        # If plan is negative, debt carries over into new plan allocation
+        debt = [current_plan, 0].min.abs  # e.g., if plan is -50, debt is 50
+
+        new_plan_credits = plan_tier.credits  # from PlanTier.details[:credits]
+        new_plan = new_plan_credits - debt    # debt absorbed by new allocation
+        new_pack = current_pack               # pack unchanged (already at 0 or positive)
+        new_total = new_plan + new_pack
+
+        CreditTransaction.create!(
+          account: account,
+          transaction_type: "allocate",
+          credit_type: "plan",
+          reason: "plan_renewal",
+          amount: new_plan_credits,
+          balance_after: new_total,
+          plan_balance_after: new_plan,
+          pack_balance_after: new_pack,
+          reference_type: "Pay::Subscription",
+          reference_id: account.payment_processor&.subscription&.id&.to_s,
+          idempotency_key: idempotency_key,
+          metadata: {
+            plan_tier: plan_tier.name,
+            credits_allocated: new_plan_credits,
+            debt_absorbed: debt,
+            plan_credits_forfeited: [current_plan, 0].max
+          }
+        )
+
+        Rails.cache.delete("credit_balance:#{account.id}")
+      end
     end
   end
 end
@@ -659,20 +726,23 @@ end
 
 1. Create migration for `credit_transactions` table (with 3 balance columns)
 2. Create migration for `credit_packs` table
-3. Create migration for `llm_runs` and `llm_usage_records` tables (see langgraph_integration.md)
+3. Create migration for `llm_usage` table (see langgraph_integration.md) - NO `llm_runs` table needed
 4. Build `CreditTransaction` model with validations and scopes
 5. Build `CreditPack` model with purchase logic
-6. Build `CreditBalance` query class with caching
-7. Build `CreditConsumptionService` with FIFO and locking
-8. Build `Credits::ChargeRunJob` to charge after run completes
-9. Build `Credits::AllocatePlanCreditsJob` for monthly renewal
-10. Build `POST /api/v1/llm_runs` endpoint for Langgraph to persist runs
-11. Hook allocation job into subscription renewal (Pay gem callback?)
-12. Build 90% threshold alert system
-13. Add billing/usage page to show breakdown
+6. Build `CreditBalance` query class with synchronous cache invalidation
+7. Build `CreditConsumptionService` with FIFO and proper negative balance handling
+8. Build `Credits::ChargeRunWorker` to charge after run completes
+9. Build `Credits::ResetPlanCreditsWorker` for plan credit allocation/renewal
+10. Build `Credits::FindUnprocessedRunsWorker` as backup polling
+11. Build `POST /api/v1/llm_usage/notify` endpoint for Langgraph to trigger charging
+12. Hook allocation worker into subscription renewal (Pay gem callback via PaySubscriptionCredits concern)
+13. Build 90% threshold alert system
+14. Add billing/usage page to show breakdown
 
 ### Langgraph App
 
-14. Implement usage tracking callbacks (see langgraph_integration.md)
-15. Implement pre-run usage check (fetch % from Rails, determine available models)
-16. Call Rails API to persist `LlmRun` after graph completes
+15. Implement usage tracking callbacks (see langgraph_integration.md)
+16. Implement pre-graph hook for credit balance check (`GET /api/v1/credits/balance`)
+17. Add `usagePercentage` to CoreGraphState
+18. Support `testCredits` config flag to skip credit checks in non-prod
+19. Call `POST /api/v1/llm_usage/notify` after graph completes

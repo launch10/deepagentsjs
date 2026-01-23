@@ -16,11 +16,14 @@ Implement a centralized credits system that:
 
 | Decision                 | Choice                                                                 | Rationale                                                      |
 | ------------------------ | ---------------------------------------------------------------------- | -------------------------------------------------------------- |
-| Credit storage           | Two columns on Account (`plan_credits`, `purchased_credits`)           | Fast reads, clear distinction                                  |
+| Credit storage           | Transaction ledger with denormalized running balances per row (`balance_after`, `plan_balance_after`, `pack_balance_after`) | Most recent transaction IS the current state. No columns on Account. |
+| Credits source           | `PlanTier.details[:credits]` | Already implemented. Do not use TierLimit or PlanLimit. |
 | Billing cycle detection  | `after_commit` callbacks on `Pay::Subscription` + daily safety net job | Pay handles webhook complexity; we just react to model changes |
-| Credit consumption order | Plan credits first, then purchased                                     | Plan credits expire anyway                                     |
+| Credit consumption order | Plan credits first, then pack credits, then plan goes negative | Plan credits expire; pack credits NEVER go negative |
+| Negative balance         | Plan credits can go negative; pack credits NEVER negative | Debt absorbed from next month's plan allocation |
 | Upgrade handling         | Grant prorated additional credits immediately                          | User paid for them                                             |
 | Downgrade handling       | Keep current credits until next cycle                                  | Better UX, Stripe prorates payment                             |
+| Cache strategy           | Synchronous invalidation on write (not TTL-based)                      | Accurate balances during rapid usage                           |
 
 ## Pay::Subscription Callbacks
 
@@ -39,37 +42,40 @@ Pay gem internally processes Stripe webhooks and calls `update!` on the subscrip
 
 ### Subscription Lifecycle Matrix
 
-| Event                           | Callback                   | Detection                               | Action                                             | Sidekiq Job           |
-| ------------------------------- | -------------------------- | --------------------------------------- | -------------------------------------------------- | --------------------- |
-| **New subscription (active)**   | `after_commit on: :create` | `active?`                               | Zero out old (expire) + allocate new plan credits  | `ResetPlanCreditsJob` |
-| **New subscription (trialing)** | `after_commit on: :create` | `trialing?`                             | Zero out old (expire) + allocate new plan credits  | `ResetPlanCreditsJob` |
-| **Trial → Paid**                | `after_commit on: :update` | status `trialing→active`                | No action (already allocated)                      | —                     |
-| **Renewal (monthly sub)**       | `after_commit on: :update` | `current_period_end` ↑ (not from trial) | Zero out old (expire) + allocate new plan credits  | `ResetPlanCreditsJob` |
-| **Monthly reset (yearly sub)**  | `DailyReconciliationJob`   | No reset transaction in last month      | Zero out old (expire) + allocate new plan credits  | `ResetPlanCreditsJob` |
-| **Upgrade**                     | `after_commit on: :update` | `processor_plan` changed + credits ↑    | Zero out old (expire) + allocate new (higher) plan | `ResetPlanCreditsJob` |
-| **Downgrade**                   | `after_commit on: :update` | `processor_plan` changed + credits ↓    | Zero out old + allocate new (lower) plan           | `ResetPlanCreditsJob` |
-| **Cancel scheduled**            | `after_commit on: :update` | `ends_at` set                           | No action                                          | —                     |
-| **Subscription ended**          | `after_commit on: :update` | status → `canceled`                     | Zero out plan credits (keep purchased)             | `ResetPlanCreditsJob` |
-| **Reactivation**                | `after_commit on: :update` | `ends_at` cleared                       | No action                                          | —                     |
-| **Pause**                       | `after_commit on: :update` | status → `paused`                       | No action                                          | —                     |
-| **Resume**                      | `after_commit on: :update` | status `paused→active`                  | No action                                          | —                     |
-| **Payment failed**              | `after_commit on: :update` | status → `past_due`                     | No action                                          | —                     |
-| **Payment recovered**           | `after_commit on: :update` | status `past_due→active`                | No action                                          | —                     |
+> **Naming Convention**: All credit-related Sidekiq workers use the `Credits::` namespace with a `Worker` suffix.
 
-### Job Architecture: Two Jobs Only
+| Event                           | Callback                   | Detection                               | Action                                             | Sidekiq Worker                    |
+| ------------------------------- | -------------------------- | --------------------------------------- | -------------------------------------------------- | --------------------------------- |
+| **New subscription (active)**   | `after_commit on: :create` | `active?`                               | Zero out old (expire) + allocate new plan credits  | `Credits::ResetPlanCreditsWorker` |
+| **New subscription (trialing)** | `after_commit on: :create` | `trialing?`                             | Zero out old (expire) + allocate new plan credits  | `Credits::ResetPlanCreditsWorker` |
+| **Trial → Paid**                | `after_commit on: :update` | status `trialing→active`                | No action (already allocated)                      | —                                 |
+| **Renewal (monthly sub)**       | `after_commit on: :update` | `current_period_end` ↑ (not from trial) | Zero out old (expire) + allocate new plan credits  | `Credits::ResetPlanCreditsWorker` |
+| **Monthly reset (yearly sub)**  | `DailyReconciliationJob`   | No reset transaction in last month      | Zero out old (expire) + allocate new plan credits  | `Credits::ResetPlanCreditsWorker` |
+| **Upgrade**                     | `after_commit on: :update` | `processor_plan` changed + credits ↑    | Zero out old (expire) + allocate new (higher) plan | `Credits::ResetPlanCreditsWorker` |
+| **Downgrade**                   | `after_commit on: :update` | `processor_plan` changed + credits ↓    | Zero out old + allocate new (lower) plan           | `Credits::ResetPlanCreditsWorker` |
+| **Cancel scheduled**            | `after_commit on: :update` | `ends_at` set                           | No action                                          | —                                 |
+| **Subscription ended**          | `after_commit on: :update` | status → `canceled`                     | Zero out plan credits (keep purchased)             | `Credits::ResetPlanCreditsWorker` |
+| **Reactivation**                | `after_commit on: :update` | `ends_at` cleared                       | No action                                          | —                                 |
+| **Pause**                       | `after_commit on: :update` | status → `paused`                       | No action                                          | —                                 |
+| **Resume**                      | `after_commit on: :update` | status `paused→active`                  | No action                                          | —                                 |
+| **Payment failed**              | `after_commit on: :update` | status → `past_due`                     | No action                                          | —                                 |
+| **Payment recovered**           | `after_commit on: :update` | status `past_due→active`                | No action                                          | —                                 |
 
-We use exactly **two jobs** for all credit operations:
+### Worker Architecture: Three Workers
 
-1. **`ResetPlanCreditsJob`** - Idempotent job that syncs plan credits to current subscription state
-2. **`DebitCreditsJob`** - Creates a debit transaction for a consumption event
+We use exactly **three workers** for all credit operations:
 
-#### ResetPlanCreditsJob
+1. **`Credits::ResetPlanCreditsWorker`** - Idempotent worker that syncs plan credits to current subscription state
+2. **`Credits::ChargeRunWorker`** - Processes a completed graph run and charges credits
+3. **`Credits::FindUnprocessedRunsWorker`** - Backup polling to catch missed notifications
 
-This job is the workhorse. It handles ALL plan credit changes by following a simple pattern:
+#### Credits::ResetPlanCreditsWorker
+
+This worker is the workhorse for plan credit allocation. It handles ALL plan credit changes by following a simple pattern:
 
 ```
 1. Zero out any existing plan credits (creates expire transaction if balance > 0)
-2. Allocate new plan credits based on current subscription state
+2. Allocate new plan credits based on current subscription state (from PlanTier.details[:credits])
 ```
 
 **Why this works for everything:**
@@ -78,30 +84,38 @@ This job is the workhorse. It handles ALL plan credit changes by following a sim
 - **Renewal**: Zero out remaining → allocate fresh monthly amount
 - **Upgrade**: Zero out old plan credits → allocate new (higher) amount
 - **Downgrade**: Zero out old plan credits → allocate new (lower) amount
-- **Cancellation**: Zero out plan credits → allocate nothing (purchased credits remain)
+- **Cancellation**: Zero out plan credits → allocate nothing (pack credits remain)
 
-**Key insight**: The job doesn't need to know WHY it was called. It simply looks at the current subscription state and makes the credits match. This makes it idempotent and safe to retry.
+**Key insight**: The worker doesn't need to know WHY it was called. It simply looks at the current subscription state and makes the credits match. This makes it idempotent and safe to retry.
 
-#### DebitCreditsJob
+#### Credits::ChargeRunWorker
 
-Creates a debit transaction when credits are consumed. Called from Langgraph after AI execution.
+Processes a specific `run_id` after Langgraph notifies Rails. Aggregates `cost_usd` from `llm_usage_records` and creates a `CreditTransaction`.
 
 ```ruby
-DebitCreditsJob.perform_later(
-  account_id: account.id,
-  amount: 50,
-  reason: "ai_generation",
-  reference_type: "Chat",
-  reference_id: chat.id,
-  metadata: { graph: "website", run_id: "abc123" }
-)
+# Called via POST /api/v1/llm_usage/notify from Langgraph
+Credits::ChargeRunWorker.perform_async(run_id)
 ```
 
-**Why Sidekiq jobs?**
+**Consumption order (FIFO):**
+1. Consume plan credits (if positive)
+2. Consume pack credits (if positive and still need more)
+3. Plan credits go negative (pack credits NEVER go negative)
+
+#### Credits::FindUnprocessedRunsWorker
+
+Backup polling job (runs every minute). Catches any runs where the API notification failed.
+
+```ruby
+# Scheduled via Zhong/Sidekiq-Cron
+Credits::FindUnprocessedRunsWorker.perform_async
+```
+
+**Why Sidekiq workers?**
 
 - Credit operations should be idempotent and retriable
 - Failure shouldn't break the callback chain
-- Jobs receive `subscription_id` + `idempotency_key` to ensure exactly-once semantics
+- Workers receive `subscription_id` + `idempotency_key` to ensure exactly-once semantics
 - Keeps callbacks fast - just enqueue and return
 
 ### Monthly Resets for Yearly Subscribers
@@ -113,11 +127,11 @@ DailyReconciliationJob (runs daily)
     ↓
 Query: "Which accounts need monthly reset?"
     - Active yearly subscription
-    - No CreditTransaction(type: grant, reason: monthly_reset) in last month
+    - No CreditTransaction(type: allocate, reason: plan_renewal) in last month
     ↓
-Enqueue ResetPlanCreditsJob for each account
+Enqueue Credits::ResetPlanCreditsWorker for each account
     ↓
-Job retries until success → creates CreditTransaction
+Worker retries until success → creates CreditTransaction
     ↓
 Next day's query won't pick up this account (transaction exists)
 ```
@@ -130,15 +144,15 @@ Account.joins(:subscriptions)
   .where(subscriptions: { status: "active", interval: "year" })
   .where.not(
     id: CreditTransaction
-      .where(transaction_type: "grant", reason: "monthly_reset")
+      .where(transaction_type: "allocate", reason: "plan_renewal")
       .where("created_at > ?", 1.month.ago)
       .select(:account_id)
   )
   .find_in_batches do |batch|
     batch.each do |account|
-      Credits::ResetPlanCreditsJob.perform_later(
-        account_id: account.id,
-        idempotency_key: "monthly_reset:#{account.id}:#{Time.current.beginning_of_month.to_i}"
+      Credits::ResetPlanCreditsWorker.perform_async(
+        account.id,
+        { idempotency_key: "plan_renewal:#{account.id}:#{Time.current.beginning_of_month.to_i}" }
       )
     end
   end
@@ -190,57 +204,68 @@ ends_at_previously_was.present?       # reactivation (ends_at cleared)
 
 ## Data Model
 
-### 1. Add Credits to Account Table
+> **No Account Columns**: Balance is derived entirely from the CreditTransaction ledger. Each transaction stores running balances (`balance_after`, `plan_balance_after`, `pack_balance_after`). The most recent transaction IS the current state.
 
-```ruby
-# Migration: add_credits_to_accounts
-add_column :accounts, :plan_credits, :bigint, default: 0, null: false
-add_column :accounts, :purchased_credits, :bigint, default: 0, null: false
-add_column :accounts, :plan_credits_reset_at, :datetime
-```
-
-### 2. CreditTransaction Model (Source of Truth + Audit Log)
+### 1. CreditTransaction Model (Source of Truth + Audit Log)
 
 ```ruby
 # Table: credit_transactions
 create_table :credit_transactions do |t|
   t.references :account, null: false, foreign_key: true
-  t.references :credit_pack, foreign_key: true
-  t.string :transaction_type, null: false  # grant, consume, expire, refund, adjustment
-  t.string :credit_type, null: false       # plan, purchased
-  t.string :reason, null: false            # monthly_renewal, purchase, gift, ai_generation, page_generation, expire, admin_adjustment
-  t.bigint :amount, null: false            # positive=grant, negative=consume
-  t.bigint :balance_after, null: false     # point-in-time snapshot - source of truth
-  t.string :description                    # optional admin notes
-  t.string :reference_type                 # polymorphic (Pay::Charge, Pay::Subscription)
-  t.bigint :reference_id
+
+  # Transaction classification
+  t.string :transaction_type, null: false  # allocate, consume, purchase, refund, adjust
+  t.string :credit_type, null: false       # plan, pack
+  t.string :reason, null: false            # plan_renewal, pack_purchase, ai_generation, support_credit, refund
+
+  # Amount and running balances (denormalized per row - this IS the source of truth)
+  t.bigint :amount, null: false            # positive=credit, negative=debit
+  t.bigint :balance_after, null: false     # total balance after this transaction
+  t.bigint :plan_balance_after, null: false  # plan credits remaining
+  t.bigint :pack_balance_after, null: false  # pack credits remaining
+
+  # Reference to source record (string-based, not polymorphic AR)
+  # For LLM usage: reference_type = "llm_run", reference_id = run_id UUID
+  t.string :reference_type                 # "llm_run", "CreditPack", "Pay::Subscription", etc.
+  t.string :reference_id
+
   t.jsonb :metadata, default: {}
+  t.string :idempotency_key
+
   t.timestamps
 
   t.index [:account_id, :created_at]
-  t.index [:reference_type, :reference_id], unique: true, where: "reference_id IS NOT NULL"
+  t.index [:reference_type, :reference_id]
+  t.index :idempotency_key, unique: true, where: "idempotency_key IS NOT NULL"
 end
 ```
 
 **Example transaction flow:**
 
 ```
-date         | reason           | type    | credit_type | amount | balance_after
--------------|------------------|---------|-------------|--------|---------------
-2025-10-01   | monthly_renewal  | grant   | plan        | +500   | 500
-2025-10-01   | ai_generation    | consume | plan        | -10    | 490
-2025-11-01   | expire           | expire  | plan        | -490   | 0
-2025-11-01   | monthly_renewal  | grant   | plan        | +500   | 500
-2025-11-01   | purchase         | grant   | purchased   | +500   | 1000
-2025-11-02   | ai_generation    | consume | plan        | -10    | 990
+date         | reason         | type     | credit_type | amount | balance_after | plan_balance | pack_balance
+-------------|----------------|----------|-------------|--------|---------------|--------------|-------------
+2025-10-01   | plan_renewal   | allocate | plan        | +500   | 500           | 500          | 0
+2025-10-01   | ai_generation  | consume  | plan        | -10    | 490           | 490          | 0
+2025-11-01   | plan_renewal   | allocate | plan        | +500   | 500           | 500          | 0  (old forfeited)
+2025-11-01   | pack_purchase  | purchase | pack        | +500   | 1000          | 500          | 500
+2025-11-02   | ai_generation  | consume  | plan        | -510   | 490           | 0            | 490  (split: -500 plan, -10 pack)
+2025-11-03   | ai_generation  | consume  | pack        | -600   | -110          | -110         | 0  (pack depleted, plan goes negative)
+2025-12-01   | plan_renewal   | allocate | plan        | +500   | 390           | 390          | 0  (debt absorbed: 500-110=390)
 ```
 
-**Design: Hybrid Source of Truth + Cache**
+**Key rules:**
+- Plan credits consumed first (FIFO)
+- Pack credits consumed when plan is at 0
+- When pack is also at 0, plan goes negative (debt absorbed next month)
+- Pack credits can NEVER go negative
 
-- **Transaction log is authoritative** - `balance_after` is the source of truth
-- **Cached balance on Account** - For fast reads during high-frequency checks
-- **Atomic updates** - Transaction creation + Account cache update in same DB transaction
-- **Reconciliation** - Periodic job verifies cache matches `SELECT balance_after FROM credit_transactions WHERE account_id = ? ORDER BY created_at DESC LIMIT 1`
+**Design: Ledger-Only Source of Truth**
+
+- **Transaction log is authoritative** - `balance_after`, `plan_balance_after`, `pack_balance_after` are the source of truth
+- **No columns on Account** - Balance derived from most recent transaction
+- **Cached for reads** - `CreditBalance` class caches the most recent transaction's balances
+- **Synchronous invalidation** - Cache invalidated immediately on every write (not TTL-based)
 
 **Linking to Langgraph Messages:**
 
@@ -274,13 +299,23 @@ CreditTransaction.create!(
 )
 ```
 
-### 3. Extend PlanLimit
+### 2. Plan Credits Source (Already Implemented)
 
-Add `monthly_credits` as a new `limit_type` value (no schema change needed):
+Credits come from `PlanTier.details[:credits]`. This is already implemented - do NOT use `TierLimit` or `PlanLimit`.
 
 ```ruby
-PlanLimit.create(plan: starter_plan, limit_type: "monthly_credits", limit: 100)
-PlanLimit.create(plan: pro_plan, limit_type: "monthly_credits", limit: 500)
+# PlanTier model (already exists)
+class PlanTier < ApplicationRecord
+  store_accessor :details, :features, :credits
+
+  def credits
+    super.to_i
+  end
+end
+
+# Usage
+plan_tier = account.plan&.plan_tier
+monthly_credits = plan_tier.credits  # e.g., 2000, 5000, 15000
 ```
 
 ## Credit Deduction Architecture
@@ -482,32 +517,44 @@ end
 
 **Files to create:**
 
-- `db/migrate/XXXX_add_credits_to_accounts.rb`
 - `db/migrate/XXXX_create_credit_packs.rb`
 - `db/migrate/XXXX_create_credit_transactions.rb`
+- `db/migrate/XXXX_create_llm_usage_records.rb`
 - `app/models/credit_pack.rb`
 - `app/models/credit_transaction.rb`
-- `app/models/concerns/account_concerns/credits.rb`
+- `app/models/llm_usage_record.rb`
+- `app/services/credit_balance.rb`
+- `app/services/credit_consumption_service.rb`
+- `app/services/credit_allocation_service.rb`
+
+**No Account columns migration** - Balance is derived from the ledger.
 
 **Files to modify:**
 
-- `app/models/account.rb` - Include Credits concern
-- `spec/snapshot_builders/core/plans.rb` - Add `monthly_credits` to plan limits
+- `spec/snapshot_builders/core/plans.rb` - Add `credits` to PlanTier.details
 
 ### Phase 2: Credit Operations
 
-**Credits Concern** (`app/models/concerns/account_concerns/credits.rb`):
+**CreditBalance** (`app/services/credit_balance.rb`):
 
-- `total_credits` - Returns `plan_credits + purchased_credits`
-- `has_credits?(amount)` - Check if sufficient credits
-- `grant_purchased_credits!(amount, credit_pack:, charge:)` - Add purchased credits (for credit pack purchases)
+- `CreditBalance.for(account).total` - Total credits (plan + pack)
+- `CreditBalance.for(account).plan` - Plan credits only
+- `CreditBalance.for(account).pack` - Pack credits only
+- `CreditBalance.for(account).breakdown` - Returns `{ total:, plan:, pack: }`
+- `CreditBalance.for(account).usage_percentage` - Percentage of plan credits used
+- `CreditBalance.for(account).invalidate!` - Clear cache (called synchronously on writes)
 
-**Note:** Plan credit resets and debits are handled by the two jobs:
+**CreditConsumptionService** (`app/services/credit_consumption_service.rb`):
 
-- `ResetPlanCreditsJob` - All plan credit allocations (uses `with_lock` internally)
-- `DebitCreditsJob` - All credit consumption (uses `with_lock` internally)
+- `consume!(amount:, reference_id:, reference_type:, metadata:)` - FIFO consumption with proper negative balance handling
 
-Key: Use `with_lock` for atomic operations (follows `AccountRequestCount` pattern).
+**CreditAllocationService** (`app/services/credit_allocation_service.rb`):
+
+- `allocate_plan_credits!(billing_period:)` - Monthly plan credit allocation
+- `add_pack_credits!(credit_pack:)` - Credit pack purchase
+- `adjust!(amount:, reason:, metadata:)` - Manual adjustments (support credits)
+
+**Note:** All credit operations use database locking (`with_lock`) for atomic operations (follows `AccountRequestCount` pattern).
 
 ### Phase 3: Credit Packs
 
@@ -522,8 +569,9 @@ See the [Credit Packs](#credit-packs) section above for complete details on:
 
 **Files to create:**
 
-- `app/jobs/credits/reset_plan_credits_job.rb` - Idempotent job: zeros out subscription allocations, creates new allocations
-- `app/jobs/credits/debit_credits_job.rb` - Creates debit transactions for consumption events
+- `app/workers/credits/reset_plan_credits_worker.rb` - Idempotent worker: zeros out subscription allocations, creates new allocations
+- `app/workers/credits/charge_run_worker.rb` - Processes LLM run and creates credit transactions
+- `app/workers/credits/find_unprocessed_runs_worker.rb` - Backup polling for missed notifications
 - `app/jobs/credits/daily_reconciliation_job.rb` - Batch job for monthly resets (yearly subs) + catch-up
 - `app/models/concerns/pay_subscription_credits.rb` - Concern with `after_commit` hooks
 
@@ -531,12 +579,12 @@ See the [Credit Packs](#credit-packs) section above for complete details on:
 
 - `config/initializers/pay.rb`:
   - Include `PaySubscriptionCredits` concern in `Pay::Subscription`
-- `schedule.rb` - Add daily reconciliation job
+- `schedule.rb` - Add daily reconciliation job + minute-level backup polling
 
 **Two trigger mechanisms:**
 
 1. **Callbacks** (immediate) - For events Pay knows about:
-   - `Pay::Subscription` created/updated → `after_commit` fires → enqueue `ResetPlanCreditsJob`
+   - `Pay::Subscription` created/updated → `after_commit` fires → enqueue `Credits::ResetPlanCreditsWorker`
 
 2. **Daily batch job** (scheduled) - For events with no Stripe trigger:
    - Query `CreditTransaction` log to find accounts needing monthly reset
@@ -560,19 +608,19 @@ module PaySubscriptionCredits
   def handle_subscription_created
     return unless active? || trialing?
 
-    Credits::ResetPlanCreditsJob.perform_later(
-      subscription_id: id,
-      idempotency_key: "reset_credits:#{id}:#{current_period_start.to_i}"
+    Credits::ResetPlanCreditsWorker.perform_async(
+      customer.owner_id,
+      { idempotency_key: "plan_renewal:#{id}:#{current_period_start.to_i}" }
     )
   end
 
   def handle_subscription_updated
-    # All these events trigger the same job - it's idempotent and figures out
+    # All these events trigger the same worker - it's idempotent and figures out
     # what to do based on current subscription state
     if needs_credit_reset?
-      Credits::ResetPlanCreditsJob.perform_later(
-        subscription_id: id,
-        idempotency_key: idempotency_key_for_reset
+      Credits::ResetPlanCreditsWorker.perform_async(
+        customer.owner_id,
+        { idempotency_key: idempotency_key_for_reset }
       )
     end
   end
@@ -601,116 +649,77 @@ module PaySubscriptionCredits
 
   def idempotency_key_for_reset
     if canceled?
-      "reset_credits:#{id}:canceled:#{updated_at.to_i}"
+      "plan_renewal:#{id}:canceled:#{updated_at.to_i}"
     elsif plan_changed?
-      "reset_credits:#{id}:#{processor_plan}:#{updated_at.to_i}"
+      "plan_renewal:#{id}:#{processor_plan}:#{updated_at.to_i}"
     else
-      "reset_credits:#{id}:#{current_period_start.to_i}"
+      "plan_renewal:#{id}:#{current_period_start.to_i}"
     end
   end
 end
 ```
 
-**ResetPlanCreditsJob Implementation:**
+**ResetPlanCreditsWorker Implementation:**
 
 ```ruby
-# app/jobs/credits/reset_plan_credits_job.rb
+# app/workers/credits/reset_plan_credits_worker.rb
 module Credits
-  class ResetPlanCreditsJob < ApplicationJob
-    queue_as :credits
+  class ResetPlanCreditsWorker
+    include Sidekiq::Worker
+    sidekiq_options queue: :credits
 
-    def perform(subscription_id:, idempotency_key:)
+    def perform(account_id, options = {})
+      idempotency_key = options["idempotency_key"]
+
       # Skip if already processed (idempotency)
-      return if CreditTransaction.exists?(idempotency_key: idempotency_key)
-
-      subscription = Pay::Subscription.find(subscription_id)
-      account = subscription.customer.owner
-
-      account.with_lock do
-        # Step 1: Zero out existing plan credits (if any)
-        if account.plan_credits > 0
-          CreditTransaction.create!(
-            account: account,
-            transaction_type: "expire",
-            credit_type: "plan",
-            reason: "plan_reset",
-            amount: -account.plan_credits,
-            balance_after: account.purchased_credits,
-            idempotency_key: "#{idempotency_key}:expire"
-          )
-          account.update!(plan_credits: 0)
-        end
-
-        # Step 2: Allocate new credits based on current subscription
-        if subscription.active? || subscription.trialing?
-          plan = Plan.find_by!(stripe_id: subscription.processor_plan)
-          new_credits = plan.monthly_credits
-
-          CreditTransaction.create!(
-            account: account,
-            transaction_type: "grant",
-            credit_type: "plan",
-            reason: "plan_allocation",
-            amount: new_credits,
-            balance_after: account.purchased_credits + new_credits,
-            reference: subscription,
-            idempotency_key: idempotency_key
-          )
-          account.update!(plan_credits: new_credits, plan_credits_reset_at: Time.current)
-        end
-      end
-    end
-  end
-end
-```
-
-**DebitCreditsJob Implementation:**
-
-```ruby
-# app/jobs/credits/debit_credits_job.rb
-module Credits
-  class DebitCreditsJob < ApplicationJob
-    queue_as :credits
-
-    def perform(account_id:, amount:, reason:, idempotency_key:, reference_type: nil, reference_id: nil, metadata: {})
-      return if CreditTransaction.exists?(idempotency_key: idempotency_key)
+      return if idempotency_key && CreditTransaction.exists?(idempotency_key: idempotency_key)
 
       account = Account.find(account_id)
+      subscription = account.payment_processor&.subscription
 
-      account.with_lock do
-        # Deduct from plan credits first, then purchased
-        plan_debit = [amount, account.plan_credits].min
-        purchased_debit = amount - plan_debit
-
-        raise InsufficientCreditsError if purchased_debit > account.purchased_credits
-
-        # Create transaction(s)
-        if plan_debit > 0
-          account.plan_credits -= plan_debit
-        end
-        if purchased_debit > 0
-          account.purchased_credits -= purchased_debit
-        end
-
-        CreditTransaction.create!(
-          account: account,
-          transaction_type: "consume",
-          credit_type: plan_debit > 0 ? "plan" : "purchased",
-          reason: reason,
-          amount: -amount,
-          balance_after: account.plan_credits + account.purchased_credits,
-          reference_type: reference_type,
-          reference_id: reference_id,
-          metadata: metadata.merge(plan_debited: plan_debit, purchased_debited: purchased_debit),
-          idempotency_key: idempotency_key
-        )
-
-        account.save!
-      end
+      CreditAllocationService.new(account).reset_plan_credits!(
+        subscription: subscription,
+        idempotency_key: idempotency_key
+      )
     end
   end
 end
 ```
+
+**Note:** The actual credit logic is in `CreditAllocationService` which:
+1. Zeros out any existing plan credits (creates expire transaction if balance > 0)
+2. Allocates new plan credits based on current subscription state (from `PlanTier.details[:credits]`)
+3. Handles negative balance debt absorption
+
+**ChargeRunWorker Implementation:**
+
+Credit consumption is handled by `Credits::ChargeRunWorker` which processes completed graph runs. See [langgraph_integration.md](./langgraph_integration.md) for the full implementation.
+
+```ruby
+# app/workers/credits/charge_run_worker.rb
+module Credits
+  class ChargeRunWorker
+    include Sidekiq::Worker
+    sidekiq_options queue: :billing
+
+    def perform(run_id)
+      # Idempotent: skip if already processed
+      return if LlmUsage.where(run_id: run_id).where.not(processed_at: nil).exists?
+
+      records = LlmUsage.where(run_id: run_id, processed_at: nil)
+      return if records.empty?
+
+      # Aggregate and charge via CreditConsumptionService
+      # See langgraph_integration.md for full implementation
+    end
+  end
+end
+```
+
+**Credit consumption order (FIFO):**
+1. Consume from plan credits first (if positive)
+2. Consume from pack credits (if positive and still need more)
+3. If still remaining, plan goes negative (pack NEVER goes negative)
 
 ### Phase 5: Langgraph Credit Deduction
 
@@ -802,8 +811,9 @@ end
 | `rails_app/app/models/account_request_count.rb`         | Pattern for `with_lock` atomic ops       |
 | `rails_app/app/controllers/subscriptions_controller.rb` | Pattern for Stripe Checkout              |
 | `rails_app/spec/snapshot_builders/core/plans.rb`        | Seed plan limits                         |
-| `rails_app/app/jobs/credits/reset_plan_credits_job.rb`  | Handles all plan credit allocations      |
-| `rails_app/app/jobs/credits/debit_credits_job.rb`       | Handles all credit consumption           |
+| `rails_app/app/workers/credits/reset_plan_credits_worker.rb`  | Handles all plan credit allocations      |
+| `rails_app/app/workers/credits/charge_run_worker.rb`          | Handles credit consumption for LLM runs  |
+| `rails_app/app/workers/credits/find_unprocessed_runs_worker.rb` | Backup polling for missed notifications |
 | `shared/lib/api/railsApiBase.ts`                        | Base class for API services              |
 | `shared/lib/api/services/`                              | Existing API service patterns            |
 | `langgraph_app/app/nodes/core/`                         | Node patterns for credit deduction       |

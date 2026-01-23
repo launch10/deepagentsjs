@@ -73,14 +73,18 @@ The callback system works identically for `invoke()`, `stream()`, and `streamEve
                               ▼
 
 ┌───────────────────────────────────────────────────────────────────────────────┐
-│                    Rails Background Job (every minute)                        │
+│                    Rails Background Workers                                   │
 │                                                                               │
-│  Credits::ProcessUsageJob                                                     │
-│    1. Find unprocessed llm_usage_records (processed_at IS NULL)               │
-│    2. Group by run_id, sum cost_usd                                           │
+│  Credits::ChargeRunWorker (triggered by POST /api/v1/llm_usage/notify)        │
+│    1. Find unprocessed llm_usage_records for run_id (processed_at IS NULL)    │
+│    2. Aggregate cost_usd for the run                                          │
 │    3. Convert cost → credits                                                  │
-│    4. Create CreditTransaction (reference_id: run_id)                         │
-│    5. Mark records processed                                                  │
+│    4. Create CreditTransaction (reference_type: "llm_run", reference_id: UUID)│
+│    5. Mark records processed_at = NOW                                         │
+│                                                                               │
+│  Credits::FindUnprocessedRunsWorker (backup polling, every minute)            │
+│    1. Find run_ids with unprocessed records older than 2 minutes              │
+│    2. Enqueue ChargeRunWorker for each stale run_id                           │
 │                                                                               │
 └───────────────────────────────────────────────────────────────────────────────┘
 ```
