@@ -597,13 +597,13 @@ Messages are captured via `handleLLMEnd` callback (see `langgraph_integration.md
 import { runWithUsageTracking, type UsageRecord } from "./usageTracker";
 import { persistUsageRecords } from "./persistUsage";
 import { persistTrace } from "../traces/persistTrace";
+import { notifyRailsUsage } from "./notifyRails";
 
 interface ExecuteOptions {
   chatId: number;
   threadId: string;
   graphName: string;
   userInput?: BaseMessage;  // The user's input message (known upfront)
-  onComplete?: (runId: string) => Promise<void>;
 }
 
 export async function executeWithTracking<TState extends { messages?: BaseMessage[] }>(
@@ -649,25 +649,28 @@ export async function executeWithTracking<TState extends { messages?: BaseMessag
         threadId: options.threadId,
         runId,
         graphName: options.graphName,
-        systemPrompt,  // Captured from handleLLMStart callback
+        systemPrompt,  // Captured from handleChatModelStart callback
       },
       traceMessages,
       usageSummary
     ),
   ]);
 
-  // Notify Rails to process billing (just the run_id)
-  if (options.onComplete) {
-    await options.onComplete(runId);
-  }
+  // Notify Rails to process billing (fire-and-forget, backup polling exists)
+  // See langgraph_integration.md for API details and backup job
+  notifyRailsUsage(runId);
 
   return result;
 }
 ```
 
-### Rails: No Endpoint Needed
+### Rails: Billing Notification
 
-With the simplified architecture, Rails doesn't need an endpoint for Langgraph to call. Instead, Rails runs a periodic job that processes unprocessed records. See `langgraph_integration.md` for the full `Credits::ProcessUsageJob` implementation.
+Langgraph notifies Rails after writing to Postgres. Rails has both primary notification handling and backup polling for reliability. See `langgraph_integration.md` sections 6b-6e for:
+
+- `POST /api/v1/llm_usage/notify` - API endpoint
+- `Credits::ChargeRunJob` - Processes a specific run
+- `Credits::FindUnprocessedRunsJob` - Backup polling (catches missed notifications)
 
 ### Rails: Model (Read-Only from Rails Perspective)
 
