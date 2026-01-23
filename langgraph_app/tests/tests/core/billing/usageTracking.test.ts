@@ -383,6 +383,45 @@ describe("UsageTrackingCallbackHandler", () => {
       expect(runA.usage[0]!.runId).not.toBe(runB.usage[0]!.runId);
     });
 
+    it("extracts messageId from AIMessage for correlation with messagesProduced", async () => {
+      const { usage, messagesProduced } = await runWithUsageTracking({}, async () => {
+        const aiMessage = createAnthropicAIMessage("Test response", {}, "msg_test_correlation_123");
+        await usageTracker.handleLLMEnd(createLLMResult(aiMessage), "call-1");
+
+        return "done";
+      });
+
+      expect(usage).toHaveLength(1);
+      expect(usage[0]!.messageId).toBe("msg_test_correlation_123");
+
+      // The messageId should match the corresponding AIMessage.id
+      expect(messagesProduced).toHaveLength(1);
+      expect(messagesProduced[0]!.id).toBe(usage[0]!.messageId);
+    });
+
+    it("each record has unique messageId matching its AIMessage", async () => {
+      const { usage, messagesProduced } = await runWithUsageTracking({}, async () => {
+        await usageTracker.handleLLMEnd(
+          createLLMResult(createAnthropicAIMessage("Response 1", {}, "msg_unique_1")),
+          "call-1"
+        );
+        await usageTracker.handleLLMEnd(
+          createLLMResult(createAnthropicAIMessage("Response 2", {}, "msg_unique_2")),
+          "call-2"
+        );
+
+        return "done";
+      });
+
+      expect(usage).toHaveLength(2);
+      expect(usage[0]!.messageId).toBe("msg_unique_1");
+      expect(usage[1]!.messageId).toBe("msg_unique_2");
+
+      // Each usage record's messageId should match the corresponding message
+      expect(messagesProduced[0]!.id).toBe(usage[0]!.messageId);
+      expect(messagesProduced[1]!.id).toBe(usage[1]!.messageId);
+    });
+
     it("accumulates multiple records for multi-turn conversations", async () => {
       const { usage } = await runWithUsageTracking({}, async () => {
         const aiMessage1 = createAnthropicAIMessage("Response 1");

@@ -24,7 +24,7 @@ describe("Usage Tracking Integration", () => {
   });
 
   describe("direct model.invoke()", () => {
-    it("fires handleLLMEnd and captures usage", async () => {
+    it("fires handleLLMEnd and captures usage with runId", async () => {
       const result = await testGraph<UsageTrackingTestState>()
         .withGraph(compiledGraph)
         .withPrompt("Say 'hello world' and nothing else")
@@ -39,11 +39,13 @@ describe("Usage Tracking Integration", () => {
       // Verify usage record has expected fields
       const record = result.tracking!.usage[0]!;
       expect(record.model).toBeDefined();
+      expect(record.runId).toBeDefined();
+      expect(record.runId.length).toBeGreaterThan(0);
       expect(record.inputTokens).toBeGreaterThan(0);
       expect(record.outputTokens).toBeGreaterThan(0);
     });
 
-    it("captures correct input_tokens and output_tokens", async () => {
+    it("captures correct input_tokens and output_tokens matching AIMessage metadata", async () => {
       const result = await testGraph<UsageTrackingTestState>()
         .withGraph(compiledGraph)
         .withPrompt("Respond with exactly: OK")
@@ -53,15 +55,18 @@ describe("Usage Tracking Integration", () => {
 
       expect(result.error).toBeUndefined();
       const record = result.tracking!.usage[0]!;
+      const message = result.tracking!.messagesProduced[0]!;
+      const messageUsage = (message as any).usage_metadata;
 
-      // Should have reasonable token counts
-      expect(record.inputTokens).toBeGreaterThan(0);
-      expect(record.outputTokens).toBeGreaterThan(0);
-      // Input should be larger than output for this short response
-      expect(record.inputTokens).toBeGreaterThanOrEqual(record.outputTokens);
+      // Tracked usage should match the AIMessage's usage_metadata exactly
+      expect(record.inputTokens).toBe(messageUsage.input_tokens);
+      expect(record.outputTokens).toBe(messageUsage.output_tokens);
+
+      // Also verify messageId correlates them
+      expect(record.messageId).toBe(message.id);
     });
 
-    it("captures messages produced for traces", async () => {
+    it("correlates usage records with messages produced via messageId", async () => {
       const result = await testGraph<UsageTrackingTestState>()
         .withGraph(compiledGraph)
         .withPrompt("Say 'traced response'")
@@ -70,11 +75,23 @@ describe("Usage Tracking Integration", () => {
         .execute();
 
       expect(result.tracking!.messagesProduced.length).toBeGreaterThan(0);
+      expect(result.tracking!.usage.length).toBe(result.tracking!.messagesProduced.length);
+
+      // Each usage record's messageId should match an AIMessage.id
+      for (const record of result.tracking!.usage) {
+        const message = result.tracking!.messagesProduced.find((m) => m.id === record.messageId);
+        expect(message).toBeDefined();
+
+        // Usage should match the message's metadata
+        const messageUsage = (message as any).usage_metadata;
+        expect(record.inputTokens).toBe(messageUsage.input_tokens);
+        expect(record.outputTokens).toBe(messageUsage.output_tokens);
+      }
     });
   });
 
   describe("agent tool loops", () => {
-    it("fires handleLLMEnd for initial agent reasoning call", async () => {
+    it("tracks every LLM call with usage matching AIMessage metadata", async () => {
       const result = await testGraph<UsageTrackingTestState>()
         .withGraph(compiledGraph)
         .withPrompt("Use the echo tool once to say 'test'")
@@ -83,11 +100,26 @@ describe("Usage Tracking Integration", () => {
         .execute();
 
       expect(result.error).toBeUndefined();
-      // Agent should have at least 2 LLM calls: initial reasoning + after tool result
-      expect(result.tracking!.usage.length).toBeGreaterThanOrEqual(2);
+
+      // Every usage record must have a corresponding AIMessage with matching metadata
+      expect(result.tracking!.usage.length).toBe(result.tracking!.messagesProduced.length);
+
+      for (const record of result.tracking!.usage) {
+        const message = result.tracking!.messagesProduced.find((m) => m.id === record.messageId);
+        expect(message).toBeDefined();
+
+        const messageUsage = (message as any).usage_metadata;
+        expect(record.inputTokens).toBe(messageUsage.input_tokens);
+        expect(record.outputTokens).toBe(messageUsage.output_tokens);
+        expect(record.runId).toBeDefined();
+      }
+
+      // All records share the same runId
+      const runIds = new Set(result.tracking!.usage.map((r) => r.runId));
+      expect(runIds.size).toBe(1);
     });
 
-    it("fires handleLLMEnd for EACH iteration in multi-turn loop", async () => {
+    it("multi-turn agent: each turn's usage matches its AIMessage", async () => {
       const result = await testGraph<UsageTrackingTestState>()
         .withGraph(compiledGraph)
         .withPrompt("Use the echo tool 2 times")
@@ -96,37 +128,27 @@ describe("Usage Tracking Integration", () => {
         .execute();
 
       expect(result.error).toBeUndefined();
-      // Should have at least 2 LLM calls for multi-turn (LLM might batch tool calls)
-      // The important thing is that we're capturing ALL LLM calls that happen
-      expect(result.tracking!.usage.length).toBeGreaterThanOrEqual(2);
-    });
 
-    it("accumulates all records from agent execution", async () => {
-      const result = await testGraph<UsageTrackingTestState>()
-        .withGraph(compiledGraph)
-        .withPrompt("Use the echo tool once")
-        .withState({ scenario: "agent", iterationCount: 1 })
-        .withTracking()
-        .execute();
+      // Every record correlates with a message
+      expect(result.tracking!.usage.length).toBe(result.tracking!.messagesProduced.length);
 
-      expect(result.error).toBeUndefined();
-      // All records should be accumulated
-      const totalInputTokens = result.tracking!.usage.reduce(
-        (sum, r) => sum + r.inputTokens,
-        0
-      );
-      const totalOutputTokens = result.tracking!.usage.reduce(
-        (sum, r) => sum + r.outputTokens,
-        0
-      );
+      for (const record of result.tracking!.usage) {
+        const message = result.tracking!.messagesProduced.find((m) => m.id === record.messageId);
+        expect(message).toBeDefined();
 
-      expect(totalInputTokens).toBeGreaterThan(0);
-      expect(totalOutputTokens).toBeGreaterThan(0);
+        const messageUsage = (message as any).usage_metadata;
+        expect(record.inputTokens).toBe(messageUsage.input_tokens);
+        expect(record.outputTokens).toBe(messageUsage.output_tokens);
+      }
+
+      // All from same run
+      const runIds = new Set(result.tracking!.usage.map((r) => r.runId));
+      expect(runIds.size).toBe(1);
     });
   });
 
   describe("tools calling getLLM() internally", () => {
-    it("fires handleLLMEnd for tool-internal LLM call", async () => {
+    it("tool-internal LLM call: usage matches AIMessage metadata", async () => {
       const result = await testGraph<UsageTrackingTestState>()
         .withGraph(compiledGraph)
         .withPrompt("Summarize some text")
@@ -135,11 +157,25 @@ describe("Usage Tracking Integration", () => {
         .execute();
 
       expect(result.error).toBeUndefined();
-      // Should have at least 1 record from the tool's internal LLM call
-      expect(result.tracking!.usage.length).toBeGreaterThan(0);
+
+      // Every usage record must match its AIMessage
+      expect(result.tracking!.usage.length).toBe(result.tracking!.messagesProduced.length);
+
+      for (const record of result.tracking!.usage) {
+        const message = result.tracking!.messagesProduced.find((m) => m.id === record.messageId);
+        expect(message).toBeDefined();
+
+        const messageUsage = (message as any).usage_metadata;
+        expect(record.inputTokens).toBe(messageUsage.input_tokens);
+        expect(record.outputTokens).toBe(messageUsage.output_tokens);
+      }
+
+      // All from same run
+      const runIds = new Set(result.tracking!.usage.map((r) => r.runId));
+      expect(runIds.size).toBe(1);
     });
 
-    it("context survives from graph execution into tool callback", async () => {
+    it("AsyncLocalStorage context survives into tool callback", async () => {
       const result = await testGraph<UsageTrackingTestState>()
         .withGraph(compiledGraph)
         .withPrompt("Summarize text")
@@ -148,8 +184,11 @@ describe("Usage Tracking Integration", () => {
         .execute();
 
       expect(result.error).toBeUndefined();
-      // The tool sets toolSawContext=true if it could see the usage context
+      // The tool sets toolSawContext=true if it could access getUsageContext()
       expect(result.state.toolSawContext).toBe(true);
+
+      // And the tool's LLM call was tracked with matching metadata
+      expect(result.tracking!.usage.length).toBe(result.tracking!.messagesProduced.length);
     });
   });
 

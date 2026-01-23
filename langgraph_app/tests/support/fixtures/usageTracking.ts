@@ -16,6 +16,7 @@ export const MOCK_ANTHROPIC_USAGE_METADATA = {
  * Mock response metadata for Anthropic models
  */
 export const MOCK_ANTHROPIC_RESPONSE_METADATA = {
+  id: "msg_mock_anthropic_123",
   model: "claude-haiku-4-5-20251001",
   stop_reason: "end_turn",
 };
@@ -35,6 +36,7 @@ export const MOCK_OPENAI_USAGE_METADATA = {
  * Mock response metadata for OpenAI models
  */
 export const MOCK_OPENAI_RESPONSE_METADATA = {
+  id: "chatcmpl-mock_openai_456",
   model_name: "gpt-4.1-mini-2025-04-14",
   finish_reason: "stop",
 };
@@ -44,14 +46,15 @@ export const MOCK_OPENAI_RESPONSE_METADATA = {
  */
 export function createAnthropicAIMessage(
   content: string = "This is a test response",
-  overrides: Partial<typeof MOCK_ANTHROPIC_USAGE_METADATA> = {}
+  overrides: Partial<typeof MOCK_ANTHROPIC_USAGE_METADATA> = {},
+  messageId: string = MOCK_ANTHROPIC_RESPONSE_METADATA.id
 ): AIMessage {
-  const message = new AIMessage(content);
+  const message = new AIMessage({ content, id: messageId });
   (message as any).usage_metadata = {
     ...MOCK_ANTHROPIC_USAGE_METADATA,
     ...overrides,
   };
-  (message as any).response_metadata = MOCK_ANTHROPIC_RESPONSE_METADATA;
+  (message as any).response_metadata = { ...MOCK_ANTHROPIC_RESPONSE_METADATA, id: messageId };
   return message;
 }
 
@@ -60,14 +63,15 @@ export function createAnthropicAIMessage(
  */
 export function createOpenAIAIMessage(
   content: string = "This is a test response",
-  overrides: Partial<typeof MOCK_OPENAI_USAGE_METADATA> = {}
+  overrides: Partial<typeof MOCK_OPENAI_USAGE_METADATA> = {},
+  messageId: string = MOCK_OPENAI_RESPONSE_METADATA.id
 ): AIMessage {
-  const message = new AIMessage(content);
+  const message = new AIMessage({ content, id: messageId });
   (message as any).usage_metadata = {
     ...MOCK_OPENAI_USAGE_METADATA,
     ...overrides,
   };
-  (message as any).response_metadata = MOCK_OPENAI_RESPONSE_METADATA;
+  (message as any).response_metadata = { ...MOCK_OPENAI_RESPONSE_METADATA, id: messageId };
   return message;
 }
 
