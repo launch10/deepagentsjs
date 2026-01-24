@@ -63,7 +63,7 @@ export async function executeWithTracking<TState>(
       graphName: options.graphName,
       userInput: options.userInput,
     },
-    () => graph.invoke(state, config)
+    () => graph.invoke(state as Parameters<typeof graph.invoke>[0], config)
   );
 
   return {
@@ -95,7 +95,7 @@ export async function executeWithTrackingAndInterrupt<TState>(
       userInput: options.userInput,
     },
     async () => {
-      const graphResult = await graph.invoke(state, config);
+      const graphResult = await graph.invoke(state as Parameters<typeof graph.invoke>[0], config);
 
       if (graphResult && graphResult.__interrupt__) {
         const checkpoint = await graph.getState(config);

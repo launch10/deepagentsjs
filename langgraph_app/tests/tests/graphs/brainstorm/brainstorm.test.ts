@@ -452,7 +452,7 @@ describe.sequential("Brainstorming Flow", () => {
         // Multimodal content is an array of content blocks
         if (Array.isArray(msg.content)) {
           const textBlock = msg.content.find((block: any) => block.type === "text");
-          return textBlock?.text?.includes('type="ui_guidance"');
+          return (textBlock?.text as string)?.includes('type="ui_guidance"');
         }
         return typeof msg.content === "string" && msg.content.includes('type="ui_guidance"');
       });
@@ -726,7 +726,9 @@ describe.sequential("Brainstorming Flow", () => {
         expect(parsed.examples).toBeDefined();
 
         // Verify context message was injected for the helpMe mode switch
-        const contextMessages = result.state.messages.filter((message) => isContextMessage(message));
+        const contextMessages = result.state.messages.filter((message) =>
+          isContextMessage(message)
+        );
         expect(contextMessages.length).toBeGreaterThanOrEqual(1);
         const helpMeContextMessage = contextMessages.find(
           (msg) => typeof msg.content === "string" && msg.content.includes('type="help_me"')
@@ -760,7 +762,9 @@ describe.sequential("Brainstorming Flow", () => {
         expect(lastAIResponse.content).toMatch(/build|landing page|site/i);
 
         // Verify context message was injected for the doTheRest mode switch
-        const contextMessages = result.state.messages.filter((message) => isContextMessage(message));
+        const contextMessages = result.state.messages.filter((message) =>
+          isContextMessage(message)
+        );
         expect(contextMessages.length).toBeGreaterThanOrEqual(1);
         const doTheRestContextMessage = contextMessages.find(
           (msg) => typeof msg.content === "string" && msg.content.includes('type="do_the_rest"')

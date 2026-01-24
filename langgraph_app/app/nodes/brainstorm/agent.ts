@@ -57,9 +57,12 @@ const createBrainstormMiddleware = (
   return createMiddleware({
     name: "BrainstormMiddleware",
     stateSchema: middlewareStateSchema,
-    wrapModelCall: async (request, handler, middlewareState) => {
+    wrapModelCall: async (request, handler) => {
       // Check current database state BEFORE each model call
       // This catches changes made by tool calls like saveAnswers
+      // The middleware state is accessed via request.state
+      // Cast to partial BrainstormGraphState since the schema uses generic string types
+      const middlewareState = request.state as Partial<BrainstormGraphState>;
       const nextSteps = await new BrainstormNextStepsService({
         websiteId: initialState.websiteId,
         skippedTopics: middlewareState?.skippedTopics || initialState.skippedTopics || [],
@@ -67,7 +70,7 @@ const createBrainstormMiddleware = (
 
       const currentState: BrainstormGraphState = {
         ...initialState,
-        ...(middlewareState || {}),
+        ...middlewareState,
         ...nextSteps,
       };
 
