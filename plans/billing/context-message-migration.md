@@ -238,13 +238,52 @@ Each phase is independently deployable. Rollback is safe at any point.
 
 ## Success Criteria
 
-- [ ] `contextMessages.ts` created with full test coverage
-- [ ] SDK filters context messages from UI
-- [ ] All `createPseudoMessage` calls migrated
-- [ ] `filterPseudoMessages` calls removed from nodes
-- [ ] Context messages visible in conversation traces
-- [ ] `pseudoMessages.ts` deleted
-- [ ] No user-visible behavior change (UI still clean)
+- [x] Context messages use `name: "context"` instead of `additional_kwargs.isPseudo`
+- [x] SDK filters context messages from UI (via `isContextMessage` check)
+- [x] `shared/types/message.ts` utilities exclude context messages from counts
+- [x] All `createPseudoMessage` calls migrated to `createContextMessage`
+- [x] `filterPseudoMessages` calls removed from nodes (brainstorm, ads agents)
+- [x] Context messages preserved in state for conversation traces
+- [x] `pseudoMessages.ts` deleted - all imports now from `langgraph-ai-sdk`
+- [x] All deprecated aliases removed (no vestiges of `isPseudo` naming)
+- [x] No user-visible behavior change (UI still clean)
+
+## Completed: 2026-01-23
+
+### Changes Made
+
+1. **Updated `shared/types/message.ts`**
+   - Added import of `isContextMessage` from `langgraph-ai-sdk`
+   - Updated `firstHumanMessage`, `lastHumanMessage`, `countHumanMessages`, `isFirstMessage` to exclude context messages
+
+2. **Deleted `app/utils/pseudoMessages.ts`**
+   - All imports now use `langgraph-ai-sdk` directly
+   - Removed from `app/utils/index.ts` exports
+
+3. **Renamed and cleaned `app/prompts/ads/contextMessages.ts`**
+   - Renamed from `pseudoMessages.ts` to `contextMessages.ts`
+   - All deprecated aliases removed (no vestiges of `isPseudo` naming)
+   - Imports directly from `langgraph-ai-sdk`
+
+4. **Removed filtering from nodes** (context messages preserved for traces)
+   - `app/nodes/brainstorm/agent.ts` - Removed `filterPseudoMessages` call
+   - `app/nodes/ads/agent.ts` - Removed `filterPseudoMessages` call
+
+5. **Updated all callers to use new naming**
+   - `app/nodes/website/websiteBuilder.ts` - Uses `createContextMessage`, `createMultimodalContextMessage`
+   - `app/nodes/website/improveCopy.ts` - Uses `createContextMessage`
+   - `app/prompts/ads/assets/main.ts` - Uses `isContextMessage`
+   - `app/prompts/ads/assets/helpers/needsIntent.ts` - Uses `isContextMessage`
+   - `app/nodes/ads/helpers/tools.ts` - Uses `isContextMessage`
+   - `app/tools/brainstorm/queryUploads.ts` - Uses `createMultimodalContextMessage`
+
+6. **Updated tests**
+   - `tests/tests/utils/pseudoMessages.test.ts` - Tests new `name: "context"` pattern
+   - `tests/tests/tools/brainstorm/queryUploads.test.ts` - Updated to test context messages
+   - `tests/tests/graphs/ads/ads.test.ts` - Updated to use new naming (ContextMessages, getContextMessage, etc.)
+
+7. **Added SDK dependency to shared**
+   - Added `langgraph-ai-sdk: "workspace:*"` to `shared/package.json`
 
 ---
 
