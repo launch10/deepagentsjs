@@ -1804,6 +1804,121 @@ ALTER SEQUENCE public.connected_accounts_id_seq OWNED BY public.connected_accoun
 
 
 --
+-- Name: credit_pack_purchases; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.credit_pack_purchases (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    credit_pack_id bigint NOT NULL,
+    pay_charge_id bigint,
+    credits_purchased integer NOT NULL,
+    price_cents integer NOT NULL,
+    is_used boolean DEFAULT false NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    credits_used integer DEFAULT 0 NOT NULL
+);
+
+
+--
+-- Name: credit_pack_purchases_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.credit_pack_purchases_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: credit_pack_purchases_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.credit_pack_purchases_id_seq OWNED BY public.credit_pack_purchases.id;
+
+
+--
+-- Name: credit_packs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.credit_packs (
+    id bigint NOT NULL,
+    name character varying NOT NULL,
+    credits integer NOT NULL,
+    price_cents integer NOT NULL,
+    currency character varying DEFAULT 'usd'::character varying,
+    stripe_price_id character varying,
+    visible boolean DEFAULT true,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: credit_packs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.credit_packs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: credit_packs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.credit_packs_id_seq OWNED BY public.credit_packs.id;
+
+
+--
+-- Name: credit_transactions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.credit_transactions (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    transaction_type character varying NOT NULL,
+    credit_type character varying NOT NULL,
+    reason character varying NOT NULL,
+    amount bigint NOT NULL,
+    balance_after bigint NOT NULL,
+    plan_balance_after bigint NOT NULL,
+    pack_balance_after bigint NOT NULL,
+    reference_type character varying,
+    reference_id character varying,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    idempotency_key character varying,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: credit_transactions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.credit_transactions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: credit_transactions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.credit_transactions_id_seq OWNED BY public.credit_transactions.id;
+
+
+--
 -- Name: deploy_files; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2473,6 +2588,145 @@ ALTER SEQUENCE public.leads_id_seq OWNED BY public.leads.id;
 
 
 --
+-- Name: llm_conversation_traces; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.llm_conversation_traces (
+    id bigint NOT NULL,
+    chat_id bigint NOT NULL,
+    thread_id character varying NOT NULL,
+    run_id character varying NOT NULL,
+    graph_name character varying,
+    messages jsonb NOT NULL,
+    system_prompt text,
+    usage_summary jsonb,
+    llm_calls jsonb,
+    created_at timestamp without time zone NOT NULL
+)
+PARTITION BY RANGE (created_at);
+
+
+--
+-- Name: llm_conversation_traces_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.llm_conversation_traces_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: llm_conversation_traces_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.llm_conversation_traces_id_seq OWNED BY public.llm_conversation_traces.id;
+
+
+--
+-- Name: llm_conversation_traces_2026_01; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.llm_conversation_traces_2026_01 (
+    id bigint DEFAULT nextval('public.llm_conversation_traces_id_seq'::regclass) NOT NULL,
+    chat_id bigint NOT NULL,
+    thread_id character varying NOT NULL,
+    run_id character varying NOT NULL,
+    graph_name character varying,
+    messages jsonb NOT NULL,
+    system_prompt text,
+    usage_summary jsonb,
+    llm_calls jsonb,
+    created_at timestamp without time zone NOT NULL
+);
+
+
+--
+-- Name: llm_conversation_traces_2026_02; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.llm_conversation_traces_2026_02 (
+    id bigint DEFAULT nextval('public.llm_conversation_traces_id_seq'::regclass) NOT NULL,
+    chat_id bigint NOT NULL,
+    thread_id character varying NOT NULL,
+    run_id character varying NOT NULL,
+    graph_name character varying,
+    messages jsonb NOT NULL,
+    system_prompt text,
+    usage_summary jsonb,
+    llm_calls jsonb,
+    created_at timestamp without time zone NOT NULL
+);
+
+
+--
+-- Name: llm_conversation_traces_2026_03; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.llm_conversation_traces_2026_03 (
+    id bigint DEFAULT nextval('public.llm_conversation_traces_id_seq'::regclass) NOT NULL,
+    chat_id bigint NOT NULL,
+    thread_id character varying NOT NULL,
+    run_id character varying NOT NULL,
+    graph_name character varying,
+    messages jsonb NOT NULL,
+    system_prompt text,
+    usage_summary jsonb,
+    llm_calls jsonb,
+    created_at timestamp without time zone NOT NULL
+);
+
+
+--
+-- Name: llm_usage; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.llm_usage (
+    id bigint NOT NULL,
+    chat_id bigint NOT NULL,
+    thread_id character varying NOT NULL,
+    run_id character varying NOT NULL,
+    message_id character varying,
+    langchain_run_id character varying,
+    parent_langchain_run_id character varying,
+    graph_name character varying,
+    model_raw character varying NOT NULL,
+    input_tokens integer DEFAULT 0 NOT NULL,
+    output_tokens integer DEFAULT 0 NOT NULL,
+    reasoning_tokens integer DEFAULT 0,
+    cache_creation_tokens integer DEFAULT 0,
+    cache_read_tokens integer DEFAULT 0,
+    cost_microcents bigint,
+    tags character varying[] DEFAULT '{}'::character varying[],
+    metadata jsonb,
+    processed_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: llm_usage_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.llm_usage_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: llm_usage_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.llm_usage_id_seq OWNED BY public.llm_usage.id;
+
+
+--
 -- Name: model_configs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2487,7 +2741,8 @@ CREATE TABLE public.model_configs (
     updated_at timestamp(6) without time zone NOT NULL,
     model_card character varying,
     cache_writes numeric(10,4),
-    cache_reads numeric(10,4)
+    cache_reads numeric(10,4),
+    cost_reasoning numeric(10,4)
 );
 
 
@@ -4044,6 +4299,27 @@ ALTER TABLE ONLY public.domain_request_counts ATTACH PARTITION public.domain_req
 
 
 --
+-- Name: llm_conversation_traces_2026_01; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.llm_conversation_traces ATTACH PARTITION public.llm_conversation_traces_2026_01 FOR VALUES FROM ('2026-01-01 00:00:00') TO ('2026-02-01 00:00:00');
+
+
+--
+-- Name: llm_conversation_traces_2026_02; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.llm_conversation_traces ATTACH PARTITION public.llm_conversation_traces_2026_02 FOR VALUES FROM ('2026-02-01 00:00:00') TO ('2026-03-01 00:00:00');
+
+
+--
+-- Name: llm_conversation_traces_2026_03; Type: TABLE ATTACH; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.llm_conversation_traces ATTACH PARTITION public.llm_conversation_traces_2026_03 FOR VALUES FROM ('2026-03-01 00:00:00') TO ('2026-04-01 00:00:00');
+
+
+--
 -- Name: user_request_counts_2025_08; Type: TABLE ATTACH; Schema: public; Owner: -
 --
 
@@ -4303,6 +4579,27 @@ ALTER TABLE ONLY public.connected_accounts ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
+-- Name: credit_pack_purchases id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.credit_pack_purchases ALTER COLUMN id SET DEFAULT nextval('public.credit_pack_purchases_id_seq'::regclass);
+
+
+--
+-- Name: credit_packs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.credit_packs ALTER COLUMN id SET DEFAULT nextval('public.credit_packs_id_seq'::regclass);
+
+
+--
+-- Name: credit_transactions id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.credit_transactions ALTER COLUMN id SET DEFAULT nextval('public.credit_transactions_id_seq'::regclass);
+
+
+--
 -- Name: deploy_files id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4384,6 +4681,20 @@ ALTER TABLE ONLY public.job_runs ALTER COLUMN id SET DEFAULT nextval('public.job
 --
 
 ALTER TABLE ONLY public.leads ALTER COLUMN id SET DEFAULT nextval('public.leads_id_seq'::regclass);
+
+
+--
+-- Name: llm_conversation_traces id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.llm_conversation_traces ALTER COLUMN id SET DEFAULT nextval('public.llm_conversation_traces_id_seq'::regclass);
+
+
+--
+-- Name: llm_usage id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.llm_usage ALTER COLUMN id SET DEFAULT nextval('public.llm_usage_id_seq'::regclass);
 
 
 --
@@ -5088,6 +5399,30 @@ ALTER TABLE ONLY public.connected_accounts
 
 
 --
+-- Name: credit_pack_purchases credit_pack_purchases_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.credit_pack_purchases
+    ADD CONSTRAINT credit_pack_purchases_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: credit_packs credit_packs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.credit_packs
+    ADD CONSTRAINT credit_packs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: credit_transactions credit_transactions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.credit_transactions
+    ADD CONSTRAINT credit_transactions_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: deploy_files deploy_files_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5317,6 +5652,46 @@ ALTER TABLE ONLY public.job_runs
 
 ALTER TABLE ONLY public.leads
     ADD CONSTRAINT leads_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: llm_conversation_traces llm_conversation_traces_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.llm_conversation_traces
+    ADD CONSTRAINT llm_conversation_traces_pkey PRIMARY KEY (id, created_at);
+
+
+--
+-- Name: llm_conversation_traces_2026_01 llm_conversation_traces_2026_01_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.llm_conversation_traces_2026_01
+    ADD CONSTRAINT llm_conversation_traces_2026_01_pkey PRIMARY KEY (id, created_at);
+
+
+--
+-- Name: llm_conversation_traces_2026_02 llm_conversation_traces_2026_02_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.llm_conversation_traces_2026_02
+    ADD CONSTRAINT llm_conversation_traces_2026_02_pkey PRIMARY KEY (id, created_at);
+
+
+--
+-- Name: llm_conversation_traces_2026_03 llm_conversation_traces_2026_03_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.llm_conversation_traces_2026_03
+    ADD CONSTRAINT llm_conversation_traces_2026_03_pkey PRIMARY KEY (id, created_at);
+
+
+--
+-- Name: llm_usage llm_usage_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.llm_usage
+    ADD CONSTRAINT llm_usage_pkey PRIMARY KEY (id);
 
 
 --
@@ -7569,6 +7944,69 @@ CREATE INDEX index_connected_accounts_on_owner_id_and_owner_type ON public.conne
 
 
 --
+-- Name: index_credit_pack_purchases_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_credit_pack_purchases_on_account_id ON public.credit_pack_purchases USING btree (account_id);
+
+
+--
+-- Name: index_credit_pack_purchases_on_account_id_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_credit_pack_purchases_on_account_id_and_created_at ON public.credit_pack_purchases USING btree (account_id, created_at);
+
+
+--
+-- Name: index_credit_pack_purchases_on_account_id_and_is_used; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_credit_pack_purchases_on_account_id_and_is_used ON public.credit_pack_purchases USING btree (account_id, is_used);
+
+
+--
+-- Name: index_credit_pack_purchases_on_credit_pack_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_credit_pack_purchases_on_credit_pack_id ON public.credit_pack_purchases USING btree (credit_pack_id);
+
+
+--
+-- Name: index_credit_pack_purchases_on_pay_charge_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_credit_pack_purchases_on_pay_charge_id ON public.credit_pack_purchases USING btree (pay_charge_id);
+
+
+--
+-- Name: index_credit_packs_on_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_credit_packs_on_name ON public.credit_packs USING btree (name);
+
+
+--
+-- Name: index_credit_transactions_on_account_id_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_credit_transactions_on_account_id_and_created_at ON public.credit_transactions USING btree (account_id, created_at);
+
+
+--
+-- Name: index_credit_transactions_on_idempotency_key; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_credit_transactions_on_idempotency_key ON public.credit_transactions USING btree (idempotency_key) WHERE (idempotency_key IS NOT NULL);
+
+
+--
+-- Name: index_credit_transactions_on_reference_type_and_reference_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_credit_transactions_on_reference_type_and_reference_id ON public.credit_transactions USING btree (reference_type, reference_id);
+
+
+--
 -- Name: index_deploy_files_on_created_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7895,6 +8333,34 @@ CREATE UNIQUE INDEX index_leads_on_account_id_and_email ON public.leads USING bt
 --
 
 CREATE INDEX index_leads_on_email ON public.leads USING btree (email);
+
+
+--
+-- Name: index_llm_usage_on_chat_id_and_run_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_llm_usage_on_chat_id_and_run_id ON public.llm_usage USING btree (chat_id, run_id);
+
+
+--
+-- Name: index_llm_usage_on_processed_at_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_llm_usage_on_processed_at_and_created_at ON public.llm_usage USING btree (processed_at, created_at);
+
+
+--
+-- Name: index_llm_usage_on_run_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_llm_usage_on_run_id ON public.llm_usage USING btree (run_id);
+
+
+--
+-- Name: index_llm_usage_on_thread_id_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_llm_usage_on_thread_id_and_created_at ON public.llm_usage USING btree (thread_id, created_at);
 
 
 --
@@ -8875,6 +9341,90 @@ CREATE INDEX index_websites_on_template_id ON public.websites USING btree (templ
 --
 
 CREATE INDEX index_websites_on_theme_id ON public.websites USING btree (theme_id);
+
+
+--
+-- Name: llm_conversation_traces_chat_id_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX llm_conversation_traces_chat_id_created_at_idx ON ONLY public.llm_conversation_traces USING btree (chat_id, created_at);
+
+
+--
+-- Name: llm_conversation_traces_2026_01_chat_id_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX llm_conversation_traces_2026_01_chat_id_created_at_idx ON public.llm_conversation_traces_2026_01 USING btree (chat_id, created_at);
+
+
+--
+-- Name: llm_conversation_traces_run_id_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX llm_conversation_traces_run_id_created_at_idx ON ONLY public.llm_conversation_traces USING btree (run_id, created_at);
+
+
+--
+-- Name: llm_conversation_traces_2026_01_run_id_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX llm_conversation_traces_2026_01_run_id_created_at_idx ON public.llm_conversation_traces_2026_01 USING btree (run_id, created_at);
+
+
+--
+-- Name: llm_conversation_traces_thread_id_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX llm_conversation_traces_thread_id_created_at_idx ON ONLY public.llm_conversation_traces USING btree (thread_id, created_at);
+
+
+--
+-- Name: llm_conversation_traces_2026_01_thread_id_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX llm_conversation_traces_2026_01_thread_id_created_at_idx ON public.llm_conversation_traces_2026_01 USING btree (thread_id, created_at);
+
+
+--
+-- Name: llm_conversation_traces_2026_02_chat_id_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX llm_conversation_traces_2026_02_chat_id_created_at_idx ON public.llm_conversation_traces_2026_02 USING btree (chat_id, created_at);
+
+
+--
+-- Name: llm_conversation_traces_2026_02_run_id_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX llm_conversation_traces_2026_02_run_id_created_at_idx ON public.llm_conversation_traces_2026_02 USING btree (run_id, created_at);
+
+
+--
+-- Name: llm_conversation_traces_2026_02_thread_id_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX llm_conversation_traces_2026_02_thread_id_created_at_idx ON public.llm_conversation_traces_2026_02 USING btree (thread_id, created_at);
+
+
+--
+-- Name: llm_conversation_traces_2026_03_chat_id_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX llm_conversation_traces_2026_03_chat_id_created_at_idx ON public.llm_conversation_traces_2026_03 USING btree (chat_id, created_at);
+
+
+--
+-- Name: llm_conversation_traces_2026_03_run_id_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX llm_conversation_traces_2026_03_run_id_created_at_idx ON public.llm_conversation_traces_2026_03 USING btree (run_id, created_at);
+
+
+--
+-- Name: llm_conversation_traces_2026_03_thread_id_created_at_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX llm_conversation_traces_2026_03_thread_id_created_at_idx ON public.llm_conversation_traces_2026_03 USING btree (thread_id, created_at);
 
 
 --
@@ -9886,6 +10436,90 @@ ALTER INDEX public.domain_request_counts_pkey ATTACH PARTITION public.domain_req
 
 
 --
+-- Name: llm_conversation_traces_2026_01_chat_id_created_at_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.llm_conversation_traces_chat_id_created_at_idx ATTACH PARTITION public.llm_conversation_traces_2026_01_chat_id_created_at_idx;
+
+
+--
+-- Name: llm_conversation_traces_2026_01_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.llm_conversation_traces_pkey ATTACH PARTITION public.llm_conversation_traces_2026_01_pkey;
+
+
+--
+-- Name: llm_conversation_traces_2026_01_run_id_created_at_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.llm_conversation_traces_run_id_created_at_idx ATTACH PARTITION public.llm_conversation_traces_2026_01_run_id_created_at_idx;
+
+
+--
+-- Name: llm_conversation_traces_2026_01_thread_id_created_at_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.llm_conversation_traces_thread_id_created_at_idx ATTACH PARTITION public.llm_conversation_traces_2026_01_thread_id_created_at_idx;
+
+
+--
+-- Name: llm_conversation_traces_2026_02_chat_id_created_at_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.llm_conversation_traces_chat_id_created_at_idx ATTACH PARTITION public.llm_conversation_traces_2026_02_chat_id_created_at_idx;
+
+
+--
+-- Name: llm_conversation_traces_2026_02_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.llm_conversation_traces_pkey ATTACH PARTITION public.llm_conversation_traces_2026_02_pkey;
+
+
+--
+-- Name: llm_conversation_traces_2026_02_run_id_created_at_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.llm_conversation_traces_run_id_created_at_idx ATTACH PARTITION public.llm_conversation_traces_2026_02_run_id_created_at_idx;
+
+
+--
+-- Name: llm_conversation_traces_2026_02_thread_id_created_at_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.llm_conversation_traces_thread_id_created_at_idx ATTACH PARTITION public.llm_conversation_traces_2026_02_thread_id_created_at_idx;
+
+
+--
+-- Name: llm_conversation_traces_2026_03_chat_id_created_at_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.llm_conversation_traces_chat_id_created_at_idx ATTACH PARTITION public.llm_conversation_traces_2026_03_chat_id_created_at_idx;
+
+
+--
+-- Name: llm_conversation_traces_2026_03_pkey; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.llm_conversation_traces_pkey ATTACH PARTITION public.llm_conversation_traces_2026_03_pkey;
+
+
+--
+-- Name: llm_conversation_traces_2026_03_run_id_created_at_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.llm_conversation_traces_run_id_created_at_idx ATTACH PARTITION public.llm_conversation_traces_2026_03_run_id_created_at_idx;
+
+
+--
+-- Name: llm_conversation_traces_2026_03_thread_id_created_at_idx; Type: INDEX ATTACH; Schema: public; Owner: -
+--
+
+ALTER INDEX public.llm_conversation_traces_thread_id_created_at_idx ATTACH PARTITION public.llm_conversation_traces_2026_03_thread_id_created_at_idx;
+
+
+--
 -- Name: user_request_counts_2025_08_pkey1; Type: INDEX ATTACH; Schema: public; Owner: -
 --
 
@@ -10164,6 +10798,13 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260123211427'),
+('20260123211228'),
+('20260123211123'),
+('20260123211021'),
+('20260123210921'),
+('20260123210745'),
+('20260123185919'),
 ('20260122190035'),
 ('20260122150349'),
 ('20260122150336'),

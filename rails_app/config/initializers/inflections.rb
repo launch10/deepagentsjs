@@ -19,6 +19,7 @@ ActiveSupport::Inflector.inflections(:en) do |inflect|
   inflect.acronym "AI"
   inflect.acronym "FAQ"
   inflect.acronym "FAQs"
+  inflect.acronym "LLM"
   inflect.irregular "faq", "faqs"
   inflect.irregular "FAQ", "FAQs"
 end

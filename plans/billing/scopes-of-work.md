@@ -6,18 +6,18 @@ The billing system spans 5 plan documents with significant overlap. This documen
 
 ### Summary Table
 
-| Order | Scope | Name | Depends On | Complexity | Risk |
-|-------|-------|------|------------|------------|------|
-| **0** | 6 (spike) | Langgraph Usage Spike | None | Medium | **HIGH** |
-| 1 | 1 | Database Foundation | Spike | Low | Low |
-| 2 | 2 | Rails Core Services | 1 | Medium | Low |
-| 3a | 3 | Subscription Lifecycle | 2 | Medium | Low |
-| 3b | 4 | Credit Pack Purchase | 2 | Medium | Low |
-| 3c | 5 | Admin Gift Credits | 2 | Low | Low |
-| 4 | 6 (full) | Langgraph Full Implementation | 1 | High | Medium |
-| 5 | 7 | Credit Charging Pipeline | 2, 6 | Medium | Low |
-| 6 | 8 | Pre-Run Authorization | 2, 6 | Low | Low |
-| 7 | 9 | Frontend Integration | 2 | Medium | Low |
+| Order | Scope     | Name                          | Depends On | Complexity | Risk     |
+| ----- | --------- | ----------------------------- | ---------- | ---------- | -------- |
+| **0** | 6 (spike) | Langgraph Usage Spike         | None       | Medium     | **HIGH** |
+| 1     | 1         | Database Foundation           | Spike      | Low        | Low      |
+| 2     | 2         | Rails Core Services           | 1          | Medium     | Low      |
+| 3a    | 3         | Subscription Lifecycle        | 2          | Medium     | Low      |
+| 3b    | 4         | Credit Pack Purchase          | 2          | Medium     | Low      |
+| 3c    | 5         | Admin Gift Credits            | 2          | Low        | Low      |
+| 4     | 6 (full)  | Langgraph Full Implementation | 1          | High       | Medium   |
+| 5     | 7         | Credit Charging Pipeline      | 2, 6       | Medium     | Low      |
+| 6     | 8         | Pre-Run Authorization         | 2, 6       | Low        | Low      |
+| 7     | 9         | Frontend Integration          | 2          | Medium     | Low      |
 
 ---
 
@@ -87,13 +87,13 @@ The billing system spans 5 plan documents with significant overlap. This documen
 
 ### Why First?
 
-| Risk | What Could Go Wrong | How Spike Mitigates |
-|------|---------------------|---------------------|
-| Callback timing | `handleLLMEnd` might not fire for tool-internal LLM calls | Test with saveAnswersTool, SummarizationMiddleware |
-| Usage metadata | Fields might be named differently than expected | Inspect actual output, adjust schema |
-| AsyncLocalStorage | Context might not survive agent loops | Test multi-turn agent, verify all calls captured |
-| Model names | Provider returns versioned names we can't match to pricing | Build normalizeModelName with real data |
-| Cache tokens | Anthropic vs OpenAI have different field locations | Test both providers |
+| Risk              | What Could Go Wrong                                        | How Spike Mitigates                                |
+| ----------------- | ---------------------------------------------------------- | -------------------------------------------------- |
+| Callback timing   | `handleLLMEnd` might not fire for tool-internal LLM calls  | Test with saveAnswersTool, SummarizationMiddleware |
+| Usage metadata    | Fields might be named differently than expected            | Inspect actual output, adjust schema               |
+| AsyncLocalStorage | Context might not survive agent loops                      | Test multi-turn agent, verify all calls captured   |
+| Model names       | Provider returns versioned names we can't match to pricing | Build normalizeModelName with real data            |
+| Cache tokens      | Anthropic vs OpenAI have different field locations         | Test both providers                                |
 
 **The spike is cheap.** If it fails, we learn before building migrations.
 
@@ -116,11 +116,11 @@ The billing system spans 5 plan documents with significant overlap. This documen
    // Document actual fields received:
    interface ValidatedUsageRecord {
      // What handleLLMEnd actually provides
-     inputTokens: number;      // usage_metadata.input_tokens?
-     outputTokens: number;     // usage_metadata.output_tokens?
-     cacheCreation: number;    // Where is this? cache_creation_input_tokens?
-     cacheRead: number;        // cache_read_input_tokens?
-     modelName: string;        // response_metadata.model? model_name?
+     inputTokens: number; // usage_metadata.input_tokens?
+     outputTokens: number; // usage_metadata.output_tokens?
+     cacheCreation: number; // Where is this? cache_creation_input_tokens?
+     cacheRead: number; // cache_read_input_tokens?
+     modelName: string; // response_metadata.model? model_name?
      // ... document actual structure
    }
    ```
@@ -154,6 +154,7 @@ The billing system spans 5 plan documents with significant overlap. This documen
 ### Deliverables
 
 1. **Migration: credit_transactions**
+
    ```ruby
    # Fields: account_id, transaction_type, credit_type, reason, amount
    # Running balances: balance_after, plan_balance_after, pack_balance_after
@@ -162,12 +163,14 @@ The billing system spans 5 plan documents with significant overlap. This documen
    ```
 
 2. **Migration: credit_packs**
+
    ```ruby
    # Fields: account_id, credits_purchased, credits_remaining, price_cents
    # stripe_payment_intent_id, purchased_at, expires_at
    ```
 
 3. **Migration: llm_usage** ⚠️ Schema finalized by Scope 6 spike
+
    ```ruby
    # Fields: chat_id, run_id, graph_name
    # Tokens: input_tokens, output_tokens, reasoning_tokens, cache_*
@@ -176,6 +179,7 @@ The billing system spans 5 plan documents with significant overlap. This documen
    ```
 
 4. **Migration: conversation_traces** (partitioned by month)
+
    ```ruby
    # Fields: chat_id, thread_id, run_id, graph_name
    # Content: messages (jsonb), system_prompt, usage_summary, llm_calls
@@ -231,10 +235,12 @@ The billing system spans 5 plan documents with significant overlap. This documen
    - Cached balance lookup (invalidate on write, no TTL)
    - Methods: total, plan, pack, breakdown, usage_percentage
 
-6. **CreditConsumptionService**
+6. **CreditUsageService**
    - FIFO: plan credits first, then pack
    - Negative balance allowed for plan (debt absorbed next month)
    - Pack credits NEVER go negative
+   - Subtract pack credits from FIFO pack
+   - When pack credits hit zero, mark is_used for pack, and begin deducting from next pack (or go negative on plan balance if no remaining packs)
 
 7. **CreditAllocationService**
    - `allocate_plan_credits!(billing_period:)`

@@ -1,0 +1,120 @@
+# == Schema Information
+#
+# Table name: credit_transactions
+#
+#  id                 :bigint           not null, primary key
+#  amount             :bigint           not null
+#  balance_after      :bigint           not null
+#  credit_type        :string           not null
+#  idempotency_key    :string
+#  metadata           :jsonb
+#  pack_balance_after :bigint           not null
+#  plan_balance_after :bigint           not null
+#  reason             :string           not null
+#  reference_type     :string
+#  transaction_type   :string           not null
+#  created_at         :datetime         not null
+#  updated_at         :datetime         not null
+#  account_id         :bigint           not null
+#  reference_id       :string
+#
+# Indexes
+#
+#  index_credit_transactions_on_account_id_and_created_at        (account_id,created_at)
+#  index_credit_transactions_on_idempotency_key                  (idempotency_key) UNIQUE WHERE (idempotency_key IS NOT NULL)
+#  index_credit_transactions_on_reference_type_and_reference_id  (reference_type,reference_id)
+#
+require "rails_helper"
+
+RSpec.describe CreditTransaction, type: :model do
+  describe "associations" do
+    it { is_expected.to belong_to(:account) }
+  end
+
+  describe "validations" do
+    it { is_expected.to validate_presence_of(:transaction_type) }
+    it { is_expected.to validate_presence_of(:credit_type) }
+    it { is_expected.to validate_presence_of(:reason) }
+    it { is_expected.to validate_presence_of(:amount) }
+    it { is_expected.to validate_presence_of(:balance_after) }
+    it { is_expected.to validate_presence_of(:plan_balance_after) }
+    it { is_expected.to validate_presence_of(:pack_balance_after) }
+
+    it { is_expected.to validate_inclusion_of(:transaction_type).in_array(%w[allocate consume purchase refund gift adjust]) }
+    it { is_expected.to validate_inclusion_of(:credit_type).in_array(%w[plan pack]) }
+  end
+
+  describe "scopes" do
+    let(:account) { create(:account) }
+
+    describe ".for_account" do
+      let!(:tx1) { create(:credit_transaction, account: account) }
+      let!(:tx2) { create(:credit_transaction) }
+
+      it "filters by account" do
+        expect(described_class.for_account(account)).to contain_exactly(tx1)
+      end
+    end
+
+    describe ".allocations" do
+      let!(:allocation) { create(:credit_transaction, account: account, transaction_type: "allocate") }
+      let!(:consumption) { create(:credit_transaction, account: account, transaction_type: "consume") }
+
+      it "returns only allocations" do
+        expect(described_class.allocations).to contain_exactly(allocation)
+      end
+    end
+
+    describe ".consumptions" do
+      let!(:allocation) { create(:credit_transaction, account: account, transaction_type: "allocate") }
+      let!(:consumption) { create(:credit_transaction, account: account, transaction_type: "consume") }
+
+      it "returns only consumptions" do
+        expect(described_class.consumptions).to contain_exactly(consumption)
+      end
+    end
+  end
+
+  describe ".latest_for_account" do
+    let(:account) { create(:account) }
+
+    context "when account has transactions" do
+      let!(:old_tx) { create(:credit_transaction, account: account, created_at: 1.day.ago) }
+      let!(:new_tx) { create(:credit_transaction, account: account, created_at: Time.current) }
+
+      it "returns the most recent transaction" do
+        expect(described_class.latest_for_account(account)).to eq(new_tx)
+      end
+    end
+
+    context "when account has no transactions" do
+      it "returns nil" do
+        expect(described_class.latest_for_account(account)).to be_nil
+      end
+    end
+  end
+
+  describe "#credit?" do
+    it "returns true for positive amounts" do
+      tx = build(:credit_transaction, amount: 100)
+      expect(tx).to be_credit
+    end
+
+    it "returns false for negative amounts" do
+      tx = build(:credit_transaction, amount: -100)
+      expect(tx).not_to be_credit
+    end
+  end
+
+  describe "#debit?" do
+    it "returns true for negative amounts" do
+      tx = build(:credit_transaction, amount: -100)
+      expect(tx).to be_debit
+    end
+
+    it "returns false for positive amounts" do
+      tx = build(:credit_transaction, amount: 100)
+      expect(tx).not_to be_debit
+    end
+  end
+end
