@@ -37,12 +37,35 @@ export interface UsageContext {
   threadId?: string;
   graphName?: string;
 
-  // System prompt capture (for trace completeness)
+  // System prompt capture (for trace completeness / backwards compatibility)
   systemPrompt?: string;
   systemPromptCaptured?: boolean;
 
-  // Message capture for traces
-  // Pushed via handleLLMEnd - avoids fragile before/after state diffs
+  /**
+   * Clean ordered array of ALL messages in the conversation.
+   * Captures: [SystemMessage, HumanMessage, ContextMessage, AIMessage, ToolMessage, ...]
+   *
+   * - Input messages captured via handleChatModelStart
+   * - Output messages (AIMessage) captured via handleLLMEnd
+   * - Deduplication via _seenMessageIds to avoid counting same message twice
+   */
+  messages: BaseMessage[];
+
+  /**
+   * Track message IDs we've already captured to avoid duplicates.
+   * handleChatModelStart receives cumulative messages, so we need to detect
+   * which ones are new on subsequent LLM calls.
+   */
+  _seenMessageIds: Set<string>;
+
+  /**
+   * Track message count from previous handleChatModelStart call.
+   * Used to detect new messages when IDs aren't available.
+   */
+  _lastInputMessageCount: number;
+
+  // Legacy field - kept for backwards compatibility but deprecated
+  // Use `messages` instead
   messagesProduced: BaseMessage[];
   userInput?: BaseMessage; // Set at run start, not from callback
 }
@@ -72,13 +95,20 @@ export async function runWithUsageTracking<T>(
   result: T;
   runId: string;
   usage: UsageRecord[];
+  /** Clean ordered array of ALL messages in the conversation */
+  messages: BaseMessage[];
+  /** @deprecated Use messages instead - kept for backwards compatibility */
   systemPrompt?: string;
+  /** @deprecated Use messages instead - kept for backwards compatibility */
   messagesProduced: BaseMessage[];
 }> {
   const runId = generateUUID();
   const fullContext: UsageContext = {
     runId,
     records: [],
+    messages: [],
+    _seenMessageIds: new Set(),
+    _lastInputMessageCount: 0,
     messagesProduced: [],
     ...context,
   };
@@ -89,6 +119,7 @@ export async function runWithUsageTracking<T>(
       result,
       runId: fullContext.runId,
       usage: fullContext.records,
+      messages: fullContext.messages,
       systemPrompt: fullContext.systemPrompt,
       messagesProduced: fullContext.messagesProduced,
     };
@@ -104,8 +135,11 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
   name = "usage-tracking";
 
   /**
-   * Capture the system prompt on the first LLM call of a run.
-   * This ensures traces have the dynamic system prompt for replay/analysis.
+   * Capture input messages for the trace.
+   * Called at the START of each LLM call with the full conversation so far.
+   *
+   * On first call: captures all input messages (System, Human, Context, etc.)
+   * On subsequent calls: captures only NEW messages (ToolMessage, etc.)
    *
    * NOTE: Use handleChatModelStart (not handleLLMStart) for chat models.
    * - handleLLMStart: Traditional LLMs (string completion), receives prompts: string[]
@@ -123,9 +157,27 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
     const context = getUsageContext();
     if (!context) return;
 
-    // Only capture once per run (system prompt is typically constant)
-    if (!context.systemPromptCaptured && messages[0]) {
-      const systemMessage = messages[0].find((m) => m._getType() === "system");
+    const inputMessages = messages[0] ?? [];
+
+    // Capture input messages, avoiding duplicates
+    for (const msg of inputMessages) {
+      const msgId = this.getMessageId(msg);
+
+      // Skip if we've already captured this message
+      if (context._seenMessageIds.has(msgId)) {
+        continue;
+      }
+
+      context._seenMessageIds.add(msgId);
+      context.messages.push(msg);
+    }
+
+    // Track input count for deduplication
+    context._lastInputMessageCount = inputMessages.length;
+
+    // Backwards compatibility: capture system prompt as string
+    if (!context.systemPromptCaptured && inputMessages.length > 0) {
+      const systemMessage = inputMessages.find((m) => m._getType() === "system");
       if (systemMessage) {
         context.systemPrompt =
           typeof systemMessage.content === "string"
@@ -137,7 +189,27 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
   }
 
   /**
-   * Extract usage from completed LLM calls.
+   * Generate a unique ID for a message for deduplication.
+   * Uses message.id if available, otherwise creates a content-based hash.
+   */
+  private getMessageId(msg: BaseMessage): string {
+    // Prefer actual message ID if available
+    if (msg.id) {
+      return msg.id;
+    }
+
+    // Fallback: create content-based ID
+    const type = msg._getType();
+    const content = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content);
+    const name = (msg as any).name ?? "";
+    const toolCallId = (msg as any).tool_call_id ?? "";
+
+    // Simple hash for deduplication
+    return `${type}:${name}:${toolCallId}:${content.slice(0, 100)}`;
+  }
+
+  /**
+   * Extract usage and capture output message from completed LLM calls.
    * Called for every LLM invocation (agents, tools, middleware).
    */
   override async handleLLMEnd(
@@ -154,8 +226,14 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
       for (const generation of generationBatch) {
         const message = (generation as any).message as AIMessage | undefined;
         if (message) {
-          // Push message for traces
-          // This captures all LLM outputs without relying on state diffs
+          // Add to clean messages array (avoiding duplicates)
+          const msgId = this.getMessageId(message);
+          if (!context._seenMessageIds.has(msgId)) {
+            context._seenMessageIds.add(msgId);
+            context.messages.push(message);
+          }
+
+          // Legacy: also add to messagesProduced for backwards compatibility
           context.messagesProduced.push(message);
 
           // Push usage record for billing
