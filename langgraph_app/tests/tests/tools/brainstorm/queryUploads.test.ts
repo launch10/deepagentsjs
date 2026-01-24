@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { HumanMessage, ToolMessage } from "@langchain/core/messages";
-import { isPseudoMessage, createMultimodalPseudoMessage } from "@utils";
+import { isContextMessage, createMultimodalContextMessage, CONTEXT_MESSAGE_NAME } from "langgraph-ai-sdk";
 import { UploadsAPIService } from "@rails_api";
 
 /**
@@ -40,8 +40,8 @@ describe("queryUploads tool utilities", () => {
     });
   });
 
-  describe("pseudo message creation for images", () => {
-    it("should create a pseudo message with image content blocks", () => {
+  describe("context message creation for images", () => {
+    it("should create a context message with image content blocks", () => {
       const imageBlocks = UploadsAPIService.formatForModel([
         { id: 1, url: "https://example.com/image.jpg", filename: "test.jpg", is_logo: false, created_at: "2024-01-01" },
       ] as any);
@@ -51,20 +51,20 @@ describe("queryUploads tool utilities", () => {
         ...imageBlocks,
       ];
 
-      const pseudoMsg = createMultimodalPseudoMessage(content);
+      const contextMsg = createMultimodalContextMessage(content);
 
-      expect(pseudoMsg).toBeInstanceOf(HumanMessage);
-      expect(isPseudoMessage(pseudoMsg)).toBe(true);
-      expect(pseudoMsg.additional_kwargs.isPseudo).toBe(true);
+      expect(contextMsg).toBeInstanceOf(HumanMessage);
+      expect(isContextMessage(contextMsg)).toBe(true);
+      expect((contextMsg as any).name).toBe(CONTEXT_MESSAGE_NAME);
 
-      const msgContent = pseudoMsg.content as Array<any>;
+      const msgContent = contextMsg.content as Array<any>;
       expect(msgContent[0].type).toBe("text");
       expect(msgContent[0].text).toContain("1 image(s)");
       expect(msgContent[1].type).toBe("image_url");
       expect(msgContent[1].image_url.url).toBe("https://example.com/image.jpg");
     });
 
-    it("should create pseudo message with multiple images", () => {
+    it("should create context message with multiple images", () => {
       const imageBlocks = UploadsAPIService.formatForModel([
         { id: 1, url: "https://example.com/1.jpg", filename: "1.jpg", is_logo: false, created_at: "2024-01-01" },
         { id: 2, url: "https://example.com/2.jpg", filename: "2.jpg", is_logo: false, created_at: "2024-01-02" },
@@ -76,9 +76,9 @@ describe("queryUploads tool utilities", () => {
         ...imageBlocks,
       ];
 
-      const pseudoMsg = createMultimodalPseudoMessage(content);
+      const contextMsg = createMultimodalContextMessage(content);
 
-      const msgContent = pseudoMsg.content as Array<any>;
+      const msgContent = contextMsg.content as Array<any>;
       expect(msgContent).toHaveLength(4); // 1 text + 3 images
       expect(msgContent[0].text).toContain("3 image(s)");
       expect(msgContent[1].image_url.url).toBe("https://example.com/1.jpg");

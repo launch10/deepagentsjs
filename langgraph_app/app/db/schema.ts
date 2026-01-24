@@ -1,1888 +1,3412 @@
-import { pgTable, uniqueIndex, index, foreignKey, bigserial, varchar, bigint, boolean, timestamp, text, integer, jsonb, numeric, check, doublePrecision, date, vector, serial, uuid, primaryKey, pgView, pgSequence , customType} from "drizzle-orm/pg-core"
-import { sql } from "drizzle-orm"
+import {
+  pgTable,
+  uniqueIndex,
+  index,
+  foreignKey,
+  bigserial,
+  varchar,
+  bigint,
+  boolean,
+  timestamp,
+  text,
+  integer,
+  jsonb,
+  numeric,
+  check,
+  doublePrecision,
+  date,
+  vector,
+  serial,
+  uuid,
+  primaryKey,
+  pgView,
+  pgSequence,
+  customType,
+} from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // Custom type for PostgreSQL tsvector
 const tsvector = customType<{ data: string; driverData: string }>({
   dataType() {
-    return 'tsvector';
+    return "tsvector";
   },
 });
 
 // Custom type for PostgreSQL bytea
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({
   dataType() {
-    return 'bytea';
+    return "bytea";
   },
 });
 
-export const accountRequestCountsIdSeq = pgSequence("account_request_counts_id_seq", {  startWith: "1", increment: "1", minValue: "1", maxValue: "9223372036854775807", cache: "1", cycle: false })
-export const domainRequestCountsIdSeq = pgSequence("domain_request_counts_id_seq", {  startWith: "1", increment: "1", minValue: "1", maxValue: "9223372036854775807", cache: "1", cycle: false })
-export const userRequestCountsIdSeq = pgSequence("user_request_counts_id_seq", {  startWith: "1", increment: "1", minValue: "1", maxValue: "9223372036854775807", cache: "1", cycle: false })
-export const llmConversationTracesIdSeq = pgSequence("llm_conversation_traces_id_seq", {  startWith: "1", increment: "1", minValue: "1", maxValue: "9223372036854775807", cache: "1", cycle: false })
-
-export const accounts = pgTable("accounts", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	name: varchar().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	ownerId: bigint("owner_id", { mode: "number" }),
-	personal: boolean().default(false),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	extraBillingInfo: text("extra_billing_info"),
-	domain: varchar(),
-	subdomain: varchar(),
-	billingEmail: varchar("billing_email"),
-	accountUsersCount: integer("account_users_count").default(0),
-	timeZone: varchar("time_zone").default('America/New_York'),
-}, (table) => [
-	uniqueIndex("index_accounts_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
-	index("index_accounts_on_owner_id").using("btree", table.ownerId.asc().nullsLast().op("int8_ops")),
-	foreignKey({
-			columns: [table.ownerId],
-			foreignColumns: [users.id],
-			name: "fk_rails_37ced7af95"
-		}),
-]);
-
-export const accountUsers = pgTable("account_users", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	userId: bigint("user_id", { mode: "number" }),
-	roles: jsonb().default({}).notNull(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	uniqueIndex("index_account_users_on_account_id_and_user_id").using("btree", table.accountId.asc().nullsLast().op("int8_ops"), table.userId.asc().nullsLast().op("int8_ops")),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "fk_rails_685e030c15"
-		}),
-	foreignKey({
-			columns: [table.accountId],
-			foreignColumns: [accounts.id],
-			name: "fk_rails_c96445f213"
-		}),
-]);
-
-export const actionTextEmbeds = pgTable("action_text_embeds", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	url: varchar(),
-	fields: jsonb(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
+export const accountRequestCountsIdSeq = pgSequence("account_request_counts_id_seq", {
+  startWith: "1",
+  increment: "1",
+  minValue: "1",
+  maxValue: "9223372036854775807",
+  cache: "1",
+  cycle: false,
+});
+export const domainRequestCountsIdSeq = pgSequence("domain_request_counts_id_seq", {
+  startWith: "1",
+  increment: "1",
+  minValue: "1",
+  maxValue: "9223372036854775807",
+  cache: "1",
+  cycle: false,
+});
+export const userRequestCountsIdSeq = pgSequence("user_request_counts_id_seq", {
+  startWith: "1",
+  increment: "1",
+  minValue: "1",
+  maxValue: "9223372036854775807",
+  cache: "1",
+  cycle: false,
+});
+export const llmConversationTracesIdSeq = pgSequence("llm_conversation_traces_id_seq", {
+  startWith: "1",
+  increment: "1",
+  minValue: "1",
+  maxValue: "9223372036854775807",
+  cache: "1",
+  cycle: false,
 });
 
-export const actionTextRichTexts = pgTable("action_text_rich_texts", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	name: varchar().notNull(),
-	body: text(),
-	recordType: varchar("record_type").notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	recordId: bigint("record_id", { mode: "number" }).notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).notNull(),
-}, (table) => [
-	uniqueIndex("index_action_text_rich_texts_uniqueness").using("btree", table.recordType.asc().nullsLast().op("int8_ops"), table.recordId.asc().nullsLast().op("int8_ops"), table.name.asc().nullsLast().op("int8_ops")),
-]);
+export const accounts = pgTable(
+  "accounts",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    name: varchar().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    ownerId: bigint("owner_id", { mode: "number" }),
+    personal: boolean().default(false),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    extraBillingInfo: text("extra_billing_info"),
+    domain: varchar(),
+    subdomain: varchar(),
+    billingEmail: varchar("billing_email"),
+    accountUsersCount: integer("account_users_count").default(0),
+    timeZone: varchar("time_zone").default("America/New_York"),
+  },
+  (table) => [
+    uniqueIndex("index_accounts_on_name").using(
+      "btree",
+      table.name.asc().nullsLast().op("text_ops")
+    ),
+    index("index_accounts_on_owner_id").using(
+      "btree",
+      table.ownerId.asc().nullsLast().op("int8_ops")
+    ),
+    foreignKey({
+      columns: [table.ownerId],
+      foreignColumns: [users.id],
+      name: "fk_rails_37ced7af95",
+    }),
+  ]
+);
 
-export const accountInvitations = pgTable("account_invitations", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	invitedById: bigint("invited_by_id", { mode: "number" }),
-	token: varchar().notNull(),
-	name: varchar().notNull(),
-	email: varchar().notNull(),
-	roles: jsonb().default({}).notNull(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	uniqueIndex("index_account_invitations_on_account_id_and_email").using("btree", table.accountId.asc().nullsLast().op("int8_ops"), table.email.asc().nullsLast().op("int8_ops")),
-	index("index_account_invitations_on_invited_by_id").using("btree", table.invitedById.asc().nullsLast().op("int8_ops")),
-	uniqueIndex("index_account_invitations_on_token").using("btree", table.token.asc().nullsLast().op("text_ops")),
-	foreignKey({
-			columns: [table.invitedById],
-			foreignColumns: [users.id],
-			name: "fk_rails_04a176d6ed"
-		}),
-	foreignKey({
-			columns: [table.accountId],
-			foreignColumns: [accounts.id],
-			name: "fk_rails_7a9e106543"
-		}),
-]);
+export const accountUsers = pgTable(
+  "account_users",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    userId: bigint("user_id", { mode: "number" }),
+    roles: jsonb().default({}).notNull(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("index_account_users_on_account_id_and_user_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops"),
+      table.userId.asc().nullsLast().op("int8_ops")
+    ),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: "fk_rails_685e030c15",
+    }),
+    foreignKey({
+      columns: [table.accountId],
+      foreignColumns: [accounts.id],
+      name: "fk_rails_c96445f213",
+    }),
+  ]
+);
 
-export const activeStorageAttachments = pgTable("active_storage_attachments", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	name: varchar().notNull(),
-	recordType: varchar("record_type").notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	recordId: bigint("record_id", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	blobId: bigint("blob_id", { mode: "number" }).notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' }).notNull(),
-}, (table) => [
-	index("index_active_storage_attachments_on_blob_id").using("btree", table.blobId.asc().nullsLast().op("int8_ops")),
-	uniqueIndex("index_active_storage_attachments_uniqueness").using("btree", table.recordType.asc().nullsLast().op("int8_ops"), table.recordId.asc().nullsLast().op("int8_ops"), table.name.asc().nullsLast().op("int8_ops"), table.blobId.asc().nullsLast().op("int8_ops")),
-]);
+export const actionTextEmbeds = pgTable("action_text_embeds", {
+  id: bigserial({ mode: "number" }).primaryKey().notNull(),
+  url: varchar(),
+  fields: jsonb(),
+  createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+  updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+});
 
-export const adBudgets = pgTable("ad_budgets", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	campaignId: bigint("campaign_id", { mode: "number" }),
-	dailyBudgetCents: integer("daily_budget_cents"),
-	platformSettings: jsonb("platform_settings").default({"meta":{},"google":{}}),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	deletedAt: timestamp("deleted_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_ad_budgets_on_campaign_id").using("btree", table.campaignId.asc().nullsLast().op("int8_ops")),
-	index("index_ad_budgets_on_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ad_budgets_on_google_id").using("btree", sql`(((platform_settings -> 'google'::text) ->> 'budget_id'::text))`),
-	index("index_ad_budgets_on_platform_settings").using("gin", table.platformSettings.asc().nullsLast().op("jsonb_ops")),
-]);
+export const actionTextRichTexts = pgTable(
+  "action_text_rich_texts",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    name: varchar().notNull(),
+    body: text(),
+    recordType: varchar("record_type").notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    recordId: bigint("record_id", { mode: "number" }).notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("index_action_text_rich_texts_uniqueness").using(
+      "btree",
+      table.recordType.asc().nullsLast().op("int8_ops"),
+      table.recordId.asc().nullsLast().op("int8_ops"),
+      table.name.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
 
-export const activeStorageBlobs = pgTable("active_storage_blobs", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	key: varchar().notNull(),
-	filename: varchar().notNull(),
-	contentType: varchar("content_type"),
-	metadata: text(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	byteSize: bigint("byte_size", { mode: "number" }).notNull(),
-	checksum: varchar(),
-	createdAt: timestamp("created_at", { mode: 'string' }).notNull(),
-	serviceName: varchar("service_name").notNull(),
-}, (table) => [
-	uniqueIndex("index_active_storage_blobs_on_key").using("btree", table.key.asc().nullsLast().op("text_ops")),
-]);
+export const accountInvitations = pgTable(
+  "account_invitations",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    invitedById: bigint("invited_by_id", { mode: "number" }),
+    token: varchar().notNull(),
+    name: varchar().notNull(),
+    email: varchar().notNull(),
+    roles: jsonb().default({}).notNull(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("index_account_invitations_on_account_id_and_email").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops"),
+      table.email.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_account_invitations_on_invited_by_id").using(
+      "btree",
+      table.invitedById.asc().nullsLast().op("int8_ops")
+    ),
+    uniqueIndex("index_account_invitations_on_token").using(
+      "btree",
+      table.token.asc().nullsLast().op("text_ops")
+    ),
+    foreignKey({
+      columns: [table.invitedById],
+      foreignColumns: [users.id],
+      name: "fk_rails_04a176d6ed",
+    }),
+    foreignKey({
+      columns: [table.accountId],
+      foreignColumns: [accounts.id],
+      name: "fk_rails_7a9e106543",
+    }),
+  ]
+);
 
-export const adCallouts = pgTable("ad_callouts", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	campaignId: bigint("campaign_id", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	adGroupId: bigint("ad_group_id", { mode: "number" }),
-	text: varchar().notNull(),
-	position: integer().notNull(),
-	platformSettings: jsonb("platform_settings").default({"meta":{},"google":{}}),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	deletedAt: timestamp("deleted_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_ad_callouts_on_ad_group_id").using("btree", table.adGroupId.asc().nullsLast().op("int8_ops")),
-	index("index_ad_callouts_on_asset_id").using("btree", sql`(((platform_settings -> 'google'::text) ->> 'asset_id'::text))`),
-	index("index_ad_callouts_on_campaign_id").using("btree", table.campaignId.asc().nullsLast().op("int8_ops")),
-	index("index_ad_callouts_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ad_callouts_on_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ad_callouts_on_platform_settings").using("gin", table.platformSettings.asc().nullsLast().op("jsonb_ops")),
-	index("index_ad_callouts_on_position").using("btree", table.position.asc().nullsLast().op("int4_ops")),
-]);
+export const activeStorageAttachments = pgTable(
+  "active_storage_attachments",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    name: varchar().notNull(),
+    recordType: varchar("record_type").notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    recordId: bigint("record_id", { mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    blobId: bigint("blob_id", { mode: "number" }).notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("index_active_storage_attachments_on_blob_id").using(
+      "btree",
+      table.blobId.asc().nullsLast().op("int8_ops")
+    ),
+    uniqueIndex("index_active_storage_attachments_uniqueness").using(
+      "btree",
+      table.recordType.asc().nullsLast().op("int8_ops"),
+      table.recordId.asc().nullsLast().op("int8_ops"),
+      table.name.asc().nullsLast().op("int8_ops"),
+      table.blobId.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
 
-export const adDescriptions = pgTable("ad_descriptions", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	adId: bigint("ad_id", { mode: "number" }).notNull(),
-	text: varchar().notNull(),
-	position: integer().notNull(),
-	platformSettings: jsonb("platform_settings").default({"meta":{},"google":{}}),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	deletedAt: timestamp("deleted_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_ad_descriptions_on_ad_id").using("btree", table.adId.asc().nullsLast().op("int8_ops")),
-	index("index_ad_descriptions_on_asset_id").using("btree", sql`(((platform_settings -> 'google'::text) ->> 'asset_id'::text))`),
-	index("index_ad_descriptions_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ad_descriptions_on_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ad_descriptions_on_platform_settings").using("gin", table.platformSettings.asc().nullsLast().op("jsonb_ops")),
-	index("index_ad_descriptions_on_position").using("btree", table.position.asc().nullsLast().op("int4_ops")),
-]);
+export const adBudgets = pgTable(
+  "ad_budgets",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    campaignId: bigint("campaign_id", { mode: "number" }),
+    dailyBudgetCents: integer("daily_budget_cents"),
+    platformSettings: jsonb("platform_settings").default({ meta: {}, google: {} }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    deletedAt: timestamp("deleted_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_ad_budgets_on_campaign_id").using(
+      "btree",
+      table.campaignId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ad_budgets_on_deleted_at").using(
+      "btree",
+      table.deletedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ad_budgets_on_google_id").using(
+      "btree",
+      sql`(((platform_settings -> 'google'::text) ->> 'budget_id'::text))`
+    ),
+    index("index_ad_budgets_on_platform_settings").using(
+      "gin",
+      table.platformSettings.asc().nullsLast().op("jsonb_ops")
+    ),
+  ]
+);
 
-export const adGroups = pgTable("ad_groups", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	campaignId: bigint("campaign_id", { mode: "number" }),
-	name: varchar(),
-	platformSettings: jsonb("platform_settings").default({"meta":{},"google":{}}),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	deletedAt: timestamp("deleted_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_ad_groups_on_campaign_id").using("btree", table.campaignId.asc().nullsLast().op("int8_ops")),
-	index("index_ad_groups_on_campaign_id_and_name").using("btree", table.campaignId.asc().nullsLast().op("int8_ops"), table.name.asc().nullsLast().op("int8_ops")),
-	index("index_ad_groups_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ad_groups_on_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ad_groups_on_google_id").using("btree", sql`(((platform_settings -> 'google'::text) ->> 'ad_group_id'::text`),
-	index("index_ad_groups_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
-	index("index_ad_groups_on_platform_settings").using("gin", table.platformSettings.asc().nullsLast().op("jsonb_ops")),
-]);
+export const activeStorageBlobs = pgTable(
+  "active_storage_blobs",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    key: varchar().notNull(),
+    filename: varchar().notNull(),
+    contentType: varchar("content_type"),
+    metadata: text(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    byteSize: bigint("byte_size", { mode: "number" }).notNull(),
+    checksum: varchar(),
+    createdAt: timestamp("created_at", { mode: "string" }).notNull(),
+    serviceName: varchar("service_name").notNull(),
+  },
+  (table) => [
+    uniqueIndex("index_active_storage_blobs_on_key").using(
+      "btree",
+      table.key.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const adHeadlines = pgTable("ad_headlines", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	adId: bigint("ad_id", { mode: "number" }).notNull(),
-	text: varchar().notNull(),
-	position: integer().notNull(),
-	platformSettings: jsonb("platform_settings").default({"meta":{},"google":{}}),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	deletedAt: timestamp("deleted_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_ad_headlines_on_ad_id").using("btree", table.adId.asc().nullsLast().op("int8_ops")),
-	index("index_ad_headlines_on_ad_id_and_position").using("btree", table.adId.asc().nullsLast().op("int4_ops"), table.position.asc().nullsLast().op("int4_ops")),
-	index("index_ad_headlines_on_asset_id").using("btree", sql`(((platform_settings -> 'google'::text) ->> 'asset_id'::text))`),
-	index("index_ad_headlines_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ad_headlines_on_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ad_headlines_on_platform_settings").using("gin", table.platformSettings.asc().nullsLast().op("jsonb_ops")),
-	index("index_ad_headlines_on_position").using("btree", table.position.asc().nullsLast().op("int4_ops")),
-]);
+export const adCallouts = pgTable(
+  "ad_callouts",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    campaignId: bigint("campaign_id", { mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    adGroupId: bigint("ad_group_id", { mode: "number" }),
+    text: varchar().notNull(),
+    position: integer().notNull(),
+    platformSettings: jsonb("platform_settings").default({ meta: {}, google: {} }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    deletedAt: timestamp("deleted_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_ad_callouts_on_ad_group_id").using(
+      "btree",
+      table.adGroupId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ad_callouts_on_asset_id").using(
+      "btree",
+      sql`(((platform_settings -> 'google'::text) ->> 'asset_id'::text))`
+    ),
+    index("index_ad_callouts_on_campaign_id").using(
+      "btree",
+      table.campaignId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ad_callouts_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ad_callouts_on_deleted_at").using(
+      "btree",
+      table.deletedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ad_callouts_on_platform_settings").using(
+      "gin",
+      table.platformSettings.asc().nullsLast().op("jsonb_ops")
+    ),
+    index("index_ad_callouts_on_position").using(
+      "btree",
+      table.position.asc().nullsLast().op("int4_ops")
+    ),
+  ]
+);
 
-export const adKeywords = pgTable("ad_keywords", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	adGroupId: bigint("ad_group_id", { mode: "number" }).notNull(),
-	text: varchar({ length: 120 }).notNull(),
-	matchType: varchar("match_type").default('broad').notNull(),
-	position: integer().notNull(),
-	platformSettings: jsonb("platform_settings").default({"meta":{},"google":{}}),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	deletedAt: timestamp("deleted_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_ad_keywords_on_ad_group_id").using("btree", table.adGroupId.asc().nullsLast().op("int8_ops")),
-	index("index_ad_keywords_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ad_keywords_on_criterion_id").using("btree", sql`(((platform_settings -> 'google'::text) ->> 'criterion_id'::tex`),
-	index("index_ad_keywords_on_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ad_keywords_on_match_type").using("btree", table.matchType.asc().nullsLast().op("text_ops")),
-	index("index_ad_keywords_on_platform_settings").using("gin", table.platformSettings.asc().nullsLast().op("jsonb_ops")),
-	index("index_ad_keywords_on_position").using("btree", table.position.asc().nullsLast().op("int4_ops")),
-	index("index_ad_keywords_on_text").using("btree", table.text.asc().nullsLast().op("text_ops")),
-]);
+export const adDescriptions = pgTable(
+  "ad_descriptions",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    adId: bigint("ad_id", { mode: "number" }).notNull(),
+    text: varchar().notNull(),
+    position: integer().notNull(),
+    platformSettings: jsonb("platform_settings").default({ meta: {}, google: {} }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    deletedAt: timestamp("deleted_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_ad_descriptions_on_ad_id").using(
+      "btree",
+      table.adId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ad_descriptions_on_asset_id").using(
+      "btree",
+      sql`(((platform_settings -> 'google'::text) ->> 'asset_id'::text))`
+    ),
+    index("index_ad_descriptions_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ad_descriptions_on_deleted_at").using(
+      "btree",
+      table.deletedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ad_descriptions_on_platform_settings").using(
+      "gin",
+      table.platformSettings.asc().nullsLast().op("jsonb_ops")
+    ),
+    index("index_ad_descriptions_on_position").using(
+      "btree",
+      table.position.asc().nullsLast().op("int4_ops")
+    ),
+  ]
+);
 
-export const adLanguages = pgTable("ad_languages", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	campaignId: bigint("campaign_id", { mode: "number" }),
-	platformSettings: jsonb("platform_settings").default({"meta":{},"google":{}}),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	deletedAt: timestamp("deleted_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_ad_languages_on_campaign_id").using("btree", table.campaignId.asc().nullsLast().op("int8_ops")),
-	index("index_ad_languages_on_criterion_id").using("btree", sql`(((platform_settings -> 'google'::text) ->> 'criterion_id'::tex`),
-	index("index_ad_languages_on_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ad_languages_on_language_constant_id").using("btree", sql`(((platform_settings -> 'google'::text) ->> 'language_constant_`),
-	index("index_ad_languages_on_platform_settings").using("gin", table.platformSettings.asc().nullsLast().op("jsonb_ops")),
-]);
+export const adGroups = pgTable(
+  "ad_groups",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    campaignId: bigint("campaign_id", { mode: "number" }),
+    name: varchar(),
+    platformSettings: jsonb("platform_settings").default({ meta: {}, google: {} }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    deletedAt: timestamp("deleted_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_ad_groups_on_campaign_id").using(
+      "btree",
+      table.campaignId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ad_groups_on_campaign_id_and_name").using(
+      "btree",
+      table.campaignId.asc().nullsLast().op("int8_ops"),
+      table.name.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ad_groups_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ad_groups_on_deleted_at").using(
+      "btree",
+      table.deletedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ad_groups_on_google_id").using(
+      "btree",
+      sql`(((platform_settings -> 'google'::text) ->> 'ad_group_id'::text`
+    ),
+    index("index_ad_groups_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
+    index("index_ad_groups_on_platform_settings").using(
+      "gin",
+      table.platformSettings.asc().nullsLast().op("jsonb_ops")
+    ),
+  ]
+);
 
-export const adLocationTargets = pgTable("ad_location_targets", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	campaignId: bigint("campaign_id", { mode: "number" }),
-	targetType: varchar("target_type").notNull(),
-	targeted: boolean().default(true).notNull(),
-	locationIdentifier: varchar("location_identifier"),
-	locationName: varchar("location_name"),
-	locationType: varchar("location_type"),
-	latitude: numeric({ precision: 10, scale:  6 }),
-	longitude: numeric({ precision: 10, scale:  6 }),
-	radius: numeric({ precision: 10, scale:  2 }),
-	radiusUnits: varchar("radius_units"),
-	addressLine1: varchar("address_line_1"),
-	city: varchar(),
-	state: varchar(),
-	postalCode: varchar("postal_code"),
-	countryCode: varchar("country_code"),
-	platformSettings: jsonb("platform_settings").default({"meta":{},"google":{}}),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	deletedAt: timestamp("deleted_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_ad_location_targets_on_campaign_id").using("btree", table.campaignId.asc().nullsLast().op("int8_ops")),
-	index("index_ad_location_targets_on_criterion_id").using("btree", sql`(((platform_settings -> 'google'::text) ->> 'criterion_id'::tex`),
-	index("index_ad_location_targets_on_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ad_location_targets_on_location_identifier").using("btree", table.locationIdentifier.asc().nullsLast().op("text_ops")),
-	index("index_ad_location_targets_on_platform_settings").using("gin", table.platformSettings.asc().nullsLast().op("jsonb_ops")),
-]);
+export const adHeadlines = pgTable(
+  "ad_headlines",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    adId: bigint("ad_id", { mode: "number" }).notNull(),
+    text: varchar().notNull(),
+    position: integer().notNull(),
+    platformSettings: jsonb("platform_settings").default({ meta: {}, google: {} }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    deletedAt: timestamp("deleted_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_ad_headlines_on_ad_id").using(
+      "btree",
+      table.adId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ad_headlines_on_ad_id_and_position").using(
+      "btree",
+      table.adId.asc().nullsLast().op("int4_ops"),
+      table.position.asc().nullsLast().op("int4_ops")
+    ),
+    index("index_ad_headlines_on_asset_id").using(
+      "btree",
+      sql`(((platform_settings -> 'google'::text) ->> 'asset_id'::text))`
+    ),
+    index("index_ad_headlines_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ad_headlines_on_deleted_at").using(
+      "btree",
+      table.deletedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ad_headlines_on_platform_settings").using(
+      "gin",
+      table.platformSettings.asc().nullsLast().op("jsonb_ops")
+    ),
+    index("index_ad_headlines_on_position").using(
+      "btree",
+      table.position.asc().nullsLast().op("int4_ops")
+    ),
+  ]
+);
 
-export const adSchedules = pgTable("ad_schedules", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	campaignId: bigint("campaign_id", { mode: "number" }).notNull(),
-	dayOfWeek: varchar("day_of_week"),
-	startHour: integer("start_hour"),
-	startMinute: integer("start_minute"),
-	endHour: integer("end_hour"),
-	endMinute: integer("end_minute"),
-	alwaysOn: boolean("always_on").default(false),
-	bidModifier: numeric("bid_modifier", { precision: 10, scale:  2 }),
-	platformSettings: jsonb("platform_settings").default({"meta":{},"google":{}}),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	deletedAt: timestamp("deleted_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_ad_schedules_on_always_on").using("btree", table.alwaysOn.asc().nullsLast().op("bool_ops")),
-	index("index_ad_schedules_on_campaign_id").using("btree", table.campaignId.asc().nullsLast().op("int8_ops")),
-	index("index_ad_schedules_on_campaign_id_and_day_of_week").using("btree", table.campaignId.asc().nullsLast().op("int8_ops"), table.dayOfWeek.asc().nullsLast().op("int8_ops")),
-	index("index_ad_schedules_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ad_schedules_on_criterion_id").using("btree", sql`(((platform_settings -> 'google'::text) ->> 'criterion_id'::tex`),
-	index("index_ad_schedules_on_day_of_week").using("btree", table.dayOfWeek.asc().nullsLast().op("text_ops")),
-	index("index_ad_schedules_on_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ad_schedules_on_platform_settings").using("gin", table.platformSettings.asc().nullsLast().op("jsonb_ops")),
-	check("valid_end_hour", sql`(end_hour >= 0) AND (end_hour <= 24)`),
-	check("valid_end_minute", sql`end_minute = ANY (ARRAY[0, 15, 30, 45])`),
-	check("valid_start_hour", sql`(start_hour >= 0) AND (start_hour <= 23)`),
-	check("valid_start_minute", sql`start_minute = ANY (ARRAY[0, 15, 30, 45])`),
-]);
+export const adKeywords = pgTable(
+  "ad_keywords",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    adGroupId: bigint("ad_group_id", { mode: "number" }).notNull(),
+    text: varchar({ length: 120 }).notNull(),
+    matchType: varchar("match_type").default("broad").notNull(),
+    position: integer().notNull(),
+    platformSettings: jsonb("platform_settings").default({ meta: {}, google: {} }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    deletedAt: timestamp("deleted_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_ad_keywords_on_ad_group_id").using(
+      "btree",
+      table.adGroupId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ad_keywords_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ad_keywords_on_criterion_id").using(
+      "btree",
+      sql`(((platform_settings -> 'google'::text) ->> 'criterion_id'::tex`
+    ),
+    index("index_ad_keywords_on_deleted_at").using(
+      "btree",
+      table.deletedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ad_keywords_on_match_type").using(
+      "btree",
+      table.matchType.asc().nullsLast().op("text_ops")
+    ),
+    index("index_ad_keywords_on_platform_settings").using(
+      "gin",
+      table.platformSettings.asc().nullsLast().op("jsonb_ops")
+    ),
+    index("index_ad_keywords_on_position").using(
+      "btree",
+      table.position.asc().nullsLast().op("int4_ops")
+    ),
+    index("index_ad_keywords_on_text").using("btree", table.text.asc().nullsLast().op("text_ops")),
+  ]
+);
 
-export const adStructuredSnippets = pgTable("ad_structured_snippets", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	campaignId: bigint("campaign_id", { mode: "number" }).notNull(),
-	category: varchar().notNull(),
-	values: jsonb().default([]).notNull(),
-	platformSettings: jsonb("platform_settings").default({"meta":{},"google":{}}),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	deletedAt: timestamp("deleted_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_ad_structured_snippets_on_asset_id").using("btree", sql`(((platform_settings -> 'google'::text) ->> 'asset_id'::text))`),
-	index("index_ad_structured_snippets_on_campaign_id").using("btree", table.campaignId.asc().nullsLast().op("int8_ops")),
-	index("index_ad_structured_snippets_on_category").using("btree", table.category.asc().nullsLast().op("text_ops")),
-	index("index_ad_structured_snippets_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ad_structured_snippets_on_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ad_structured_snippets_on_platform_settings").using("gin", table.platformSettings.asc().nullsLast().op("jsonb_ops")),
-]);
+export const adLanguages = pgTable(
+  "ad_languages",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    campaignId: bigint("campaign_id", { mode: "number" }),
+    platformSettings: jsonb("platform_settings").default({ meta: {}, google: {} }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    deletedAt: timestamp("deleted_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_ad_languages_on_campaign_id").using(
+      "btree",
+      table.campaignId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ad_languages_on_criterion_id").using(
+      "btree",
+      sql`(((platform_settings -> 'google'::text) ->> 'criterion_id'::tex`
+    ),
+    index("index_ad_languages_on_deleted_at").using(
+      "btree",
+      table.deletedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ad_languages_on_language_constant_id").using(
+      "btree",
+      sql`(((platform_settings -> 'google'::text) ->> 'language_constant_`
+    ),
+    index("index_ad_languages_on_platform_settings").using(
+      "gin",
+      table.platformSettings.asc().nullsLast().op("jsonb_ops")
+    ),
+  ]
+);
 
-export const ads = pgTable("ads", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	adGroupId: bigint("ad_group_id", { mode: "number" }),
-	status: varchar().default('draft'),
-	displayPath1: varchar("display_path_1"),
-	displayPath2: varchar("display_path_2"),
-	platformSettings: jsonb("platform_settings").default({"meta":{},"google":{}}),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	deletedAt: timestamp("deleted_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_ads_on_ad_group_id").using("btree", table.adGroupId.asc().nullsLast().op("int8_ops")),
-	index("index_ads_on_ad_group_id_and_status").using("btree", table.adGroupId.asc().nullsLast().op("int8_ops"), table.status.asc().nullsLast().op("int8_ops")),
-	index("index_ads_on_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ads_on_google_id").using("btree", sql`(((platform_settings -> 'google'::text) ->> 'ad_id'::text))`),
-	index("index_ads_on_platform_settings").using("gin", table.platformSettings.asc().nullsLast().op("jsonb_ops")),
-	index("index_ads_on_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
-]);
+export const adLocationTargets = pgTable(
+  "ad_location_targets",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    campaignId: bigint("campaign_id", { mode: "number" }),
+    targetType: varchar("target_type").notNull(),
+    targeted: boolean().default(true).notNull(),
+    locationIdentifier: varchar("location_identifier"),
+    locationName: varchar("location_name"),
+    locationType: varchar("location_type"),
+    latitude: numeric({ precision: 10, scale: 6 }),
+    longitude: numeric({ precision: 10, scale: 6 }),
+    radius: numeric({ precision: 10, scale: 2 }),
+    radiusUnits: varchar("radius_units"),
+    addressLine1: varchar("address_line_1"),
+    city: varchar(),
+    state: varchar(),
+    postalCode: varchar("postal_code"),
+    countryCode: varchar("country_code"),
+    platformSettings: jsonb("platform_settings").default({ meta: {}, google: {} }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    deletedAt: timestamp("deleted_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_ad_location_targets_on_campaign_id").using(
+      "btree",
+      table.campaignId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ad_location_targets_on_criterion_id").using(
+      "btree",
+      sql`(((platform_settings -> 'google'::text) ->> 'criterion_id'::tex`
+    ),
+    index("index_ad_location_targets_on_deleted_at").using(
+      "btree",
+      table.deletedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ad_location_targets_on_location_identifier").using(
+      "btree",
+      table.locationIdentifier.asc().nullsLast().op("text_ops")
+    ),
+    index("index_ad_location_targets_on_platform_settings").using(
+      "gin",
+      table.platformSettings.asc().nullsLast().op("jsonb_ops")
+    ),
+  ]
+);
 
-export const apiTokens = pgTable("api_tokens", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	userId: bigint("user_id", { mode: "number" }).notNull(),
-	token: varchar(),
-	name: varchar(),
-	metadata: jsonb(),
-	transient: boolean().default(false),
-	lastUsedAt: timestamp("last_used_at", { mode: 'string' }),
-	expiresAt: timestamp("expires_at", { mode: 'string' }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	uniqueIndex("index_api_tokens_on_token").using("btree", table.token.asc().nullsLast().op("text_ops")),
-	index("index_api_tokens_on_user_id").using("btree", table.userId.asc().nullsLast().op("int8_ops")),
-	foreignKey({
-			columns: [table.userId],
-			foreignColumns: [users.id],
-			name: "fk_rails_f16b5e0447"
-		}),
-]);
+export const adSchedules = pgTable(
+  "ad_schedules",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    campaignId: bigint("campaign_id", { mode: "number" }).notNull(),
+    dayOfWeek: varchar("day_of_week"),
+    startHour: integer("start_hour"),
+    startMinute: integer("start_minute"),
+    endHour: integer("end_hour"),
+    endMinute: integer("end_minute"),
+    alwaysOn: boolean("always_on").default(false),
+    bidModifier: numeric("bid_modifier", { precision: 10, scale: 2 }),
+    platformSettings: jsonb("platform_settings").default({ meta: {}, google: {} }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    deletedAt: timestamp("deleted_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_ad_schedules_on_always_on").using(
+      "btree",
+      table.alwaysOn.asc().nullsLast().op("bool_ops")
+    ),
+    index("index_ad_schedules_on_campaign_id").using(
+      "btree",
+      table.campaignId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ad_schedules_on_campaign_id_and_day_of_week").using(
+      "btree",
+      table.campaignId.asc().nullsLast().op("int8_ops"),
+      table.dayOfWeek.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ad_schedules_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ad_schedules_on_criterion_id").using(
+      "btree",
+      sql`(((platform_settings -> 'google'::text) ->> 'criterion_id'::tex`
+    ),
+    index("index_ad_schedules_on_day_of_week").using(
+      "btree",
+      table.dayOfWeek.asc().nullsLast().op("text_ops")
+    ),
+    index("index_ad_schedules_on_deleted_at").using(
+      "btree",
+      table.deletedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ad_schedules_on_platform_settings").using(
+      "gin",
+      table.platformSettings.asc().nullsLast().op("jsonb_ops")
+    ),
+    check("valid_end_hour", sql`(end_hour >= 0) AND (end_hour <= 24)`),
+    check("valid_end_minute", sql`end_minute = ANY (ARRAY[0, 15, 30, 45])`),
+    check("valid_start_hour", sql`(start_hour >= 0) AND (start_hour <= 23)`),
+    check("valid_start_minute", sql`start_minute = ANY (ARRAY[0, 15, 30, 45])`),
+  ]
+);
 
-export const ahoyEvents = pgTable("ahoy_events", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	visitId: bigint("visit_id", { mode: "number" }),
-	name: varchar(),
-	properties: jsonb(),
-	time: timestamp({ precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_ahoy_events_on_name_and_time").using("btree", table.name.asc().nullsLast().op("text_ops"), table.time.asc().nullsLast().op("text_ops")),
-	index("index_ahoy_events_on_properties").using("gin", table.properties.asc().nullsLast().op("jsonb_path_ops")),
-	index("index_ahoy_events_on_visit_id").using("btree", table.visitId.asc().nullsLast().op("int8_ops")),
-]);
+export const adStructuredSnippets = pgTable(
+  "ad_structured_snippets",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    campaignId: bigint("campaign_id", { mode: "number" }).notNull(),
+    category: varchar().notNull(),
+    values: jsonb().default([]).notNull(),
+    platformSettings: jsonb("platform_settings").default({ meta: {}, google: {} }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    deletedAt: timestamp("deleted_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_ad_structured_snippets_on_asset_id").using(
+      "btree",
+      sql`(((platform_settings -> 'google'::text) ->> 'asset_id'::text))`
+    ),
+    index("index_ad_structured_snippets_on_campaign_id").using(
+      "btree",
+      table.campaignId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ad_structured_snippets_on_category").using(
+      "btree",
+      table.category.asc().nullsLast().op("text_ops")
+    ),
+    index("index_ad_structured_snippets_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ad_structured_snippets_on_deleted_at").using(
+      "btree",
+      table.deletedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ad_structured_snippets_on_platform_settings").using(
+      "gin",
+      table.platformSettings.asc().nullsLast().op("jsonb_ops")
+    ),
+  ]
+);
 
-export const ahoyVisits = pgTable("ahoy_visits", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	visitToken: varchar("visit_token"),
-	visitorToken: varchar("visitor_token"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	websiteId: bigint("website_id", { mode: "number" }),
-	gclid: varchar(),
-	ip: varchar(),
-	userAgent: text("user_agent"),
-	referrer: text(),
-	referringDomain: varchar("referring_domain"),
-	landingPage: text("landing_page"),
-	browser: varchar(),
-	os: varchar(),
-	deviceType: varchar("device_type"),
-	country: varchar(),
-	region: varchar(),
-	city: varchar(),
-	latitude: doublePrecision(),
-	longitude: doublePrecision(),
-	utmSource: varchar("utm_source"),
-	utmMedium: varchar("utm_medium"),
-	utmTerm: varchar("utm_term"),
-	utmContent: varchar("utm_content"),
-	utmCampaign: varchar("utm_campaign"),
-	appVersion: varchar("app_version"),
-	osVersion: varchar("os_version"),
-	platform: varchar(),
-	startedAt: timestamp("started_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_ahoy_visits_on_gclid").using("btree", table.gclid.asc().nullsLast().op("text_ops")),
-	uniqueIndex("index_ahoy_visits_on_visit_token").using("btree", table.visitToken.asc().nullsLast().op("text_ops")),
-	index("index_ahoy_visits_on_visitor_token_and_started_at").using("btree", table.visitorToken.asc().nullsLast().op("text_ops"), table.startedAt.asc().nullsLast().op("text_ops")),
-	index("index_ahoy_visits_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int8_ops")),
-]);
+export const ads = pgTable(
+  "ads",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    adGroupId: bigint("ad_group_id", { mode: "number" }),
+    status: varchar().default("draft"),
+    displayPath1: varchar("display_path_1"),
+    displayPath2: varchar("display_path_2"),
+    platformSettings: jsonb("platform_settings").default({ meta: {}, google: {} }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    deletedAt: timestamp("deleted_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_ads_on_ad_group_id").using(
+      "btree",
+      table.adGroupId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ads_on_ad_group_id_and_status").using(
+      "btree",
+      table.adGroupId.asc().nullsLast().op("int8_ops"),
+      table.status.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ads_on_deleted_at").using(
+      "btree",
+      table.deletedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ads_on_google_id").using(
+      "btree",
+      sql`(((platform_settings -> 'google'::text) ->> 'ad_id'::text))`
+    ),
+    index("index_ads_on_platform_settings").using(
+      "gin",
+      table.platformSettings.asc().nullsLast().op("jsonb_ops")
+    ),
+    index("index_ads_on_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+  ]
+);
+
+export const apiTokens = pgTable(
+  "api_tokens",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    userId: bigint("user_id", { mode: "number" }).notNull(),
+    token: varchar(),
+    name: varchar(),
+    metadata: jsonb(),
+    transient: boolean().default(false),
+    lastUsedAt: timestamp("last_used_at", { mode: "string" }),
+    expiresAt: timestamp("expires_at", { mode: "string" }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("index_api_tokens_on_token").using(
+      "btree",
+      table.token.asc().nullsLast().op("text_ops")
+    ),
+    index("index_api_tokens_on_user_id").using(
+      "btree",
+      table.userId.asc().nullsLast().op("int8_ops")
+    ),
+    foreignKey({
+      columns: [table.userId],
+      foreignColumns: [users.id],
+      name: "fk_rails_f16b5e0447",
+    }),
+  ]
+);
+
+export const ahoyEvents = pgTable(
+  "ahoy_events",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    visitId: bigint("visit_id", { mode: "number" }),
+    name: varchar(),
+    properties: jsonb(),
+    time: timestamp({ precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_ahoy_events_on_name_and_time").using(
+      "btree",
+      table.name.asc().nullsLast().op("text_ops"),
+      table.time.asc().nullsLast().op("text_ops")
+    ),
+    index("index_ahoy_events_on_properties").using(
+      "gin",
+      table.properties.asc().nullsLast().op("jsonb_path_ops")
+    ),
+    index("index_ahoy_events_on_visit_id").using(
+      "btree",
+      table.visitId.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
+
+export const ahoyVisits = pgTable(
+  "ahoy_visits",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    visitToken: varchar("visit_token"),
+    visitorToken: varchar("visitor_token"),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    websiteId: bigint("website_id", { mode: "number" }),
+    gclid: varchar(),
+    ip: varchar(),
+    userAgent: text("user_agent"),
+    referrer: text(),
+    referringDomain: varchar("referring_domain"),
+    landingPage: text("landing_page"),
+    browser: varchar(),
+    os: varchar(),
+    deviceType: varchar("device_type"),
+    country: varchar(),
+    region: varchar(),
+    city: varchar(),
+    latitude: doublePrecision(),
+    longitude: doublePrecision(),
+    utmSource: varchar("utm_source"),
+    utmMedium: varchar("utm_medium"),
+    utmTerm: varchar("utm_term"),
+    utmContent: varchar("utm_content"),
+    utmCampaign: varchar("utm_campaign"),
+    appVersion: varchar("app_version"),
+    osVersion: varchar("os_version"),
+    platform: varchar(),
+    startedAt: timestamp("started_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_ahoy_visits_on_gclid").using(
+      "btree",
+      table.gclid.asc().nullsLast().op("text_ops")
+    ),
+    uniqueIndex("index_ahoy_visits_on_visit_token").using(
+      "btree",
+      table.visitToken.asc().nullsLast().op("text_ops")
+    ),
+    index("index_ahoy_visits_on_visitor_token_and_started_at").using(
+      "btree",
+      table.visitorToken.asc().nullsLast().op("text_ops"),
+      table.startedAt.asc().nullsLast().op("text_ops")
+    ),
+    index("index_ahoy_visits_on_website_id").using(
+      "btree",
+      table.websiteId.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
 
 export const announcements = pgTable("announcements", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	kind: varchar(),
-	title: varchar(),
-	publishedAt: timestamp("published_at", { mode: 'string' }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
+  id: bigserial({ mode: "number" }).primaryKey().notNull(),
+  kind: varchar(),
+  title: varchar(),
+  publishedAt: timestamp("published_at", { mode: "string" }),
+  createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+  updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
 });
 
 export const arInternalMetadata = pgTable("ar_internal_metadata", {
-	key: varchar().primaryKey().notNull(),
-	value: varchar(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
+  key: varchar().primaryKey().notNull(),
+  value: varchar(),
+  createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+  updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
 });
 
-export const adsAccounts = pgTable("ads_accounts", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }).notNull(),
-	platform: varchar().notNull(),
-	platformSettings: jsonb("platform_settings").default({}),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	deletedAt: timestamp("deleted_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_ads_accounts_on_account_id").using("btree", table.accountId.asc().nullsLast().op("int8_ops")),
-	uniqueIndex("index_ads_accounts_on_account_id_and_platform").using("btree", table.accountId.asc().nullsLast().op("int8_ops"), table.platform.asc().nullsLast().op("int8_ops")),
-	index("index_ads_accounts_on_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_ads_accounts_on_google_id").using("btree", sql`((platform_settings ->> 'google'::text))`),
-	index("index_ads_accounts_on_platform").using("btree", table.platform.asc().nullsLast().op("text_ops")),
-	index("index_ads_accounts_on_platform_settings").using("gin", table.platformSettings.asc().nullsLast().op("jsonb_ops")),
-]);
+export const adsAccounts = pgTable(
+  "ads_accounts",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }).notNull(),
+    platform: varchar().notNull(),
+    platformSettings: jsonb("platform_settings").default({}),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    deletedAt: timestamp("deleted_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_ads_accounts_on_account_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops")
+    ),
+    uniqueIndex("index_ads_accounts_on_account_id_and_platform").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops"),
+      table.platform.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ads_accounts_on_deleted_at").using(
+      "btree",
+      table.deletedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_ads_accounts_on_google_id").using(
+      "btree",
+      sql`((platform_settings ->> 'google'::text))`
+    ),
+    index("index_ads_accounts_on_platform").using(
+      "btree",
+      table.platform.asc().nullsLast().op("text_ops")
+    ),
+    index("index_ads_accounts_on_platform_settings").using(
+      "gin",
+      table.platformSettings.asc().nullsLast().op("jsonb_ops")
+    ),
+  ]
+);
 
 export const assistants = pgTable("assistants", {
-	assistantId: text("assistant_id").primaryKey().notNull(),
-	graphId: text("graph_id").notNull(),
-	name: text().notNull(),
-	description: text(),
-	config: jsonb().default({}).notNull(),
-	context: jsonb(),
-	metadata: jsonb().default({}).notNull(),
-	version: integer().default(1).notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
+  assistantId: text("assistant_id").primaryKey().notNull(),
+  graphId: text("graph_id").notNull(),
+  name: text().notNull(),
+  description: text(),
+  config: jsonb().default({}).notNull(),
+  context: jsonb(),
+  metadata: jsonb().default({}).notNull(),
+  version: integer().default(1).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).defaultNow().notNull(),
 });
 
-export const brainstorms = pgTable("brainstorms", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	idea: varchar(),
-	audience: varchar(),
-	solution: varchar(),
-	socialProof: varchar("social_proof"),
-	lookAndFeel: varchar("look_and_feel"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	websiteId: bigint("website_id", { mode: "number" }),
-	completedAt: timestamp("completed_at", { mode: 'string' }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("index_brainstorms_on_completed_at").using("btree", table.completedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_brainstorms_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	uniqueIndex("index_brainstorms_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int8_ops")),
-]);
+export const brainstorms = pgTable(
+  "brainstorms",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    idea: varchar(),
+    audience: varchar(),
+    solution: varchar(),
+    socialProof: varchar("social_proof"),
+    lookAndFeel: varchar("look_and_feel"),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    websiteId: bigint("website_id", { mode: "number" }),
+    completedAt: timestamp("completed_at", { mode: "string" }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("index_brainstorms_on_completed_at").using(
+      "btree",
+      table.completedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_brainstorms_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    uniqueIndex("index_brainstorms_on_website_id").using(
+      "btree",
+      table.websiteId.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
 
-export const campaigns = pgTable("campaigns", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	name: varchar(),
-	status: varchar().default('draft'),
-	stage: varchar().default('content'),
-	platformSettings: jsonb("platform_settings").default({"meta":{},"google":{}}),
-	launchedAt: timestamp("launched_at", { precision: 6, mode: 'string' }),
-	timeZone: varchar("time_zone").default('America/New_York'),
-	startDate: date("start_date"),
-	endDate: date("end_date"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	websiteId: bigint("website_id", { mode: "number" }),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	projectId: bigint("project_id", { mode: "number" }),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	adsAccountId: bigint("ads_account_id", { mode: "number" }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	deletedAt: timestamp("deleted_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_campaigns_on_account_id").using("btree", table.accountId.asc().nullsLast().op("int8_ops")),
-	index("index_campaigns_on_account_id_and_stage").using("btree", table.accountId.asc().nullsLast().op("int8_ops"), table.stage.asc().nullsLast().op("int8_ops")),
-	index("index_campaigns_on_account_id_and_status").using("btree", table.accountId.asc().nullsLast().op("int8_ops"), table.status.asc().nullsLast().op("int8_ops")),
-	index("index_campaigns_on_ads_account_id").using("btree", table.adsAccountId.asc().nullsLast().op("int8_ops")),
-	index("index_campaigns_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_campaigns_on_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_campaigns_on_end_date").using("btree", table.endDate.asc().nullsLast().op("date_ops")),
-	index("index_campaigns_on_google_id").using("btree", sql`(((platform_settings -> 'google'::text) ->> 'campaign_id'::text`),
-	index("index_campaigns_on_launched_at").using("btree", table.launchedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_campaigns_on_platform_settings").using("gin", table.platformSettings.asc().nullsLast().op("jsonb_ops")),
-	index("index_campaigns_on_project_id").using("btree", table.projectId.asc().nullsLast().op("int8_ops")),
-	index("index_campaigns_on_project_id_and_stage").using("btree", table.projectId.asc().nullsLast().op("int8_ops"), table.stage.asc().nullsLast().op("int8_ops")),
-	index("index_campaigns_on_project_id_and_status").using("btree", table.projectId.asc().nullsLast().op("int8_ops"), table.status.asc().nullsLast().op("int8_ops")),
-	index("index_campaigns_on_stage").using("btree", table.stage.asc().nullsLast().op("text_ops")),
-	index("index_campaigns_on_start_date").using("btree", table.startDate.asc().nullsLast().op("date_ops")),
-	index("index_campaigns_on_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
-	index("index_campaigns_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int8_ops")),
-]);
+export const campaigns = pgTable(
+  "campaigns",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    name: varchar(),
+    status: varchar().default("draft"),
+    stage: varchar().default("content"),
+    platformSettings: jsonb("platform_settings").default({ meta: {}, google: {} }),
+    launchedAt: timestamp("launched_at", { precision: 6, mode: "string" }),
+    timeZone: varchar("time_zone").default("America/New_York"),
+    startDate: date("start_date"),
+    endDate: date("end_date"),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    websiteId: bigint("website_id", { mode: "number" }),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    projectId: bigint("project_id", { mode: "number" }),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    adsAccountId: bigint("ads_account_id", { mode: "number" }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    deletedAt: timestamp("deleted_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_campaigns_on_account_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_campaigns_on_account_id_and_stage").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops"),
+      table.stage.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_campaigns_on_account_id_and_status").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops"),
+      table.status.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_campaigns_on_ads_account_id").using(
+      "btree",
+      table.adsAccountId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_campaigns_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_campaigns_on_deleted_at").using(
+      "btree",
+      table.deletedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_campaigns_on_end_date").using(
+      "btree",
+      table.endDate.asc().nullsLast().op("date_ops")
+    ),
+    index("index_campaigns_on_google_id").using(
+      "btree",
+      sql`(((platform_settings -> 'google'::text) ->> 'campaign_id'::text`
+    ),
+    index("index_campaigns_on_launched_at").using(
+      "btree",
+      table.launchedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_campaigns_on_platform_settings").using(
+      "gin",
+      table.platformSettings.asc().nullsLast().op("jsonb_ops")
+    ),
+    index("index_campaigns_on_project_id").using(
+      "btree",
+      table.projectId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_campaigns_on_project_id_and_stage").using(
+      "btree",
+      table.projectId.asc().nullsLast().op("int8_ops"),
+      table.stage.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_campaigns_on_project_id_and_status").using(
+      "btree",
+      table.projectId.asc().nullsLast().op("int8_ops"),
+      table.status.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_campaigns_on_stage").using("btree", table.stage.asc().nullsLast().op("text_ops")),
+    index("index_campaigns_on_start_date").using(
+      "btree",
+      table.startDate.asc().nullsLast().op("date_ops")
+    ),
+    index("index_campaigns_on_status").using(
+      "btree",
+      table.status.asc().nullsLast().op("text_ops")
+    ),
+    index("index_campaigns_on_website_id").using(
+      "btree",
+      table.websiteId.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
 
-export const campaignDeploys = pgTable("campaign_deploys", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	campaignId: bigint("campaign_id", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	campaignHistoryId: bigint("campaign_history_id", { mode: "number" }),
-	status: varchar().default('pending').notNull(),
-	currentStep: varchar("current_step"),
-	stacktrace: text(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("index_campaign_deploys_on_campaign_history_id").using("btree", table.campaignHistoryId.asc().nullsLast().op("int8_ops")),
-	index("index_campaign_deploys_on_campaign_id").using("btree", table.campaignId.asc().nullsLast().op("int8_ops")),
-	index("index_campaign_deploys_on_campaign_id_and_status").using("btree", table.campaignId.asc().nullsLast().op("int8_ops"), table.status.asc().nullsLast().op("int8_ops")),
-	index("index_campaign_deploys_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_campaign_deploys_on_current_step").using("btree", table.currentStep.asc().nullsLast().op("text_ops")),
-	index("index_campaign_deploys_on_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
-]);
+export const campaignDeploys = pgTable(
+  "campaign_deploys",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    campaignId: bigint("campaign_id", { mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    campaignHistoryId: bigint("campaign_history_id", { mode: "number" }),
+    status: varchar().default("pending").notNull(),
+    currentStep: varchar("current_step"),
+    stacktrace: text(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("index_campaign_deploys_on_campaign_history_id").using(
+      "btree",
+      table.campaignHistoryId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_campaign_deploys_on_campaign_id").using(
+      "btree",
+      table.campaignId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_campaign_deploys_on_campaign_id_and_status").using(
+      "btree",
+      table.campaignId.asc().nullsLast().op("int8_ops"),
+      table.status.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_campaign_deploys_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_campaign_deploys_on_current_step").using(
+      "btree",
+      table.currentStep.asc().nullsLast().op("text_ops")
+    ),
+    index("index_campaign_deploys_on_status").using(
+      "btree",
+      table.status.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const chats = pgTable("chats", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	name: varchar(),
-	chatType: varchar("chat_type").notNull(),
-	threadId: varchar("thread_id").notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	projectId: bigint("project_id", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }).notNull(),
-	contextableType: varchar("contextable_type"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	contextableId: bigint("contextable_id", { mode: "number" }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("index_chats_on_account_id").using("btree", table.accountId.asc().nullsLast().op("int8_ops")),
-	index("index_chats_on_chat_type").using("btree", table.chatType.asc().nullsLast().op("text_ops")),
-	uniqueIndex("index_chats_on_chat_type_and_project_id").using("btree", table.chatType.asc().nullsLast().op("int8_ops"), table.projectId.asc().nullsLast().op("int8_ops")),
-	index("index_chats_on_project_id").using("btree", table.projectId.asc().nullsLast().op("int8_ops")),
-	index("index_chats_on_thread_id").using("btree", table.threadId.asc().nullsLast().op("text_ops")),
-]);
+export const chats = pgTable(
+  "chats",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    name: varchar(),
+    chatType: varchar("chat_type").notNull(),
+    threadId: varchar("thread_id").notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    projectId: bigint("project_id", { mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }).notNull(),
+    contextableType: varchar("contextable_type"),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    contextableId: bigint("contextable_id", { mode: "number" }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("index_chats_on_account_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_chats_on_chat_type").using(
+      "btree",
+      table.chatType.asc().nullsLast().op("text_ops")
+    ),
+    uniqueIndex("index_chats_on_chat_type_and_project_id").using(
+      "btree",
+      table.chatType.asc().nullsLast().op("int8_ops"),
+      table.projectId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_chats_on_project_id").using(
+      "btree",
+      table.projectId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_chats_on_thread_id").using(
+      "btree",
+      table.threadId.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const cloudflareFirewallRules = pgTable("cloudflare_firewall_rules", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	firewallId: bigint("firewall_id", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	domainId: bigint("domain_id", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }).notNull(),
-	status: varchar().default('inactive').notNull(),
-	cloudflareRuleId: varchar("cloudflare_rule_id").notNull(),
-	blockedAt: timestamp("blocked_at", { precision: 6, mode: 'string' }),
-	unblockedAt: timestamp("unblocked_at", { precision: 6, mode: 'string' }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("index_cloudflare_firewall_rules_on_account_id").using("btree", table.accountId.asc().nullsLast().op("int8_ops")),
-	index("index_cloudflare_firewall_rules_on_blocked_at").using("btree", table.blockedAt.asc().nullsLast().op("timestamp_ops")),
-	uniqueIndex("index_cloudflare_firewall_rules_on_cloudflare_rule_id").using("btree", table.cloudflareRuleId.asc().nullsLast().op("text_ops")),
-	index("index_cloudflare_firewall_rules_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	uniqueIndex("index_cloudflare_firewall_rules_on_domain_id").using("btree", table.domainId.asc().nullsLast().op("int8_ops")),
-	index("index_cloudflare_firewall_rules_on_firewall_id").using("btree", table.firewallId.asc().nullsLast().op("int8_ops")),
-	index("index_cloudflare_firewall_rules_on_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
-	index("index_cloudflare_firewall_rules_on_unblocked_at").using("btree", table.unblockedAt.asc().nullsLast().op("timestamp_ops")),
-]);
+export const cloudflareFirewallRules = pgTable(
+  "cloudflare_firewall_rules",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    firewallId: bigint("firewall_id", { mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    domainId: bigint("domain_id", { mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }).notNull(),
+    status: varchar().default("inactive").notNull(),
+    cloudflareRuleId: varchar("cloudflare_rule_id").notNull(),
+    blockedAt: timestamp("blocked_at", { precision: 6, mode: "string" }),
+    unblockedAt: timestamp("unblocked_at", { precision: 6, mode: "string" }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("index_cloudflare_firewall_rules_on_account_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_cloudflare_firewall_rules_on_blocked_at").using(
+      "btree",
+      table.blockedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    uniqueIndex("index_cloudflare_firewall_rules_on_cloudflare_rule_id").using(
+      "btree",
+      table.cloudflareRuleId.asc().nullsLast().op("text_ops")
+    ),
+    index("index_cloudflare_firewall_rules_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    uniqueIndex("index_cloudflare_firewall_rules_on_domain_id").using(
+      "btree",
+      table.domainId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_cloudflare_firewall_rules_on_firewall_id").using(
+      "btree",
+      table.firewallId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_cloudflare_firewall_rules_on_status").using(
+      "btree",
+      table.status.asc().nullsLast().op("text_ops")
+    ),
+    index("index_cloudflare_firewall_rules_on_unblocked_at").using(
+      "btree",
+      table.unblockedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+  ]
+);
 
-export const cloudflareFirewalls = pgTable("cloudflare_firewalls", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }).notNull(),
-	status: varchar().default('inactive'),
-	blockedAt: timestamp("blocked_at", { precision: 6, mode: 'string' }),
-	unblockedAt: timestamp("unblocked_at", { precision: 6, mode: 'string' }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("index_cloudflare_firewalls_on_account_id").using("btree", table.accountId.asc().nullsLast().op("int8_ops")),
-	index("index_cloudflare_firewalls_on_blocked_at").using("btree", table.blockedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_cloudflare_firewalls_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_cloudflare_firewalls_on_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
-	index("index_cloudflare_firewalls_on_unblocked_at").using("btree", table.unblockedAt.asc().nullsLast().op("timestamp_ops")),
-]);
+export const cloudflareFirewalls = pgTable(
+  "cloudflare_firewalls",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }).notNull(),
+    status: varchar().default("inactive"),
+    blockedAt: timestamp("blocked_at", { precision: 6, mode: "string" }),
+    unblockedAt: timestamp("unblocked_at", { precision: 6, mode: "string" }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("index_cloudflare_firewalls_on_account_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_cloudflare_firewalls_on_blocked_at").using(
+      "btree",
+      table.blockedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_cloudflare_firewalls_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_cloudflare_firewalls_on_status").using(
+      "btree",
+      table.status.asc().nullsLast().op("text_ops")
+    ),
+    index("index_cloudflare_firewalls_on_unblocked_at").using(
+      "btree",
+      table.unblockedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+  ]
+);
 
-export const websiteFiles = pgTable("website_files", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	websiteId: bigint("website_id", { mode: "number" }).notNull(),
-	path: varchar().notNull(),
-	content: varchar().notNull(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	shasum: varchar(),
-	contentTsv: tsvector("content_tsv"),
-	embedding: vector({ dimensions: 1536 }),
-}, (table) => [
-	index("idx_website_files_content_tsv").using("gin", table.contentTsv.asc().nullsLast().op("tsvector_ops")),
-	index("idx_website_files_embedding").using("ivfflat", table.embedding.asc().nullsLast().op("vector_cosine_ops")).with({lists: "100"}),
-	index("idx_website_files_path_trgm").using("gin", table.path.asc().nullsLast().op("gin_trgm_ops")),
-	index("index_website_files_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_website_files_on_shasum").using("btree", table.shasum.asc().nullsLast().op("text_ops")),
-	index("index_website_files_on_updated_at").using("btree", table.updatedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_website_files_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int8_ops")),
-	uniqueIndex("index_website_files_on_website_id_and_path_unique").using("btree", table.websiteId.asc().nullsLast().op("int8_ops"), table.path.asc().nullsLast().op("text_ops")),
-]);
+export const websiteFiles = pgTable(
+  "website_files",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    websiteId: bigint("website_id", { mode: "number" }).notNull(),
+    path: varchar().notNull(),
+    content: varchar().notNull(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    shasum: varchar(),
+    contentTsv: tsvector("content_tsv"),
+    embedding: vector({ dimensions: 1536 }),
+  },
+  (table) => [
+    index("idx_website_files_content_tsv").using(
+      "gin",
+      table.contentTsv.asc().nullsLast().op("tsvector_ops")
+    ),
+    index("idx_website_files_embedding")
+      .using("ivfflat", table.embedding.asc().nullsLast().op("vector_cosine_ops"))
+      .with({ lists: "100" }),
+    index("idx_website_files_path_trgm").using(
+      "gin",
+      table.path.asc().nullsLast().op("gin_trgm_ops")
+    ),
+    index("index_website_files_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_website_files_on_shasum").using(
+      "btree",
+      table.shasum.asc().nullsLast().op("text_ops")
+    ),
+    index("index_website_files_on_updated_at").using(
+      "btree",
+      table.updatedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_website_files_on_website_id").using(
+      "btree",
+      table.websiteId.asc().nullsLast().op("int8_ops")
+    ),
+    uniqueIndex("index_website_files_on_website_id_and_path_unique").using(
+      "btree",
+      table.websiteId.asc().nullsLast().op("int8_ops"),
+      table.path.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const websiteFileHistories = pgTable("website_file_histories", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	websiteFileId: integer("website_file_id").notNull(),
-	websiteId: integer("website_id").notNull(),
-	path: varchar().notNull(),
-	content: varchar().notNull(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	historyStartedAt: timestamp("history_started_at", { precision: 6, mode: 'string' }).notNull(),
-	historyEndedAt: timestamp("history_ended_at", { precision: 6, mode: 'string' }),
-	historyUserId: integer("history_user_id"),
-	snapshotId: varchar("snapshot_id"),
-	shasum: varchar(),
-	contentTsv: tsvector("content_tsv"),
-	embedding: vector({ dimensions: 1536 }),
-}, (table) => [
-	index("idx_website_file_histories_content_tsv").using("gin", table.contentTsv.asc().nullsLast().op("tsvector_ops")),
-	index("index_website_file_histories_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_website_file_histories_on_history_ended_at").using("btree", table.historyEndedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_website_file_histories_on_history_started_at").using("btree", table.historyStartedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_website_file_histories_on_history_user_id").using("btree", table.historyUserId.asc().nullsLast().op("int4_ops")),
-	index("index_website_file_histories_on_shasum").using("btree", table.shasum.asc().nullsLast().op("text_ops")),
-	index("index_website_file_histories_on_snapshot_id").using("btree", table.snapshotId.asc().nullsLast().op("text_ops")),
-	index("index_website_file_histories_on_updated_at").using("btree", table.updatedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_website_file_histories_on_website_file_id").using("btree", table.websiteFileId.asc().nullsLast().op("int4_ops")),
-	index("index_website_file_histories_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int4_ops")),
-]);
+export const websiteFileHistories = pgTable(
+  "website_file_histories",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    websiteFileId: integer("website_file_id").notNull(),
+    websiteId: integer("website_id").notNull(),
+    path: varchar().notNull(),
+    content: varchar().notNull(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    historyStartedAt: timestamp("history_started_at", { precision: 6, mode: "string" }).notNull(),
+    historyEndedAt: timestamp("history_ended_at", { precision: 6, mode: "string" }),
+    historyUserId: integer("history_user_id"),
+    snapshotId: varchar("snapshot_id"),
+    shasum: varchar(),
+    contentTsv: tsvector("content_tsv"),
+    embedding: vector({ dimensions: 1536 }),
+  },
+  (table) => [
+    index("idx_website_file_histories_content_tsv").using(
+      "gin",
+      table.contentTsv.asc().nullsLast().op("tsvector_ops")
+    ),
+    index("index_website_file_histories_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_website_file_histories_on_history_ended_at").using(
+      "btree",
+      table.historyEndedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_website_file_histories_on_history_started_at").using(
+      "btree",
+      table.historyStartedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_website_file_histories_on_history_user_id").using(
+      "btree",
+      table.historyUserId.asc().nullsLast().op("int4_ops")
+    ),
+    index("index_website_file_histories_on_shasum").using(
+      "btree",
+      table.shasum.asc().nullsLast().op("text_ops")
+    ),
+    index("index_website_file_histories_on_snapshot_id").using(
+      "btree",
+      table.snapshotId.asc().nullsLast().op("text_ops")
+    ),
+    index("index_website_file_histories_on_updated_at").using(
+      "btree",
+      table.updatedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_website_file_histories_on_website_file_id").using(
+      "btree",
+      table.websiteFileId.asc().nullsLast().op("int4_ops")
+    ),
+    index("index_website_file_histories_on_website_id").using(
+      "btree",
+      table.websiteId.asc().nullsLast().op("int4_ops")
+    ),
+  ]
+);
 
-export const websiteHistories = pgTable("website_histories", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	websiteId: integer("website_id").notNull(),
-	name: varchar(),
-	projectId: integer("project_id"),
-	accountId: integer("account_id"),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	historyStartedAt: timestamp("history_started_at", { precision: 6, mode: 'string' }).notNull(),
-	historyEndedAt: timestamp("history_ended_at", { precision: 6, mode: 'string' }),
-	historyUserId: integer("history_user_id"),
-	snapshotId: varchar("snapshot_id"),
-	threadId: varchar("thread_id"),
-	templateId: integer("template_id"),
-	themeId: integer("theme_id"),
-	deletedAt: timestamp("deleted_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_website_histories_on_account_id").using("btree", table.accountId.asc().nullsLast().op("int4_ops")),
-	index("index_website_histories_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_website_histories_on_history_ended_at").using("btree", table.historyEndedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_website_histories_on_history_started_at").using("btree", table.historyStartedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_website_histories_on_history_user_id").using("btree", table.historyUserId.asc().nullsLast().op("int4_ops")),
-	index("index_website_histories_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
-	index("index_website_histories_on_project_id").using("btree", table.projectId.asc().nullsLast().op("int4_ops")),
-	index("index_website_histories_on_snapshot_id").using("btree", table.snapshotId.asc().nullsLast().op("text_ops")),
-	index("index_website_histories_on_template_id").using("btree", table.templateId.asc().nullsLast().op("int4_ops")),
-	index("index_website_histories_on_theme_id").using("btree", table.themeId.asc().nullsLast().op("int4_ops")),
-	index("index_website_histories_on_thread_id").using("btree", table.threadId.asc().nullsLast().op("text_ops")),
-	index("index_website_histories_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int4_ops")),
-]);
+export const websiteHistories = pgTable(
+  "website_histories",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    websiteId: integer("website_id").notNull(),
+    name: varchar(),
+    projectId: integer("project_id"),
+    accountId: integer("account_id"),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    historyStartedAt: timestamp("history_started_at", { precision: 6, mode: "string" }).notNull(),
+    historyEndedAt: timestamp("history_ended_at", { precision: 6, mode: "string" }),
+    historyUserId: integer("history_user_id"),
+    snapshotId: varchar("snapshot_id"),
+    threadId: varchar("thread_id"),
+    templateId: integer("template_id"),
+    themeId: integer("theme_id"),
+    deletedAt: timestamp("deleted_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_website_histories_on_account_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int4_ops")
+    ),
+    index("index_website_histories_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_website_histories_on_history_ended_at").using(
+      "btree",
+      table.historyEndedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_website_histories_on_history_started_at").using(
+      "btree",
+      table.historyStartedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_website_histories_on_history_user_id").using(
+      "btree",
+      table.historyUserId.asc().nullsLast().op("int4_ops")
+    ),
+    index("index_website_histories_on_name").using(
+      "btree",
+      table.name.asc().nullsLast().op("text_ops")
+    ),
+    index("index_website_histories_on_project_id").using(
+      "btree",
+      table.projectId.asc().nullsLast().op("int4_ops")
+    ),
+    index("index_website_histories_on_snapshot_id").using(
+      "btree",
+      table.snapshotId.asc().nullsLast().op("text_ops")
+    ),
+    index("index_website_histories_on_template_id").using(
+      "btree",
+      table.templateId.asc().nullsLast().op("int4_ops")
+    ),
+    index("index_website_histories_on_theme_id").using(
+      "btree",
+      table.themeId.asc().nullsLast().op("int4_ops")
+    ),
+    index("index_website_histories_on_thread_id").using(
+      "btree",
+      table.threadId.asc().nullsLast().op("text_ops")
+    ),
+    index("index_website_histories_on_website_id").using(
+      "btree",
+      table.websiteId.asc().nullsLast().op("int4_ops")
+    ),
+  ]
+);
 
-export const websites = pgTable("websites", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	name: varchar(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	projectId: bigint("project_id", { mode: "number" }),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	templateId: bigint("template_id", { mode: "number" }),
-	themeId: integer("theme_id"),
-	deletedAt: timestamp("deleted_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_websites_on_account_id").using("btree", table.accountId.asc().nullsLast().op("int8_ops")),
-	index("index_websites_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_websites_on_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_websites_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
-	index("index_websites_on_project_id").using("btree", table.projectId.asc().nullsLast().op("int8_ops")),
-	index("index_websites_on_template_id").using("btree", table.templateId.asc().nullsLast().op("int8_ops")),
-	index("index_websites_on_theme_id").using("btree", table.themeId.asc().nullsLast().op("int4_ops")),
-]);
+export const websites = pgTable(
+  "websites",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    name: varchar(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    projectId: bigint("project_id", { mode: "number" }),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    templateId: bigint("template_id", { mode: "number" }),
+    themeId: integer("theme_id"),
+    deletedAt: timestamp("deleted_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_websites_on_account_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_websites_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_websites_on_deleted_at").using(
+      "btree",
+      table.deletedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_websites_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
+    index("index_websites_on_project_id").using(
+      "btree",
+      table.projectId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_websites_on_template_id").using(
+      "btree",
+      table.templateId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_websites_on_theme_id").using(
+      "btree",
+      table.themeId.asc().nullsLast().op("int4_ops")
+    ),
+  ]
+);
 
-export const connectedAccounts = pgTable("connected_accounts", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	ownerId: bigint("owner_id", { mode: "number" }),
-	provider: varchar(),
-	uid: varchar(),
-	refreshToken: varchar("refresh_token"),
-	expiresAt: timestamp("expires_at", { mode: 'string' }),
-	auth: jsonb(),
-	createdAt: timestamp("created_at", { mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).notNull(),
-	accessToken: varchar("access_token"),
-	accessTokenSecret: varchar("access_token_secret"),
-	ownerType: varchar("owner_type"),
-}, (table) => [
-	index("index_connected_accounts_on_owner_id_and_owner_type").using("btree", table.ownerId.asc().nullsLast().op("int8_ops"), table.ownerType.asc().nullsLast().op("int8_ops")),
-]);
+export const connectedAccounts = pgTable(
+  "connected_accounts",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    ownerId: bigint("owner_id", { mode: "number" }),
+    provider: varchar(),
+    uid: varchar(),
+    refreshToken: varchar("refresh_token"),
+    expiresAt: timestamp("expires_at", { mode: "string" }),
+    auth: jsonb(),
+    createdAt: timestamp("created_at", { mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).notNull(),
+    accessToken: varchar("access_token"),
+    accessTokenSecret: varchar("access_token_secret"),
+    ownerType: varchar("owner_type"),
+  },
+  (table) => [
+    index("index_connected_accounts_on_owner_id_and_owner_type").using(
+      "btree",
+      table.ownerId.asc().nullsLast().op("int8_ops"),
+      table.ownerType.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
 
-export const templateFiles = pgTable("template_files", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	templateId: bigint("template_id", { mode: "number" }),
-	path: varchar(),
-	content: text(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	shasum: varchar(),
-	contentTsv: tsvector("content_tsv"),
-	embedding: vector({ dimensions: 1536 }),
-}, (table) => [
-	index("idx_template_files_content_tsv").using("gin", table.contentTsv.asc().nullsLast().op("tsvector_ops")),
-	index("idx_template_files_embedding").using("ivfflat", table.embedding.asc().nullsLast().op("vector_cosine_ops")).with({lists: "100"}),
-	index("idx_template_files_path_trgm").using("gin", table.path.asc().nullsLast().op("gin_trgm_ops")),
-	index("index_template_files_on_path").using("btree", table.path.asc().nullsLast().op("text_ops")),
-	index("index_template_files_on_shasum").using("btree", table.shasum.asc().nullsLast().op("text_ops")),
-	index("index_template_files_on_template_id").using("btree", table.templateId.asc().nullsLast().op("int8_ops")),
-	uniqueIndex("index_template_files_on_template_id_and_path").using("btree", table.templateId.asc().nullsLast().op("int8_ops"), table.path.asc().nullsLast().op("text_ops")),
-]);
+export const templateFiles = pgTable(
+  "template_files",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    templateId: bigint("template_id", { mode: "number" }),
+    path: varchar(),
+    content: text(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    shasum: varchar(),
+    contentTsv: tsvector("content_tsv"),
+    embedding: vector({ dimensions: 1536 }),
+  },
+  (table) => [
+    index("idx_template_files_content_tsv").using(
+      "gin",
+      table.contentTsv.asc().nullsLast().op("tsvector_ops")
+    ),
+    index("idx_template_files_embedding")
+      .using("ivfflat", table.embedding.asc().nullsLast().op("vector_cosine_ops"))
+      .with({ lists: "100" }),
+    index("idx_template_files_path_trgm").using(
+      "gin",
+      table.path.asc().nullsLast().op("gin_trgm_ops")
+    ),
+    index("index_template_files_on_path").using(
+      "btree",
+      table.path.asc().nullsLast().op("text_ops")
+    ),
+    index("index_template_files_on_shasum").using(
+      "btree",
+      table.shasum.asc().nullsLast().op("text_ops")
+    ),
+    index("index_template_files_on_template_id").using(
+      "btree",
+      table.templateId.asc().nullsLast().op("int8_ops")
+    ),
+    uniqueIndex("index_template_files_on_template_id_and_path").using(
+      "btree",
+      table.templateId.asc().nullsLast().op("int8_ops"),
+      table.path.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const creditPacks = pgTable("credit_packs", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	name: varchar().notNull(),
-	credits: integer().notNull(),
-	priceCents: integer("price_cents").notNull(),
-	currency: varchar().default('usd'),
-	stripePriceId: varchar("stripe_price_id"),
-	visible: boolean().default(true),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	uniqueIndex("index_credit_packs_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
-]);
+export const creditPacks = pgTable(
+  "credit_packs",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    name: varchar().notNull(),
+    credits: integer().notNull(),
+    priceCents: integer("price_cents").notNull(),
+    currency: varchar().default("usd"),
+    stripePriceId: varchar("stripe_price_id"),
+    visible: boolean().default(true),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("index_credit_packs_on_name").using(
+      "btree",
+      table.name.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const creditTransactions = pgTable("credit_transactions", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }).notNull(),
-	transactionType: varchar("transaction_type").notNull(),
-	creditType: varchar("credit_type").notNull(),
-	reason: varchar().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	amount: bigint({ mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	balanceAfter: bigint("balance_after", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	planBalanceAfter: bigint("plan_balance_after", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	packBalanceAfter: bigint("pack_balance_after", { mode: "number" }).notNull(),
-	referenceType: varchar("reference_type"),
-	referenceId: varchar("reference_id"),
-	metadata: jsonb().default({}),
-	idempotencyKey: varchar("idempotency_key"),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("index_credit_transactions_on_account_id_and_created_at").using("btree", table.accountId.asc().nullsLast().op("int8_ops"), table.createdAt.asc().nullsLast().op("int8_ops")),
-	uniqueIndex("index_credit_transactions_on_idempotency_key").using("btree", table.idempotencyKey.asc().nullsLast().op("text_ops")).where(sql`(idempotency_key IS NOT NULL)`),
-	index("index_credit_transactions_on_reference_type_and_reference_id").using("btree", table.referenceType.asc().nullsLast().op("text_ops"), table.referenceId.asc().nullsLast().op("text_ops")),
-]);
+export const creditTransactions = pgTable(
+  "credit_transactions",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }).notNull(),
+    transactionType: varchar("transaction_type").notNull(),
+    creditType: varchar("credit_type").notNull(),
+    reason: varchar().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    amount: bigint({ mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    balanceAfter: bigint("balance_after", { mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    planBalanceAfter: bigint("plan_balance_after", { mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    packBalanceAfter: bigint("pack_balance_after", { mode: "number" }).notNull(),
+    referenceType: varchar("reference_type"),
+    referenceId: varchar("reference_id"),
+    metadata: jsonb().default({}),
+    idempotencyKey: varchar("idempotency_key"),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("index_credit_transactions_on_account_id_and_created_at").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops"),
+      table.createdAt.asc().nullsLast().op("int8_ops")
+    ),
+    uniqueIndex("index_credit_transactions_on_idempotency_key")
+      .using("btree", table.idempotencyKey.asc().nullsLast().op("text_ops"))
+      .where(sql`(idempotency_key IS NOT NULL)`),
+    index("index_credit_transactions_on_reference_type_and_reference_id").using(
+      "btree",
+      table.referenceType.asc().nullsLast().op("text_ops"),
+      table.referenceId.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const deployFiles = pgTable("deploy_files", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	deployId: bigint("deploy_id", { mode: "number" }),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	websiteFileId: bigint("website_file_id", { mode: "number" }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("index_deploy_files_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_deploy_files_on_deploy_id").using("btree", table.deployId.asc().nullsLast().op("int8_ops")),
-	index("index_deploy_files_on_website_file_id").using("btree", table.websiteFileId.asc().nullsLast().op("int8_ops")),
-]);
+export const deployFiles = pgTable(
+  "deploy_files",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    deployId: bigint("deploy_id", { mode: "number" }),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    websiteFileId: bigint("website_file_id", { mode: "number" }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("index_deploy_files_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_deploy_files_on_deploy_id").using(
+      "btree",
+      table.deployId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_deploy_files_on_website_file_id").using(
+      "btree",
+      table.websiteFileId.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
 
-export const documents = pgTable("documents", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	slug: varchar().notNull(),
-	title: varchar(),
-	content: text(),
-	status: varchar().default('draft').notNull(),
-	documentType: varchar("document_type"),
-	sourceType: varchar("source_type"),
-	sourceId: varchar("source_id"),
-	sourceUrl: varchar("source_url"),
-	tags: jsonb().default([]),
-	metadata: jsonb().default({}),
-	lastSyncedAt: timestamp("last_synced_at", { precision: 6, mode: 'string' }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("index_documents_on_document_type").using("btree", table.documentType.asc().nullsLast().op("text_ops")),
-	uniqueIndex("index_documents_on_slug").using("btree", table.slug.asc().nullsLast().op("text_ops")),
-	index("index_documents_on_source_type").using("btree", table.sourceType.asc().nullsLast().op("text_ops")),
-	uniqueIndex("index_documents_on_source_type_and_source_id").using("btree", table.sourceType.asc().nullsLast().op("text_ops"), table.sourceId.asc().nullsLast().op("text_ops")),
-	index("index_documents_on_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
-	index("index_documents_on_tags").using("gin", table.tags.asc().nullsLast().op("jsonb_ops")),
-]);
+export const documents = pgTable(
+  "documents",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    slug: varchar().notNull(),
+    title: varchar(),
+    content: text(),
+    status: varchar().default("draft").notNull(),
+    documentType: varchar("document_type"),
+    sourceType: varchar("source_type"),
+    sourceId: varchar("source_id"),
+    sourceUrl: varchar("source_url"),
+    tags: jsonb().default([]),
+    metadata: jsonb().default({}),
+    lastSyncedAt: timestamp("last_synced_at", { precision: 6, mode: "string" }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("index_documents_on_document_type").using(
+      "btree",
+      table.documentType.asc().nullsLast().op("text_ops")
+    ),
+    uniqueIndex("index_documents_on_slug").using(
+      "btree",
+      table.slug.asc().nullsLast().op("text_ops")
+    ),
+    index("index_documents_on_source_type").using(
+      "btree",
+      table.sourceType.asc().nullsLast().op("text_ops")
+    ),
+    uniqueIndex("index_documents_on_source_type_and_source_id").using(
+      "btree",
+      table.sourceType.asc().nullsLast().op("text_ops"),
+      table.sourceId.asc().nullsLast().op("text_ops")
+    ),
+    index("index_documents_on_status").using(
+      "btree",
+      table.status.asc().nullsLast().op("text_ops")
+    ),
+    index("index_documents_on_tags").using("gin", table.tags.asc().nullsLast().op("jsonb_ops")),
+  ]
+);
 
-export const creditPackPurchases = pgTable("credit_pack_purchases", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	creditPackId: bigint("credit_pack_id", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	payChargeId: bigint("pay_charge_id", { mode: "number" }),
-	creditsPurchased: integer("credits_purchased").notNull(),
-	priceCents: integer("price_cents").notNull(),
-	isUsed: boolean("is_used").default(false).notNull(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	creditsUsed: integer("credits_used").default(0).notNull(),
-}, (table) => [
-	index("index_credit_pack_purchases_on_account_id").using("btree", table.accountId.asc().nullsLast().op("int8_ops")),
-	index("index_credit_pack_purchases_on_account_id_and_created_at").using("btree", table.accountId.asc().nullsLast().op("int8_ops"), table.createdAt.asc().nullsLast().op("int8_ops")),
-	index("index_credit_pack_purchases_on_account_id_and_is_used").using("btree", table.accountId.asc().nullsLast().op("int8_ops"), table.isUsed.asc().nullsLast().op("int8_ops")),
-	index("index_credit_pack_purchases_on_credit_pack_id").using("btree", table.creditPackId.asc().nullsLast().op("int8_ops")),
-	index("index_credit_pack_purchases_on_pay_charge_id").using("btree", table.payChargeId.asc().nullsLast().op("int8_ops")),
-]);
+export const creditPackPurchases = pgTable(
+  "credit_pack_purchases",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    creditPackId: bigint("credit_pack_id", { mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    payChargeId: bigint("pay_charge_id", { mode: "number" }),
+    creditsPurchased: integer("credits_purchased").notNull(),
+    priceCents: integer("price_cents").notNull(),
+    isUsed: boolean("is_used").default(false).notNull(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    creditsUsed: integer("credits_used").default(0).notNull(),
+  },
+  (table) => [
+    index("index_credit_pack_purchases_on_account_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_credit_pack_purchases_on_account_id_and_created_at").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops"),
+      table.createdAt.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_credit_pack_purchases_on_account_id_and_is_used").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops"),
+      table.isUsed.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_credit_pack_purchases_on_credit_pack_id").using(
+      "btree",
+      table.creditPackId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_credit_pack_purchases_on_pay_charge_id").using(
+      "btree",
+      table.payChargeId.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
 
-export const deploys = pgTable("deploys", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	projectId: bigint("project_id", { mode: "number" }).notNull(),
-	status: varchar().default('pending').notNull(),
-	currentStep: varchar("current_step"),
-	isLive: boolean("is_live").default(false),
-	stacktrace: text(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	websiteDeployId: bigint("website_deploy_id", { mode: "number" }),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	campaignDeployId: bigint("campaign_deploy_id", { mode: "number" }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	userActiveAt: timestamp("user_active_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_deploys_on_campaign_deploy_id").using("btree", table.campaignDeployId.asc().nullsLast().op("int8_ops")),
-	index("index_deploys_on_is_live").using("btree", table.isLive.asc().nullsLast().op("bool_ops")),
-	index("index_deploys_on_project_id").using("btree", table.projectId.asc().nullsLast().op("int8_ops")),
-	index("index_deploys_on_project_id_and_is_live").using("btree", table.projectId.asc().nullsLast().op("int8_ops"), table.isLive.asc().nullsLast().op("int8_ops")),
-	index("index_deploys_on_project_id_and_status").using("btree", table.projectId.asc().nullsLast().op("int8_ops"), table.status.asc().nullsLast().op("int8_ops")),
-	index("index_deploys_on_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
-	index("index_deploys_on_website_deploy_id").using("btree", table.websiteDeployId.asc().nullsLast().op("int8_ops")),
-	foreignKey({
-			columns: [table.campaignDeployId],
-			foreignColumns: [campaignDeploys.id],
-			name: "fk_rails_0773f47ab4"
-		}),
-	foreignKey({
-			columns: [table.websiteDeployId],
-			foreignColumns: [websiteDeploys.id],
-			name: "fk_rails_c721010c48"
-		}),
-	foreignKey({
-			columns: [table.projectId],
-			foreignColumns: [projects.id],
-			name: "fk_rails_eeb0884eb6"
-		}),
-]);
+export const deploys = pgTable(
+  "deploys",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    projectId: bigint("project_id", { mode: "number" }).notNull(),
+    status: varchar().default("pending").notNull(),
+    currentStep: varchar("current_step"),
+    isLive: boolean("is_live").default(false),
+    stacktrace: text(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    websiteDeployId: bigint("website_deploy_id", { mode: "number" }),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    campaignDeployId: bigint("campaign_deploy_id", { mode: "number" }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    userActiveAt: timestamp("user_active_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_deploys_on_campaign_deploy_id").using(
+      "btree",
+      table.campaignDeployId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_deploys_on_is_live").using("btree", table.isLive.asc().nullsLast().op("bool_ops")),
+    index("index_deploys_on_project_id").using(
+      "btree",
+      table.projectId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_deploys_on_project_id_and_is_live").using(
+      "btree",
+      table.projectId.asc().nullsLast().op("int8_ops"),
+      table.isLive.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_deploys_on_project_id_and_status").using(
+      "btree",
+      table.projectId.asc().nullsLast().op("int8_ops"),
+      table.status.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_deploys_on_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+    index("index_deploys_on_website_deploy_id").using(
+      "btree",
+      table.websiteDeployId.asc().nullsLast().op("int8_ops")
+    ),
+    foreignKey({
+      columns: [table.campaignDeployId],
+      foreignColumns: [campaignDeploys.id],
+      name: "fk_rails_0773f47ab4",
+    }),
+    foreignKey({
+      columns: [table.websiteDeployId],
+      foreignColumns: [websiteDeploys.id],
+      name: "fk_rails_c721010c48",
+    }),
+    foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: "fk_rails_eeb0884eb6",
+    }),
+  ]
+);
 
-export const jobRuns = pgTable("job_runs", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	jobClass: varchar("job_class").notNull(),
-	status: varchar().default('pending').notNull(),
-	errorMessage: text("error_message"),
-	jobArgs: jsonb("job_args").default({}),
-	startedAt: timestamp("started_at", { precision: 6, mode: 'string' }),
-	completedAt: timestamp("completed_at", { precision: 6, mode: 'string' }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }),
-	langgraphThreadId: varchar("langgraph_thread_id"),
-	resultData: jsonb("result_data").default({}),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	deployId: bigint("deploy_id", { mode: "number" }),
-}, (table) => [
-	index("index_job_runs_on_account_id").using("btree", table.accountId.asc().nullsLast().op("int8_ops")),
-	index("index_job_runs_on_deploy_id").using("btree", table.deployId.asc().nullsLast().op("int8_ops")),
-	index("index_job_runs_on_job_class").using("btree", table.jobClass.asc().nullsLast().op("text_ops")),
-	index("index_job_runs_on_job_class_and_status").using("btree", table.jobClass.asc().nullsLast().op("text_ops"), table.status.asc().nullsLast().op("text_ops")),
-	index("index_job_runs_on_langgraph_thread_id").using("btree", table.langgraphThreadId.asc().nullsLast().op("text_ops")),
-	index("index_job_runs_on_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
-	foreignKey({
-			columns: [table.accountId],
-			foreignColumns: [accounts.id],
-			name: "fk_rails_fb366570a2"
-		}),
-]);
+export const jobRuns = pgTable(
+  "job_runs",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    jobClass: varchar("job_class").notNull(),
+    status: varchar().default("pending").notNull(),
+    errorMessage: text("error_message"),
+    jobArgs: jsonb("job_args").default({}),
+    startedAt: timestamp("started_at", { precision: 6, mode: "string" }),
+    completedAt: timestamp("completed_at", { precision: 6, mode: "string" }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }),
+    langgraphThreadId: varchar("langgraph_thread_id"),
+    resultData: jsonb("result_data").default({}),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    deployId: bigint("deploy_id", { mode: "number" }),
+  },
+  (table) => [
+    index("index_job_runs_on_account_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_job_runs_on_deploy_id").using(
+      "btree",
+      table.deployId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_job_runs_on_job_class").using(
+      "btree",
+      table.jobClass.asc().nullsLast().op("text_ops")
+    ),
+    index("index_job_runs_on_job_class_and_status").using(
+      "btree",
+      table.jobClass.asc().nullsLast().op("text_ops"),
+      table.status.asc().nullsLast().op("text_ops")
+    ),
+    index("index_job_runs_on_langgraph_thread_id").using(
+      "btree",
+      table.langgraphThreadId.asc().nullsLast().op("text_ops")
+    ),
+    index("index_job_runs_on_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+    foreignKey({
+      columns: [table.accountId],
+      foreignColumns: [accounts.id],
+      name: "fk_rails_fb366570a2",
+    }),
+  ]
+);
 
-export const geoTargetConstants = pgTable("geo_target_constants", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	criteriaId: bigint("criteria_id", { mode: "number" }).notNull(),
-	name: varchar().notNull(),
-	canonicalName: varchar("canonical_name").notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	parentId: bigint("parent_id", { mode: "number" }),
-	countryCode: varchar("country_code"),
-	targetType: varchar("target_type").notNull(),
-	status: varchar().default('Active').notNull(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("index_geo_target_constants_on_canonical_name").using("gin", table.canonicalName.asc().nullsLast().op("gin_trgm_ops")),
-	index("index_geo_target_constants_on_country_code").using("btree", table.countryCode.asc().nullsLast().op("text_ops")),
-	uniqueIndex("index_geo_target_constants_on_criteria_id").using("btree", table.criteriaId.asc().nullsLast().op("int8_ops")),
-	index("index_geo_target_constants_on_name").using("gin", table.name.asc().nullsLast().op("gin_trgm_ops")),
-	index("index_geo_target_constants_on_parent_id").using("btree", table.parentId.asc().nullsLast().op("int8_ops")),
-	index("index_geo_target_constants_on_target_type").using("btree", table.targetType.asc().nullsLast().op("text_ops")),
-]);
+export const geoTargetConstants = pgTable(
+  "geo_target_constants",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    criteriaId: bigint("criteria_id", { mode: "number" }).notNull(),
+    name: varchar().notNull(),
+    canonicalName: varchar("canonical_name").notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    parentId: bigint("parent_id", { mode: "number" }),
+    countryCode: varchar("country_code"),
+    targetType: varchar("target_type").notNull(),
+    status: varchar().default("Active").notNull(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("index_geo_target_constants_on_canonical_name").using(
+      "gin",
+      table.canonicalName.asc().nullsLast().op("gin_trgm_ops")
+    ),
+    index("index_geo_target_constants_on_country_code").using(
+      "btree",
+      table.countryCode.asc().nullsLast().op("text_ops")
+    ),
+    uniqueIndex("index_geo_target_constants_on_criteria_id").using(
+      "btree",
+      table.criteriaId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_geo_target_constants_on_name").using(
+      "gin",
+      table.name.asc().nullsLast().op("gin_trgm_ops")
+    ),
+    index("index_geo_target_constants_on_parent_id").using(
+      "btree",
+      table.parentId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_geo_target_constants_on_target_type").using(
+      "btree",
+      table.targetType.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const iconEmbeddings = pgTable("icon_embeddings", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	key: varchar().notNull(),
-	text: text().notNull(),
-	embedding: vector({ dimensions: 1536 }).notNull(),
-	metadata: jsonb().default({}).notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' }),
-}, (table) => [
-	index("idx_icon_embeddings_text").using("ivfflat", table.embedding.asc().nullsLast().op("vector_cosine_ops")),
-	uniqueIndex("index_icon_embeddings_on_key").using("btree", table.key.asc().nullsLast().op("text_ops")),
-]);
+export const iconEmbeddings = pgTable(
+  "icon_embeddings",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    key: varchar().notNull(),
+    text: text().notNull(),
+    embedding: vector({ dimensions: 1536 }).notNull(),
+    metadata: jsonb().default({}).notNull(),
+    createdAt: timestamp("created_at", { mode: "string" }),
+  },
+  (table) => [
+    index("idx_icon_embeddings_text").using(
+      "ivfflat",
+      table.embedding.asc().nullsLast().op("vector_cosine_ops")
+    ),
+    uniqueIndex("index_icon_embeddings_on_key").using(
+      "btree",
+      table.key.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const iconQueryCaches = pgTable("icon_query_caches", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	query: varchar().notNull(),
-	results: jsonb().default([]).notNull(),
-	useCount: integer("use_count").default(0).notNull(),
-	ttlSeconds: integer("ttl_seconds").default(86400).notNull(),
-	minSimilarity: doublePrecision("min_similarity").default(0.7).notNull(),
-	topK: integer("top_k").notNull(),
-	lastUsedAt: timestamp("last_used_at", { mode: 'string' }).notNull(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("index_icon_query_caches_on_last_used_at").using("btree", table.lastUsedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_icon_query_caches_on_min_similarity").using("btree", table.minSimilarity.asc().nullsLast().op("float8_ops")),
-	index("index_icon_query_caches_on_query").using("btree", table.query.asc().nullsLast().op("text_ops")),
-	index("index_icon_query_caches_on_top_k").using("btree", table.topK.asc().nullsLast().op("int4_ops")),
-	index("index_icon_query_caches_on_ttl_seconds").using("btree", table.ttlSeconds.asc().nullsLast().op("int4_ops")),
-	index("index_icon_query_caches_on_use_count").using("btree", table.useCount.asc().nullsLast().op("int4_ops")),
-]);
+export const iconQueryCaches = pgTable(
+  "icon_query_caches",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    query: varchar().notNull(),
+    results: jsonb().default([]).notNull(),
+    useCount: integer("use_count").default(0).notNull(),
+    ttlSeconds: integer("ttl_seconds").default(86400).notNull(),
+    minSimilarity: doublePrecision("min_similarity").default(0.7).notNull(),
+    topK: integer("top_k").notNull(),
+    lastUsedAt: timestamp("last_used_at", { mode: "string" }).notNull(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("index_icon_query_caches_on_last_used_at").using(
+      "btree",
+      table.lastUsedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_icon_query_caches_on_min_similarity").using(
+      "btree",
+      table.minSimilarity.asc().nullsLast().op("float8_ops")
+    ),
+    index("index_icon_query_caches_on_query").using(
+      "btree",
+      table.query.asc().nullsLast().op("text_ops")
+    ),
+    index("index_icon_query_caches_on_top_k").using(
+      "btree",
+      table.topK.asc().nullsLast().op("int4_ops")
+    ),
+    index("index_icon_query_caches_on_ttl_seconds").using(
+      "btree",
+      table.ttlSeconds.asc().nullsLast().op("int4_ops")
+    ),
+    index("index_icon_query_caches_on_use_count").using(
+      "btree",
+      table.useCount.asc().nullsLast().op("int4_ops")
+    ),
+  ]
+);
 
 export const inboundWebhooks = pgTable("inbound_webhooks", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	status: integer().default(0).notNull(),
-	body: text(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
+  id: bigserial({ mode: "number" }).primaryKey().notNull(),
+  status: integer().default(0).notNull(),
+  body: text(),
+  createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+  updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
 });
 
-export const leads = pgTable("leads", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	email: varchar({ length: 255 }).notNull(),
-	name: varchar({ length: 255 }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }).notNull(),
-}, (table) => [
-	index("index_leads_on_account_id").using("btree", table.accountId.asc().nullsLast().op("int8_ops")),
-	uniqueIndex("index_leads_on_account_id_and_email").using("btree", table.accountId.asc().nullsLast().op("int8_ops"), table.email.asc().nullsLast().op("int8_ops")),
-	index("index_leads_on_email").using("btree", table.email.asc().nullsLast().op("text_ops")),
-]);
+export const leads = pgTable(
+  "leads",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    email: varchar({ length: 255 }).notNull(),
+    name: varchar({ length: 255 }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("index_leads_on_account_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops")
+    ),
+    uniqueIndex("index_leads_on_account_id_and_email").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops"),
+      table.email.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_leads_on_email").using("btree", table.email.asc().nullsLast().op("text_ops")),
+  ]
+);
 
-export const modelConfigs = pgTable("model_configs", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	modelKey: varchar("model_key").notNull(),
-	enabled: boolean().default(true).notNull(),
-	maxUsagePercent: integer("max_usage_percent").default(100),
-	costIn: numeric("cost_in", { precision: 10, scale:  4 }),
-	costOut: numeric("cost_out", { precision: 10, scale:  4 }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	modelCard: varchar("model_card"),
-	cacheWrites: numeric("cache_writes", { precision: 10, scale:  4 }),
-	cacheReads: numeric("cache_reads", { precision: 10, scale:  4 }),
-	costReasoning: numeric("cost_reasoning", { precision: 10, scale:  4 }),
-}, (table) => [
-	index("index_model_configs_on_model_card").using("btree", table.modelCard.asc().nullsLast().op("text_ops")),
-	uniqueIndex("index_model_configs_on_model_key").using("btree", table.modelKey.asc().nullsLast().op("text_ops")),
-]);
+export const modelConfigs = pgTable(
+  "model_configs",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    modelKey: varchar("model_key").notNull(),
+    enabled: boolean().default(true).notNull(),
+    maxUsagePercent: integer("max_usage_percent").default(100),
+    costIn: numeric("cost_in", { precision: 10, scale: 4 }),
+    costOut: numeric("cost_out", { precision: 10, scale: 4 }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    modelCard: varchar("model_card"),
+    cacheWrites: numeric("cache_writes", { precision: 10, scale: 4 }),
+    cacheReads: numeric("cache_reads", { precision: 10, scale: 4 }),
+    costReasoning: numeric("cost_reasoning", { precision: 10, scale: 4 }),
+  },
+  (table) => [
+    index("index_model_configs_on_model_card").using(
+      "btree",
+      table.modelCard.asc().nullsLast().op("text_ops")
+    ),
+    uniqueIndex("index_model_configs_on_model_key").using(
+      "btree",
+      table.modelKey.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const domains = pgTable("domains", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	domain: varchar(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	websiteId: bigint("website_id", { mode: "number" }),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }),
-	cloudflareZoneId: varchar("cloudflare_zone_id"),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	isPlatformSubdomain: boolean("is_platform_subdomain").default(false).notNull(),
-}, (table) => [
-	index("index_domains_on_account_id").using("btree", table.accountId.asc().nullsLast().op("int8_ops")),
-	index("index_domains_on_account_id_and_platform_subdomain").using("btree", table.accountId.asc().nullsLast().op("int8_ops"), table.isPlatformSubdomain.asc().nullsLast().op("int8_ops")),
-	index("index_domains_on_cloudflare_zone_id").using("btree", table.cloudflareZoneId.asc().nullsLast().op("text_ops")),
-	index("index_domains_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_domains_on_domain").using("btree", table.domain.asc().nullsLast().op("text_ops")),
-	index("index_domains_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int8_ops")),
-]);
+export const domains = pgTable(
+  "domains",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    domain: varchar(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    websiteId: bigint("website_id", { mode: "number" }),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }),
+    cloudflareZoneId: varchar("cloudflare_zone_id"),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    isPlatformSubdomain: boolean("is_platform_subdomain").default(false).notNull(),
+  },
+  (table) => [
+    index("index_domains_on_account_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_domains_on_account_id_and_platform_subdomain").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops"),
+      table.isPlatformSubdomain.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_domains_on_cloudflare_zone_id").using(
+      "btree",
+      table.cloudflareZoneId.asc().nullsLast().op("text_ops")
+    ),
+    index("index_domains_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_domains_on_domain").using("btree", table.domain.asc().nullsLast().op("text_ops")),
+    index("index_domains_on_website_id").using(
+      "btree",
+      table.websiteId.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
 
-export const modelPreferences = pgTable("model_preferences", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	costTier: varchar("cost_tier").notNull(),
-	speedTier: varchar("speed_tier").notNull(),
-	skill: varchar().notNull(),
-	modelKeys: varchar("model_keys").array().default([""]).notNull(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	uniqueIndex("idx_model_preferences_unique").using("btree", table.costTier.asc().nullsLast().op("text_ops"), table.speedTier.asc().nullsLast().op("text_ops"), table.skill.asc().nullsLast().op("text_ops")),
-]);
+export const modelPreferences = pgTable(
+  "model_preferences",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    costTier: varchar("cost_tier").notNull(),
+    speedTier: varchar("speed_tier").notNull(),
+    skill: varchar().notNull(),
+    modelKeys: varchar("model_keys").array().default([""]).notNull(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("idx_model_preferences_unique").using(
+      "btree",
+      table.costTier.asc().nullsLast().op("text_ops"),
+      table.speedTier.asc().nullsLast().op("text_ops"),
+      table.skill.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const noticedEvents = pgTable("noticed_events", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }),
-	type: varchar(),
-	recordType: varchar("record_type"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	recordId: bigint("record_id", { mode: "number" }),
-	params: jsonb(),
-	notificationsCount: integer("notifications_count"),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("index_noticed_events_on_account_id").using("btree", table.accountId.asc().nullsLast().op("int8_ops")),
-	index("index_noticed_events_on_record").using("btree", table.recordType.asc().nullsLast().op("int8_ops"), table.recordId.asc().nullsLast().op("int8_ops")),
-]);
+export const noticedEvents = pgTable(
+  "noticed_events",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }),
+    type: varchar(),
+    recordType: varchar("record_type"),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    recordId: bigint("record_id", { mode: "number" }),
+    params: jsonb(),
+    notificationsCount: integer("notifications_count"),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("index_noticed_events_on_account_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_noticed_events_on_record").using(
+      "btree",
+      table.recordType.asc().nullsLast().op("int8_ops"),
+      table.recordId.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
 
-export const noticedNotifications = pgTable("noticed_notifications", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }),
-	type: varchar(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	eventId: bigint("event_id", { mode: "number" }).notNull(),
-	recipientType: varchar("recipient_type").notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	recipientId: bigint("recipient_id", { mode: "number" }).notNull(),
-	readAt: timestamp("read_at", { mode: 'string' }),
-	seenAt: timestamp("seen_at", { mode: 'string' }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("index_noticed_notifications_on_account_id").using("btree", table.accountId.asc().nullsLast().op("int8_ops")),
-	index("index_noticed_notifications_on_event_id").using("btree", table.eventId.asc().nullsLast().op("int8_ops")),
-	index("index_noticed_notifications_on_recipient").using("btree", table.recipientType.asc().nullsLast().op("int8_ops"), table.recipientId.asc().nullsLast().op("text_ops")),
-]);
+export const noticedNotifications = pgTable(
+  "noticed_notifications",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }),
+    type: varchar(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    eventId: bigint("event_id", { mode: "number" }).notNull(),
+    recipientType: varchar("recipient_type").notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    recipientId: bigint("recipient_id", { mode: "number" }).notNull(),
+    readAt: timestamp("read_at", { mode: "string" }),
+    seenAt: timestamp("seen_at", { mode: "string" }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("index_noticed_notifications_on_account_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_noticed_notifications_on_event_id").using(
+      "btree",
+      table.eventId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_noticed_notifications_on_recipient").using(
+      "btree",
+      table.recipientType.asc().nullsLast().op("int8_ops"),
+      table.recipientId.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const notificationTokens = pgTable("notification_tokens", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	userId: bigint("user_id", { mode: "number" }),
-	token: varchar().notNull(),
-	platform: varchar().notNull(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("index_notification_tokens_on_user_id").using("btree", table.userId.asc().nullsLast().op("int8_ops")),
-]);
+export const notificationTokens = pgTable(
+  "notification_tokens",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    userId: bigint("user_id", { mode: "number" }),
+    token: varchar().notNull(),
+    platform: varchar().notNull(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("index_notification_tokens_on_user_id").using(
+      "btree",
+      table.userId.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
 
-export const notifications = pgTable("notifications", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }).notNull(),
-	recipientType: varchar("recipient_type").notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	recipientId: bigint("recipient_id", { mode: "number" }).notNull(),
-	type: varchar(),
-	params: jsonb(),
-	readAt: timestamp("read_at", { mode: 'string' }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	interactedAt: timestamp("interacted_at", { mode: 'string' }),
-}, (table) => [
-	index("index_notifications_on_account_id").using("btree", table.accountId.asc().nullsLast().op("int8_ops")),
-	index("index_notifications_on_recipient_type_and_recipient_id").using("btree", table.recipientType.asc().nullsLast().op("int8_ops"), table.recipientId.asc().nullsLast().op("int8_ops")),
-]);
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }).notNull(),
+    recipientType: varchar("recipient_type").notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    recipientId: bigint("recipient_id", { mode: "number" }).notNull(),
+    type: varchar(),
+    params: jsonb(),
+    readAt: timestamp("read_at", { mode: "string" }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    interactedAt: timestamp("interacted_at", { mode: "string" }),
+  },
+  (table) => [
+    index("index_notifications_on_account_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_notifications_on_recipient_type_and_recipient_id").using(
+      "btree",
+      table.recipientType.asc().nullsLast().op("int8_ops"),
+      table.recipientId.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
 
-export const paySubscriptions = pgTable("pay_subscriptions", {
-	id: serial().primaryKey().notNull(),
-	name: varchar().notNull(),
-	processorId: varchar("processor_id").notNull(),
-	processorPlan: varchar("processor_plan").notNull(),
-	quantity: integer().default(1).notNull(),
-	trialEndsAt: timestamp("trial_ends_at", { mode: 'string' }),
-	endsAt: timestamp("ends_at", { mode: 'string' }),
-	createdAt: timestamp("created_at", { mode: 'string' }),
-	updatedAt: timestamp("updated_at", { mode: 'string' }),
-	status: varchar(),
-	data: jsonb(),
-	applicationFeePercent: numeric("application_fee_percent", { precision: 8, scale:  2 }),
-	metadata: jsonb(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	customerId: bigint("customer_id", { mode: "number" }),
-	currentPeriodStart: timestamp("current_period_start", { precision: 6, mode: 'string' }),
-	currentPeriodEnd: timestamp("current_period_end", { precision: 6, mode: 'string' }),
-	metered: boolean(),
-	pauseBehavior: varchar("pause_behavior"),
-	pauseStartsAt: timestamp("pause_starts_at", { precision: 6, mode: 'string' }),
-	pauseResumesAt: timestamp("pause_resumes_at", { precision: 6, mode: 'string' }),
-	paymentMethodId: varchar("payment_method_id"),
-	stripeAccount: varchar("stripe_account"),
-	type: varchar(),
-}, (table) => [
-	uniqueIndex("index_pay_subscriptions_on_customer_id_and_processor_id").using("btree", table.customerId.asc().nullsLast().op("text_ops"), table.processorId.asc().nullsLast().op("int8_ops")),
-	index("index_pay_subscriptions_on_metered").using("btree", table.metered.asc().nullsLast().op("bool_ops")),
-	index("index_pay_subscriptions_on_pause_starts_at").using("btree", table.pauseStartsAt.asc().nullsLast().op("timestamp_ops")),
-	foreignKey({
-			columns: [table.customerId],
-			foreignColumns: [payCustomers.id],
-			name: "fk_rails_b7cd64d378"
-		}),
-]);
+export const paySubscriptions = pgTable(
+  "pay_subscriptions",
+  {
+    id: serial().primaryKey().notNull(),
+    name: varchar().notNull(),
+    processorId: varchar("processor_id").notNull(),
+    processorPlan: varchar("processor_plan").notNull(),
+    quantity: integer().default(1).notNull(),
+    trialEndsAt: timestamp("trial_ends_at", { mode: "string" }),
+    endsAt: timestamp("ends_at", { mode: "string" }),
+    createdAt: timestamp("created_at", { mode: "string" }),
+    updatedAt: timestamp("updated_at", { mode: "string" }),
+    status: varchar(),
+    data: jsonb(),
+    applicationFeePercent: numeric("application_fee_percent", { precision: 8, scale: 2 }),
+    metadata: jsonb(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    customerId: bigint("customer_id", { mode: "number" }),
+    currentPeriodStart: timestamp("current_period_start", { precision: 6, mode: "string" }),
+    currentPeriodEnd: timestamp("current_period_end", { precision: 6, mode: "string" }),
+    metered: boolean(),
+    pauseBehavior: varchar("pause_behavior"),
+    pauseStartsAt: timestamp("pause_starts_at", { precision: 6, mode: "string" }),
+    pauseResumesAt: timestamp("pause_resumes_at", { precision: 6, mode: "string" }),
+    paymentMethodId: varchar("payment_method_id"),
+    stripeAccount: varchar("stripe_account"),
+    type: varchar(),
+  },
+  (table) => [
+    uniqueIndex("index_pay_subscriptions_on_customer_id_and_processor_id").using(
+      "btree",
+      table.customerId.asc().nullsLast().op("text_ops"),
+      table.processorId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_pay_subscriptions_on_metered").using(
+      "btree",
+      table.metered.asc().nullsLast().op("bool_ops")
+    ),
+    index("index_pay_subscriptions_on_pause_starts_at").using(
+      "btree",
+      table.pauseStartsAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    foreignKey({
+      columns: [table.customerId],
+      foreignColumns: [payCustomers.id],
+      name: "fk_rails_b7cd64d378",
+    }),
+  ]
+);
 
-export const payPaymentMethods = pgTable("pay_payment_methods", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	customerId: bigint("customer_id", { mode: "number" }),
-	processorId: varchar("processor_id"),
-	default: boolean(),
-	paymentMethodType: varchar("payment_method_type"),
-	data: jsonb(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	stripeAccount: varchar("stripe_account"),
-	type: varchar(),
-}, (table) => [
-	uniqueIndex("index_pay_payment_methods_on_customer_id_and_processor_id").using("btree", table.customerId.asc().nullsLast().op("int8_ops"), table.processorId.asc().nullsLast().op("int8_ops")),
-	foreignKey({
-			columns: [table.customerId],
-			foreignColumns: [payCustomers.id],
-			name: "fk_rails_c78c6cb84d"
-		}),
-]);
+export const payPaymentMethods = pgTable(
+  "pay_payment_methods",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    customerId: bigint("customer_id", { mode: "number" }),
+    processorId: varchar("processor_id"),
+    default: boolean(),
+    paymentMethodType: varchar("payment_method_type"),
+    data: jsonb(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    stripeAccount: varchar("stripe_account"),
+    type: varchar(),
+  },
+  (table) => [
+    uniqueIndex("index_pay_payment_methods_on_customer_id_and_processor_id").using(
+      "btree",
+      table.customerId.asc().nullsLast().op("int8_ops"),
+      table.processorId.asc().nullsLast().op("int8_ops")
+    ),
+    foreignKey({
+      columns: [table.customerId],
+      foreignColumns: [payCustomers.id],
+      name: "fk_rails_c78c6cb84d",
+    }),
+  ]
+);
 
-export const payMerchants = pgTable("pay_merchants", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	ownerType: varchar("owner_type"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	ownerId: bigint("owner_id", { mode: "number" }),
-	processor: varchar(),
-	processorId: varchar("processor_id"),
-	default: boolean(),
-	data: jsonb(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	type: varchar(),
-}, (table) => [
-	index("index_pay_merchants_on_owner_type_and_owner_id_and_processor").using("btree", table.ownerType.asc().nullsLast().op("text_ops"), table.ownerId.asc().nullsLast().op("int8_ops"), table.processor.asc().nullsLast().op("text_ops")),
-]);
+export const payMerchants = pgTable(
+  "pay_merchants",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    ownerType: varchar("owner_type"),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    ownerId: bigint("owner_id", { mode: "number" }),
+    processor: varchar(),
+    processorId: varchar("processor_id"),
+    default: boolean(),
+    data: jsonb(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    type: varchar(),
+  },
+  (table) => [
+    index("index_pay_merchants_on_owner_type_and_owner_id_and_processor").using(
+      "btree",
+      table.ownerType.asc().nullsLast().op("text_ops"),
+      table.ownerId.asc().nullsLast().op("int8_ops"),
+      table.processor.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
 export const payWebhooks = pgTable("pay_webhooks", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	processor: varchar(),
-	eventType: varchar("event_type"),
-	event: jsonb(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
+  id: bigserial({ mode: "number" }).primaryKey().notNull(),
+  processor: varchar(),
+  eventType: varchar("event_type"),
+  event: jsonb(),
+  createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+  updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
 });
 
-export const payCustomers = pgTable("pay_customers", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	ownerType: varchar("owner_type"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	ownerId: bigint("owner_id", { mode: "number" }),
-	processor: varchar(),
-	processorId: varchar("processor_id"),
-	default: boolean(),
-	data: jsonb(),
-	deletedAt: timestamp("deleted_at", { mode: 'string' }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	stripeAccount: varchar("stripe_account"),
-	type: varchar(),
-}, (table) => [
-	index("customer_owner_processor_index").using("btree", table.ownerType.asc().nullsLast().op("int8_ops"), table.ownerId.asc().nullsLast().op("timestamp_ops"), table.deletedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_pay_customers_on_processor_and_processor_id").using("btree", table.processor.asc().nullsLast().op("text_ops"), table.processorId.asc().nullsLast().op("text_ops")),
-]);
+export const payCustomers = pgTable(
+  "pay_customers",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    ownerType: varchar("owner_type"),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    ownerId: bigint("owner_id", { mode: "number" }),
+    processor: varchar(),
+    processorId: varchar("processor_id"),
+    default: boolean(),
+    data: jsonb(),
+    deletedAt: timestamp("deleted_at", { mode: "string" }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    stripeAccount: varchar("stripe_account"),
+    type: varchar(),
+  },
+  (table) => [
+    index("customer_owner_processor_index").using(
+      "btree",
+      table.ownerType.asc().nullsLast().op("int8_ops"),
+      table.ownerId.asc().nullsLast().op("timestamp_ops"),
+      table.deletedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_pay_customers_on_processor_and_processor_id").using(
+      "btree",
+      table.processor.asc().nullsLast().op("text_ops"),
+      table.processorId.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const planTiers = pgTable("plan_tiers", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	name: varchar().notNull(),
-	description: varchar(),
-	details: jsonb().default({}),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	uniqueIndex("index_plan_tiers_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
-]);
+export const planTiers = pgTable(
+  "plan_tiers",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    name: varchar().notNull(),
+    description: varchar(),
+    details: jsonb().default({}),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("index_plan_tiers_on_name").using(
+      "btree",
+      table.name.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const plans = pgTable("plans", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	name: varchar().notNull(),
-	amount: integer().default(0).notNull(),
-	interval: varchar().notNull(),
-	details: jsonb(),
-	createdAt: timestamp("created_at", { mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).notNull(),
-	trialPeriodDays: integer("trial_period_days").default(0),
-	hidden: boolean(),
-	currency: varchar(),
-	intervalCount: integer("interval_count").default(1),
-	description: varchar(),
-	unitLabel: varchar("unit_label"),
-	chargePerUnit: boolean("charge_per_unit"),
-	stripeId: varchar("stripe_id"),
-	braintreeId: varchar("braintree_id"),
-	paddleBillingId: varchar("paddle_billing_id"),
-	paddleClassicId: varchar("paddle_classic_id"),
-	lemonSqueezyId: varchar("lemon_squeezy_id"),
-	fakeProcessorId: varchar("fake_processor_id"),
-	contactUrl: varchar("contact_url"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	planTierId: bigint("plan_tier_id", { mode: "number" }),
-}, (table) => [
-	index("index_plans_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	uniqueIndex("index_plans_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
-	index("index_plans_on_plan_tier_id").using("btree", table.planTierId.asc().nullsLast().op("int8_ops")),
-]);
+export const plans = pgTable(
+  "plans",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    name: varchar().notNull(),
+    amount: integer().default(0).notNull(),
+    interval: varchar().notNull(),
+    details: jsonb(),
+    createdAt: timestamp("created_at", { mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).notNull(),
+    trialPeriodDays: integer("trial_period_days").default(0),
+    hidden: boolean(),
+    currency: varchar(),
+    intervalCount: integer("interval_count").default(1),
+    description: varchar(),
+    unitLabel: varchar("unit_label"),
+    chargePerUnit: boolean("charge_per_unit"),
+    stripeId: varchar("stripe_id"),
+    braintreeId: varchar("braintree_id"),
+    paddleBillingId: varchar("paddle_billing_id"),
+    paddleClassicId: varchar("paddle_classic_id"),
+    lemonSqueezyId: varchar("lemon_squeezy_id"),
+    fakeProcessorId: varchar("fake_processor_id"),
+    contactUrl: varchar("contact_url"),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    planTierId: bigint("plan_tier_id", { mode: "number" }),
+  },
+  (table) => [
+    index("index_plans_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    uniqueIndex("index_plans_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
+    index("index_plans_on_plan_tier_id").using(
+      "btree",
+      table.planTierId.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
 
-export const projectWorkflows = pgTable("project_workflows", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	projectId: bigint("project_id", { mode: "number" }).notNull(),
-	workflowType: varchar("workflow_type").notNull(),
-	step: varchar().notNull(),
-	substep: varchar(),
-	status: varchar().default('active').notNull(),
-	data: jsonb().default({}),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("idx_on_project_id_workflow_type_status_a7aa4433b7").using("btree", table.projectId.asc().nullsLast().op("int8_ops"), table.workflowType.asc().nullsLast().op("int8_ops"), table.status.asc().nullsLast().op("text_ops")),
-	index("index_project_workflows_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_project_workflows_on_project_id").using("btree", table.projectId.asc().nullsLast().op("int8_ops")),
-	index("index_project_workflows_on_project_id_and_workflow_type").using("btree", table.projectId.asc().nullsLast().op("int8_ops"), table.workflowType.asc().nullsLast().op("text_ops")),
-	index("index_project_workflows_on_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
-	index("index_project_workflows_on_step").using("btree", table.step.asc().nullsLast().op("text_ops")),
-	index("index_project_workflows_on_substep").using("btree", table.substep.asc().nullsLast().op("text_ops")),
-	index("index_project_workflows_on_workflow_type").using("btree", table.workflowType.asc().nullsLast().op("text_ops")),
-]);
+export const projectWorkflows = pgTable(
+  "project_workflows",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    projectId: bigint("project_id", { mode: "number" }).notNull(),
+    workflowType: varchar("workflow_type").notNull(),
+    step: varchar().notNull(),
+    substep: varchar(),
+    status: varchar().default("active").notNull(),
+    data: jsonb().default({}),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("idx_on_project_id_workflow_type_status_a7aa4433b7").using(
+      "btree",
+      table.projectId.asc().nullsLast().op("int8_ops"),
+      table.workflowType.asc().nullsLast().op("int8_ops"),
+      table.status.asc().nullsLast().op("text_ops")
+    ),
+    index("index_project_workflows_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_project_workflows_on_project_id").using(
+      "btree",
+      table.projectId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_project_workflows_on_project_id_and_workflow_type").using(
+      "btree",
+      table.projectId.asc().nullsLast().op("int8_ops"),
+      table.workflowType.asc().nullsLast().op("text_ops")
+    ),
+    index("index_project_workflows_on_status").using(
+      "btree",
+      table.status.asc().nullsLast().op("text_ops")
+    ),
+    index("index_project_workflows_on_step").using(
+      "btree",
+      table.step.asc().nullsLast().op("text_ops")
+    ),
+    index("index_project_workflows_on_substep").using(
+      "btree",
+      table.substep.asc().nullsLast().op("text_ops")
+    ),
+    index("index_project_workflows_on_workflow_type").using(
+      "btree",
+      table.workflowType.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
 export const schemaMigrations = pgTable("schema_migrations", {
-	version: varchar().primaryKey().notNull(),
+  version: varchar().primaryKey().notNull(),
 });
 
-export const projects = pgTable("projects", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	name: varchar().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }).notNull(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	uuid: uuid().defaultRandom().notNull(),
-	deletedAt: timestamp("deleted_at", { precision: 6, mode: 'string' }),
-}, (table) => [
-	index("index_projects_on_account_id").using("btree", table.accountId.asc().nullsLast().op("int8_ops")),
-	index("index_projects_on_account_id_and_created_at").using("btree", table.accountId.asc().nullsLast().op("int8_ops"), table.createdAt.asc().nullsLast().op("int8_ops")),
-	uniqueIndex("index_projects_on_account_id_and_name").using("btree", table.accountId.asc().nullsLast().op("text_ops"), table.name.asc().nullsLast().op("int8_ops")),
-	index("index_projects_on_account_id_and_updated_at").using("btree", table.accountId.asc().nullsLast().op("int8_ops"), table.updatedAt.asc().nullsLast().op("int8_ops")),
-	index("index_projects_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_projects_on_deleted_at").using("btree", table.deletedAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_projects_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
-	index("index_projects_on_updated_at").using("btree", table.updatedAt.asc().nullsLast().op("timestamp_ops")),
-	uniqueIndex("index_projects_on_uuid").using("btree", table.uuid.asc().nullsLast().op("uuid_ops")),
-]);
+export const projects = pgTable(
+  "projects",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    name: varchar().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }).notNull(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    uuid: uuid().defaultRandom().notNull(),
+    deletedAt: timestamp("deleted_at", { precision: 6, mode: "string" }),
+  },
+  (table) => [
+    index("index_projects_on_account_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_projects_on_account_id_and_created_at").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops"),
+      table.createdAt.asc().nullsLast().op("int8_ops")
+    ),
+    uniqueIndex("index_projects_on_account_id_and_name").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("text_ops"),
+      table.name.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_projects_on_account_id_and_updated_at").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops"),
+      table.updatedAt.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_projects_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_projects_on_deleted_at").using(
+      "btree",
+      table.deletedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_projects_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
+    index("index_projects_on_updated_at").using(
+      "btree",
+      table.updatedAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    uniqueIndex("index_projects_on_uuid").using(
+      "btree",
+      table.uuid.asc().nullsLast().op("uuid_ops")
+    ),
+  ]
+);
 
 export const storeMigrations = pgTable("store_migrations", {
-	v: integer().primaryKey().notNull(),
+  v: integer().primaryKey().notNull(),
 });
 
-export const tasks = pgTable("tasks", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	type: varchar(),
-	subtype: varchar(),
-	title: varchar(),
-	instructions: varchar(),
-	status: varchar(),
-	action: varchar(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	componentId: bigint("component_id", { mode: "number" }),
-	componentType: varchar("component_type"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	componentOverviewId: bigint("component_overview_id", { mode: "number" }),
-	results: jsonb(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	projectId: bigint("project_id", { mode: "number" }),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	websiteId: bigint("website_id", { mode: "number" }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	websiteFileId: integer("website_file_id"),
-	path: varchar(),
-}, (table) => [
-	index("index_tasks_on_action").using("btree", table.action.asc().nullsLast().op("text_ops")),
-	index("index_tasks_on_component_id").using("btree", table.componentId.asc().nullsLast().op("int8_ops")),
-	index("index_tasks_on_component_overview_id").using("btree", table.componentOverviewId.asc().nullsLast().op("int8_ops")),
-	index("index_tasks_on_component_type").using("btree", table.componentType.asc().nullsLast().op("text_ops")),
-	index("index_tasks_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_tasks_on_path").using("btree", table.path.asc().nullsLast().op("text_ops")),
-	index("index_tasks_on_project_id").using("btree", table.projectId.asc().nullsLast().op("int8_ops")),
-	index("index_tasks_on_results").using("gin", table.results.asc().nullsLast().op("jsonb_ops")),
-	index("index_tasks_on_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
-	index("index_tasks_on_subtype").using("btree", table.subtype.asc().nullsLast().op("text_ops")),
-	index("index_tasks_on_type").using("btree", table.type.asc().nullsLast().op("text_ops")),
-	index("index_tasks_on_website_file_id").using("btree", table.websiteFileId.asc().nullsLast().op("int4_ops")),
-	index("index_tasks_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int8_ops")),
-]);
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    type: varchar(),
+    subtype: varchar(),
+    title: varchar(),
+    instructions: varchar(),
+    status: varchar(),
+    action: varchar(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    componentId: bigint("component_id", { mode: "number" }),
+    componentType: varchar("component_type"),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    componentOverviewId: bigint("component_overview_id", { mode: "number" }),
+    results: jsonb(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    projectId: bigint("project_id", { mode: "number" }),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    websiteId: bigint("website_id", { mode: "number" }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    websiteFileId: integer("website_file_id"),
+    path: varchar(),
+  },
+  (table) => [
+    index("index_tasks_on_action").using("btree", table.action.asc().nullsLast().op("text_ops")),
+    index("index_tasks_on_component_id").using(
+      "btree",
+      table.componentId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_tasks_on_component_overview_id").using(
+      "btree",
+      table.componentOverviewId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_tasks_on_component_type").using(
+      "btree",
+      table.componentType.asc().nullsLast().op("text_ops")
+    ),
+    index("index_tasks_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_tasks_on_path").using("btree", table.path.asc().nullsLast().op("text_ops")),
+    index("index_tasks_on_project_id").using(
+      "btree",
+      table.projectId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_tasks_on_results").using("gin", table.results.asc().nullsLast().op("jsonb_ops")),
+    index("index_tasks_on_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+    index("index_tasks_on_subtype").using("btree", table.subtype.asc().nullsLast().op("text_ops")),
+    index("index_tasks_on_type").using("btree", table.type.asc().nullsLast().op("text_ops")),
+    index("index_tasks_on_website_file_id").using(
+      "btree",
+      table.websiteFileId.asc().nullsLast().op("int4_ops")
+    ),
+    index("index_tasks_on_website_id").using(
+      "btree",
+      table.websiteId.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
 
-export const templates = pgTable("templates", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	name: varchar(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	uniqueIndex("index_templates_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
-]);
+export const templates = pgTable(
+  "templates",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    name: varchar(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("index_templates_on_name").using(
+      "btree",
+      table.name.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const themeLabels = pgTable("theme_labels", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	name: varchar().notNull(),
-}, (table) => [
-	index("index_theme_labels_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
-]);
+export const themeLabels = pgTable(
+  "theme_labels",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    name: varchar().notNull(),
+  },
+  (table) => [
+    index("index_theme_labels_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
+  ]
+);
 
-export const themes = pgTable("themes", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	name: varchar().notNull(),
-	colors: jsonb().default({}),
-	theme: jsonb().default({}),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	themeType: varchar("theme_type").notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	authorId: bigint("author_id", { mode: "number" }),
-	pairings: jsonb(),
-	typographyRecommendations: jsonb("typography_recommendations"),
-}, (table) => [
-	index("index_themes_on_author_id").using("btree", table.authorId.asc().nullsLast().op("int8_ops")),
-	index("index_themes_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
-	index("index_themes_on_theme_type").using("btree", table.themeType.asc().nullsLast().op("text_ops")),
-]);
+export const themes = pgTable(
+  "themes",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    name: varchar().notNull(),
+    colors: jsonb().default({}),
+    theme: jsonb().default({}),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    themeType: varchar("theme_type").notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    authorId: bigint("author_id", { mode: "number" }),
+    pairings: jsonb(),
+    typographyRecommendations: jsonb("typography_recommendations"),
+  },
+  (table) => [
+    index("index_themes_on_author_id").using(
+      "btree",
+      table.authorId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_themes_on_name").using("btree", table.name.asc().nullsLast().op("text_ops")),
+    index("index_themes_on_theme_type").using(
+      "btree",
+      table.themeType.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const runs = pgTable("runs", {
-	runId: text("run_id").primaryKey().notNull(),
-	threadId: text("thread_id").notNull(),
-	assistantId: text("assistant_id").notNull(),
-	status: text().default('pending').notNull(),
-	metadata: jsonb().default({}).notNull(),
-	kwargs: jsonb().default({}).notNull(),
-	multitaskStrategy: text("multitask_strategy").default('reject').notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	index("idx_runs_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
-	index("idx_runs_thread_id").using("btree", table.threadId.asc().nullsLast().op("text_ops")),
-]);
+export const runs = pgTable(
+  "runs",
+  {
+    runId: text("run_id").primaryKey().notNull(),
+    threadId: text("thread_id").notNull(),
+    assistantId: text("assistant_id").notNull(),
+    status: text().default("pending").notNull(),
+    metadata: jsonb().default({}).notNull(),
+    kwargs: jsonb().default({}).notNull(),
+    multitaskStrategy: text("multitask_strategy").default("reject").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_runs_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+    index("idx_runs_thread_id").using("btree", table.threadId.asc().nullsLast().op("text_ops")),
+  ]
+);
 
-export const themesToThemeLabels = pgTable("themes_to_theme_labels", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	themeId: bigint("theme_id", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	themeLabelId: bigint("theme_label_id", { mode: "number" }).notNull(),
-}, (table) => [
-	index("index_themes_to_theme_labels_on_theme_id").using("btree", table.themeId.asc().nullsLast().op("int8_ops")),
-	index("index_themes_to_theme_labels_on_theme_id_and_theme_label_id").using("btree", table.themeId.asc().nullsLast().op("int8_ops"), table.themeLabelId.asc().nullsLast().op("int8_ops")),
-	index("index_themes_to_theme_labels_on_theme_label_id").using("btree", table.themeLabelId.asc().nullsLast().op("int8_ops")),
-]);
+export const themesToThemeLabels = pgTable(
+  "themes_to_theme_labels",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    themeId: bigint("theme_id", { mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    themeLabelId: bigint("theme_label_id", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("index_themes_to_theme_labels_on_theme_id").using(
+      "btree",
+      table.themeId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_themes_to_theme_labels_on_theme_id_and_theme_label_id").using(
+      "btree",
+      table.themeId.asc().nullsLast().op("int8_ops"),
+      table.themeLabelId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_themes_to_theme_labels_on_theme_label_id").using(
+      "btree",
+      table.themeLabelId.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
 
-export const threads = pgTable("threads", {
-	threadId: text("thread_id").primaryKey().notNull(),
-	status: text().default('idle').notNull(),
-	config: jsonb().default({}).notNull(),
-	metadata: jsonb().default({}).notNull(),
-	values: jsonb(),
-	interrupts: jsonb(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	index("idx_threads_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
-]);
+export const threads = pgTable(
+  "threads",
+  {
+    threadId: text("thread_id").primaryKey().notNull(),
+    status: text().default("idle").notNull(),
+    config: jsonb().default({}).notNull(),
+    metadata: jsonb().default({}).notNull(),
+    values: jsonb(),
+    interrupts: jsonb(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("idx_threads_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
+  ]
+);
 
-export const tierLimits = pgTable("tier_limits", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	limitType: varchar("limit_type"),
-	limit: integer(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	tierId: bigint("tier_id", { mode: "number" }),
-}, (table) => [
-	index("index_tier_limits_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_tier_limits_on_limit").using("btree", table.limit.asc().nullsLast().op("int4_ops")),
-	index("index_tier_limits_on_limit_type").using("btree", table.limitType.asc().nullsLast().op("text_ops")),
-	index("index_tier_limits_on_tier_id").using("btree", table.tierId.asc().nullsLast().op("int8_ops")),
-	uniqueIndex("index_tier_limits_on_tier_id_and_limit_type").using("btree", table.tierId.asc().nullsLast().op("text_ops"), table.limitType.asc().nullsLast().op("text_ops")),
-]);
+export const tierLimits = pgTable(
+  "tier_limits",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    limitType: varchar("limit_type"),
+    limit: integer(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    tierId: bigint("tier_id", { mode: "number" }),
+  },
+  (table) => [
+    index("index_tier_limits_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_tier_limits_on_limit").using(
+      "btree",
+      table.limit.asc().nullsLast().op("int4_ops")
+    ),
+    index("index_tier_limits_on_limit_type").using(
+      "btree",
+      table.limitType.asc().nullsLast().op("text_ops")
+    ),
+    index("index_tier_limits_on_tier_id").using(
+      "btree",
+      table.tierId.asc().nullsLast().op("int8_ops")
+    ),
+    uniqueIndex("index_tier_limits_on_tier_id_and_limit_type").using(
+      "btree",
+      table.tierId.asc().nullsLast().op("text_ops"),
+      table.limitType.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const uploads = pgTable("uploads", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }).notNull(),
-	file: varchar().notNull(),
-	mediaType: varchar("media_type").notNull(),
-	uuid: uuid().defaultRandom().notNull(),
-	isLogo: boolean("is_logo").default(false).notNull(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	originalFilename: varchar("original_filename"),
-	platformSettings: jsonb("platform_settings").default({"meta":{},"google":{}}),
-}, (table) => [
-	index("index_uploads_on_account_id").using("btree", table.accountId.asc().nullsLast().op("int8_ops")),
-	index("index_uploads_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_uploads_on_is_logo").using("btree", table.isLogo.asc().nullsLast().op("bool_ops")),
-	index("index_uploads_on_media_type").using("btree", table.mediaType.asc().nullsLast().op("text_ops")),
-	uniqueIndex("index_uploads_on_uuid").using("btree", table.uuid.asc().nullsLast().op("uuid_ops")),
-]);
+export const uploads = pgTable(
+  "uploads",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }).notNull(),
+    file: varchar().notNull(),
+    mediaType: varchar("media_type").notNull(),
+    uuid: uuid().defaultRandom().notNull(),
+    isLogo: boolean("is_logo").default(false).notNull(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    originalFilename: varchar("original_filename"),
+    platformSettings: jsonb("platform_settings").default({ meta: {}, google: {} }),
+  },
+  (table) => [
+    index("index_uploads_on_account_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_uploads_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_uploads_on_is_logo").using("btree", table.isLogo.asc().nullsLast().op("bool_ops")),
+    index("index_uploads_on_media_type").using(
+      "btree",
+      table.mediaType.asc().nullsLast().op("text_ops")
+    ),
+    uniqueIndex("index_uploads_on_uuid").using(
+      "btree",
+      table.uuid.asc().nullsLast().op("uuid_ops")
+    ),
+  ]
+);
 
-export const websiteUrls = pgTable("website_urls", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	websiteId: bigint("website_id", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	domainId: bigint("domain_id", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	accountId: bigint("account_id", { mode: "number" }).notNull(),
-	path: varchar().default('/').notNull(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("index_website_urls_on_account_id").using("btree", table.accountId.asc().nullsLast().op("int8_ops")),
-	index("index_website_urls_on_domain_id").using("btree", table.domainId.asc().nullsLast().op("int8_ops")),
-	uniqueIndex("index_website_urls_on_domain_id_and_path").using("btree", table.domainId.asc().nullsLast().op("int8_ops"), table.path.asc().nullsLast().op("text_ops")),
-	index("index_website_urls_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int8_ops")),
-	foreignKey({
-			columns: [table.domainId],
-			foreignColumns: [domains.id],
-			name: "fk_rails_5b1c40b4b3"
-		}),
-	foreignKey({
-			columns: [table.accountId],
-			foreignColumns: [accounts.id],
-			name: "fk_rails_8eb3a9594a"
-		}),
-	foreignKey({
-			columns: [table.websiteId],
-			foreignColumns: [websites.id],
-			name: "fk_rails_f97a85eb03"
-		}),
-]);
+export const websiteUrls = pgTable(
+  "website_urls",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    websiteId: bigint("website_id", { mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    domainId: bigint("domain_id", { mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    accountId: bigint("account_id", { mode: "number" }).notNull(),
+    path: varchar().default("/").notNull(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("index_website_urls_on_account_id").using(
+      "btree",
+      table.accountId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_website_urls_on_domain_id").using(
+      "btree",
+      table.domainId.asc().nullsLast().op("int8_ops")
+    ),
+    uniqueIndex("index_website_urls_on_domain_id_and_path").using(
+      "btree",
+      table.domainId.asc().nullsLast().op("int8_ops"),
+      table.path.asc().nullsLast().op("text_ops")
+    ),
+    index("index_website_urls_on_website_id").using(
+      "btree",
+      table.websiteId.asc().nullsLast().op("int8_ops")
+    ),
+    foreignKey({
+      columns: [table.domainId],
+      foreignColumns: [domains.id],
+      name: "fk_rails_5b1c40b4b3",
+    }),
+    foreignKey({
+      columns: [table.accountId],
+      foreignColumns: [accounts.id],
+      name: "fk_rails_8eb3a9594a",
+    }),
+    foreignKey({
+      columns: [table.websiteId],
+      foreignColumns: [websites.id],
+      name: "fk_rails_f97a85eb03",
+    }),
+  ]
+);
 
-export const websiteLeads = pgTable("website_leads", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	leadId: bigint("lead_id", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	websiteId: bigint("website_id", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	visitId: bigint("visit_id", { mode: "number" }),
-	visitorToken: varchar("visitor_token"),
-	gclid: varchar(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	utmSource: varchar("utm_source"),
-	utmMedium: varchar("utm_medium"),
-	utmCampaign: varchar("utm_campaign"),
-	utmContent: varchar("utm_content"),
-	utmTerm: varchar("utm_term"),
-}, (table) => [
-	index("index_website_leads_on_gclid").using("btree", table.gclid.asc().nullsLast().op("text_ops")),
-	index("index_website_leads_on_lead_id").using("btree", table.leadId.asc().nullsLast().op("int8_ops")),
-	uniqueIndex("index_website_leads_on_lead_id_and_website_id").using("btree", table.leadId.asc().nullsLast().op("int8_ops"), table.websiteId.asc().nullsLast().op("int8_ops")),
-	index("index_website_leads_on_visit_id").using("btree", table.visitId.asc().nullsLast().op("int8_ops")),
-	index("index_website_leads_on_visitor_token").using("btree", table.visitorToken.asc().nullsLast().op("text_ops")),
-	index("index_website_leads_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int8_ops")),
-]);
+export const websiteLeads = pgTable(
+  "website_leads",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    leadId: bigint("lead_id", { mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    websiteId: bigint("website_id", { mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    visitId: bigint("visit_id", { mode: "number" }),
+    visitorToken: varchar("visitor_token"),
+    gclid: varchar(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    utmSource: varchar("utm_source"),
+    utmMedium: varchar("utm_medium"),
+    utmCampaign: varchar("utm_campaign"),
+    utmContent: varchar("utm_content"),
+    utmTerm: varchar("utm_term"),
+  },
+  (table) => [
+    index("index_website_leads_on_gclid").using(
+      "btree",
+      table.gclid.asc().nullsLast().op("text_ops")
+    ),
+    index("index_website_leads_on_lead_id").using(
+      "btree",
+      table.leadId.asc().nullsLast().op("int8_ops")
+    ),
+    uniqueIndex("index_website_leads_on_lead_id_and_website_id").using(
+      "btree",
+      table.leadId.asc().nullsLast().op("int8_ops"),
+      table.websiteId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_website_leads_on_visit_id").using(
+      "btree",
+      table.visitId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_website_leads_on_visitor_token").using(
+      "btree",
+      table.visitorToken.asc().nullsLast().op("text_ops")
+    ),
+    index("index_website_leads_on_website_id").using(
+      "btree",
+      table.websiteId.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
 
-export const websiteUploads = pgTable("website_uploads", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	websiteId: bigint("website_id", { mode: "number" }).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	uploadId: bigint("upload_id", { mode: "number" }).notNull(),
-}, (table) => [
-	index("index_website_uploads_on_upload_id").using("btree", table.uploadId.asc().nullsLast().op("int8_ops")),
-	index("index_website_uploads_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int8_ops")),
-]);
+export const websiteUploads = pgTable(
+  "website_uploads",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    websiteId: bigint("website_id", { mode: "number" }).notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    uploadId: bigint("upload_id", { mode: "number" }).notNull(),
+  },
+  (table) => [
+    index("index_website_uploads_on_upload_id").using(
+      "btree",
+      table.uploadId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_website_uploads_on_website_id").using(
+      "btree",
+      table.websiteId.asc().nullsLast().op("int8_ops")
+    ),
+  ]
+);
 
-export const websiteDeploys = pgTable("website_deploys", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	websiteId: bigint("website_id", { mode: "number" }),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	websiteHistoryId: bigint("website_history_id", { mode: "number" }),
-	status: varchar().notNull(),
-	trigger: varchar().default('manual'),
-	stacktrace: text(),
-	snapshotId: varchar("snapshot_id"),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-	isLive: boolean("is_live").default(false),
-	revertible: boolean().default(false),
-	versionPath: varchar("version_path"),
-	environment: varchar().default('production').notNull(),
-	isPreview: boolean("is_preview").default(false).notNull(),
-	shasum: varchar(),
-}, (table) => [
-	index("idx_on_website_id_environment_is_preview_bab671a888").using("btree", table.websiteId.asc().nullsLast().op("int8_ops"), table.environment.asc().nullsLast().op("bool_ops"), table.isPreview.asc().nullsLast().op("bool_ops")),
-	index("index_website_deploys_on_created_at").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_website_deploys_on_environment").using("btree", table.environment.asc().nullsLast().op("text_ops")),
-	index("index_website_deploys_on_is_live").using("btree", table.isLive.asc().nullsLast().op("bool_ops")),
-	index("index_website_deploys_on_is_preview").using("btree", table.isPreview.asc().nullsLast().op("bool_ops")),
-	index("index_website_deploys_on_revertible").using("btree", table.revertible.asc().nullsLast().op("bool_ops")),
-	index("index_website_deploys_on_shasum").using("btree", table.shasum.asc().nullsLast().op("text_ops")),
-	index("index_website_deploys_on_snapshot_id").using("btree", table.snapshotId.asc().nullsLast().op("text_ops")),
-	index("index_website_deploys_on_status").using("btree", table.status.asc().nullsLast().op("text_ops")),
-	index("index_website_deploys_on_trigger").using("btree", table.trigger.asc().nullsLast().op("text_ops")),
-	index("index_website_deploys_on_website_history_id").using("btree", table.websiteHistoryId.asc().nullsLast().op("int8_ops")),
-	index("index_website_deploys_on_website_id").using("btree", table.websiteId.asc().nullsLast().op("int8_ops")),
-	index("index_website_deploys_on_website_id_and_is_live").using("btree", table.websiteId.asc().nullsLast().op("int8_ops"), table.isLive.asc().nullsLast().op("bool_ops")),
-]);
+export const websiteDeploys = pgTable(
+  "website_deploys",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    websiteId: bigint("website_id", { mode: "number" }),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    websiteHistoryId: bigint("website_history_id", { mode: "number" }),
+    status: varchar().notNull(),
+    trigger: varchar().default("manual"),
+    stacktrace: text(),
+    snapshotId: varchar("snapshot_id"),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+    isLive: boolean("is_live").default(false),
+    revertible: boolean().default(false),
+    versionPath: varchar("version_path"),
+    environment: varchar().default("production").notNull(),
+    isPreview: boolean("is_preview").default(false).notNull(),
+    shasum: varchar(),
+  },
+  (table) => [
+    index("idx_on_website_id_environment_is_preview_bab671a888").using(
+      "btree",
+      table.websiteId.asc().nullsLast().op("int8_ops"),
+      table.environment.asc().nullsLast().op("bool_ops"),
+      table.isPreview.asc().nullsLast().op("bool_ops")
+    ),
+    index("index_website_deploys_on_created_at").using(
+      "btree",
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_website_deploys_on_environment").using(
+      "btree",
+      table.environment.asc().nullsLast().op("text_ops")
+    ),
+    index("index_website_deploys_on_is_live").using(
+      "btree",
+      table.isLive.asc().nullsLast().op("bool_ops")
+    ),
+    index("index_website_deploys_on_is_preview").using(
+      "btree",
+      table.isPreview.asc().nullsLast().op("bool_ops")
+    ),
+    index("index_website_deploys_on_revertible").using(
+      "btree",
+      table.revertible.asc().nullsLast().op("bool_ops")
+    ),
+    index("index_website_deploys_on_shasum").using(
+      "btree",
+      table.shasum.asc().nullsLast().op("text_ops")
+    ),
+    index("index_website_deploys_on_snapshot_id").using(
+      "btree",
+      table.snapshotId.asc().nullsLast().op("text_ops")
+    ),
+    index("index_website_deploys_on_status").using(
+      "btree",
+      table.status.asc().nullsLast().op("text_ops")
+    ),
+    index("index_website_deploys_on_trigger").using(
+      "btree",
+      table.trigger.asc().nullsLast().op("text_ops")
+    ),
+    index("index_website_deploys_on_website_history_id").using(
+      "btree",
+      table.websiteHistoryId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_website_deploys_on_website_id").using(
+      "btree",
+      table.websiteId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_website_deploys_on_website_id_and_is_live").using(
+      "btree",
+      table.websiteId.asc().nullsLast().op("int8_ops"),
+      table.isLive.asc().nullsLast().op("bool_ops")
+    ),
+  ]
+);
 
-export const users = pgTable("users", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	email: varchar().default('').notNull(),
-	encryptedPassword: varchar("encrypted_password").default('').notNull(),
-	resetPasswordToken: varchar("reset_password_token"),
-	resetPasswordSentAt: timestamp("reset_password_sent_at", { mode: 'string' }),
-	rememberCreatedAt: timestamp("remember_created_at", { mode: 'string' }),
-	confirmationToken: varchar("confirmation_token"),
-	confirmedAt: timestamp("confirmed_at", { mode: 'string' }),
-	confirmationSentAt: timestamp("confirmation_sent_at", { mode: 'string' }),
-	unconfirmedEmail: varchar("unconfirmed_email"),
-	firstName: varchar("first_name"),
-	lastName: varchar("last_name"),
-	timeZone: varchar("time_zone"),
-	acceptedTermsAt: timestamp("accepted_terms_at", { mode: 'string' }),
-	acceptedPrivacyAt: timestamp("accepted_privacy_at", { mode: 'string' }),
-	announcementsReadAt: timestamp("announcements_read_at", { mode: 'string' }),
-	admin: boolean(),
-	createdAt: timestamp("created_at", { mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).notNull(),
-	invitationToken: varchar("invitation_token"),
-	invitationCreatedAt: timestamp("invitation_created_at", { mode: 'string' }),
-	invitationSentAt: timestamp("invitation_sent_at", { mode: 'string' }),
-	invitationAcceptedAt: timestamp("invitation_accepted_at", { mode: 'string' }),
-	invitationLimit: integer("invitation_limit"),
-	invitedByType: varchar("invited_by_type"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	invitedById: bigint("invited_by_id", { mode: "number" }),
-	invitationsCount: integer("invitations_count").default(0),
-	preferredLanguage: varchar("preferred_language"),
-	otpRequiredForLogin: boolean("otp_required_for_login"),
-	otpSecret: varchar("otp_secret"),
-	lastOtpTimestep: integer("last_otp_timestep"),
-	otpBackupCodes: text("otp_backup_codes"),
-	preferences: jsonb(),
-	name: varchar().generatedAlwaysAs(sql`(((first_name)::text || ' '::text) || (COALESCE(last_name, ''::character varying))::text)`),
-	jti: varchar().notNull(),
-}, (table) => [
-	uniqueIndex("index_users_on_email").using("btree", table.email.asc().nullsLast().op("text_ops")),
-	uniqueIndex("index_users_on_invitation_token").using("btree", table.invitationToken.asc().nullsLast().op("text_ops")),
-	index("index_users_on_invitations_count").using("btree", table.invitationsCount.asc().nullsLast().op("int4_ops")),
-	index("index_users_on_invited_by_id").using("btree", table.invitedById.asc().nullsLast().op("int8_ops")),
-	index("index_users_on_invited_by_type_and_invited_by_id").using("btree", table.invitedByType.asc().nullsLast().op("text_ops"), table.invitedById.asc().nullsLast().op("text_ops")),
-	uniqueIndex("index_users_on_jti").using("btree", table.jti.asc().nullsLast().op("text_ops")),
-	uniqueIndex("index_users_on_reset_password_token").using("btree", table.resetPasswordToken.asc().nullsLast().op("text_ops")),
-]);
+export const users = pgTable(
+  "users",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    email: varchar().default("").notNull(),
+    encryptedPassword: varchar("encrypted_password").default("").notNull(),
+    resetPasswordToken: varchar("reset_password_token"),
+    resetPasswordSentAt: timestamp("reset_password_sent_at", { mode: "string" }),
+    rememberCreatedAt: timestamp("remember_created_at", { mode: "string" }),
+    confirmationToken: varchar("confirmation_token"),
+    confirmedAt: timestamp("confirmed_at", { mode: "string" }),
+    confirmationSentAt: timestamp("confirmation_sent_at", { mode: "string" }),
+    unconfirmedEmail: varchar("unconfirmed_email"),
+    firstName: varchar("first_name"),
+    lastName: varchar("last_name"),
+    timeZone: varchar("time_zone"),
+    acceptedTermsAt: timestamp("accepted_terms_at", { mode: "string" }),
+    acceptedPrivacyAt: timestamp("accepted_privacy_at", { mode: "string" }),
+    announcementsReadAt: timestamp("announcements_read_at", { mode: "string" }),
+    admin: boolean(),
+    createdAt: timestamp("created_at", { mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).notNull(),
+    invitationToken: varchar("invitation_token"),
+    invitationCreatedAt: timestamp("invitation_created_at", { mode: "string" }),
+    invitationSentAt: timestamp("invitation_sent_at", { mode: "string" }),
+    invitationAcceptedAt: timestamp("invitation_accepted_at", { mode: "string" }),
+    invitationLimit: integer("invitation_limit"),
+    invitedByType: varchar("invited_by_type"),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    invitedById: bigint("invited_by_id", { mode: "number" }),
+    invitationsCount: integer("invitations_count").default(0),
+    preferredLanguage: varchar("preferred_language"),
+    otpRequiredForLogin: boolean("otp_required_for_login"),
+    otpSecret: varchar("otp_secret"),
+    lastOtpTimestep: integer("last_otp_timestep"),
+    otpBackupCodes: text("otp_backup_codes"),
+    preferences: jsonb(),
+    name: varchar().generatedAlwaysAs(
+      sql`(((first_name)::text || ' '::text) || (COALESCE(last_name, ''::character varying))::text)`
+    ),
+    jti: varchar().notNull(),
+  },
+  (table) => [
+    uniqueIndex("index_users_on_email").using(
+      "btree",
+      table.email.asc().nullsLast().op("text_ops")
+    ),
+    uniqueIndex("index_users_on_invitation_token").using(
+      "btree",
+      table.invitationToken.asc().nullsLast().op("text_ops")
+    ),
+    index("index_users_on_invitations_count").using(
+      "btree",
+      table.invitationsCount.asc().nullsLast().op("int4_ops")
+    ),
+    index("index_users_on_invited_by_id").using(
+      "btree",
+      table.invitedById.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_users_on_invited_by_type_and_invited_by_id").using(
+      "btree",
+      table.invitedByType.asc().nullsLast().op("text_ops"),
+      table.invitedById.asc().nullsLast().op("text_ops")
+    ),
+    uniqueIndex("index_users_on_jti").using("btree", table.jti.asc().nullsLast().op("text_ops")),
+    uniqueIndex("index_users_on_reset_password_token").using(
+      "btree",
+      table.resetPasswordToken.asc().nullsLast().op("text_ops")
+    ),
+  ]
+);
 
-export const adsAccountInvitations = pgTable("ads_account_invitations", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	adsAccountId: bigint("ads_account_id", { mode: "number" }).notNull(),
-	emailAddress: varchar("email_address").notNull(),
-	platform: varchar().notNull(),
-	platformSettings: jsonb("platform_settings").default({}),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("idx_ads_account_invitations_lookup").using("btree", table.adsAccountId.asc().nullsLast().op("int8_ops"), table.emailAddress.asc().nullsLast().op("int8_ops"), table.platform.asc().nullsLast().op("int8_ops")),
-	index("index_ads_account_invitations_on_ads_account_id").using("btree", table.adsAccountId.asc().nullsLast().op("int8_ops")),
-	index("index_ads_account_invitations_on_platform").using("btree", table.platform.asc().nullsLast().op("text_ops")),
-	index("index_ads_account_invitations_on_platform_settings").using("gin", table.platformSettings.asc().nullsLast().op("jsonb_ops")),
-	foreignKey({
-			columns: [table.adsAccountId],
-			foreignColumns: [adsAccounts.id],
-			name: "fk_rails_1d7b1920c0"
-		}),
-]);
+export const adsAccountInvitations = pgTable(
+  "ads_account_invitations",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    adsAccountId: bigint("ads_account_id", { mode: "number" }).notNull(),
+    emailAddress: varchar("email_address").notNull(),
+    platform: varchar().notNull(),
+    platformSettings: jsonb("platform_settings").default({}),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("idx_ads_account_invitations_lookup").using(
+      "btree",
+      table.adsAccountId.asc().nullsLast().op("int8_ops"),
+      table.emailAddress.asc().nullsLast().op("int8_ops"),
+      table.platform.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ads_account_invitations_on_ads_account_id").using(
+      "btree",
+      table.adsAccountId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_ads_account_invitations_on_platform").using(
+      "btree",
+      table.platform.asc().nullsLast().op("text_ops")
+    ),
+    index("index_ads_account_invitations_on_platform_settings").using(
+      "gin",
+      table.platformSettings.asc().nullsLast().op("jsonb_ops")
+    ),
+    foreignKey({
+      columns: [table.adsAccountId],
+      foreignColumns: [adsAccounts.id],
+      name: "fk_rails_1d7b1920c0",
+    }),
+  ]
+);
 
-export const activeStorageVariantRecords = pgTable("active_storage_variant_records", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	blobId: bigint("blob_id", { mode: "number" }).notNull(),
-	variationDigest: varchar("variation_digest").notNull(),
-}, (table) => [
-	uniqueIndex("index_active_storage_variant_records_uniqueness").using("btree", table.blobId.asc().nullsLast().op("int8_ops"), table.variationDigest.asc().nullsLast().op("int8_ops")),
-	foreignKey({
-			columns: [table.blobId],
-			foreignColumns: [activeStorageBlobs.id],
-			name: "fk_rails_993965df05"
-		}),
-]);
+export const activeStorageVariantRecords = pgTable(
+  "active_storage_variant_records",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    blobId: bigint("blob_id", { mode: "number" }).notNull(),
+    variationDigest: varchar("variation_digest").notNull(),
+  },
+  (table) => [
+    uniqueIndex("index_active_storage_variant_records_uniqueness").using(
+      "btree",
+      table.blobId.asc().nullsLast().op("int8_ops"),
+      table.variationDigest.asc().nullsLast().op("int8_ops")
+    ),
+    foreignKey({
+      columns: [table.blobId],
+      foreignColumns: [activeStorageBlobs.id],
+      name: "fk_rails_993965df05",
+    }),
+  ]
+);
 
-export const documentChunks = pgTable("document_chunks", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	documentId: bigint("document_id", { mode: "number" }).notNull(),
-	questionHash: varchar("question_hash").notNull(),
-	question: text().notNull(),
-	answer: text().notNull(),
-	content: text(),
-	section: varchar(),
-	context: jsonb().default({}),
-	position: integer(),
-	embedding: vector({ dimensions: 1536 }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("idx_document_chunks_embedding").using("ivfflat", table.embedding.asc().nullsLast().op("vector_cosine_ops")),
-	index("index_document_chunks_on_document_id").using("btree", table.documentId.asc().nullsLast().op("int8_ops")),
-	uniqueIndex("index_document_chunks_on_document_id_and_question_hash").using("btree", table.documentId.asc().nullsLast().op("int8_ops"), table.questionHash.asc().nullsLast().op("int8_ops")),
-	index("index_document_chunks_on_section").using("btree", table.section.asc().nullsLast().op("text_ops")),
-	foreignKey({
-			columns: [table.documentId],
-			foreignColumns: [documents.id],
-			name: "fk_rails_99b41ada32"
-		}),
-]);
+export const documentChunks = pgTable(
+  "document_chunks",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    documentId: bigint("document_id", { mode: "number" }).notNull(),
+    questionHash: varchar("question_hash").notNull(),
+    question: text().notNull(),
+    answer: text().notNull(),
+    content: text(),
+    section: varchar(),
+    context: jsonb().default({}),
+    position: integer(),
+    embedding: vector({ dimensions: 1536 }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("idx_document_chunks_embedding").using(
+      "ivfflat",
+      table.embedding.asc().nullsLast().op("vector_cosine_ops")
+    ),
+    index("index_document_chunks_on_document_id").using(
+      "btree",
+      table.documentId.asc().nullsLast().op("int8_ops")
+    ),
+    uniqueIndex("index_document_chunks_on_document_id_and_question_hash").using(
+      "btree",
+      table.documentId.asc().nullsLast().op("int8_ops"),
+      table.questionHash.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_document_chunks_on_section").using(
+      "btree",
+      table.section.asc().nullsLast().op("text_ops")
+    ),
+    foreignKey({
+      columns: [table.documentId],
+      foreignColumns: [documents.id],
+      name: "fk_rails_99b41ada32",
+    }),
+  ]
+);
 
-export const socialLinks = pgTable("social_links", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	projectId: bigint("project_id", { mode: "number" }).notNull(),
-	platform: varchar().notNull(),
-	url: varchar().notNull(),
-	handle: varchar(),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("index_social_links_on_project_id").using("btree", table.projectId.asc().nullsLast().op("int8_ops")),
-	uniqueIndex("index_social_links_on_project_id_and_platform").using("btree", table.projectId.asc().nullsLast().op("int8_ops"), table.platform.asc().nullsLast().op("int8_ops")),
-	foreignKey({
-			columns: [table.projectId],
-			foreignColumns: [projects.id],
-			name: "fk_rails_9c390957fe"
-		}),
-]);
+export const socialLinks = pgTable(
+  "social_links",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    projectId: bigint("project_id", { mode: "number" }).notNull(),
+    platform: varchar().notNull(),
+    url: varchar().notNull(),
+    handle: varchar(),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("index_social_links_on_project_id").using(
+      "btree",
+      table.projectId.asc().nullsLast().op("int8_ops")
+    ),
+    uniqueIndex("index_social_links_on_project_id_and_platform").using(
+      "btree",
+      table.projectId.asc().nullsLast().op("int8_ops"),
+      table.platform.asc().nullsLast().op("int8_ops")
+    ),
+    foreignKey({
+      columns: [table.projectId],
+      foreignColumns: [projects.id],
+      name: "fk_rails_9c390957fe",
+    }),
+  ]
+);
 
-export const payCharges = pgTable("pay_charges", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	processorId: varchar("processor_id").notNull(),
-	amount: integer().notNull(),
-	amountRefunded: integer("amount_refunded"),
-	createdAt: timestamp("created_at", { mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).notNull(),
-	data: jsonb(),
-	applicationFeeAmount: integer("application_fee_amount"),
-	currency: varchar(),
-	metadata: jsonb(),
-	subscriptionId: integer("subscription_id"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	customerId: bigint("customer_id", { mode: "number" }),
-	stripeAccount: varchar("stripe_account"),
-	type: varchar(),
-}, (table) => [
-	uniqueIndex("index_pay_charges_on_customer_id_and_processor_id").using("btree", table.customerId.asc().nullsLast().op("int8_ops"), table.processorId.asc().nullsLast().op("int8_ops")),
-	foreignKey({
-			columns: [table.customerId],
-			foreignColumns: [payCustomers.id],
-			name: "fk_rails_b19d32f835"
-		}),
-]);
+export const payCharges = pgTable(
+  "pay_charges",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    processorId: varchar("processor_id").notNull(),
+    amount: integer().notNull(),
+    amountRefunded: integer("amount_refunded"),
+    createdAt: timestamp("created_at", { mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" }).notNull(),
+    data: jsonb(),
+    applicationFeeAmount: integer("application_fee_amount"),
+    currency: varchar(),
+    metadata: jsonb(),
+    subscriptionId: integer("subscription_id"),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    customerId: bigint("customer_id", { mode: "number" }),
+    stripeAccount: varchar("stripe_account"),
+    type: varchar(),
+  },
+  (table) => [
+    uniqueIndex("index_pay_charges_on_customer_id_and_processor_id").using(
+      "btree",
+      table.customerId.asc().nullsLast().op("int8_ops"),
+      table.processorId.asc().nullsLast().op("int8_ops")
+    ),
+    foreignKey({
+      columns: [table.customerId],
+      foreignColumns: [payCustomers.id],
+      name: "fk_rails_b19d32f835",
+    }),
+  ]
+);
 
-export const llmUsage = pgTable("llm_usage", {
-	id: bigserial({ mode: "number" }).primaryKey().notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	chatId: bigint("chat_id", { mode: "number" }).notNull(),
-	threadId: varchar("thread_id").notNull(),
-	runId: varchar("run_id").notNull(),
-	messageId: varchar("message_id"),
-	langchainRunId: varchar("langchain_run_id"),
-	parentLangchainRunId: varchar("parent_langchain_run_id"),
-	graphName: varchar("graph_name"),
-	modelRaw: varchar("model_raw").notNull(),
-	inputTokens: integer("input_tokens").default(0).notNull(),
-	outputTokens: integer("output_tokens").default(0).notNull(),
-	reasoningTokens: integer("reasoning_tokens").default(0),
-	cacheCreationTokens: integer("cache_creation_tokens").default(0),
-	cacheReadTokens: integer("cache_read_tokens").default(0),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	costMicrocents: bigint("cost_microcents", { mode: "number" }),
-	tags: varchar().array().default([""]),
-	metadata: jsonb(),
-	processedAt: timestamp("processed_at", { precision: 6, mode: 'string' }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }).notNull(),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }).notNull(),
-}, (table) => [
-	index("index_llm_usage_on_chat_id_and_run_id").using("btree", table.chatId.asc().nullsLast().op("text_ops"), table.runId.asc().nullsLast().op("int8_ops")),
-	index("index_llm_usage_on_processed_at_and_created_at").using("btree", table.processedAt.asc().nullsLast().op("timestamp_ops"), table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("index_llm_usage_on_run_id").using("btree", table.runId.asc().nullsLast().op("text_ops")),
-	index("index_llm_usage_on_thread_id_and_created_at").using("btree", table.threadId.asc().nullsLast().op("text_ops"), table.createdAt.asc().nullsLast().op("timestamp_ops")),
-]);
+export const llmUsage = pgTable(
+  "llm_usage",
+  {
+    id: bigserial({ mode: "number" }).primaryKey().notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    chatId: bigint("chat_id", { mode: "number" }).notNull(),
+    threadId: varchar("thread_id").notNull(),
+    runId: varchar("run_id").notNull(),
+    messageId: varchar("message_id"),
+    langchainRunId: varchar("langchain_run_id"),
+    parentLangchainRunId: varchar("parent_langchain_run_id"),
+    graphName: varchar("graph_name"),
+    modelRaw: varchar("model_raw").notNull(),
+    inputTokens: integer("input_tokens").default(0).notNull(),
+    outputTokens: integer("output_tokens").default(0).notNull(),
+    reasoningTokens: integer("reasoning_tokens").default(0),
+    cacheCreationTokens: integer("cache_creation_tokens").default(0),
+    cacheReadTokens: integer("cache_read_tokens").default(0),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    costMicrocents: bigint("cost_microcents", { mode: "number" }),
+    tags: varchar().array().default([""]),
+    metadata: jsonb(),
+    processedAt: timestamp("processed_at", { precision: 6, mode: "string" }),
+    createdAt: timestamp("created_at", { precision: 6, mode: "string" }).notNull(),
+    updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("index_llm_usage_on_chat_id_and_run_id").using(
+      "btree",
+      table.chatId.asc().nullsLast().op("text_ops"),
+      table.runId.asc().nullsLast().op("int8_ops")
+    ),
+    index("index_llm_usage_on_processed_at_and_created_at").using(
+      "btree",
+      table.processedAt.asc().nullsLast().op("timestamp_ops"),
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    index("index_llm_usage_on_run_id").using("btree", table.runId.asc().nullsLast().op("text_ops")),
+    index("index_llm_usage_on_thread_id_and_created_at").using(
+      "btree",
+      table.threadId.asc().nullsLast().op("text_ops"),
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+  ]
+);
 
-export const store = pgTable("store", {
-	namespacePath: text("namespace_path").notNull(),
-	key: text().notNull(),
-	value: jsonb().notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
-	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`),
-	expiresAt: timestamp("expires_at", { withTimezone: true, mode: 'string' }),
-}, (table) => [
-	index("idx_store_expires_at").using("btree", table.expiresAt.asc().nullsLast().op("timestamptz_ops")).where(sql`(expires_at IS NOT NULL)`),
-	index("idx_store_namespace_path").using("btree", table.namespacePath.asc().nullsLast().op("text_ops")),
-	index("idx_store_value_gin").using("gin", table.value.asc().nullsLast().op("jsonb_ops")),
-	primaryKey({ columns: [table.namespacePath, table.key], name: "store_pkey"}),
-]);
+export const store = pgTable(
+  "store",
+  {
+    namespacePath: text("namespace_path").notNull(),
+    key: text().notNull(),
+    value: jsonb().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).default(
+      sql`CURRENT_TIMESTAMP`
+    ),
+    updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).default(
+      sql`CURRENT_TIMESTAMP`
+    ),
+    expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }),
+  },
+  (table) => [
+    index("idx_store_expires_at")
+      .using("btree", table.expiresAt.asc().nullsLast().op("timestamptz_ops"))
+      .where(sql`(expires_at IS NOT NULL)`),
+    index("idx_store_namespace_path").using(
+      "btree",
+      table.namespacePath.asc().nullsLast().op("text_ops")
+    ),
+    index("idx_store_value_gin").using("gin", table.value.asc().nullsLast().op("jsonb_ops")),
+    primaryKey({ columns: [table.namespacePath, table.key], name: "store_pkey" }),
+  ]
+);
 
-export const assistantVersions = pgTable("assistant_versions", {
-	assistantId: text("assistant_id").notNull(),
-	version: integer().notNull(),
-	graphId: text("graph_id").notNull(),
-	name: text().notNull(),
-	description: text(),
-	config: jsonb().default({}).notNull(),
-	context: jsonb(),
-	metadata: jsonb().default({}).notNull(),
-	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).defaultNow().notNull(),
-}, (table) => [
-	primaryKey({ columns: [table.assistantId, table.version], name: "assistant_versions_pkey"}),
-]);
+export const assistantVersions = pgTable(
+  "assistant_versions",
+  {
+    assistantId: text("assistant_id").notNull(),
+    version: integer().notNull(),
+    graphId: text("graph_id").notNull(),
+    name: text().notNull(),
+    description: text(),
+    config: jsonb().default({}).notNull(),
+    context: jsonb(),
+    metadata: jsonb().default({}).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.assistantId, table.version], name: "assistant_versions_pkey" }),
+  ]
+);
 
-export const llmConversationTraces202601 = pgTable("llm_conversation_traces_2026_01", {
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	id: bigint({ mode: "number" }).default(sql`nextval('llm_conversation_traces_id_seq'::regclass)`).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	chatId: bigint("chat_id", { mode: "number" }).notNull(),
-	threadId: varchar("thread_id").notNull(),
-	runId: varchar("run_id").notNull(),
-	graphName: varchar("graph_name"),
-	messages: jsonb().notNull(),
-	systemPrompt: text("system_prompt"),
-	usageSummary: jsonb("usage_summary"),
-	llmCalls: jsonb("llm_calls"),
-	createdAt: timestamp("created_at", { mode: 'string' }).notNull(),
-}, (table) => [
-	index("llm_conversation_traces_2026_01_chat_id_created_at_idx").using("btree", table.chatId.asc().nullsLast().op("timestamp_ops"), table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	uniqueIndex("llm_conversation_traces_2026_01_run_id_created_at_idx").using("btree", table.runId.asc().nullsLast().op("text_ops"), table.createdAt.asc().nullsLast().op("text_ops")),
-	index("llm_conversation_traces_2026_01_thread_id_created_at_idx").using("btree", table.threadId.asc().nullsLast().op("timestamp_ops"), table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	primaryKey({ columns: [table.id, table.createdAt], name: "llm_conversation_traces_2026_01_pkey"}),
-]);
+export const llmConversationTraces202601 = pgTable(
+  "llm_conversation_traces_2026_01",
+  {
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    id: bigint({ mode: "number" })
+      .default(sql`nextval('llm_conversation_traces_id_seq'::regclass)`)
+      .notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    chatId: bigint("chat_id", { mode: "number" }).notNull(),
+    threadId: varchar("thread_id").notNull(),
+    runId: varchar("run_id").notNull(),
+    graphName: varchar("graph_name"),
+    messages: jsonb().notNull(),
+    systemPrompt: text("system_prompt"),
+    usageSummary: jsonb("usage_summary"),
+    llmCalls: jsonb("llm_calls"),
+    createdAt: timestamp("created_at", { mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("llm_conversation_traces_2026_01_chat_id_created_at_idx").using(
+      "btree",
+      table.chatId.asc().nullsLast().op("timestamp_ops"),
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    uniqueIndex("llm_conversation_traces_2026_01_run_id_created_at_idx").using(
+      "btree",
+      table.runId.asc().nullsLast().op("text_ops"),
+      table.createdAt.asc().nullsLast().op("text_ops")
+    ),
+    index("llm_conversation_traces_2026_01_thread_id_created_at_idx").using(
+      "btree",
+      table.threadId.asc().nullsLast().op("timestamp_ops"),
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    primaryKey({
+      columns: [table.id, table.createdAt],
+      name: "llm_conversation_traces_2026_01_pkey",
+    }),
+  ]
+);
 
-export const llmConversationTraces202602 = pgTable("llm_conversation_traces_2026_02", {
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	id: bigint({ mode: "number" }).default(sql`nextval('llm_conversation_traces_id_seq'::regclass)`).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	chatId: bigint("chat_id", { mode: "number" }).notNull(),
-	threadId: varchar("thread_id").notNull(),
-	runId: varchar("run_id").notNull(),
-	graphName: varchar("graph_name"),
-	messages: jsonb().notNull(),
-	systemPrompt: text("system_prompt"),
-	usageSummary: jsonb("usage_summary"),
-	llmCalls: jsonb("llm_calls"),
-	createdAt: timestamp("created_at", { mode: 'string' }).notNull(),
-}, (table) => [
-	index("llm_conversation_traces_2026_02_chat_id_created_at_idx").using("btree", table.chatId.asc().nullsLast().op("timestamp_ops"), table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	uniqueIndex("llm_conversation_traces_2026_02_run_id_created_at_idx").using("btree", table.runId.asc().nullsLast().op("text_ops"), table.createdAt.asc().nullsLast().op("text_ops")),
-	index("llm_conversation_traces_2026_02_thread_id_created_at_idx").using("btree", table.threadId.asc().nullsLast().op("timestamp_ops"), table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	primaryKey({ columns: [table.id, table.createdAt], name: "llm_conversation_traces_2026_02_pkey"}),
-]);
+export const llmConversationTraces202602 = pgTable(
+  "llm_conversation_traces_2026_02",
+  {
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    id: bigint({ mode: "number" })
+      .default(sql`nextval('llm_conversation_traces_id_seq'::regclass)`)
+      .notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    chatId: bigint("chat_id", { mode: "number" }).notNull(),
+    threadId: varchar("thread_id").notNull(),
+    runId: varchar("run_id").notNull(),
+    graphName: varchar("graph_name"),
+    messages: jsonb().notNull(),
+    systemPrompt: text("system_prompt"),
+    usageSummary: jsonb("usage_summary"),
+    llmCalls: jsonb("llm_calls"),
+    createdAt: timestamp("created_at", { mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("llm_conversation_traces_2026_02_chat_id_created_at_idx").using(
+      "btree",
+      table.chatId.asc().nullsLast().op("timestamp_ops"),
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    uniqueIndex("llm_conversation_traces_2026_02_run_id_created_at_idx").using(
+      "btree",
+      table.runId.asc().nullsLast().op("text_ops"),
+      table.createdAt.asc().nullsLast().op("text_ops")
+    ),
+    index("llm_conversation_traces_2026_02_thread_id_created_at_idx").using(
+      "btree",
+      table.threadId.asc().nullsLast().op("timestamp_ops"),
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    primaryKey({
+      columns: [table.id, table.createdAt],
+      name: "llm_conversation_traces_2026_02_pkey",
+    }),
+  ]
+);
 
-export const llmConversationTraces202603 = pgTable("llm_conversation_traces_2026_03", {
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	id: bigint({ mode: "number" }).default(sql`nextval('llm_conversation_traces_id_seq'::regclass)`).notNull(),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	chatId: bigint("chat_id", { mode: "number" }).notNull(),
-	threadId: varchar("thread_id").notNull(),
-	runId: varchar("run_id").notNull(),
-	graphName: varchar("graph_name"),
-	messages: jsonb().notNull(),
-	systemPrompt: text("system_prompt"),
-	usageSummary: jsonb("usage_summary"),
-	llmCalls: jsonb("llm_calls"),
-	createdAt: timestamp("created_at", { mode: 'string' }).notNull(),
-}, (table) => [
-	index("llm_conversation_traces_2026_03_chat_id_created_at_idx").using("btree", table.chatId.asc().nullsLast().op("timestamp_ops"), table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	uniqueIndex("llm_conversation_traces_2026_03_run_id_created_at_idx").using("btree", table.runId.asc().nullsLast().op("text_ops"), table.createdAt.asc().nullsLast().op("text_ops")),
-	index("llm_conversation_traces_2026_03_thread_id_created_at_idx").using("btree", table.threadId.asc().nullsLast().op("timestamp_ops"), table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	primaryKey({ columns: [table.id, table.createdAt], name: "llm_conversation_traces_2026_03_pkey"}),
-]);
-export const codeFileHistories = pgView("code_file_histories", {	websiteId: integer("website_id"),
-	snapshotId: varchar("snapshot_id"),
-	path: varchar(),
-	content: varchar(),
-	contentTsv: tsvector("content_tsv"),
-	shasum: varchar(),
-	sourceType: text("source_type"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	sourceId: bigint("source_id", { mode: "number" }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }),
-}).as(sql`WITH merged_files AS ( SELECT wfh.website_id, wfh.snapshot_id, wfh.path, wfh.content, wfh.content_tsv, wfh.shasum, wfh.created_at, wfh.updated_at, 'WebsiteFile'::text AS source_type, wfh.website_file_id AS source_id FROM website_file_histories wfh UNION ALL SELECT wh.website_id, wh.snapshot_id, tf.path, tf.content, tf.content_tsv, tf.shasum, tf.created_at, tf.updated_at, 'TemplateFile'::text AS source_type, tf.id AS source_id FROM template_files tf JOIN websites w ON w.template_id = tf.template_id JOIN website_histories wh ON wh.website_id = w.id AND wh.snapshot_id IS NOT NULL WHERE NOT (EXISTS ( SELECT 1 FROM website_file_histories wfh2 WHERE wfh2.website_id = wh.website_id AND wfh2.snapshot_id::text = wh.snapshot_id::text AND wfh2.path::text = tf.path::text)) ) SELECT website_id, snapshot_id, path, content, content_tsv, shasum, source_type, source_id, created_at, updated_at FROM merged_files ORDER BY website_id, snapshot_id, path`);
+export const llmConversationTraces202603 = pgTable(
+  "llm_conversation_traces_2026_03",
+  {
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    id: bigint({ mode: "number" })
+      .default(sql`nextval('llm_conversation_traces_id_seq'::regclass)`)
+      .notNull(),
+    // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+    chatId: bigint("chat_id", { mode: "number" }).notNull(),
+    threadId: varchar("thread_id").notNull(),
+    runId: varchar("run_id").notNull(),
+    graphName: varchar("graph_name"),
+    messages: jsonb().notNull(),
+    systemPrompt: text("system_prompt"),
+    usageSummary: jsonb("usage_summary"),
+    llmCalls: jsonb("llm_calls"),
+    createdAt: timestamp("created_at", { mode: "string" }).notNull(),
+  },
+  (table) => [
+    index("llm_conversation_traces_2026_03_chat_id_created_at_idx").using(
+      "btree",
+      table.chatId.asc().nullsLast().op("timestamp_ops"),
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    uniqueIndex("llm_conversation_traces_2026_03_run_id_created_at_idx").using(
+      "btree",
+      table.runId.asc().nullsLast().op("text_ops"),
+      table.createdAt.asc().nullsLast().op("text_ops")
+    ),
+    index("llm_conversation_traces_2026_03_thread_id_created_at_idx").using(
+      "btree",
+      table.threadId.asc().nullsLast().op("timestamp_ops"),
+      table.createdAt.asc().nullsLast().op("timestamp_ops")
+    ),
+    primaryKey({
+      columns: [table.id, table.createdAt],
+      name: "llm_conversation_traces_2026_03_pkey",
+    }),
+  ]
+);
+export const codeFileHistories = pgView("code_file_histories", {
+  websiteId: integer("website_id"),
+  snapshotId: varchar("snapshot_id"),
+  path: varchar(),
+  content: varchar(),
+  contentTsv: tsvector("content_tsv"),
+  shasum: varchar(),
+  sourceType: text("source_type"),
+  // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+  sourceId: bigint("source_id", { mode: "number" }),
+  createdAt: timestamp("created_at", { precision: 6, mode: "string" }),
+  updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }),
+}).as(
+  sql`WITH merged_files AS ( SELECT wfh.website_id, wfh.snapshot_id, wfh.path, wfh.content, wfh.content_tsv, wfh.shasum, wfh.created_at, wfh.updated_at, 'WebsiteFile'::text AS source_type, wfh.website_file_id AS source_id FROM website_file_histories wfh UNION ALL SELECT wh.website_id, wh.snapshot_id, tf.path, tf.content, tf.content_tsv, tf.shasum, tf.created_at, tf.updated_at, 'TemplateFile'::text AS source_type, tf.id AS source_id FROM template_files tf JOIN websites w ON w.template_id = tf.template_id JOIN website_histories wh ON wh.website_id = w.id AND wh.snapshot_id IS NOT NULL WHERE NOT (EXISTS ( SELECT 1 FROM website_file_histories wfh2 WHERE wfh2.website_id = wh.website_id AND wfh2.snapshot_id::text = wh.snapshot_id::text AND wfh2.path::text = tf.path::text)) ) SELECT website_id, snapshot_id, path, content, content_tsv, shasum, source_type, source_id, created_at, updated_at FROM merged_files ORDER BY website_id, snapshot_id, path`
+);
 
-export const codeFiles = pgView("code_files", {	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	websiteId: bigint("website_id", { mode: "number" }),
-	path: varchar(),
-	content: varchar(),
-	contentTsv: tsvector("content_tsv"),
-	embedding: vector({ dimensions: 1536 }),
-	shasum: varchar(),
-	sourceType: text("source_type"),
-	// You can use { mode: "bigint" } if numbers are exceeding js number limitations
-	sourceId: bigint("source_id", { mode: "number" }),
-	createdAt: timestamp("created_at", { precision: 6, mode: 'string' }),
-	updatedAt: timestamp("updated_at", { precision: 6, mode: 'string' }),
-}).as(sql`WITH merged_files AS ( SELECT wf.website_id, wf.path, wf.content, wf.content_tsv, wf.embedding, wf.shasum, wf.created_at, wf.updated_at, 'WebsiteFile'::text AS source_type, wf.id AS source_id FROM website_files wf UNION ALL SELECT w.id AS website_id, tf.path, tf.content, tf.content_tsv, tf.embedding, tf.shasum, tf.created_at, tf.updated_at, 'TemplateFile'::text AS source_type, tf.id AS source_id FROM template_files tf JOIN websites w ON w.template_id = tf.template_id WHERE NOT (EXISTS ( SELECT 1 FROM website_files wf2 WHERE wf2.website_id = w.id AND wf2.path::text = tf.path::text)) ) SELECT website_id, path, content, content_tsv, embedding, shasum, source_type, source_id, created_at, updated_at FROM merged_files ORDER BY website_id, path`);
+export const codeFiles = pgView("code_files", {
+  // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+  websiteId: bigint("website_id", { mode: "number" }),
+  path: varchar(),
+  content: varchar(),
+  contentTsv: tsvector("content_tsv"),
+  embedding: vector({ dimensions: 1536 }),
+  shasum: varchar(),
+  sourceType: text("source_type"),
+  // You can use { mode: "bigint" } if numbers are exceeding js number limitations
+  sourceId: bigint("source_id", { mode: "number" }),
+  createdAt: timestamp("created_at", { precision: 6, mode: "string" }),
+  updatedAt: timestamp("updated_at", { precision: 6, mode: "string" }),
+}).as(
+  sql`WITH merged_files AS ( SELECT wf.website_id, wf.path, wf.content, wf.content_tsv, wf.embedding, wf.shasum, wf.created_at, wf.updated_at, 'WebsiteFile'::text AS source_type, wf.id AS source_id FROM website_files wf UNION ALL SELECT w.id AS website_id, tf.path, tf.content, tf.content_tsv, tf.embedding, tf.shasum, tf.created_at, tf.updated_at, 'TemplateFile'::text AS source_type, tf.id AS source_id FROM template_files tf JOIN websites w ON w.template_id = tf.template_id WHERE NOT (EXISTS ( SELECT 1 FROM website_files wf2 WHERE wf2.website_id = w.id AND wf2.path::text = tf.path::text)) ) SELECT website_id, path, content, content_tsv, embedding, shasum, source_type, source_id, created_at, updated_at FROM merged_files ORDER BY website_id, path`
+);

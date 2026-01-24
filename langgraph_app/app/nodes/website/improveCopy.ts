@@ -2,7 +2,7 @@ import type { WebsiteGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
-import { createPseudoMessage } from "@utils";
+import { createContextMessage } from "langgraph-ai-sdk";
 import type { Website } from "@types";
 
 /**
@@ -71,7 +71,7 @@ export const improveCopyNode = NodeMiddleware.use(
 
     const result = await agent.invoke(
       {
-        messages: [...(state.messages || []), createPseudoMessage(prompt)],
+        messages: [...(state.messages || []), createContextMessage(prompt)],
       },
       {
         ...config,

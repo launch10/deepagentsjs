@@ -6,6 +6,12 @@ import type { BrainstormGraphState } from "@state";
 import { uniq } from "@utils";
 import { createBridge } from "langgraph-ai-sdk";
 
+/**
+ * Mode type for tracking brainstorm state across turns.
+ * Must match BrainstormMode from contextMessages.ts
+ */
+type BrainstormModeType = "default" | "helpMe" | "doTheRest" | "uiGuidance" | "finishSkipped";
+
 export const BrainstormAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
   projectUUID: Annotation<UUIDType>(),
@@ -27,6 +33,11 @@ export const BrainstormAnnotation = Annotation.Root({
     default: () => [...Brainstorm.BrainstormTopics],
     reducer: (current, next) => next,
   }),
+  /**
+   * Tracks the brainstorm mode across turns for context message injection.
+   * Used to detect mode switches (e.g., conversational → uiGuidance).
+   */
+  brainstormMode: Annotation<BrainstormModeType | undefined>(),
 });
 
 // Just a convenience to ensure the annotation matches the state type

@@ -2,9 +2,9 @@ import type { WebsiteGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
-import { createMultimodalPseudoMessage, createPseudoMessage } from "@utils";
+import { createMultimodalContextMessage, createContextMessage } from "langgraph-ai-sdk";
 
-const createContextMessage = (state: WebsiteGraphState) => {
+const buildBrainstormContext = (state: WebsiteGraphState) => {
   const contextContent = `
       ## Brainstorm Context
       - Idea: ${state.brainstorm.idea || "Not provided"}
@@ -21,10 +21,10 @@ const createContextMessage = (state: WebsiteGraphState) => {
       Please create a landing page based on this context.
     `;
 
-  // Build user message - combine context with visual images if available
+  // Build context message - combine context with visual images if available
   const contextMessage =
     state.images.length > 0
-      ? createMultimodalPseudoMessage([
+      ? createMultimodalContextMessage([
         { type: "text" as const, text: contextContent },
         ...state.images.map((img) => ({
           type: "image_url" as const,
@@ -48,14 +48,14 @@ export const websiteBuilderNode = NodeMiddleware.use(
 
     const isCreateCommand = state.command === "create";
     const agent = await createCodingAgent({ ...state, isFirstMessage: isCreateCommand });
-    const contextMessage = createContextMessage(state);
+    const brainstormContext = buildBrainstormContext(state);
 
     const result = await agent.invoke(
       {
         messages: [
           ...(state.messages || []),
-          ...(isCreateCommand ? [createPseudoMessage("Create a landing page for this business")] : []),
-          contextMessage,
+          ...(isCreateCommand ? [createContextMessage("Create a landing page for this business")] : []),
+          brainstormContext,
         ],
       },
       {

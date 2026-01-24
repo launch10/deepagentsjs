@@ -1,8 +1,8 @@
 import { createAgent, createMiddleware } from "langchain";
-import { AIMessage } from "@langchain/core/messages";
+import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLLM } from "@core";
-import { chooseAdsPrompt, injectPseudoMessage, filterPseudoMessages } from "@prompts";
+import { chooseAdsPrompt, injectAdsContextMessage } from "@prompts";
 import { NodeMiddleware } from "@middleware";
 import { type AdsGraphState } from "@state";
 import z from "zod";
@@ -58,7 +58,7 @@ export const adsAgent = NodeMiddleware.use(
 
     const stateWithMessages = {
       ...state,
-      messages: injectPseudoMessage(state),
+      messages: injectAdsContextMessage(state),
     };
 
     const result = (await agent.invoke(
@@ -72,12 +72,13 @@ export const adsAgent = NodeMiddleware.use(
     const [message, updates] = await AdsBridge.toStructuredMessage(lastMessage);
     const mergedAssets = Ads.removeRejected(Ads.mergeStructuredData(state, updates!));
 
-    const allMessages = result.messages.slice(0, -1).concat([message]);
-    const filtered = filterPseudoMessages(allMessages);
+    // Context messages are preserved in state for tracing/analytics.
+    // They are filtered at the SDK presentation layer.
+    const allMessages = result.messages.slice(0, -1).concat([message]) as BaseMessage[];
 
     return {
       ...mergedAssets,
-      messages: filtered,
+      messages: allMessages,
       previousStage: state.stage,
     };
   }

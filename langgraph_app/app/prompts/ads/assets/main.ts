@@ -8,12 +8,12 @@ import { processPrompt } from "../../core/process";
 import { whereWeArePrompt, whatTheUserIsSeeingPrompt } from "./whereWeAre";
 import { helpInstructions } from "../helpPrompt";
 import { HumanMessage } from "@langchain/core/messages";
-import { isPseudoMessage } from "../pseudoMessages";
+import { isContextMessage } from "langgraph-ai-sdk";
 import { structuredOutputPrompt } from "@prompts";
 
 const isRealHumanMessage = (state: AdsGraphState): boolean => {
   const lastMessage = state.messages?.at(-1);
-  return !!lastMessage && HumanMessage.isInstance(lastMessage) && !isPseudoMessage(lastMessage);
+  return !!lastMessage && HumanMessage.isInstance(lastMessage) && !isContextMessage(lastMessage);
 };
 
 const buildPreviousAssetsContext = (state: AdsGraphState): string => {

@@ -11,6 +11,7 @@ import { v7 as uuidv7 } from "uuid";
 import { Brainstorm } from "@types";
 import { graphParams } from "@core";
 import { assertDefined } from "@support";
+import { isContextMessage } from "langgraph-ai-sdk";
 
 /**
  * Helper to find a tool message by name in the conversation
@@ -444,6 +445,26 @@ describe.sequential("Brainstorming Flow", () => {
       expect(lastAIResponse.content).toContain(`Brand Personalization panel`);
       expect(lastAIResponse.content).toContain(`Build My Site`);
 
+      // Verify context message was injected for uiGuidance mode switch (includes UI screenshot)
+      const contextMessages = result.state.messages.filter((m) => isContextMessage(m));
+      expect(contextMessages.length).toBeGreaterThanOrEqual(1);
+      const uiGuidanceContextMessage = contextMessages.find((msg) => {
+        // Multimodal content is an array of content blocks
+        if (Array.isArray(msg.content)) {
+          const textBlock = msg.content.find((block: any) => block.type === "text");
+          return (textBlock?.text as string)?.includes('type="ui_guidance"');
+        }
+        return typeof msg.content === "string" && msg.content.includes('type="ui_guidance"');
+      });
+      expect(uiGuidanceContextMessage).toBeDefined();
+      // Check the text content
+      const contentArray = uiGuidanceContextMessage?.content as any[];
+      const textContent = contentArray?.find((block: any) => block.type === "text")?.text;
+      expect(textContent).toMatch(/UI Guidance Navigator/);
+      // Check for the screenshot image URL
+      const imageBlock = contentArray?.find((block: any) => block.type === "image_url");
+      expect(imageBlock?.image_url?.url).toMatch(/brainstorm_ui.png/i);
+
       expect(result.state.memories.idea).toBeTruthy();
       expect(result.state.memories.audience).toBeTruthy();
       expect(result.state.memories.solution).toBeTruthy();
@@ -508,7 +529,7 @@ describe.sequential("Brainstorming Flow", () => {
 
       expect(lastAIResponse.content).toMatch(/landing page|site/i);
       expect(lastAIResponse.content).toMatch(
-        /ads campaign|launch ads|drive traffic|driving traffic|ads/i
+        /ads campaign|launch ads|drive traffic|driving traffic|ads|analytics/i
       );
       expect(lastAIResponse.content).toMatch(
         /validate your idea|validate idea|validate business idea|iterate|learn|excited to buy|test|validate|landing page/i
@@ -703,6 +724,18 @@ describe.sequential("Brainstorming Flow", () => {
         expect(parsed.text).toBeDefined();
         expect(parsed.template).toBeDefined();
         expect(parsed.examples).toBeDefined();
+
+        // Verify context message was injected for the helpMe mode switch
+        const contextMessages = result.state.messages.filter((message) =>
+          isContextMessage(message)
+        );
+        expect(contextMessages.length).toBeGreaterThanOrEqual(1);
+        const helpMeContextMessage = contextMessages.find(
+          (msg) => typeof msg.content === "string" && msg.content.includes('type="help_me"')
+        );
+        expect(helpMeContextMessage).toBeDefined();
+        expect(helpMeContextMessage?.content).toMatch(/Help Me Answer/);
+        expect(helpMeContextMessage?.content).toMatch(/fill-in-the-blank template/i);
       });
     });
 
@@ -727,6 +760,18 @@ describe.sequential("Brainstorming Flow", () => {
 
         expect(lastAIResponse.content).toMatch(/personalize|brand|logo|colors|palette/i);
         expect(lastAIResponse.content).toMatch(/build|landing page|site/i);
+
+        // Verify context message was injected for the doTheRest mode switch
+        const contextMessages = result.state.messages.filter((message) =>
+          isContextMessage(message)
+        );
+        expect(contextMessages.length).toBeGreaterThanOrEqual(1);
+        const doTheRestContextMessage = contextMessages.find(
+          (msg) => typeof msg.content === "string" && msg.content.includes('type="do_the_rest"')
+        );
+        expect(doTheRestContextMessage).toBeDefined();
+        expect(doTheRestContextMessage?.content).toMatch(/Finish For Me/);
+        expect(doTheRestContextMessage?.content).toMatch(/Topics to finish/);
       });
 
       it("does not do the rest when we haven't done anything yet", async () => {
