@@ -4,6 +4,7 @@
 #
 #  id                :bigint           not null, primary key
 #  credits_purchased :integer          not null
+#  credits_used      :integer          default(0), not null
 #  is_used           :boolean          default(FALSE), not null
 #  price_cents       :integer          not null
 #  created_at        :datetime         not null
@@ -31,9 +32,30 @@ RSpec.describe CreditPackPurchase, type: :model do
 
   describe "validations" do
     it { is_expected.to validate_presence_of(:credits_purchased) }
+    it { is_expected.to validate_presence_of(:credits_used) }
     it { is_expected.to validate_presence_of(:price_cents) }
     it { is_expected.to validate_numericality_of(:credits_purchased).is_greater_than(0) }
+    it { is_expected.to validate_numericality_of(:credits_used).is_greater_than_or_equal_to(0) }
     it { is_expected.to validate_numericality_of(:price_cents).is_greater_than(0) }
+
+    describe "credits_used_not_exceeding_purchased" do
+      let(:purchase) { build(:credit_pack_purchase, credits_purchased: 500, credits_used: 600) }
+
+      it "is invalid when credits_used exceeds credits_purchased" do
+        expect(purchase).not_to be_valid
+        expect(purchase.errors[:credits_used]).to include("cannot exceed credits_purchased")
+      end
+
+      it "is valid when credits_used equals credits_purchased" do
+        purchase.credits_used = 500
+        expect(purchase).to be_valid
+      end
+
+      it "is valid when credits_used is less than credits_purchased" do
+        purchase.credits_used = 250
+        expect(purchase).to be_valid
+      end
+    end
   end
 
   describe "scopes" do
@@ -73,6 +95,26 @@ RSpec.describe CreditPackPurchase, type: :model do
       it "orders by created_at ascending" do
         expect(described_class.oldest_first).to eq([older, newer])
       end
+    end
+  end
+
+  describe "#credits_remaining" do
+    let(:purchase) { create(:credit_pack_purchase, credits_purchased: 500, credits_used: 200) }
+
+    it "returns credits_purchased minus credits_used" do
+      expect(purchase.credits_remaining).to eq(300)
+    end
+  end
+
+  describe "#fully_consumed?" do
+    it "returns true when credits_used equals credits_purchased" do
+      purchase = create(:credit_pack_purchase, credits_purchased: 500, credits_used: 500)
+      expect(purchase).to be_fully_consumed
+    end
+
+    it "returns false when credits_used is less than credits_purchased" do
+      purchase = create(:credit_pack_purchase, credits_purchased: 500, credits_used: 250)
+      expect(purchase).not_to be_fully_consumed
     end
   end
 

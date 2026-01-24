@@ -158,7 +158,7 @@ class CreditBalance
     { total: total, plan: plan, pack: pack }
   end
 
-  # Usage percentage based on TOTAL allocation (plan + active pack purchases)
+  # Usage percentage based on TOTAL allocation (plan + remaining pack credits)
   # Returns 0-100+ (can exceed 100 if negative balance)
   #
   # Formula: ((total_allocation - total_balance) / total_allocation) * 100
@@ -168,14 +168,15 @@ class CreditBalance
   # - Someone with 5000 plan + 3000 pack purchase who's used 4000 credits
   #   is at 50% usage (4000/8000), not 80% (4000/5000)
   #
-  # The is_used flag on CreditPackPurchase ensures fully-consumed packs
-  # don't skew the percentage. Once a pack is exhausted, it drops out
-  # of the allocation calculation.
+  # FIFO per-pack tracking with credits_used ensures:
+  # - Packs marked is_used=true as soon as fully consumed
+  # - pack_allocation = SUM(credits_purchased - credits_used) for unused packs
+  # - Invariant: pack_balance_after == pack_allocation (always verifiable)
   def usage_percentage
     plan_allocation = @account.plan&.plan_tier&.credits || 0
     pack_allocation = @account.credit_pack_purchases
       .where(is_used: false)
-      .sum(:credits_purchased)
+      .sum("credits_purchased - credits_used")
 
     total_allocation = plan_allocation + pack_allocation
     return 0 if total_allocation == 0

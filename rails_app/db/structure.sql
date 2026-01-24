@@ -1816,7 +1816,8 @@ CREATE TABLE public.credit_pack_purchases (
     price_cents integer NOT NULL,
     is_used boolean DEFAULT false NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL
+    updated_at timestamp(6) without time zone NOT NULL,
+    credits_used integer DEFAULT 0 NOT NULL
 );
 
 
@@ -10803,6 +10804,7 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20260123211021'),
 ('20260123210921'),
 ('20260123210745'),
+('20260123185919'),
 ('20260122190035'),
 ('20260122150349'),
 ('20260122150336'),

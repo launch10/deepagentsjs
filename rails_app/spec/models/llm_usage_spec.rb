@@ -32,7 +32,7 @@
 #
 require "rails_helper"
 
-RSpec.describe LlmUsage, type: :model do
+RSpec.describe LLMUsage, type: :model do
   describe "associations" do
     it { is_expected.to belong_to(:chat).optional }
   end

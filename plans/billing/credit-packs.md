@@ -390,8 +390,9 @@ create_table :credit_pack_purchases do |t|
   t.references :pay_charge, foreign_key: { to_table: :pay_charges }
 
   t.integer :credits_purchased, null: false  # Snapshot of pack.credits at purchase time
+  t.integer :credits_used, null: false, default: 0  # Credits consumed from THIS pack (FIFO)
   t.integer :price_cents, null: false        # Snapshot of pack.amount at purchase time
-  t.boolean :is_used, null: false, default: false  # True when fully consumed
+  t.boolean :is_used, null: false, default: false  # True when credits_used = credits_purchased
 
   t.timestamps
 
@@ -400,14 +401,57 @@ create_table :credit_pack_purchases do |t|
 end
 ```
 
-**Why `is_used` matters for usage_percentage:**
+**FIFO Per-Pack Tracking with `credits_used`:**
 
-The `is_used` flag tracks when a pack purchase is fully consumed. This is essential for calculating usage percentage correctly:
+The `credits_used` column enables FIFO tracking of which specific pack credits come from. This maintains a clear invariant:
 
 ```ruby
-# Total allocation = plan credits + sum of ACTIVE (not fully used) pack purchases
-total_allocation = plan_tier.credits +
-  account.credit_pack_purchases.where(is_used: false).sum(:credits_purchased)
+# INVARIANT: pack_balance_after = SUM(credits_purchased - credits_used) WHERE is_used = false
+pack_balance = account.credit_pack_purchases
+  .where(is_used: false)
+  .sum("credits_purchased - credits_used")
+```
+
+**Why per-pack tracking matters:**
+
+1. **Accurate usage_percentage** - Packs marked `is_used=true` as soon as fully consumed, not when ALL packs depleted
+2. **Clear invariant** - Can always verify `pack_balance_after` against the sum of remaining pack credits
+3. **Better auditing** - Know exactly how much of each pack was used (useful for refunds)
+4. **Predictable FIFO** - Oldest packs consumed first, users understand what's happening
+
+**Consumption flow:**
+
+```ruby
+# When consuming pack credits, consume from oldest unused pack first (FIFO)
+def consume_from_packs!(amount)
+  remaining = amount
+
+  account.credit_pack_purchases.unused.oldest_first.each do |purchase|
+    break if remaining <= 0
+
+    available = purchase.credits_purchased - purchase.credits_used
+    consumed = [remaining, available].min
+
+    purchase.credits_used += consumed
+    purchase.is_used = (purchase.credits_used >= purchase.credits_purchased)
+    purchase.save!
+
+    remaining -= consumed
+  end
+
+  remaining  # Returns any amount that couldn't be consumed from packs
+end
+```
+
+**Usage percentage calculation:**
+
+```ruby
+# Total allocation = plan credits + sum of REMAINING pack credits (not fully used)
+pack_allocation = account.credit_pack_purchases
+  .where(is_used: false)
+  .sum("credits_purchased - credits_used")
+
+total_allocation = plan_tier.credits + pack_allocation
 
 # Usage percentage = (allocation - remaining) / allocation * 100
 usage_percentage = ((total_allocation - total_balance) / total_allocation.to_f * 100).round(2)
@@ -497,10 +541,30 @@ class CreditPackPurchase < ApplicationRecord
   belongs_to :pay_charge, class_name: "Pay::Charge", optional: true
 
   validates :credits_purchased, presence: true, numericality: { greater_than: 0 }
+  validates :credits_used, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :price_cents, presence: true, numericality: { greater_than: 0 }
+  validate :credits_used_not_exceeding_purchased
 
-  scope :active, -> { where(is_used: false) }
-  scope :consumed, -> { where(is_used: true) }
+  scope :unused, -> { where(is_used: false) }
+  scope :used, -> { where(is_used: true) }
+  scope :oldest_first, -> { order(created_at: :asc) }
+
+  def credits_remaining
+    credits_purchased - credits_used
+  end
+
+  def fully_consumed?
+    credits_used >= credits_purchased
+  end
+
+  private
+
+  def credits_used_not_exceeding_purchased
+    return unless credits_used && credits_purchased
+    if credits_used > credits_purchased
+      errors.add(:credits_used, "cannot exceed credits_purchased")
+    end
+  end
 end
 ```
 
@@ -869,23 +933,39 @@ module Credits
 end
 ```
 
-#### Marking Packs as Fully Consumed
+#### Marking Packs as Fully Consumed (FIFO)
 
-When pack credits are consumed, check if the pack is fully depleted and mark `is_used: true`:
+When pack credits are consumed, we track usage on each specific pack (FIFO order) and mark `is_used: true` when that pack is exhausted:
 
 ```ruby
-# In CreditConsumptionService, after consuming pack credits:
-def maybe_mark_pack_as_used(account)
-  # A pack is "used" when pack_balance reaches 0
-  # This is a simplification - we mark ALL active packs as used since
-  # pack credits are fungible and we can't track which pack they came from
-  if pack_balance_after == 0
-    account.credit_pack_purchases.where(is_used: false).update_all(is_used: true)
+# In CreditConsumptionService, when consuming pack credits:
+def consume_from_packs!(amount)
+  remaining = amount
+
+  @account.credit_pack_purchases.unused.oldest_first.lock.each do |purchase|
+    break if remaining <= 0
+
+    available = purchase.credits_purchased - purchase.credits_used
+    consumed = [remaining, available].min
+
+    purchase.increment!(:credits_used, consumed)
+    purchase.update!(is_used: true) if purchase.credits_used >= purchase.credits_purchased
+
+    remaining -= consumed
   end
+
+  remaining  # Returns any amount that couldn't be consumed from packs (goes to plan debt)
 end
 ```
 
-Note: Since pack credits are fungible (we don't track which specific pack a credit came from), we mark all active packs as used when pack balance hits 0. This is simpler than FIFO tracking per-pack.
+**Invariant maintained:**
+
+```ruby
+# This should ALWAYS be true:
+pack_balance_after == account.credit_pack_purchases.unused.sum("credits_purchased - credits_used")
+```
+
+Per-pack tracking ensures packs are marked as used immediately when depleted, not when ALL packs are exhausted.
 
 ### Phase 5: Langgraph Credit Integration
 

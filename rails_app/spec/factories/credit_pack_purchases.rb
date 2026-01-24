@@ -4,6 +4,7 @@
 #
 #  id                :bigint           not null, primary key
 #  credits_purchased :integer          not null
+#  credits_used      :integer          default(0), not null
 #  is_used           :boolean          default(FALSE), not null
 #  price_cents       :integer          not null
 #  created_at        :datetime         not null

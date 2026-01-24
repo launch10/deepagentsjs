@@ -30,7 +30,7 @@
 #  index_llm_usage_on_run_id                       (run_id)
 #  index_llm_usage_on_thread_id_and_created_at     (thread_id,created_at)
 #
-class LlmUsage < ApplicationRecord
+class LLMUsage < ApplicationRecord
   self.table_name = "llm_usage"
 
   belongs_to :chat, optional: true

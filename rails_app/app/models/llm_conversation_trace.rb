@@ -19,7 +19,7 @@
 #  llm_conversation_traces_run_id_created_at_idx     (run_id,created_at) UNIQUE
 #  llm_conversation_traces_thread_id_created_at_idx  (thread_id,created_at)
 #
-class LlmConversationTrace < ApplicationRecord
+class LLMConversationTrace < ApplicationRecord
   belongs_to :chat, optional: true
 
   validates :thread_id, presence: true

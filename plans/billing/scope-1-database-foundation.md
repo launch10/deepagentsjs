@@ -131,7 +131,7 @@ end
 
 ### 4. credit_pack_purchases (Individual purchases)
 
-Like `Pay::Subscription` - tracks individual pack purchases.
+Like `Pay::Subscription` - tracks individual pack purchases with FIFO per-pack tracking.
 
 ```ruby
 class CreateCreditPackPurchases < ActiveRecord::Migration[8.0]
@@ -144,8 +144,9 @@ class CreateCreditPackPurchases < ActiveRecord::Migration[8.0]
       t.bigint :pay_charge_id                 # Links to Pay::Charge
 
       t.integer :credits_purchased, null: false   # Snapshot at purchase time
+      t.integer :credits_used, null: false, default: 0  # Credits consumed from THIS pack (FIFO)
       t.integer :price_cents, null: false         # Snapshot at purchase time
-      t.boolean :is_used, null: false, default: false  # True when fully consumed
+      t.boolean :is_used, null: false, default: false  # True when credits_used = credits_purchased
 
       t.timestamps
     end
@@ -157,6 +158,13 @@ class CreateCreditPackPurchases < ActiveRecord::Migration[8.0]
     add_index :credit_pack_purchases, [:account_id, :created_at], algorithm: :concurrently
   end
 end
+```
+
+**FIFO Per-Pack Invariant:**
+
+```ruby
+# This invariant must ALWAYS hold:
+pack_balance_after == account.credit_pack_purchases.unused.sum("credits_purchased - credits_used")
 ```
 
 ### 5. conversation_traces (Partitioned by month)
@@ -246,6 +254,7 @@ end
 | `db/migrate/20260123211123_create_credit_pack_purchases.rb` | Purchase instances |
 | `db/migrate/20260123211228_create_conversation_traces.rb` | Partitioned trace storage |
 | `db/migrate/20260123211427_add_reasoning_cost_to_model_configs.rb` | Reasoning pricing for o1/o3 |
+| `db/migrate/20260123185919_add_credits_used_to_credit_pack_purchases.rb` | FIFO per-pack tracking |
 
 ## Models to Create
 
