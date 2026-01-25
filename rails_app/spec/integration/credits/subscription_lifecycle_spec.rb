@@ -105,9 +105,14 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
     )
   end
 
-  # Helper to advance subscription billing period
-  # In real Stripe flow, the subscription is updated with new period dates
-  # BEFORE invoice.paid fires. This simulates that update.
+  # Helper to advance subscription billing period.
+  #
+  # In tests, we manually update the subscription to simulate what Pay does
+  # when it processes the subscription.updated webhook from Stripe.
+  #
+  # NOTE: In production, webhook delivery order is NOT guaranteed by Stripe.
+  # Our handlers are designed to work regardless of whether subscription.updated
+  # or invoice.paid arrives first. See: https://docs.stripe.com/webhooks
   def advance_billing_period(subscription)
     old_period_end = subscription.current_period_end
     subscription.update!(
@@ -531,12 +536,9 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       next_reset = (Date.current + 1.month).change(day: [billing_day, (Date.current + 1.month).end_of_month.day].min)
 
       travel_to next_reset do
+        # DailyReconciliationWorker calls ResetPlanCreditsWorker.perform_async
+        # which runs inline due to Sidekiq::Testing.inline!
         Credits::DailyReconciliationWorker.new.perform
-
-        # Worker enqueues async job, so we need to process it
-        account.payment_processor.subscription.tap do |sub|
-          Credits::ReconcileOneAccountWorker.new.perform(account.id)
-        end
 
         account.reload
         expect(account.plan_credits).to eq(5000)  # Fresh allocation
@@ -747,11 +749,6 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       expect { process_webhook(event) }.not_to raise_error
     end
 
-    # Note: In this codebase, only Account has Pay::Billable, so there's no scenario
-    # where a non-Account customer has a subscription. This test is skipped because
-    # User doesn't support set_payment_processor.
-    it "ignores webhooks for non-Account customers", skip: "User doesn't support Pay::Billable in this codebase" do
-    end
   end
 
   describe "transaction data integrity" do
