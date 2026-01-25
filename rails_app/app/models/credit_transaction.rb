@@ -25,22 +25,36 @@
 #  index_credit_transactions_on_reference_type_and_reference_id  (reference_type,reference_id)
 #
 class CreditTransaction < ApplicationRecord
-  TRANSACTION_TYPES = %w[allocate consume purchase refund gift adjust].freeze
+  TRANSACTION_TYPES = %w[allocate consume purchase refund gift adjust expire].freeze
   CREDIT_TYPES = %w[plan pack].freeze
+
+  REASONS = %w[
+    ai_generation
+    plan_renewal
+    plan_credits_expired
+    plan_upgrade
+    plan_downgrade
+    pack_purchase
+    gift
+    refund
+  ].freeze
 
   belongs_to :account
 
-  validates :transaction_type, presence: true, inclusion: { in: TRANSACTION_TYPES }
-  validates :credit_type, presence: true, inclusion: { in: CREDIT_TYPES }
+  validates :transaction_type, presence: true, inclusion: {in: TRANSACTION_TYPES}
+  validates :credit_type, presence: true, inclusion: {in: CREDIT_TYPES}
   validates :reason, presence: true
   validates :amount, presence: true
   validates :balance_after, presence: true
   validates :plan_balance_after, presence: true
   validates :pack_balance_after, presence: true
 
+  after_create :update_account_balances
+
   scope :for_account, ->(account) { where(account: account) }
   scope :allocations, -> { where(transaction_type: "allocate") }
   scope :consumptions, -> { where(transaction_type: "consume") }
+  scope :expirations, -> { where(transaction_type: "expire") }
 
   def self.latest_for_account(account)
     for_account(account).order(created_at: :desc).first
@@ -52,5 +66,15 @@ class CreditTransaction < ApplicationRecord
 
   def debit?
     amount.negative?
+  end
+
+  private
+
+  def update_account_balances
+    account.update_columns(
+      plan_credits: plan_balance_after,
+      pack_credits: pack_balance_after,
+      total_credits: balance_after
+    )
   end
 end

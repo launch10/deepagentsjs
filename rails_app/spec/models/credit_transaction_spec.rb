@@ -40,8 +40,50 @@ RSpec.describe CreditTransaction, type: :model do
     it { is_expected.to validate_presence_of(:plan_balance_after) }
     it { is_expected.to validate_presence_of(:pack_balance_after) }
 
-    it { is_expected.to validate_inclusion_of(:transaction_type).in_array(%w[allocate consume purchase refund gift adjust]) }
+    it { is_expected.to validate_inclusion_of(:transaction_type).in_array(%w[allocate consume purchase refund gift adjust expire]) }
     it { is_expected.to validate_inclusion_of(:credit_type).in_array(%w[plan pack]) }
+  end
+
+  describe "callbacks" do
+    describe "#update_account_balances" do
+      let(:account) { create(:account) }
+
+      it "updates account cached columns after create" do
+        expect(account.plan_credits).to eq(0)
+        expect(account.pack_credits).to eq(0)
+        expect(account.total_credits).to eq(0)
+
+        create(:credit_transaction,
+          account: account,
+          plan_balance_after: 5000,
+          pack_balance_after: 100,
+          balance_after: 5100)
+
+        account.reload
+        expect(account.plan_credits).to eq(5000)
+        expect(account.pack_credits).to eq(100)
+        expect(account.total_credits).to eq(5100)
+      end
+
+      it "updates account for all transaction types" do
+        %w[allocate consume purchase refund gift adjust expire].each do |tx_type|
+          account = create(:account)
+
+          create(:credit_transaction,
+            account: account,
+            transaction_type: tx_type,
+            amount: (tx_type == "expire" ? -100 : 100),
+            plan_balance_after: 1000,
+            pack_balance_after: 200,
+            balance_after: 1200)
+
+          account.reload
+          expect(account.plan_credits).to eq(1000), "Failed for transaction_type: #{tx_type}"
+          expect(account.pack_credits).to eq(200), "Failed for transaction_type: #{tx_type}"
+          expect(account.total_credits).to eq(1200), "Failed for transaction_type: #{tx_type}"
+        end
+      end
+    end
   end
 
   describe "scopes" do

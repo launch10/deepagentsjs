@@ -8,9 +8,12 @@
 #  domain              :string
 #  extra_billing_info  :text
 #  name                :string           not null
+#  pack_credits        :bigint           default(0), not null
 #  personal            :boolean          default(FALSE)
+#  plan_credits        :bigint           default(0), not null
 #  subdomain           :string
 #  time_zone           :string           default("America/New_York")
+#  total_credits       :bigint           default(0), not null
 #  created_at          :datetime         not null
 #  updated_at          :datetime         not null
 #  owner_id            :bigint

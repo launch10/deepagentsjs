@@ -429,7 +429,10 @@ CREATE TABLE public.accounts (
     subdomain character varying,
     billing_email character varying,
     account_users_count integer DEFAULT 0,
-    time_zone character varying DEFAULT 'America/New_York'::character varying
+    time_zone character varying DEFAULT 'America/New_York'::character varying,
+    plan_credits bigint DEFAULT 0 NOT NULL,
+    pack_credits bigint DEFAULT 0 NOT NULL,
+    total_credits bigint DEFAULT 0 NOT NULL
 );
 
 
@@ -10798,6 +10801,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260125205452'),
 ('20260123211427'),
 ('20260123211228'),
 ('20260123211123'),
