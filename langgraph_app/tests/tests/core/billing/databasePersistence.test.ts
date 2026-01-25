@@ -31,9 +31,11 @@ describe("Database Persistence - BILLING CRITICAL", () => {
   const testThreadId = `test-thread-${Date.now()}`;
 
   afterEach(async () => {
-    // Clean up test data
-    await db.delete(llmUsage).where(eq(llmUsage.runId, testRunId));
-    // Note: Trace cleanup would need partition-aware delete
+    // Clean up test data from both tables
+    await Promise.all([
+      db.delete(llmUsage).where(eq(llmUsage.runId, testRunId)),
+      db.delete(llmConversationTraces202601).where(eq(llmConversationTraces202601.runId, testRunId)),
+    ]);
   });
 
   describe("persistUsage - Database Writes", () => {

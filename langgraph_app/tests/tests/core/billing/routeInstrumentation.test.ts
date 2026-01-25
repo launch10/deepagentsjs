@@ -14,7 +14,7 @@ import * as path from "path";
  * - Bridges are created via `createAppBridge` which has usage tracking middleware
  * - Routes use the Bridge APIs (BrainstormAPI, WebsiteAPI, AdsAPI)
  * - Deploy graph uses `streamWithUsageTracking` directly
- * - Middleware is defined in app/bridges/usageMiddleware.ts
+ * - Middleware is defined in app/bridges/middleware/usageTracking.ts
  */
 
 describe("Route Instrumentation Audit - BILLING CRITICAL", () => {
@@ -38,7 +38,7 @@ describe("Route Instrumentation Audit - BILLING CRITICAL", () => {
    * Check if the usage middleware exists and is properly configured.
    */
   function usageMiddlewareExists(): boolean {
-    const middlewarePath = path.join(bridgesDir, "usageMiddleware.ts");
+    const middlewarePath = path.join(bridgesDir, "middleware", "usageTracking.ts");
     if (!fs.existsSync(middlewarePath)) {
       return false;
     }
