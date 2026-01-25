@@ -29,11 +29,7 @@ describe.sequential("API Integration - BILLING CRITICAL", () => {
     await DatabaseSnapshotter.restoreSnapshot("website_step");
 
     // Get the existing brainstorm chat from the snapshot
-    const [chat] = await db
-      .select()
-      .from(chats)
-      .where(eq(chats.chatType, "brainstorm"))
-      .limit(1);
+    const [chat] = await db.select().from(chats).where(eq(chats.chatType, "brainstorm")).limit(1);
 
     if (!chat?.threadId || !chat?.id) {
       throw new Error("No brainstorm chat found in website_step snapshot");
@@ -46,9 +42,7 @@ describe.sequential("API Integration - BILLING CRITICAL", () => {
   afterEach(async () => {
     // Clean records created during tests (by threadId to be safe)
     await db.delete(llmUsage).where(eq(llmUsage.threadId, testThreadId));
-    await db
-      .delete(llmConversationTraces)
-      .where(eq(llmConversationTraces.threadId, testThreadId));
+    await db.delete(llmConversationTraces).where(eq(llmConversationTraces.threadId, testThreadId));
   });
 
   /**
@@ -153,14 +147,8 @@ describe.sequential("API Integration - BILLING CRITICAL", () => {
 
     // ===== USAGE SUMMARY ACCURACY =====
     // The trace's usage summary should match the sum of individual records
-    const totalInputFromRecords = usageRecords.reduce(
-      (sum, r) => sum + (r.inputTokens ?? 0),
-      0
-    );
-    const totalOutputFromRecords = usageRecords.reduce(
-      (sum, r) => sum + (r.outputTokens ?? 0),
-      0
-    );
+    const totalInputFromRecords = usageRecords.reduce((sum, r) => sum + (r.inputTokens ?? 0), 0);
+    const totalOutputFromRecords = usageRecords.reduce((sum, r) => sum + (r.outputTokens ?? 0), 0);
     expect(usageSummary.totalInputTokens).toBe(totalInputFromRecords);
     expect(usageSummary.totalOutputTokens).toBe(totalOutputFromRecords);
     expect(usageSummary.llmCallCount).toBe(usageRecords.length);

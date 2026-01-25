@@ -1,28 +1,18 @@
 /**
  * Website API
  *
- * Bound graph API with automatic usage tracking.
- * Pass `context: { chatId }` in stream options for billing.
- *
- * @example
- * ```typescript
- * import { WebsiteAPI } from "@api";
- *
- * return WebsiteAPI.stream({
- *   messages,
- *   threadId,
- *   context: { chatId },
- *   state: { jwt: auth.jwt }
- * });
- * ```
+ * Stream and load history for website builder conversations.
  */
 import { graphParams } from "@core";
 import { websiteGraph } from "@graphs";
-import { WebsiteBridge } from "@bridges";
+import { WebsiteBridge } from "@annotation";
 
-const compiledWebsiteGraph = websiteGraph.compile({
+const compiledGraph = websiteGraph.compile({
   ...graphParams,
   name: "website",
 });
 
-export const WebsiteAPI = WebsiteBridge.bind(compiledWebsiteGraph);
+export const WebsiteAPI = WebsiteBridge.bind(compiledGraph);
+
+// Re-export bridge
+export { WebsiteBridge } from "@annotation";

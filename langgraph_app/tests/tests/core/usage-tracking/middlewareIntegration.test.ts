@@ -21,7 +21,6 @@ import { usageStorage, createUsageContext, type UsageContext } from "@core";
  */
 
 describe.sequential("Usage Tracking Middleware - Context Mechanics", () => {
-
   describe("AsyncLocalStorage Context Propagation", () => {
     it("MUST make usage context available via getUsageContext within run", async () => {
       const usageContext = createUsageContext({

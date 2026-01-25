@@ -1,28 +1,18 @@
 /**
  * Brainstorm API
  *
- * Bound graph API with automatic usage tracking.
- * Pass `context: { chatId }` in stream options for billing.
- *
- * @example
- * ```typescript
- * import { BrainstormAPI } from "@api";
- *
- * return BrainstormAPI.stream({
- *   messages,
- *   threadId,
- *   context: { chatId },
- *   state: { jwt: auth.jwt }
- * });
- * ```
+ * Stream and load history for brainstorm conversations.
  */
 import { graphParams } from "@core";
 import { brainstormGraph } from "@graphs";
-import { BrainstormBridge } from "@bridges";
+import { BrainstormBridge } from "@annotation";
 
-const compiledBrainstormGraph = brainstormGraph.compile({
+const compiledGraph = brainstormGraph.compile({
   ...graphParams,
   name: "brainstorm",
 });
 
-export const BrainstormAPI = BrainstormBridge.bind(compiledBrainstormGraph);
+export const BrainstormAPI = BrainstormBridge.bind(compiledGraph);
+
+// Re-export bridge for nodes that need toStructuredMessage
+export { BrainstormBridge } from "@annotation";

@@ -3,11 +3,11 @@ import { RunnableBinding, type RunnableConfig } from "@langchain/core/runnables"
 import type { LLMSkill, LLMSpeed, LLMCost, LLMOptions } from "./types";
 import { LLMManager } from "./service";
 import { env } from "@core";
-import { usageTracker } from "../usage";
+import { usageTracker } from "../billing";
 
 // Lazy getters for defaults to avoid issues with env not being initialized at module load time
-const getSpeedDefault = (): LLMSpeed => env.LLM_SPEED === "fast" ? "fast" : "slow";
-const getCostDefault = (): LLMCost => env.LLM_PAID === "paid" ? "paid" : "free";
+const getSpeedDefault = (): LLMSpeed => (env.LLM_SPEED === "fast" ? "fast" : "slow");
+const getCostDefault = (): LLMCost => (env.LLM_PAID === "paid" ? "paid" : "free");
 const LLM_SKILL_DEFAULT: LLMSkill = "writing";
 
 /**

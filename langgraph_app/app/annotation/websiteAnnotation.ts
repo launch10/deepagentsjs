@@ -2,6 +2,7 @@ import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 import type { PrimaryKeyType } from "@types";
 import { Brainstorm, Website, Core, type ConsoleError } from "@types";
+import { createAppBridge } from "@api/middleware";
 
 export const WebsiteAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
@@ -60,3 +61,9 @@ export const WebsiteAnnotation = Annotation.Root({
 });
 
 export type WebsiteGraphState = typeof WebsiteAnnotation.State;
+
+// Bridge for streaming frontend - uses createAppBridge for automatic usage tracking
+export const WebsiteBridge = createAppBridge({
+  endpoint: "/api/website/stream",
+  stateAnnotation: WebsiteAnnotation,
+});

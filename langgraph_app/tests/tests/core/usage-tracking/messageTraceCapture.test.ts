@@ -57,7 +57,11 @@ describe.sequential("Message Trace Capture", () => {
           contextMsg,
         ];
 
-        await usageTracker.handleChatModelStart({ name: "test" } as any, [inputMessages], "run-123");
+        await usageTracker.handleChatModelStart(
+          { name: "test" } as any,
+          [inputMessages],
+          "run-123"
+        );
       });
 
       expect(context.messages).toHaveLength(3);
@@ -75,7 +79,11 @@ describe.sequential("Message Trace Capture", () => {
           new HumanMessage("Tell me about pricing"),
         ];
 
-        await usageTracker.handleChatModelStart({ name: "test" } as any, [inputMessages], "run-123");
+        await usageTracker.handleChatModelStart(
+          { name: "test" } as any,
+          [inputMessages],
+          "run-123"
+        );
       });
 
       expect(context.messages).toHaveLength(4);
@@ -116,7 +124,11 @@ describe.sequential("Message Trace Capture", () => {
           new SystemMessage("You are a helpful assistant."),
           new HumanMessage("Hello"),
         ];
-        await usageTracker.handleChatModelStart({ name: "test" } as any, [inputMessages], "run-123");
+        await usageTracker.handleChatModelStart(
+          { name: "test" } as any,
+          [inputMessages],
+          "run-123"
+        );
 
         // Then capture output
         const aiMessage = createAnthropicAIMessage("Hi there!");
@@ -189,7 +201,11 @@ describe.sequential("Message Trace Capture", () => {
           contextMsg,
         ];
 
-        await usageTracker.handleChatModelStart({ name: "test" } as any, [inputMessages], "run-123");
+        await usageTracker.handleChatModelStart(
+          { name: "test" } as any,
+          [inputMessages],
+          "run-123"
+        );
 
         const aiResponse = createAnthropicAIMessage("You have 3 items in your cart.");
         await usageTracker.handleLLMEnd(createLLMResult(aiResponse), "run-123");

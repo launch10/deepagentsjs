@@ -9,10 +9,7 @@ import { graphParams } from "@core";
 import { DatabaseSnapshotter } from "@rails_api";
 import { websiteFiles, campaigns, and, eq, db } from "@db";
 import { jobRunCallback } from "@server/routes/webhooks/jobRunCallback";
-import {
-  getCodingAgentBackend,
-  analyticsNode,
-} from "@nodes";
+import { getCodingAgentBackend, analyticsNode } from "@nodes";
 
 // Mock @rails_api - JobRunAPIService and ChatsAPIService
 vi.mock("@rails_api", async () => {
@@ -194,24 +191,24 @@ describe.sequential("Deploy Graph Tests", () => {
         });
 
         it("runs ConnectingGoogle when Google is NOT connected", async () => {
-        const result = await testGraph<DeployGraphState>()
-          .withGraph(deployGraph)
-          .withState({
-            jwt: "test-jwt",
-            threadId: "thread_123" as ThreadIDType,
-            websiteId: 1,
-            campaignId: 123,
-            deploy: { googleAds: true },
-            tasks: [],
-            chatId: 1,
-          })
-          .execute();
+          const result = await testGraph<DeployGraphState>()
+            .withGraph(deployGraph)
+            .withState({
+              jwt: "test-jwt",
+              threadId: "thread_123" as ThreadIDType,
+              websiteId: 1,
+              campaignId: 123,
+              deploy: { googleAds: true },
+              tasks: [],
+              chatId: 1,
+            })
+            .execute();
 
-        // Should have ConnectingGoogle task with running status
-        const googleConnectTask = Task.findTask(result.state.tasks, "ConnectingGoogle");
-        expect(googleConnectTask).toBeDefined();
-        expect(googleConnectTask?.status).toBe("running");
-        expect(result.state.tasks.length).toBe(1); // this is a blocking action, it will not have run other tasks...
+          // Should have ConnectingGoogle task with running status
+          const googleConnectTask = Task.findTask(result.state.tasks, "ConnectingGoogle");
+          expect(googleConnectTask).toBeDefined();
+          expect(googleConnectTask?.status).toBe("running");
+          expect(result.state.tasks.length).toBe(1); // this is a blocking action, it will not have run other tasks...
         });
 
         it("continues to wait when already running ConnectingGoogle", async () => {
@@ -246,7 +243,7 @@ describe.sequential("Deploy Graph Tests", () => {
               deploy: { googleAds: true },
               tasks: [],
               chatId: 1,
-            })
+            });
           const result = await graph.execute();
           const googleConnectTask = Task.findTask(result.state.tasks, "ConnectingGoogle");
 
@@ -255,15 +252,21 @@ describe.sequential("Deploy Graph Tests", () => {
             thread_id: graph.threadId!,
             status: "completed",
             result: { google_email: "test@gmail.com" },
-          })
+          });
 
-          const updates = (await deployGraph.getState({configurable: {
-            thread_id: graph.threadId,
-          }})).values;
+          const updates = (
+            await deployGraph.getState({
+              configurable: {
+                thread_id: graph.threadId,
+              },
+            })
+          ).values;
 
-          const updatedResult = await deployGraph.invoke(updates, {configurable: {
-            thread_id: graph.threadId,
-          }});
+          const updatedResult = await deployGraph.invoke(updates, {
+            configurable: {
+              thread_id: graph.threadId,
+            },
+          });
 
           const updatedGoogleConnectTask = Task.findTask(updatedResult.tasks, "ConnectingGoogle");
           const verifyingGoogleTask = Task.findTask(updatedResult.tasks, "VerifyingGoogle");
@@ -275,7 +278,7 @@ describe.sequential("Deploy Graph Tests", () => {
           expect(verifyingGoogleTask?.status).toBe("running");
         });
       });
-    })
+    });
 
     describe("VerifyingGoogle", async () => {
       describe("When NOT deploying website", async () => {
@@ -287,9 +290,7 @@ describe.sequential("Deploy Graph Tests", () => {
                 getConnectionStatus: vi
                   .fn()
                   .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-                getInviteStatus: vi
-                  .fn()
-                  .mockResolvedValue({ accepted: false, status: "none" }),
+                getInviteStatus: vi.fn().mockResolvedValue({ accepted: false, status: "none" }),
               }) as any
           );
 
@@ -303,7 +304,7 @@ describe.sequential("Deploy Graph Tests", () => {
               deploy: { googleAds: true },
               tasks: Deploy.withTasks({ googleAds: true }, { ConnectingGoogle: "completed" }),
               chatId: 1,
-            })
+            });
 
           const result = await graph.execute();
 
@@ -315,17 +316,25 @@ describe.sequential("Deploy Graph Tests", () => {
             thread_id: graph.threadId!,
             status: "completed",
             result: { status: "accepted" },
-          })
+          });
 
-          const updates = (await deployGraph.getState({configurable: {
-            thread_id: graph.threadId,
-          }})).values;
+          const updates = (
+            await deployGraph.getState({
+              configurable: {
+                thread_id: graph.threadId,
+              },
+            })
+          ).values;
 
-          const updatedResult = await deployGraph.invoke(updates, {configurable: {
-            thread_id: graph.threadId,
-          }});
+          const updatedResult = await deployGraph.invoke(updates, {
+            configurable: {
+              thread_id: graph.threadId,
+            },
+          });
 
-          const updatedGoogleVerifyTask = updatedResult.tasks.find((t) => t.name === "VerifyingGoogle");
+          const updatedGoogleVerifyTask = updatedResult.tasks.find(
+            (t) => t.name === "VerifyingGoogle"
+          );
           const deployTask = updatedResult.tasks.find((t) => t.name === "DeployingCampaign");
 
           expect(updatedGoogleVerifyTask?.status).toBe("completed");
@@ -338,7 +347,8 @@ describe.sequential("Deploy Graph Tests", () => {
         it("proceeds to Analytics after both GoogleConnect and GoogleVerify complete", async () => {
           // Mock createCodingAgent to skip actual LLM calls - just return immediately
           const mockAgent = { invoke: vi.fn().mockResolvedValue({ messages: [] }) };
-          const createCodingAgentSpy = vi.spyOn(await import("@nodes"), "createCodingAgent")
+          const createCodingAgentSpy = vi
+            .spyOn(await import("@nodes"), "createCodingAgent")
             .mockResolvedValue(mockAgent as any);
 
           // Mock: Google connected, invite accepted
@@ -348,9 +358,7 @@ describe.sequential("Deploy Graph Tests", () => {
                 getConnectionStatus: vi
                   .fn()
                   .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-                getInviteStatus: vi
-                  .fn()
-                  .mockResolvedValue({ accepted: false, status: "none" }),
+                getInviteStatus: vi.fn().mockResolvedValue({ accepted: false, status: "none" }),
               }) as any
           );
 
@@ -364,9 +372,12 @@ describe.sequential("Deploy Graph Tests", () => {
               websiteId: 1,
               campaignId,
               deploy: { googleAds: true, website: true },
-              tasks: Deploy.withTasks({ googleAds: true, website: true }, { VerifyingGoogle: "pending" }),
+              tasks: Deploy.withTasks(
+                { googleAds: true, website: true },
+                { VerifyingGoogle: "pending" }
+              ),
               chatId: 1,
-            })
+            });
 
           const result = await graph.execute();
 
@@ -378,14 +389,16 @@ describe.sequential("Deploy Graph Tests", () => {
             thread_id: graph.threadId!,
             status: "completed",
             result: { status: "accepted" },
-          })
+          });
 
           // Resume graph - let it run through Analytics (mocked)
           const updatedResult = await deployGraph.invoke(null, {
             configurable: { thread_id: graph.threadId },
           });
 
-          const updatedGoogleVerifyTask = updatedResult.tasks.find((t) => t.name === "VerifyingGoogle");
+          const updatedGoogleVerifyTask = updatedResult.tasks.find(
+            (t) => t.name === "VerifyingGoogle"
+          );
           const analyticsTask = updatedResult.tasks.find((t) => t.name === "AddingAnalytics");
 
           expect(updatedGoogleVerifyTask?.status).toBe("completed");
@@ -395,8 +408,7 @@ describe.sequential("Deploy Graph Tests", () => {
           // Cleanup
           createCodingAgentSpy.mockRestore();
         });
-
-      })
+      });
     });
   });
 
@@ -516,10 +528,7 @@ describe.sequential("Deploy Graph Tests", () => {
     <meta name="twitter:card" content="summary_large_image">
     <link rel="icon" href="https://example.com/favicon.ico">
 `;
-      const updatedContent = existingIndexHtml?.content?.replace(
-        "<head>",
-        `<head>${seoTags}`
-      );
+      const updatedContent = existingIndexHtml?.content?.replace("<head>", `<head>${seoTags}`);
 
       await db
         .update(websiteFiles)
@@ -537,8 +546,12 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
           deploy: { website: true },
-          tasks: Deploy.withTasks({ website: true }, { OptimizingSEO: "pending" }, { after: "completed" }),
-          chatId: 1
+          tasks: Deploy.withTasks(
+            { website: true },
+            { OptimizingSEO: "pending" },
+            { after: "completed" }
+          ),
+          chatId: 1,
         })
         .stopAfter("seoOptimization")
         .execute();
@@ -570,8 +583,12 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
           deploy: { website: true },
-          tasks: Deploy.withTasks({ website: true }, { OptimizingSEO: "pending" }, { after: "completed" }),
-          chatId: 1
+          tasks: Deploy.withTasks(
+            { website: true },
+            { OptimizingSEO: "pending" },
+            { after: "completed" }
+          ),
+          chatId: 1,
         })
         .execute();
 
@@ -627,8 +644,12 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
           deploy: { website: true },
-          tasks: Deploy.withTasks({ website: true }, { OptimizingSEO: "pending" }, { after: "completed" }),
-          chatId: 1
+          tasks: Deploy.withTasks(
+            { website: true },
+            { OptimizingSEO: "pending" },
+            { after: "completed" }
+          ),
+          chatId: 1,
         })
         .stopAfter("seoOptimization")
         .execute();
@@ -666,8 +687,12 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
           deploy: { website: true },
-          tasks: Deploy.withTasks({ website: true }, { OptimizingSEO: "pending" }, { after: "completed" }),
-          chatId: 1
+          tasks: Deploy.withTasks(
+            { website: true },
+            { OptimizingSEO: "pending" },
+            { after: "completed" }
+          ),
+          chatId: 1,
         })
         .stopAfter("seoOptimization")
         .execute();
@@ -773,11 +798,14 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
           deploy: { website: true },
-          tasks: Deploy.withTasks({ website: true }, {
-            ValidateLinks: "completed",
-            RuntimeValidation: "completed",
-            FixingBugs: "pending",
-          }),
+          tasks: Deploy.withTasks(
+            { website: true },
+            {
+              ValidateLinks: "completed",
+              RuntimeValidation: "completed",
+              FixingBugs: "pending",
+            }
+          ),
           chatId: 1,
         })
         .execute();
@@ -793,17 +821,22 @@ describe.sequential("Deploy Graph Tests", () => {
      * USER OUTCOME: Broken links are fixed after bug fix runs.
      */
     it("fixes broken links", async () => {
-      // Verify broken links exist before
-      const footerBefore = await db
+      // Use the website_with_broken_links snapshot which has broken anchor links
+      await DatabaseSnapshotter.restoreSnapshot("website_with_broken_links");
+
+      // Verify broken links exist before (Nav.tsx has #TestimonialsBorked and #CTABorked)
+      const navBefore = await db
         .select()
         .from(websiteFiles)
-        .where(and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "src/components/Footer.tsx")))
+        .where(
+          and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "src/components/Header.tsx"))
+        )
         .execute()
         .then((files) => files.at(-1));
 
-      expect(footerBefore?.content).toContain('href="#"');
+      expect(navBefore?.content).toContain("#testimonials-borked");
 
-      // Run bug fix (validation already failed)
+      // Run bug fix (validation already failed with broken anchor errors)
       const result = await testGraph<DeployGraphState>()
         .withGraph(deployGraph)
         .withState({
@@ -811,10 +844,17 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
           deploy: { website: true },
-          tasks: Deploy.withTasks({ website: true }, {
-            ValidateLinks: { status: "failed", error: "Broken anchor: # - no element with id" },
-            FixingBugs: "pending",
-          }, { after: "completed" }),
+          tasks: Deploy.withTasks(
+            { website: true },
+            {
+              ValidateLinks: {
+                status: "failed",
+                error: "Broken anchor: #testimonials-borked - no element with id",
+              },
+              FixingBugs: "pending",
+            },
+            { after: "completed" }
+          ),
           chatId: 1,
         })
         .execute();
@@ -823,17 +863,18 @@ describe.sequential("Deploy Graph Tests", () => {
       const fixingBugsTask = result.state.tasks.find((t) => t.name === "FixingBugs");
       expect(fixingBugsTask?.status).toBe("completed");
 
-      // Verify broken links are fixed
-      const footerAfter = await db
+      // Verify broken links are fixed - the borked anchors should be replaced with valid ones
+      const navAfter = await db
         .select()
         .from(websiteFiles)
-        .where(and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "src/components/Footer.tsx")))
+        .where(
+          and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "src/components/Header.tsx"))
+        )
         .execute()
         .then((files) => files.at(-1));
 
-      // No more placeholder href="#" links
-      const brokenLinks = (footerAfter?.content?.match(/href="#"(?!\w)/g) || []).length;
-      expect(brokenLinks).toBe(0);
+      // The broken anchors should no longer exist
+      expect(navAfter?.content).not.toContain("#testimonials-borked");
     });
   });
 

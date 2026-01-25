@@ -1,12 +1,7 @@
 import { describe, it, expect, beforeAll, afterEach } from "vitest";
 import { db, eq, and, llmUsage, llmConversationTraces } from "@db";
 import { DatabaseSnapshotter } from "@services";
-import {
-  persistUsage,
-  persistTrace,
-  type UsageRecord,
-  type UsageSummary,
-} from "@core";
+import { persistUsage, persistTrace, type UsageRecord, type UsageSummary } from "@core";
 import { HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
 
 /**
@@ -62,10 +57,7 @@ describe.sequential("Database Persistence - BILLING CRITICAL", () => {
       });
 
       // Verify it was written to database
-      const dbRecords = await db
-        .select()
-        .from(llmUsage)
-        .where(eq(llmUsage.runId, testRunId));
+      const dbRecords = await db.select().from(llmUsage).where(eq(llmUsage.runId, testRunId));
 
       expect(dbRecords.length).toBe(1);
 
@@ -128,10 +120,7 @@ describe.sequential("Database Persistence - BILLING CRITICAL", () => {
         graphName: "brainstorm",
       });
 
-      const dbRecords = await db
-        .select()
-        .from(llmUsage)
-        .where(eq(llmUsage.runId, testRunId));
+      const dbRecords = await db.select().from(llmUsage).where(eq(llmUsage.runId, testRunId));
 
       expect(dbRecords.length).toBe(3);
 
@@ -186,10 +175,7 @@ describe.sequential("Database Persistence - BILLING CRITICAL", () => {
         graphName: "brainstorm",
       });
 
-      const dbRecords = await db
-        .select()
-        .from(llmUsage)
-        .where(eq(llmUsage.runId, testRunId));
+      const dbRecords = await db.select().from(llmUsage).where(eq(llmUsage.runId, testRunId));
 
       expect(dbRecords.length).toBe(1);
       expect(dbRecords[0]!.parentLangchainRunId).toBe("lc-parent-001");
@@ -238,7 +224,11 @@ describe.sequential("Database Persistence - BILLING CRITICAL", () => {
       expect(trace.graphName).toBe("brainstorm");
 
       // Usage summary is stored as JSONB
-      const storedSummary = trace.usageSummary as { totalInputTokens: number; totalOutputTokens: number; llmCallCount: number };
+      const storedSummary = trace.usageSummary as {
+        totalInputTokens: number;
+        totalOutputTokens: number;
+        llmCallCount: number;
+      };
       expect(storedSummary.totalInputTokens).toBe(100);
       expect(storedSummary.totalOutputTokens).toBe(50);
       expect(storedSummary.llmCallCount).toBe(1);

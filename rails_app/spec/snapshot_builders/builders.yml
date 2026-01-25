@@ -31,6 +31,11 @@ website_with_import_errors:
   base_snapshot: website_step_finished
   description: "Website with import errors for deploy validation testing"
 
+website_with_broken_links:
+  class: WebsiteWithBrokenLinks
+  base_snapshot: website_step_finished
+  description: "Website with broken anchor links for deploy validation testing"
+
 campaign_content_step:
   class: CampaignContentStep
   base_snapshot: website_step_finished

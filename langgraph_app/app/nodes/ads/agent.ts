@@ -8,7 +8,7 @@ import { type AdsGraphState } from "@state";
 import z from "zod";
 import { lastAIMessage, Ads } from "@types";
 import { getTools } from "./helpers/index";
-import { AdsBridge } from "@bridges";
+import { AdsBridge } from "@annotation";
 
 const dynamicPromptMiddleware = createMiddleware({
   name: "DynamicPromptMiddleware",

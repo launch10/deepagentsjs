@@ -51,6 +51,7 @@ async function runBugFix(
     isFirstMessage: false,
   };
   const systemPrompt = await buildBugFixPrompt(promptState, config);
+  console.log("systemPrompt", systemPrompt);
 
   try {
     // Compile and invoke codingAgentGraph as subgraph
@@ -60,13 +61,19 @@ async function runBugFix(
     );
 
     // This will update the files in the database, or throw an error
-    await agent.invoke({
-      messages: [
-        new HumanMessage(
-          `Please analyze the errors and resolve them so my site runs successfully.`
-        ),
-      ],
-    });
+    await agent.invoke(
+      {
+        messages: [
+          new HumanMessage(
+            `Please analyze the errors and resolve them so my site runs successfully.`
+          ),
+        ],
+      },
+      {
+        ...config,
+        recursionLimit: 100,
+      }
+    );
 
     return {
       tasks: [
@@ -126,7 +133,8 @@ export const bugFixTaskRunner: TaskRunner = {
     // Both validation tasks must be done (completed/skipped) AND neither failed
     const validateLinksDone = isTaskDone(state, "ValidateLinks");
     const runtimeValidationDone = isTaskDone(state, "RuntimeValidation");
-    const noValidationFailed = !isTaskFailed(state, "ValidateLinks") && !isTaskFailed(state, "RuntimeValidation");
+    const noValidationFailed =
+      !isTaskFailed(state, "ValidateLinks") && !isTaskFailed(state, "RuntimeValidation");
 
     return validateLinksDone && runtimeValidationDone && noValidationFailed;
   },

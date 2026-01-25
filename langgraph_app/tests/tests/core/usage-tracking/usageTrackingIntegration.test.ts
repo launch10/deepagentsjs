@@ -5,7 +5,7 @@ import { Annotation, StateGraph, END } from "@langchain/langgraph";
 import { MemorySaver } from "@langchain/langgraph";
 import { db, eq, chats, llmUsage, llmConversationTraces } from "@db";
 import { DatabaseSnapshotter } from "@services";
-import { createAppBridge } from "@bridges";
+import { createAppBridge } from "@api";
 import { getLLM, usageStorage } from "@core";
 
 /**
@@ -77,22 +77,16 @@ const usageTestGraph = new StateGraph(UsageTestAnnotation)
   .addNode("directLLM", async () => {
     // Simple direct LLM call
     const llm = await getLLM();
-    const response = await llm.invoke([
-      new HumanMessage("Say 'hello' and nothing else"),
-    ]);
+    const response = await llm.invoke([new HumanMessage("Say 'hello' and nothing else")]);
     return { messages: [response] };
   })
   .addNode("multiLLM", async () => {
     // Multiple LLM calls in one node - should all share same runId
     const llm = await getLLM();
 
-    const response1 = await llm.invoke([
-      new HumanMessage("Say 'one'"),
-    ]);
+    const response1 = await llm.invoke([new HumanMessage("Say 'one'")]);
 
-    const response2 = await llm.invoke([
-      new HumanMessage("Say 'two'"),
-    ]);
+    const response2 = await llm.invoke([new HumanMessage("Say 'two'")]);
 
     return { messages: [response1, response2] };
   })
@@ -166,9 +160,7 @@ describe.sequential("Usage Tracking Integration - Real Middleware", () => {
   afterEach(async () => {
     // Clean up usage records created during tests
     await db.delete(llmUsage).where(eq(llmUsage.threadId, testThreadId));
-    await db
-      .delete(llmConversationTraces)
-      .where(eq(llmConversationTraces.threadId, testThreadId));
+    await db.delete(llmConversationTraces).where(eq(llmConversationTraces.threadId, testThreadId));
   });
 
   /**
@@ -224,10 +216,7 @@ describe.sequential("Usage Tracking Integration - Real Middleware", () => {
       await consumeStream(response2);
       await new Promise((r) => setTimeout(r, 100));
 
-      const allUsage = await db
-        .select()
-        .from(llmUsage)
-        .where(eq(llmUsage.threadId, testThreadId));
+      const allUsage = await db.select().from(llmUsage).where(eq(llmUsage.threadId, testThreadId));
 
       // Should have records from both turns
       expect(allUsage.length).toBeGreaterThan(turn1Usage.length);

@@ -1,28 +1,18 @@
 /**
  * Ads API
  *
- * Bound graph API with automatic usage tracking.
- * Pass `context: { chatId }` in stream options for billing.
- *
- * @example
- * ```typescript
- * import { AdsAPI } from "@api";
- *
- * return AdsAPI.stream({
- *   messages,
- *   threadId,
- *   context: { chatId },
- *   state: { jwt: auth.jwt }
- * });
- * ```
+ * Stream and load history for ad campaign conversations.
  */
 import { graphParams } from "@core";
 import { adsGraph } from "@graphs";
-import { AdsBridge } from "@bridges";
+import { AdsBridge } from "@annotation";
 
-const compiledAdsGraph = adsGraph.compile({
+const compiledGraph = adsGraph.compile({
   ...graphParams,
   name: "ads",
 });
 
-export const AdsAPI = AdsBridge.bind(compiledAdsGraph as any);
+export const AdsAPI = AdsBridge.bind(compiledGraph as any);
+
+// Re-export bridge for nodes that need toStructuredMessage
+export { AdsBridge } from "@annotation";
