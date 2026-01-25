@@ -40,16 +40,11 @@ export interface UsageContext {
   threadId?: string;
   graphName?: string;
 
-  // System prompt capture
-  systemPrompt?: string;
-  systemPromptCaptured?: boolean;
-
   // Message trace - full conversation for debugging
   messages: BaseMessage[];
 
   // Internal deduplication state
   _seenMessageIds: Set<string>;
-  _lastInputMessageCount: number;
 }
 
 // ============================================================================

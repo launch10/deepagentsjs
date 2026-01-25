@@ -77,6 +77,13 @@ describe.sequential("API Integration - BILLING CRITICAL", () => {
    * run after a single real LLM call.
    */
   it("MUST persist usage records, traces, and correlate them correctly", async () => {
+    const usageRecordsBefore = await db
+      .select()
+      .from(llmUsage)
+      .where(eq(llmUsage.threadId, testThreadId));
+
+    expect(usageRecordsBefore.length).toBe(0);
+
     // Call the real API
     const response = await BrainstormAPI.stream({
       messages: [new HumanMessage("Hello, I have a business idea about dogs")],

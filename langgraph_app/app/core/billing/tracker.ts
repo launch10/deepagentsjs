@@ -35,20 +35,6 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
       context._seenMessageIds.add(msgId);
       context.messages.push(msg);
     }
-
-    context._lastInputMessageCount = inputMessages.length;
-
-    // Capture system prompt for backwards compatibility
-    if (!context.systemPromptCaptured && inputMessages.length > 0) {
-      const systemMessage = inputMessages.find((m) => m._getType() === "system");
-      if (systemMessage) {
-        context.systemPrompt =
-          typeof systemMessage.content === "string"
-            ? systemMessage.content
-            : JSON.stringify(systemMessage.content);
-        context.systemPromptCaptured = true;
-      }
-    }
   }
 
   /**

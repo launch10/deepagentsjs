@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { HumanMessage } from "@langchain/core/messages";
+import { HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages";
 import type { BaseMessage } from "@langchain/core/messages";
 import { Annotation, StateGraph, END } from "@langchain/langgraph";
 import { MemorySaver } from "@langchain/langgraph";
@@ -7,6 +7,7 @@ import { db, eq, chats, llmUsage, llmConversationTraces } from "@db";
 import { DatabaseSnapshotter } from "@services";
 import { createAppBridge } from "@api";
 import { getLLM, usageStorage } from "@core";
+import { NodeMiddleware } from "@middleware";
 
 /**
  * USAGE TRACKING INTEGRATION TESTS - BILLING CRITICAL
@@ -67,48 +68,65 @@ const UsageTestBridge = createAppBridge({
 });
 
 /**
+ * Node functions wrapped in NodeMiddleware for Polly recording.
+ * Cast to any since test state doesn't extend CoreGraphState.
+ */
+const routerNode = NodeMiddleware.use({}, (async () => {
+  // Just routes to the right scenario
+  return {};
+}) as any);
+
+const directLLMNode = NodeMiddleware.use({}, (async (state: UsageTestState) => {
+  // Simple direct LLM call
+  const llm = await getLLM();
+  const response = await llm.invoke([
+    new SystemMessage("Give the user a funny nickname"),
+    ...state.messages,
+  ]);
+  return { messages: [response] };
+}) as any);
+
+const multiLLMNode = NodeMiddleware.use({}, (async () => {
+  // Multiple LLM calls in one node - should all share same runId
+  const llm = await getLLM();
+
+  const response1 = await llm.invoke([new HumanMessage("Say 'one'")]);
+
+  const response2 = await llm.invoke([new HumanMessage("Say 'two'")]);
+
+  return { messages: [response1, response2] };
+}) as any);
+
+const errorAfterLLMNode = NodeMiddleware.use({}, (async () => {
+  // Makes LLM call successfully, then throws
+  // Usage should still be captured!
+  const llm = await getLLM();
+  await llm.invoke([new HumanMessage("Say 'before error'")]);
+
+  throw new Error("Intentional test error after LLM call");
+}) as any);
+
+const contextCheckNode = NodeMiddleware.use({}, (async () => {
+  // Verifies AsyncLocalStorage context is available
+  const context = usageStorage.getStore();
+  const contextWasAvailable = context !== undefined && context.runId !== undefined;
+
+  // Still make an LLM call to generate usage
+  const llm = await getLLM();
+  await llm.invoke([new HumanMessage("Say 'context test'")]);
+
+  return { contextWasAvailable };
+}) as any);
+
+/**
  * Test graph with different scenarios for usage tracking verification
  */
 const usageTestGraph = new StateGraph(UsageTestAnnotation)
-  .addNode("router", async () => {
-    // Just routes to the right scenario
-    return {};
-  })
-  .addNode("directLLM", async () => {
-    // Simple direct LLM call
-    const llm = await getLLM();
-    const response = await llm.invoke([new HumanMessage("Say 'hello' and nothing else")]);
-    return { messages: [response] };
-  })
-  .addNode("multiLLM", async () => {
-    // Multiple LLM calls in one node - should all share same runId
-    const llm = await getLLM();
-
-    const response1 = await llm.invoke([new HumanMessage("Say 'one'")]);
-
-    const response2 = await llm.invoke([new HumanMessage("Say 'two'")]);
-
-    return { messages: [response1, response2] };
-  })
-  .addNode("errorAfterLLM", async () => {
-    // Makes LLM call successfully, then throws
-    // Usage should still be captured!
-    const llm = await getLLM();
-    await llm.invoke([new HumanMessage("Say 'before error'")]);
-
-    throw new Error("Intentional test error after LLM call");
-  })
-  .addNode("contextCheck", async () => {
-    // Verifies AsyncLocalStorage context is available
-    const context = usageStorage.getStore();
-    const contextWasAvailable = context !== undefined && context.runId !== undefined;
-
-    // Still make an LLM call to generate usage
-    const llm = await getLLM();
-    await llm.invoke([new HumanMessage("Say 'context test'")]);
-
-    return { contextWasAvailable };
-  })
+  .addNode("router", routerNode)
+  .addNode("directLLM", directLLMNode)
+  .addNode("multiLLM", multiLLMNode)
+  .addNode("errorAfterLLM", errorAfterLLMNode)
+  .addNode("contextCheck", contextCheckNode)
   .addConditionalEdges("router", (state: UsageTestState) => {
     switch (state.scenario) {
       case "direct":
@@ -184,7 +202,7 @@ describe.sequential("Usage Tracking Integration - Real Middleware", () => {
     it("MUST assign different runIds to each conversation turn", async () => {
       // First turn
       const response1 = await UsageTestAPI.stream({
-        messages: [new HumanMessage("First turn")],
+        messages: [new HumanMessage("Hello, Dr. Spaceman")],
         threadId: testThreadId,
         state: {
           threadId: testThreadId,
@@ -195,17 +213,22 @@ describe.sequential("Usage Tracking Integration - Real Middleware", () => {
       await consumeStream(response1);
       await new Promise((r) => setTimeout(r, 100));
 
-      const turn1Usage = await db
+      const turn1Usages = await db
         .select()
         .from(llmUsage)
         .where(eq(llmUsage.threadId, testThreadId));
 
-      expect(turn1Usage.length).toBeGreaterThan(0);
-      const turn1RunId = turn1Usage[0]!.runId;
+      expect(turn1Usages.length).toEqual(1);
+      const turn1Usage = turn1Usages.at(-1);
+      const turn1RunId = turn1Usage!.runId;
 
       // Second turn - should get NEW runId
       const response2 = await UsageTestAPI.stream({
-        messages: [new HumanMessage("Second turn")],
+        messages: [
+          new HumanMessage("Hello Jello"),
+          new AIMessage("Hi, Mr. Sauce"),
+          new HumanMessage("New nickname here"),
+        ],
         threadId: testThreadId,
         state: {
           threadId: testThreadId,
@@ -217,9 +240,12 @@ describe.sequential("Usage Tracking Integration - Real Middleware", () => {
       await new Promise((r) => setTimeout(r, 100));
 
       const allUsage = await db.select().from(llmUsage).where(eq(llmUsage.threadId, testThreadId));
+      const turn2Usage = allUsage.find((r) => r.runId !== turn1RunId);
+
+      expect(turn1Usage!.inputTokens).toBeLessThan(turn2Usage!.inputTokens); // We know we sent more tokens in the second turn
 
       // Should have records from both turns
-      expect(allUsage.length).toBeGreaterThan(turn1Usage.length);
+      expect(allUsage.length).toEqual(2);
 
       // Should have 2 distinct runIds
       const runIds = new Set(allUsage.map((r) => r.runId));
@@ -230,7 +256,7 @@ describe.sequential("Usage Tracking Integration - Real Middleware", () => {
     it("MUST create separate traces for each turn", async () => {
       // Turn 1
       const response1 = await UsageTestAPI.stream({
-        messages: [new HumanMessage("Trace turn 1")],
+        messages: [new HumanMessage("Hello Doctor Spaceman")],
         threadId: testThreadId,
         state: { threadId: testThreadId, jwt: "test", scenario: "direct" as const },
       });
@@ -239,7 +265,7 @@ describe.sequential("Usage Tracking Integration - Real Middleware", () => {
 
       // Turn 2
       const response2 = await UsageTestAPI.stream({
-        messages: [new HumanMessage("Trace turn 2")],
+        messages: [new HumanMessage("Hello Doctor Jello")],
         threadId: testThreadId,
         state: { threadId: testThreadId, jwt: "test", scenario: "direct" as const },
       });

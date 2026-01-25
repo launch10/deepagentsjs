@@ -1,5 +1,5 @@
 import { FakeListChatModel } from "@langchain/core/utils/testing";
-import { getNodeContext } from "app/core/node/middleware";
+import { getNodeContext } from "@middleware";
 
 export interface MockResponses {
   [graphName: string]: {

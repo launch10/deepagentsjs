@@ -28,7 +28,6 @@ export function createUsageContext(
     records: [],
     messages: [],
     _seenMessageIds: new Set(),
-    _lastInputMessageCount: 0,
     ...options,
   };
 }

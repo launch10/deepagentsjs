@@ -192,7 +192,6 @@ describe.sequential("Usage Tracking Middleware - Context Mechanics", () => {
       expect(ctx.records).toEqual([]);
       expect(ctx.messages).toEqual([]);
       expect(ctx._seenMessageIds).toBeInstanceOf(Set);
-      expect(ctx._lastInputMessageCount).toBe(0);
     });
   });
 });

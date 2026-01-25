@@ -51,7 +51,6 @@ async function runBugFix(
     isFirstMessage: false,
   };
   const systemPrompt = await buildBugFixPrompt(promptState, config);
-  console.log("systemPrompt", systemPrompt);
 
   try {
     // Compile and invoke codingAgentGraph as subgraph
