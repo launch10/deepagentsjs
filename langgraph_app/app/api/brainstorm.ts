@@ -18,7 +18,7 @@
  */
 import { graphParams } from "@core";
 import { brainstormGraph } from "@graphs";
-import { BrainstormBridge } from "@annotation";
+import { BrainstormBridge } from "@bridges";
 
 const compiledBrainstormGraph = brainstormGraph.compile({
   ...graphParams,

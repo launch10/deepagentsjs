@@ -10,7 +10,7 @@ import { type BrainstormGraphState, type BrainstormModeType } from "@state";
 import z from "zod";
 import { BrainstormNextStepsService } from "@services";
 import { lastAIMessage } from "@types";
-import { BrainstormBridge } from "@annotation";
+import { BrainstormBridge } from "@bridges";
 
 /**
  * Schema for middleware state - minimal fields needed for mode detection.

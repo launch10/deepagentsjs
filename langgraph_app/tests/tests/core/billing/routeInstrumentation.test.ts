@@ -20,7 +20,6 @@ import * as path from "path";
 describe("Route Instrumentation Audit - BILLING CRITICAL", () => {
   const routesDir = path.join(process.cwd(), "app/server/routes");
   const bridgesDir = path.join(process.cwd(), "app/bridges");
-  const annotationDir = path.join(process.cwd(), "app/annotation");
 
   /**
    * Check if the bridge factory has usage tracking middleware.
@@ -52,10 +51,10 @@ describe("Route Instrumentation Audit - BILLING CRITICAL", () => {
   }
 
   /**
-   * Check if an annotation file uses createAppBridge (tracked).
+   * Check if a bridge file uses createAppBridge (tracked).
    */
-  function annotationUsesAppBridge(annotationFile: string): boolean {
-    const filePath = path.join(annotationDir, annotationFile);
+  function bridgeUsesAppBridge(bridgeFile: string): boolean {
+    const filePath = path.join(bridgesDir, bridgeFile);
     if (!fs.existsSync(filePath)) {
       return false;
     }
@@ -97,17 +96,17 @@ describe("Route Instrumentation Audit - BILLING CRITICAL", () => {
     });
   });
 
-  describe("Annotation files MUST use createAppBridge", () => {
-    const annotationBridges = [
-      { file: "brainstormAnnotation.ts", bridge: "BrainstormBridge" },
-      { file: "websiteAnnotation.ts", bridge: "WebsiteBridge" },
-      { file: "adsAnnotation.ts", bridge: "AdsBridge" },
-      { file: "deployAnnotation.ts", bridge: "DeployBridge" },
+  describe("Bridge files MUST use createAppBridge", () => {
+    const bridges = [
+      { file: "brainstormBridge.ts", bridge: "BrainstormBridge" },
+      { file: "websiteBridge.ts", bridge: "WebsiteBridge" },
+      { file: "adsBridge.ts", bridge: "AdsBridge" },
+      { file: "deployBridge.ts", bridge: "DeployBridge" },
     ];
 
-    for (const { file, bridge } of annotationBridges) {
+    for (const { file, bridge } of bridges) {
       it(`${file} MUST use createAppBridge for ${bridge}`, () => {
-        const usesAppBridge = annotationUsesAppBridge(file);
+        const usesAppBridge = bridgeUsesAppBridge(file);
 
         expect(usesAppBridge).toBe(true);
 
@@ -117,7 +116,7 @@ describe("Route Instrumentation Audit - BILLING CRITICAL", () => {
               `${bridge} must be created with createAppBridge to get\n` +
               `automatic usage tracking middleware.\n\n` +
               `Currently using raw createBridge which bypasses billing.\n\n` +
-              `FIX: Import createAppBridge from @bridges and use it instead of createBridge.`
+              `FIX: Import createAppBridge from ./factory and use it instead of createBridge.`
           );
         }
       });

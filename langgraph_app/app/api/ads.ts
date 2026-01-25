@@ -18,7 +18,7 @@
  */
 import { graphParams } from "@core";
 import { adsGraph } from "@graphs";
-import { AdsBridge } from "@annotation";
+import { AdsBridge } from "@bridges";
 
 const compiledAdsGraph = adsGraph.compile({
   ...graphParams,

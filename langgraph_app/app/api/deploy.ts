@@ -15,7 +15,7 @@
  */
 import { graphParams } from "@core";
 import { deployGraph } from "@graphs";
-import { DeployBridge } from "@annotation";
+import { DeployBridge } from "@bridges";
 
 const compiledDeployGraph = deployGraph.compile({
   ...graphParams,

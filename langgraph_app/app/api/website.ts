@@ -18,7 +18,7 @@
  */
 import { graphParams } from "@core";
 import { websiteGraph } from "@graphs";
-import { WebsiteBridge } from "@annotation";
+import { WebsiteBridge } from "@bridges";
 
 const compiledWebsiteGraph = websiteGraph.compile({
   ...graphParams,

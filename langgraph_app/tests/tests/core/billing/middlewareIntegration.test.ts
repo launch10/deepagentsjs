@@ -1,10 +1,5 @@
-import { describe, it, expect, beforeAll } from "vitest";
-import { DatabaseSnapshotter } from "@services";
-import {
-  usageStorage,
-  createUsageContext,
-  type UsageContext,
-} from "@core";
+import { describe, it, expect } from "vitest";
+import { usageStorage, createUsageContext, type UsageContext } from "@core";
 
 /**
  * MIDDLEWARE INTEGRATION TESTS - BILLING CRITICAL
@@ -20,12 +15,12 @@ import {
  *
  * The callback handler (usageTracker) that captures LLM calls is tested
  * in messageTraceCapture.test.ts.
+ *
+ * These tests do NOT require database access - they only test AsyncLocalStorage
+ * context propagation which happens entirely in memory.
  */
 
 describe("Usage Tracking Middleware - Context Mechanics", () => {
-  beforeAll(async () => {
-    await DatabaseSnapshotter.restoreSnapshot("basic_account");
-  }, 30000);
 
   describe("AsyncLocalStorage Context Propagation", () => {
     it("MUST make usage context available via getUsageContext within run", async () => {

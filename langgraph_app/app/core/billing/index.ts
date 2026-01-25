@@ -11,7 +11,7 @@
  */
 
 // Core billing functionality
-export { notifyRails, buildNotifyUrl } from "./notifyRails";
+export { notifyRails } from "./notifyRails";
 
 // Re-export from usage module for backwards compatibility
 export {
