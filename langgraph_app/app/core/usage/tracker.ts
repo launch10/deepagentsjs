@@ -1,111 +1,14 @@
-import { AsyncLocalStorage } from "node:async_hooks";
 import { BaseCallbackHandler } from "@langchain/core/callbacks/base";
 import type { Serialized } from "@langchain/core/load/serializable";
 import type { LLMResult } from "@langchain/core/outputs";
 import type { AIMessage, BaseMessage } from "@langchain/core/messages";
-import { generateUUID } from "@types";
-
-/**
- * Raw usage record - tokens and model only.
- * Rails handles all cost calculations.
- */
-export interface UsageRecord {
-  runId: string; // Our graph execution ID - correlates all LLM calls from one request
-  messageId: string; // Provider's message ID (e.g., "msg_01BeRfQurFVC5z4Ysn3xmVt1") - ties usage to AIMessage
-  langchainRunId: string; // LangChain's internal callback run ID (useful for LangSmith)
-  parentLangchainRunId?: string;
-  model: string; // Raw model name from provider (e.g., "claude-haiku-4-5-20251001")
-  inputTokens: number;
-  outputTokens: number;
-  reasoningTokens: number;
-  cacheCreationTokens: number;
-  cacheReadTokens: number;
-  timestamp: Date;
-  tags?: string[];
-  metadata?: Record<string, unknown>;
-  // NOTE: No costUsd - Rails handles all pricing calculation
-}
-
-/**
- * Context for a single graph execution run.
- * Accumulated via AsyncLocalStorage during execution.
- *
- * Used by middleware via createStorageMiddleware({ storage: usageStorage }).
- */
-export interface UsageContext {
-  runId: string; // Generated once at start - correlates all records from this request
-  records: UsageRecord[];
-  chatId?: number;
-  threadId?: string;
-  graphName?: string;
-
-  /**
-   * Clean ordered array of ALL messages in the conversation.
-   * Captures: [SystemMessage, HumanMessage, ContextMessage, AIMessage, ToolMessage, ...]
-   *
-   * - Input messages captured via handleChatModelStart
-   * - Output messages (AIMessage) captured via handleLLMEnd
-   * - Deduplication via _seenMessageIds to avoid counting same message twice
-   */
-  messages: BaseMessage[];
-
-  /**
-   * Track message IDs we've already captured to avoid duplicates.
-   * handleChatModelStart receives cumulative messages, so we need to detect
-   * which ones are new on subsequent LLM calls.
-   */
-  _seenMessageIds: Set<string>;
-
-  /**
-   * Track message count from previous handleChatModelStart call.
-   * Used to detect new messages when IDs aren't available.
-   */
-  _lastInputMessageCount: number;
-}
-
-export const usageStorage = new AsyncLocalStorage<UsageContext>();
-
-/**
- * Get the current usage tracking context.
- * Returns undefined when called outside of tracking context.
- */
-export function getUsageContext(): UsageContext | undefined {
-  return usageStorage.getStore();
-}
-
-/**
- * Create a fresh UsageContext for tracking.
- * Used by middleware's createContext callback.
- *
- * @example
- * ```typescript
- * const middleware = createStorageMiddleware({
- *   storage: usageStorage,
- *   createContext: (ctx) => createUsageContext({
- *     chatId: ctx.data.get('chatId'),
- *     threadId: ctx.threadId,
- *     graphName: ctx.graphName,
- *   }),
- * });
- * ```
- */
-export function createUsageContext(
-  options: Partial<Omit<UsageContext, "runId">> = {}
-): UsageContext {
-  return {
-    runId: generateUUID(),
-    records: [],
-    messages: [],
-    _seenMessageIds: new Set(),
-    _lastInputMessageCount: 0,
-    ...options,
-  };
-}
+import { getUsageContext } from "./storage";
+import type { UsageRecord } from "./types";
 
 /**
  * Callback handler that tracks LLM usage metadata.
  * Attached to every model via getLLM().
- * Safely no-ops when not inside tracking context.
+ * Safely no-ops when not inside runWithUsageTracking.
  */
 class UsageTrackingCallbackHandler extends BaseCallbackHandler {
   name = "usage-tracking";
@@ -150,6 +53,18 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
 
     // Track input count for deduplication
     context._lastInputMessageCount = inputMessages.length;
+
+    // Backwards compatibility: capture system prompt as string
+    if (!context.systemPromptCaptured && inputMessages.length > 0) {
+      const systemMessage = inputMessages.find((m) => m._getType() === "system");
+      if (systemMessage) {
+        context.systemPrompt =
+          typeof systemMessage.content === "string"
+            ? systemMessage.content
+            : JSON.stringify(systemMessage.content);
+        context.systemPromptCaptured = true;
+      }
+    }
   }
 
   /**

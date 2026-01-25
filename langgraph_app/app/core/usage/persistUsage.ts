@@ -1,10 +1,10 @@
 import { db, llmUsage } from "@db";
-import type { UsageRecord } from "./usageTracker";
+import type { UsageRecord } from "./types";
 
 /**
  * Context for persisting usage records.
  */
-export interface UsageContext {
+export interface UsagePersistContext {
   chatId: number;
   threadId: string;
   graphName?: string;
@@ -16,7 +16,7 @@ export interface UsageContext {
  */
 export function prepareUsageRecordsForInsert(
   records: UsageRecord[],
-  context: UsageContext
+  context: UsagePersistContext
 ): Array<{
   chatId: number;
   threadId: string;
@@ -61,7 +61,10 @@ export function prepareUsageRecordsForInsert(
  * @param records - Usage records from the usage tracker
  * @param context - Context with chatId, threadId, graphName
  */
-export async function persistUsage(records: UsageRecord[], context: UsageContext): Promise<void> {
+export async function persistUsage(
+  records: UsageRecord[],
+  context: UsagePersistContext
+): Promise<void> {
   if (records.length === 0) {
     return;
   }

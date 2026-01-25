@@ -24,7 +24,7 @@
  * ```
  */
 import { createBridgeFactory } from "langgraph-ai-sdk";
-import { usageTrackingMiddleware } from "./usageMiddleware";
+import { usageTrackingMiddleware } from "./middleware";
 
 /**
  * App bridge factory with usage tracking middleware.

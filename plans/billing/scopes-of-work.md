@@ -18,6 +18,7 @@ The billing system spans 5 plan documents with significant overlap. This documen
 | 5     | 7         | Credit Charging Pipeline      | 2, 6       | Medium     | Low      |
 | 6     | 8         | Pre-Run Authorization         | 2, 6       | Low        | Low      |
 | 7     | 9         | Frontend Integration          | 2          | Medium     | Low      |
+| 8     | 10        | Provider Reconciliation       | 1          | Low        | Low      |
 
 ---
 
@@ -72,6 +73,11 @@ The billing system spans 5 plan documents with significant overlap. This documen
 ┌─────────────────────────────────────────────────────────────────┐
 │  SCOPE 9: Frontend Integration                                  │
 │  (Depends on Scope 2)                                           │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  SCOPE 10: Provider Reconciliation                              │
+│  (Depends on Scope 1 - llm_usage table)                         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -368,12 +374,17 @@ The billing system spans 5 plan documents with significant overlap. This documen
 **Depends on**: Scope 2
 **Independent of**: Scopes 3, 4, 6, 7, 8
 **Complexity**: Low
+**Priority**: P2 (Rare Use Case)
 **Source**: credit_transactions.md (gift! method)
+
+### Summary
+
+One-off support use case. Keep simple. Admin form: pick account, enter amount, reason. Creates a `CreditTransaction` with `transaction_type: 'gift'`.
 
 ### Deliverables
 
 1. **Admin::GiftsController**
-   - `new` - form with amount, reason dropdown, notes
+   - `new` - simple form with account picker, amount, reason dropdown, notes
    - `create` - call CreditAllocationService.gift!
 
 2. **Gift reason dropdown values**
@@ -400,7 +411,7 @@ The billing system spans 5 plan documents with significant overlap. This documen
 ### Verification
 
 - Admin can issue gift credits
-- Transaction appears in history with metadata
+- Transaction appears in history with `transaction_type: 'gift'` and metadata
 
 ---
 
@@ -659,6 +670,93 @@ This is transparent to all nodes - they don't need to know about usage percentag
 
 ---
 
+## SCOPE 10: Provider Reconciliation
+
+**Status**: Not started
+**Depends on**: Scope 1 (llm_usage table must exist)
+**Complexity**: Low
+**Priority**: P1
+
+### Summary
+
+Automated job to verify our tracked costs match what AI providers are actually billing us. Not a fancy UI - just automated alerting via Blazer query or Zhong cron job.
+
+### Deliverables
+
+1. **Credits::ReconciliationJob** (Zhong scheduled job)
+
+   ```ruby
+   # app/workers/credits/reconciliation_job.rb
+   class Credits::ReconciliationJob
+     include Sidekiq::Worker
+     sidekiq_options queue: :low
+
+     def perform
+       month = 1.month.ago.all_month
+
+       # Sum our tracked costs
+       our_cost = LlmUsage.where(created_at: month).sum(:cost_usd)
+
+       # Group by provider for comparison
+       by_provider = LlmUsage.where(created_at: month)
+         .group("CASE WHEN model LIKE 'claude%' THEN 'anthropic' WHEN model LIKE 'gpt%' THEN 'openai' ELSE 'other' END")
+         .sum(:cost_usd)
+
+       # Alert if > 5% variance from expected (manual input or API)
+       # Log to Slack
+       SlackNotifier.notify("#billing-alerts", <<~MSG)
+         Monthly AI Cost Reconciliation (#{month.first.strftime('%B %Y')})
+         Total: $#{our_cost.round(2)}
+         By Provider: #{by_provider.map { |k,v| "#{k}: $#{v.round(2)}" }.join(', ')}
+
+         Compare to provider invoices and flag discrepancies > 5%
+       MSG
+     end
+   end
+   ```
+
+2. **Blazer query alternative** (if preferred over Zhong job)
+
+   ```sql
+   -- Monthly AI Cost by Provider
+   SELECT
+     DATE_TRUNC('month', created_at) AS month,
+     CASE
+       WHEN model LIKE 'claude%' THEN 'anthropic'
+       WHEN model LIKE 'gpt%' THEN 'openai'
+       ELSE 'other'
+     END AS provider,
+     COUNT(*) AS call_count,
+     SUM(input_tokens) AS total_input_tokens,
+     SUM(output_tokens) AS total_output_tokens,
+     ROUND(SUM(cost_usd)::numeric, 2) AS total_cost_usd
+   FROM llm_usage
+   WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
+     AND created_at < DATE_TRUNC('month', CURRENT_DATE)
+   GROUP BY 1, 2
+   ORDER BY 1 DESC, 4 DESC
+   ```
+
+3. **Schedule** (if using Zhong job)
+   - Run: 1st of each month at 9am
+   - Slack channel: `#billing-alerts`
+
+### Files to Create
+
+- `rails_app/app/workers/credits/reconciliation_job.rb`
+
+### Files to Modify
+
+- `rails_app/config/schedule.rb` (add Zhong schedule)
+
+### Verification
+
+- Job runs on schedule
+- Slack notification received with monthly costs
+- Costs grouped by provider match expectations
+
+---
+
 ## Recommended Implementation Order
 
 ### Phase 0: DERISK - Langgraph Spike (Do First)
@@ -703,6 +801,12 @@ This is transparent to all nodes - they don't need to know about usage percentag
 9. **SCOPE 8**: Pre-run authorization
 10. **SCOPE 9**: Frontend integration
 
+### Phase 6: Operational (Can Run Anytime After Phase 1)
+
+11. **SCOPE 10**: Provider Reconciliation (Blazer query or Zhong job)
+    - Can be implemented as soon as `llm_usage` table exists
+    - Automated monthly cost verification
+
 ---
 
 ## Notes
@@ -711,3 +815,5 @@ This is transparent to all nodes - they don't need to know about usage percentag
 - **Scopes 3, 4, 5 are independent** - can be done in parallel by different people
 - **Scope 6 is split** - spike first, then full implementation
 - **Schema decisions wait** - llm_usage columns finalized after spike
+- **Scope 5 (Gift Credits)** - P2 priority, one-off support use case, keep simple
+- **Scope 10 (Reconciliation)** - P1 priority, can run as soon as llm_usage table exists, not a fancy UI - just automated alerting

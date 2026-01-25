@@ -6,4 +6,4 @@
  * automatic usage tracking.
  */
 export { createAppBridge } from "./factory";
-export { usageTrackingMiddleware } from "./usageMiddleware";
+export { usageTrackingMiddleware } from "./middleware";
