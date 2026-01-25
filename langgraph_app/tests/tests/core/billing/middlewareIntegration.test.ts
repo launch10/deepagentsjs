@@ -20,7 +20,7 @@ import { usageStorage, createUsageContext, type UsageContext } from "@core";
  * context propagation which happens entirely in memory.
  */
 
-describe("Usage Tracking Middleware - Context Mechanics", () => {
+describe.sequential("Usage Tracking Middleware - Context Mechanics", () => {
 
   describe("AsyncLocalStorage Context Propagation", () => {
     it("MUST make usage context available via getUsageContext within run", async () => {

@@ -17,7 +17,7 @@ import * as path from "path";
  * - Middleware is defined in app/bridges/middleware/usageTracking.ts
  */
 
-describe("Route Instrumentation Audit - BILLING CRITICAL", () => {
+describe.sequential("Route Instrumentation Audit - BILLING CRITICAL", () => {
   const routesDir = path.join(process.cwd(), "app/server/routes");
   const bridgesDir = path.join(process.cwd(), "app/bridges");
 

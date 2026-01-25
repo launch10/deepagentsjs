@@ -55,8 +55,22 @@ export function prepareUsageRecordsForInsert(
   }));
 }
 
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 100;
+
+/**
+ * Sleep for a specified number of milliseconds.
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Persist usage records to the llm_usage table.
+ * Uses exponential backoff retry for transient failures.
+ *
+ * This is billing-critical - lost records = lost revenue.
+ * Retries give us resilience against transient DB issues.
  *
  * @param records - Usage records from the usage tracker
  * @param context - Context with chatId, threadId, graphName
@@ -71,10 +85,29 @@ export async function persistUsage(
 
   const rows = prepareUsageRecordsForInsert(records, context);
 
-  await db.insert(llmUsage).values(
-    rows.map((row) => ({
-      ...row,
-      updatedAt: row.createdAt,
-    }))
-  );
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      await db.insert(llmUsage).values(
+        rows.map((row) => ({
+          ...row,
+          updatedAt: row.createdAt,
+        }))
+      );
+      return; // Success
+    } catch (error) {
+      if (attempt === MAX_RETRIES) {
+        console.error(
+          `[persistUsage] Failed after ${MAX_RETRIES} attempts for runId ${rows[0]?.runId}:`,
+          error
+        );
+        throw error;
+      }
+      const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+      console.warn(
+        `[persistUsage] Attempt ${attempt} failed, retrying in ${delay}ms:`,
+        error
+      );
+      await sleep(delay);
+    }
+  }
 }

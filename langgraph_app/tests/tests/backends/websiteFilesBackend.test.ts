@@ -63,15 +63,17 @@ describe("WebsiteFilesBackend", () => {
   });
 
   describe("read", () => {
-    it("reads a file with line numbers", async () => {
+    it("reads a file without line numbers (raw content)", async () => {
       const content = await backend.read("/package.json");
-      expect(content).toContain("1\t");
+      // Content should NOT have line number prefixes (e.g., "1\t")
+      // This was changed to return raw content for better agent compatibility
+      expect(content).not.toMatch(/^\d+\t/m);
+      expect(content).toContain('"name"');
     });
 
-    it("returns error for non-existent file", async () => {
-      const content = await backend.read("/nonexistent.ts");
-      expect(content).toContain("Error reading file");
-      expect(content).toContain("ENOENT");
+    it("throws error for non-existent file", async () => {
+      // readRaw throws ENOENT for missing files
+      await expect(backend.read("/nonexistent.ts")).rejects.toThrow("ENOENT");
     });
   });
 

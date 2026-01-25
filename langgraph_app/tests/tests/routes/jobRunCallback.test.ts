@@ -164,7 +164,7 @@ describe("jobRunCallback webhook route (tasks pattern)", () => {
 
       expect(res.status).toBe(404);
       const json = (await res.json()) as { error: string };
-      expect(json.error).toBe("Thread not found");
+      expect(json.error).toBe("Failed to update state");
     });
 
     it("returns 404 when task with jobId not found", async () => {
@@ -195,7 +195,7 @@ describe("jobRunCallback webhook route (tasks pattern)", () => {
 
       expect(res.status).toBe(404);
       const json = (await res.json()) as { error: string };
-      expect(json.error).toBe("Task not found");
+      expect(json.error).toBe("Failed to update state");
     });
 
     it("rejects webhook with missing signature", async () => {

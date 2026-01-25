@@ -16,13 +16,13 @@
 import { createStorageMiddleware, type StreamMiddleware } from "langgraph-ai-sdk";
 import {
   usageStorage,
+  createUsageContext,
   persistUsage,
   type UsageContext,
 } from "@core/usage";
 import { persistTrace, type UsageSummary } from "@core/tracing";
 import { notifyRails } from "@core/billing";
 import { db, eq, chats as chatsTable } from "@db";
-import { generateUUID } from "@types";
 
 /**
  * Get chatId from threadId for billing.
@@ -35,25 +35,6 @@ async function getChatIdFromThread(threadId: string): Promise<number | undefined
     .where(eq(chatsTable.threadId, threadId))
     .limit(1);
   return chat[0]?.id;
-}
-
-/**
- * Create a fresh UsageContext for tracking.
- * Called at the start of each stream.
- */
-function createUsageContextFromMiddleware(
-  threadId: string,
-  graphName: string | undefined
-): UsageContext {
-  return {
-    runId: generateUUID(),
-    threadId,
-    graphName,
-    records: [],
-    messages: [],
-    _seenMessageIds: new Set(),
-    _lastInputMessageCount: 0,
-  };
 }
 
 /**
@@ -70,7 +51,7 @@ export const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddl
   storage: usageStorage,
 
   createContext(ctx) {
-    return createUsageContextFromMiddleware(ctx.threadId, ctx.graphName);
+    return createUsageContext({ threadId: ctx.threadId, graphName: ctx.graphName });
   },
 
   async onComplete(ctx, usageContext, result) {

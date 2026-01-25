@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { HumanMessage } from "@langchain/core/messages";
-import { db, eq, sql, llmUsage, llmConversationTraces202601 } from "@db";
+import { db, eq, chats, llmUsage, llmConversationTraces } from "@db";
 import { DatabaseSnapshotter } from "@services";
-import { BrainstormAPI } from "@graphs";
-import { generateUUID } from "@types";
+import { BrainstormAPI } from "@api";
+import type { ThreadIDType } from "@types";
 
 /**
  * API INTEGRATION TESTS - BILLING CRITICAL
@@ -20,85 +20,35 @@ import { generateUUID } from "@types";
  * Uses Polly for HTTP recording/replay so tests don't hit real LLMs.
  */
 
-describe("API Integration - BILLING CRITICAL", () => {
+describe.sequential("API Integration - BILLING CRITICAL", () => {
   let testChatId: number;
   let testThreadId: string;
 
-  beforeAll(async () => {
-    // Restore database with test data
-    await DatabaseSnapshotter.restoreSnapshot("basic_account");
+  beforeEach(async () => {
+    // website_step snapshot includes brainstorm chat we can reuse
+    await DatabaseSnapshotter.restoreSnapshot("website_step");
 
-    // Generate a unique threadId for our tests
-    testThreadId = generateUUID();
+    // Get the existing brainstorm chat from the snapshot
+    const [chat] = await db
+      .select()
+      .from(chats)
+      .where(eq(chats.chatType, "brainstorm"))
+      .limit(1);
 
-    // Use raw SQL to create test data - bypasses Drizzle's timestamp issues
-    // The middleware needs a chat record to look up chatId from threadId
-    const result = await db.execute<{ id: number }>(sql`
-      WITH new_project AS (
-        INSERT INTO projects (name, account_id, created_at, updated_at)
-        VALUES (${"API Integration Test"}, 1, NOW(), NOW())
-        RETURNING id
-      ),
-      new_website AS (
-        INSERT INTO websites (project_id, created_at, updated_at)
-        SELECT id, NOW(), NOW() FROM new_project
-        RETURNING id
-      ),
-      new_brainstorm AS (
-        INSERT INTO brainstorms (website_id, created_at, updated_at)
-        SELECT id, NOW(), NOW() FROM new_website
-        RETURNING id
-      )
-      INSERT INTO chats (thread_id, chat_type, project_id, account_id, contextable_id, contextable_type, created_at, updated_at)
-      SELECT ${testThreadId}, 'brainstorm', new_project.id, 1, new_brainstorm.id, 'Brainstorm', NOW(), NOW()
-      FROM new_project, new_brainstorm
-      RETURNING id
-    `);
-
-    // Extract the chat ID from the result (ensure it's a number, not string)
-    const rawId = (result as any)[0]?.id;
-    testChatId = typeof rawId === "string" ? parseInt(rawId, 10) : rawId;
-    if (!testChatId) {
-      throw new Error("Failed to create test chat");
+    if (!chat?.threadId || !chat?.id) {
+      throw new Error("No brainstorm chat found in website_step snapshot");
     }
-  }, 30000);
 
-  afterAll(async () => {
-    // Only clean up if test data was created (beforeAll succeeded)
-    if (!testChatId) return;
-
-    // Clean up test data using raw SQL
-    try {
-      await db.execute(sql`
-        DELETE FROM chats WHERE id = ${testChatId}
-      `);
-      await db.execute(sql`
-        DELETE FROM brainstorms WHERE website_id IN (
-          SELECT id FROM websites WHERE project_id IN (
-            SELECT id FROM projects WHERE name = 'API Integration Test'
-          )
-        )
-      `);
-      await db.execute(sql`
-        DELETE FROM websites WHERE project_id IN (
-          SELECT id FROM projects WHERE name = 'API Integration Test'
-        )
-      `);
-      await db.execute(sql`
-        DELETE FROM projects WHERE name = 'API Integration Test'
-      `);
-    } catch {
-      // Cleanup failure is not critical - snapshot restoration will reset anyway
-    }
+    testThreadId = chat.threadId;
+    testChatId = chat.id;
   });
 
-  // Clean up test data after each test
   afterEach(async () => {
     // Clean records created during tests (by threadId to be safe)
     await db.delete(llmUsage).where(eq(llmUsage.threadId, testThreadId));
     await db
-      .delete(llmConversationTraces202601)
-      .where(eq(llmConversationTraces202601.threadId, testThreadId));
+      .delete(llmConversationTraces)
+      .where(eq(llmConversationTraces.threadId, testThreadId));
   });
 
   /**
@@ -138,7 +88,7 @@ describe("API Integration - BILLING CRITICAL", () => {
       messages: [new HumanMessage("Hello, I have a business idea about dogs")],
       threadId: testThreadId,
       state: {
-        threadId: testThreadId,
+        threadId: testThreadId as ThreadIDType,
         jwt: "test-jwt-token",
       },
     });
@@ -170,8 +120,8 @@ describe("API Integration - BILLING CRITICAL", () => {
     // ===== CONVERSATION TRACE =====
     const traces = await db
       .select()
-      .from(llmConversationTraces202601)
-      .where(eq(llmConversationTraces202601.threadId, testThreadId));
+      .from(llmConversationTraces)
+      .where(eq(llmConversationTraces.threadId, testThreadId));
 
     expect(traces.length).toBe(1);
 

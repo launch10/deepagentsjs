@@ -13,7 +13,7 @@ import { createAnthropicAIMessage, createLLMResult } from "@support";
  * These tests verify the callback handler works correctly when middleware
  * sets up the AsyncLocalStorage context via usageStorage.run().
  */
-describe("Message Trace Capture", () => {
+describe.sequential("Message Trace Capture", () => {
   /**
    * Helper to run a test within usage tracking context.
    * This mirrors what middleware does internally.

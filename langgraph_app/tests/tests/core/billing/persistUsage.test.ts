@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { prepareUsageRecordsForInsert, type UsageRecord } from "@core";
 
-describe("persistUsage", () => {
+describe.sequential("persistUsage", () => {
   describe("prepareUsageRecordsForInsert", () => {
     it("transforms UsageRecord to database row format", () => {
       const records: UsageRecord[] = [

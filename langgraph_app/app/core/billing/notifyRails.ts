@@ -6,14 +6,7 @@
  */
 
 const RAILS_BASE_URL = process.env.RAILS_URL || "http://localhost:3000";
-
-/**
- * Build the notification URL for Rails.
- */
-export function buildNotifyUrl(runId: string): string {
-  const params = new URLSearchParams({ run_id: runId });
-  return `${RAILS_BASE_URL}/api/v1/llm_usage/notify?${params.toString()}`;
-}
+const NOTIFY_URL = `${RAILS_BASE_URL}/api/v1/llm_usage/notify`;
 
 /**
  * Notify Rails that usage records are ready to be charged.
@@ -29,25 +22,23 @@ export function buildNotifyUrl(runId: string): string {
  * @param runId - The run ID to notify Rails about
  */
 export async function notifyRails(runId: string): Promise<void> {
-  const url = buildNotifyUrl(runId);
-
   try {
-    const response = await fetch(url, {
+    const response = await fetch(NOTIFY_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
+      body: JSON.stringify({ run_id: runId }),
     });
 
     if (!response.ok) {
       console.warn(
-        `Failed to notify Rails: HTTP ${response.status}`,
-        new Error(`HTTP ${response.status}`)
+        `[notifyRails] Failed: HTTP ${response.status} for runId ${runId}`
       );
     }
   } catch (error) {
     // Fire-and-forget: log warning but don't throw
     // Rails backup job will catch any missed notifications
-    console.warn("Failed to notify Rails about usage:", error);
+    console.warn(`[notifyRails] Failed for runId ${runId}:`, error);
   }
 }

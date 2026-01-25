@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterEach } from "vitest";
-import { db, eq, and, llmUsage, llmConversationTraces202601 } from "@db";
+import { db, eq, and, llmUsage, llmConversationTraces } from "@db";
 import { DatabaseSnapshotter } from "@services";
 import {
   persistUsage,
@@ -21,7 +21,7 @@ import { HumanMessage, AIMessage, SystemMessage } from "@langchain/core/messages
  * Failure = lost billing data = lost revenue.
  */
 
-describe("Database Persistence - BILLING CRITICAL", () => {
+describe.sequential("Database Persistence - BILLING CRITICAL", () => {
   beforeAll(async () => {
     await DatabaseSnapshotter.restoreSnapshot("basic_account");
   }, 30000);
@@ -34,7 +34,7 @@ describe("Database Persistence - BILLING CRITICAL", () => {
     // Clean up test data from both tables
     await Promise.all([
       db.delete(llmUsage).where(eq(llmUsage.runId, testRunId)),
-      db.delete(llmConversationTraces202601).where(eq(llmConversationTraces202601.runId, testRunId)),
+      db.delete(llmConversationTraces).where(eq(llmConversationTraces.runId, testRunId)),
     ]);
   });
 
@@ -226,8 +226,8 @@ describe("Database Persistence - BILLING CRITICAL", () => {
       // Verify trace was written
       const dbTraces = await db
         .select()
-        .from(llmConversationTraces202601)
-        .where(eq(llmConversationTraces202601.runId, testRunId));
+        .from(llmConversationTraces)
+        .where(eq(llmConversationTraces.runId, testRunId));
 
       expect(dbTraces.length).toBe(1);
 
@@ -282,8 +282,8 @@ describe("Database Persistence - BILLING CRITICAL", () => {
 
       const dbTraces = await db
         .select()
-        .from(llmConversationTraces202601)
-        .where(eq(llmConversationTraces202601.runId, testRunId));
+        .from(llmConversationTraces)
+        .where(eq(llmConversationTraces.runId, testRunId));
 
       expect(dbTraces[0]!.systemPrompt).toBe("You are a coffee shop naming expert.");
     });
@@ -317,8 +317,8 @@ describe("Database Persistence - BILLING CRITICAL", () => {
 
       const dbTraces = await db
         .select()
-        .from(llmConversationTraces202601)
-        .where(eq(llmConversationTraces202601.runId, testRunId));
+        .from(llmConversationTraces)
+        .where(eq(llmConversationTraces.runId, testRunId));
 
       const serializedMessages = dbTraces[0]!.messages as any[];
       const aiMsg = serializedMessages.find((m: any) => m.type === "ai");
@@ -354,8 +354,8 @@ describe("Database Persistence - BILLING CRITICAL", () => {
 
       const dbTraces = await db
         .select()
-        .from(llmConversationTraces202601)
-        .where(eq(llmConversationTraces202601.runId, testRunId));
+        .from(llmConversationTraces)
+        .where(eq(llmConversationTraces.runId, testRunId));
 
       const serializedMessages = dbTraces[0]!.messages as any[];
 
@@ -387,8 +387,8 @@ describe("Database Persistence - BILLING CRITICAL", () => {
       // Verify no trace was written
       const dbTraces = await db
         .select()
-        .from(llmConversationTraces202601)
-        .where(eq(llmConversationTraces202601.runId, testRunId));
+        .from(llmConversationTraces)
+        .where(eq(llmConversationTraces.runId, testRunId));
 
       expect(dbTraces.length).toBe(0);
     });
@@ -447,8 +447,8 @@ describe("Database Persistence - BILLING CRITICAL", () => {
 
       const traceRecords = await db
         .select()
-        .from(llmConversationTraces202601)
-        .where(eq(llmConversationTraces202601.runId, testRunId));
+        .from(llmConversationTraces)
+        .where(eq(llmConversationTraces.runId, testRunId));
 
       expect(usageRecords.length).toBe(1);
       expect(traceRecords.length).toBe(1);

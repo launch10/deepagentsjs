@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { authMiddleware, type AuthContext } from "../middleware/auth";
 import { validateThreadOrError } from "../middleware/threadValidation";
-import { WebsiteAPI } from "@graphs";
+import { WebsiteAPI } from "@api";
 
 type Variables = {
   auth: AuthContext;

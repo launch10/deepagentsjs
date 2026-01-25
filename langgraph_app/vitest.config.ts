@@ -17,11 +17,12 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["./tests/support/setup.ts"],
     include: ["**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}"],
-    // Run tests in parallel with proper connection pooling
+    // Run test files sequentially to avoid database snapshot conflicts
+    fileParallelism: false,
     pool: "forks",
     poolOptions: {
       forks: {
-        maxForks: 4, // Limit parallel forks to avoid overwhelming the database
+        maxForks: 1, // Single fork since files run sequentially anyway
         minForks: 1,
       },
     },

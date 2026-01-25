@@ -1,36 +1,9 @@
 /**
  * Billing Module
  *
- * This module handles Rails notification for credit charging.
- * Usage tracking and tracing have been moved to their own modules.
+ * Handles Rails notification for credit charging.
  *
- * For new code, import directly from the specific modules:
- * - Usage tracking: import from "@core/usage" or "@core"
- * - Tracing: import from "@core/tracing" or "@core"
- * - Billing notification: import from "@core/billing" or "@core"
+ * For usage tracking, import from "@core/usage" or "@core".
+ * For tracing, import from "@core/tracing" or "@core".
  */
-
-// Core billing functionality
 export { notifyRails } from "./notifyRails";
-
-// Re-export from usage module for backwards compatibility
-export {
-  usageTracker,
-  usageStorage,
-  getUsageContext,
-  createUsageContext,
-  persistUsage,
-  prepareUsageRecordsForInsert,
-  type UsageRecord,
-  type UsageContext,
-  type UsagePersistContext,
-} from "../usage";
-
-// Re-export from tracing module for backwards compatibility
-export {
-  persistTrace,
-  serializeMessages,
-  type TraceContext,
-  type UsageSummary,
-  type SerializedMessage,
-} from "../tracing";

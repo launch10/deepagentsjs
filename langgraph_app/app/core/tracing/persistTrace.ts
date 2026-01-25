@@ -1,38 +1,13 @@
 import type { BaseMessage } from "@langchain/core/messages";
-import { db } from "@db";
-import {
-  llmConversationTraces202601,
-  llmConversationTraces202602,
-  llmConversationTraces202603,
-} from "@db";
+import { db, llmConversationTraces } from "@db";
 import type { TraceContext, UsageSummary } from "./types";
 import { serializeMessages } from "./serializeMessages";
 
 /**
- * Get the appropriate partition table based on current date.
- */
-function getPartitionTable() {
-  const now = new Date();
-  const month = now.getMonth() + 1; // 1-indexed
-
-  // Map month to partition table
-  // TODO: Make this dynamic or handle partition creation
-  switch (month) {
-    case 1:
-      return llmConversationTraces202601;
-    case 2:
-      return llmConversationTraces202602;
-    case 3:
-      return llmConversationTraces202603;
-    default:
-      // Fallback to current month's partition or January
-      // In production, partitions should be created ahead of time
-      return llmConversationTraces202601;
-  }
-}
-
-/**
  * Persist a conversation trace to the database.
+ *
+ * Writes to the parent partitioned table (llm_conversation_traces).
+ * PostgreSQL automatically routes to the correct monthly partition based on created_at.
  *
  * @param context - Trace metadata (chatId, threadId, runId, graphName)
  * @param messages - Ordered array of all messages in the conversation
@@ -43,7 +18,6 @@ export async function persistTrace(
   messages: BaseMessage[],
   usageSummary: UsageSummary
 ): Promise<void> {
-  // Don't write empty traces
   if (messages.length === 0) {
     return;
   }
@@ -58,9 +32,7 @@ export async function persistTrace(
       : JSON.stringify(systemMessage.content)
     : null;
 
-  const table = getPartitionTable();
-
-  await db.insert(table).values({
+  await db.insert(llmConversationTraces).values({
     chatId: context.chatId,
     threadId: context.threadId,
     runId: context.runId,

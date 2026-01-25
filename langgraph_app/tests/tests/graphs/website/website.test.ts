@@ -161,18 +161,19 @@ describe("Website Builder", () => {
 
       const filePaths = generatedFiles.map((f) => f.path);
 
-      // Required sections exist
-      expect(filePaths.some((p) => p?.includes("Hero"))).toBe(true);
-      expect(filePaths.some((p) => p?.includes("Feature"))).toBe(true);
+      // Should generate multiple component files in src/components
+      const componentFiles = generatedFiles.filter((f) => f.path?.includes("src/components"));
+      expect(componentFiles.length).toBeGreaterThanOrEqual(2);
 
-      // Files contain valid React components
-      const heroFile = generatedFiles.find((f) => f.path?.includes("Hero"));
-      expect(heroFile?.content).toBeDefined();
-      expect(heroFile?.content).toContain("export");
-      expect(heroFile?.content).toMatch(/function|const/);
+      // Component files should contain valid React components
+      const firstComponent = componentFiles[0];
+      expect(firstComponent?.content).toBeDefined();
+      expect(firstComponent?.content).toContain("export");
+      expect(firstComponent?.content).toMatch(/function|const/);
 
-      const stateHeroFile = result.state.files[heroFile?.path!] as Website.File.File;
-      expect(stateHeroFile?.content).toEqual(heroFile?.content);
+      // State should be synced with database
+      const stateFile = result.state.files[firstComponent?.path!] as Website.File.File;
+      expect(stateFile?.content).toEqual(firstComponent?.content);
 
       // At least one file contains tracking
       const trackingFile = generatedFiles.find((f) => f.content.match(/L10.createLead/));

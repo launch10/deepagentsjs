@@ -58,6 +58,4 @@ export interface UsageContext {
    * Used to detect new messages when IDs aren't available.
    */
   _lastInputMessageCount: number;
-
-  userInput?: BaseMessage; // Set at run start, not from callback
 }

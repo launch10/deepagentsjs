@@ -6,7 +6,7 @@ import { serializeMessages, type TraceContext, type UsageSummary } from "@core";
 // For persistTrace tests, we'll test serializeMessages directly
 // and use a separate integration test for actual DB writes
 
-describe("persistTrace", () => {
+describe.sequential("persistTrace", () => {
   describe("serializeMessages", () => {
     it("serializes SystemMessage correctly", () => {
       const messages = [new SystemMessage("You are a helpful assistant.")];
