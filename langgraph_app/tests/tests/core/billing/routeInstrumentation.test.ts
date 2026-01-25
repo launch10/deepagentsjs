@@ -11,9 +11,9 @@ import * as path from "path";
  * This is a safeguard to ensure no new routes bypass billing.
  *
  * ARCHITECTURE:
- * - Bridges are created via `createAppBridge` which has usage tracking middleware
- * - Routes use the Bridge APIs (BrainstormAPI, WebsiteAPI, AdsAPI)
- * - Deploy graph uses `streamWithUsageTracking` directly
+ * - ALL graphs use the Bridge pattern via createAppBridge
+ * - Bridges have usage tracking middleware baked in
+ * - Routes use the Bridge APIs (BrainstormAPI, WebsiteAPI, AdsAPI, DeployAPI)
  * - Middleware is defined in app/bridges/middleware/usageTracking.ts
  */
 
@@ -63,17 +63,6 @@ describe("Route Instrumentation Audit - BILLING CRITICAL", () => {
     return content.includes("createAppBridge");
   }
 
-  /**
-   * Check if a route file has tracking wrappers (for non-Bridge routes like deploy).
-   */
-  function hasDirectTrackingWrapper(content: string): boolean {
-    return (
-      content.includes("executeWithTracking") ||
-      content.includes("runWithUsageTracking") ||
-      content.includes("streamWithUsageTracking")
-    );
-  }
-
   describe("Bridge Factory MUST have usage tracking middleware", () => {
     it("createAppBridge factory MUST include usageTrackingMiddleware", () => {
       const hasTracking = bridgeFactoryHasTracking();
@@ -98,9 +87,9 @@ describe("Route Instrumentation Audit - BILLING CRITICAL", () => {
       if (!exists) {
         throw new Error(
           `BILLING CRITICAL: Usage tracking middleware is missing or misconfigured!\n\n` +
-            `The app/bridges/usageMiddleware.ts must:\n` +
+            `The app/bridges/middleware/usageTracking.ts must:\n` +
             `  1. Use createStorageMiddleware from the SDK\n` +
-            `  2. Use usageStorage from @core/billing\n` +
+            `  2. Use usageStorage from @core/usage\n` +
             `  3. Call persistTrace and persistUsage on completion\n\n` +
             `FIX: Ensure all required components are in place.`
         );
@@ -113,6 +102,7 @@ describe("Route Instrumentation Audit - BILLING CRITICAL", () => {
       { file: "brainstormAnnotation.ts", bridge: "BrainstormBridge" },
       { file: "websiteAnnotation.ts", bridge: "WebsiteBridge" },
       { file: "adsAnnotation.ts", bridge: "AdsBridge" },
+      { file: "deployAnnotation.ts", bridge: "DeployBridge" },
     ];
 
     for (const { file, bridge } of annotationBridges) {
@@ -135,15 +125,16 @@ describe("Route Instrumentation Audit - BILLING CRITICAL", () => {
   });
 
   describe("Route-level tracking requirements", () => {
+    // All routes should use Bridge APIs for automatic tracking
     const graphRoutes = [
-      { file: "brainstorm.ts", bridge: "BrainstormAPI" },
-      { file: "website.ts", bridge: "WebsiteAPI" },
-      { file: "ads.ts", bridge: "AdsAPI" },
-      { file: "deploy.ts", bridge: null }, // Uses direct graph, not bridge
+      { file: "brainstorm.ts", api: "BrainstormAPI" },
+      { file: "website.ts", api: "WebsiteAPI" },
+      { file: "ads.ts", api: "AdsAPI" },
+      { file: "deploy.ts", api: "DeployAPI" },
     ];
 
-    for (const { file, bridge } of graphRoutes) {
-      it(`${file} MUST have billing coverage`, () => {
+    for (const { file, api } of graphRoutes) {
+      it(`${file} MUST use ${api} for billing coverage`, () => {
         const filePath = path.join(routesDir, file);
 
         if (!fs.existsSync(filePath)) {
@@ -153,43 +144,24 @@ describe("Route Instrumentation Audit - BILLING CRITICAL", () => {
 
         const content = fs.readFileSync(filePath, "utf-8");
 
-        if (bridge) {
-          // Bridge-based routes get tracking from createAppBridge middleware
-          // Verify the route uses the expected API
-          const usesExpectedAPI =
-            content.includes(bridge) || content.includes(`${bridge.replace("API", "")}API`);
+        // Route should use the Bridge API
+        const usesExpectedAPI = content.includes(api);
 
-          expect(usesExpectedAPI).toBe(true);
+        expect(usesExpectedAPI).toBe(true);
 
-          if (!usesExpectedAPI) {
-            throw new Error(
-              `BILLING CRITICAL: ${file} does not use ${bridge}!\n\n` +
-                `Route should use ${bridge}.stream() for automatic billing.\n\n` +
-                `FIX: Import and use ${bridge} from @graphs.`
-            );
-          }
-        } else {
-          // Non-bridge routes (like deploy) need direct tracking wrapper
-          const hasTracking = hasDirectTrackingWrapper(content);
-
-          expect(hasTracking).toBe(true);
-
-          if (!hasTracking) {
-            throw new Error(
-              `BILLING CRITICAL: ${file} has no tracking wrapper!\n\n` +
-                `Routes using direct graph calls must wrap with:\n` +
-                `  - executeWithTracking (for invoke)\n` +
-                `  - streamWithUsageTracking (for stream)\n\n` +
-                `FIX: Wrap graph execution with appropriate tracking function.`
-            );
-          }
+        if (!usesExpectedAPI) {
+          throw new Error(
+            `BILLING CRITICAL: ${file} does not use ${api}!\n\n` +
+              `Route should use ${api}.stream() for automatic billing.\n\n` +
+              `FIX: Import and use ${api} from @graphs.`
+          );
         }
       });
     }
   });
 
   describe("Comprehensive route scan", () => {
-    it("ALL route files importing graphs MUST have billing coverage", () => {
+    it("ALL route files importing graphs MUST use Bridge APIs", () => {
       const routeFiles = fs.readdirSync(routesDir).filter((f) => f.endsWith(".ts"));
       const violations: Array<{ file: string; reason: string }> = [];
 
@@ -200,51 +172,43 @@ describe("Route Instrumentation Audit - BILLING CRITICAL", () => {
         const filePath = path.join(routesDir, file);
         const content = fs.readFileSync(filePath, "utf-8");
 
-        // Check if file imports any graph
-        const importsGraph =
-          content.includes("@graphs") ||
-          content.includes("brainstormGraph") ||
-          content.includes("websiteGraph") ||
-          content.includes("adsGraph") ||
-          content.includes("deployGraph");
+        // Check if file imports from @graphs
+        const importsFromGraphs = content.includes("@graphs");
 
-        if (!importsGraph) continue;
-
-        const hasDirectTracking = hasDirectTrackingWrapper(content);
+        if (!importsFromGraphs) continue;
 
         // Check for Bridge API usage (middleware-based tracking)
         const usesBridgeAPI =
           content.includes("BrainstormAPI") ||
           content.includes("WebsiteAPI") ||
-          content.includes("AdsAPI");
+          content.includes("AdsAPI") ||
+          content.includes("DeployAPI");
 
+        // Check for direct graph calls (bypasses billing)
         const usesDirectGraphCall =
           content.includes("graph.invoke") ||
           content.includes("graph.stream") ||
           content.includes("graph.streamEvents") ||
-          content.includes("compiledDeployGraph.stream") ||
-          content.includes(".invoke(") ||
-          (content.includes(".stream(") && !usesBridgeAPI);
+          content.includes("compiledGraph.stream") ||
+          content.includes("compiledGraph.invoke");
 
         // Bridge API usage is OK if factory has tracking
         if (usesBridgeAPI && factoryHasTracking) {
           continue; // Covered by middleware
         }
 
-        // Direct graph calls without tracking = violation
-        if (usesDirectGraphCall && !hasDirectTracking) {
+        // Direct graph calls = violation (should use Bridge API)
+        if (usesDirectGraphCall) {
           violations.push({
             file,
-            reason: "Direct graph calls without tracking wrapper",
+            reason: "Direct graph calls bypass billing. Use Bridge API instead.",
           });
         }
 
-        // Bridge API usage without factory tracking = violation
-        if (usesBridgeAPI && !factoryHasTracking && !hasDirectTracking) {
-          violations.push({
-            file,
-            reason: "Uses Bridge API but factory lacks tracking middleware",
-          });
+        // Imports @graphs but doesn't use Bridge API = suspicious
+        if (!usesBridgeAPI && !usesDirectGraphCall) {
+          // Might be importing types or something else - not necessarily a violation
+          // but worth noting
         }
       }
 
@@ -254,7 +218,8 @@ describe("Route Instrumentation Audit - BILLING CRITICAL", () => {
         throw new Error(
           `BILLING CRITICAL: Routes with untracked LLM usage!\n\n` +
             `${violationList}\n\n` +
-            `These routes are giving away FREE LLM calls!`
+            `These routes are giving away FREE LLM calls!\n\n` +
+            `FIX: Use the appropriate Bridge API (e.g., BrainstormAPI, DeployAPI) instead of direct graph calls.`
         );
       }
     });

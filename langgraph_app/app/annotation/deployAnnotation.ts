@@ -2,6 +2,7 @@ import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 import { Deploy } from "@types";
 import type { PrimaryKeyType, Task, ConsoleError } from "@types";
+import { createAppBridge } from "@bridges";
 
 export const DeployAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
@@ -64,6 +65,14 @@ export const DeployAnnotation = Annotation.Root({
 });
 
 export type DeployGraphState = typeof DeployAnnotation.State;
+
+// Bridge from Langgraph -> the AI SDK (streaming frontend)
+// Uses createAppBridge for automatic usage tracking
+// Note: Deploy streams state updates, not chat messages, so no messageSchema needed
+export const DeployBridge = createAppBridge({
+  endpoint: "/api/deploy/stream",
+  stateAnnotation: DeployAnnotation,
+});
 
 /**
  * Helper to update tasks AND compute phases in one operation

@@ -457,7 +457,7 @@ describe("shouldSkipGoogleConnect", () => {
     );
   });
 
-  it('returns "skipGoogleConnect" when Google is connected', async () => {
+  it("returns true when Google is connected", async () => {
     const mockGetStatus = vi.fn().mockResolvedValue({ connected: true, email: "user@gmail.com" });
     mockGoogleAPIService.mockImplementation(
       () =>
@@ -472,10 +472,10 @@ describe("shouldSkipGoogleConnect", () => {
     };
 
     const result = await taskRunner.shouldSkip(state as DeployGraphState);
-    expect(result).toBe("skipGoogleConnect");
+    expect(result).toBe(true);
   });
 
-  it('returns "enqueueGoogleConnect" when Google is not connected', async () => {
+  it("returns false when Google is not connected", async () => {
     const mockGetStatus = vi.fn().mockResolvedValue({ connected: false, email: null });
     mockGoogleAPIService.mockImplementation(
       () =>
@@ -491,6 +491,6 @@ describe("shouldSkipGoogleConnect", () => {
     };
 
     const result = await taskRunner.shouldSkip(state as DeployGraphState);
-    expect(result).toBe("enqueueGoogleConnect");
+    expect(result).toBe(false);
   });
 });

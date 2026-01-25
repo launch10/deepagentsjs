@@ -34,10 +34,3 @@ export {
   type UsageSummary,
   type SerializedMessage,
 } from "../tracing";
-
-// Stream wrapper for non-Bridge routes (e.g., deploy)
-// Use this when you can't use middleware-based tracking
-export {
-  streamWithUsageTracking,
-  type StreamTrackingContext,
-} from "./streamWithUsageTracking";

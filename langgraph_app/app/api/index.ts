@@ -26,4 +26,4 @@
 export { BrainstormAPI } from "./brainstorm";
 export { WebsiteAPI } from "./website";
 export { AdsAPI } from "./ads";
-export { compiledDeployGraph } from "./deploy";
+export { DeployAPI } from "./deploy";

@@ -1,27 +1,25 @@
 /**
- * Deploy Graph
+ * Deploy API
  *
- * Note: Deploy graph doesn't use the Bridge pattern.
- * Use streamWithUsageTracking wrapper in routes for billing.
+ * Bound graph API with automatic usage tracking.
  *
  * @example
  * ```typescript
- * import { compiledDeployGraph } from "@api";
- * import { streamWithUsageTracking } from "@core";
+ * import { DeployAPI } from "@api";
  *
- * return streamWithUsageTracking(
- *   { threadId, graphName: "deploy" },
- *   async () => {
- *     const stream = await compiledDeployGraph.stream(state, config);
- *     return new Response(stream);
- *   }
- * );
+ * return DeployAPI.stream({
+ *   threadId,
+ *   state: { jwt: auth.jwt, deployId, websiteId }
+ * });
  * ```
  */
 import { graphParams } from "@core";
 import { deployGraph } from "@graphs";
+import { DeployBridge } from "@annotation";
 
-export const compiledDeployGraph = deployGraph.compile({
+const compiledDeployGraph = deployGraph.compile({
   ...graphParams,
   name: "deploy",
 });
+
+export const DeployAPI = DeployBridge.bind(compiledDeployGraph);

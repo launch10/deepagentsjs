@@ -1,11 +1,7 @@
 import { Hono } from "hono";
 import { authMiddleware, type AuthContext } from "../middleware/auth";
 import { validateThreadOrError } from "../middleware/threadValidation";
-import { compiledDeployGraph } from "@graphs";
-import { streamWithUsageTracking } from "@core";
-
-// Note: Deploy graph doesn't use the Bridge pattern, so we use
-// streamWithUsageTracking directly for billing.
+import { DeployAPI } from "@graphs";
 
 type Variables = {
   auth: AuthContext;
@@ -35,9 +31,13 @@ deployRoutes.post("/stream", authMiddleware, async (c) => {
   const validationError = await validateThreadOrError(c, threadId, auth);
   if (validationError) return validationError;
 
-  try {
-    // Build initial state from request
-    const initialState = {
+  // Stream with automatic billing via middleware
+  // ChatId is looked up from threadId at stream completion
+  // Note: Deploy doesn't use chat messages, but Bridge API requires the field
+  return DeployAPI.stream({
+    messages: [],
+    threadId,
+    state: {
       threadId,
       jwt: auth.jwt,
       deployId,
@@ -46,50 +46,8 @@ deployRoutes.post("/stream", authMiddleware, async (c) => {
       // Default deploy instructions - deploy both if not specified
       deploy: state?.deploy ?? { website: true, googleAds: true },
       ...state,
-    };
-
-    // Use streamWithUsageTracking for billing
-    // ChatId is looked up from threadId at stream completion
-    return streamWithUsageTracking(
-      { threadId, graphName: "deploy" },
-      async () => {
-        // Create streaming response - await the stream promise
-        const stream = await compiledDeployGraph.stream(initialState, {
-          configurable: { thread_id: threadId },
-          streamMode: "values",
-        });
-
-        // Convert to SSE format
-        const encoder = new TextEncoder();
-        const readable = new ReadableStream({
-          async start(controller) {
-            try {
-              for await (const chunk of stream) {
-                const data = JSON.stringify(chunk);
-                controller.enqueue(encoder.encode(`data: ${data}\n\n`));
-              }
-              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-              controller.close();
-            } catch (error) {
-              console.error("Stream error:", error);
-              controller.error(error);
-            }
-          },
-        });
-
-        return new Response(readable, {
-          headers: {
-            "Content-Type": "text/event-stream",
-            "Cache-Control": "no-cache",
-            Connection: "keep-alive",
-          },
-        });
-      }
-    );
-  } catch (error) {
-    console.error("Deploy stream error:", error);
-    return c.json({ error: "Stream failed", details: String(error) }, 500);
-  }
+    },
+  });
 });
 
 deployRoutes.get("/stream", authMiddleware, async (c) => {
@@ -104,15 +62,8 @@ deployRoutes.get("/stream", authMiddleware, async (c) => {
   const validationError = await validateThreadOrError(c, threadId, auth);
   if (validationError) return validationError;
 
-  try {
-    const state = await compiledDeployGraph.getState({
-      configurable: { thread_id: threadId },
-    });
-    return c.json({ state: state?.values || {} });
-  } catch (error) {
-    console.error("Get state error:", error);
-    return c.json({ error: "Failed to get state", details: String(error) }, 500);
-  }
+  // loadHistory doesn't make LLM calls - no billing needed
+  return DeployAPI.loadHistory(threadId);
 });
 
 deployRoutes.get("/health", (c) => {
