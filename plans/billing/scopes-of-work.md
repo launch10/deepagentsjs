@@ -511,41 +511,110 @@ The billing system spans 5 plan documents with significant overlap. This documen
 ## SCOPE 8: Pre-Run Authorization
 
 **Status**: Not started
-**Depends on**: Scope 2 + Scope 6
+**Depends on**: Scope 7 (Credit Charging Pipeline must be complete so credits exist to check)
 **Complexity**: Low
-**Source**: credit-system-queries.md
+**Source**: credit-system-queries.md, pre-graph-authorization.md
+
+### Summary
+
+Inject `usagePercent` into `getLLM()` calls before graph execution, enabling model selection based on account usage.
+
+### Current State Analysis
+
+**What's Already Done (Scope 6 Full)**:
+- `usageTracker.ts` ✅ - Captures clean message traces with deduplication
+- `persistTrace.ts` ✅ - Writes traces to `llm_conversation_traces`
+- `persistUsage.ts` ✅ - Writes usage to `llm_usage`
+- `notifyRails.ts` ✅ - Fire-and-forget notification to Rails
+- `executeWithTracking.ts` ✅ - Wires persistence into graph execution
+- `getLLM()` ✅ - Already attaches `usageTracker` callback and accepts `usagePercent` parameter
+
+**The Gap**:
+`getLLM()` accepts `usagePercent` (line 59: `const usagePercent = options.usagePercent ?? 0`) but **nothing passes it**:
+- All callers use default value of 0
+- No pre-graph hook fetches account balance from Rails
+- No mechanism injects usagePercent into graph state or LLM calls
+
+### Design Decision: AsyncLocalStorage-based Injection (Option B)
+
+Two approaches were considered:
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| **A: State-based** - Add `usagePercentage` to CoreGraphState, set via pre-graph hook | Explicit, visible in state | Requires updating every node that calls getLLM |
+| **B: AsyncLocalStorage-based** - Store in existing UsageContext | Transparent to nodes, no changes needed | Less visible ("magic") |
+
+**Recommended: Option B** - aligns with existing AsyncLocalStorage pattern for usage tracking. This approach:
+1. Extends the existing `UsageContext` to include `usagePercent`
+2. Fetches account balance in `executeWithTracking()` before graph runs
+3. Sets usagePercent in context alongside threadId and accountId
+4. `getLLM()` reads from context if not explicitly passed
+
+This is transparent to all nodes - they don't need to know about usage percentages.
+
+### Model Selection Thresholds
+
+| Usage % | Available Models | maxTier |
+|---------|-----------------|---------|
+| 0-50%   | Opus, Sonnet, Haiku | undefined (all) |
+| 50-80%  | Sonnet, Haiku | 2 |
+| 80-100% | Haiku only | 3+ |
+| 100%+   | Blocked (unless pack credits) | N/A |
 
 ### Deliverables
 
-1. **GET /api/v1/credits/balance endpoint**
-   - Returns { total, plan, pack, usage_percentage, plan_allocation }
+1. **GET /api/v1/credits/balance endpoint** (Rails)
+   - Returns: `{ total, plan, pack, usagePercentage }`
 
-2. **Langgraph pre-run check**
-   - Fetch balance from Rails
-   - Determine available models based on usage_percentage
-   - Block if 100% used and no pack credits
+2. **checkCredits.ts** (Langgraph)
+   ```typescript
+   interface CreditBalance {
+     total: number;
+     plan: number;
+     pack: number;
+     usagePercentage: number;
+   }
 
-3. **Model selection thresholds**
-   - 0-50%: All models (Opus, Sonnet, Haiku)
-   - 50-80%: Sonnet + Haiku
-   - 80-100%: Haiku only
-   - 100%+: Blocked (unless pack credits)
+   export async function checkCreditBalance(accountId: number): Promise<CreditBalance>
+   export function canStartRun(balance: CreditBalance): boolean
+   export function getMaxTierForUsage(usagePercentage: number): number
+   ```
+
+3. **UsageContext extension**
+   - Add `usagePercent` to UsageContext interface
+   - Set in `executeWithTracking()` before graph runs
+
+4. **getLLM() update**
+   - Read usagePercent from `getUsageContext()?.usagePercent` if not passed explicitly
+
+5. **Test mode support**
+   - Skip credit checks with `testCredits` config flag or when `NODE_ENV !== 'production'`
 
 ### Files to Create
 
+**Rails**:
 - `rails_app/app/controllers/api/v1/credits_controller.rb`
+
+**Langgraph**:
 - `langgraph_app/app/core/billing/checkCredits.ts`
 
 ### Files to Modify
 
-- `rails_app/config/routes.rb`
-- Langgraph graph entry points (check before invoke)
+**Rails**:
+- `rails_app/config/routes.rb` - Add route
 
-### Verification
+**Langgraph**:
+- `langgraph_app/app/core/billing/usageTracker.ts` - Add usagePercent to UsageContext
+- `langgraph_app/app/core/billing/executeWithTracking.ts` - Fetch balance, set usagePercent
+- `langgraph_app/app/core/llm/llm.ts` - Read usagePercent from context if not passed
 
-- High usage → model downgraded
-- 100% usage + no packs → blocked
-- 100% usage + packs → allowed
+### Verification Checklist
+
+- [ ] High usage (50-80%) → Opus excluded from getLLM
+- [ ] Very high usage (80-100%) → Only Haiku available
+- [ ] 100% usage + no packs → Graph blocked before execution
+- [ ] 100% usage + pack credits → Allowed to run
+- [ ] Test mode → Credit checks skipped
 
 ---
 

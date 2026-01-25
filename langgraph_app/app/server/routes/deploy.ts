@@ -1,18 +1,17 @@
 import { Hono } from "hono";
 import { authMiddleware, type AuthContext } from "../middleware/auth";
 import { validateThreadOrError } from "../middleware/threadValidation";
-import { deployGraph } from "@graphs";
-import { graphParams } from "@core";
-import { DeployService } from "@services";
+import { compiledDeployGraph } from "@graphs";
+import { streamWithUsageTracking } from "@core";
+
+// Note: Deploy graph doesn't use the Bridge pattern, so we use
+// streamWithUsageTracking directly for billing.
 
 type Variables = {
   auth: AuthContext;
 };
 
 export const deployRoutes = new Hono<{ Variables: Variables }>();
-
-// Use shared checkpointer to avoid race conditions with webhook handler
-const graph = deployGraph.compile({ ...graphParams, name: "deploy" });
 
 deployRoutes.post("/stream", authMiddleware, async (c) => {
   const auth = c.get("auth") as AuthContext;
@@ -49,37 +48,44 @@ deployRoutes.post("/stream", authMiddleware, async (c) => {
       ...state,
     };
 
-    // Stream response using SSE format
-    const stream = await graph.stream(initialState, {
-      configurable: { thread_id: threadId },
-      streamMode: "values",
-    });
+    // Use streamWithUsageTracking for billing
+    // ChatId is looked up from threadId at stream completion
+    return streamWithUsageTracking(
+      { threadId, graphName: "deploy" },
+      async () => {
+        // Create streaming response - await the stream promise
+        const stream = await compiledDeployGraph.stream(initialState, {
+          configurable: { thread_id: threadId },
+          streamMode: "values",
+        });
 
-    // Convert to SSE format
-    const encoder = new TextEncoder();
-    const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of stream) {
-            const data = JSON.stringify(chunk);
-            controller.enqueue(encoder.encode(`data: ${data}\n\n`));
-          }
-          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-          controller.close();
-        } catch (error) {
-          console.error("Stream error:", error);
-          controller.error(error);
-        }
-      },
-    });
+        // Convert to SSE format
+        const encoder = new TextEncoder();
+        const readable = new ReadableStream({
+          async start(controller) {
+            try {
+              for await (const chunk of stream) {
+                const data = JSON.stringify(chunk);
+                controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+              }
+              controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+              controller.close();
+            } catch (error) {
+              console.error("Stream error:", error);
+              controller.error(error);
+            }
+          },
+        });
 
-    return new Response(readable, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
-    });
+        return new Response(readable, {
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+          },
+        });
+      }
+    );
   } catch (error) {
     console.error("Deploy stream error:", error);
     return c.json({ error: "Stream failed", details: String(error) }, 500);
@@ -99,7 +105,9 @@ deployRoutes.get("/stream", authMiddleware, async (c) => {
   if (validationError) return validationError;
 
   try {
-    const state = await graph.getState({ configurable: { thread_id: threadId } });
+    const state = await compiledDeployGraph.getState({
+      configurable: { thread_id: threadId },
+    });
     return c.json({ state: state?.values || {} });
   } catch (error) {
     console.error("Get state error:", error);

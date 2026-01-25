@@ -1,29 +1,13 @@
 import { Hono } from "hono";
 import { authMiddleware, type AuthContext } from "../middleware/auth";
 import { validateThreadOrError } from "../middleware/threadValidation";
-import { adsGraph } from "@graphs";
-import { graphParams } from "@core";
-import { AdsBridge } from "@annotation";
-import { env } from "@core";
-import pkg from "pg";
-import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
-
-const { Pool } = pkg;
-const connectionString = env.DATABASE_URL || "postgresql://localhost/langgraph_backend_test";
-
-const pool = new Pool({
-  connectionString,
-});
+import { AdsAPI } from "@graphs";
 
 type Variables = {
   auth: AuthContext;
 };
 
 export const adsRoutes = new Hono<{ Variables: Variables }>();
-
-const checkpointer = new PostgresSaver(pool);
-const graph = adsGraph.compile({ checkpointer, name: "ads" });
-const AdsAPI = AdsBridge.bind(graph as any);
 
 adsRoutes.post("/stream", authMiddleware, async (c) => {
   const auth = c.get("auth") as AuthContext;
@@ -42,6 +26,8 @@ adsRoutes.post("/stream", authMiddleware, async (c) => {
   let stateObj = state || {};
 
   try {
+    // Stream with automatic billing via middleware
+    // ChatId is looked up from threadId at stream completion
     return AdsAPI.stream({
       messages: messages || [],
       threadId,
@@ -69,6 +55,7 @@ adsRoutes.get("/stream", authMiddleware, async (c) => {
   const validationError = await validateThreadOrError(c, threadId, auth);
   if (validationError) return validationError;
 
+  // loadHistory doesn't make LLM calls - no billing needed
   return await AdsAPI.loadHistory(threadId);
 });
 

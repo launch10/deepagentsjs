@@ -1,18 +1,13 @@
 import { Hono } from "hono";
 import { authMiddleware, type AuthContext } from "../middleware/auth";
 import { validateThreadOrError } from "../middleware/threadValidation";
-import { websiteGraph } from "@graphs";
-import { graphParams } from "@core";
-import { WebsiteBridge } from "@annotation";
+import { WebsiteAPI } from "@graphs";
 
 type Variables = {
   auth: AuthContext;
 };
 
 export const websiteRoutes = new Hono<{ Variables: Variables }>();
-
-const graph = websiteGraph.compile({ ...graphParams, name: "website" });
-const WebsiteAPI = WebsiteBridge.bind(graph);
 
 websiteRoutes.post("/stream", authMiddleware, async (c) => {
   const auth = c.get("auth") as AuthContext;
@@ -33,7 +28,8 @@ websiteRoutes.post("/stream", authMiddleware, async (c) => {
   const validationError = await validateThreadOrError(c, threadId, auth);
   if (validationError) return validationError;
 
-  // Use the Bridge API to stream properly formatted responses
+  // Stream with automatic billing via middleware
+  // ChatId is looked up from threadId at stream completion
   return WebsiteAPI.stream({
     messages: [],
     threadId,
@@ -58,7 +54,7 @@ websiteRoutes.get("/stream", authMiddleware, async (c) => {
   const validationError = await validateThreadOrError(c, threadId, auth);
   if (validationError) return validationError;
 
-  // Use the Bridge API to return properly formatted history
+  // loadHistory doesn't make LLM calls - no billing needed
   return WebsiteAPI.loadHistory(threadId);
 });
 

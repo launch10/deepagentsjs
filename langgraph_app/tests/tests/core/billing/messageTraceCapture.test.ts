@@ -1,21 +1,34 @@
 import { describe, it, expect } from "vitest";
 import { AIMessage, HumanMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
 import { createContextMessage } from "langgraph-ai-sdk";
-import { usageTracker, getUsageContext, runWithUsageTracking } from "@core";
+import { usageTracker, usageStorage, createUsageContext } from "@core";
 import { createAnthropicAIMessage, createLLMResult } from "@support";
 
 /**
- * Tests for clean message trace capture.
+ * Tests for the usageTracker callback handler's message capture.
  *
  * The goal is to capture a flat, ordered array of ALL messages:
  * [SystemMessage, HumanMessage, ContextMessage, AIMessage, ToolMessage, AIMessage, ...]
  *
- * This replaces the fragmented approach of separate systemPrompt/userInput/messagesProduced.
+ * These tests verify the callback handler works correctly when middleware
+ * sets up the AsyncLocalStorage context via usageStorage.run().
  */
 describe("Message Trace Capture", () => {
+  /**
+   * Helper to run a test within usage tracking context.
+   * This mirrors what middleware does internally.
+   */
+  async function withUsageContext<T>(fn: () => T | Promise<T>) {
+    const context = createUsageContext();
+    return usageStorage.run(context, async () => {
+      await fn();
+      return context;
+    });
+  }
+
   describe("handleChatModelStart captures input messages", () => {
     it("captures SystemMessage from input", async () => {
-      const { messages } = await runWithUsageTracking({}, async () => {
+      const context = await withUsageContext(async () => {
         const inputMessages = [
           new SystemMessage("You are a helpful assistant."),
           new HumanMessage("Hello"),
@@ -26,19 +39,17 @@ describe("Message Trace Capture", () => {
           [inputMessages],
           "run-123"
         );
-
-        return "done";
       });
 
-      expect(messages).toHaveLength(2);
-      expect(messages[0]!._getType()).toBe("system");
-      expect(messages[0]!.content).toBe("You are a helpful assistant.");
-      expect(messages[1]!._getType()).toBe("human");
-      expect(messages[1]!.content).toBe("Hello");
+      expect(context.messages).toHaveLength(2);
+      expect(context.messages[0]!._getType()).toBe("system");
+      expect(context.messages[0]!.content).toBe("You are a helpful assistant.");
+      expect(context.messages[1]!._getType()).toBe("human");
+      expect(context.messages[1]!.content).toBe("Hello");
     });
 
     it("captures ContextMessage (HumanMessage with name='context') from input", async () => {
-      const { messages } = await runWithUsageTracking({}, async () => {
+      const context = await withUsageContext(async () => {
         const contextMsg = createContextMessage("User is viewing the pricing page");
         const inputMessages = [
           new SystemMessage("You are a helpful assistant."),
@@ -46,23 +57,17 @@ describe("Message Trace Capture", () => {
           contextMsg,
         ];
 
-        await usageTracker.handleChatModelStart(
-          { name: "test" } as any,
-          [inputMessages],
-          "run-123"
-        );
-
-        return "done";
+        await usageTracker.handleChatModelStart({ name: "test" } as any, [inputMessages], "run-123");
       });
 
-      expect(messages).toHaveLength(3);
-      expect(messages[2]!._getType()).toBe("human");
-      expect((messages[2] as any).name).toBe("context");
-      expect(messages[2]!.content).toBe("User is viewing the pricing page");
+      expect(context.messages).toHaveLength(3);
+      expect(context.messages[2]!._getType()).toBe("human");
+      expect((context.messages[2] as any).name).toBe("context");
+      expect(context.messages[2]!.content).toBe("User is viewing the pricing page");
     });
 
     it("captures full conversation history from input", async () => {
-      const { messages } = await runWithUsageTracking({}, async () => {
+      const context = await withUsageContext(async () => {
         const inputMessages = [
           new SystemMessage("You are a helpful assistant."),
           new HumanMessage("Hello"),
@@ -70,21 +75,15 @@ describe("Message Trace Capture", () => {
           new HumanMessage("Tell me about pricing"),
         ];
 
-        await usageTracker.handleChatModelStart(
-          { name: "test" } as any,
-          [inputMessages],
-          "run-123"
-        );
-
-        return "done";
+        await usageTracker.handleChatModelStart({ name: "test" } as any, [inputMessages], "run-123");
       });
 
-      expect(messages).toHaveLength(4);
-      expect(messages.map((m) => m._getType())).toEqual(["system", "human", "ai", "human"]);
+      expect(context.messages).toHaveLength(4);
+      expect(context.messages.map((m) => m._getType())).toEqual(["system", "human", "ai", "human"]);
     });
 
     it("only captures input messages once on first LLM call", async () => {
-      const { messages } = await runWithUsageTracking({}, async () => {
+      const context = await withUsageContext(async () => {
         const firstInput = [new SystemMessage("System prompt"), new HumanMessage("First message")];
 
         const secondInput = [
@@ -99,46 +98,38 @@ describe("Message Trace Capture", () => {
 
         // Second LLM call - should NOT re-capture the same messages
         await usageTracker.handleChatModelStart({ name: "test" } as any, [secondInput], "run-2");
-
-        return "done";
       });
 
       // Should have captured: System, Human from first call
       // The AIMessage and ToolMessage from second call's input are NEW messages
       // that weren't in the first call, so they should be captured
-      expect(messages).toHaveLength(4);
-      expect(messages.map((m) => m._getType())).toEqual(["system", "human", "ai", "tool"]);
+      expect(context.messages).toHaveLength(4);
+      expect(context.messages.map((m) => m._getType())).toEqual(["system", "human", "ai", "tool"]);
     });
   });
 
   describe("handleLLMEnd appends output messages", () => {
     it("appends AIMessage output to messages array", async () => {
-      const { messages } = await runWithUsageTracking({}, async () => {
+      const context = await withUsageContext(async () => {
         // First capture inputs
         const inputMessages = [
           new SystemMessage("You are a helpful assistant."),
           new HumanMessage("Hello"),
         ];
-        await usageTracker.handleChatModelStart(
-          { name: "test" } as any,
-          [inputMessages],
-          "run-123"
-        );
+        await usageTracker.handleChatModelStart({ name: "test" } as any, [inputMessages], "run-123");
 
         // Then capture output
         const aiMessage = createAnthropicAIMessage("Hi there!");
         await usageTracker.handleLLMEnd(createLLMResult(aiMessage), "run-123");
-
-        return "done";
       });
 
-      expect(messages).toHaveLength(3);
-      expect(messages.map((m) => m._getType())).toEqual(["system", "human", "ai"]);
-      expect(messages[2]!.content).toBe("Hi there!");
+      expect(context.messages).toHaveLength(3);
+      expect(context.messages.map((m) => m._getType())).toEqual(["system", "human", "ai"]);
+      expect(context.messages[2]!.content).toBe("Hi there!");
     });
 
     it("handles multi-turn with tools correctly", async () => {
-      const { messages } = await runWithUsageTracking({}, async () => {
+      const context = await withUsageContext(async () => {
         // Turn 1: Initial input
         const turn1Input = [
           new SystemMessage("You are a helpful assistant."),
@@ -173,19 +164,23 @@ describe("Message Trace Capture", () => {
           "msg_ai_final_response"
         );
         await usageTracker.handleLLMEnd(createLLMResult(finalResponse), "run-2");
-
-        return "done";
       });
 
       // Should have: System, Human, AI (with tool call), Tool, AI (final)
-      expect(messages).toHaveLength(5);
-      expect(messages.map((m) => m._getType())).toEqual(["system", "human", "ai", "tool", "ai"]);
+      expect(context.messages).toHaveLength(5);
+      expect(context.messages.map((m) => m._getType())).toEqual([
+        "system",
+        "human",
+        "ai",
+        "tool",
+        "ai",
+      ]);
     });
   });
 
   describe("full conversation trace", () => {
     it("captures complete ordered trace with context messages", async () => {
-      const { messages, runId } = await runWithUsageTracking({}, async () => {
+      const context = await withUsageContext(async () => {
         const contextMsg = createContextMessage("User has 3 items in cart");
 
         const inputMessages = [
@@ -194,20 +189,14 @@ describe("Message Trace Capture", () => {
           contextMsg,
         ];
 
-        await usageTracker.handleChatModelStart(
-          { name: "test" } as any,
-          [inputMessages],
-          "run-123"
-        );
+        await usageTracker.handleChatModelStart({ name: "test" } as any, [inputMessages], "run-123");
 
         const aiResponse = createAnthropicAIMessage("You have 3 items in your cart.");
         await usageTracker.handleLLMEnd(createLLMResult(aiResponse), "run-123");
-
-        return "done";
       });
 
-      expect(messages).toHaveLength(4);
-      expect(messages.map((m) => m._getType())).toEqual([
+      expect(context.messages).toHaveLength(4);
+      expect(context.messages.map((m) => m._getType())).toEqual([
         "system",
         "human",
         "human", // context message is HumanMessage with name="context"
@@ -215,12 +204,12 @@ describe("Message Trace Capture", () => {
       ]);
 
       // Verify context message is identifiable
-      expect((messages[2] as any).name).toBe("context");
-      expect(runId).toBeDefined();
+      expect((context.messages[2] as any).name).toBe("context");
+      expect(context.runId).toBeDefined();
     });
 
     it("does not duplicate messages already captured", async () => {
-      const { messages } = await runWithUsageTracking({}, async () => {
+      const context = await withUsageContext(async () => {
         const systemMsg = new SystemMessage("System prompt");
         const humanMsg = new HumanMessage("Hello");
 
@@ -246,37 +235,17 @@ describe("Message Trace Capture", () => {
         // Second AI response (different unique message ID)
         const ai2 = createAnthropicAIMessage("Response 2", {}, "msg_ai_response_2");
         await usageTracker.handleLLMEnd(createLLMResult(ai2), "run-2");
-
-        return "done";
       });
 
       // Each message should appear exactly once
-      expect(messages).toHaveLength(5);
-      expect(messages.map((m) => m._getType())).toEqual(["system", "human", "ai", "tool", "ai"]);
-    });
-  });
-
-  describe("backwards compatibility", () => {
-    it("still provides systemPrompt for convenience", async () => {
-      const { systemPrompt, messages } = await runWithUsageTracking({}, async () => {
-        const inputMessages = [
-          new SystemMessage("You are a coding assistant."),
-          new HumanMessage("Help me code"),
-        ];
-
-        await usageTracker.handleChatModelStart(
-          { name: "test" } as any,
-          [inputMessages],
-          "run-123"
-        );
-
-        return "done";
-      });
-
-      // systemPrompt is still available as convenience field
-      expect(systemPrompt).toBe("You are a coding assistant.");
-      // But it's also in the messages array
-      expect(messages[0]!.content).toBe("You are a coding assistant.");
+      expect(context.messages).toHaveLength(5);
+      expect(context.messages.map((m) => m._getType())).toEqual([
+        "system",
+        "human",
+        "ai",
+        "tool",
+        "ai",
+      ]);
     });
   });
 });

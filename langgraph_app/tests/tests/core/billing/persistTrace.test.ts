@@ -138,7 +138,55 @@ describe("persistTrace", () => {
     });
   });
 
-  // Note: Database write tests for persistTrace() are in integration tests
-  // since they require actual DB connection. The serializeMessages() unit tests
-  // above cover the core serialization logic.
+  // Note: Database write tests for persistTrace() are in databasePersistence.test.ts
+
+  describe("Edge Cases - Data Integrity", () => {
+    it("handles multimodal content (images)", () => {
+      const message = new HumanMessage({
+        content: [
+          { type: "text", text: "What's in this image?" },
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+          },
+        ],
+      });
+
+      const serialized = serializeMessages([message]);
+
+      expect(serialized).toHaveLength(1);
+      expect(serialized[0]!.type).toBe("human");
+      expect(serialized[0]!.content).toEqual([
+        { type: "text", text: "What's in this image?" },
+        {
+          type: "image_url",
+          image_url: { url: "data:image/png;base64,iVBORw0KGgo=" },
+        },
+      ]);
+    });
+
+    it("handles empty string content", () => {
+      const message = new AIMessage("");
+      const serialized = serializeMessages([message]);
+
+      expect(serialized).toHaveLength(1);
+      expect(serialized[0]!.content).toBe("");
+    });
+
+    it("handles unicode and special characters", () => {
+      const message = new HumanMessage("Hello 世界! 🎉 Café résumé naïve");
+      const serialized = serializeMessages([message]);
+
+      expect(serialized[0]!.content).toBe("Hello 世界! 🎉 Café résumé naïve");
+    });
+
+    it("handles very long messages", () => {
+      const longContent = "A".repeat(100000);
+      const message = new HumanMessage(longContent);
+      const serialized = serializeMessages([message]);
+
+      expect(serialized[0]!.content).toBe(longContent);
+      expect((serialized[0]!.content as string).length).toBe(100000);
+    });
+  });
 });

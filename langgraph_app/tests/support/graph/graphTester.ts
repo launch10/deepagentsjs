@@ -4,24 +4,11 @@ import { type CoreGraphState } from "@state";
 import { db, eq, and, projects as projectsTable, chats as chatsTable } from "@db";
 import { generateUUID, type ConsoleError } from "@types";
 import { runScenario } from "@services";
-import {
-  executeWithTrackingAndInterrupt,
-  runWithUsageTracking,
-  type UsageRecord,
-} from "@core";
 
 type NodeFunction<TState extends CoreGraphState> = (
   state: TState,
   config: LangGraphRunnableConfig
 ) => Promise<Partial<TState> | Send[]>;
-/**
- * Tracking result when withTracking() is enabled
- */
-export interface TrackingResult {
-  usage: UsageRecord[];
-  messagesProduced: BaseMessage[];
-  systemPrompt?: string;
-}
 
 export interface NodeTestResult<TState extends CoreGraphState> {
   state: TState;
@@ -29,7 +16,6 @@ export interface NodeTestResult<TState extends CoreGraphState> {
   error?: Error;
   promptSpy?: Map<string, string[]>;
   serviceSpy?: Map<string, any[]>;
-  tracking?: TrackingResult;
 }
 
 type CompiledGraph = CompiledStateGraph<any, any, any, any, any, any, any, any, any>;
@@ -70,8 +56,6 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
   threadId?: string;
   private chatType?: string;
   private nodeFunction?: NodeFunction<TGraphState>;
-  private trackingEnabled = false;
-  private trackingResult?: TrackingResult;
 
   constructor() {
     // Initialize with an in-memory checkpointer for tests
@@ -225,37 +209,10 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
     return this;
   }
 
-  /**
-   * Enable usage tracking for this test execution.
-   * When enabled, all LLM calls will have their usage tracked and
-   * the results will be available via getTrackingResult().
-   *
-   * @example
-   * const result = await testGraph()
-   *   .withGraph(brainstormGraph)
-   *   .withPrompt("Help me brainstorm ideas")
-   *   .withTracking()
-   *   .execute();
-   *
-   * expect(result.tracking?.usage.length).toBeGreaterThan(0);
-   */
-  withTracking(): GraphTestBuilder<TGraphState> {
-    this.trackingEnabled = true;
-    return this;
-  }
-
-  /**
-   * Get the tracking result after execution.
-   * Only available if withTracking() was called before execute().
-   */
-  getTrackingResult(): TrackingResult | undefined {
-    return this.trackingResult;
-  }
 
   /**
    * Execute the graph up to the target node and return the result.
    * If runNode() was called, executes that single node function in isolation.
-   * If withTracking() was called, wraps execution with usage tracking.
    */
   async execute(): Promise<NodeTestResult<TGraphState>> {
     // Load thread ID if website specified
@@ -298,10 +255,10 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
   }
 
   /**
-   * Execute a node function, optionally with tracking.
+   * Execute a node function.
    */
   private async executeNode(initialState: TGraphState): Promise<NodeTestResult<TGraphState>> {
-    const doExecute = async () => {
+    try {
       const nodeResult = await this.nodeFunction!(
         initialState,
         this.config as LangGraphRunnableConfig
@@ -309,33 +266,13 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
 
       // Handle Send[] return type (routing nodes)
       if (Array.isArray(nodeResult)) {
-        return initialState;
-      }
-
-      return { ...initialState, ...nodeResult } as TGraphState;
-    };
-
-    try {
-      if (this.trackingEnabled) {
-        const { result, usage, systemPrompt, messagesProduced } = await runWithUsageTracking(
-          {
-            chatId: initialState.chatId,
-            threadId: initialState.threadId,
-            graphName: "test-node",
-          },
-          doExecute
-        );
-
-        this.trackingResult = { usage, messagesProduced, systemPrompt };
         return {
-          state: result,
-          messages: result.messages || [],
-          error: (result as any).error,
-          tracking: this.trackingResult,
+          state: initialState,
+          messages: initialState.messages || [],
         };
       }
 
-      const result = await doExecute();
+      const result = { ...initialState, ...nodeResult } as TGraphState;
       return {
         state: result,
         messages: result.messages || [],
@@ -351,8 +288,7 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
   }
 
   /**
-   * Execute a graph, optionally with tracking.
-   * When tracking is enabled, uses the production executeWithTrackingAndInterrupt.
+   * Execute a graph.
    */
   private async executeGraph(initialState: TGraphState): Promise<NodeTestResult<TGraphState>> {
     const graph = this.graph!;
@@ -361,34 +297,6 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
       : this.config;
 
     try {
-      if (this.trackingEnabled) {
-        // Use production tracking wrapper
-        const tracked = await executeWithTrackingAndInterrupt(
-          graph,
-          initialState,
-          invokeConfig as LangGraphRunnableConfig,
-          {
-            chatId: initialState.chatId,
-            threadId: initialState.threadId,
-            graphName: graph.name || "test-graph",
-          }
-        );
-
-        this.trackingResult = {
-          usage: tracked.usage,
-          messagesProduced: tracked.messagesProduced,
-          systemPrompt: tracked.systemPrompt,
-        };
-
-        return {
-          state: tracked.result,
-          messages: tracked.result.messages || [],
-          error: (tracked.result as any).error,
-          tracking: this.trackingResult,
-        };
-      }
-
-      // No tracking - direct invocation
       const result = await graph.invoke(initialState, invokeConfig);
 
       if (result && result.__interrupt__) {

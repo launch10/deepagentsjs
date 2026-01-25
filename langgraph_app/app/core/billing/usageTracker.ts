@@ -29,6 +29,8 @@ export interface UsageRecord {
 /**
  * Context for a single graph execution run.
  * Accumulated via AsyncLocalStorage during execution.
+ *
+ * Used by middleware via createStorageMiddleware({ storage: usageStorage }).
  */
 export interface UsageContext {
   runId: string; // Generated once at start - correlates all records from this request
@@ -36,10 +38,6 @@ export interface UsageContext {
   chatId?: number;
   threadId?: string;
   graphName?: string;
-
-  // System prompt capture (for trace completeness / backwards compatibility)
-  systemPrompt?: string;
-  systemPromptCaptured?: boolean;
 
   /**
    * Clean ordered array of ALL messages in the conversation.
@@ -63,73 +61,51 @@ export interface UsageContext {
    * Used to detect new messages when IDs aren't available.
    */
   _lastInputMessageCount: number;
-
-  // Legacy field - kept for backwards compatibility but deprecated
-  // Use `messages` instead
-  messagesProduced: BaseMessage[];
-  userInput?: BaseMessage; // Set at run start, not from callback
 }
 
-const usageStorage = new AsyncLocalStorage<UsageContext>();
+export const usageStorage = new AsyncLocalStorage<UsageContext>();
 
 /**
  * Get the current usage tracking context.
- * Returns undefined when called outside of runWithUsageTracking.
+ * Returns undefined when called outside of tracking context.
  */
 export function getUsageContext(): UsageContext | undefined {
   return usageStorage.getStore();
 }
 
 /**
- * Execute a function with usage tracking context.
- * All LLM calls made within will have their usage tracked.
+ * Create a fresh UsageContext for tracking.
+ * Used by middleware's createContext callback.
  *
- * @param context - Partial context to initialize with
- * @param fn - Function to execute with tracking
- * @returns Result along with accumulated usage and trace data
+ * @example
+ * ```typescript
+ * const middleware = createStorageMiddleware({
+ *   storage: usageStorage,
+ *   createContext: (ctx) => createUsageContext({
+ *     chatId: ctx.data.get('chatId'),
+ *     threadId: ctx.threadId,
+ *     graphName: ctx.graphName,
+ *   }),
+ * });
+ * ```
  */
-export async function runWithUsageTracking<T>(
-  context: Partial<Omit<UsageContext, "runId">>,
-  fn: () => T | Promise<T>
-): Promise<{
-  result: T;
-  runId: string;
-  usage: UsageRecord[];
-  /** Clean ordered array of ALL messages in the conversation */
-  messages: BaseMessage[];
-  /** @deprecated Use messages instead - kept for backwards compatibility */
-  systemPrompt?: string;
-  /** @deprecated Use messages instead - kept for backwards compatibility */
-  messagesProduced: BaseMessage[];
-}> {
-  const runId = generateUUID();
-  const fullContext: UsageContext = {
-    runId,
+export function createUsageContext(
+  options: Partial<Omit<UsageContext, "runId">> = {}
+): UsageContext {
+  return {
+    runId: generateUUID(),
     records: [],
     messages: [],
     _seenMessageIds: new Set(),
     _lastInputMessageCount: 0,
-    messagesProduced: [],
-    ...context,
+    ...options,
   };
-
-  return usageStorage.run(fullContext, async () => {
-    const result = await fn();
-    return {
-      result,
-      runId: fullContext.runId,
-      usage: fullContext.records,
-      messages: fullContext.messages,
-      systemPrompt: fullContext.systemPrompt,
-      messagesProduced: fullContext.messagesProduced,
-    };
-  });
 }
 
 /**
  * Callback handler that tracks LLM usage metadata.
  * Attached to every model via getLLM().
- * Safely no-ops when not inside runWithUsageTracking.
+ * Safely no-ops when not inside tracking context.
  */
 class UsageTrackingCallbackHandler extends BaseCallbackHandler {
   name = "usage-tracking";
@@ -174,18 +150,6 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
 
     // Track input count for deduplication
     context._lastInputMessageCount = inputMessages.length;
-
-    // Backwards compatibility: capture system prompt as string
-    if (!context.systemPromptCaptured && inputMessages.length > 0) {
-      const systemMessage = inputMessages.find((m) => m._getType() === "system");
-      if (systemMessage) {
-        context.systemPrompt =
-          typeof systemMessage.content === "string"
-            ? systemMessage.content
-            : JSON.stringify(systemMessage.content);
-        context.systemPromptCaptured = true;
-      }
-    }
   }
 
   /**
@@ -232,9 +196,6 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
             context._seenMessageIds.add(msgId);
             context.messages.push(message);
           }
-
-          // Legacy: also add to messagesProduced for backwards compatibility
-          context.messagesProduced.push(message);
 
           // Push usage record for billing
           if (message.usage_metadata) {

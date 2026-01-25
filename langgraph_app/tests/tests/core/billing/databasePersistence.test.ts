@@ -234,9 +234,12 @@ describe("Database Persistence - BILLING CRITICAL", () => {
       expect(trace.chatId).toBe(testChatId);
       expect(trace.threadId).toBe(testThreadId);
       expect(trace.graphName).toBe("brainstorm");
-      expect(trace.totalInputTokens).toBe(100);
-      expect(trace.totalOutputTokens).toBe(50);
-      expect(trace.llmCallCount).toBe(1);
+
+      // Usage summary is stored as JSONB
+      const storedSummary = trace.usageSummary as { totalInputTokens: number; totalOutputTokens: number; llmCallCount: number };
+      expect(storedSummary.totalInputTokens).toBe(100);
+      expect(storedSummary.totalOutputTokens).toBe(50);
+      expect(storedSummary.llmCallCount).toBe(1);
 
       // Verify messages are serialized correctly
       const serializedMessages = trace.messages as any[];
@@ -293,6 +296,7 @@ describe("Database Persistence - BILLING CRITICAL", () => {
         usage_metadata: {
           input_tokens: 100,
           output_tokens: 50,
+          total_tokens: 150,
         },
       });
 
@@ -417,7 +421,7 @@ describe("Database Persistence - BILLING CRITICAL", () => {
         llmCallCount: 1,
       };
 
-      // This is what executeWithTracking does
+      // This is what middleware's onComplete does
       await Promise.all([
         persistUsage(records, {
           chatId: testChatId,

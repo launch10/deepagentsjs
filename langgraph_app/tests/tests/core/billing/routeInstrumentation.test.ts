@@ -1,57 +1,186 @@
-import { describe, it, expect, beforeAll } from "vitest";
-import { Glob } from "bun";
+import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
 /**
  * ROUTE INSTRUMENTATION AUDIT - BILLING CRITICAL
  *
- * These tests statically analyze our route handlers to ensure
- * they ALL use executeWithTracking or runWithUsageTracking.
+ * These tests statically analyze our route handlers and bridges to ensure
+ * billing/usage tracking is properly configured.
  *
  * This is a safeguard to ensure no new routes bypass billing.
  *
- * If this test fails, it means there's a route that can execute
- * LLM calls without tracking usage - i.e., FREE LLM CALLS.
+ * ARCHITECTURE:
+ * - Bridges are created via `createAppBridge` which has usage tracking middleware
+ * - Routes use the Bridge APIs (BrainstormAPI, WebsiteAPI, AdsAPI)
+ * - Deploy graph uses `streamWithUsageTracking` directly
+ * - Middleware is defined in app/bridges/usageMiddleware.ts
  */
 
 describe("Route Instrumentation Audit - BILLING CRITICAL", () => {
   const routesDir = path.join(process.cwd(), "app/server/routes");
-  const graphRoutes = ["brainstorm.ts", "website.ts", "ads.ts", "deploy.ts"];
+  const bridgesDir = path.join(process.cwd(), "app/bridges");
+  const annotationDir = path.join(process.cwd(), "app/annotation");
 
-  describe("All graph routes MUST use tracking", () => {
-    for (const routeFile of graphRoutes) {
-      it(`${routeFile} MUST use executeWithTracking or runWithUsageTracking`, () => {
-        const filePath = path.join(routesDir, routeFile);
-        const content = fs.readFileSync(filePath, "utf-8");
+  /**
+   * Check if the bridge factory has usage tracking middleware.
+   */
+  function bridgeFactoryHasTracking(): boolean {
+    const factoryPath = path.join(bridgesDir, "factory.ts");
+    if (!fs.existsSync(factoryPath)) {
+      return false;
+    }
+    const content = fs.readFileSync(factoryPath, "utf-8");
+    return content.includes("usageTrackingMiddleware");
+  }
 
-        const usesExecuteWithTracking = content.includes("executeWithTracking");
-        const usesRunWithUsageTracking = content.includes("runWithUsageTracking");
-        const usesBridgeStream = content.includes("Bridge.bind") || content.includes("API.stream");
-        const usesDirectGraphInvoke =
-          content.includes("graph.invoke") ||
-          content.includes("graph.stream") ||
-          content.includes("graph.streamEvents");
+  /**
+   * Check if the usage middleware exists and is properly configured.
+   */
+  function usageMiddlewareExists(): boolean {
+    const middlewarePath = path.join(bridgesDir, "usageMiddleware.ts");
+    if (!fs.existsSync(middlewarePath)) {
+      return false;
+    }
+    const content = fs.readFileSync(middlewarePath, "utf-8");
+    return (
+      content.includes("createStorageMiddleware") &&
+      content.includes("usageStorage") &&
+      content.includes("persistTrace") &&
+      content.includes("persistUsage")
+    );
+  }
 
-        // If using direct graph calls, MUST also use tracking
-        if (usesDirectGraphInvoke && !usesExecuteWithTracking && !usesRunWithUsageTracking) {
+  /**
+   * Check if an annotation file uses createAppBridge (tracked).
+   */
+  function annotationUsesAppBridge(annotationFile: string): boolean {
+    const filePath = path.join(annotationDir, annotationFile);
+    if (!fs.existsSync(filePath)) {
+      return false;
+    }
+    const content = fs.readFileSync(filePath, "utf-8");
+    return content.includes("createAppBridge");
+  }
+
+  /**
+   * Check if a route file has tracking wrappers (for non-Bridge routes like deploy).
+   */
+  function hasDirectTrackingWrapper(content: string): boolean {
+    return (
+      content.includes("executeWithTracking") ||
+      content.includes("runWithUsageTracking") ||
+      content.includes("streamWithUsageTracking")
+    );
+  }
+
+  describe("Bridge Factory MUST have usage tracking middleware", () => {
+    it("createAppBridge factory MUST include usageTrackingMiddleware", () => {
+      const hasTracking = bridgeFactoryHasTracking();
+
+      expect(hasTracking).toBe(true);
+
+      if (!hasTracking) {
+        throw new Error(
+          `BILLING CRITICAL: Bridge factory does not include usage tracking middleware!\n\n` +
+            `The createAppBridge factory in app/bridges/factory.ts must include\n` +
+            `usageTrackingMiddleware for automatic billing on all graph streams.\n\n` +
+            `FIX: Import and add usageTrackingMiddleware to the middleware array.`
+        );
+      }
+    });
+
+    it("usageTrackingMiddleware MUST be properly configured", () => {
+      const exists = usageMiddlewareExists();
+
+      expect(exists).toBe(true);
+
+      if (!exists) {
+        throw new Error(
+          `BILLING CRITICAL: Usage tracking middleware is missing or misconfigured!\n\n` +
+            `The app/bridges/usageMiddleware.ts must:\n` +
+            `  1. Use createStorageMiddleware from the SDK\n` +
+            `  2. Use usageStorage from @core/billing\n` +
+            `  3. Call persistTrace and persistUsage on completion\n\n` +
+            `FIX: Ensure all required components are in place.`
+        );
+      }
+    });
+  });
+
+  describe("Annotation files MUST use createAppBridge", () => {
+    const annotationBridges = [
+      { file: "brainstormAnnotation.ts", bridge: "BrainstormBridge" },
+      { file: "websiteAnnotation.ts", bridge: "WebsiteBridge" },
+      { file: "adsAnnotation.ts", bridge: "AdsBridge" },
+    ];
+
+    for (const { file, bridge } of annotationBridges) {
+      it(`${file} MUST use createAppBridge for ${bridge}`, () => {
+        const usesAppBridge = annotationUsesAppBridge(file);
+
+        expect(usesAppBridge).toBe(true);
+
+        if (!usesAppBridge) {
           throw new Error(
-            `${routeFile} uses direct graph invocation (graph.invoke/stream/streamEvents) ` +
-              `without executeWithTracking or runWithUsageTracking. ` +
-              `This means LLM calls in this route are NOT being tracked for billing!`
+            `BILLING CRITICAL: ${file} does not use createAppBridge!\n\n` +
+              `${bridge} must be created with createAppBridge to get\n` +
+              `automatic usage tracking middleware.\n\n` +
+              `Currently using raw createBridge which bypasses billing.\n\n` +
+              `FIX: Import createAppBridge from @bridges and use it instead of createBridge.`
           );
         }
+      });
+    }
+  });
 
-        // If using bridge pattern, verify tracking is integrated
-        if (usesBridgeStream && !usesExecuteWithTracking && !usesRunWithUsageTracking) {
-          // Check if bridge has tracking built-in (it currently doesn't!)
-          const bridgeHasTracking = content.includes("withTracking") || content.includes("persist");
+  describe("Route-level tracking requirements", () => {
+    const graphRoutes = [
+      { file: "brainstorm.ts", bridge: "BrainstormAPI" },
+      { file: "website.ts", bridge: "WebsiteAPI" },
+      { file: "ads.ts", bridge: "AdsAPI" },
+      { file: "deploy.ts", bridge: null }, // Uses direct graph, not bridge
+    ];
 
-          if (!bridgeHasTracking) {
+    for (const { file, bridge } of graphRoutes) {
+      it(`${file} MUST have billing coverage`, () => {
+        const filePath = path.join(routesDir, file);
+
+        if (!fs.existsSync(filePath)) {
+          // Route doesn't exist yet - skip
+          return;
+        }
+
+        const content = fs.readFileSync(filePath, "utf-8");
+
+        if (bridge) {
+          // Bridge-based routes get tracking from createAppBridge middleware
+          // Verify the route uses the expected API
+          const usesExpectedAPI =
+            content.includes(bridge) || content.includes(`${bridge.replace("API", "")}API`);
+
+          expect(usesExpectedAPI).toBe(true);
+
+          if (!usesExpectedAPI) {
             throw new Error(
-              `${routeFile} uses Bridge API pattern without tracking. ` +
-                `The Bridge.stream() method bypasses executeWithTracking. ` +
-                `LLM calls in this route are NOT being tracked for billing!`
+              `BILLING CRITICAL: ${file} does not use ${bridge}!\n\n` +
+                `Route should use ${bridge}.stream() for automatic billing.\n\n` +
+                `FIX: Import and use ${bridge} from @graphs.`
+            );
+          }
+        } else {
+          // Non-bridge routes (like deploy) need direct tracking wrapper
+          const hasTracking = hasDirectTrackingWrapper(content);
+
+          expect(hasTracking).toBe(true);
+
+          if (!hasTracking) {
+            throw new Error(
+              `BILLING CRITICAL: ${file} has no tracking wrapper!\n\n` +
+                `Routes using direct graph calls must wrap with:\n` +
+                `  - executeWithTracking (for invoke)\n` +
+                `  - streamWithUsageTracking (for stream)\n\n` +
+                `FIX: Wrap graph execution with appropriate tracking function.`
             );
           }
         }
@@ -59,40 +188,13 @@ describe("Route Instrumentation Audit - BILLING CRITICAL", () => {
     }
   });
 
-  describe("SDK stream.ts MUST integrate tracking", () => {
-    it("createLanggraphStreamResponse MUST wrap with tracking", () => {
-      const sdkStreamPath = path.join(
-        process.cwd(),
-        "../packages/langgraph-ai-sdk/packages/langgraph-ai-sdk/src/stream.ts"
-      );
-
-      // Skip if SDK not accessible in test environment
-      if (!fs.existsSync(sdkStreamPath)) {
-        console.warn("SDK stream.ts not found - skipping");
-        return;
-      }
-
-      const content = fs.readFileSync(sdkStreamPath, "utf-8");
-
-      const usesExecuteWithTracking = content.includes("executeWithTracking");
-      const usesRunWithUsageTracking = content.includes("runWithUsageTracking");
-
-      if (!usesExecuteWithTracking && !usesRunWithUsageTracking) {
-        throw new Error(
-          `SDK stream.ts does not integrate usage tracking! ` +
-            `createLanggraphStreamResponse calls graph.streamEvents() directly ` +
-            `without wrapping in runWithUsageTracking. ` +
-            `ALL routes using the Bridge pattern are NOT tracking usage!`
-        );
-      }
-    });
-  });
-
-  describe("All routes importing graphs MUST use tracking", () => {
-    it("scans all route files for untracked graph usage", async () => {
+  describe("Comprehensive route scan", () => {
+    it("ALL route files importing graphs MUST have billing coverage", () => {
       const routeFiles = fs.readdirSync(routesDir).filter((f) => f.endsWith(".ts"));
+      const violations: Array<{ file: string; reason: string }> = [];
 
-      const violations: string[] = [];
+      // Check that bridge factory has tracking
+      const factoryHasTracking = bridgeFactoryHasTracking();
 
       for (const file of routeFiles) {
         const filePath = path.join(routesDir, file);
@@ -106,63 +208,54 @@ describe("Route Instrumentation Audit - BILLING CRITICAL", () => {
           content.includes("adsGraph") ||
           content.includes("deployGraph");
 
-        if (!importsGraph) continue; // Skip non-graph routes
+        if (!importsGraph) continue;
 
-        // Check for tracking
-        const hasTracking =
-          content.includes("executeWithTracking") ||
-          content.includes("runWithUsageTracking") ||
-          content.includes("withTracking");
+        const hasDirectTracking = hasDirectTrackingWrapper(content);
 
-        // Check for direct graph invocations
-        const hasDirectInvoke =
+        // Check for Bridge API usage (middleware-based tracking)
+        const usesBridgeAPI =
+          content.includes("BrainstormAPI") ||
+          content.includes("WebsiteAPI") ||
+          content.includes("AdsAPI");
+
+        const usesDirectGraphCall =
+          content.includes("graph.invoke") ||
+          content.includes("graph.stream") ||
+          content.includes("graph.streamEvents") ||
+          content.includes("compiledDeployGraph.stream") ||
           content.includes(".invoke(") ||
-          content.includes(".stream(") ||
-          content.includes(".streamEvents(");
+          (content.includes(".stream(") && !usesBridgeAPI);
 
-        if (hasDirectInvoke && !hasTracking) {
-          violations.push(file);
+        // Bridge API usage is OK if factory has tracking
+        if (usesBridgeAPI && factoryHasTracking) {
+          continue; // Covered by middleware
+        }
+
+        // Direct graph calls without tracking = violation
+        if (usesDirectGraphCall && !hasDirectTracking) {
+          violations.push({
+            file,
+            reason: "Direct graph calls without tracking wrapper",
+          });
+        }
+
+        // Bridge API usage without factory tracking = violation
+        if (usesBridgeAPI && !factoryHasTracking && !hasDirectTracking) {
+          violations.push({
+            file,
+            reason: "Uses Bridge API but factory lacks tracking middleware",
+          });
         }
       }
 
       if (violations.length > 0) {
+        const violationList = violations.map((v) => `  - ${v.file}: ${v.reason}`).join("\n");
+
         throw new Error(
-          `The following route files use graphs without tracking:\n` +
-            violations.map((v) => `  - ${v}`).join("\n") +
-            `\n\nThis means LLM calls are not being billed!`
+          `BILLING CRITICAL: Routes with untracked LLM usage!\n\n` +
+            `${violationList}\n\n` +
+            `These routes are giving away FREE LLM calls!`
         );
-      }
-    });
-  });
-
-  describe("Bridge pattern MUST have tracking built-in", () => {
-    it("Bridge.bind() MUST integrate tracking in stream method", () => {
-      const agentPath = path.join(
-        process.cwd(),
-        "../packages/langgraph-ai-sdk/packages/langgraph-ai-sdk/src/agent.ts"
-      );
-
-      if (!fs.existsSync(agentPath)) {
-        console.warn("SDK agent.ts not found - skipping");
-        return;
-      }
-
-      const content = fs.readFileSync(agentPath, "utf-8");
-
-      // Find the stream method in bind()
-      const streamMethodMatch = content.match(/stream\s*\([^)]*\)\s*\{[^}]*createLanggraphStreamResponse/);
-
-      if (streamMethodMatch) {
-        // Check if it wraps with tracking
-        const usesTracking =
-          content.includes("runWithUsageTracking") || content.includes("executeWithTracking");
-
-        if (!usesTracking) {
-          throw new Error(
-            `Bridge.bind().stream() in agent.ts does not use tracking! ` +
-              `It calls createLanggraphStreamResponse directly, which bypasses billing.`
-          );
-        }
       }
     });
   });

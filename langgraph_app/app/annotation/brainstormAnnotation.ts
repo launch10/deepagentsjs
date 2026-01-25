@@ -4,7 +4,7 @@ import { Brainstorm, type PrimaryKeyType } from "@types";
 import type { Equal, Expect, UUIDType } from "@types";
 import type { BrainstormGraphState } from "@state";
 import { uniq } from "@utils";
-import { createBridge } from "langgraph-ai-sdk";
+import { createAppBridge } from "@bridges";
 
 /**
  * Mode type for tracking brainstorm state across turns.
@@ -43,8 +43,9 @@ export const BrainstormAnnotation = Annotation.Root({
 // Just a convenience to ensure the annotation matches the state type
 type _Assertion = Expect<Equal<BrainstormGraphState, typeof BrainstormAnnotation.State>>;
 
-// This represents a bridge from Langgraph -> the AI SDK (streaming frontend, helps us create the API)
-export const BrainstormBridge = createBridge({
+// Bridge from Langgraph -> the AI SDK (streaming frontend)
+// Uses createAppBridge for automatic usage tracking
+export const BrainstormBridge = createAppBridge({
   endpoint: "/api/brainstorm/stream",
   stateAnnotation: BrainstormAnnotation,
   messageSchema: Brainstorm.structuredMessageSchemas,

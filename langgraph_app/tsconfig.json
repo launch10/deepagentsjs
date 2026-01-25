@@ -38,6 +38,7 @@
     "paths": {
       "@app": ["./app/index.ts"],
       "@annotation": ["./app/annotation/index.ts"],
+      "@bridges": ["./app/bridges/index.ts"],
       "@prompts": ["./app/prompts/index.ts"],
       "@nodes": ["./app/nodes/index.ts"],
       "@middleware": ["./app/core/node/middleware/index.ts"],

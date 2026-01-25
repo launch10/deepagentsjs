@@ -1,19 +1,13 @@
 import { Hono } from "hono";
 import { authMiddleware, type AuthContext } from "../middleware/auth";
 import { validateThreadOrError } from "../middleware/threadValidation";
-import { brainstormGraph } from "@graphs";
-import { graphParams } from "@core";
-import { Brainstorm } from "@types";
-import { BrainstormBridge } from "@annotation";
+import { BrainstormAPI } from "@graphs";
 
 type Variables = {
   auth: AuthContext;
 };
 
 export const brainstormRoutes = new Hono<{ Variables: Variables }>();
-
-const graph = brainstormGraph.compile({ ...graphParams, name: "brainstorm" });
-const BrainstormAPI = BrainstormBridge.bind(graph);
 
 brainstormRoutes.post("/stream", authMiddleware, async (c) => {
   const auth = c.get("auth") as AuthContext;
@@ -27,6 +21,8 @@ brainstormRoutes.post("/stream", authMiddleware, async (c) => {
 
   let stateObj = state || {};
 
+  // Stream with automatic billing via middleware
+  // ChatId is looked up from threadId at stream completion
   return BrainstormAPI.stream({
     messages: messages || [],
     threadId,
@@ -50,6 +46,7 @@ brainstormRoutes.get("/stream", authMiddleware, async (c) => {
   const validationError = await validateThreadOrError(c, threadId, auth);
   if (validationError) return validationError;
 
+  // loadHistory doesn't make LLM calls - no billing needed
   return BrainstormAPI.loadHistory(threadId);
 });
 
