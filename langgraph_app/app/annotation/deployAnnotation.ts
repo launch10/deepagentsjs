@@ -2,6 +2,7 @@ import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 import { Deploy } from "@types";
 import type { PrimaryKeyType, Task, ConsoleError } from "@types";
+import { createAppBridge } from "@api/middleware";
 
 export const DeployAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
@@ -64,6 +65,12 @@ export const DeployAnnotation = Annotation.Root({
 });
 
 export type DeployGraphState = typeof DeployAnnotation.State;
+
+// Bridge for streaming frontend - uses createAppBridge for automatic usage tracking
+export const DeployBridge = createAppBridge({
+  endpoint: "/api/deploy/stream",
+  stateAnnotation: DeployAnnotation,
+});
 
 /**
  * Helper to update tasks AND compute phases in one operation

@@ -18,6 +18,7 @@ The billing system spans 5 plan documents with significant overlap. This documen
 | 5     | 7         | Credit Charging Pipeline      | 2, 6       | Medium     | Low      |
 | 6     | 8         | Pre-Run Authorization         | 2, 6       | Low        | Low      |
 | 7     | 9         | Frontend Integration          | 2          | Medium     | Low      |
+| 8     | 10        | Provider Reconciliation       | 1          | Low        | Low      |
 
 ---
 
@@ -72,6 +73,11 @@ The billing system spans 5 plan documents with significant overlap. This documen
 ┌─────────────────────────────────────────────────────────────────┐
 │  SCOPE 9: Frontend Integration                                  │
 │  (Depends on Scope 2)                                           │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│  SCOPE 10: Provider Reconciliation                              │
+│  (Depends on Scope 1 - llm_usage table)                         │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -368,12 +374,17 @@ The billing system spans 5 plan documents with significant overlap. This documen
 **Depends on**: Scope 2
 **Independent of**: Scopes 3, 4, 6, 7, 8
 **Complexity**: Low
+**Priority**: P2 (Rare Use Case)
 **Source**: credit_transactions.md (gift! method)
+
+### Summary
+
+One-off support use case. Keep simple. Admin form: pick account, enter amount, reason. Creates a `CreditTransaction` with `transaction_type: 'gift'`.
 
 ### Deliverables
 
 1. **Admin::GiftsController**
-   - `new` - form with amount, reason dropdown, notes
+   - `new` - simple form with account picker, amount, reason dropdown, notes
    - `create` - call CreditAllocationService.gift!
 
 2. **Gift reason dropdown values**
@@ -400,7 +411,7 @@ The billing system spans 5 plan documents with significant overlap. This documen
 ### Verification
 
 - Admin can issue gift credits
-- Transaction appears in history with metadata
+- Transaction appears in history with `transaction_type: 'gift'` and metadata
 
 ---
 
@@ -511,41 +522,110 @@ The billing system spans 5 plan documents with significant overlap. This documen
 ## SCOPE 8: Pre-Run Authorization
 
 **Status**: Not started
-**Depends on**: Scope 2 + Scope 6
+**Depends on**: Scope 7 (Credit Charging Pipeline must be complete so credits exist to check)
 **Complexity**: Low
-**Source**: credit-system-queries.md
+**Source**: credit-system-queries.md, pre-graph-authorization.md
+
+### Summary
+
+Inject `usagePercent` into `getLLM()` calls before graph execution, enabling model selection based on account usage.
+
+### Current State Analysis
+
+**What's Already Done (Scope 6 Full)**:
+- `usageTracker.ts` ✅ - Captures clean message traces with deduplication
+- `persistTrace.ts` ✅ - Writes traces to `llm_conversation_traces`
+- `persistUsage.ts` ✅ - Writes usage to `llm_usage`
+- `notifyRails.ts` ✅ - Fire-and-forget notification to Rails
+- `executeWithTracking.ts` ✅ - Wires persistence into graph execution
+- `getLLM()` ✅ - Already attaches `usageTracker` callback and accepts `usagePercent` parameter
+
+**The Gap**:
+`getLLM()` accepts `usagePercent` (line 59: `const usagePercent = options.usagePercent ?? 0`) but **nothing passes it**:
+- All callers use default value of 0
+- No pre-graph hook fetches account balance from Rails
+- No mechanism injects usagePercent into graph state or LLM calls
+
+### Design Decision: AsyncLocalStorage-based Injection (Option B)
+
+Two approaches were considered:
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| **A: State-based** - Add `usagePercentage` to CoreGraphState, set via pre-graph hook | Explicit, visible in state | Requires updating every node that calls getLLM |
+| **B: AsyncLocalStorage-based** - Store in existing UsageContext | Transparent to nodes, no changes needed | Less visible ("magic") |
+
+**Recommended: Option B** - aligns with existing AsyncLocalStorage pattern for usage tracking. This approach:
+1. Extends the existing `UsageContext` to include `usagePercent`
+2. Fetches account balance in `executeWithTracking()` before graph runs
+3. Sets usagePercent in context alongside threadId and accountId
+4. `getLLM()` reads from context if not explicitly passed
+
+This is transparent to all nodes - they don't need to know about usage percentages.
+
+### Model Selection Thresholds
+
+| Usage % | Available Models | maxTier |
+|---------|-----------------|---------|
+| 0-50%   | Opus, Sonnet, Haiku | undefined (all) |
+| 50-80%  | Sonnet, Haiku | 2 |
+| 80-100% | Haiku only | 3+ |
+| 100%+   | Blocked (unless pack credits) | N/A |
 
 ### Deliverables
 
-1. **GET /api/v1/credits/balance endpoint**
-   - Returns { total, plan, pack, usage_percentage, plan_allocation }
+1. **GET /api/v1/credits/balance endpoint** (Rails)
+   - Returns: `{ total, plan, pack, usagePercentage }`
 
-2. **Langgraph pre-run check**
-   - Fetch balance from Rails
-   - Determine available models based on usage_percentage
-   - Block if 100% used and no pack credits
+2. **checkCredits.ts** (Langgraph)
+   ```typescript
+   interface CreditBalance {
+     total: number;
+     plan: number;
+     pack: number;
+     usagePercentage: number;
+   }
 
-3. **Model selection thresholds**
-   - 0-50%: All models (Opus, Sonnet, Haiku)
-   - 50-80%: Sonnet + Haiku
-   - 80-100%: Haiku only
-   - 100%+: Blocked (unless pack credits)
+   export async function checkCreditBalance(accountId: number): Promise<CreditBalance>
+   export function canStartRun(balance: CreditBalance): boolean
+   export function getMaxTierForUsage(usagePercentage: number): number
+   ```
+
+3. **UsageContext extension**
+   - Add `usagePercent` to UsageContext interface
+   - Set in `executeWithTracking()` before graph runs
+
+4. **getLLM() update**
+   - Read usagePercent from `getUsageContext()?.usagePercent` if not passed explicitly
+
+5. **Test mode support**
+   - Skip credit checks with `testCredits` config flag or when `NODE_ENV !== 'production'`
 
 ### Files to Create
 
+**Rails**:
 - `rails_app/app/controllers/api/v1/credits_controller.rb`
+
+**Langgraph**:
 - `langgraph_app/app/core/billing/checkCredits.ts`
 
 ### Files to Modify
 
-- `rails_app/config/routes.rb`
-- Langgraph graph entry points (check before invoke)
+**Rails**:
+- `rails_app/config/routes.rb` - Add route
 
-### Verification
+**Langgraph**:
+- `langgraph_app/app/core/billing/usageTracker.ts` - Add usagePercent to UsageContext
+- `langgraph_app/app/core/billing/executeWithTracking.ts` - Fetch balance, set usagePercent
+- `langgraph_app/app/core/llm/llm.ts` - Read usagePercent from context if not passed
 
-- High usage → model downgraded
-- 100% usage + no packs → blocked
-- 100% usage + packs → allowed
+### Verification Checklist
+
+- [ ] High usage (50-80%) → Opus excluded from getLLM
+- [ ] Very high usage (80-100%) → Only Haiku available
+- [ ] 100% usage + no packs → Graph blocked before execution
+- [ ] 100% usage + pack credits → Allowed to run
+- [ ] Test mode → Credit checks skipped
 
 ---
 
@@ -587,6 +667,93 @@ The billing system spans 5 plan documents with significant overlap. This documen
 - Dashboard shows correct balance
 - Transaction history loads
 - 90% alert triggers
+
+---
+
+## SCOPE 10: Provider Reconciliation
+
+**Status**: Not started
+**Depends on**: Scope 1 (llm_usage table must exist)
+**Complexity**: Low
+**Priority**: P1
+
+### Summary
+
+Automated job to verify our tracked costs match what AI providers are actually billing us. Not a fancy UI - just automated alerting via Blazer query or Zhong cron job.
+
+### Deliverables
+
+1. **Credits::ReconciliationJob** (Zhong scheduled job)
+
+   ```ruby
+   # app/workers/credits/reconciliation_job.rb
+   class Credits::ReconciliationJob
+     include Sidekiq::Worker
+     sidekiq_options queue: :low
+
+     def perform
+       month = 1.month.ago.all_month
+
+       # Sum our tracked costs
+       our_cost = LlmUsage.where(created_at: month).sum(:cost_usd)
+
+       # Group by provider for comparison
+       by_provider = LlmUsage.where(created_at: month)
+         .group("CASE WHEN model LIKE 'claude%' THEN 'anthropic' WHEN model LIKE 'gpt%' THEN 'openai' ELSE 'other' END")
+         .sum(:cost_usd)
+
+       # Alert if > 5% variance from expected (manual input or API)
+       # Log to Slack
+       SlackNotifier.notify("#billing-alerts", <<~MSG)
+         Monthly AI Cost Reconciliation (#{month.first.strftime('%B %Y')})
+         Total: $#{our_cost.round(2)}
+         By Provider: #{by_provider.map { |k,v| "#{k}: $#{v.round(2)}" }.join(', ')}
+
+         Compare to provider invoices and flag discrepancies > 5%
+       MSG
+     end
+   end
+   ```
+
+2. **Blazer query alternative** (if preferred over Zhong job)
+
+   ```sql
+   -- Monthly AI Cost by Provider
+   SELECT
+     DATE_TRUNC('month', created_at) AS month,
+     CASE
+       WHEN model LIKE 'claude%' THEN 'anthropic'
+       WHEN model LIKE 'gpt%' THEN 'openai'
+       ELSE 'other'
+     END AS provider,
+     COUNT(*) AS call_count,
+     SUM(input_tokens) AS total_input_tokens,
+     SUM(output_tokens) AS total_output_tokens,
+     ROUND(SUM(cost_usd)::numeric, 2) AS total_cost_usd
+   FROM llm_usage
+   WHERE created_at >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
+     AND created_at < DATE_TRUNC('month', CURRENT_DATE)
+   GROUP BY 1, 2
+   ORDER BY 1 DESC, 4 DESC
+   ```
+
+3. **Schedule** (if using Zhong job)
+   - Run: 1st of each month at 9am
+   - Slack channel: `#billing-alerts`
+
+### Files to Create
+
+- `rails_app/app/workers/credits/reconciliation_job.rb`
+
+### Files to Modify
+
+- `rails_app/config/schedule.rb` (add Zhong schedule)
+
+### Verification
+
+- Job runs on schedule
+- Slack notification received with monthly costs
+- Costs grouped by provider match expectations
 
 ---
 
@@ -634,6 +801,12 @@ The billing system spans 5 plan documents with significant overlap. This documen
 9. **SCOPE 8**: Pre-run authorization
 10. **SCOPE 9**: Frontend integration
 
+### Phase 6: Operational (Can Run Anytime After Phase 1)
+
+11. **SCOPE 10**: Provider Reconciliation (Blazer query or Zhong job)
+    - Can be implemented as soon as `llm_usage` table exists
+    - Automated monthly cost verification
+
 ---
 
 ## Notes
@@ -642,3 +815,5 @@ The billing system spans 5 plan documents with significant overlap. This documen
 - **Scopes 3, 4, 5 are independent** - can be done in parallel by different people
 - **Scope 6 is split** - spike first, then full implementation
 - **Schema decisions wait** - llm_usage columns finalized after spike
+- **Scope 5 (Gift Credits)** - P2 priority, one-off support use case, keep simple
+- **Scope 10 (Reconciliation)** - P1 priority, can run as soon as llm_usage table exists, not a fancy UI - just automated alerting

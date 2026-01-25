@@ -38,7 +38,7 @@ RSpec.describe LLMConversationTrace, type: :model do
       let!(:trace2) { create(:llm_conversation_trace, thread_id: "thread-456") }
 
       it "filters by thread_id" do
-        expect(described_class.for_thread("thread-123")).to contain_exactly(trace1)
+        expect(described_class.for_thread("thread-123").pluck(:run_id)).to eq([trace1.run_id])
       end
     end
 
@@ -48,7 +48,7 @@ RSpec.describe LLMConversationTrace, type: :model do
       let!(:other) { create(:llm_conversation_trace) }
 
       it "filters by chat" do
-        expect(described_class.for_chat(chat)).to contain_exactly(mine)
+        expect(described_class.for_chat(chat).pluck(:run_id)).to eq([mine.run_id])
       end
     end
 
@@ -57,7 +57,7 @@ RSpec.describe LLMConversationTrace, type: :model do
       let!(:new) { create(:llm_conversation_trace, created_at: 1.day.ago) }
 
       it "orders by created_at descending" do
-        expect(described_class.recent.to_a).to eq([new, old])
+        expect(described_class.recent.pluck(:run_id)).to eq([new.run_id, old.run_id])
       end
     end
   end

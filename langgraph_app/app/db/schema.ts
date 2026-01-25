@@ -3256,6 +3256,7 @@ export const assistantVersions = pgTable(
   ]
 );
 
+// Child partition tables - use llmConversationTraces from custom-tables.ts for queries
 export const llmConversationTraces202601 = pgTable(
   "llm_conversation_traces_2026_01",
   {

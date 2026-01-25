@@ -3,7 +3,7 @@ import { BaseAnnotation } from "./base";
 import { Ads, Brainstorm } from "@types";
 import type { Equal, Expect, UUIDType, PrimaryKeyType } from "@types";
 import type { AdsGraphState } from "@state";
-import { createBridge } from "langgraph-ai-sdk";
+import { createAppBridge } from "@api/middleware";
 
 export const AdsAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
@@ -26,8 +26,8 @@ export const AdsAnnotation = Annotation.Root({
 // Just a convenience to ensure the annotation matches the state type
 type _Assertion = Expect<Equal<AdsGraphState, typeof AdsAnnotation.State>>;
 
-// This represents a bridge from Langgraph -> the AI SDK (streaming frontend, helps us create the API)
-export const AdsBridge = createBridge({
+// Bridge for streaming frontend - uses createAppBridge for automatic usage tracking
+export const AdsBridge = createAppBridge({
   endpoint: "/api/ads/stream",
   stateAnnotation: AdsAnnotation as any,
   messageSchema: Ads.jsonSchema,

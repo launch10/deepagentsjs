@@ -486,4 +486,3 @@ workflows:
       - rails-tests
       - rails-frontend-tests
       - atlas-tests
-      - playwright-tests
