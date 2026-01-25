@@ -2,10 +2,13 @@
 
 module Credits
   class DailyReconciliationWorker < ApplicationWorker
+    sidekiq_options queue: :billing
+
     def perform
       query.in_batches(of: 100) do |accounts|
         accounts.each do |account|
-          Credits::ReconcileOneAccountWorker.new.perform(account.id)
+          # Use perform_async for proper job isolation and retry semantics
+          Credits::ReconcileOneAccountWorker.perform_async(account.id)
         end
       end
     end
@@ -36,16 +39,24 @@ module Credits
     end
 
     def has_current_period_allocation_sql(today)
-      <<~SQL.squish
-        EXISTS (
-          SELECT 1 FROM credit_transactions ct
-          WHERE ct.account_id = accounts.id
-          AND ct.transaction_type = 'allocate'
-          AND ct.reason IN ('plan_renewal', 'plan_upgrade')
-          AND ct.created_at >= '#{today.beginning_of_month}'
-          AND ct.created_at < '#{today.next_month.beginning_of_month}'
-        )
-      SQL
+      month_start = today.beginning_of_month
+      month_end = today.next_month.beginning_of_month
+
+      # Use sanitize_sql_array for safe parameterized queries
+      ApplicationRecord.sanitize_sql_array([
+        <<~SQL.squish,
+          EXISTS (
+            SELECT 1 FROM credit_transactions ct
+            WHERE ct.account_id = accounts.id
+            AND ct.transaction_type = 'allocate'
+            AND ct.reason IN ('plan_renewal', 'plan_upgrade')
+            AND ct.created_at >= ?
+            AND ct.created_at < ?
+          )
+        SQL
+        month_start,
+        month_end
+      ])
     end
   end
 end

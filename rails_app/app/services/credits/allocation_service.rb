@@ -59,7 +59,10 @@ module Credits
           )
         else
           # Renewal - validate this is actually at a billing cycle boundary
-          validate_renewal_timing!(subscription, idempotency_key)
+          # Skip validation for monthly resets (yearly subscriptions with monthly credit refresh)
+          unless idempotency_key.start_with?("monthly_reset:")
+            validate_renewal_timing!(subscription, idempotency_key)
+          end
 
           handle_renewal!(
             subscription: subscription,
@@ -94,7 +97,8 @@ module Credits
     # 1. No allocation exists for this billing period
     # 2. The idempotency key matches the expected format for this period
     def validate_renewal_timing!(subscription, idempotency_key)
-      period_start = subscription.current_period_start.to_date
+      # Fall back to current date if period_start is nil (e.g., fake_processor in tests)
+      period_start = (subscription.current_period_start || Time.current).to_date
 
       # Check if there's already an allocation for this billing period
       # This catches the case where someone passes a different idempotency key
@@ -133,7 +137,8 @@ module Credits
           subscription: subscription,
           plan_bal: plan_bal,
           pack_bal: pack_bal,
-          total: total
+          total: total,
+          idempotency_key: idempotency_key
         )
         total = total - plan_bal
         plan_bal = 0
@@ -163,7 +168,8 @@ module Credits
           subscription: subscription,
           plan_bal: plan_bal,
           pack_bal: pack_bal,
-          total: total
+          total: total,
+          idempotency_key: idempotency_key
         )
         total = total - plan_bal
         plan_bal = 0
@@ -183,12 +189,28 @@ module Credits
       )
     end
 
-    # Downgrade: Pro-rate based on usage this period
+    # Downgrade: Pro-rate based on actual usage this period
+    #
+    # Prefers actual consumption from transactions when available.
+    # Falls back to balance-based inference for backwards compatibility.
     def handle_downgrade!(subscription:, new_plan_tier:, previous_plan:, current_balances:, idempotency_key:)
       total, plan_bal, pack_bal = current_balances
 
-      previous_credits = previous_plan.plan_tier.credits
-      usage_this_period = previous_credits - plan_bal
+      # Get actual consumption this period from transactions
+      # This handles the upgrade-then-downgrade case correctly
+      period_start = subscription.current_period_start
+      consume_transactions = @account.credit_transactions
+        .where(transaction_type: "consume", credit_type: "plan")
+        .where("created_at >= ?", period_start)
+
+      # Use transaction-based usage if available, otherwise infer from balance
+      usage_this_period = if consume_transactions.exists?
+        consume_transactions.sum(:amount).abs
+      else
+        # Fallback: infer usage from previous plan credits - current balance
+        previous_credits = previous_plan.plan_tier.credits
+        [previous_credits - plan_bal, 0].max
+      end
 
       # Floor at 0 - no negative balance from downgrade
       new_balance = [new_plan_tier.credits - usage_this_period, 0].max
@@ -210,7 +232,7 @@ module Credits
         metadata: {
           previous_plan: previous_plan.name,
           new_plan: new_plan_tier.name,
-          previous_plan_credits: previous_credits,
+          previous_plan_credits: previous_plan.plan_tier.credits,
           new_plan_credits: new_plan_tier.credits,
           usage_this_period: usage_this_period,
           pro_rated_balance: new_balance
@@ -218,7 +240,13 @@ module Credits
       )
     end
 
-    def expire_plan_credits!(subscription:, plan_bal:, pack_bal:, total:)
+    def expire_plan_credits!(subscription:, plan_bal:, pack_bal:, total:, idempotency_key:)
+      # Create expire key by prefixing with "expire:" regardless of original prefix
+      expire_key = "expire:#{idempotency_key}"
+
+      # Skip if already expired for this period (crash recovery)
+      return if CreditTransaction.exists?(idempotency_key: expire_key)
+
       new_total = total - plan_bal
 
       create_transaction!(
@@ -231,6 +259,7 @@ module Credits
         pack_balance_after: pack_bal,
         reference_type: "Pay::Subscription",
         reference_id: subscription.id.to_s,
+        idempotency_key: expire_key,
         metadata: {expired_credits: plan_bal}
       )
     end

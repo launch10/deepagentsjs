@@ -109,6 +109,7 @@ Rails.configuration.to_prepare do
   Pay::Subscription.include AtlasExtensions
   Pay::Subscription.include CloudflareExtensions
   Pay::Subscription.include OneSubscriptionPerUser
+  Pay::Subscription.include PaySubscriptionCredits
   Pay::Charge.include ChargeExtensions
 
   # Use Inter font for full UTF-8 support in PDFs

@@ -35,5 +35,10 @@ FactoryBot.define do
     plan_balance_after { 1000 }
     pack_balance_after { 0 }
     metadata { {} }
+
+    # Trait to skip sequence validation for tests that use arbitrary balance values
+    trait :skip_validation do
+      skip_sequence_validation { true }
+    end
   end
 end

@@ -41,6 +41,9 @@ class CreditTransaction < ApplicationRecord
 
   belongs_to :account
 
+  # Allow tests to skip sequence validation when testing with arbitrary balance values
+  attr_accessor :skip_sequence_validation
+
   validates :transaction_type, presence: true, inclusion: {in: TRANSACTION_TYPES}
   validates :credit_type, presence: true, inclusion: {in: CREDIT_TYPES}
   validates :reason, presence: true
@@ -48,6 +51,8 @@ class CreditTransaction < ApplicationRecord
   validates :balance_after, presence: true
   validates :plan_balance_after, presence: true
   validates :pack_balance_after, presence: true
+  validate :balance_components_sum_to_total, unless: :skip_sequence_validation
+  validate :balance_sequence_is_valid, on: :create, unless: :skip_sequence_validation
 
   after_create :update_account_balances
 
@@ -71,10 +76,90 @@ class CreditTransaction < ApplicationRecord
   private
 
   def update_account_balances
-    account.update_columns(
+    # Use update! instead of update_columns so this participates in the
+    # transaction and rolls back properly if the transaction fails
+    account.update!(
       plan_credits: plan_balance_after,
       pack_credits: pack_balance_after,
       total_credits: balance_after
     )
+  end
+
+  # Validates that plan + pack = total
+  def balance_components_sum_to_total
+    return if plan_balance_after.nil? || pack_balance_after.nil? || balance_after.nil?
+
+    expected_total = plan_balance_after + pack_balance_after
+    if balance_after != expected_total
+      errors.add(:balance_after, "must equal plan_balance_after + pack_balance_after (expected #{expected_total}, got #{balance_after})")
+    end
+  end
+
+  # Validates that this transaction follows correctly from the previous one
+  # This catches bugs where balances drift due to calculation errors
+  def balance_sequence_is_valid
+    return if account.nil? || amount.nil?
+
+    # Find the previous transaction for this account
+    # Order by created_at DESC, id DESC to handle same-second transactions (e.g., expire + allocate)
+    previous = account.credit_transactions
+      .where.not(id: id)
+      .order(created_at: :desc, id: :desc)
+      .first
+
+    if previous
+      validate_sequence_from_previous(previous)
+    else
+      validate_first_transaction
+    end
+  end
+
+  def validate_sequence_from_previous(previous)
+    # Total balance should follow: previous.balance_after + amount
+    expected_total = previous.balance_after + amount
+    if balance_after != expected_total
+      errors.add(:balance_after, "sequence error: expected #{expected_total} (#{previous.balance_after} + #{amount}), got #{balance_after}")
+    end
+
+    # Plan/pack balance should follow based on credit_type
+    if credit_type == "plan"
+      expected_plan = previous.plan_balance_after + amount
+      if plan_balance_after != expected_plan
+        errors.add(:plan_balance_after, "sequence error: expected #{expected_plan}, got #{plan_balance_after}")
+      end
+
+      if pack_balance_after != previous.pack_balance_after
+        errors.add(:pack_balance_after, "should not change for plan transaction (expected #{previous.pack_balance_after}, got #{pack_balance_after})")
+      end
+    elsif credit_type == "pack"
+      expected_pack = previous.pack_balance_after + amount
+      if pack_balance_after != expected_pack
+        errors.add(:pack_balance_after, "sequence error: expected #{expected_pack}, got #{pack_balance_after}")
+      end
+
+      if plan_balance_after != previous.plan_balance_after
+        errors.add(:plan_balance_after, "should not change for pack transaction (expected #{previous.plan_balance_after}, got #{plan_balance_after})")
+      end
+    end
+  end
+
+  def validate_first_transaction
+    # First transaction for this account
+    # For credits (positive amount): balance should equal amount
+    # For debits (negative amount): this would be unusual for first transaction
+    if amount.positive?
+      if credit_type == "plan" && plan_balance_after != amount
+        errors.add(:plan_balance_after, "first transaction: expected #{amount} for plan credit, got #{plan_balance_after}")
+      elsif credit_type == "pack" && pack_balance_after != amount
+        errors.add(:pack_balance_after, "first transaction: expected #{amount} for pack credit, got #{pack_balance_after}")
+      end
+    end
+
+    # The "other" balance should be 0 for first transaction
+    if credit_type == "plan" && pack_balance_after != 0
+      errors.add(:pack_balance_after, "first transaction: pack balance should be 0, got #{pack_balance_after}")
+    elsif credit_type == "pack" && plan_balance_after != 0
+      errors.add(:plan_balance_after, "first transaction: plan balance should be 0, got #{plan_balance_after}")
+    end
   end
 end

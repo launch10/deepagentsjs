@@ -44,6 +44,28 @@ RSpec.describe Credits::AllocationService do
   let(:idempotency_key) { "plan_credits:#{subscription.id}:#{period_start.to_date.iso8601}" }
   let(:service) { described_class.new(account) }
 
+  # Helper to set up account state with proper transaction history
+  # This creates transactions that establish the starting balances
+  # so that subsequent transactions can pass sequence validation
+  def setup_account_state(plan_credits:, pack_credits: 0)
+    total = plan_credits + pack_credits
+
+    # Create a final transaction that establishes the desired ending state
+    # We use skip_sequence_validation because this is test setup
+    account.credit_transactions.create!(
+      transaction_type: plan_credits >= 0 ? "allocate" : "consume",
+      credit_type: "plan",
+      reason: plan_credits >= 0 ? "plan_renewal" : "ai_generation",
+      amount: plan_credits,
+      balance_after: total,
+      plan_balance_after: plan_credits,
+      pack_balance_after: pack_credits,
+      skip_sequence_validation: true
+    )
+
+    account.update!(plan_credits: plan_credits, pack_credits: pack_credits, total_credits: total)
+  end
+
   before do
     # Ensure plan has fake_processor_id
     current_plan.update!(fake_processor_id: current_plan.name) unless current_plan.fake_processor_id.present?
@@ -81,7 +103,7 @@ RSpec.describe Credits::AllocationService do
     end
 
     context "Scenario 2: Renewal with partial usage (4000/5000 remaining)" do
-      before { account.update!(plan_credits: 4000, pack_credits: 0, total_credits: 4000) }
+      before { setup_account_state(plan_credits: 4000, pack_credits: 0) }
 
       it "expires remaining plan credits and allocates new" do
         expect {
@@ -106,7 +128,7 @@ RSpec.describe Credits::AllocationService do
     end
 
     context "Scenario 3: Renewal with full usage (0/5000 remaining)" do
-      before { account.update!(plan_credits: 0, pack_credits: 0, total_credits: 0) }
+      before { setup_account_state(plan_credits: 0, pack_credits: 0) }
 
       it "allocates new credits without expiring (nothing to expire)" do
         expect {
@@ -123,7 +145,7 @@ RSpec.describe Credits::AllocationService do
     end
 
     context "Scenario 4: Renewal with negative balance (debt)" do
-      before { account.update!(plan_credits: -1000, pack_credits: 0, total_credits: -1000) }
+      before { setup_account_state(plan_credits: -1000, pack_credits: 0) }
 
       it "absorbs debt from new allocation" do
         expect {
@@ -143,7 +165,7 @@ RSpec.describe Credits::AllocationService do
     end
 
     context "Scenario 5: Renewal with plan + pack credits" do
-      before { account.update!(plan_credits: 4000, pack_credits: 500, total_credits: 4500) }
+      before { setup_account_state(plan_credits: 4000, pack_credits: 500) }
 
       it "expires only plan credits, preserves pack credits" do
         service.reset_plan_credits!(subscription: subscription, idempotency_key: idempotency_key)
@@ -156,7 +178,7 @@ RSpec.describe Credits::AllocationService do
     end
 
     context "Scenario 6: Renewal - used all plan + some pack" do
-      before { account.update!(plan_credits: 0, pack_credits: 300, total_credits: 300) }
+      before { setup_account_state(plan_credits: 0, pack_credits: 300) }
 
       it "allocates new credits, pack unchanged" do
         service.reset_plan_credits!(subscription: subscription, idempotency_key: idempotency_key)
@@ -169,7 +191,7 @@ RSpec.describe Credits::AllocationService do
     end
 
     context "Scenario 7: Renewal - pack exhausted, plan negative" do
-      before { account.update!(plan_credits: -1000, pack_credits: 0, total_credits: -1000) }
+      before { setup_account_state(plan_credits: -1000, pack_credits: 0) }
 
       it "absorbs debt from allocation" do
         service.reset_plan_credits!(subscription: subscription, idempotency_key: idempotency_key)
@@ -191,7 +213,7 @@ RSpec.describe Credits::AllocationService do
 
       before do
         # Had 1000 remaining from Starter plan
-        account.update!(plan_credits: 1000, pack_credits: 0, total_credits: 1000)
+        setup_account_state(plan_credits: 1000, pack_credits: 0)
       end
 
       it "expires remaining credits from old plan, allocates full new plan" do
@@ -223,7 +245,7 @@ RSpec.describe Credits::AllocationService do
 
       before do
         # Had 3000 remaining from Growth plan
-        account.update!(plan_credits: 3000, pack_credits: 0, total_credits: 3000)
+        setup_account_state(plan_credits: 3000, pack_credits: 0)
       end
 
       it "expires remaining Growth credits, allocates full Pro credits" do
@@ -249,7 +271,7 @@ RSpec.describe Credits::AllocationService do
       let(:current_plan) { growth_monthly }
 
       before do
-        account.update!(plan_credits: -500, pack_credits: 0, total_credits: -500)
+        setup_account_state(plan_credits: -500, pack_credits: 0)
       end
 
       it "absorbs debt from new allocation" do
@@ -275,7 +297,7 @@ RSpec.describe Credits::AllocationService do
       let(:current_plan) { growth_monthly }
 
       before do
-        account.update!(plan_credits: 10000, pack_credits: 0, total_credits: 10000)
+        setup_account_state(plan_credits: 10000, pack_credits: 0)
       end
 
       it "pro-rates balance based on usage" do
@@ -304,7 +326,7 @@ RSpec.describe Credits::AllocationService do
       let(:current_plan) { growth_monthly }
 
       before do
-        account.update!(plan_credits: 0, pack_credits: 0, total_credits: 0)
+        setup_account_state(plan_credits: 0, pack_credits: 0)
       end
 
       it "floors balance at 0 (no negative from downgrade)" do
@@ -330,7 +352,7 @@ RSpec.describe Credits::AllocationService do
       let(:current_plan) { starter_monthly }
 
       before do
-        account.update!(plan_credits: 4000, pack_credits: 0, total_credits: 4000)
+        setup_account_state(plan_credits: 4000, pack_credits: 0)
       end
 
       it "pro-rates: new_balance = starter_credits - usage" do
@@ -355,7 +377,7 @@ RSpec.describe Credits::AllocationService do
       context "when trying to 'upgrade' to the same tier" do
         let(:current_plan) { growth_monthly }
 
-        before { account.update!(plan_credits: 3000, pack_credits: 0, total_credits: 3000) }
+        before { setup_account_state(plan_credits: 3000, pack_credits: 0) }
 
         it "raises SamePlanError" do
           expect {
@@ -384,7 +406,7 @@ RSpec.describe Credits::AllocationService do
       context "when trying to 'downgrade' to the same tier" do
         let(:current_plan) { starter_monthly }
 
-        before { account.update!(plan_credits: 1000, pack_credits: 0, total_credits: 1000) }
+        before { setup_account_state(plan_credits: 1000, pack_credits: 0) }
 
         it "raises SamePlanError" do
           expect {
@@ -400,7 +422,7 @@ RSpec.describe Credits::AllocationService do
       context "when changing interval on same tier (monthly → annual)" do
         let(:current_plan) { pro_annual }
 
-        before { account.update!(plan_credits: 10000, pack_credits: 0, total_credits: 10000) }
+        before { setup_account_state(plan_credits: 10000, pack_credits: 0) }
 
         it "raises SamePlanError - interval changes don't warrant credit resets" do
           expect {
@@ -421,7 +443,7 @@ RSpec.describe Credits::AllocationService do
     describe "billing cycle enforcement" do
       context "when renewal already occurred this period" do
         before do
-          account.update!(plan_credits: 5000, pack_credits: 0, total_credits: 5000)
+          setup_account_state(plan_credits: 5000, pack_credits: 0)
 
           # Simulate that renewal already happened at period start
           account.credit_transactions.create!(
@@ -434,7 +456,8 @@ RSpec.describe Credits::AllocationService do
             pack_balance_after: 0,
             reference_type: "Pay::Subscription",
             reference_id: subscription.id.to_s,
-            idempotency_key: "plan_credits:#{subscription.id}:#{period_start.to_date.iso8601}"
+            idempotency_key: "plan_credits:#{subscription.id}:#{period_start.to_date.iso8601}",
+            skip_sequence_validation: true
           )
         end
 
@@ -458,7 +481,7 @@ RSpec.describe Credits::AllocationService do
 
       context "when trying to get free credits by calling renewal with wrong key" do
         before do
-          account.update!(plan_credits: 5000, pack_credits: 0, total_credits: 5000)
+          setup_account_state(plan_credits: 5000, pack_credits: 0)
 
           # First renewal at legitimate period start
           account.credit_transactions.create!(
@@ -471,7 +494,8 @@ RSpec.describe Credits::AllocationService do
             pack_balance_after: 0,
             reference_type: "Pay::Subscription",
             reference_id: subscription.id.to_s,
-            idempotency_key: idempotency_key
+            idempotency_key: idempotency_key,
+            skip_sequence_validation: true
           )
         end
 
@@ -494,7 +518,7 @@ RSpec.describe Credits::AllocationService do
 
       context "when upgrade happens after initial renewal" do
         before do
-          account.update!(plan_credits: 5000, pack_credits: 0, total_credits: 5000)
+          setup_account_state(plan_credits: 5000, pack_credits: 0)
 
           # Initial renewal happened
           account.credit_transactions.create!(
@@ -507,7 +531,8 @@ RSpec.describe Credits::AllocationService do
             pack_balance_after: 0,
             reference_type: "Pay::Subscription",
             reference_id: subscription.id.to_s,
-            idempotency_key: idempotency_key
+            idempotency_key: idempotency_key,
+            skip_sequence_validation: true
           )
         end
 
@@ -542,10 +567,11 @@ RSpec.describe Credits::AllocationService do
       end
 
       it "does not create expire transaction if allocate key exists" do
-        account.update!(plan_credits: 4000, pack_credits: 0, total_credits: 4000)
+        setup_account_state(plan_credits: 4000, pack_credits: 0)
 
         service.reset_plan_credits!(subscription: subscription, idempotency_key: idempotency_key)
-        expect(CreditTransaction.count).to eq(2)
+        # 1 from setup_account_state + 2 from service (expire + allocate)
+        expect(CreditTransaction.count).to eq(3)
 
         expect {
           service.reset_plan_credits!(subscription: subscription, idempotency_key: idempotency_key)
@@ -614,7 +640,7 @@ RSpec.describe Credits::AllocationService do
     describe "complex scenarios" do
       context "multiple plan changes in same period" do
         before do
-          account.update!(plan_credits: 5000, pack_credits: 0, total_credits: 5000)
+          setup_account_state(plan_credits: 5000, pack_credits: 0)
 
           # Initial allocation at period start
           account.credit_transactions.create!(
@@ -627,7 +653,8 @@ RSpec.describe Credits::AllocationService do
             pack_balance_after: 0,
             reference_type: "Pay::Subscription",
             reference_id: subscription.id.to_s,
-            idempotency_key: idempotency_key
+            idempotency_key: idempotency_key,
+            skip_sequence_validation: true
           )
         end
 
@@ -646,8 +673,18 @@ RSpec.describe Credits::AllocationService do
             account.reload
             expect(account.plan_credits).to eq(15000)
 
-            # Step 2: Use some credits (simulate consumption)
-            account.update!(plan_credits: 10000, total_credits: 10000)
+            # Step 2: Simulate consumption by creating a consume transaction
+            account.credit_transactions.create!(
+              transaction_type: "consume",
+              credit_type: "plan",
+              reason: "ai_generation",
+              amount: -5000,
+              balance_after: 10000,
+              plan_balance_after: 10000,
+              pack_balance_after: 0,
+              skip_sequence_validation: true
+            )
+            account.update!(plan_credits: 10000, pack_credits: 0, total_credits: 10000)
 
             # Step 3: Downgrade Pro → Growth
             allow(subscription).to receive(:plan).and_return(growth_monthly)
@@ -696,7 +733,7 @@ RSpec.describe Credits::AllocationService do
 
         before do
           # Was on Growth, used 2000 plan credits, has 500 pack credits
-          account.update!(plan_credits: 3000, pack_credits: 500, total_credits: 3500)
+          setup_account_state(plan_credits: 3000, pack_credits: 500)
         end
 
         it "only adjusts plan credits, pack credits untouched" do
@@ -720,7 +757,7 @@ RSpec.describe Credits::AllocationService do
 
         before do
           # Was on Starter, has 1000 plan + 300 pack
-          account.update!(plan_credits: 1000, pack_credits: 300, total_credits: 1300)
+          setup_account_state(plan_credits: 1000, pack_credits: 300)
         end
 
         it "allocates new plan credits, pack untouched" do
@@ -739,7 +776,7 @@ RSpec.describe Credits::AllocationService do
 
       context "yearly subscriber mid-month reset attempt" do
         before do
-          account.update!(plan_credits: 4000, pack_credits: 0, total_credits: 4000)
+          setup_account_state(plan_credits: 4000, pack_credits: 0)
 
           # Allocation happened at period start (beginning of year)
           account.credit_transactions.create!(
@@ -752,7 +789,8 @@ RSpec.describe Credits::AllocationService do
             pack_balance_after: 0,
             reference_type: "Pay::Subscription",
             reference_id: subscription.id.to_s,
-            idempotency_key: idempotency_key
+            idempotency_key: idempotency_key,
+            skip_sequence_validation: true
           )
         end
 
@@ -769,7 +807,7 @@ RSpec.describe Credits::AllocationService do
       context "edge case: previous_plan has nil plan_tier" do
         let(:current_plan) { growth_monthly }
 
-        before { account.update!(plan_credits: 1000, pack_credits: 0, total_credits: 1000) }
+        before { setup_account_state(plan_credits: 1000, pack_credits: 0) }
 
         it "treats as renewal (not upgrade/downgrade) since no previous credits" do
           plan_without_tier = create(:plan, plan_tier: nil)
@@ -796,7 +834,7 @@ RSpec.describe Credits::AllocationService do
       context "for upgrades" do
         let(:current_plan) { growth_monthly }
 
-        before { account.update!(plan_credits: 1000, pack_credits: 0, total_credits: 1000) }
+        before { setup_account_state(plan_credits: 1000, pack_credits: 0) }
 
         it "includes upgrade-specific metadata" do
           service.reset_plan_credits!(
@@ -814,7 +852,7 @@ RSpec.describe Credits::AllocationService do
       context "for downgrades" do
         let(:current_plan) { starter_monthly }
 
-        before { account.update!(plan_credits: 4000, pack_credits: 0, total_credits: 4000) }
+        before { setup_account_state(plan_credits: 4000, pack_credits: 0) }
 
         it "includes downgrade-specific metadata with pro-rate details" do
           service.reset_plan_credits!(

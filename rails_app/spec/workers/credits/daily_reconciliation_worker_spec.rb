@@ -5,7 +5,30 @@ require "rails_helper"
 RSpec.describe Credits::DailyReconciliationWorker do
   include ActiveSupport::Testing::TimeHelpers
 
+  # Run Sidekiq jobs inline since the worker uses perform_async
+  around do |example|
+    Sidekiq::Testing.inline! do
+      example.run
+    end
+  end
+
   let(:worker) { described_class.new }
+
+  # Helper to set up account state with proper transaction history
+  def setup_account_state(account:, plan_credits:, pack_credits: 0)
+    total = plan_credits + pack_credits
+    account.credit_transactions.create!(
+      transaction_type: plan_credits >= 0 ? "allocate" : "consume",
+      credit_type: "plan",
+      reason: plan_credits >= 0 ? "plan_renewal" : "ai_generation",
+      amount: plan_credits,
+      balance_after: total,
+      plan_balance_after: plan_credits,
+      pack_balance_after: pack_credits,
+      skip_sequence_validation: true
+    )
+    account.update!(plan_credits: plan_credits, pack_credits: pack_credits, total_credits: total)
+  end
 
   describe "#perform" do
     let(:plan_tier) { create(:plan_tier, :growth) } # 5000 credits
@@ -44,11 +67,12 @@ RSpec.describe Credits::DailyReconciliationWorker do
         account = create(:account)
         subscription = create_yearly_subscription(account: account, billing_day: 15)
 
-        # Set up some existing credits
-        account.update!(plan_credits: 3000, pack_credits: 0, total_credits: 3000)
+        # Set up some existing credits (simulating usage from initial allocation)
+        setup_account_state(account: account, plan_credits: 3000, pack_credits: 0)
 
-        # Travel to the 15th of the current month
-        travel_to Date.current.beginning_of_month + 14.days do
+        # Travel to the 15th of NEXT month (after initial allocation month)
+        next_month_15th = Date.current.next_month.beginning_of_month + 14.days
+        travel_to next_month_15th do
           # Stub plan method for all subscriptions
           allow_any_instance_of(Pay::Subscription).to receive(:plan).and_return(yearly_plan)
 
@@ -64,10 +88,11 @@ RSpec.describe Credits::DailyReconciliationWorker do
       it "does not reset credits on non-billing days" do
         account = create(:account)
         subscription = create_yearly_subscription(account: account, billing_day: 15)
-        account.update!(plan_credits: 3000, pack_credits: 0, total_credits: 3000)
+        setup_account_state(account: account, plan_credits: 3000, pack_credits: 0)
 
-        # Travel to the 10th (not the billing day)
-        travel_to Date.current.beginning_of_month + 9.days do
+        # Travel to the 10th of next month (not the billing day)
+        next_month_10th = Date.current.next_month.beginning_of_month + 9.days
+        travel_to next_month_10th do
           allow_any_instance_of(Pay::Subscription).to receive(:plan).and_return(yearly_plan)
 
           expect {
@@ -99,7 +124,7 @@ RSpec.describe Credits::DailyReconciliationWorker do
           current_period_end: (start_date + 1.year).to_time
         )
 
-        account.update!(plan_credits: 3000, pack_credits: 0, total_credits: 3000)
+        setup_account_state(account: account, plan_credits: 3000, pack_credits: 0)
 
         # Travel to February 28th (last day of Feb in non-leap year)
         # In a leap year, this would be Feb 29th
@@ -133,7 +158,7 @@ RSpec.describe Credits::DailyReconciliationWorker do
           current_period_end: (Date.current.beginning_of_month + 1.month).to_time
         )
 
-        account.update!(plan_credits: 3000, pack_credits: 0, total_credits: 3000)
+        setup_account_state(account: account, plan_credits: 3000, pack_credits: 0)
 
         allow_any_instance_of(Pay::Subscription).to receive(:plan).and_return(monthly_plan)
 
@@ -173,12 +198,15 @@ RSpec.describe Credits::DailyReconciliationWorker do
           account
         end
 
-        travel_to Date.current.beginning_of_month + 14.days do
+        # Travel to next month's billing day (after initial allocations)
+        next_month_15th = Date.current.next_month.beginning_of_month + 14.days
+        travel_to next_month_15th do
           allow_any_instance_of(Pay::Subscription).to receive(:plan).and_return(yearly_plan)
 
+          # Each account gets expire + allocate = 2 transactions, 3 accounts = 6 total
           expect {
             worker.perform
-          }.to change { CreditTransaction.count }.by(3)
+          }.to change { CreditTransaction.count }.by(6)
 
           accounts.each do |account|
             expect(account.reload.plan_credits).to eq(5000)
