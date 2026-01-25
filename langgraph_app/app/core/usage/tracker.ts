@@ -8,7 +8,7 @@ import type { UsageRecord } from "./types";
 /**
  * Callback handler that tracks LLM usage metadata.
  * Attached to every model via getLLM().
- * Safely no-ops when not inside runWithUsageTracking.
+ * Safely no-ops when not inside a tracked context (middleware or streamWithUsageTracking).
  */
 class UsageTrackingCallbackHandler extends BaseCallbackHandler {
   name = "usage-tracking";

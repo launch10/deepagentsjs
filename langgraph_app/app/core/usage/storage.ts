@@ -6,7 +6,7 @@ export const usageStorage = new AsyncLocalStorage<UsageContext>();
 
 /**
  * Get the current usage tracking context.
- * Returns undefined when called outside of runWithUsageTracking.
+ * Returns undefined when called outside of a tracked context (middleware or streamWithUsageTracking).
  */
 export function getUsageContext(): UsageContext | undefined {
   return usageStorage.getStore();

@@ -12,5 +12,3 @@ export { usageStorage, getUsageContext, createUsageContext } from "./storage";
 export { usageTracker } from "./tracker";
 
 export { persistUsage, prepareUsageRecordsForInsert, type UsagePersistContext } from "./persistUsage";
-
-export { runWithUsageTracking } from "./runWithTracking";
