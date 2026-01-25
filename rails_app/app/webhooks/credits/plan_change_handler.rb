@@ -32,6 +32,12 @@ module Credits
       old_price_id = extract_old_price_id(previous_attributes)
       return unless old_price_id
 
+      # Get current price ID from the subscription object
+      current_price_id = extract_current_price_id(event.data.object)
+
+      # Only proceed if the price actually changed (not just quantity)
+      return if old_price_id == current_price_id
+
       # Find the old plan by Stripe price ID
       old_plan = Plan.find_by(stripe_id: old_price_id)
       return unless old_plan
@@ -56,6 +62,26 @@ module Credits
 
       # Stripe nests the old price under previous_attributes.items.data[0].price.id
       items = attrs["items"]
+      return nil unless items
+
+      items = normalize(items)
+      items_data = items["data"]
+      return nil unless items_data.is_a?(Array) && items_data.any?
+
+      first_item = normalize(items_data.first)
+      return nil unless first_item
+
+      price = normalize(first_item["price"])
+      return nil unless price
+
+      price["id"]
+    end
+
+    def extract_current_price_id(subscription_object)
+      obj = normalize(subscription_object)
+
+      # Stripe nests the current price under object.items.data[0].price.id
+      items = obj["items"]
       return nil unless items
 
       items = normalize(items)
