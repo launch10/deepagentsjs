@@ -79,7 +79,7 @@ RSpec.describe Credits::AllocationService do
     # HAPPY PATH: First subscription / Renewals
     # ==========================================================================
 
-    context "Scenario 1: First subscription (no existing credits)" do
+    context "first subscription (no existing credits)" do
       it "allocates plan credits without expiring anything" do
         expect {
           service.reset_plan_credits!(subscription: subscription, idempotency_key: idempotency_key)
@@ -102,7 +102,7 @@ RSpec.describe Credits::AllocationService do
       end
     end
 
-    context "Scenario 2: Renewal with partial usage (4000/5000 remaining)" do
+    context "renewal with partial usage (4000/5000 remaining)" do
       before { setup_account_state(plan_credits: 4000, pack_credits: 0) }
 
       it "expires remaining plan credits and allocates new" do
@@ -127,7 +127,7 @@ RSpec.describe Credits::AllocationService do
       end
     end
 
-    context "Scenario 3: Renewal with full usage (0/5000 remaining)" do
+    context "renewal with full usage (0/5000 remaining)" do
       before { setup_account_state(plan_credits: 0, pack_credits: 0) }
 
       it "allocates new credits without expiring (nothing to expire)" do
@@ -144,7 +144,7 @@ RSpec.describe Credits::AllocationService do
       end
     end
 
-    context "Scenario 4: Renewal with negative balance (debt)" do
+    context "renewal with negative balance (debt)" do
       before { setup_account_state(plan_credits: -1000, pack_credits: 0) }
 
       it "absorbs debt from new allocation" do
@@ -164,7 +164,7 @@ RSpec.describe Credits::AllocationService do
       end
     end
 
-    context "Scenario 5: Renewal with plan + pack credits" do
+    context "renewal with plan + pack credits" do
       before { setup_account_state(plan_credits: 4000, pack_credits: 500) }
 
       it "expires only plan credits, preserves pack credits" do
@@ -177,7 +177,7 @@ RSpec.describe Credits::AllocationService do
       end
     end
 
-    context "Scenario 6: Renewal - used all plan + some pack" do
+    context "renewal - used all plan + some pack" do
       before { setup_account_state(plan_credits: 0, pack_credits: 300) }
 
       it "allocates new credits, pack unchanged" do
@@ -190,7 +190,7 @@ RSpec.describe Credits::AllocationService do
       end
     end
 
-    context "Scenario 7: Renewal - pack exhausted, plan negative" do
+    context "renewal - pack exhausted, plan negative" do
       before { setup_account_state(plan_credits: -1000, pack_credits: 0) }
 
       it "absorbs debt from allocation" do
@@ -207,7 +207,7 @@ RSpec.describe Credits::AllocationService do
     # UPGRADE: Starter → Growth, Growth → Pro
     # ==========================================================================
 
-    context "Scenario 8: Upgrade Starter → Growth mid-period" do
+    context "upgrade Starter → Growth mid-period" do
       # User WAS on Starter (2000 credits), NOW on Growth (5000 credits)
       let(:current_plan) { growth_monthly }
 
@@ -291,7 +291,7 @@ RSpec.describe Credits::AllocationService do
     # DOWNGRADE: Pro → Growth, Growth → Starter
     # ==========================================================================
 
-    context "Scenario 9: Downgrade Pro → Growth mid-period (pro-rate)" do
+    context "downgrade Pro → Growth mid-period (pro-rate)" do
       # User WAS on Pro (15000 credits), NOW on Growth (5000 credits)
       # Used 5000 credits this period, 10000 remaining
       let(:current_plan) { growth_monthly }
@@ -320,7 +320,7 @@ RSpec.describe Credits::AllocationService do
       end
     end
 
-    context "Scenario 10: Downgrade with over-usage (floor at 0)" do
+    context "downgrade with over-usage (floor at 0)" do
       # User WAS on Pro (15000 credits), NOW on Growth (5000 credits)
       # Used ALL 15000 credits this period
       let(:current_plan) { growth_monthly }

@@ -4,6 +4,7 @@ require "rails_helper"
 
 RSpec.describe "Subscription Credit Lifecycle", type: :integration do
   include ActiveSupport::Testing::TimeHelpers
+  include StripeWebhookFixtures
 
   # Run Sidekiq jobs inline so credits are allocated synchronously
   around do |example|
@@ -19,11 +20,19 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
   let(:growth_tier) { create(:plan_tier, :growth) }    # 5000 credits
   let(:pro_tier) { create(:plan_tier, :pro) }          # 15000 credits
 
-  # Plans
-  let(:starter_monthly) { create(:plan, :starter_monthly, plan_tier: starter_tier) }
-  let(:growth_monthly) { create(:plan, :growth_monthly, plan_tier: growth_tier) }
-  let(:growth_annual) { create(:plan, :growth_annual, plan_tier: growth_tier) }
-  let(:pro_monthly) { create(:plan, :pro_monthly, plan_tier: pro_tier) }
+  # Plans with Stripe IDs for webhook lookup
+  let(:starter_monthly) do
+    create(:plan, :starter_monthly, plan_tier: starter_tier, stripe_id: "price_starter_monthly")
+  end
+  let(:growth_monthly) do
+    create(:plan, :growth_monthly, plan_tier: growth_tier, stripe_id: "price_growth_monthly")
+  end
+  let(:growth_annual) do
+    create(:plan, :growth_annual, plan_tier: growth_tier, stripe_id: "price_growth_annual")
+  end
+  let(:pro_monthly) do
+    create(:plan, :pro_monthly, plan_tier: pro_tier, stripe_id: "price_pro_monthly")
+  end
 
   before do
     # Ensure plans have processor IDs for lookup
@@ -32,33 +41,34 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
     end
   end
 
-  # Helper to create a subscription (simulates what happens when user subscribes)
+  # Helper to process webhook through our handlers directly
+  # We call our handlers directly instead of using Pay::Webhooks.instrument
+  # to avoid triggering Pay's built-in handlers which try to sync from Stripe
+  def process_webhook(event)
+    case event.type
+    when "stripe.invoice.paid"
+      Credits::RenewalHandler.new.call(event)
+    when "stripe.customer.subscription.updated"
+      Credits::PlanChangeHandler.new.call(event)
+    else
+      # For events we don't handle, use Pay's instrument (may trigger Stripe sync)
+      Pay::Webhooks.instrument(event: event, type: event.type)
+    end
+  end
+
+  # Helper to create a Stripe-like subscription
   def subscribe_to(plan)
-    processor = account.set_payment_processor(:fake_processor, allow_fake: true)
+    processor = account.set_payment_processor(:stripe, allow_fake: true)
     processor.update!(processor_id: "cus_#{SecureRandom.hex(8)}") unless processor.processor_id
 
     processor.subscriptions.create!(
       processor_id: "sub_#{SecureRandom.hex(8)}",
       name: "default",
-      processor_plan: plan.fake_processor_id || plan.name,
+      processor_plan: plan.stripe_id,
       status: "active",
       current_period_start: Time.current,
       current_period_end: plan.yearly? ? 1.year.from_now : 1.month.from_now
     )
-  end
-
-  # Helper to simulate Stripe renewal webhook (updates period dates)
-  def simulate_renewal(subscription)
-    new_period_start = subscription.current_period_end
-    subscription.update!(
-      current_period_start: new_period_start,
-      current_period_end: subscription.plan.yearly? ? new_period_start + 1.year : new_period_start + 1.month
-    )
-  end
-
-  # Helper to simulate plan change (upgrade/downgrade)
-  def change_plan(subscription, new_plan)
-    subscription.update!(processor_plan: new_plan.fake_processor_id || new_plan.name)
   end
 
   # Helper to consume credits (simulates AI usage)
@@ -95,20 +105,15 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
     )
   end
 
-  # Helper to set up account state with proper transaction history (for debt scenarios)
-  def setup_account_state(plan_credits:, pack_credits: 0)
-    total = plan_credits + pack_credits
-    account.credit_transactions.create!(
-      transaction_type: plan_credits >= 0 ? "allocate" : "consume",
-      credit_type: "plan",
-      reason: plan_credits >= 0 ? "plan_renewal" : "ai_generation",
-      amount: plan_credits,
-      balance_after: total,
-      plan_balance_after: plan_credits,
-      pack_balance_after: pack_credits,
-      skip_sequence_validation: true
+  # Helper to advance subscription billing period
+  # In real Stripe flow, the subscription is updated with new period dates
+  # BEFORE invoice.paid fires. This simulates that update.
+  def advance_billing_period(subscription)
+    old_period_end = subscription.current_period_end
+    subscription.update!(
+      current_period_start: old_period_end,
+      current_period_end: old_period_end + 1.month
     )
-    account.update!(plan_credits: plan_credits, pack_credits: pack_credits, total_credits: total)
   end
 
   describe "new subscription" do
@@ -150,12 +155,12 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
 
       # Create another account with Pro plan
       pro_account = create(:account)
-      pro_processor = pro_account.set_payment_processor(:fake_processor, allow_fake: true)
+      pro_processor = pro_account.set_payment_processor(:stripe, allow_fake: true)
       pro_processor.update!(processor_id: "cus_#{SecureRandom.hex(8)}")
       pro_processor.subscriptions.create!(
         processor_id: "sub_#{SecureRandom.hex(8)}",
         name: "default",
-        processor_plan: pro_monthly.fake_processor_id,
+        processor_plan: pro_monthly.stripe_id,
         status: "active",
         current_period_start: Time.current,
         current_period_end: 1.month.from_now
@@ -166,17 +171,26 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
     end
   end
 
-  describe "monthly subscription renewal" do
-    it "expires unused credits and allocates fresh credits" do
+  describe "monthly subscription renewal via invoice.paid webhook" do
+    it "expires unused credits and allocates fresh credits on renewal" do
       subscription = subscribe_to(growth_monthly)
       consume_credits(1000)  # Use 1000 of 5000
 
       account.reload
       expect(account.plan_credits).to eq(4000)
 
-      # Simulate renewal (Stripe webhook updating period)
+      # Simulate renewal via invoice.paid webhook with subscription_cycle billing_reason
       travel 1.month do
-        simulate_renewal(subscription)
+        # In real Stripe flow, subscription period is updated before invoice.paid fires
+        advance_billing_period(subscription)
+
+        event = invoice_paid_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id,
+          billing_reason: "subscription_cycle"  # This is the authoritative signal for renewal
+        )
+
+        process_webhook(event)
 
         account.reload
         expect(account.plan_credits).to eq(5000)  # Fresh allocation
@@ -191,6 +205,23 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       end
     end
 
+    it "does not allocate credits for proration invoices (billing_reason: subscription_update)" do
+      subscription = subscribe_to(growth_monthly)
+      initial_credits = account.reload.plan_credits
+
+      # Proration invoice should NOT trigger credit allocation
+      event = invoice_paid_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id,
+        billing_reason: "subscription_update"  # Proration from plan change
+      )
+
+      process_webhook(event)
+
+      # Credits unchanged - proration doesn't reset credits
+      expect(account.reload.plan_credits).to eq(initial_credits)
+    end
+
     it "does not create expire transaction when no credits remain" do
       subscription = subscribe_to(growth_monthly)
       consume_credits(5000)  # Use all credits
@@ -199,7 +230,15 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       expect(account.plan_credits).to eq(0)
 
       travel 1.month do
-        simulate_renewal(subscription)
+        advance_billing_period(subscription)
+
+        event = invoice_paid_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id,
+          billing_reason: "subscription_cycle"
+        )
+
+        process_webhook(event)
 
         # No expire transaction (nothing to expire)
         period_transactions = account.credit_transactions.where("created_at > ?", 1.day.ago)
@@ -216,7 +255,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       consume_credits(5000)  # Use all credits
 
       # Simulate going negative via transaction (e.g., pack credits exhausted)
-      current = account.reload
+      account.reload
       account.credit_transactions.create!(
         transaction_type: "consume",
         credit_type: "plan",
@@ -230,7 +269,15 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       )
 
       travel 1.month do
-        simulate_renewal(subscription)
+        advance_billing_period(subscription)
+
+        event = invoice_paid_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id,
+          billing_reason: "subscription_cycle"
+        )
+
+        process_webhook(event)
 
         account.reload
         expect(account.plan_credits).to eq(4000)  # 5000 - 1000 debt
@@ -242,7 +289,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
     end
   end
 
-  describe "plan upgrade" do
+  describe "plan upgrade via subscription.updated webhook" do
     it "gives full new plan credits immediately" do
       subscription = subscribe_to(starter_monthly)  # 2000 credits
       consume_credits(1000)  # Use half
@@ -250,8 +297,21 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       account.reload
       expect(account.plan_credits).to eq(1000)
 
-      # Upgrade to Growth (5000 credits)
-      change_plan(subscription, growth_monthly)
+      # Upgrade via subscription.updated webhook with previous_attributes.items
+      event = subscription_plan_changed_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id,
+        old_price_id: starter_monthly.stripe_id,
+        new_price_id: growth_monthly.stripe_id,
+        old_unit_amount: starter_monthly.amount,
+        new_unit_amount: growth_monthly.amount
+      )
+
+      # Update the subscription record to reflect the new plan
+      # (In production, Pay's SubscriptionUpdated handler does this)
+      subscription.update!(processor_plan: growth_monthly.stripe_id)
+
+      process_webhook(event)
 
       account.reload
       expect(account.plan_credits).to eq(5000)  # Full new allocation
@@ -267,7 +327,17 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       subscription = subscribe_to(starter_monthly)
       # Don't consume anything - full 2000 remaining
 
-      change_plan(subscription, growth_monthly)
+      event = subscription_plan_changed_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id,
+        old_price_id: starter_monthly.stripe_id,
+        new_price_id: growth_monthly.stripe_id,
+        old_unit_amount: starter_monthly.amount,
+        new_unit_amount: growth_monthly.amount
+      )
+
+      subscription.update!(processor_plan: growth_monthly.stripe_id)
+      process_webhook(event)
 
       expire_tx = account.credit_transactions.where(transaction_type: "expire").last
       expect(expire_tx).to be_present
@@ -282,7 +352,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       consume_credits(2000)
 
       # Simulate going into debt via transaction
-      current = account.reload
+      account.reload
       account.credit_transactions.create!(
         transaction_type: "consume",
         credit_type: "plan",
@@ -295,14 +365,24 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
         reference_id: SecureRandom.uuid
       )
 
-      change_plan(subscription, growth_monthly)
+      event = subscription_plan_changed_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id,
+        old_price_id: starter_monthly.stripe_id,
+        new_price_id: growth_monthly.stripe_id,
+        old_unit_amount: starter_monthly.amount,
+        new_unit_amount: growth_monthly.amount
+      )
+
+      subscription.update!(processor_plan: growth_monthly.stripe_id)
+      process_webhook(event)
 
       account.reload
       expect(account.plan_credits).to eq(4500)  # 5000 - 500 debt
     end
   end
 
-  describe "plan downgrade" do
+  describe "plan downgrade via subscription.updated webhook" do
     it "pro-rates balance based on actual usage" do
       subscription = subscribe_to(pro_monthly)  # 15000 credits
       consume_credits(5000)  # Use 5000
@@ -313,7 +393,17 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       # Downgrade to Growth (5000 credits)
       # Usage = 5000, new plan = 5000
       # Pro-rated balance = 5000 - 5000 = 0
-      change_plan(subscription, growth_monthly)
+      event = subscription_plan_changed_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id,
+        old_price_id: pro_monthly.stripe_id,
+        new_price_id: growth_monthly.stripe_id,
+        old_unit_amount: pro_monthly.amount,
+        new_unit_amount: growth_monthly.amount
+      )
+
+      subscription.update!(processor_plan: growth_monthly.stripe_id)
+      process_webhook(event)
 
       account.reload
       expect(account.plan_credits).to eq(0)
@@ -329,8 +419,18 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
 
       # Downgrade to Growth (5000 credits)
       # Usage = 10000, new plan = 5000
-      # Pro-rated = 5000 - 10000 = -5000 → floored to 0
-      change_plan(subscription, growth_monthly)
+      # Pro-rated = 5000 - 10000 = -5000 -> floored to 0
+      event = subscription_plan_changed_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id,
+        old_price_id: pro_monthly.stripe_id,
+        new_price_id: growth_monthly.stripe_id,
+        old_unit_amount: pro_monthly.amount,
+        new_unit_amount: growth_monthly.amount
+      )
+
+      subscription.update!(processor_plan: growth_monthly.stripe_id)
+      process_webhook(event)
 
       account.reload
       expect(account.plan_credits).to eq(0)
@@ -344,10 +444,77 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       # Downgrade to Growth (5000 credits)
       # Usage = 2000, new plan = 5000
       # Pro-rated balance = 5000 - 2000 = 3000
-      change_plan(subscription, growth_monthly)
+      event = subscription_plan_changed_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id,
+        old_price_id: pro_monthly.stripe_id,
+        new_price_id: growth_monthly.stripe_id,
+        old_unit_amount: pro_monthly.amount,
+        new_unit_amount: growth_monthly.amount
+      )
+
+      subscription.update!(processor_plan: growth_monthly.stripe_id)
+      process_webhook(event)
 
       account.reload
       expect(account.plan_credits).to eq(3000)
+    end
+  end
+
+  describe "non-credit subscription events are ignored" do
+    it "does not allocate credits for quantity changes" do
+      subscription = subscribe_to(growth_monthly)
+      initial_credits = account.reload.plan_credits
+      initial_count = account.credit_transactions.count
+
+      event = subscription_quantity_changed_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id,
+        price_id: growth_monthly.stripe_id,
+        old_quantity: 1,
+        new_quantity: 5
+      )
+
+      process_webhook(event)
+
+      expect(account.reload.plan_credits).to eq(initial_credits)
+      expect(account.credit_transactions.count).to eq(initial_count)
+    end
+
+    it "does not allocate credits for metadata changes" do
+      subscription = subscribe_to(growth_monthly)
+      initial_credits = account.reload.plan_credits
+      initial_count = account.credit_transactions.count
+
+      event = subscription_metadata_changed_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id,
+        old_metadata: {"account_id" => "123"},
+        new_metadata: {"account_id" => "123", "internal_note" => "VIP"}
+      )
+
+      process_webhook(event)
+
+      expect(account.reload.plan_credits).to eq(initial_credits)
+      expect(account.credit_transactions.count).to eq(initial_count)
+    end
+
+    it "does not allocate credits for payment method changes" do
+      subscription = subscribe_to(growth_monthly)
+      initial_credits = account.reload.plan_credits
+      initial_count = account.credit_transactions.count
+
+      event = subscription_payment_method_changed_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id,
+        old_payment_method_id: "pm_old_card",
+        new_payment_method_id: "pm_new_card"
+      )
+
+      process_webhook(event)
+
+      expect(account.reload.plan_credits).to eq(initial_credits)
+      expect(account.credit_transactions.count).to eq(initial_count)
     end
   end
 
@@ -367,30 +534,12 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
         Credits::DailyReconciliationWorker.new.perform
 
         # Worker enqueues async job, so we need to process it
-        # In tests, perform_async is usually stubbed or we call perform directly
         account.payment_processor.subscription.tap do |sub|
           Credits::ReconcileOneAccountWorker.new.perform(account.id)
         end
 
         account.reload
         expect(account.plan_credits).to eq(5000)  # Fresh allocation
-      end
-    end
-
-    it "handles anchor day greater than days in month (31st → Feb 28)" do
-      # Create subscription starting Jan 31
-      travel_to Date.new(2026, 1, 31) do
-        subscription = subscribe_to(growth_annual)
-        consume_credits(2000)
-      end
-
-      # February only has 28 days (2026 is not a leap year), should reset on Feb 28
-      travel_to Date.new(2026, 2, 28) do
-        Credits::DailyReconciliationWorker.new.perform
-        Credits::ReconcileOneAccountWorker.new.perform(account.id)
-
-        account.reload
-        expect(account.plan_credits).to eq(5000)
       end
     end
 
@@ -419,7 +568,15 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       consume_credits(3000)
 
       travel 1.month do
-        simulate_renewal(subscription)
+        advance_billing_period(subscription)
+
+        event = invoice_paid_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id,
+          billing_reason: "subscription_cycle"
+        )
+
+        process_webhook(event)
 
         account.reload
         expect(account.plan_credits).to eq(5000)
@@ -432,7 +589,17 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       subscription = subscribe_to(starter_monthly)
       purchase_pack_credits(1000)
 
-      change_plan(subscription, growth_monthly)
+      event = subscription_plan_changed_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id,
+        old_price_id: starter_monthly.stripe_id,
+        new_price_id: growth_monthly.stripe_id,
+        old_unit_amount: starter_monthly.amount,
+        new_unit_amount: growth_monthly.amount
+      )
+
+      subscription.update!(processor_plan: growth_monthly.stripe_id)
+      process_webhook(event)
 
       account.reload
       expect(account.plan_credits).to eq(5000)
@@ -445,7 +612,17 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       purchase_pack_credits(500)
       consume_credits(5000)
 
-      change_plan(subscription, growth_monthly)
+      event = subscription_plan_changed_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id,
+        old_price_id: pro_monthly.stripe_id,
+        new_price_id: growth_monthly.stripe_id,
+        old_unit_amount: pro_monthly.amount,
+        new_unit_amount: growth_monthly.amount
+      )
+
+      subscription.update!(processor_plan: growth_monthly.stripe_id)
+      process_webhook(event)
 
       account.reload
       expect(account.pack_credits).to eq(500)  # Preserved!
@@ -453,37 +630,58 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
   end
 
   describe "idempotency and crash recovery" do
-    it "handles crash between expire and allocate gracefully" do
+    it "handles duplicate invoice.paid events (same event ID)" do
       subscription = subscribe_to(growth_monthly)
-      consume_credits(1000)  # Leave 4000 remaining
-
-      # Simulate first attempt that crashes after expire but before allocate
-      # by manually creating just the expire transaction
-      idempotency_key = "plan_credits:#{subscription.id}:#{(Time.current + 1.month).to_date.iso8601}"
-      expire_key = idempotency_key.gsub("plan_credits:", "expire:")
+      consume_credits(1000)
 
       travel 1.month do
-        # Manually create expire transaction (simulating partial completion)
-        account.reload
-        account.credit_transactions.create!(
-          transaction_type: "expire",
-          credit_type: "plan",
-          reason: "plan_credits_expired",
-          amount: -4000,
-          balance_after: 0,
-          plan_balance_after: 0,
-          pack_balance_after: 0,
-          reference_type: "Pay::Subscription",
-          reference_id: subscription.id.to_s,
-          idempotency_key: expire_key,
-          metadata: {expired_credits: 4000}
+        # Same event ID should be idempotent
+        event = invoice_paid_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id,
+          billing_reason: "subscription_cycle"
         )
 
-        # Update subscription period to trigger renewal
-        simulate_renewal(subscription)
+        # Process same event twice
+        process_webhook(event)
+        initial_count = account.credit_transactions.count
 
-        # Verify only allocate is created, not another expire
-        expect(account.credit_transactions.where(transaction_type: "expire").count).to eq(1)
+        process_webhook(event)
+
+        # Should not create duplicate transactions
+        expect(account.credit_transactions.count).to eq(initial_count)
+      end
+    end
+
+    it "handles out-of-order webhook delivery" do
+      subscription = subscribe_to(growth_monthly)
+
+      travel 1.month do
+        # subscription.updated arrives before invoice.paid
+        # (can happen with webhook delivery timing)
+        period_event = subscription_renewed_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id,
+          old_period_start: 1.month.ago,
+          old_period_end: Time.current,
+          new_period_start: Time.current,
+          new_period_end: 1.month.from_now
+        )
+
+        invoice_event = invoice_paid_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id,
+          billing_reason: "subscription_cycle"
+        )
+
+        # Process in "wrong" order - period update first
+        process_webhook(period_event)
+        # Period event with no items change should be ignored by PlanChangeHandler
+        expect(account.credit_transactions.where(transaction_type: "allocate").count).to eq(1)
+
+        # Then invoice arrives
+        process_webhook(invoice_event)
+        # NOW credits should be allocated
         expect(account.credit_transactions.where(transaction_type: "allocate").count).to eq(2)
 
         account.reload
@@ -522,15 +720,52 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       # Cancel subscription
       subscription.update!(status: "canceled")
 
-      # Should not allocate credits to inactive subscription
-      Credits::ResetPlanCreditsWorker.new.perform(subscription.id)
+      # Webhook for canceled subscription should not allocate credits
+      event = invoice_paid_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id,
+        billing_reason: "subscription_cycle"
+      )
+
+      process_webhook(event)
 
       expect(account.credit_transactions.count).to eq(initial_count)
     end
 
-    # Note: Concurrent safety is ensured by database row locking in AllocationService
-    # Thread-based tests don't work well with database transactions in test environment
-    # The locking behavior is verified by the idempotency tests above
+    it "ignores webhooks for unknown subscriptions" do
+      # No subscription exists for this ID
+      event = invoice_paid_event(
+        subscription_id: "sub_does_not_exist",
+        customer_id: "cus_unknown",
+        billing_reason: "subscription_cycle"
+      )
+
+      expect { process_webhook(event) }.not_to raise_error
+    end
+
+    it "ignores webhooks for non-Account customers" do
+      # Create a subscription for a User (not Account)
+      user = create(:user)
+      user_processor = user.set_payment_processor(:stripe, allow_fake: true)
+      user_processor.update!(processor_id: "cus_user_#{SecureRandom.hex(8)}")
+      user_sub = user_processor.subscriptions.create!(
+        processor_id: "sub_user_#{SecureRandom.hex(8)}",
+        name: "default",
+        processor_plan: growth_monthly.stripe_id,
+        status: "active",
+        current_period_start: Time.current,
+        current_period_end: 1.month.from_now
+      )
+
+      event = invoice_paid_event(
+        subscription_id: user_sub.processor_id,
+        customer_id: user_processor.processor_id,
+        billing_reason: "subscription_cycle"
+      )
+
+      # Should not raise, just skip
+      expect { process_webhook(event) }.not_to raise_error
+    end
   end
 
   describe "transaction data integrity" do
@@ -542,7 +777,15 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       consume_credits(500)
 
       travel 1.month do
-        simulate_renewal(subscription)
+        advance_billing_period(subscription)
+
+        event = invoice_paid_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id,
+          billing_reason: "subscription_cycle"
+        )
+        process_webhook(event)
+
         consume_credits(2000)
       end
 
@@ -562,6 +805,62 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       expect(allocate_tx.metadata["credits_allocated"]).to eq(5000)
       expect(allocate_tx.reference_type).to eq("Pay::Subscription")
       expect(allocate_tx.reference_id).to eq(subscription.id.to_s)
+    end
+  end
+
+  describe "full subscription lifecycle" do
+    it "handles create -> use -> renew -> upgrade -> cancel" do
+      # 1. Create subscription (initial allocation via callback)
+      subscription = subscribe_to(starter_monthly)
+      expect(account.reload.plan_credits).to eq(2000)
+
+      # 2. User consumes credits
+      consume_credits(1500)
+      expect(account.reload.plan_credits).to eq(500)
+
+      # 3. Month passes, renewal via webhook
+      travel 1.month do
+        advance_billing_period(subscription)
+
+        renewal_event = invoice_paid_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id,
+          billing_reason: "subscription_cycle"
+        )
+        process_webhook(renewal_event)
+        expect(account.reload.plan_credits).to eq(2000)  # Fresh allocation
+
+        # 4. User upgrades mid-cycle via webhook
+        upgrade_event = subscription_plan_changed_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id,
+          old_price_id: starter_monthly.stripe_id,
+          new_price_id: growth_monthly.stripe_id,
+          old_unit_amount: starter_monthly.amount,
+          new_unit_amount: growth_monthly.amount
+        )
+        subscription.update!(processor_plan: growth_monthly.stripe_id)
+        process_webhook(upgrade_event)
+        expect(account.reload.plan_credits).to eq(5000)  # Full upgrade
+
+        # 5. Proration invoice (should NOT reset credits)
+        proration_event = invoice_paid_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id,
+          billing_reason: "subscription_update"
+        )
+        process_webhook(proration_event)
+        expect(account.reload.plan_credits).to eq(5000)  # Unchanged
+
+        # 6. User schedules cancellation
+        cancel_event = subscription_cancel_scheduled_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id,
+          cancel_at: 1.month.from_now
+        )
+        process_webhook(cancel_event)
+        expect(account.reload.plan_credits).to eq(5000)  # Keeps credits until end
+      end
     end
   end
 end

@@ -61,7 +61,7 @@ RSpec.describe Credits::DailyReconciliationWorker do
       subscription
     end
 
-    context "Scenario 11: Yearly subscriber - normal reset on billing anchor day" do
+    context "yearly subscriber - normal reset on billing anchor day" do
       it "resets credits on the billing anchor day (e.g., 15th)" do
         # Create account that subscribed on the 15th
         account = create(:account)
@@ -105,7 +105,7 @@ RSpec.describe Credits::DailyReconciliationWorker do
       end
     end
 
-    context "Scenario 12: Yearly subscriber - anchor day > days in month" do
+    context "yearly subscriber - anchor day > days in month" do
       it "resets on last day of month when anchor day exceeds month days (e.g., 31st -> Feb 28)" do
         account = create(:account)
 

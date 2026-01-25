@@ -1,11 +1,24 @@
 # frozen_string_literal: true
 
+# Handles initial credit allocation when a subscription is created.
+#
+# IMPORTANT: This concern only handles initial allocation (on: :create).
+# Renewals and plan changes are handled by webhook handlers:
+#   - Credits::RenewalHandler (stripe.invoice.paid with billing_reason == "subscription_cycle")
+#   - Credits::PlanChangeHandler (stripe.customer.subscription.updated with previous_attributes.items)
+#
+# See plans/billing/stripe_webhook_testing_strategy.md for details on why we use
+# webhooks instead of ActiveRecord callbacks for renewals and plan changes.
+#
 module PaySubscriptionCredits
   extend ActiveSupport::Concern
 
   included do
+    # Initial allocation only - deterministic, fires once when subscription is created
+    # This works for both:
+    # - Stripe subscriptions (created when Pay syncs the subscription from webhook)
+    # - Fake processor subscriptions (created directly in tests)
     after_commit :handle_subscription_created, on: :create
-    after_commit :handle_subscription_updated, on: :update
   end
 
   private
@@ -16,31 +29,9 @@ module PaySubscriptionCredits
     Credits::ResetPlanCreditsWorker.perform_async(id)
   end
 
-  def handle_subscription_updated
-    return unless should_allocate_credits?
-    return unless renewal_or_plan_change?
-
-    Credits::ResetPlanCreditsWorker.perform_async(id, previous_plan_id: previous_plan_id_for_change)
-  end
-
   def should_allocate_credits?
     return false unless customer&.owner.is_a?(Account)
     return false unless active?
     true
-  end
-
-  def renewal_or_plan_change?
-    saved_change_to_current_period_start? || saved_change_to_processor_plan?
-  end
-
-  def previous_plan_id_for_change
-    return nil unless saved_change_to_processor_plan?
-
-    old_processor_plan = saved_change_to_processor_plan.first
-    return nil if old_processor_plan.blank?
-
-    Plan.find_by(fake_processor_id: old_processor_plan)&.id ||
-      Plan.find_by(name: old_processor_plan)&.id ||
-      Plan.find_by(stripe_id: old_processor_plan)&.id
   end
 end

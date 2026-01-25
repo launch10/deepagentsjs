@@ -104,6 +104,17 @@ module CloudflareExtensions
   end
 end
 
+# Register webhook handlers for credit allocation
+# These handlers listen to Stripe events for explicit signals rather than
+# inferring intent from database changes (see plans/billing/stripe_webhook_testing_strategy.md)
+ActiveSupport.on_load(:pay) do
+  # Renewals: invoice.paid with billing_reason == "subscription_cycle"
+  Pay::Webhooks.delegator.subscribe "stripe.invoice.paid", Credits::RenewalHandler.new
+
+  # Plan changes: subscription.updated with previous_attributes.items
+  Pay::Webhooks.delegator.subscribe "stripe.customer.subscription.updated", Credits::PlanChangeHandler.new
+end
+
 Rails.configuration.to_prepare do
   Pay::Subscription.include SubscriptionExtensions
   Pay::Subscription.include AtlasExtensions

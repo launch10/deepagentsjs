@@ -9,6 +9,7 @@ module Credits
       # Handle both symbol and string keys (Sidekiq uses strings after serialization)
       options = options.transform_keys(&:to_sym) if options.is_a?(Hash)
       previous_plan_id = options[:previous_plan_id] if options.is_a?(Hash)
+      stripe_event_id = options[:stripe_event_id] if options.is_a?(Hash)
 
       subscription = Pay::Subscription.find(subscription_id)
       return unless subscription.active?
@@ -16,11 +17,13 @@ module Credits
       account = subscription.customer.owner
       return unless account.is_a?(Account)
 
-      # Idempotency key format depends on operation type:
-      # - Renewal: plan_credits:{sub_id}:{period_start_date}
-      # - Plan change: plan_change:{sub_id}:{old_plan_id}:{new_processor_plan}
-      #   (uses old plan ID to ensure one change per old->new transition)
-      idempotency_key = if previous_plan_id.present?
+      # Idempotency key format depends on source:
+      # - Stripe webhook: plan_credits:{event_id} (globally unique, never collides)
+      # - Callback/legacy: plan_credits:{sub_id}:{period_start_date} or plan_change:{sub_id}:{old}:{new}
+      idempotency_key = if stripe_event_id.present?
+        # Stripe event ID is globally unique - best idempotency key
+        "plan_credits:#{stripe_event_id}"
+      elsif previous_plan_id.present?
         # Plan change - one per old_plan -> new_plan transition
         "plan_change:#{subscription.id}:#{previous_plan_id}:#{subscription.processor_plan}"
       else
