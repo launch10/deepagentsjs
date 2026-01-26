@@ -29,11 +29,11 @@ module Credits
         .joins(:customer)
         .find_by(pay_customers: {processor: "stripe"}, processor_id: invoice.subscription)
 
-      return unless subscription
-      return unless subscription.active?
+      raise "Subscription not found for processor_id: #{invoice.subscription}" unless subscription
+      raise "Subscription #{subscription.id} is not active" unless subscription.active?
 
       account = subscription.customer&.owner
-      return unless account.is_a?(Account)
+      raise "Account not found for subscription #{subscription.id}" unless account.is_a?(Account)
       # Use Stripe event ID for idempotency (globally unique)
       Credits::ResetPlanCreditsWorker.perform_async(
         subscription.id,

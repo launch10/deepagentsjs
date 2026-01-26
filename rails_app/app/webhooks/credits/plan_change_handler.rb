@@ -22,15 +22,15 @@ module Credits
         .joins(:customer)
         .find_by(pay_customers: {processor: "stripe"}, processor_id: event.data.object.id)
 
-      return unless subscription
-      return unless subscription.active?
+      raise "Subscription not found for processor_id: #{event.data.object.id}" unless subscription
+      raise "Subscription #{subscription.id} is not active" unless subscription.active?
 
       account = subscription.customer&.owner
-      return unless account.is_a?(Account)
+      raise "Account not found for subscription #{subscription.id}" unless account.is_a?(Account)
 
       # Extract the old price ID from previous_attributes
       old_price_id = extract_old_price_id(previous_attributes)
-      return unless old_price_id
+      raise "Could not extract old_price_id from previous_attributes" unless old_price_id
 
       # Get current price ID from the subscription object
       current_price_id = extract_current_price_id(event.data.object)
@@ -40,7 +40,7 @@ module Credits
 
       # Find the old plan by Stripe price ID
       old_plan = Plan.find_by(stripe_id: old_price_id)
-      return unless old_plan
+      raise "Plan not found for stripe_id: #{old_price_id}" unless old_plan
 
       # Use Stripe event ID for idempotency (globally unique)
       Credits::ResetPlanCreditsWorker.perform_async(
