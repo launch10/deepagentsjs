@@ -1807,6 +1807,42 @@ ALTER SEQUENCE public.connected_accounts_id_seq OWNED BY public.connected_accoun
 
 
 --
+-- Name: credit_gifts; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.credit_gifts (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    admin_id bigint NOT NULL,
+    amount integer NOT NULL,
+    reason character varying NOT NULL,
+    notes text,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    credits_allocated boolean DEFAULT false NOT NULL
+);
+
+
+--
+-- Name: credit_gifts_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.credit_gifts_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: credit_gifts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.credit_gifts_id_seq OWNED BY public.credit_gifts.id;
+
+
+--
 -- Name: credit_pack_purchases; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1820,7 +1856,8 @@ CREATE TABLE public.credit_pack_purchases (
     is_used boolean DEFAULT false NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    credits_used integer DEFAULT 0 NOT NULL
+    credits_used integer DEFAULT 0 NOT NULL,
+    credits_allocated boolean DEFAULT false NOT NULL
 );
 
 
@@ -4582,6 +4619,13 @@ ALTER TABLE ONLY public.connected_accounts ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
+-- Name: credit_gifts id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.credit_gifts ALTER COLUMN id SET DEFAULT nextval('public.credit_gifts_id_seq'::regclass);
+
+
+--
 -- Name: credit_pack_purchases id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5399,6 +5443,14 @@ ALTER TABLE ONLY public.cloudflare_firewalls
 
 ALTER TABLE ONLY public.connected_accounts
     ADD CONSTRAINT connected_accounts_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: credit_gifts credit_gifts_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.credit_gifts
+    ADD CONSTRAINT credit_gifts_pkey PRIMARY KEY (id);
 
 
 --
@@ -7947,6 +7999,34 @@ CREATE INDEX index_connected_accounts_on_owner_id_and_owner_type ON public.conne
 
 
 --
+-- Name: index_credit_gifts_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_credit_gifts_on_account_id ON public.credit_gifts USING btree (account_id);
+
+
+--
+-- Name: index_credit_gifts_on_account_id_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_credit_gifts_on_account_id_and_created_at ON public.credit_gifts USING btree (account_id, created_at);
+
+
+--
+-- Name: index_credit_gifts_on_admin_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_credit_gifts_on_admin_id ON public.credit_gifts USING btree (admin_id);
+
+
+--
+-- Name: index_credit_gifts_on_credits_allocated; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_credit_gifts_on_credits_allocated ON public.credit_gifts USING btree (credits_allocated);
+
+
+--
 -- Name: index_credit_pack_purchases_on_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7972,6 +8052,13 @@ CREATE INDEX index_credit_pack_purchases_on_account_id_and_is_used ON public.cre
 --
 
 CREATE INDEX index_credit_pack_purchases_on_credit_pack_id ON public.credit_pack_purchases USING btree (credit_pack_id);
+
+
+--
+-- Name: index_credit_pack_purchases_on_credits_allocated; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_credit_pack_purchases_on_credits_allocated ON public.credit_pack_purchases USING btree (credits_allocated);
 
 
 --
@@ -10696,6 +10783,14 @@ ALTER TABLE ONLY public.website_urls
 
 
 --
+-- Name: credit_gifts fk_rails_5dc0a58710; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.credit_gifts
+    ADD CONSTRAINT fk_rails_5dc0a58710 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
 -- Name: account_users fk_rails_685e030c15; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10741,6 +10836,14 @@ ALTER TABLE ONLY public.document_chunks
 
 ALTER TABLE ONLY public.social_links
     ADD CONSTRAINT fk_rails_9c390957fe FOREIGN KEY (project_id) REFERENCES public.projects(id);
+
+
+--
+-- Name: credit_gifts fk_rails_a73fa2a3d6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.credit_gifts
+    ADD CONSTRAINT fk_rails_a73fa2a3d6 FOREIGN KEY (admin_id) REFERENCES public.users(id);
 
 
 --
@@ -10822,6 +10925,8 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260126170112'),
+('20260126164801'),
 ('20260126164140'),
 ('20260126162948'),
 ('20260125205452'),

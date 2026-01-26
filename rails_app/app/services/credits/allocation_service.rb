@@ -75,6 +75,120 @@ module Credits
       end
     end
 
+    # Allocate pack credits from a one-time purchase
+    #
+    # @param credit_pack [CreditPack] The pack being purchased
+    # @param pay_charge [Pay::Charge] The charge record
+    # @param idempotency_key [String] Unique key (format: pack_purchase:{charge_id})
+    #
+    # Idempotency: Uses CreditPackPurchase.credits_allocated flag to track allocation status.
+    # If a purchase exists but credits_allocated is false, it will retry the allocation.
+    #
+    def allocate_pack!(credit_pack:, pay_charge:, idempotency_key:)
+      Account.transaction do
+        @account.lock!
+
+        # Find or create the purchase record (idempotent on pay_charge)
+        purchase = @account.credit_pack_purchases.find_or_initialize_by(pay_charge: pay_charge)
+
+        if purchase.persisted? && purchase.credits_allocated?
+          # Already allocated - idempotent return
+          return purchase
+        end
+
+        # Set purchase attributes (for new records or retry of failed allocation)
+        purchase.assign_attributes(
+          credit_pack: credit_pack,
+          credits_purchased: credit_pack.credits,
+          price_cents: credit_pack.price_cents
+        )
+        purchase.save!
+
+        total, plan_bal, pack_bal = current_balances
+
+        # Create the credit transaction
+        new_pack_bal = pack_bal + credit_pack.credits
+        new_total = plan_bal + new_pack_bal
+
+        create_transaction!(
+          transaction_type: "purchase",
+          credit_type: "pack",
+          reason: "pack_purchase",
+          amount: credit_pack.credits,
+          balance_after: new_total,
+          plan_balance_after: plan_bal,
+          pack_balance_after: new_pack_bal,
+          reference_type: "CreditPackPurchase",
+          reference_id: purchase.id.to_s,
+          idempotency_key: idempotency_key,
+          metadata: {
+            pack_name: credit_pack.name,
+            pack_credits: credit_pack.credits,
+            price_cents: credit_pack.price_cents,
+            charge_id: pay_charge.id
+          }
+        )
+
+        # Mark as allocated
+        purchase.update!(credits_allocated: true)
+
+        purchase
+      end
+    end
+
+    # Allocate credits for an existing CreditGift record
+    #
+    # This is called by AllocateGiftCreditsWorker after a CreditGift is created.
+    # The gift record is created first (by admin action), then this method
+    # allocates the credits asynchronously with proper retries.
+    #
+    # @param gift [CreditGift] The gift record to allocate credits for
+    # @param idempotency_key [String] Unique key (format: gift:{gift_id})
+    #
+    # @return [CreditGift] The gift record with credits_allocated: true
+    #
+    # Idempotency: Uses CreditGift.credits_allocated flag to track allocation status.
+    # If already allocated, returns early.
+    #
+    def allocate_gift!(gift:, idempotency_key:)
+      Account.transaction do
+        @account.lock!
+
+        # Idempotency check
+        return gift if gift.credits_allocated?
+
+        total, plan_bal, pack_bal = current_balances
+
+        # Create the credit transaction
+        new_pack_bal = pack_bal + gift.amount
+        new_total = plan_bal + new_pack_bal
+
+        create_transaction!(
+          transaction_type: "gift",
+          credit_type: "pack",
+          reason: "gift",
+          amount: gift.amount,
+          balance_after: new_total,
+          plan_balance_after: plan_bal,
+          pack_balance_after: new_pack_bal,
+          reference_type: "CreditGift",
+          reference_id: gift.id.to_s,
+          idempotency_key: idempotency_key,
+          metadata: {
+            admin_id: gift.admin_id,
+            admin_email: gift.admin.email,
+            gift_reason: gift.reason,
+            notes: gift.notes
+          }
+        )
+
+        # Mark as allocated
+        gift.update!(credits_allocated: true)
+
+        gift
+      end
+    end
+
     def get_action(previous_plan, new_plan_tier)
       return :downgrade if previous_plan && downgrade?(previous_plan, new_plan_tier)
       return :upgrade if previous_plan && upgrade?(previous_plan, new_plan_tier)
@@ -306,5 +420,6 @@ module Credits
     def create_transaction!(attrs)
       @account.credit_transactions.create!(attrs)
     end
+
   end
 end
