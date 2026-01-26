@@ -39,11 +39,20 @@ module ChargeExtensions
   included do
     has_prefix_id :ch
     after_create :complete_referral, if: -> { defined?(Refer) }
+    after_create :handle_credit_pack_purchase
   end
 
   # Mark the account owner's referral complete on the first successful payment
   def complete_referral
     customer.owner.owner.referral&.complete!
+  end
+
+  # Enqueue pack credit allocation if charge includes credit_pack_id
+  def handle_credit_pack_purchase
+    credit_pack_id = metadata&.dig("credit_pack_id")
+    return unless credit_pack_id.present?
+
+    Credits::AllocatePackCreditsWorker.perform_async(id, credit_pack_id.to_i)
   end
 end
 

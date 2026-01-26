@@ -53,9 +53,9 @@ RSpec.describe Credits::AllocationService do
     # Create a final transaction that establishes the desired ending state
     # We use skip_sequence_validation because this is test setup
     account.credit_transactions.create!(
-      transaction_type: plan_credits >= 0 ? "allocate" : "consume",
+      transaction_type: (plan_credits >= 0) ? "allocate" : "consume",
       credit_type: "plan",
-      reason: plan_credits >= 0 ? "plan_renewal" : "ai_generation",
+      reason: (plan_credits >= 0) ? "plan_renewal" : "ai_generation",
       amount: plan_credits,
       balance_after: total,
       plan_balance_after: plan_credits,
@@ -394,11 +394,15 @@ RSpec.describe Credits::AllocationService do
 
         it "does not create any transactions" do
           expect {
-            service.reset_plan_credits!(
-              subscription: subscription,
-              idempotency_key: idempotency_key,
-              previous_plan: growth_annual
-            ) rescue nil
+            begin
+              service.reset_plan_credits!(
+                subscription: subscription,
+                idempotency_key: idempotency_key,
+                previous_plan: growth_annual
+              )
+            rescue
+              nil
+            end
           }.not_to change { CreditTransaction.count }
         end
       end
@@ -867,6 +871,404 @@ RSpec.describe Credits::AllocationService do
           expect(adjust_tx.metadata["usage_this_period"]).to eq(1000)
           expect(adjust_tx.metadata["pro_rated_balance"]).to eq(1000)
         end
+      end
+    end
+  end
+
+  # ==========================================================================
+  # PACK CREDITS ALLOCATION
+  # ==========================================================================
+
+  describe "#allocate_pack!" do
+    let(:credit_pack) { create(:credit_pack, credits: 1000, price_cents: 4999) }
+    let(:pay_charge) do
+      payment_processor.charges.create!(
+        processor_id: "ch_#{SecureRandom.hex(8)}",
+        amount: credit_pack.price_cents,
+        amount_refunded: 0,
+        metadata: {credit_pack_id: credit_pack.id}
+      )
+    end
+    let(:pack_idempotency_key) { "pack_purchase:#{pay_charge.id}" }
+
+    # Pack purchases require an active subscription
+    before { subscription }
+
+    context "with no existing credits" do
+      it "creates CreditPackPurchase linked to Pay::Charge" do
+        expect {
+          service.allocate_pack!(
+            credit_pack: credit_pack,
+            pay_charge: pay_charge,
+            idempotency_key: pack_idempotency_key
+          )
+        }.to change { CreditPackPurchase.count }.by(1)
+
+        purchase = CreditPackPurchase.last
+        expect(purchase.account).to eq(account)
+        expect(purchase.credit_pack).to eq(credit_pack)
+        expect(purchase.pay_charge).to eq(pay_charge)
+        expect(purchase.credits_purchased).to eq(1000)
+        expect(purchase.price_cents).to eq(4999)
+        expect(purchase.is_used).to eq(false)
+      end
+
+      it "creates CreditTransaction with type: purchase, credit_type: pack" do
+        expect {
+          service.allocate_pack!(
+            credit_pack: credit_pack,
+            pay_charge: pay_charge,
+            idempotency_key: pack_idempotency_key
+          )
+        }.to change { CreditTransaction.count }.by(1)
+
+        transaction = CreditTransaction.last
+        expect(transaction.transaction_type).to eq("purchase")
+        expect(transaction.credit_type).to eq("pack")
+        expect(transaction.reason).to eq("pack_purchase")
+        expect(transaction.amount).to eq(1000)
+        expect(transaction.balance_after).to eq(1000)
+        expect(transaction.plan_balance_after).to eq(0)
+        expect(transaction.pack_balance_after).to eq(1000)
+        expect(transaction.idempotency_key).to eq(pack_idempotency_key)
+      end
+
+      it "increases account.pack_credits by pack amount" do
+        service.allocate_pack!(
+          credit_pack: credit_pack,
+          pay_charge: pay_charge,
+          idempotency_key: pack_idempotency_key
+        )
+
+        account.reload
+        expect(account.pack_credits).to eq(1000)
+        expect(account.plan_credits).to eq(0)
+        expect(account.total_credits).to eq(1000)
+      end
+    end
+
+    context "with existing plan credits" do
+      before { setup_account_state(plan_credits: 5000, pack_credits: 0) }
+
+      it "preserves existing plan_credits balance" do
+        service.allocate_pack!(
+          credit_pack: credit_pack,
+          pay_charge: pay_charge,
+          idempotency_key: pack_idempotency_key
+        )
+
+        account.reload
+        expect(account.plan_credits).to eq(5000)
+        expect(account.pack_credits).to eq(1000)
+        expect(account.total_credits).to eq(6000)
+      end
+    end
+
+    context "with existing pack credits" do
+      before { setup_account_state(plan_credits: 0, pack_credits: 500) }
+
+      it "adds to existing pack credits" do
+        service.allocate_pack!(
+          credit_pack: credit_pack,
+          pay_charge: pay_charge,
+          idempotency_key: pack_idempotency_key
+        )
+
+        account.reload
+        expect(account.pack_credits).to eq(1500)
+        expect(account.total_credits).to eq(1500)
+      end
+    end
+
+    context "with existing plan AND pack credits" do
+      before { setup_account_state(plan_credits: 3000, pack_credits: 500) }
+
+      it "adds to pack credits while preserving plan credits" do
+        service.allocate_pack!(
+          credit_pack: credit_pack,
+          pay_charge: pay_charge,
+          idempotency_key: pack_idempotency_key
+        )
+
+        account.reload
+        expect(account.plan_credits).to eq(3000)
+        expect(account.pack_credits).to eq(1500) # 500 + 1000
+        expect(account.total_credits).to eq(4500) # 3000 + 1500
+      end
+
+      it "creates transaction with correct balance components" do
+        service.allocate_pack!(
+          credit_pack: credit_pack,
+          pay_charge: pay_charge,
+          idempotency_key: pack_idempotency_key
+        )
+
+        transaction = CreditTransaction.last
+        expect(transaction.amount).to eq(1000)
+        expect(transaction.plan_balance_after).to eq(3000) # Unchanged
+        expect(transaction.pack_balance_after).to eq(1500) # 500 + 1000
+        expect(transaction.balance_after).to eq(4500) # Total
+      end
+    end
+
+    context "idempotency" do
+      it "is idempotent - duplicate calls do not double-allocate" do
+        service.allocate_pack!(
+          credit_pack: credit_pack,
+          pay_charge: pay_charge,
+          idempotency_key: pack_idempotency_key
+        )
+
+        expect(CreditTransaction.count).to eq(1)
+        expect(CreditPackPurchase.count).to eq(1)
+
+        # Second call with same idempotency key
+        expect {
+          service.allocate_pack!(
+            credit_pack: credit_pack,
+            pay_charge: pay_charge,
+            idempotency_key: pack_idempotency_key
+          )
+        }.not_to change { CreditTransaction.count }
+
+        expect(CreditPackPurchase.count).to eq(1)
+        expect(account.reload.pack_credits).to eq(1000)
+      end
+
+      it "marks credits_allocated: true after successful allocation" do
+        service.allocate_pack!(
+          credit_pack: credit_pack,
+          pay_charge: pay_charge,
+          idempotency_key: pack_idempotency_key
+        )
+
+        purchase = CreditPackPurchase.last
+        expect(purchase.credits_allocated).to eq(true)
+      end
+
+      it "returns existing purchase when credits already allocated" do
+        first_result = service.allocate_pack!(
+          credit_pack: credit_pack,
+          pay_charge: pay_charge,
+          idempotency_key: pack_idempotency_key
+        )
+
+        second_result = service.allocate_pack!(
+          credit_pack: credit_pack,
+          pay_charge: pay_charge,
+          idempotency_key: pack_idempotency_key
+        )
+
+        expect(second_result).to eq(first_result)
+        expect(CreditPackPurchase.count).to eq(1)
+      end
+    end
+
+    context "transaction metadata" do
+      it "includes pack purchase metadata" do
+        service.allocate_pack!(
+          credit_pack: credit_pack,
+          pay_charge: pay_charge,
+          idempotency_key: pack_idempotency_key
+        )
+
+        transaction = CreditTransaction.last
+        expect(transaction.reference_type).to eq("CreditPackPurchase")
+        expect(transaction.metadata["pack_name"]).to eq(credit_pack.name)
+        expect(transaction.metadata["pack_credits"]).to eq(1000)
+        expect(transaction.metadata["price_cents"]).to eq(4999)
+      end
+    end
+  end
+
+  # ==========================================================================
+  # GIFT CREDITS
+  # ==========================================================================
+
+  describe "#allocate_gift!" do
+    let(:admin) { create(:user, admin: true) }
+
+    # Helper to create a gift without triggering the after_create callback
+    def create_gift_without_callback(attrs = {})
+      CreditGift.skip_callback(:create, :after, :enqueue_credit_allocation)
+      gift = account.credit_gifts.create!(
+        admin: admin,
+        amount: attrs[:amount] || 500,
+        reason: attrs[:reason] || "customer_support",
+        notes: attrs[:notes]
+      )
+      CreditGift.set_callback(:create, :after, :enqueue_credit_allocation)
+      gift
+    end
+
+    context "with no existing credits" do
+      it "creates CreditTransaction with type: gift, credit_type: pack" do
+        gift = create_gift_without_callback(amount: 500, reason: "customer_support")
+
+        expect {
+          service.allocate_gift!(gift: gift, idempotency_key: "gift:#{gift.id}")
+        }.to change { CreditTransaction.count }.by(1)
+
+        transaction = CreditTransaction.last
+        expect(transaction.transaction_type).to eq("gift")
+        expect(transaction.credit_type).to eq("pack")
+        expect(transaction.reason).to eq("gift")
+        expect(transaction.amount).to eq(500)
+        expect(transaction.balance_after).to eq(500)
+        expect(transaction.plan_balance_after).to eq(0)
+        expect(transaction.pack_balance_after).to eq(500)
+      end
+
+      it "increases account.pack_credits by gift amount" do
+        gift = create_gift_without_callback(amount: 500, reason: "promotional")
+
+        service.allocate_gift!(gift: gift, idempotency_key: "gift:#{gift.id}")
+
+        account.reload
+        expect(account.pack_credits).to eq(500)
+        expect(account.plan_credits).to eq(0)
+        expect(account.total_credits).to eq(500)
+      end
+    end
+
+    context "with existing plan credits" do
+      before { setup_account_state(plan_credits: 5000, pack_credits: 0) }
+
+      it "preserves plan credits when allocating gift" do
+        gift = create_gift_without_callback(amount: 300, reason: "beta_testing")
+
+        service.allocate_gift!(gift: gift, idempotency_key: "gift:#{gift.id}")
+
+        account.reload
+        expect(account.plan_credits).to eq(5000)
+        expect(account.pack_credits).to eq(300)
+        expect(account.total_credits).to eq(5300)
+      end
+    end
+
+    context "with existing plan AND pack credits" do
+      before { setup_account_state(plan_credits: 3000, pack_credits: 500) }
+
+      it "adds to pack credits while preserving plan credits" do
+        gift = create_gift_without_callback(amount: 300, reason: "promotional")
+
+        service.allocate_gift!(gift: gift, idempotency_key: "gift:#{gift.id}")
+
+        account.reload
+        expect(account.plan_credits).to eq(3000)
+        expect(account.pack_credits).to eq(800) # 500 + 300
+        expect(account.total_credits).to eq(3800) # 3000 + 800
+      end
+
+      it "creates transaction with correct balance components" do
+        gift = create_gift_without_callback(amount: 300, reason: "promotional")
+
+        service.allocate_gift!(gift: gift, idempotency_key: "gift:#{gift.id}")
+
+        transaction = CreditTransaction.last
+        expect(transaction.amount).to eq(300)
+        expect(transaction.plan_balance_after).to eq(3000) # Unchanged
+        expect(transaction.pack_balance_after).to eq(800) # 500 + 300
+        expect(transaction.balance_after).to eq(3800) # Total
+      end
+    end
+
+    context "transaction metadata" do
+      it "records admin_id and admin_email in transaction metadata" do
+        gift = create_gift_without_callback(
+          amount: 500,
+          reason: "referral_bonus",
+          notes: "Referred 3 users"
+        )
+
+        service.allocate_gift!(gift: gift, idempotency_key: "gift:#{gift.id}")
+
+        transaction = CreditTransaction.last
+        expect(transaction.reference_type).to eq("CreditGift")
+        expect(transaction.metadata["admin_id"]).to eq(admin.id)
+        expect(transaction.metadata["admin_email"]).to eq(admin.email)
+        expect(transaction.metadata["gift_reason"]).to eq("referral_bonus")
+        expect(transaction.metadata["notes"]).to eq("Referred 3 users")
+      end
+    end
+
+    context "preserves across plan operations" do
+      before { setup_account_state(plan_credits: 5000, pack_credits: 0) }
+
+      it "gifted credits are preserved across subscription renewal" do
+        # Create and allocate gift
+        gift = create_gift_without_callback(amount: 500, reason: "promotional")
+        service.allocate_gift!(gift: gift, idempotency_key: "gift:#{gift.id}")
+
+        account.reload
+        expect(account.pack_credits).to eq(500)
+
+        # Now reset plan credits (renewal)
+        allow(subscription).to receive(:plan).and_return(current_plan)
+
+        service.reset_plan_credits!(
+          subscription: subscription,
+          idempotency_key: idempotency_key
+        )
+
+        account.reload
+        expect(account.plan_credits).to eq(5000)
+        expect(account.pack_credits).to eq(500) # Preserved!
+        expect(account.total_credits).to eq(5500)
+      end
+    end
+
+    context "returns the gift record" do
+      it "returns the CreditGift with credits_allocated: true" do
+        gift = create_gift_without_callback(amount: 500, reason: "other", notes: "Special case")
+
+        result = service.allocate_gift!(gift: gift, idempotency_key: "gift:#{gift.id}")
+
+        expect(result).to eq(gift)
+        expect(result.credits_allocated).to eq(true)
+      end
+    end
+
+    context "credits_allocated flag" do
+      it "marks credits_allocated: true after successful allocation" do
+        gift = create_gift_without_callback(amount: 500, reason: "promotional")
+        expect(gift.credits_allocated).to eq(false)
+
+        service.allocate_gift!(gift: gift, idempotency_key: "gift:#{gift.id}")
+
+        expect(gift.reload.credits_allocated).to eq(true)
+      end
+    end
+
+    context "idempotency" do
+      it "is idempotent - returns early if already allocated" do
+        gift = create_gift_without_callback(amount: 500, reason: "promotional")
+
+        # First allocation
+        service.allocate_gift!(gift: gift, idempotency_key: "gift:#{gift.id}")
+
+        account.reload
+        expect(account.pack_credits).to eq(500)
+        expect(CreditTransaction.count).to eq(1)
+
+        # Second call - should be idempotent
+        service.allocate_gift!(gift: gift, idempotency_key: "gift:#{gift.id}")
+
+        account.reload
+        expect(account.pack_credits).to eq(500) # Still only 500
+        expect(CreditTransaction.count).to eq(1) # Still only 1 transaction
+      end
+
+      it "multiple different gifts each get allocated" do
+        gift1 = create_gift_without_callback(amount: 500, reason: "promotional")
+        gift2 = create_gift_without_callback(amount: 300, reason: "promotional")
+
+        service.allocate_gift!(gift: gift1, idempotency_key: "gift:#{gift1.id}")
+        service.allocate_gift!(gift: gift2, idempotency_key: "gift:#{gift2.id}")
+
+        account.reload
+        expect(account.pack_credits).to eq(800) # Both gifts applied
+        expect(CreditTransaction.where(transaction_type: "gift").count).to eq(2)
       end
     end
   end

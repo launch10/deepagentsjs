@@ -82,12 +82,8 @@ module StripeWebhookFixtures
   def subscription_renewed_event(
     subscription_id:,
     customer_id:,
-    price_id: "price_growth_monthly",
+    old_period_start:, old_period_end:, new_period_start:, new_period_end:, price_id: "price_growth_monthly",
     unit_amount: 2900,
-    old_period_start:,
-    old_period_end:,
-    new_period_start:,
-    new_period_end:,
     old_invoice_id: "in_old_#{SecureRandom.hex(8)}",
     new_invoice_id: "in_new_#{SecureRandom.hex(8)}"
   )
@@ -558,10 +554,7 @@ module StripeWebhookFixtures
   #   - "subscription_threshold" : Usage-based billing threshold
   #   - "manual" : Manually created invoice
   def invoice_paid_event(
-    invoice_id: "in_#{SecureRandom.hex(8)}",
-    subscription_id:,
-    customer_id:,
-    billing_reason:,
+    subscription_id:, customer_id:, billing_reason:, invoice_id: "in_#{SecureRandom.hex(8)}",
     amount: 2900,
     currency: "usd",
     lines: nil,
@@ -596,9 +589,7 @@ module StripeWebhookFixtures
 
   # Invoice payment failed
   def invoice_payment_failed_event(
-    invoice_id: "in_#{SecureRandom.hex(8)}",
-    subscription_id:,
-    customer_id:,
+    subscription_id:, customer_id:, invoice_id: "in_#{SecureRandom.hex(8)}",
     billing_reason: "subscription_cycle",
     amount: 2900,
     attempt_count: 1,
@@ -632,8 +623,7 @@ module StripeWebhookFixtures
   def invoice_upcoming_event(
     subscription_id:,
     customer_id:,
-    amount: 2900,
-    next_payment_attempt:,
+    next_payment_attempt:, amount: 2900,
     lines: nil
   )
     build_stripe_event(
@@ -660,10 +650,7 @@ module StripeWebhookFixtures
 
   # Invoice created
   def invoice_created_event(
-    invoice_id: "in_#{SecureRandom.hex(8)}",
-    subscription_id:,
-    customer_id:,
-    billing_reason:,
+    subscription_id:, customer_id:, billing_reason:, invoice_id: "in_#{SecureRandom.hex(8)}",
     amount: 2900,
     status: "draft"
   )
@@ -716,8 +703,7 @@ module StripeWebhookFixtures
     invoice_id:,
     subscription_id:,
     customer_id:,
-    amount: 2900,
-    payment_intent_id:
+    payment_intent_id:, amount: 2900
   )
     build_stripe_event(
       type: "stripe.invoice.payment_action_required",
@@ -743,8 +729,7 @@ module StripeWebhookFixtures
   # ===========================================================================
 
   def charge_succeeded_event(
-    charge_id: "ch_#{SecureRandom.hex(8)}",
-    customer_id:,
+    customer_id:, charge_id: "ch_#{SecureRandom.hex(8)}",
     invoice_id: nil,
     amount: 2900,
     currency: "usd",
@@ -771,8 +756,7 @@ module StripeWebhookFixtures
   end
 
   def charge_failed_event(
-    charge_id: "ch_#{SecureRandom.hex(8)}",
-    customer_id:,
+    customer_id:, charge_id: "ch_#{SecureRandom.hex(8)}",
     invoice_id: nil,
     amount: 2900,
     failure_code: "card_declined",
@@ -809,9 +793,7 @@ module StripeWebhookFixtures
   def charge_refunded_event(
     charge_id:,
     customer_id:,
-    invoice_id: nil,
-    amount:,
-    amount_refunded:,
+    amount:, amount_refunded:, invoice_id: nil,
     refund_id: "re_#{SecureRandom.hex(8)}",
     refund_reason: "requested_by_customer"
   )
@@ -850,9 +832,7 @@ module StripeWebhookFixtures
   def charge_partially_refunded_event(
     charge_id:,
     customer_id:,
-    invoice_id: nil,
-    original_amount:,
-    refund_amount:,
+    original_amount:, refund_amount:, invoice_id: nil,
     refund_reason: "requested_by_customer"
   )
     charge_refunded_event(
@@ -870,8 +850,7 @@ module StripeWebhookFixtures
   # ===========================================================================
 
   def payment_intent_succeeded_event(
-    payment_intent_id: "pi_#{SecureRandom.hex(8)}",
-    customer_id:,
+    customer_id:, payment_intent_id: "pi_#{SecureRandom.hex(8)}",
     invoice_id: nil,
     amount: 2900,
     charge_id: "ch_#{SecureRandom.hex(8)}"
@@ -910,8 +889,7 @@ module StripeWebhookFixtures
   # ===========================================================================
 
   def payment_method_attached_event(
-    payment_method_id: "pm_#{SecureRandom.hex(8)}",
-    customer_id:,
+    customer_id:, payment_method_id: "pm_#{SecureRandom.hex(8)}",
     card_brand: "visa",
     card_last4: "4242",
     card_exp_month: 12,
@@ -1043,8 +1021,7 @@ module StripeWebhookFixtures
   # ===========================================================================
 
   def checkout_session_completed_event(
-    session_id: "cs_#{SecureRandom.hex(8)}",
-    customer_id:,
+    customer_id:, session_id: "cs_#{SecureRandom.hex(8)}",
     subscription_id: nil,
     payment_intent_id: nil,
     mode: "subscription",
@@ -1076,12 +1053,7 @@ module StripeWebhookFixtures
   # ===========================================================================
 
   def subscription_schedule_created_event(
-    schedule_id: "sub_sched_#{SecureRandom.hex(8)}",
-    customer_id:,
-    subscription_id:,
-    current_phase_price_id:,
-    next_phase_price_id:,
-    phase_transition_at:
+    customer_id:, subscription_id:, current_phase_price_id:, next_phase_price_id:, phase_transition_at:, schedule_id: "sub_sched_#{SecureRandom.hex(8)}"
   )
     build_stripe_event(
       type: "stripe.subscription_schedule.created",
@@ -1368,7 +1340,7 @@ module StripeWebhookFixtures
       application: nil,
       application_fee: nil,
       application_fee_amount: nil,
-      balance_transaction: status == "succeeded" ? "txn_#{SecureRandom.hex(8)}" : nil,
+      balance_transaction: (status == "succeeded") ? "txn_#{SecureRandom.hex(8)}" : nil,
       billing_details: {
         address: {
           city: nil,
@@ -1400,12 +1372,12 @@ module StripeWebhookFixtures
       metadata: {},
       on_behalf_of: nil,
       outcome: outcome || {
-        network_status: status == "succeeded" ? "approved_by_network" : "declined_by_network",
+        network_status: (status == "succeeded") ? "approved_by_network" : "declined_by_network",
         reason: nil,
         risk_level: "normal",
         risk_score: 32,
-        seller_message: status == "succeeded" ? "Payment complete." : failure_message,
-        type: status == "succeeded" ? "authorized" : "issuer_declined"
+        seller_message: (status == "succeeded") ? "Payment complete." : failure_message,
+        type: (status == "succeeded") ? "authorized" : "issuer_declined"
       },
       paid: paid,
       payment_intent: payment_intent,

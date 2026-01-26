@@ -3,6 +3,7 @@
 # Table name: credit_pack_purchases
 #
 #  id                :bigint           not null, primary key
+#  credits_allocated :boolean          default(FALSE), not null
 #  credits_purchased :integer          not null
 #  credits_used      :integer          default(0), not null
 #  is_used           :boolean          default(FALSE), not null
@@ -19,6 +20,7 @@
 #  index_credit_pack_purchases_on_account_id_and_created_at  (account_id,created_at)
 #  index_credit_pack_purchases_on_account_id_and_is_used     (account_id,is_used)
 #  index_credit_pack_purchases_on_credit_pack_id             (credit_pack_id)
+#  index_credit_pack_purchases_on_credits_allocated          (credits_allocated)
 #  index_credit_pack_purchases_on_pay_charge_id              (pay_charge_id)
 #
 class CreditPackPurchase < ApplicationRecord
@@ -30,6 +32,7 @@ class CreditPackPurchase < ApplicationRecord
   validates :credits_used, presence: true, numericality: { greater_than_or_equal_to: 0 }
   validates :price_cents, presence: true, numericality: { greater_than: 0 }
   validate :credits_used_not_exceeding_purchased
+  validate :account_has_active_subscription, on: :create
 
   scope :unused, -> { where(is_used: false) }
   scope :used, -> { where(is_used: true) }
@@ -57,6 +60,13 @@ class CreditPackPurchase < ApplicationRecord
     return unless credits_used && credits_purchased
     if credits_used > credits_purchased
       errors.add(:credits_used, "cannot exceed credits_purchased")
+    end
+  end
+
+  def account_has_active_subscription
+    return unless account.present?
+    unless account.subscriptions.active.exists?
+      errors.add(:base, "Account must have an active subscription to purchase credit packs")
     end
   end
 end

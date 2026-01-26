@@ -43,7 +43,7 @@ module Credits
         conditions << "plans.fake_processor_id = pay_subscriptions.processor_plan"
       end
 
-      "INNER JOIN plans ON (#{conditions.join(' OR ')})"
+      "INNER JOIN plans ON (#{conditions.join(" OR ")})"
     end
 
     def is_reset_day_sql(today)
