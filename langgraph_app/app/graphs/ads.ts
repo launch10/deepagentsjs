@@ -7,11 +7,11 @@ import {
   prepareRefreshNode,
   resetNode,
   guardrailsNode,
-  calculateCreditStatusNode,
 } from "@nodes";
 import { type AdsGraphState } from "@state";
 import { NodeMiddleware } from "@middleware";
 import type { Ads, LangGraphRunnableConfig } from "@types";
+import { withCreditExhaustion } from "./shared";
 
 const beforeGenerateNode = NodeMiddleware.use(
   {},
@@ -31,25 +31,32 @@ const prepareNode = async (state: AdsGraphState) => {
   };
 };
 
-export const adsGraph = new StateGraph(AdsAnnotation)
-  .addNode("prepare", prepareNode)
-  .addNode("createCampaign", createCampaign)
-  .addNode("beforeGenerate", beforeGenerateNode)
-  .addNode("getBusinessContext", getBusinessContext)
-  .addNode("prepareRefresh", prepareRefreshNode)
-  .addNode("adsAgent", adsAgent)
-  .addNode("reset", resetNode)
-  .addNode("calculateCreditStatus", calculateCreditStatusNode)
+/**
+ * Ads graph for generating Google Ads campaigns.
+ *
+ * Credit exhaustion is detected via withCreditExhaustion wrapper,
+ * which runs this graph as a subgraph, then calculates credit status.
+ */
+export const adsGraph = withCreditExhaustion(
+  new StateGraph(AdsAnnotation)
+    .addNode("prepare", prepareNode)
+    .addNode("createCampaign", createCampaign)
+    .addNode("beforeGenerate", beforeGenerateNode)
+    .addNode("getBusinessContext", getBusinessContext)
+    .addNode("prepareRefresh", prepareRefreshNode)
+    .addNode("adsAgent", adsAgent)
+    .addNode("reset", resetNode)
 
-  .addEdge(START, "prepare")
-  .addEdge("prepare", "createCampaign")
-  .addConditionalEdges("createCampaign", guardrailsNode, {
-    beforeGenerate: "beforeGenerate",
-    calculateCreditStatus: "calculateCreditStatus",
-  })
-  .addEdge("beforeGenerate", "getBusinessContext")
-  .addEdge("getBusinessContext", "prepareRefresh")
-  .addEdge("prepareRefresh", "adsAgent")
-  .addEdge("adsAgent", "reset")
-  .addEdge("reset", "calculateCreditStatus")
-  .addEdge("calculateCreditStatus", END);
+    .addEdge(START, "prepare")
+    .addEdge("prepare", "createCampaign")
+    .addConditionalEdges("createCampaign", guardrailsNode, {
+      beforeGenerate: "beforeGenerate",
+      end: END,
+    })
+    .addEdge("beforeGenerate", "getBusinessContext")
+    .addEdge("getBusinessContext", "prepareRefresh")
+    .addEdge("prepareRefresh", "adsAgent")
+    .addEdge("adsAgent", "reset")
+    .addEdge("reset", END),
+  AdsAnnotation
+);

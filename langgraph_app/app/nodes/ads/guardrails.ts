@@ -11,7 +11,7 @@ import { Ads } from "@types";
 //
 // If either of those is NOT met, we should end the conversation
 //
-export const guardrailsNode = (state: AdsGraphState): "beforeGenerate" | "calculateCreditStatus" => {
+export const guardrailsNode = (state: AdsGraphState): "beforeGenerate" | "end" => {
   if (!state.stage) {
     throw new Error("Stage is required");
   }
@@ -27,7 +27,7 @@ export const guardrailsNode = (state: AdsGraphState): "beforeGenerate" | "calcul
     return "beforeGenerate"; // route to the agent
   }
 
-  return "calculateCreditStatus"; // end the conversation (via credit status node)
+  return "end"; // exit (credit exhaustion handled by wrapper)
 };
 
 const validRequest = (state: AdsGraphState): boolean => {

@@ -1,4 +1,4 @@
-import { StateGraph, END, START } from "@langchain/langgraph";
+import { StateGraph, START, END } from "@langchain/langgraph";
 import { WebsiteAnnotation, type WebsiteGraphState } from "@annotation";
 import {
   buildContext,
@@ -8,9 +8,9 @@ import {
   cacheModeNode,
   isCacheModeEnabled,
   improveCopyNode,
-  calculateCreditStatusNode,
 } from "@nodes";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
+import { withCreditExhaustion } from "./shared";
 
 // Route from START based on mode and command
 // Chat is pre-created by Rails via ChatCreatable, no createChat node needed
@@ -25,32 +25,39 @@ const routeFromStart = (state: WebsiteGraphState): string => {
   return "buildContext";
 };
 
-export const websiteGraph = new StateGraph(WebsiteAnnotation)
-  .addNode("buildContext", buildContext)
-  .addNode("websiteBuilder", websiteBuilderNode)
-  .addNode("cleanupFilesystem", cleanupFilesystemNode)
-  .addNode("syncFiles", syncFilesNode)
-  .addNode("cacheMode", cacheModeNode)
-  .addNode("improveCopy", improveCopyNode)
-  .addNode("cleanupState", (state: WebsiteGraphState, config: LangGraphRunnableConfig) => {
-    return {
-      command: undefined,
-      improveCopyStyle: undefined,
-    };
-  })
-  .addNode("calculateCreditStatus", calculateCreditStatusNode)
+/**
+ * Website graph for building and updating landing pages.
+ *
+ * Credit exhaustion is detected via withCreditExhaustion wrapper,
+ * which runs this graph as a subgraph, then calculates credit status.
+ */
+export const websiteGraph = withCreditExhaustion(
+  new StateGraph(WebsiteAnnotation)
+    .addNode("buildContext", buildContext)
+    .addNode("websiteBuilder", websiteBuilderNode)
+    .addNode("cleanupFilesystem", cleanupFilesystemNode)
+    .addNode("syncFiles", syncFilesNode)
+    .addNode("cacheMode", cacheModeNode)
+    .addNode("improveCopy", improveCopyNode)
+    .addNode("cleanupState", (state: WebsiteGraphState, config: LangGraphRunnableConfig) => {
+      return {
+        command: undefined,
+        improveCopyStyle: undefined,
+      };
+    })
 
-  // Chat is pre-created by Rails, route directly from START
-  .addConditionalEdges(START, routeFromStart, {
-    cacheMode: "cacheMode",
-    buildContext: "buildContext",
-    improveCopy: "improveCopy",
-  })
-  .addEdge("cacheMode", "cleanupState")
-  .addEdge("buildContext", "websiteBuilder")
-  .addEdge("websiteBuilder", "cleanupFilesystem")
-  .addEdge("improveCopy", "cleanupFilesystem")
-  .addEdge("cleanupFilesystem", "syncFiles")
-  .addEdge("syncFiles", "cleanupState")
-  .addEdge("cleanupState", "calculateCreditStatus")
-  .addEdge("calculateCreditStatus", END);
+    // Chat is pre-created by Rails, route directly from START
+    .addConditionalEdges(START, routeFromStart, {
+      cacheMode: "cacheMode",
+      buildContext: "buildContext",
+      improveCopy: "improveCopy",
+    })
+    .addEdge("cacheMode", "cleanupState")
+    .addEdge("buildContext", "websiteBuilder")
+    .addEdge("websiteBuilder", "cleanupFilesystem")
+    .addEdge("improveCopy", "cleanupFilesystem")
+    .addEdge("cleanupFilesystem", "syncFiles")
+    .addEdge("syncFiles", "cleanupState")
+    .addEdge("cleanupState", END),
+  WebsiteAnnotation
+);

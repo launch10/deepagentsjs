@@ -6,9 +6,7 @@
  *
  * Credit tracking:
  * - Extracts accountId and preRunCreditsRemaining from state
- * - Calculates estimated cost after run completes
- * - Derives justExhausted status for frontend notification
- * - Logs credit status (emitting to stream requires bridge changes)
+ * - Credit status is emitted to frontend via withCreditTracking graph wrapper
  */
 import {
   createBridgeFactory,
@@ -25,9 +23,7 @@ import {
   deriveCreditStatus,
   type UsageContext,
   type UsageSummary,
-  type CreditStatus,
 } from "@core/billing";
-import { LLMManager } from "@core";
 import { db, eq, chats as chatsTable } from "@db";
 
 /**
@@ -59,39 +55,6 @@ function extractCreditState(state?: Record<string, unknown>): {
         ? state.preRunCreditsRemaining
         : undefined,
   };
-}
-
-/**
- * Calculate credit status after a run.
- * Returns undefined if credit tracking data is not available.
- */
-async function calculateCreditStatus(
-  usageContext: UsageContext
-): Promise<CreditStatus | undefined> {
-  const { records, preRunCreditsRemaining } = usageContext;
-
-  // Skip if no credit tracking data
-  if (preRunCreditsRemaining === undefined) {
-    return undefined;
-  }
-
-  // Skip if no usage to calculate
-  if (records.length === 0) {
-    return undefined;
-  }
-
-  try {
-    const modelConfigs = await LLMManager.getModelConfigs();
-    const estimatedCostMillicredits = calculateRunCost(records, modelConfigs);
-
-    return deriveCreditStatus({
-      preRunMillicredits: preRunCreditsRemaining,
-      estimatedCostMillicredits,
-    });
-  } catch (error) {
-    console.warn("[usageTrackingMiddleware] Failed to calculate credit status:", error);
-    return undefined;
-  }
 }
 
 /**
@@ -132,23 +95,6 @@ const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddleware<a
       llmCallCount: records.length,
     };
 
-    // Calculate credit status for logging (can't emit to stream after it's closed)
-    const creditStatus = await calculateCreditStatus(usageContext);
-    if (creditStatus) {
-      console.log(
-        `[usageTrackingMiddleware] Credit status: accountId=${accountId}, ` +
-        `preRun=${preRunCreditsRemaining}, cost=${creditStatus.estimatedCostMillicredits}, ` +
-        `remaining=${creditStatus.estimatedRemainingMillicredits}, ` +
-        `justExhausted=${creditStatus.justExhausted}`
-      );
-
-      if (creditStatus.justExhausted) {
-        console.warn(
-          `[usageTrackingMiddleware] Account ${accountId} just exhausted credits!`
-        );
-      }
-    }
-
     try {
       await Promise.all([
         persistTrace(
@@ -173,6 +119,7 @@ const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddleware<a
 /**
  * Bridge factory with usage tracking baked in.
  * All graph APIs use this to get automatic billing.
+ *
  */
 export const createAppBridge = createBridgeFactory({
   middleware: [usageTrackingMiddleware],

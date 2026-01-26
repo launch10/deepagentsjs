@@ -1,18 +1,17 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { DeployAnnotation, type DeployGraphState } from "@annotation";
 import { Deploy } from "@types";
-import {
-  initPhasesNode,
-  taskExecutorNode,
-  taskExecutorRouter,
-  calculateCreditStatusNode,
-} from "@nodes";
+import { initPhasesNode, taskExecutorNode, taskExecutorRouter } from "@nodes";
+import { withCreditExhaustion } from "./shared";
 
 /**
  * Deploy Graph V2 - Task-Based Architecture
  *
  * This dramatically simplified graph replaces the complex conditional routing
  * with a single task executor that loops through tasks in order.
+ *
+ * Credit exhaustion is detected via withCreditExhaustion wrapper,
+ * which runs this graph as a subgraph, then calculates credit status.
  *
  * Flow:
  * ┌──────────────────────────────────────────────────────────────────────────┐
@@ -24,13 +23,13 @@ import {
  * │ initPhases                                                               │
  * │   │                                                                      │
  * │   ▼                                                                      │
- * │ taskExecutor ◄────────────────────────────────────────────┐              │
- * │   │                                                       │              │
- * │   ├──[continue]───────────────────────────────────────────┘              │
+ * │ taskExecutor ◄────────────────────────────────────────────────────┐      │
+ * │   │                                                               │      │
+ * │   ├──[continue]───────────────────────────────────────────────────┘      │
  * │   │                                                                      │
- * │   ├──[wait]──► END (waiting for webhook)                                 │
+ * │   ├──[wait]──► END                                                       │
  * │   │                                                                      │
- * │   └──[end]──► END (all tasks complete or error)                          │
+ * │   └──[end]──► END                                                        │
  * └──────────────────────────────────────────────────────────────────────────┘
  *
  * Chat is pre-created by Rails via ChatCreatable when Deploy record is created.
@@ -55,43 +54,38 @@ import {
  * - run: The actual task logic
  */
 
-export const deployGraph = new StateGraph(DeployAnnotation)
-  // --------------------------------------------------------------------------
-  // Init Phases: Compute phases from any pre-existing tasks (for tests)
-  // --------------------------------------------------------------------------
-  .addNode("initPhases", initPhasesNode)
+export const deployGraph = withCreditExhaustion(
+  new StateGraph(DeployAnnotation)
+    // --------------------------------------------------------------------------
+    // Init Phases: Compute phases from any pre-existing tasks (for tests)
+    // --------------------------------------------------------------------------
+    .addNode("initPhases", initPhasesNode)
 
-  // --------------------------------------------------------------------------
-  // Task Executor: Processes all tasks in order
-  // --------------------------------------------------------------------------
-  .addNode("taskExecutor", taskExecutorNode)
+    // --------------------------------------------------------------------------
+    // Task Executor: Processes all tasks in order
+    // --------------------------------------------------------------------------
+    .addNode("taskExecutor", taskExecutorNode)
 
-  // --------------------------------------------------------------------------
-  // Credit Status: Calculate credit status before exiting
-  // --------------------------------------------------------------------------
-  .addNode("calculateCreditStatus", calculateCreditStatusNode)
+    // ==========================================================================
+    // ROUTING
+    // ==========================================================================
 
-  // ==========================================================================
-  // ROUTING
-  // ==========================================================================
+    // Chat is pre-created by Rails, route from START
+    // Either end early if nothing to deploy, or initialize phases
+    .addConditionalEdges(START, (state: DeployGraphState) => {
+      // Exit early if nothing to deploy
+      if (!Deploy.shouldDeployAnything(state)) return END;
+      return "initPhases";
+    })
 
-  // Chat is pre-created by Rails, route from START
-  // Either end early if nothing to deploy (via credit status), or initialize phases
-  .addConditionalEdges(START, (state: DeployGraphState) => {
-    // Exit early if nothing to deploy
-    if (!Deploy.shouldDeployAnything(state)) return "calculateCreditStatus";
-    return "initPhases";
-  })
+    // After init phases, proceed to task executor
+    .addEdge("initPhases", "taskExecutor")
 
-  // After init phases, proceed to task executor
-  .addEdge("initPhases", "taskExecutor")
-
-  // Task executor routing: continue, wait (via credit status), or end (via credit status)
-  .addConditionalEdges("taskExecutor", taskExecutorRouter, {
-    continue: "taskExecutor", // Loop back for next task
-    wait: "calculateCreditStatus", // Exit, waiting for webhook (via credit status)
-    end: "calculateCreditStatus", // All done (via credit status)
-  })
-
-  // Credit status always goes to END
-  .addEdge("calculateCreditStatus", END);
+    // Task executor routing: continue, wait, or end
+    .addConditionalEdges("taskExecutor", taskExecutorRouter, {
+      continue: "taskExecutor", // Loop back for next task
+      wait: END, // Exit, waiting for webhook
+      end: END, // All done
+    }),
+  DeployAnnotation
+);
