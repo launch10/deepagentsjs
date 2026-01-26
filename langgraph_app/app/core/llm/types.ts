@@ -12,6 +12,9 @@ export interface ModelConfig {
   maxUsagePercent: number | null;
   costIn: number | null;
   costOut: number | null;
+  costReasoning: number | null;
+  cacheReads: number | null;
+  cacheWrites: number | null;
   modelCard: string | null;
   provider: LLMProvider | null;
   priceTier: number; // 1=premium, 5=cheap

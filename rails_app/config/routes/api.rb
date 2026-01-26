@@ -53,8 +53,9 @@ namespace :api, defaults: {format: :json} do
     end
     resources :job_runs, only: [:create]
 
-    # Internal service endpoint for Langgraph to notify about LLM usage
+    # Internal service endpoints for Langgraph billing integration
     post "llm_usage/notify", to: "llm_usage#notify"
+    get "credits/check", to: "credits#check"
     resources :deploys, only: [:create, :show, :update] do
       post :touch, on: :member
     end

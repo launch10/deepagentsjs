@@ -13,6 +13,9 @@ class API::V1::ModelConfigurationController < API::BaseController
         maxUsagePercent: c.max_usage_percent,
         costIn: c.cost_in&.to_f,
         costOut: c.cost_out&.to_f,
+        costReasoning: c.cost_reasoning&.to_f,
+        cacheReads: c.cache_reads&.to_f,
+        cacheWrites: c.cache_writes&.to_f,
         modelCard: c.model_card,
         priceTier: c.price_tier
       }
