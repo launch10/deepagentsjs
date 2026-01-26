@@ -6,25 +6,25 @@ export type LLMSkill = "planning" | "writing" | "coding" | "reasoning";
 export type LLMSpeed = "blazing" | "fast" | "slow";
 export type LLMCost = "free" | "paid";
 
-// Model config from Rails API
+// Model config from Rails API (snake_case to match Rails conventions)
 export interface ModelConfig {
   enabled: boolean;
-  maxUsagePercent: number | null;
-  costIn: number | null;
-  costOut: number | null;
-  costReasoning: number | null;
-  cacheReads: number | null;
-  cacheWrites: number | null;
-  modelCard: string | null;
+  max_usage_percent: number | null;
+  cost_in: number | null;
+  cost_out: number | null;
+  cost_reasoning: number | null;
+  cache_reads: number | null;
+  cache_writes: number | null;
+  model_card: string | null;
   provider: LLMProvider | null;
-  priceTier: number; // 1=premium, 5=cheap
+  price_tier: number; // 1=premium, 5=cheap
 }
 
 // Full config response from Rails API
 export interface ModelConfigurationResponse {
   models: Record<string, ModelConfig>;
   preferences: Record<LLMCost, Record<LLMSpeed, Record<LLMSkill, string[]>>>;
-  updatedAt: string;
+  updated_at: string;
 }
 
 // Backwards compatibility alias

@@ -42,14 +42,14 @@ RSpec.describe "Model Configuration API", type: :request do
           expect(json["models"]).to be_a(Hash)
           expect(json["models"]["opus"]).to include(
             "enabled" => false,
-            "maxUsagePercent" => 80,
-            "modelCard" => "claude-opus-4-5",
-            "priceTier" => be_a(Integer)
+            "max_usage_percent" => 80,
+            "model_card" => "claude-opus-4-5",
+            "price_tier" => be_a(Integer)
           )
           expect(json["models"]["sonnet"]).to include(
             "enabled" => true,
-            "maxUsagePercent" => 90,
-            "priceTier" => be_a(Integer)
+            "max_usage_percent" => 90,
+            "price_tier" => be_a(Integer)
           )
 
           # Verify preferences section
@@ -58,8 +58,8 @@ RSpec.describe "Model Configuration API", type: :request do
           expect(json["preferences"]["paid"]["fast"]["writing"]).to eq(%w[haiku sonnet])
           expect(json["preferences"]["free"]["slow"]["planning"]).to eq(%w[gpt_oss])
 
-          # Verify updatedAt
-          expect(json["updatedAt"]).to be_present
+          # Verify updated_at
+          expect(json["updated_at"]).to be_present
         end
       end
 

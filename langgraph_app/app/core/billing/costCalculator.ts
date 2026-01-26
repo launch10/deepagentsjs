@@ -45,20 +45,20 @@ export function calculateCost(
   let cost = 0;
 
   // Input tokens
-  cost += tokenCost(record.inputTokens, config.costIn);
+  cost += tokenCost(record.inputTokens, config.cost_in);
 
   // Output tokens
-  cost += tokenCost(record.outputTokens, config.costOut);
+  cost += tokenCost(record.outputTokens, config.cost_out);
 
   // Reasoning tokens - fall back to output cost if reasoning cost not specified
-  const reasoningRate = config.costReasoning ?? config.costOut;
+  const reasoningRate = config.cost_reasoning ?? config.cost_out;
   cost += tokenCost(record.reasoningTokens, reasoningRate);
 
   // Cache write tokens
-  cost += tokenCost(record.cacheCreationTokens, config.cacheWrites);
+  cost += tokenCost(record.cacheCreationTokens, config.cache_writes);
 
   // Cache read tokens
-  cost += tokenCost(record.cacheReadTokens, config.cacheReads);
+  cost += tokenCost(record.cacheReadTokens, config.cache_reads);
 
   // Round to nearest millicredit
   return Math.round(cost);
@@ -123,16 +123,16 @@ function findModelConfig(
     return configs[modelName];
   }
 
-  // Try to find a config whose modelCard matches
+  // Try to find a config whose model_card matches
   for (const config of Object.values(configs)) {
-    if (config.modelCard === modelName) {
+    if (config.model_card === modelName) {
       return config;
     }
   }
 
   // Try prefix matching (e.g., "claude-haiku-4-5-20251001" might match config for "claude-haiku-4-5")
   for (const config of Object.values(configs)) {
-    if (config.modelCard && modelName.startsWith(config.modelCard)) {
+    if (config.model_card && modelName.startsWith(config.model_card)) {
       return config;
     }
   }

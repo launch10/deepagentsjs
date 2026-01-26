@@ -10,21 +10,22 @@ class API::V1::ModelConfigurationController < API::BaseController
     configs = ModelConfig.all.index_by(&:model_key).transform_values do |c|
       {
         enabled: c.enabled,
-        maxUsagePercent: c.max_usage_percent,
-        costIn: c.cost_in&.to_f,
-        costOut: c.cost_out&.to_f,
-        costReasoning: c.cost_reasoning&.to_f,
-        cacheReads: c.cache_reads&.to_f,
-        cacheWrites: c.cache_writes&.to_f,
-        modelCard: c.model_card,
-        priceTier: c.price_tier
+        max_usage_percent: c.max_usage_percent,
+        cost_in: c.cost_in&.to_f,
+        cost_out: c.cost_out&.to_f,
+        cost_reasoning: c.cost_reasoning&.to_f,
+        cache_reads: c.cache_reads&.to_f,
+        cache_writes: c.cache_writes&.to_f,
+        model_card: c.model_card,
+        provider: c.provider,
+        price_tier: c.price_tier
       }
     end
 
     render json: {
       models: configs,
       preferences: ModelPreference.all_preferences,
-      updatedAt: [
+      updated_at: [
         ModelConfig.maximum(:updated_at),
         ModelPreference.maximum(:updated_at)
       ].compact.max

@@ -2437,29 +2437,45 @@ paths:
                         enabled:
                           type: boolean
                           description: Whether this model is enabled
-                        maxUsagePercent:
+                        max_usage_percent:
                           type: integer
+                          nullable: true
                           description: Maximum usage percentage for this model
-                        costIn:
+                        cost_in:
                           type: number
                           nullable: true
-                          description: Cost per input token
-                        costOut:
+                          description: Cost per million input tokens in dollars
+                        cost_out:
                           type: number
                           nullable: true
-                          description: Cost per output token
-                        modelCard:
+                          description: Cost per million output tokens in dollars
+                        cost_reasoning:
+                          type: number
+                          nullable: true
+                          description: Cost per million reasoning tokens in dollars
+                        cache_reads:
+                          type: number
+                          nullable: true
+                          description: Cost per million cache read tokens in dollars
+                        cache_writes:
+                          type: number
+                          nullable: true
+                          description: Cost per million cache write tokens in dollars
+                        model_card:
                           type: string
                           nullable: true
-                          description: Model card identifier
-                        priceTier:
+                          description: Model card identifier (e.g., claude-sonnet-4-5-20250220)
+                        provider:
+                          type: string
+                          nullable: true
+                          description: LLM provider (anthropic, openai, groq, ollama)
+                        price_tier:
                           type: integer
                           description: Price tier (1=premium, 5=cheap) based on weighted
                             effective cost
                       required:
                       - enabled
-                      - maxUsagePercent
-                      - priceTier
+                      - price_tier
                   preferences:
                     type: object
                     description: Nested map of cost_tier -> speed_tier -> skill ->
@@ -2472,7 +2488,7 @@ paths:
                           type: array
                           items:
                             type: string
-                  updatedAt:
+                  updated_at:
                     type: string
                     format: date-time
                     nullable: true

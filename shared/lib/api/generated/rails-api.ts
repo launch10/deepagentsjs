@@ -2122,15 +2122,23 @@ export interface paths {
                                     /** @description Whether this model is enabled */
                                     enabled: boolean;
                                     /** @description Maximum usage percentage for this model */
-                                    maxUsagePercent: number;
-                                    /** @description Cost per input token */
-                                    costIn?: number | null;
-                                    /** @description Cost per output token */
-                                    costOut?: number | null;
-                                    /** @description Model card identifier */
-                                    modelCard?: string | null;
+                                    max_usage_percent?: number | null;
+                                    /** @description Cost per million input tokens in dollars */
+                                    cost_in?: number | null;
+                                    /** @description Cost per million output tokens in dollars */
+                                    cost_out?: number | null;
+                                    /** @description Cost per million reasoning tokens in dollars */
+                                    cost_reasoning?: number | null;
+                                    /** @description Cost per million cache read tokens in dollars */
+                                    cache_reads?: number | null;
+                                    /** @description Cost per million cache write tokens in dollars */
+                                    cache_writes?: number | null;
+                                    /** @description Model card identifier (e.g., claude-sonnet-4-5-20250220) */
+                                    model_card?: string | null;
+                                    /** @description LLM provider (anthropic, openai, groq, ollama) */
+                                    provider?: string | null;
                                     /** @description Price tier (1=premium, 5=cheap) based on weighted effective cost */
-                                    priceTier: number;
+                                    price_tier: number;
                                 };
                             };
                             /** @description Nested map of cost_tier -> speed_tier -> skill -> model_keys array */
@@ -2145,7 +2153,7 @@ export interface paths {
                              * Format: date-time
                              * @description Most recent update timestamp across all configs
                              */
-                            updatedAt?: string | null;
+                            updated_at?: string | null;
                         };
                     };
                 };

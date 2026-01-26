@@ -19,57 +19,57 @@ import type { ModelConfig } from "@core/llm/types";
  *   - 10 millicredits = 10/1000 credits = 0.01 credits = 0.01 cents ✓
  */
 describe.sequential("costCalculator", () => {
-  // Test model configs matching Rails test data
+  // Test model configs matching Rails test data (snake_case)
   const haikuConfig: ModelConfig = {
     enabled: true,
-    maxUsagePercent: null,
-    costIn: 1.0, // $1 per million input tokens
-    costOut: 5.0, // $5 per million output tokens
-    costReasoning: 5.0,
-    cacheWrites: 2.0, // $2 per million cache write tokens
-    cacheReads: 0.1, // $0.10 per million cache read tokens
-    modelCard: "claude-haiku-4-5-20251001",
+    max_usage_percent: null,
+    cost_in: 1.0, // $1 per million input tokens
+    cost_out: 5.0, // $5 per million output tokens
+    cost_reasoning: 5.0,
+    cache_writes: 2.0, // $2 per million cache write tokens
+    cache_reads: 0.1, // $0.10 per million cache read tokens
+    model_card: "claude-haiku-4-5-20251001",
     provider: "anthropic",
-    priceTier: 5,
+    price_tier: 5,
   };
 
   const sonnetConfig: ModelConfig = {
     enabled: true,
-    maxUsagePercent: null,
-    costIn: 3.0, // $3 per million input tokens
-    costOut: 15.0, // $15 per million output tokens
-    costReasoning: 15.0,
-    cacheWrites: 6.0,
-    cacheReads: 0.3,
-    modelCard: "claude-sonnet-4-5-20250220",
+    max_usage_percent: null,
+    cost_in: 3.0, // $3 per million input tokens
+    cost_out: 15.0, // $15 per million output tokens
+    cost_reasoning: 15.0,
+    cache_writes: 6.0,
+    cache_reads: 0.3,
+    model_card: "claude-sonnet-4-5-20250220",
     provider: "anthropic",
-    priceTier: 3,
+    price_tier: 3,
   };
 
   const configWithoutReasoningCost: ModelConfig = {
     enabled: true,
-    maxUsagePercent: null,
-    costIn: 1.0,
-    costOut: 5.0,
-    costReasoning: null, // Falls back to costOut
-    cacheWrites: 2.0,
-    cacheReads: 0.1,
-    modelCard: "claude-no-reasoning",
+    max_usage_percent: null,
+    cost_in: 1.0,
+    cost_out: 5.0,
+    cost_reasoning: null, // Falls back to cost_out
+    cache_writes: 2.0,
+    cache_reads: 0.1,
+    model_card: "claude-no-reasoning",
     provider: "anthropic",
-    priceTier: 5,
+    price_tier: 5,
   };
 
   const configWithNullRates: ModelConfig = {
     enabled: true,
-    maxUsagePercent: null,
-    costIn: 1.0,
-    costOut: null, // Nil rates should be treated as 0
-    costReasoning: null,
-    cacheWrites: null,
-    cacheReads: null,
-    modelCard: "claude-partial-rates",
+    max_usage_percent: null,
+    cost_in: 1.0,
+    cost_out: null, // Nil rates should be treated as 0
+    cost_reasoning: null,
+    cache_writes: null,
+    cache_reads: null,
+    model_card: "claude-partial-rates",
     provider: "anthropic",
-    priceTier: 5,
+    price_tier: 5,
   };
 
   // Helper to create a model config map
@@ -78,8 +78,8 @@ describe.sequential("costCalculator", () => {
   ): Record<string, ModelConfig> {
     const map: Record<string, ModelConfig> = {};
     for (const config of configs) {
-      if (config.modelCard) {
-        map[config.modelCard] = config;
+      if (config.model_card) {
+        map[config.model_card] = config;
       }
     }
     return map;
@@ -168,11 +168,11 @@ describe.sequential("costCalculator", () => {
       expect(cost).toBe(610);
     });
 
-    it("uses costReasoning when available", () => {
+    it("uses cost_reasoning when available", () => {
       const highReasoningConfig: ModelConfig = {
         ...haikuConfig,
-        costReasoning: 10.0, // Higher cost for reasoning
-        modelCard: "claude-high-reasoning",
+        cost_reasoning: 10.0, // Higher cost for reasoning
+        model_card: "claude-high-reasoning",
       };
       const configs = createConfigMap(highReasoningConfig);
 
@@ -186,7 +186,7 @@ describe.sequential("costCalculator", () => {
       expect(cost).toBe(1000);
     });
 
-    it("falls back to costOut when costReasoning is null", () => {
+    it("falls back to cost_out when cost_reasoning is null", () => {
       const configs = createConfigMap(configWithoutReasoningCost);
 
       const record = createUsageRecord({
@@ -195,7 +195,7 @@ describe.sequential("costCalculator", () => {
       });
 
       const cost = calculateCost(record, configs);
-      // Falls back to costOut: 1000 × 5 / 10 = 500 millicredits
+      // Falls back to cost_out: 1000 × 5 / 10 = 500 millicredits
       expect(cost).toBe(500);
     });
 

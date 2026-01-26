@@ -95,7 +95,7 @@ class LLMService {
     if (provider !== "ollama" && !providerConfig.apiKey) return null;
 
     const { Client, apiKey } = providerConfig;
-    const modelCard = config.modelCard ?? modelKey;
+    const modelCard = config.model_card ?? modelKey;
 
     // Some models (like GPT-5 mini) don't support temperature=0
     const modelsWithFixedTemperature = ["gpt-5-mini", "gpt-5"];
@@ -141,7 +141,7 @@ class LLMService {
       const tierMsg = maxTier !== undefined ? ` with maxTier=${maxTier}` : "";
       throw new Error(`No available model for ${skill}/${speed}/${cost} at ${usagePercent}% usage${tierMsg}`);
     }
-    console.log(`Using model tier ${modelWithConfig.config.priceTier} model: ${modelWithConfig.config.modelCard}`)
+    console.log(`Using model tier ${modelWithConfig.config.price_tier} model: ${modelWithConfig.config.model_card}`)
     return modelWithConfig.model
   }
 
@@ -176,9 +176,9 @@ class LLMService {
     for (const key of modelKeys) {
       const modelConfig = config.models[key];
       if (!modelConfig?.enabled) continue;
-      if (usagePercent > (modelConfig.maxUsagePercent ?? 100)) continue;
+      if (usagePercent > (modelConfig.max_usage_percent ?? 100)) continue;
       // Filter by maxTier: only allow models with tier >= maxTier (higher tier = cheaper)
-      if (maxTier !== undefined && modelConfig.priceTier < maxTier) continue;
+      if (maxTier !== undefined && modelConfig.price_tier < maxTier) continue;
 
       const model = this.createModel(key, modelConfig);
       if (model) models.push({
