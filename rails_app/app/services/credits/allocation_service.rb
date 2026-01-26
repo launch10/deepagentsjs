@@ -433,9 +433,8 @@ module Credits
       [@account.total_millicredits, @account.plan_millicredits, @account.pack_millicredits]
     end
 
-    # Convert credits to millicredits (1 credit = 1000 millicredits)
     def credits_to_millicredits(credits)
-      credits * 1000
+      Millicredits.from_credits(credits)
     end
 
     def create_transaction!(attrs)

@@ -65,21 +65,37 @@ class CreditTransaction < ApplicationRecord
     for_account(account).order(created_at: :desc).first
   end
 
+  def amount=(credits)
+    self.amount_millicredits = Millicredits.from_credits(credits)
+  end
+
+  def balance_after=(credits)
+    self.balance_after_millicredits = Millicredits.from_credits(credits)
+  end
+
+  def plan_balance_after=(credits)
+    self.plan_balance_after_millicredits = Millicredits.from_credits(credits)
+  end
+
+  def pack_balance_after=(credits)
+    self.pack_balance_after_millicredits = Millicredits.from_credits(credits)
+  end
+
   # Display wrapper methods - return credits (millicredits / 1000)
   def amount
-    amount_millicredits / 1000.0
+    Millicredits.to_credits(amount_millicredits)
   end
 
   def balance_after
-    balance_after_millicredits / 1000.0
+    Millicredits.to_credits(balance_after_millicredits)
   end
 
   def plan_balance_after
-    plan_balance_after_millicredits / 1000.0
+    Millicredits.to_credits(plan_balance_after_millicredits)
   end
 
   def pack_balance_after
-    pack_balance_after_millicredits / 1000.0
+    Millicredits.to_credits(pack_balance_after_millicredits)
   end
 
   def credit?

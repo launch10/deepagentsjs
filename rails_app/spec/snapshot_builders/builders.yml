@@ -80,3 +80,8 @@ deploy_step:
   class: DeployStep
   base_snapshot: campaign_review_step
   description: "Ready for deploy with Google OAuth connected and pending deploy created"
+
+leads_page:
+  class: LeadsPage
+  base_snapshot: website_step
+  description: "Website with 25 leads for leads page testing (pagination: 20 per page)"

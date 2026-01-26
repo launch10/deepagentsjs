@@ -95,7 +95,6 @@ class BasicAccount < BaseBuilder
     account.update!(
       plan_credits: credits,
       pack_credits: 0,
-      total_credits: credits
     )
 
     # Create audit trail transaction

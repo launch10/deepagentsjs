@@ -114,17 +114,25 @@ class Account < ApplicationRecord
     plan&.plan_tier&.tier_limits || TierLimit.none
   end
 
+  def plan_credits=(value)
+    self.plan_millicredits = Millicredits.from_credits(value)
+  end
+
+  def pack_credits=(value)
+    self.pack_millicredits = Millicredits.from_credits(value)
+  end
+
   # Display wrapper methods - return credits (millicredits / 1000)
   # These preserve backward compatibility with code that expects credits
   def plan_credits
-    plan_millicredits / 1000.0
+    Millicredits.to_credits(plan_millicredits)
   end
 
   def pack_credits
-    pack_millicredits / 1000.0
+    Millicredits.to_credits(pack_millicredits)
   end
 
   def total_credits
-    total_millicredits / 1000.0
+    Millicredits.to_credits(total_millicredits)
   end
 end

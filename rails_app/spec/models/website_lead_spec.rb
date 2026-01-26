@@ -20,12 +20,13 @@
 #
 # Indexes
 #
-#  index_website_leads_on_gclid                   (gclid)
-#  index_website_leads_on_lead_id                 (lead_id)
-#  index_website_leads_on_lead_id_and_website_id  (lead_id,website_id) UNIQUE
-#  index_website_leads_on_visit_id                (visit_id)
-#  index_website_leads_on_visitor_token           (visitor_token)
-#  index_website_leads_on_website_id              (website_id)
+#  index_website_leads_on_gclid                           (gclid)
+#  index_website_leads_on_lead_id                         (lead_id)
+#  index_website_leads_on_lead_id_and_website_id          (lead_id,website_id) UNIQUE
+#  index_website_leads_on_visit_id                        (visit_id)
+#  index_website_leads_on_visitor_token                   (visitor_token)
+#  index_website_leads_on_website_id                      (website_id)
+#  index_website_leads_on_website_id_and_created_at_desc  (website_id,created_at DESC)
 #
 require 'rails_helper'
 
