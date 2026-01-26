@@ -3,7 +3,7 @@ require_relative "config/environment"
 Zhong.redis = Redis.new(url: ENV["REDIS_URL"])
 
 def est_time(time)
-  ActiveSupport::TimeZone.new("America/New_York").parse(time).utc
+  ActiveSupport::TimeZone.new("America/New_York").parse(time).utc.strftime("%H:%M")
 end
 
 return if Rails.env.test?
