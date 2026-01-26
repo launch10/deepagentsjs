@@ -2,21 +2,21 @@
 #
 # Table name: credit_transactions
 #
-#  id                 :bigint           not null, primary key
-#  amount             :bigint           not null
-#  balance_after      :bigint           not null
-#  credit_type        :string           not null
-#  idempotency_key    :string
-#  metadata           :jsonb
-#  pack_balance_after :bigint           not null
-#  plan_balance_after :bigint           not null
-#  reason             :string           not null
-#  reference_type     :string
-#  transaction_type   :string           not null
-#  created_at         :datetime         not null
-#  updated_at         :datetime         not null
-#  account_id         :bigint           not null
-#  reference_id       :string
+#  id                              :bigint           not null, primary key
+#  amount_millicredits             :bigint           not null
+#  balance_after_millicredits      :bigint           not null
+#  credit_type                     :string           not null
+#  idempotency_key                 :string
+#  metadata                        :jsonb
+#  pack_balance_after_millicredits :bigint           not null
+#  plan_balance_after_millicredits :bigint           not null
+#  reason                          :string           not null
+#  reference_type                  :string
+#  transaction_type                :string           not null
+#  created_at                      :datetime         not null
+#  updated_at                      :datetime         not null
+#  account_id                      :bigint           not null
+#  reference_id                    :string
 #
 # Indexes
 #
@@ -35,13 +35,13 @@ RSpec.describe CreditTransaction, type: :model do
     it { is_expected.to validate_presence_of(:transaction_type) }
     it { is_expected.to validate_presence_of(:credit_type) }
     it { is_expected.to validate_presence_of(:reason) }
-    it { is_expected.to validate_presence_of(:amount) }
-    it { is_expected.to validate_presence_of(:balance_after) }
-    it { is_expected.to validate_presence_of(:plan_balance_after) }
-    it { is_expected.to validate_presence_of(:pack_balance_after) }
+    it { is_expected.to validate_presence_of(:amount_millicredits) }
+    it { is_expected.to validate_presence_of(:balance_after_millicredits) }
+    it { is_expected.to validate_presence_of(:plan_balance_after_millicredits) }
+    it { is_expected.to validate_presence_of(:pack_balance_after_millicredits) }
 
     it { is_expected.to validate_inclusion_of(:transaction_type).in_array(%w[allocate consume purchase refund gift adjust expire]) }
-    it { is_expected.to validate_inclusion_of(:credit_type).in_array(%w[plan pack]) }
+    it { is_expected.to validate_inclusion_of(:credit_type).in_array(%w[plan pack split]) }
   end
 
   describe "callbacks" do
@@ -49,17 +49,21 @@ RSpec.describe CreditTransaction, type: :model do
       let(:account) { create(:account) }
 
       it "updates account cached columns after create" do
-        expect(account.plan_credits).to eq(0)
-        expect(account.pack_credits).to eq(0)
-        expect(account.total_credits).to eq(0)
+        expect(account.plan_millicredits).to eq(0)
+        expect(account.pack_millicredits).to eq(0)
+        expect(account.total_millicredits).to eq(0)
 
         create(:credit_transaction, :skip_validation,
           account: account,
-          plan_balance_after: 5000,
-          pack_balance_after: 100,
-          balance_after: 5100)
+          plan_balance_after_millicredits: 5_000_000,
+          pack_balance_after_millicredits: 100_000,
+          balance_after_millicredits: 5_100_000)
 
         account.reload
+        expect(account.plan_millicredits).to eq(5_000_000)
+        expect(account.pack_millicredits).to eq(100_000)
+        expect(account.total_millicredits).to eq(5_100_000)
+        # Also test display wrappers
         expect(account.plan_credits).to eq(5000)
         expect(account.pack_credits).to eq(100)
         expect(account.total_credits).to eq(5100)
@@ -72,15 +76,15 @@ RSpec.describe CreditTransaction, type: :model do
           create(:credit_transaction, :skip_validation,
             account: account,
             transaction_type: tx_type,
-            amount: ((tx_type == "expire") ? -100 : 100),
-            plan_balance_after: 1000,
-            pack_balance_after: 200,
-            balance_after: 1200)
+            amount_millicredits: ((tx_type == "expire") ? -100_000 : 100_000),
+            plan_balance_after_millicredits: 1_000_000,
+            pack_balance_after_millicredits: 200_000,
+            balance_after_millicredits: 1_200_000)
 
           account.reload
-          expect(account.plan_credits).to eq(1000), "Failed for transaction_type: #{tx_type}"
-          expect(account.pack_credits).to eq(200), "Failed for transaction_type: #{tx_type}"
-          expect(account.total_credits).to eq(1200), "Failed for transaction_type: #{tx_type}"
+          expect(account.plan_millicredits).to eq(1_000_000), "Failed for transaction_type: #{tx_type}"
+          expect(account.pack_millicredits).to eq(200_000), "Failed for transaction_type: #{tx_type}"
+          expect(account.total_millicredits).to eq(1_200_000), "Failed for transaction_type: #{tx_type}"
         end
       end
     end
@@ -138,25 +142,40 @@ RSpec.describe CreditTransaction, type: :model do
 
   describe "#credit?" do
     it "returns true for positive amounts" do
-      tx = build(:credit_transaction, amount: 100)
+      tx = build(:credit_transaction, amount_millicredits: 100_000)
       expect(tx).to be_credit
     end
 
     it "returns false for negative amounts" do
-      tx = build(:credit_transaction, amount: -100)
+      tx = build(:credit_transaction, amount_millicredits: -100_000)
       expect(tx).not_to be_credit
     end
   end
 
   describe "#debit?" do
     it "returns true for negative amounts" do
-      tx = build(:credit_transaction, amount: -100)
+      tx = build(:credit_transaction, amount_millicredits: -100_000)
       expect(tx).to be_debit
     end
 
     it "returns false for positive amounts" do
-      tx = build(:credit_transaction, amount: 100)
+      tx = build(:credit_transaction, amount_millicredits: 100_000)
       expect(tx).not_to be_debit
+    end
+  end
+
+  describe "display wrapper methods" do
+    it "returns credits from millicredits" do
+      tx = build(:credit_transaction,
+        amount_millicredits: 1_500_000,
+        balance_after_millicredits: 2_000_000,
+        plan_balance_after_millicredits: 1_500_000,
+        pack_balance_after_millicredits: 500_000)
+
+      expect(tx.amount).to eq(1500)
+      expect(tx.balance_after).to eq(2000)
+      expect(tx.plan_balance_after).to eq(1500)
+      expect(tx.pack_balance_after).to eq(500)
     end
   end
 
@@ -167,10 +186,10 @@ RSpec.describe CreditTransaction, type: :model do
       it "is valid when plan + pack = total" do
         tx = build(:credit_transaction,
           account: account,
-          amount: 1000,
-          plan_balance_after: 800,
-          pack_balance_after: 200,
-          balance_after: 1000)
+          amount_millicredits: 1_000_000,
+          plan_balance_after_millicredits: 800_000,
+          pack_balance_after_millicredits: 200_000,
+          balance_after_millicredits: 1_000_000)
         tx.skip_sequence_validation = true # only skip sequence, not sum validation
         expect(tx).to be_valid
       end
@@ -178,12 +197,12 @@ RSpec.describe CreditTransaction, type: :model do
       it "is invalid when plan + pack != total" do
         tx = build(:credit_transaction,
           account: account,
-          amount: 1000,
-          plan_balance_after: 800,
-          pack_balance_after: 200,
-          balance_after: 900) # wrong!
+          amount_millicredits: 1_000_000,
+          plan_balance_after_millicredits: 800_000,
+          pack_balance_after_millicredits: 200_000,
+          balance_after_millicredits: 900_000) # wrong!
         expect(tx).not_to be_valid
-        expect(tx.errors[:balance_after]).to include(match(/must equal plan_balance_after \+ pack_balance_after/))
+        expect(tx.errors[:balance_after_millicredits]).to include(match(/must equal plan_balance_after_millicredits \+ pack_balance_after_millicredits/))
       end
     end
 
@@ -194,10 +213,10 @@ RSpec.describe CreditTransaction, type: :model do
             account: account,
             transaction_type: "allocate",
             credit_type: "plan",
-            amount: 1000,
-            plan_balance_after: 1000,
-            pack_balance_after: 0,
-            balance_after: 1000)
+            amount_millicredits: 1_000_000,
+            plan_balance_after_millicredits: 1_000_000,
+            pack_balance_after_millicredits: 0,
+            balance_after_millicredits: 1_000_000)
 
           expect(tx).to be_valid
         end
@@ -208,10 +227,10 @@ RSpec.describe CreditTransaction, type: :model do
             transaction_type: "purchase",
             credit_type: "pack",
             reason: "pack_purchase",
-            amount: 500,
-            plan_balance_after: 0,
-            pack_balance_after: 500,
-            balance_after: 500)
+            amount_millicredits: 500_000,
+            plan_balance_after_millicredits: 0,
+            pack_balance_after_millicredits: 500_000,
+            balance_after_millicredits: 500_000)
 
           expect(tx).to be_valid
         end
@@ -221,13 +240,13 @@ RSpec.describe CreditTransaction, type: :model do
             account: account,
             transaction_type: "allocate",
             credit_type: "plan",
-            amount: 1000,
-            plan_balance_after: 800, # wrong!
-            pack_balance_after: 0,
-            balance_after: 800)
+            amount_millicredits: 1_000_000,
+            plan_balance_after_millicredits: 800_000, # wrong!
+            pack_balance_after_millicredits: 0,
+            balance_after_millicredits: 800_000)
 
           expect(tx).not_to be_valid
-          expect(tx.errors[:plan_balance_after]).to include(match(/first transaction: expected 1000/))
+          expect(tx.errors[:plan_balance_after_millicredits]).to include(match(/first transaction: expected 1000000/))
         end
 
         it "is invalid when pack balance is not 0 for first plan transaction" do
@@ -235,13 +254,13 @@ RSpec.describe CreditTransaction, type: :model do
             account: account,
             transaction_type: "allocate",
             credit_type: "plan",
-            amount: 1000,
-            plan_balance_after: 1000,
-            pack_balance_after: 100, # wrong!
-            balance_after: 1100)
+            amount_millicredits: 1_000_000,
+            plan_balance_after_millicredits: 1_000_000,
+            pack_balance_after_millicredits: 100_000, # wrong!
+            balance_after_millicredits: 1_100_000)
 
           expect(tx).not_to be_valid
-          expect(tx.errors[:pack_balance_after]).to include(match(/first transaction: pack balance should be 0/))
+          expect(tx.errors[:pack_balance_after_millicredits]).to include(match(/first transaction: pack balance should be 0/))
         end
       end
 
@@ -251,10 +270,10 @@ RSpec.describe CreditTransaction, type: :model do
             account: account,
             transaction_type: "allocate",
             credit_type: "plan",
-            amount: 1000,
-            plan_balance_after: 1000,
-            pack_balance_after: 0,
-            balance_after: 1000)
+            amount_millicredits: 1_000_000,
+            plan_balance_after_millicredits: 1_000_000,
+            pack_balance_after_millicredits: 0,
+            balance_after_millicredits: 1_000_000)
         end
 
         it "is valid when balances follow correctly from previous for plan transaction" do
@@ -263,10 +282,10 @@ RSpec.describe CreditTransaction, type: :model do
             transaction_type: "consume",
             credit_type: "plan",
             reason: "ai_generation",
-            amount: -200,
-            plan_balance_after: 800,
-            pack_balance_after: 0,
-            balance_after: 800)
+            amount_millicredits: -200_000,
+            plan_balance_after_millicredits: 800_000,
+            pack_balance_after_millicredits: 0,
+            balance_after_millicredits: 800_000)
 
           expect(tx).to be_valid
         end
@@ -277,13 +296,13 @@ RSpec.describe CreditTransaction, type: :model do
             transaction_type: "consume",
             credit_type: "plan",
             reason: "ai_generation",
-            amount: -200,
-            plan_balance_after: 800,
-            pack_balance_after: 0,
-            balance_after: 900) # wrong! should be 800
+            amount_millicredits: -200_000,
+            plan_balance_after_millicredits: 800_000,
+            pack_balance_after_millicredits: 0,
+            balance_after_millicredits: 900_000) # wrong! should be 800000
 
           expect(tx).not_to be_valid
-          expect(tx.errors[:balance_after]).to include(match(/sequence error: expected 800/))
+          expect(tx.errors[:balance_after_millicredits]).to include(match(/sequence error: expected 800000/))
         end
 
         it "is invalid when plan balance doesn't follow sequence" do
@@ -292,13 +311,13 @@ RSpec.describe CreditTransaction, type: :model do
             transaction_type: "consume",
             credit_type: "plan",
             reason: "ai_generation",
-            amount: -200,
-            plan_balance_after: 700, # wrong! should be 800
-            pack_balance_after: 0,
-            balance_after: 700)
+            amount_millicredits: -200_000,
+            plan_balance_after_millicredits: 700_000, # wrong! should be 800000
+            pack_balance_after_millicredits: 0,
+            balance_after_millicredits: 700_000)
 
           expect(tx).not_to be_valid
-          expect(tx.errors[:plan_balance_after]).to include(match(/sequence error: expected 800/))
+          expect(tx.errors[:plan_balance_after_millicredits]).to include(match(/sequence error: expected 800000/))
         end
 
         it "is invalid when pack balance changes for plan transaction" do
@@ -307,13 +326,13 @@ RSpec.describe CreditTransaction, type: :model do
             transaction_type: "consume",
             credit_type: "plan",
             reason: "ai_generation",
-            amount: -200,
-            plan_balance_after: 800,
-            pack_balance_after: 100, # wrong! should stay 0
-            balance_after: 900)
+            amount_millicredits: -200_000,
+            plan_balance_after_millicredits: 800_000,
+            pack_balance_after_millicredits: 100_000, # wrong! should stay 0
+            balance_after_millicredits: 900_000)
 
           expect(tx).not_to be_valid
-          expect(tx.errors[:pack_balance_after]).to include(match(/should not change for plan transaction/))
+          expect(tx.errors[:pack_balance_after_millicredits]).to include(match(/should not change for plan transaction/))
         end
 
         context "with pack credits" do
@@ -323,10 +342,10 @@ RSpec.describe CreditTransaction, type: :model do
               transaction_type: "purchase",
               credit_type: "pack",
               reason: "pack_purchase",
-              amount: 500,
-              plan_balance_after: 1000, # unchanged from first_tx
-              pack_balance_after: 500,
-              balance_after: 1500)
+              amount_millicredits: 500_000,
+              plan_balance_after_millicredits: 1_000_000, # unchanged from first_tx
+              pack_balance_after_millicredits: 500_000,
+              balance_after_millicredits: 1_500_000)
           end
 
           it "is valid when pack balance follows correctly" do
@@ -335,10 +354,10 @@ RSpec.describe CreditTransaction, type: :model do
               transaction_type: "consume",
               credit_type: "pack",
               reason: "ai_generation",
-              amount: -100,
-              plan_balance_after: 1000, # unchanged
-              pack_balance_after: 400,
-              balance_after: 1400)
+              amount_millicredits: -100_000,
+              plan_balance_after_millicredits: 1_000_000, # unchanged
+              pack_balance_after_millicredits: 400_000,
+              balance_after_millicredits: 1_400_000)
 
             expect(tx).to be_valid
           end
@@ -349,13 +368,44 @@ RSpec.describe CreditTransaction, type: :model do
               transaction_type: "consume",
               credit_type: "pack",
               reason: "ai_generation",
-              amount: -100,
-              plan_balance_after: 900, # wrong! should stay 1000
-              pack_balance_after: 400,
-              balance_after: 1300)
+              amount_millicredits: -100_000,
+              plan_balance_after_millicredits: 900_000, # wrong! should stay 1000000
+              pack_balance_after_millicredits: 400_000,
+              balance_after_millicredits: 1_300_000)
 
             expect(tx).not_to be_valid
-            expect(tx.errors[:plan_balance_after]).to include(match(/should not change for pack transaction/))
+            expect(tx.errors[:plan_balance_after_millicredits]).to include(match(/should not change for pack transaction/))
+          end
+        end
+
+        context "with split credit type" do
+          it "is valid when plan_change + pack_change equals amount" do
+            tx = build(:credit_transaction,
+              account: account,
+              transaction_type: "consume",
+              credit_type: "split",
+              reason: "ai_generation",
+              amount_millicredits: -300_000,
+              plan_balance_after_millicredits: 800_000,  # -200000 from plan
+              pack_balance_after_millicredits: -100_000, # -100000 to pack (overdraft)
+              balance_after_millicredits: 700_000)
+
+            expect(tx).to be_valid
+          end
+
+          it "is invalid when changes don't sum to amount" do
+            tx = build(:credit_transaction,
+              account: account,
+              transaction_type: "consume",
+              credit_type: "split",
+              reason: "ai_generation",
+              amount_millicredits: -300_000,
+              plan_balance_after_millicredits: 800_000,
+              pack_balance_after_millicredits: 0, # wrong! changes don't sum
+              balance_after_millicredits: 800_000)
+
+            expect(tx).not_to be_valid
+            expect(tx.errors[:base]).to include(match(/split: plan_change.*must equal amount_millicredits/))
           end
         end
       end
@@ -365,10 +415,10 @@ RSpec.describe CreditTransaction, type: :model do
       it "skips validation when attribute is set" do
         tx = build(:credit_transaction,
           account: account,
-          amount: 1000,
-          plan_balance_after: 500, # wrong for first tx
-          pack_balance_after: 100, # wrong for first tx
-          balance_after: 600)
+          amount_millicredits: 1_000_000,
+          plan_balance_after_millicredits: 500_000, # wrong for first tx
+          pack_balance_after_millicredits: 100_000, # wrong for first tx
+          balance_after_millicredits: 600_000)
         tx.skip_sequence_validation = true
 
         expect(tx).to be_valid
@@ -377,10 +427,10 @@ RSpec.describe CreditTransaction, type: :model do
       it "skips validation when using factory trait" do
         tx = build(:credit_transaction, :skip_validation,
           account: account,
-          amount: 1000,
-          plan_balance_after: 500,
-          pack_balance_after: 100,
-          balance_after: 600)
+          amount_millicredits: 1_000_000,
+          plan_balance_after_millicredits: 500_000,
+          pack_balance_after_millicredits: 100_000,
+          balance_after_millicredits: 600_000)
 
         expect(tx).to be_valid
       end

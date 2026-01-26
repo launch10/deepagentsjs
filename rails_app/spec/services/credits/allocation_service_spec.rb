@@ -47,8 +47,12 @@ RSpec.describe Credits::AllocationService do
   # Helper to set up account state with proper transaction history
   # This creates transactions that establish the starting balances
   # so that subsequent transactions can pass sequence validation
+  # Note: Input is in credits, but stored as millicredits (×1000)
   def setup_account_state(plan_credits:, pack_credits: 0)
-    total = plan_credits + pack_credits
+    # Convert credits to millicredits for storage
+    plan_mc = plan_credits * 1000
+    pack_mc = pack_credits * 1000
+    total_mc = plan_mc + pack_mc
 
     # Create a final transaction that establishes the desired ending state
     # We use skip_sequence_validation because this is test setup
@@ -56,14 +60,14 @@ RSpec.describe Credits::AllocationService do
       transaction_type: (plan_credits >= 0) ? "allocate" : "consume",
       credit_type: "plan",
       reason: (plan_credits >= 0) ? "plan_renewal" : "ai_generation",
-      amount: plan_credits,
-      balance_after: total,
-      plan_balance_after: plan_credits,
-      pack_balance_after: pack_credits,
+      amount_millicredits: plan_mc,
+      balance_after_millicredits: total_mc,
+      plan_balance_after_millicredits: plan_mc,
+      pack_balance_after_millicredits: pack_mc,
       skip_sequence_validation: true
     )
 
-    account.update!(plan_credits: plan_credits, pack_credits: pack_credits, total_credits: total)
+    account.update!(plan_millicredits: plan_mc, pack_millicredits: pack_mc, total_millicredits: total_mc)
   end
 
   before do
@@ -454,10 +458,10 @@ RSpec.describe Credits::AllocationService do
             transaction_type: "allocate",
             credit_type: "plan",
             reason: "plan_renewal",
-            amount: 5000,
-            balance_after: 5000,
-            plan_balance_after: 5000,
-            pack_balance_after: 0,
+            amount_millicredits: 5_000_000,
+            balance_after_millicredits: 5_000_000,
+            plan_balance_after_millicredits: 5_000_000,
+            pack_balance_after_millicredits: 0,
             reference_type: "Pay::Subscription",
             reference_id: subscription.id.to_s,
             idempotency_key: "plan_credits:#{subscription.id}:#{period_start.to_date.iso8601}",
@@ -492,10 +496,10 @@ RSpec.describe Credits::AllocationService do
             transaction_type: "allocate",
             credit_type: "plan",
             reason: "plan_renewal",
-            amount: 5000,
-            balance_after: 5000,
-            plan_balance_after: 5000,
-            pack_balance_after: 0,
+            amount_millicredits: 5_000_000,
+            balance_after_millicredits: 5_000_000,
+            plan_balance_after_millicredits: 5_000_000,
+            pack_balance_after_millicredits: 0,
             reference_type: "Pay::Subscription",
             reference_id: subscription.id.to_s,
             idempotency_key: idempotency_key,
@@ -529,10 +533,10 @@ RSpec.describe Credits::AllocationService do
             transaction_type: "allocate",
             credit_type: "plan",
             reason: "plan_renewal",
-            amount: 5000,
-            balance_after: 5000,
-            plan_balance_after: 5000,
-            pack_balance_after: 0,
+            amount_millicredits: 5_000_000,
+            balance_after_millicredits: 5_000_000,
+            plan_balance_after_millicredits: 5_000_000,
+            pack_balance_after_millicredits: 0,
             reference_type: "Pay::Subscription",
             reference_id: subscription.id.to_s,
             idempotency_key: idempotency_key,
@@ -651,10 +655,10 @@ RSpec.describe Credits::AllocationService do
             transaction_type: "allocate",
             credit_type: "plan",
             reason: "plan_renewal",
-            amount: 5000,
-            balance_after: 5000,
-            plan_balance_after: 5000,
-            pack_balance_after: 0,
+            amount_millicredits: 5_000_000,
+            balance_after_millicredits: 5_000_000,
+            plan_balance_after_millicredits: 5_000_000,
+            pack_balance_after_millicredits: 0,
             reference_type: "Pay::Subscription",
             reference_id: subscription.id.to_s,
             idempotency_key: idempotency_key,
@@ -682,13 +686,13 @@ RSpec.describe Credits::AllocationService do
               transaction_type: "consume",
               credit_type: "plan",
               reason: "ai_generation",
-              amount: -5000,
-              balance_after: 10000,
-              plan_balance_after: 10000,
-              pack_balance_after: 0,
+              amount_millicredits: -5_000_000,
+              balance_after_millicredits: 10_000_000,
+              plan_balance_after_millicredits: 10_000_000,
+              pack_balance_after_millicredits: 0,
               skip_sequence_validation: true
             )
-            account.update!(plan_credits: 10000, pack_credits: 0, total_credits: 10000)
+            account.update!(plan_millicredits: 10_000_000, pack_millicredits: 0, total_millicredits: 10_000_000)
 
             # Step 3: Downgrade Pro → Growth
             allow(subscription).to receive(:plan).and_return(growth_monthly)
@@ -787,10 +791,10 @@ RSpec.describe Credits::AllocationService do
             transaction_type: "allocate",
             credit_type: "plan",
             reason: "plan_renewal",
-            amount: 5000,
-            balance_after: 5000,
-            plan_balance_after: 5000,
-            pack_balance_after: 0,
+            amount_millicredits: 5_000_000,
+            balance_after_millicredits: 5_000_000,
+            plan_balance_after_millicredits: 5_000_000,
+            pack_balance_after_millicredits: 0,
             reference_type: "Pay::Subscription",
             reference_id: subscription.id.to_s,
             idempotency_key: idempotency_key,
@@ -868,8 +872,9 @@ RSpec.describe Credits::AllocationService do
           adjust_tx = CreditTransaction.where(reason: "plan_downgrade").last
           expect(adjust_tx.metadata["previous_plan"]).to eq("growth_monthly")
           expect(adjust_tx.metadata["new_plan"]).to eq("starter")
-          expect(adjust_tx.metadata["usage_this_period"]).to eq(1000)
-          expect(adjust_tx.metadata["pro_rated_balance"]).to eq(1000)
+          # Metadata now uses millicredits (1000 credits = 1_000_000 millicredits)
+          expect(adjust_tx.metadata["usage_this_period_millicredits"]).to eq(1_000_000)
+          expect(adjust_tx.metadata["pro_rated_balance_millicredits"]).to eq(1_000_000)
         end
       end
     end

@@ -5,7 +5,7 @@
 #  id                      :bigint           not null, primary key
 #  cache_creation_tokens   :integer          default(0)
 #  cache_read_tokens       :integer          default(0)
-#  cost_microcents         :bigint
+#  cost_millicredits       :bigint
 #  graph_name              :string
 #  input_tokens            :integer          default(0), not null
 #  metadata                :jsonb

@@ -190,24 +190,62 @@ end
 
 **File:** `app/workers/credits/find_unprocessed_runs_worker.rb`
 
+Uses the same pattern as `DailyReconciliationWorker`: testable query method + `find_each` for batching + delegation to individual workers for proper retries.
+
 ```ruby
 module Credits
-  class FindUnprocessedRunsWorker
-    include Sidekiq::Worker
+  # Backup polling job that catches any runs that weren't processed via webhook.
+  #
+  # Runs every minute via Zhong. Finds LLMUsage records that are:
+  # - Unprocessed (processed_at IS NULL)
+  # - Older than staleness threshold (not still being written)
+  # - Younger than max age (avoid scanning ancient records)
+  #
+  # Delegates each run_id to ChargeRunWorker for individual processing/retries.
+  #
+  class FindUnprocessedRunsWorker < ApplicationWorker
     sidekiq_options queue: :billing
 
     STALENESS_THRESHOLD = 2.minutes
+    MAX_AGE = 1.week
 
     def perform
-      stale_runs = LLMUsage.unprocessed
-        .where("created_at < ?", STALENESS_THRESHOLD.ago)
-        .distinct.pluck(:run_id)
+      stale_run_ids_query.find_each do |record|
+        Credits::ChargeRunWorker.perform_async(record.run_id)
+      end
+    end
 
-      stale_runs.each { |run_id| ChargeRunWorker.perform_async(run_id) }
+    private
+
+    # Returns distinct run_ids with unprocessed usage in the processable window.
+    #
+    # Window: between MAX_AGE.ago and STALENESS_THRESHOLD.ago
+    # - Lower bound (MAX_AGE): Prevents scanning ancient records that likely
+    #   indicate a deeper issue (missing chat, deleted account, bad data)
+    # - Upper bound (STALENESS_THRESHOLD): Avoids racing with active writes
+    #
+    # Query is extracted for testability - specs can verify the bounds.
+    #
+    def stale_run_ids_query
+      LLMUsage
+        .unprocessed
+        .where(created_at: MAX_AGE.ago..STALENESS_THRESHOLD.ago)
+        .select(:run_id)
+        .distinct
     end
   end
 end
 ```
+
+**Why this pattern:**
+
+1. **Testable query:** The `stale_run_ids_query` method is public enough to test independently, verifying the query logic without triggering worker enqueues
+
+2. **Memory efficient:** `find_each` batches records (1000 at a time by default) instead of loading all run_ids into memory via `pluck`
+
+3. **Individual retries:** Each `ChargeRunWorker` gets its own Sidekiq job with independent retry logic. If one run fails, others continue processing
+
+4. **Idempotent:** `ChargeRunWorker` uses idempotency keys, so re-enqueueing the same run_id is safe
 
 ### 6. Update notifyRails.ts (Langgraph)
 
