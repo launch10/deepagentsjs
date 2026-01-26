@@ -38,10 +38,14 @@ class BasicAccount < BaseBuilder
         ends_at: nil
       )
       puts "Subscription: #{subscription.processor_plan} (Status: #{subscription.status})"
+
+      # Allocate plan credits (simulates what webhook handlers do in production)
+      allocate_credits!(account, plan, subscription)
     end
 
     puts "Created user: #{user.email}"
     puts "Account: #{account.name} (ID: #{account.id})"
+    puts "Credits: #{account.plan_credits} plan / #{account.pack_credits} pack / #{account.total_credits} total"
   end
 
   def create_admin_user
@@ -70,9 +74,42 @@ class BasicAccount < BaseBuilder
         ends_at: nil
       )
       puts "Admin Subscription: #{subscription.processor_plan} (Status: #{subscription.status})"
+
+      # Allocate plan credits (simulates what webhook handlers do in production)
+      allocate_credits!(admin_account, plan, subscription)
     end
 
     puts "Created admin user: #{admin_user.email} (admin: #{admin_user.admin?})"
     puts "Admin Account: #{admin_account.name} (ID: #{admin_account.id})"
+    puts "Admin Credits: #{admin_account.plan_credits} plan / #{admin_account.pack_credits} pack / #{admin_account.total_credits} total"
+  end
+
+  private
+
+  # Allocates plan credits directly (bypassing webhook flow).
+  # This mirrors what Credits::AllocationService does but simplified for snapshots.
+  def allocate_credits!(account, plan, subscription)
+    credits = plan.credits || 0
+    return if credits.zero?
+
+    account.update!(
+      plan_credits: credits,
+      pack_credits: 0,
+      total_credits: credits
+    )
+
+    # Create audit trail transaction
+    account.credit_transactions.create!(
+      transaction_type: "allocate",
+      credit_type: "plan",
+      reason: "plan_renewal",
+      amount: credits,
+      balance_after: credits,
+      plan_balance_after: credits,
+      pack_balance_after: 0,
+      reference_type: "Pay::Subscription",
+      reference_id: subscription.id.to_s,
+      idempotency_key: "snapshot:#{account.id}:#{subscription.id}"
+    )
   end
 end

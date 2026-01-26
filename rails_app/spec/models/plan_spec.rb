@@ -28,6 +28,7 @@
 # Indexes
 #
 #  index_plans_on_created_at    (created_at)
+#  index_plans_on_interval      (interval)
 #  index_plans_on_name          (name) UNIQUE
 #  index_plans_on_plan_tier_id  (plan_tier_id)
 #

@@ -8,9 +8,12 @@
 #  domain              :string
 #  extra_billing_info  :text
 #  name                :string           not null
+#  pack_credits        :bigint           default(0), not null
 #  personal            :boolean          default(FALSE)
+#  plan_credits        :bigint           default(0), not null
 #  subdomain           :string
 #  time_zone           :string           default("America/New_York")
+#  total_credits       :bigint           default(0), not null
 #  created_at          :datetime         not null
 #  updated_at          :datetime         not null
 #  owner_id            :bigint
@@ -58,6 +61,7 @@ class Account < ApplicationRecord
   has_one :firewall, class_name: "Cloudflare::Firewall"
   has_many :ads_accounts, dependent: :destroy
   has_many :job_runs, dependent: :destroy
+  has_many :credit_transactions, dependent: :destroy
 
   scope :personal, -> { where(personal: true) }
   scope :team, -> { where(personal: false) }

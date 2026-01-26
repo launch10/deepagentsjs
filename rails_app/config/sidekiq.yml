@@ -11,6 +11,7 @@
 # Weights should be between 1-10. For random queue ordering, set all weights to 1.
 :queues:
   - ["critical", 10]
+  - ["billing", 8]
   - ["mailers", 5]
   - ["active_storage_analysis", 4]
   - ["default", 2]

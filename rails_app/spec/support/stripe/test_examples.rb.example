@@ -1,0 +1,695 @@
+# frozen_string_literal: true
+
+# =============================================================================
+# EXAMPLE TEST FILE
+# =============================================================================
+#
+# This file demonstrates how to use StripeWebhookFixtures to test subscription
+# lifecycle events properly. Copy and adapt these patterns for your own tests.
+#
+# Key principles:
+# 1. Test webhook event handling, not just database state changes
+# 2. Use billing_reason to distinguish renewal vs proration vs initial
+# 3. Use previous_attributes to detect what actually changed
+# 4. Test edge cases like failed payments, retries, pauses, etc.
+#
+# =============================================================================
+
+require "test_helper"
+
+class StripeWebhookExamplesTest < ActiveSupport::TestCase
+  include StripeWebhookFixtures
+
+  # ===========================================================================
+  # SETUP HELPERS
+  # ===========================================================================
+
+  def setup
+    @account = create_test_account
+    @customer = create_pay_customer(@account)
+  end
+
+  # Helper to process a webhook event through Pay's system
+  def process_webhook(event)
+    Pay::Webhooks.instrument(event: event, type: event.type)
+  end
+
+  # Helper to create a Pay::Subscription for testing
+  def create_test_subscription(
+    price_id: "price_growth_monthly",
+    status: "active",
+    processor_id: nil
+  )
+    processor_id ||= "sub_#{SecureRandom.hex(8)}"
+
+    @customer.subscriptions.create!(
+      processor_id: processor_id,
+      name: "default",
+      processor_plan: price_id,
+      status: status,
+      current_period_start: Time.current,
+      current_period_end: 1.month.from_now
+    )
+  end
+
+  # ===========================================================================
+  # NEW SUBSCRIPTION TESTS
+  # ===========================================================================
+
+  test "subscription.created allocates initial credits" do
+    event = subscription_created_event(
+      subscription_id: "sub_new_123",
+      customer_id: @customer.processor_id,
+      price_id: "price_growth_monthly",
+      status: "active",
+      price_metadata: {"credits" => "5000", "tier" => "growth"}
+    )
+
+    process_webhook(event)
+
+    # Your credit allocation assertions here
+    # expect(@account.reload.plan_credits).to eq(5000)
+  end
+
+  test "subscription.created with trial does not allocate credits immediately" do
+    trial_end = 14.days.from_now
+
+    event = subscription_created_event(
+      subscription_id: "sub_trial_123",
+      customer_id: @customer.processor_id,
+      price_id: "price_growth_monthly",
+      status: "trialing",
+      trial_end: trial_end,
+      trial_start: Time.current
+    )
+
+    process_webhook(event)
+
+    # Credits should not be allocated during trial
+    # expect(@account.reload.plan_credits).to eq(0)
+  end
+
+  # ===========================================================================
+  # RENEWAL TESTS - Use invoice.paid with billing_reason
+  # ===========================================================================
+
+  test "invoice.paid with subscription_cycle billing_reason allocates renewal credits" do
+    subscription = create_test_subscription
+
+    event = invoice_paid_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      billing_reason: "subscription_cycle", # <-- This is a renewal!
+      amount: 2900
+    )
+
+    process_webhook(event)
+
+    # Should allocate fresh credits
+    # expect(@account.reload.plan_credits).to eq(5000)
+  end
+
+  test "invoice.paid with subscription_create billing_reason is initial payment" do
+    subscription = create_test_subscription
+
+    event = invoice_paid_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      billing_reason: "subscription_create", # <-- First payment
+      amount: 2900
+    )
+
+    process_webhook(event)
+
+    # Initial allocation already happened on subscription.created
+    # This should be idempotent
+  end
+
+  test "invoice.paid with subscription_update billing_reason is proration (no credit reset)" do
+    subscription = create_test_subscription
+    # Assume credits were already allocated
+
+    event = invoice_paid_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      billing_reason: "subscription_update", # <-- Proration from plan change
+      amount: 4667
+    )
+
+    process_webhook(event)
+
+    # Should NOT reset credits - this is a proration invoice
+    # Credits should remain unchanged from plan change handler
+  end
+
+  # ===========================================================================
+  # PLAN CHANGE TESTS - Use previous_attributes to detect changes
+  # ===========================================================================
+
+  test "subscription.updated with plan change in previous_attributes triggers upgrade" do
+    subscription = create_test_subscription(price_id: "price_starter_monthly")
+
+    event = subscription_plan_changed_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      old_price_id: "price_starter_monthly",
+      new_price_id: "price_growth_monthly",
+      old_unit_amount: 1900,
+      new_unit_amount: 2900,
+      old_metadata: {"credits" => "2000", "tier" => "starter"},
+      new_metadata: {"credits" => "5000", "tier" => "growth"}
+    )
+
+    process_webhook(event)
+
+    # Upgrade: allocate full new plan credits
+    # expect(@account.reload.plan_credits).to eq(5000)
+  end
+
+  test "subscription.updated with plan change detects downgrade" do
+    subscription = create_test_subscription(price_id: "price_pro_monthly")
+
+    event = subscription_plan_changed_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      old_price_id: "price_pro_monthly",
+      new_price_id: "price_growth_monthly",
+      old_unit_amount: 9900,
+      new_unit_amount: 2900,
+      old_metadata: {"credits" => "15000", "tier" => "pro"},
+      new_metadata: {"credits" => "5000", "tier" => "growth"}
+    )
+
+    process_webhook(event)
+
+    # Downgrade: pro-rate based on usage
+  end
+
+  test "subscription.updated with quantity change does NOT trigger credit reallocation" do
+    subscription = create_test_subscription
+
+    event = subscription_quantity_changed_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      price_id: "price_growth_monthly",
+      old_quantity: 1,
+      new_quantity: 5
+    )
+
+    process_webhook(event)
+
+    # Credits should NOT change for quantity updates
+    # (unless your business logic ties credits to seats)
+  end
+
+  test "subscription.updated with metadata change does NOT trigger credit reallocation" do
+    subscription = create_test_subscription
+
+    event = subscription_metadata_changed_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      old_metadata: {"account_id" => "123"},
+      new_metadata: {"account_id" => "123", "internal_note" => "VIP customer"}
+    )
+
+    process_webhook(event)
+
+    # Credits should NOT change for metadata updates
+  end
+
+  test "subscription.updated with payment method change does NOT trigger credit reallocation" do
+    subscription = create_test_subscription
+
+    event = subscription_payment_method_changed_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      old_payment_method_id: "pm_old_card",
+      new_payment_method_id: "pm_new_card"
+    )
+
+    process_webhook(event)
+
+    # Credits should NOT change
+  end
+
+  test "subscription.updated with period change but no plan change (post-renewal sync)" do
+    subscription = create_test_subscription
+
+    event = subscription_renewed_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      old_period_start: 1.month.ago,
+      old_period_end: Time.current,
+      new_period_start: Time.current,
+      new_period_end: 1.month.from_now
+    )
+
+    process_webhook(event)
+
+    # If you're using invoice.paid for renewals, this should be a no-op
+    # The subscription.updated is just syncing period dates
+    # Don't double-allocate credits!
+  end
+
+  # ===========================================================================
+  # FAILED PAYMENT & RECOVERY TESTS
+  # ===========================================================================
+
+  test "invoice.payment_failed does not allocate credits" do
+    subscription = create_test_subscription
+
+    event = invoice_payment_failed_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      amount: 2900,
+      attempt_count: 1,
+      next_payment_attempt: 3.days.from_now
+    )
+
+    process_webhook(event)
+
+    # No credits should be allocated on failed payment
+  end
+
+  test "subscription status change to past_due does not affect credits" do
+    subscription = create_test_subscription
+
+    event = subscription_status_changed_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      old_status: "active",
+      new_status: "past_due"
+    )
+
+    process_webhook(event)
+
+    # Credits remain unchanged (they were already allocated)
+    # User keeps access during grace period
+  end
+
+  test "successful retry payment allocates credits" do
+    subscription = create_test_subscription(status: "past_due")
+
+    # Simulate the retry succeeding 3 days later
+    event = invoice_paid_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      billing_reason: "subscription_cycle",
+      amount: 2900
+    )
+
+    process_webhook(event)
+
+    # NOW credits should be allocated
+    # expect(@account.reload.plan_credits).to eq(5000)
+  end
+
+  test "status recovery from past_due to active" do
+    subscription = create_test_subscription(status: "past_due")
+
+    event = subscription_status_changed_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      old_status: "past_due",
+      new_status: "active"
+    )
+
+    process_webhook(event)
+
+    # Status change alone should not allocate credits
+    # The invoice.paid event handles that
+  end
+
+  # ===========================================================================
+  # TRIAL TESTS
+  # ===========================================================================
+
+  test "trial_will_end sends notification but does not allocate credits" do
+    subscription = create_test_subscription(status: "trialing")
+
+    event = subscription_trial_will_end_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      trial_end: 3.days.from_now
+    )
+
+    process_webhook(event)
+
+    # May trigger notification email
+    # Should NOT allocate credits yet
+  end
+
+  test "trial ending and becoming active allocates credits" do
+    subscription = create_test_subscription(status: "trialing")
+    trial_end = Time.current
+
+    event = subscription_trial_ended_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      trial_end: trial_end,
+      trial_start: trial_end - 14.days
+    )
+
+    process_webhook(event)
+
+    # Trial ended, user is now paying - allocate credits
+    # expect(@account.reload.plan_credits).to eq(5000)
+  end
+
+  # ===========================================================================
+  # CANCELLATION TESTS
+  # ===========================================================================
+
+  test "cancellation scheduled (end of period) does not immediately affect credits" do
+    subscription = create_test_subscription
+
+    event = subscription_cancel_scheduled_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      cancel_at: 1.month.from_now,
+      feedback: "too_expensive"
+    )
+
+    process_webhook(event)
+
+    # User keeps credits until period ends
+    # May want to stop renewal credit allocation
+  end
+
+  test "cancellation reversed restores normal renewal behavior" do
+    subscription = create_test_subscription
+
+    event = subscription_cancel_reversed_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      previous_cancel_at: 1.month.from_now
+    )
+
+    process_webhook(event)
+
+    # User changed their mind - resume normal credit allocation on renewal
+  end
+
+  test "subscription deleted expires remaining credits" do
+    subscription = create_test_subscription
+
+    event = subscription_deleted_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      ended_at: Time.current
+    )
+
+    process_webhook(event)
+
+    # Subscription ended - may want to expire plan credits
+    # Pack credits should be preserved
+  end
+
+  # ===========================================================================
+  # PAUSE/RESUME TESTS
+  # ===========================================================================
+
+  test "subscription paused does not immediately affect credits" do
+    subscription = create_test_subscription
+
+    event = subscription_paused_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      behavior: "void"
+    )
+
+    process_webhook(event)
+
+    # User keeps current credits
+    # No new credits allocated during pause
+  end
+
+  test "subscription resumed may allocate credits" do
+    subscription = create_test_subscription
+
+    event = subscription_resumed_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id
+    )
+
+    process_webhook(event)
+
+    # Depending on your policy, may allocate fresh credits
+  end
+
+  # ===========================================================================
+  # DISCOUNT/COUPON TESTS
+  # ===========================================================================
+
+  test "discount applied does not affect credit allocation" do
+    subscription = create_test_subscription
+
+    event = subscription_discount_applied_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      coupon_id: "SAVE20",
+      percent_off: 20.0,
+      duration: "repeating",
+      duration_in_months: 3
+    )
+
+    process_webhook(event)
+
+    # Discounts affect billing, not credits
+    # Credits remain the same
+  end
+
+  # ===========================================================================
+  # EDGE CASES & IDEMPOTENCY
+  # ===========================================================================
+
+  test "duplicate invoice.paid event is idempotent" do
+    subscription = create_test_subscription
+
+    event = invoice_paid_event(
+      invoice_id: "in_same_invoice",
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      billing_reason: "subscription_cycle",
+      amount: 2900
+    )
+
+    # Process twice
+    process_webhook(event)
+    process_webhook(event)
+
+    # Credits should only be allocated once
+    # Use event.id as idempotency key
+  end
+
+  test "out-of-order events handled correctly" do
+    subscription = create_test_subscription
+
+    # subscription.updated arrives before invoice.paid
+    # (can happen with webhook delivery timing)
+
+    period_event = subscription_renewed_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      old_period_start: 1.month.ago,
+      old_period_end: Time.current,
+      new_period_start: Time.current,
+      new_period_end: 1.month.from_now
+    )
+
+    invoice_event = invoice_paid_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      billing_reason: "subscription_cycle",
+      amount: 2900
+    )
+
+    # Process in "wrong" order
+    process_webhook(period_event)
+    process_webhook(invoice_event)
+
+    # Should still result in correct credit allocation
+  end
+
+  test "webhook for unknown subscription is ignored gracefully" do
+    event = invoice_paid_event(
+      subscription_id: "sub_does_not_exist",
+      customer_id: @customer.processor_id,
+      billing_reason: "subscription_cycle",
+      amount: 2900
+    )
+
+    # Should not raise, just log and skip
+    assert_nothing_raised do
+      process_webhook(event)
+    end
+  end
+
+  test "webhook for non-account customer is ignored" do
+    # Create a customer that's not an Account (e.g., User)
+    # Your handler should check customer.owner type
+
+    event = invoice_paid_event(
+      subscription_id: "sub_user_123",
+      customer_id: "cus_user_not_account",
+      billing_reason: "subscription_cycle",
+      amount: 2900
+    )
+
+    # Should gracefully skip
+    assert_nothing_raised do
+      process_webhook(event)
+    end
+  end
+
+  # ===========================================================================
+  # FULL LIFECYCLE SCENARIOS
+  # ===========================================================================
+
+  test "complete subscription lifecycle: create -> use -> renew -> upgrade -> cancel" do
+    # 1. Create subscription
+    create_event = subscription_created_event(
+      subscription_id: "sub_lifecycle",
+      customer_id: @customer.processor_id,
+      price_id: "price_starter_monthly",
+      price_metadata: {"credits" => "2000"}
+    )
+    process_webhook(create_event)
+    # Assert: 2000 credits allocated
+
+    # 2. First payment
+    first_payment = invoice_paid_event(
+      subscription_id: "sub_lifecycle",
+      customer_id: @customer.processor_id,
+      billing_reason: "subscription_create",
+      amount: 1900
+    )
+    process_webhook(first_payment)
+    # Assert: idempotent, still 2000 credits
+
+    # 3. User consumes credits
+    # (your application logic)
+
+    # 4. Month passes, renewal
+    renewal_payment = invoice_paid_event(
+      subscription_id: "sub_lifecycle",
+      customer_id: @customer.processor_id,
+      billing_reason: "subscription_cycle",
+      amount: 1900
+    )
+    process_webhook(renewal_payment)
+    # Assert: fresh 2000 credits
+
+    # 5. User upgrades mid-cycle
+    upgrade_event = subscription_plan_changed_event(
+      subscription_id: "sub_lifecycle",
+      customer_id: @customer.processor_id,
+      old_price_id: "price_starter_monthly",
+      new_price_id: "price_growth_monthly",
+      old_unit_amount: 1900,
+      new_unit_amount: 2900,
+      old_metadata: {"credits" => "2000"},
+      new_metadata: {"credits" => "5000"}
+    )
+    process_webhook(upgrade_event)
+    # Assert: 5000 credits (full upgrade)
+
+    # 6. Proration invoice
+    proration_payment = invoice_paid_event(
+      subscription_id: "sub_lifecycle",
+      customer_id: @customer.processor_id,
+      billing_reason: "subscription_update",
+      amount: 667 # Prorated amount
+    )
+    process_webhook(proration_payment)
+    # Assert: credits unchanged (proration doesn't reset)
+
+    # 7. User schedules cancellation
+    cancel_event = subscription_cancel_scheduled_event(
+      subscription_id: "sub_lifecycle",
+      customer_id: @customer.processor_id,
+      cancel_at: 1.month.from_now
+    )
+    process_webhook(cancel_event)
+    # Assert: credits unchanged, flag set
+
+    # 8. Period ends, subscription deleted
+    delete_event = subscription_deleted_event(
+      subscription_id: "sub_lifecycle",
+      customer_id: @customer.processor_id,
+      ended_at: 1.month.from_now
+    )
+    process_webhook(delete_event)
+    # Assert: plan credits expired (or zeroed)
+  end
+
+  test "failed payment recovery flow" do
+    subscription = create_test_subscription
+
+    # 1. Invoice created
+    created_event = invoice_created_event(
+      invoice_id: "in_recovery",
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      billing_reason: "subscription_cycle",
+      amount: 2900
+    )
+    process_webhook(created_event)
+
+    # 2. Payment fails
+    failed_event = invoice_payment_failed_event(
+      invoice_id: "in_recovery",
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      amount: 2900,
+      attempt_count: 1
+    )
+    process_webhook(failed_event)
+
+    # 3. Status changes to past_due
+    status_event = subscription_status_changed_event(
+      subscription_id: subscription.processor_id,
+      customer_id: @customer.processor_id,
+      old_status: "active",
+      new_status: "past_due"
+    )
+    process_webhook(status_event)
+    # Assert: no new credits, user keeps existing
+
+    # 4. Three days later, retry succeeds
+    travel 3.days do
+      success_event = invoice_paid_event(
+        invoice_id: "in_recovery",
+        subscription_id: subscription.processor_id,
+        customer_id: @customer.processor_id,
+        billing_reason: "subscription_cycle",
+        amount: 2900
+      )
+      process_webhook(success_event)
+      # Assert: credits allocated now!
+
+      # 5. Status recovers
+      recover_event = subscription_status_changed_event(
+        subscription_id: subscription.processor_id,
+        customer_id: @customer.processor_id,
+        old_status: "past_due",
+        new_status: "active"
+      )
+      process_webhook(recover_event)
+      # Assert: back to normal
+    end
+  end
+
+  private
+
+  def create_test_account
+    # Replace with your Account factory
+    Account.create!(name: "Test Account")
+  end
+
+  def create_pay_customer(account)
+    account.set_payment_processor(:stripe, allow_fake: true)
+    account.payment_processor.update!(processor_id: "cus_#{SecureRandom.hex(8)}")
+    account.payment_processor
+  end
+end

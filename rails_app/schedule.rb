@@ -3,7 +3,7 @@ require_relative "config/environment"
 Zhong.redis = Redis.new(url: ENV["REDIS_URL"])
 
 def est_time(time)
-  ActiveSupport::TimeZone.new("America/New_York").parse(time).utc
+  ActiveSupport::TimeZone.new("America/New_York").parse(time).utc.strftime("%H:%M")
 end
 
 return if Rails.env.test?
@@ -36,6 +36,12 @@ Zhong.schedule do
 
     every(30.seconds, "poll active invites") do
       GoogleAds::PollActiveInvitesWorker.perform_async
+    end
+  end
+
+  category "Credits" do
+    every(1.day, "daily credit reconciliation", at: est_time("12:01")) do
+      Credits::DailyReconciliationWorker.perform_async
     end
   end
 end

@@ -109,14 +109,14 @@ end
 
 ## Transaction Types
 
-| Type       | Credit Type | Reason          | Amount                       | Reference               |
-| ---------- | ----------- | --------------- | ---------------------------- | ----------------------- |
-| `allocate` | `plan`      | `plan_renewal`  | + PlanTier.details[:credits] | Pay::Subscription       |
-| `consume`  | `plan`      | `ai_generation` | - credits used               | llm_run (run_id UUID)   |
-| `consume`  | `pack`      | `ai_generation` | - credits used               | llm_run (run_id UUID)   |
-| `purchase` | `pack`      | `pack_purchase` | + pack credits               | CreditPack              |
+| Type       | Credit Type | Reason          | Amount                        | Reference               |
+| ---------- | ----------- | --------------- | ----------------------------- | ----------------------- |
+| `allocate` | `plan`      | `plan_renewal`  | + PlanTier.details[:credits]  | Pay::Subscription       |
+| `consume`  | `plan`      | `ai_generation` | - credits used                | llm_run (run_id UUID)   |
+| `consume`  | `pack`      | `ai_generation` | - credits used                | llm_run (run_id UUID)   |
+| `purchase` | `pack`      | `pack_purchase` | + pack credits                | CreditPack              |
 | `refund`   | `pack`      | `refund`        | - credits DEDUCTED (punitive) | Pay::Charge (or nil)    |
-| `gift`     | `pack`      | `gift`          | + amount_cents               | nil (admin in metadata) |
+| `gift`     | `pack`      | `gift`          | + amount_cents                | nil (admin in metadata) |
 
 > **Important**: `PlanTier.details[:credits]` is the authoritative source for plan credit amounts. Do not use `TierLimit` or `PlanLimit`.
 

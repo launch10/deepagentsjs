@@ -7,6 +7,8 @@ module Atlas
     sidekiq_options queue: :critical, retry: 5
 
     def perform(class_name, id, method_name)
+      return unless Rails.env.production? || Rails.env.test?
+
       model_class = class_name.constantize
       record = model_class.find(id)
       record.send(method_name)

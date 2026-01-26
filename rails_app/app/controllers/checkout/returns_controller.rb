@@ -13,6 +13,16 @@ class Checkout::ReturnsController < ApplicationController
       flash[:alert] = t("something_went_wrong")
     end
 
-    redirect_to params.fetch(:return_to, root_path)
+    redirect_to params.fetch(:return_to, new_project_path)
+  end
+
+  private
+
+  # Force full page reload instead of Turbo visit.
+  # The checkout page uses Turbo (via minimal layout), but the destination
+  # (BrainstormLanding) is an Inertia page requiring different JavaScript.
+  def redirect_to(url_or_options, response_options = {})
+    response.set_header("Turbo-Visit-Control", "reload")
+    super
   end
 end

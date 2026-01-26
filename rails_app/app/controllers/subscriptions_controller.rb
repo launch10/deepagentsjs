@@ -116,6 +116,13 @@ class SubscriptionsController < ApplicationController
   def set_checkout_session
     payment_processor = current_account.set_payment_processor(:stripe)
 
+    # Validate that the plan has a Stripe price ID configured
+    stripe_price_id = @plan.id_for_processor(:stripe)
+    if stripe_price_id.blank?
+      raise Pay::Error, "Plan '#{@plan.name}' does not have a Stripe price ID configured. " \
+                        "Please run: bin/rails runner tmp/update_stripe_ids.rb"
+    end
+
     # Only allow trials on the account's first subscription
     trial_allowed = current_account.subscriptions.none?
 
@@ -127,15 +134,15 @@ class SubscriptionsController < ApplicationController
     args = {
       allow_promotion_codes: true,
       automatic_tax: {enabled: @plan.taxed?},
-      consent_collection: {terms_of_service: :required},
       customer_update: {address: :auto},
       mode: :subscription,
-      line_items: @plan.id_for_processor(:stripe),
+      line_items: stripe_price_id,
       payment_method_collection: :if_required,
       return_url: checkout_return_url(return_to: params[:return_to]),
       subscription_data: subscription_data,
       ui_mode: :embedded
     }
+    args[:consent_collection] = {terms_of_service: :required} if Rails.env.production?
     args[:quantity] = current_account.per_unit_quantity if @plan.charge_per_unit?
     @checkout_session = payment_processor.checkout(**args)
   end
