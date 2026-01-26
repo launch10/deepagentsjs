@@ -2,6 +2,7 @@ import WebsiteLoader from "@components/website/WebsiteLoader";
 import WebsiteSidebar from "@components/website/sidebar/WebsiteSidebar";
 import { WebsitePreview } from "@components/website/preview";
 import { Chat } from "@components/shared/chat/Chat";
+import { CreditExhaustionDetector } from "@components/credits";
 import { Button } from "@components/ui/button";
 import { twMerge } from "tailwind-merge";
 import { useEffect, useEffectEvent, useRef } from "react";
@@ -119,6 +120,7 @@ export default function Website() {
 
   return (
     <Chat.Root chat={chat}>
+      <CreditExhaustionDetector />
       <div className="h-full flex flex-col">
         {/* Main content area - no bottom padding so preview extends behind footer */}
         <main className="flex-1 min-h-0 grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%] pt-[2.5%]">

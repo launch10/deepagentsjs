@@ -19,7 +19,7 @@
  */
 
 import type { UsageRecord } from "./types";
-import type { ModelConfig } from "@core/llm/types";
+import type { ModelConfig } from "../llm/types";
 
 /**
  * Calculate the cost in millicredits for a single usage record.

@@ -1,5 +1,6 @@
 import { useBrainstormChat, useBrainstormIsNewConversation } from "@components/brainstorm/hooks";
 import { Chat } from "@components/shared/chat/Chat";
+import { CreditExhaustionDetector } from "@components/credits";
 import { BrainstormConversationPage, BrainstormLandingPage } from "@components/brainstorm";
 
 export default function Brainstorm() {
@@ -10,8 +11,7 @@ export default function Brainstorm() {
 
   return (
     <Chat.Root chat={chat}>
-      {" "}
-      {/** Child components subscribe to the chat state they need */}
+      <CreditExhaustionDetector />
       {isNewConversation ? <BrainstormLandingPage /> : <BrainstormConversationPage />}
     </Chat.Root>
   );

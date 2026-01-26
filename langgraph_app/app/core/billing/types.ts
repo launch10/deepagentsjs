@@ -45,6 +45,10 @@ export interface UsageContext {
 
   // Internal deduplication state
   _seenMessageIds: Set<string>;
+
+  // Credit tracking for predictive exhaustion detection
+  accountId?: number;
+  preRunCreditsRemaining?: number;
 }
 
 // ============================================================================

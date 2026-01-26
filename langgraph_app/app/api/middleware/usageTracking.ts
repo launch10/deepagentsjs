@@ -3,6 +3,12 @@
  *
  * Wraps graph streams with billing tracking. Automatically captures
  * token usage and persists traces when the stream completes.
+ *
+ * Credit tracking:
+ * - Extracts accountId and preRunCreditsRemaining from state
+ * - Calculates estimated cost after run completes
+ * - Derives justExhausted status for frontend notification
+ * - Logs credit status (emitting to stream requires bridge changes)
  */
 import {
   createBridgeFactory,
@@ -15,9 +21,13 @@ import {
   persistUsage,
   persistTrace,
   notifyRails,
+  calculateRunCost,
+  deriveCreditStatus,
   type UsageContext,
   type UsageSummary,
+  type CreditStatus,
 } from "@core/billing";
+import { LLMManager } from "@core";
 import { db, eq, chats as chatsTable } from "@db";
 
 /**
@@ -34,6 +44,57 @@ async function getChatIdFromThread(threadId: string): Promise<number | undefined
 }
 
 /**
+ * Extract credit state from graph state if available.
+ */
+function extractCreditState(state?: Record<string, unknown>): {
+  accountId?: number;
+  preRunCreditsRemaining?: number;
+} {
+  if (!state) return {};
+
+  return {
+    accountId: typeof state.accountId === "number" ? state.accountId : undefined,
+    preRunCreditsRemaining:
+      typeof state.preRunCreditsRemaining === "number"
+        ? state.preRunCreditsRemaining
+        : undefined,
+  };
+}
+
+/**
+ * Calculate credit status after a run.
+ * Returns undefined if credit tracking data is not available.
+ */
+async function calculateCreditStatus(
+  usageContext: UsageContext
+): Promise<CreditStatus | undefined> {
+  const { records, preRunCreditsRemaining } = usageContext;
+
+  // Skip if no credit tracking data
+  if (preRunCreditsRemaining === undefined) {
+    return undefined;
+  }
+
+  // Skip if no usage to calculate
+  if (records.length === 0) {
+    return undefined;
+  }
+
+  try {
+    const modelConfigs = await LLMManager.getModelConfigs();
+    const estimatedCostMillicredits = calculateRunCost(records, modelConfigs);
+
+    return deriveCreditStatus({
+      preRunMillicredits: preRunCreditsRemaining,
+      estimatedCostMillicredits,
+    });
+  } catch (error) {
+    console.warn("[usageTrackingMiddleware] Failed to calculate credit status:", error);
+    return undefined;
+  }
+}
+
+/**
  * Middleware that tracks usage and persists billing data.
  */
 const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddleware<any, UsageContext>({
@@ -41,11 +102,19 @@ const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddleware<a
   storage: usageStorage,
 
   createContext(ctx) {
-    return createUsageContext({ threadId: ctx.threadId, graphName: ctx.graphName });
+    // Extract credit tracking state if provided
+    const creditState = extractCreditState(ctx.state);
+
+    return createUsageContext({
+      threadId: ctx.threadId,
+      graphName: ctx.graphName,
+      accountId: creditState.accountId,
+      preRunCreditsRemaining: creditState.preRunCreditsRemaining,
+    });
   },
 
   async onComplete(ctx, usageContext) {
-    const { records, messages, runId } = usageContext;
+    const { records, messages, runId, accountId, preRunCreditsRemaining } = usageContext;
 
     if (records.length === 0 && messages.length === 0) return;
 
@@ -62,6 +131,23 @@ const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddleware<a
       totalOutputTokens: records.reduce((sum, r) => sum + r.outputTokens, 0),
       llmCallCount: records.length,
     };
+
+    // Calculate credit status for logging (can't emit to stream after it's closed)
+    const creditStatus = await calculateCreditStatus(usageContext);
+    if (creditStatus) {
+      console.log(
+        `[usageTrackingMiddleware] Credit status: accountId=${accountId}, ` +
+        `preRun=${preRunCreditsRemaining}, cost=${creditStatus.estimatedCostMillicredits}, ` +
+        `remaining=${creditStatus.estimatedRemainingMillicredits}, ` +
+        `justExhausted=${creditStatus.justExhausted}`
+      );
+
+      if (creditStatus.justExhausted) {
+        console.warn(
+          `[usageTrackingMiddleware] Account ${accountId} just exhausted credits!`
+        );
+      }
+    }
 
     try {
       await Promise.all([

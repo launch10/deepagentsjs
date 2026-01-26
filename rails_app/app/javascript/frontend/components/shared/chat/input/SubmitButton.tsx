@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { twMerge } from "tailwind-merge";
 import { useChatComposer, useChatIsStreaming, useChatSubmit, useChatStop } from "../ChatContext";
+import { useCreditStore } from "~/stores/creditStore";
 
 export interface SubmitButtonProps extends Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
@@ -53,6 +54,10 @@ export function SubmitButton({
   const submit = useChatSubmit()
   const stop = useChatStop()
 
+  // Credit exhaustion check
+  const isCreditsExhausted = useCreditStore((s) => s.isExhausted);
+  const showExhaustionModal = useCreditStore((s) => s.showModal);
+
   // When stopIcon is provided, button is enabled during streaming for stop action
   const hasStopMode = stopIcon !== undefined;
   const isInStopMode = hasStopMode && isStreaming;
@@ -61,6 +66,7 @@ export function SubmitButton({
   const canSubmit = composer.isReady && !isStreaming;
 
   // Button is enabled when: can submit OR in stop mode
+  // We keep button enabled even when exhausted so user can click and see the modal
   const isEnabled = canSubmit || isInStopMode;
 
   const handleClick = () => {
@@ -72,6 +78,12 @@ export function SubmitButton({
         stop();
       }
     } else if (canSubmit) {
+      // Check credits before submitting
+      if (isCreditsExhausted) {
+        // Show the exhaustion modal instead of submitting
+        showExhaustionModal();
+        return;
+      }
       // Send message using context's submit (respects Chat.Root onSubmit)
       submit();
     }

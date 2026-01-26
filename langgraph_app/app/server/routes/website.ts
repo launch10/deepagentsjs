@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { authMiddleware, type AuthContext } from "../middleware/auth";
+import { creditCheckMiddleware, getCreditState } from "../middleware/creditCheck";
 import { validateThreadOrError } from "../middleware/threadValidation";
 import { WebsiteAPI } from "@api";
 
@@ -9,8 +10,9 @@ type Variables = {
 
 export const websiteRoutes = new Hono<{ Variables: Variables }>();
 
-websiteRoutes.post("/stream", authMiddleware, async (c) => {
+websiteRoutes.post("/stream", authMiddleware, creditCheckMiddleware, async (c) => {
   const auth = c.get("auth") as AuthContext;
+  const creditState = getCreditState(c);
   const body = await c.req.json();
 
   const { threadId, state } = body;
@@ -37,6 +39,7 @@ websiteRoutes.post("/stream", authMiddleware, async (c) => {
       threadId,
       jwt: auth.jwt,
       websiteId,
+      ...creditState,
       ...state,
     },
   });

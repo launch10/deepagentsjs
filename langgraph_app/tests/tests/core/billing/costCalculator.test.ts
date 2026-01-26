@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { calculateCost, calculateRunCost, type UsageRecord } from "@core";
-import type { ModelConfig } from "@core/llm/types";
+import { calculateCost, calculateRunCost, type UsageRecord, type ModelConfig } from "@core";
 
 /**
  * Cost Calculator Tests

@@ -218,6 +218,25 @@ class LLMService {
                      .then(models => models.map(model => model.model));
   }
 
+  /**
+   * Get model configurations for cost calculation.
+   * Returns a map of model card name to config, suitable for use with calculateCost.
+   *
+   * @returns Map of model card to config
+   */
+  async getModelConfigs(): Promise<Record<string, ModelConfig>> {
+    const config = await this.fetchConfig();
+    const result: Record<string, ModelConfig> = {};
+
+    for (const [key, modelConfig] of Object.entries(config.models)) {
+      // Index by model_card (the actual model name used in LLM calls)
+      const modelCard = modelConfig.model_card ?? key;
+      result[modelCard] = modelConfig;
+    }
+
+    return result;
+  }
+
   // ============ Test Support ============
 
   testMode() {

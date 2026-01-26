@@ -1,6 +1,7 @@
 import { CardContent, CardFooter } from "@components/ui/card";
 import { useAdsChat, useAdsChatIsReady, useAdsChatIsStreaming, useAdsChatIsLoadingHistory } from "@components/ads/hooks";
 import { Chat } from "@components/shared/chat/Chat";
+import { CreditExhaustionDetector } from "@components/credits";
 import AdsChatMessages from "./ads-chat/AdsChatMessages";
 import AdsChatInput from "./ads-chat/AdsChatInput";
 
@@ -13,6 +14,7 @@ export default function AdsChat() {
 
   return (
     <Chat.Root chat={chat}>
+      <CreditExhaustionDetector />
       <div
         className="bg-background rounded-b-2xl  flex flex-col"
         data-testid="ads-chat"
