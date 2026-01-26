@@ -15,19 +15,22 @@ RSpec.describe Credits::DailyReconciliationWorker do
   let(:worker) { described_class.new }
 
   # Helper to set up account state with proper transaction history
+  # Note: Credits are stored as millicredits internally (1 credit = 1000 millicredits)
   def setup_account_state(account:, plan_credits:, pack_credits: 0)
-    total = plan_credits + pack_credits
+    plan_millicredits = plan_credits * 1000
+    pack_millicredits = pack_credits * 1000
+    total_millicredits = plan_millicredits + pack_millicredits
     account.credit_transactions.create!(
       transaction_type: (plan_credits >= 0) ? "allocate" : "consume",
       credit_type: "plan",
       reason: (plan_credits >= 0) ? "plan_renewal" : "ai_generation",
-      amount: plan_credits,
-      balance_after: total,
-      plan_balance_after: plan_credits,
-      pack_balance_after: pack_credits,
+      amount_millicredits: plan_millicredits,
+      balance_after_millicredits: total_millicredits,
+      plan_balance_after_millicredits: plan_millicredits,
+      pack_balance_after_millicredits: pack_millicredits,
       skip_sequence_validation: true
     )
-    account.update!(plan_credits: plan_credits, pack_credits: pack_credits, total_credits: total)
+    account.update!(plan_millicredits: plan_millicredits, pack_millicredits: pack_millicredits, total_millicredits: total_millicredits)
   end
 
   describe "#perform" do

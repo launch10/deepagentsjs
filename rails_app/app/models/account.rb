@@ -8,12 +8,12 @@
 #  domain              :string
 #  extra_billing_info  :text
 #  name                :string           not null
-#  pack_credits        :bigint           default(0), not null
+#  pack_millicredits   :bigint           default(0), not null
 #  personal            :boolean          default(FALSE)
-#  plan_credits        :bigint           default(0), not null
+#  plan_millicredits   :bigint           default(0), not null
 #  subdomain           :string
 #  time_zone           :string           default("America/New_York")
-#  total_credits       :bigint           default(0), not null
+#  total_millicredits  :bigint           default(0), not null
 #  created_at          :datetime         not null
 #  updated_at          :datetime         not null
 #  owner_id            :bigint
@@ -112,5 +112,19 @@ class Account < ApplicationRecord
 
   def plan_limits
     plan&.plan_tier&.tier_limits || TierLimit.none
+  end
+
+  # Display wrapper methods - return credits (millicredits / 1000)
+  # These preserve backward compatibility with code that expects credits
+  def plan_credits
+    plan_millicredits / 1000.0
+  end
+
+  def pack_credits
+    pack_millicredits / 1000.0
+  end
+
+  def total_credits
+    total_millicredits / 1000.0
   end
 end

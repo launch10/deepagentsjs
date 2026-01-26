@@ -109,15 +109,16 @@ module Credits
 
         _, plan_bal, pack_bal = current_balances
 
-        # Create the credit transaction
-        new_pack_bal = pack_bal + credit_pack.credits
+        # Create the credit transaction (convert credits to millicredits)
+        pack_millicredits = credits_to_millicredits(credit_pack.credits)
+        new_pack_bal = pack_bal + pack_millicredits
         new_total = plan_bal + new_pack_bal
 
         create_transaction!(
           transaction_type: "purchase",
           credit_type: "pack",
           reason: "pack_purchase",
-          amount: credit_pack.credits,
+          amount: pack_millicredits,
           balance_after: new_total,
           plan_balance_after: plan_bal,
           pack_balance_after: new_pack_bal,
@@ -127,6 +128,7 @@ module Credits
           metadata: {
             pack_name: credit_pack.name,
             pack_credits: credit_pack.credits,
+            pack_millicredits: pack_millicredits,
             price_cents: credit_pack.price_cents,
             charge_id: pay_charge.id
           }
@@ -162,15 +164,16 @@ module Credits
 
         _, plan_bal, pack_bal = current_balances
 
-        # Create the credit transaction
-        new_pack_bal = pack_bal + gift.amount
+        # Create the credit transaction (convert credits to millicredits)
+        gift_millicredits = credits_to_millicredits(gift.amount)
+        new_pack_bal = pack_bal + gift_millicredits
         new_total = plan_bal + new_pack_bal
 
         create_transaction!(
           transaction_type: "gift",
           credit_type: "pack",
           reason: "gift",
-          amount: gift.amount,
+          amount: gift_millicredits,
           balance_after: new_total,
           plan_balance_after: plan_bal,
           pack_balance_after: new_pack_bal,
@@ -181,6 +184,8 @@ module Credits
             admin_id: gift.admin_id,
             admin_email: gift.admin.email,
             gift_reason: gift.reason,
+            gift_credits: gift.amount,
+            gift_millicredits: gift_millicredits,
             notes: gift.notes
           }
         )
@@ -319,6 +324,7 @@ module Credits
     #
     # Prefers actual consumption from transactions when available.
     # Falls back to balance-based inference for backwards compatibility.
+    # Note: All calculations are in millicredits
     def handle_downgrade!(subscription:, new_plan_tier:, previous_plan:, current_balances:, idempotency_key:)
       total, plan_bal, pack_bal = current_balances
 
@@ -329,17 +335,21 @@ module Credits
         .where(transaction_type: "consume", credit_type: "plan")
         .where("created_at >= ?", period_start)
 
+      # Convert plan tier credits to millicredits for calculations
+      previous_millicredits = credits_to_millicredits(previous_plan.plan_tier.credits)
+      new_plan_millicredits = credits_to_millicredits(new_plan_tier.credits)
+
       # Use transaction-based usage if available, otherwise infer from balance
+      # All values are in millicredits
       usage_this_period = if consume_transactions.exists?
-        consume_transactions.sum(:amount).abs
+        consume_transactions.sum(:amount_millicredits).abs
       else
-        # Fallback: infer usage from previous plan credits - current balance
-        previous_credits = previous_plan.plan_tier.credits
-        [previous_credits - plan_bal, 0].max
+        # Fallback: infer usage from previous plan millicredits - current balance
+        [previous_millicredits - plan_bal, 0].max
       end
 
       # Floor at 0 - no negative balance from downgrade
-      new_balance = [new_plan_tier.credits - usage_this_period, 0].max
+      new_balance = [new_plan_millicredits - usage_this_period, 0].max
 
       adjustment = new_balance - plan_bal
       new_total = total + adjustment
@@ -359,9 +369,11 @@ module Credits
           previous_plan: previous_plan.name,
           new_plan: new_plan_tier.name,
           previous_plan_credits: previous_plan.plan_tier.credits,
+          previous_plan_millicredits: previous_millicredits,
           new_plan_credits: new_plan_tier.credits,
-          usage_this_period: usage_this_period,
-          pro_rated_balance: new_balance
+          new_plan_millicredits: new_plan_millicredits,
+          usage_this_period_millicredits: usage_this_period,
+          pro_rated_balance_millicredits: new_balance
         }
       )
     end
@@ -386,19 +398,21 @@ module Credits
         reference_type: "Pay::Subscription",
         reference_id: subscription.id.to_s,
         idempotency_key: expire_key,
-        metadata: {expired_credits: plan_bal}
+        metadata: {expired_millicredits: plan_bal}
       )
     end
 
     def allocate_new_credits!(subscription:, new_plan_tier:, debt:, pack_bal:, idempotency_key:, reason:)
-      new_plan = new_plan_tier.credits - debt
+      # Convert plan tier credits to millicredits
+      tier_millicredits = credits_to_millicredits(new_plan_tier.credits)
+      new_plan = tier_millicredits - debt  # debt is already in millicredits
       new_total = new_plan + pack_bal
 
       create_transaction!(
         transaction_type: "allocate",
         credit_type: "plan",
         reason: reason,
-        amount: new_plan_tier.credits,
+        amount: tier_millicredits,
         balance_after: new_total,
         plan_balance_after: new_plan,
         pack_balance_after: pack_bal,
@@ -408,18 +422,34 @@ module Credits
         metadata: {
           plan_tier: new_plan_tier.name,
           credits_allocated: new_plan_tier.credits,
-          debt_absorbed: debt
+          millicredits_allocated: tier_millicredits,
+          debt_absorbed_millicredits: debt
         }
       )
     end
 
     def current_balances
-      # Read from Account cached columns (fast)
-      [@account.total_credits, @account.plan_credits, @account.pack_credits]
+      # Read from Account cached columns (fast) - returns millicredits
+      [@account.total_millicredits, @account.plan_millicredits, @account.pack_millicredits]
+    end
+
+    # Convert credits to millicredits (1 credit = 1000 millicredits)
+    def credits_to_millicredits(credits)
+      credits * 1000
     end
 
     def create_transaction!(attrs)
-      @account.credit_transactions.create!(attrs)
+      # Convert old attribute names to millicredits if needed
+      millicredit_attrs = attrs.transform_keys do |key|
+        case key
+        when :amount then :amount_millicredits
+        when :balance_after then :balance_after_millicredits
+        when :plan_balance_after then :plan_balance_after_millicredits
+        when :pack_balance_after then :pack_balance_after_millicredits
+        else key
+        end
+      end
+      @account.credit_transactions.create!(millicredit_attrs)
     end
   end
 end

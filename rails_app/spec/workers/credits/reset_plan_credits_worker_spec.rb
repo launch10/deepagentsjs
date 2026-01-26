@@ -81,7 +81,8 @@ RSpec.describe Credits::ResetPlanCreditsWorker do
 
     context "with existing credits (renewal)" do
       before do
-        account.update!(plan_credits: 3000, pack_credits: 0, total_credits: 3000)
+        # Set up with millicredits (3000 credits = 3_000_000 millicredits)
+        account.update!(plan_millicredits: 3_000_000, pack_millicredits: 0, total_millicredits: 3_000_000)
       end
 
       it "expires old credits and allocates new" do

@@ -95,18 +95,18 @@ RSpec.describe Credits::AllocatePackCreditsWorker do
 
     context "with existing pack credits" do
       before do
-        # Create proper transaction history to establish balances
+        # Create proper transaction history to establish balances (500 credits = 500,000 millicredits)
         account.credit_transactions.create!(
           transaction_type: "purchase",
           credit_type: "pack",
           reason: "pack_purchase",
-          amount: 500,
-          balance_after: 500,
-          plan_balance_after: 0,
-          pack_balance_after: 500,
+          amount_millicredits: 500_000,
+          balance_after_millicredits: 500_000,
+          plan_balance_after_millicredits: 0,
+          pack_balance_after_millicredits: 500_000,
           skip_sequence_validation: true
         )
-        account.update!(pack_credits: 500, total_credits: 500)
+        account.update!(pack_millicredits: 500_000, total_millicredits: 500_000)
       end
 
       it "adds to existing pack credits" do

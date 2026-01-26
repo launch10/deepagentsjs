@@ -430,9 +430,9 @@ CREATE TABLE public.accounts (
     billing_email character varying,
     account_users_count integer DEFAULT 0,
     time_zone character varying DEFAULT 'America/New_York'::character varying,
-    plan_credits bigint DEFAULT 0 NOT NULL,
-    pack_credits bigint DEFAULT 0 NOT NULL,
-    total_credits bigint DEFAULT 0 NOT NULL
+    plan_millicredits bigint DEFAULT 0 NOT NULL,
+    pack_millicredits bigint DEFAULT 0 NOT NULL,
+    total_millicredits bigint DEFAULT 0 NOT NULL
 );
 
 
@@ -1926,10 +1926,10 @@ CREATE TABLE public.credit_transactions (
     transaction_type character varying NOT NULL,
     credit_type character varying NOT NULL,
     reason character varying NOT NULL,
-    amount bigint NOT NULL,
-    balance_after bigint NOT NULL,
-    plan_balance_after bigint NOT NULL,
-    pack_balance_after bigint NOT NULL,
+    amount_millicredits bigint NOT NULL,
+    balance_after_millicredits bigint NOT NULL,
+    plan_balance_after_millicredits bigint NOT NULL,
+    pack_balance_after_millicredits bigint NOT NULL,
     reference_type character varying,
     reference_id character varying,
     metadata jsonb DEFAULT '{}'::jsonb,
@@ -2738,7 +2738,7 @@ CREATE TABLE public.llm_usage (
     reasoning_tokens integer DEFAULT 0,
     cache_creation_tokens integer DEFAULT 0,
     cache_read_tokens integer DEFAULT 0,
-    cost_microcents bigint,
+    cost_millicredits bigint,
     tags character varying[] DEFAULT '{}'::character varying[],
     metadata jsonb,
     processed_at timestamp(6) without time zone,
@@ -10929,6 +10929,9 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20260126164801'),
 ('20260126164140'),
 ('20260126162948'),
+('20260126130109'),
+('20260126130108'),
+('20260126130107'),
 ('20260125205452'),
 ('20260123211427'),
 ('20260123211228'),

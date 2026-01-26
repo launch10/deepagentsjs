@@ -43,5 +43,9 @@ Zhong.schedule do
     every(1.day, "daily credit reconciliation", at: est_time("12:01")) do
       Credits::DailyReconciliationWorker.perform_async
     end
+
+    every(1.minute, "find unprocessed llm usage") do
+      Credits::FindUnprocessedRunsWorker.perform_async
+    end
   end
 end
