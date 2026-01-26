@@ -18,9 +18,9 @@ RSpec.describe Credits::DailyReconciliationWorker do
   def setup_account_state(account:, plan_credits:, pack_credits: 0)
     total = plan_credits + pack_credits
     account.credit_transactions.create!(
-      transaction_type: plan_credits >= 0 ? "allocate" : "consume",
+      transaction_type: (plan_credits >= 0) ? "allocate" : "consume",
       credit_type: "plan",
-      reason: plan_credits >= 0 ? "plan_renewal" : "ai_generation",
+      reason: (plan_credits >= 0) ? "plan_renewal" : "ai_generation",
       amount: plan_credits,
       balance_after: total,
       plan_balance_after: plan_credits,
@@ -65,7 +65,7 @@ RSpec.describe Credits::DailyReconciliationWorker do
       it "resets credits on the billing anchor day (e.g., 15th)" do
         # Create account that subscribed on the 15th
         account = create(:account)
-        subscription = create_yearly_subscription(account: account, billing_day: 15)
+        create_yearly_subscription(account: account, billing_day: 15)
 
         # Set up some existing credits (simulating usage from initial allocation)
         setup_account_state(account: account, plan_credits: 3000, pack_credits: 0)
@@ -87,7 +87,7 @@ RSpec.describe Credits::DailyReconciliationWorker do
 
       it "does not reset credits on non-billing days" do
         account = create(:account)
-        subscription = create_yearly_subscription(account: account, billing_day: 15)
+        create_yearly_subscription(account: account, billing_day: 15)
         setup_account_state(account: account, plan_credits: 3000, pack_credits: 0)
 
         # Travel to the 10th of next month (not the billing day)
@@ -115,7 +115,7 @@ RSpec.describe Credits::DailyReconciliationWorker do
 
         # January 31st start date
         start_date = Date.new(Date.current.year, 1, 31)
-        subscription = payment_processor.subscriptions.create!(
+        payment_processor.subscriptions.create!(
           processor_id: "sub_#{SecureRandom.hex(8)}",
           name: "default",
           processor_plan: yearly_plan.fake_processor_id,
@@ -149,7 +149,7 @@ RSpec.describe Credits::DailyReconciliationWorker do
         payment_processor = account.set_payment_processor(:fake_processor, allow_fake: true)
         payment_processor.update!(processor_id: "cus_#{SecureRandom.hex(8)}")
 
-        subscription = payment_processor.subscriptions.create!(
+        payment_processor.subscriptions.create!(
           processor_id: "sub_#{SecureRandom.hex(8)}",
           name: "default",
           processor_plan: monthly_plan.fake_processor_id,
@@ -171,7 +171,7 @@ RSpec.describe Credits::DailyReconciliationWorker do
     context "idempotency" do
       it "does not double-allocate if already processed this month" do
         account = create(:account)
-        subscription = create_yearly_subscription(account: account, billing_day: 15)
+        create_yearly_subscription(account: account, billing_day: 15)
 
         travel_to Date.current.beginning_of_month + 14.days do
           allow_any_instance_of(Pay::Subscription).to receive(:plan).and_return(yearly_plan)

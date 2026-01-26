@@ -123,7 +123,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
 
   describe "new subscription" do
     it "allocates plan credits when user first subscribes" do
-      subscription = subscribe_to(growth_monthly)
+      subscribe_to(growth_monthly)
 
       account.reload
       expect(account.total_credits).to eq(5000)
@@ -153,7 +153,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
     end
 
     it "allocates different amounts based on plan tier" do
-      subscription = subscribe_to(starter_monthly)
+      subscribe_to(starter_monthly)
 
       account.reload
       expect(account.plan_credits).to eq(2000)  # Starter tier
@@ -546,7 +546,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
     end
 
     it "does not reset monthly subscribers via daily reconciliation" do
-      subscription = subscribe_to(growth_monthly)  # Monthly, not yearly
+      subscribe_to(growth_monthly)  # Monthly, not yearly
       consume_credits(2000)
 
       account.reload
@@ -713,7 +713,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
   describe "edge cases" do
     it "handles account with no prior transactions" do
       # Fresh account, no credit history
-      subscription = subscribe_to(growth_monthly)
+      subscribe_to(growth_monthly)
 
       expect(account.credit_transactions.count).to eq(1)
       expect(account.reload.plan_credits).to eq(5000)
@@ -748,7 +748,6 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
 
       expect { process_webhook(event) }.not_to raise_error
     end
-
   end
 
   describe "transaction data integrity" do

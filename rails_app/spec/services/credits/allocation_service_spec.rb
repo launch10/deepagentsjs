@@ -53,9 +53,9 @@ RSpec.describe Credits::AllocationService do
     # Create a final transaction that establishes the desired ending state
     # We use skip_sequence_validation because this is test setup
     account.credit_transactions.create!(
-      transaction_type: plan_credits >= 0 ? "allocate" : "consume",
+      transaction_type: (plan_credits >= 0) ? "allocate" : "consume",
       credit_type: "plan",
-      reason: plan_credits >= 0 ? "plan_renewal" : "ai_generation",
+      reason: (plan_credits >= 0) ? "plan_renewal" : "ai_generation",
       amount: plan_credits,
       balance_after: total,
       plan_balance_after: plan_credits,
@@ -394,11 +394,15 @@ RSpec.describe Credits::AllocationService do
 
         it "does not create any transactions" do
           expect {
-            service.reset_plan_credits!(
-              subscription: subscription,
-              idempotency_key: idempotency_key,
-              previous_plan: growth_annual
-            ) rescue nil
+            begin
+              service.reset_plan_credits!(
+                subscription: subscription,
+                idempotency_key: idempotency_key,
+                previous_plan: growth_annual
+              )
+            rescue
+              nil
+            end
           }.not_to change { CreditTransaction.count }
         end
       end

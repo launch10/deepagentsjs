@@ -4,8 +4,11 @@ module Credits
   class AllocationService
     # Custom error classes for clear failure modes
     class AllocationError < StandardError; end
+
     class SamePlanError < AllocationError; end
+
     class BillingCycleError < AllocationError; end
+
     class InvalidPlanError < AllocationError; end
 
     def initialize(account)
@@ -104,7 +107,7 @@ module Credits
         )
         purchase.save!
 
-        total, plan_bal, pack_bal = current_balances
+        _, plan_bal, pack_bal = current_balances
 
         # Create the credit transaction
         new_pack_bal = pack_bal + credit_pack.credits
@@ -157,7 +160,7 @@ module Credits
         # Idempotency check
         return gift if gift.credits_allocated?
 
-        total, plan_bal, pack_bal = current_balances
+        _, plan_bal, pack_bal = current_balances
 
         # Create the credit transaction
         new_pack_bal = pack_bal + gift.amount
@@ -265,7 +268,6 @@ module Credits
           total: total,
           idempotency_key: idempotency_key
         )
-        total = total - plan_bal
         plan_bal = 0
       end
 
@@ -296,7 +298,6 @@ module Credits
           total: total,
           idempotency_key: idempotency_key
         )
-        total = total - plan_bal
         plan_bal = 0
       end
 
@@ -420,6 +421,5 @@ module Credits
     def create_transaction!(attrs)
       @account.credit_transactions.create!(attrs)
     end
-
   end
 end

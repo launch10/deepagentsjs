@@ -72,7 +72,7 @@ RSpec.describe CreditTransaction, type: :model do
           create(:credit_transaction, :skip_validation,
             account: account,
             transaction_type: tx_type,
-            amount: (tx_type == "expire" ? -100 : 100),
+            amount: ((tx_type == "expire") ? -100 : 100),
             plan_balance_after: 1000,
             pack_balance_after: 200,
             balance_after: 1200)

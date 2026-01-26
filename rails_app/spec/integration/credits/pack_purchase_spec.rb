@@ -25,7 +25,7 @@ RSpec.describe "Credit Pack Purchase", type: :integration do
 
       # Create a charge with credit_pack_id in metadata
       # This triggers ChargeExtensions.handle_credit_pack_purchase callback
-      charge = payment_processor.charges.create!(
+      payment_processor.charges.create!(
         processor_id: "ch_#{SecureRandom.hex(8)}",
         amount: credit_pack.price_cents,
         amount_refunded: 0,
