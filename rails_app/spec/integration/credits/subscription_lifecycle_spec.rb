@@ -72,34 +72,38 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
   end
 
   # Helper to consume credits (simulates AI usage)
+  # Note: amount is in credits, internally stored as millicredits (1 credit = 1000 millicredits)
   def consume_credits(amount)
     current = account.reload
     raise "Cannot consume more plan credits than available" if amount > current.plan_credits && current.pack_credits == 0
 
+    amount_millicredits = amount * 1000
     account.credit_transactions.create!(
       transaction_type: "consume",
       credit_type: "plan",
       reason: "ai_generation",
-      amount: -amount,
-      balance_after: current.total_credits - amount,
-      plan_balance_after: current.plan_credits - amount,
-      pack_balance_after: current.pack_credits,
+      amount_millicredits: -amount_millicredits,
+      balance_after_millicredits: current.total_millicredits - amount_millicredits,
+      plan_balance_after_millicredits: current.plan_millicredits - amount_millicredits,
+      pack_balance_after_millicredits: current.pack_millicredits,
       reference_type: "llm_run",
       reference_id: SecureRandom.uuid
     )
   end
 
   # Helper to purchase pack credits (creates proper transaction)
+  # Note: amount is in credits, internally stored as millicredits (1 credit = 1000 millicredits)
   def purchase_pack_credits(amount)
     current = account.reload
+    amount_millicredits = amount * 1000
     account.credit_transactions.create!(
       transaction_type: "purchase",
       credit_type: "pack",
       reason: "pack_purchase",
-      amount: amount,
-      balance_after: current.total_credits + amount,
-      plan_balance_after: current.plan_credits,
-      pack_balance_after: current.pack_credits + amount,
+      amount_millicredits: amount_millicredits,
+      balance_after_millicredits: current.total_millicredits + amount_millicredits,
+      plan_balance_after_millicredits: current.plan_millicredits,
+      pack_balance_after_millicredits: current.pack_millicredits + amount_millicredits,
       reference_type: "stripe_charge",
       reference_id: "ch_#{SecureRandom.hex(8)}"
     )
@@ -260,15 +264,16 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       consume_credits(5000)  # Use all credits
 
       # Simulate going negative via transaction (e.g., pack credits exhausted)
+      # Note: 1000 credits = 1,000,000 millicredits
       account.reload
       account.credit_transactions.create!(
         transaction_type: "consume",
         credit_type: "plan",
         reason: "ai_generation",
-        amount: -1000,
-        balance_after: -1000,
-        plan_balance_after: -1000,
-        pack_balance_after: 0,
+        amount_millicredits: -1_000_000,
+        balance_after_millicredits: -1_000_000,
+        plan_balance_after_millicredits: -1_000_000,
+        pack_balance_after_millicredits: 0,
         reference_type: "llm_run",
         reference_id: SecureRandom.uuid
       )
@@ -289,7 +294,8 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
         expect(account.total_credits).to eq(4000)
 
         allocate_tx = account.credit_transactions.where(transaction_type: "allocate").last
-        expect(allocate_tx.metadata["debt_absorbed"]).to eq(1000)
+        # 1000 credits = 1,000,000 millicredits
+        expect(allocate_tx.metadata["debt_absorbed_millicredits"]).to eq(1_000_000)
       end
     end
   end
@@ -357,15 +363,16 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       consume_credits(2000)
 
       # Simulate going into debt via transaction
+      # Note: 500 credits = 500,000 millicredits
       account.reload
       account.credit_transactions.create!(
         transaction_type: "consume",
         credit_type: "plan",
         reason: "ai_generation",
-        amount: -500,
-        balance_after: -500,
-        plan_balance_after: -500,
-        pack_balance_after: 0,
+        amount_millicredits: -500_000,
+        balance_after_millicredits: -500_000,
+        plan_balance_after_millicredits: -500_000,
+        pack_balance_after_millicredits: 0,
         reference_type: "llm_run",
         reference_id: SecureRandom.uuid
       )
@@ -415,7 +422,8 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
 
       adjust_tx = account.credit_transactions.where(transaction_type: "adjust").last
       expect(adjust_tx.reason).to eq("plan_downgrade")
-      expect(adjust_tx.metadata["usage_this_period"]).to eq(5000)
+      # 5000 credits = 5,000,000 millicredits
+      expect(adjust_tx.metadata["usage_this_period_millicredits"]).to eq(5_000_000)
     end
 
     it "floors balance at zero - never creates debt from downgrade" do
