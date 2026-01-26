@@ -1232,6 +1232,8 @@ module StripeWebhookFixtures
     }
   end
 
+  # Builds invoice object using Stripe API 2025-12-15.clover structure
+  # where subscription is accessed via parent.subscription_details.subscription
   def build_invoice_object(
     id:,
     subscription:,
@@ -1322,11 +1324,17 @@ module StripeWebhookFixtures
       starting_balance: 0,
       statement_descriptor: nil,
       status: status,
-      subscription: subscription,
       subtotal: amount_due,
       tax: nil,
       total: amount_due,
-      webhooks_delivered_at: Time.current.to_i
+      webhooks_delivered_at: Time.current.to_i,
+      # Stripe API 2025-12-15.clover: subscription accessed via parent.subscription_details.subscription
+      parent: {
+        "type" => "subscription_details",
+        "subscription_details" => {
+          "subscription" => subscription
+        }
+      }
     }
   end
 

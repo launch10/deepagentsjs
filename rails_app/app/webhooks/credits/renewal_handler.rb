@@ -33,11 +33,12 @@ module Credits
         .joins(:customer)
         .find_by(pay_customers: {processor: "stripe"}, processor_id: subscription_id)
 
-      raise "Subscription not found for processor_id: #{subscription_id}" unless subscription
-      raise "Subscription #{subscription.id} is not active" unless subscription.active?
+      # Gracefully handle edge cases - don't raise errors in webhooks
+      return unless subscription
+      return unless subscription.active?
 
       account = subscription.customer&.owner
-      raise "Account not found for subscription #{subscription.id}" unless account.is_a?(Account)
+      return unless account.is_a?(Account)
       # Use Stripe event ID for idempotency (globally unique)
       Credits::ResetPlanCreditsWorker.perform_async(
         subscription.id,
@@ -54,9 +55,8 @@ module Credits
       # Try new API structure first (2025-12-15.clover and later)
       if invoice.respond_to?(:parent) && invoice.parent
         parent = invoice.parent
-        # Stripe::StripeObject doesn't support dig, so convert to hash or use method chaining
         parent_hash = parent.respond_to?(:to_hash) ? parent.to_hash : parent
-        parent_hash.dig("subscription_details", "subscription")
+        parent_hash.with_indifferent_access.dig(:subscription_details, :subscription)
       end || invoice.try(:subscription)
     end
   end

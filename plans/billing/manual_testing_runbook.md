@@ -21,6 +21,7 @@ stripe login
 ### 2. Verify Plans in Stripe Dashboard
 
 Ensure your Stripe test mode has prices matching your Rails plans:
+
 - `price_starter_monthly` → Starter Monthly (2000 credits)
 - `price_growth_monthly` → Growth Monthly (5000 credits)
 - `price_pro_monthly` → Pro Monthly (15000 credits)
@@ -40,6 +41,7 @@ bin/dev --full
 ```
 
 This starts all services via `Procfile.full`:
+
 - `web` — Rails server (port 3000)
 - `vite` — Frontend dev server
 - `langgraph` — AI backend (port 4000)
@@ -59,7 +61,7 @@ bundle exec rails runner "
 "
 
 # Restore core_data snapshot (clean slate with plans, no subscriptions)
-bundle exec rake db:snapshot:restore[core_data]
+bundle exec rake db:restore_snapshot\[basic_account\]
 ```
 
 ### Step 3: Verify baseline state
@@ -94,6 +96,7 @@ bundle exec rails runner "
 ### Step 5: Watch terminal output
 
 In the terminal running `bin/dev --full`, look for:
+
 ```
 [stripe] Received event: customer.subscription.created
 [worker] Credits::ResetPlanCreditsWorker performing...
@@ -119,6 +122,7 @@ bundle exec rails runner "
 ```
 
 **Expected**:
+
 - Plan credits: 5000 (for Growth plan)
 - Single `allocate` transaction with reason `plan_renewal`
 
@@ -130,6 +134,7 @@ bundle exec rails runner "
 4. Click "Resend"
 
 Verify no duplicate transactions:
+
 ```bash
 bundle exec rails runner "puts \"Transaction count: #{Account.first.credit_transactions.count}\""
 ```
@@ -236,6 +241,7 @@ stripe test_clocks advance clock_XXXXX \
 ```
 
 Watch terminal for:
+
 ```
 [stripe] Received event: invoice.paid
 [worker] Credits::ResetPlanCreditsWorker performing...
@@ -256,6 +262,7 @@ bundle exec rails runner "
 ```
 
 **Expected**:
+
 - Plan credits: 5000 (fresh allocation)
 - Transactions: `allocate` (5000), `expire` (-4000), `consume` (-1000), `allocate` (5000)
 
@@ -400,6 +407,7 @@ bundle exec rails runner "Credits::DailyReconciliationWorker.new.perform"
 ```
 
 **Expected**:
+
 - If today IS the anchor day: credits reset to full plan amount
 - If today is NOT the anchor day: no change
 
@@ -458,15 +466,15 @@ bundle exec rails runner "
 
 ## Test Matrix Checklist
 
-| # | Scenario | Stripe Event | Handler | Status |
-|---|----------|--------------|---------|--------|
-| 1 | New subscription (via UI) | `subscription.created` | `PaySubscriptionCredits` callback | [ ] |
-| 2 | Renewal (test clock) | `invoice.paid` (subscription_cycle) | `RenewalHandler` | [ ] |
-| 3 | Plan upgrade | `subscription.updated` | `PlanChangeHandler` | [ ] |
-| 4 | Plan downgrade | `subscription.updated` | `PlanChangeHandler` | [ ] |
-| 5 | Yearly monthly reset | N/A (cron) | `DailyReconciliationWorker` | [ ] |
-| 6 | Duplicate webhook | Any | Idempotency check | [ ] |
-| 7 | Non-credit events | `subscription.updated` | Ignored | [ ] |
+| #   | Scenario                  | Stripe Event                        | Handler                           | Status |
+| --- | ------------------------- | ----------------------------------- | --------------------------------- | ------ |
+| 1   | New subscription (via UI) | `subscription.created`              | `PaySubscriptionCredits` callback | [ ]    |
+| 2   | Renewal (test clock)      | `invoice.paid` (subscription_cycle) | `RenewalHandler`                  | [ ]    |
+| 3   | Plan upgrade              | `subscription.updated`              | `PlanChangeHandler`               | [ ]    |
+| 4   | Plan downgrade            | `subscription.updated`              | `PlanChangeHandler`               | [ ]    |
+| 5   | Yearly monthly reset      | N/A (cron)                          | `DailyReconciliationWorker`       | [ ]    |
+| 6   | Duplicate webhook         | Any                                 | Idempotency check                 | [ ]    |
+| 7   | Non-credit events         | `subscription.updated`              | Ignored                           | [ ]    |
 
 ---
 
@@ -475,11 +483,13 @@ bundle exec rails runner "
 ### Webhooks not arriving
 
 Check that `stripe` process is running in Procfile.full output. Look for:
+
 ```
 stripe  | Ready! Your webhook signing secret is whsec_...
 ```
 
 If not connected:
+
 ```bash
 stripe login
 # Then restart bin/dev --full
@@ -500,6 +510,7 @@ bundle exec rails runner "
 ### Plan not found during webhook
 
 Ensure `stripe_id` matches:
+
 ```bash
 bundle exec rails runner "
   puts Plan.pluck(:name, :stripe_id).map { |n, s| \"#{n}: #{s}\" }

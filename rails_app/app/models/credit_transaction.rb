@@ -105,6 +105,7 @@ class CreditTransaction < ApplicationRecord
     previous = account.credit_transactions
       .where.not(id: id)
       .order(created_at: :desc, id: :desc)
+      .limit(1)
       .first
 
     if previous

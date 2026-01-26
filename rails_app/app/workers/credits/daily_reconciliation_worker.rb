@@ -3,7 +3,7 @@
 module Credits
   # Daily job for monthly credit resets on yearly subscriptions.
   #
-  # Yearly subscribers get their credits refreshed monthly on their billing anchor day.
+  # Yearly subscribers get their credits refreshed monthly on their reset day.
   # This worker identifies accounts due for reset and delegates to ResetPlanCreditsWorker.
   #
   class DailyReconciliationWorker < ApplicationWorker
@@ -32,24 +32,27 @@ module Credits
     end
 
     def plan_join_sql
-      # Join plans by any of: stripe_id, fake_processor_id, or name
-      # Different contexts use different identifiers for processor_plan
-      <<~SQL.squish
-        INNER JOIN plans ON (
-          plans.stripe_id = pay_subscriptions.processor_plan
-          OR plans.fake_processor_id = pay_subscriptions.processor_plan
-          OR plans.name = pay_subscriptions.processor_plan
-        )
-      SQL
+      # Join plans by stripe_id or name
+      # fake_processor_id is only used in test/dev environments
+      conditions = [
+        "plans.stripe_id = pay_subscriptions.processor_plan",
+        "plans.name = pay_subscriptions.processor_plan"
+      ]
+
+      unless Rails.env.production?
+        conditions << "plans.fake_processor_id = pay_subscriptions.processor_plan"
+      end
+
+      "INNER JOIN plans ON (#{conditions.join(' OR ')})"
     end
 
     def is_reset_day_sql(today)
-      anchor_day = "EXTRACT(DAY FROM pay_subscriptions.current_period_start)"
+      reset_day = "EXTRACT(DAY FROM pay_subscriptions.current_period_start)"
       last_day = today.end_of_month.day
 
       <<~SQL.squish
-        ((#{anchor_day} <= #{last_day} AND #{anchor_day} = #{today.day})
-        OR (#{anchor_day} > #{last_day} AND #{today.day} = #{last_day}))
+        ((#{reset_day} <= #{last_day} AND #{reset_day} = #{today.day})
+        OR (#{reset_day} > #{last_day} AND #{today.day} = #{last_day}))
       SQL
     end
 

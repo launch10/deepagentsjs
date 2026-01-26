@@ -8486,6 +8486,20 @@ CREATE INDEX index_pay_subscriptions_on_pause_starts_at ON public.pay_subscripti
 
 
 --
+-- Name: index_pay_subscriptions_on_reset_day; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_pay_subscriptions_on_reset_day ON public.pay_subscriptions USING btree (EXTRACT(day FROM current_period_start));
+
+
+--
+-- Name: index_pay_subscriptions_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_pay_subscriptions_on_status ON public.pay_subscriptions USING btree (status);
+
+
+--
 -- Name: index_plan_tiers_on_name; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8497,6 +8511,13 @@ CREATE UNIQUE INDEX index_plan_tiers_on_name ON public.plan_tiers USING btree (n
 --
 
 CREATE INDEX index_plans_on_created_at ON public.plans USING btree (created_at);
+
+
+--
+-- Name: index_plans_on_interval; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_plans_on_interval ON public.plans USING btree ("interval");
 
 
 --
@@ -10801,6 +10822,8 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260126164140'),
+('20260126162948'),
 ('20260125205452'),
 ('20260123211427'),
 ('20260123211228'),
