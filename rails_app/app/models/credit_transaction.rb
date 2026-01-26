@@ -82,6 +82,7 @@ class CreditTransaction < ApplicationRecord
   end
 
   # Display wrapper methods - return credits (millicredits / 1000)
+  # Note: 1 credit = 1 cent, so these values equal cents
   def amount
     Millicredits.to_credits(amount_millicredits)
   end
@@ -96,6 +97,17 @@ class CreditTransaction < ApplicationRecord
 
   def pack_balance_after
     Millicredits.to_credits(pack_balance_after_millicredits)
+  end
+
+  # Explicit cents helpers (1000 millicredits = 1 cent)
+  # These are aliases for the credit methods since 1 credit = 1 cent
+  alias_method :amount_cents, :amount
+  alias_method :balance_after_cents, :balance_after
+  alias_method :plan_balance_after_cents, :plan_balance_after
+  alias_method :pack_balance_after_cents, :pack_balance_after
+
+  def amount_credits
+    amount_millicredits / 1000.0
   end
 
   def credit?

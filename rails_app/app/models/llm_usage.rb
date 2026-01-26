@@ -50,4 +50,15 @@ class LLMUsage < ApplicationRecord
   def total_tokens
     input_tokens + output_tokens + reasoning_tokens + cache_creation_tokens + cache_read_tokens
   end
+
+  # Convert cost_millicredits to cents (1000 millicredits = 1 cent)
+  def cost_cents
+    return nil if cost_millicredits.nil?
+
+    cost_millicredits / 1000.0
+  end
+
+  def cost_dollars
+    (cost_cents / 100.0).round(4)
+  end
 end

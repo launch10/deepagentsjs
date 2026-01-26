@@ -165,17 +165,37 @@ RSpec.describe CreditTransaction, type: :model do
   end
 
   describe "display wrapper methods" do
-    it "returns credits from millicredits" do
-      tx = build(:credit_transaction,
+    let(:tx) do
+      build(:credit_transaction,
         amount_millicredits: 1_500_000,
         balance_after_millicredits: 2_000_000,
         plan_balance_after_millicredits: 1_500_000,
         pack_balance_after_millicredits: 500_000)
+    end
 
+    it "returns credits from millicredits" do
       expect(tx.amount).to eq(1500)
       expect(tx.balance_after).to eq(2000)
       expect(tx.plan_balance_after).to eq(1500)
       expect(tx.pack_balance_after).to eq(500)
+    end
+
+    it "provides _cents aliases (1 credit = 1 cent)" do
+      expect(tx.amount_cents).to eq(1500)
+      expect(tx.balance_after_cents).to eq(2000)
+      expect(tx.plan_balance_after_cents).to eq(1500)
+      expect(tx.pack_balance_after_cents).to eq(500)
+    end
+
+    it "handles sub-cent values" do
+      tx = build(:credit_transaction,
+        amount_millicredits: 550,
+        balance_after_millicredits: 550,
+        plan_balance_after_millicredits: 550,
+        pack_balance_after_millicredits: 0)
+
+      expect(tx.amount_cents).to eq(0.55)
+      expect(tx.balance_after_cents).to eq(0.55)
     end
   end
 
