@@ -5,5 +5,5 @@ web: bundle exec rails server -p ${RAILS_PORT:-3000}
 vite: VITE_RAILS_API_URL=${VITE_RAILS_API_URL:-http://localhost:3000} VITE_LANGGRAPH_API_URL=${VITE_LANGGRAPH_API_URL:-http://localhost:4000} bin/vite dev --mode ${RAILS_ENV:-development}
 langgraph: cd ../langgraph_app && PORT=${LANGGRAPH_PORT:-4000} RAILS_API_URL=${RAILS_API_URL:-http://localhost:3000} pnpm run dev
 worker: bundle exec sidekiq
-zhong: zhong schedule.rb
+zhong: bundle exec zhong schedule.rb
 stripe: bin/stripe-listen

@@ -13,8 +13,12 @@ module Credits
     def call(event)
       invoice = event.data.object
 
+      # Extract subscription ID from the invoice
+      # Stripe API 2025-12-15.clover moved subscription to parent.subscription_details.subscription
+      subscription_id = extract_subscription_id(invoice)
+
       # Only process subscription invoices
-      return unless invoice.subscription
+      return unless subscription_id
 
       # Only process actual renewals (not first payment, proration, manual, etc.)
       # billing_reason values:
@@ -27,9 +31,9 @@ module Credits
 
       subscription = Pay::Subscription
         .joins(:customer)
-        .find_by(pay_customers: {processor: "stripe"}, processor_id: invoice.subscription)
+        .find_by(pay_customers: {processor: "stripe"}, processor_id: subscription_id)
 
-      raise "Subscription not found for processor_id: #{invoice.subscription}" unless subscription
+      raise "Subscription not found for processor_id: #{subscription_id}" unless subscription
       raise "Subscription #{subscription.id} is not active" unless subscription.active?
 
       account = subscription.customer&.owner
@@ -39,6 +43,21 @@ module Credits
         subscription.id,
         {"stripe_event_id" => event.id}
       )
+    end
+
+    private
+
+    # Extract subscription ID from invoice, handling different Stripe API versions
+    # Stripe API 2025-12-15.clover moved subscription from direct property
+    # to parent.subscription_details.subscription
+    def extract_subscription_id(invoice)
+      # Try new API structure first (2025-12-15.clover and later)
+      if invoice.respond_to?(:parent) && invoice.parent
+        parent = invoice.parent
+        # Stripe::StripeObject doesn't support dig, so convert to hash or use method chaining
+        parent_hash = parent.respond_to?(:to_hash) ? parent.to_hash : parent
+        parent_hash.dig("subscription_details", "subscription")
+      end || invoice.try(:subscription)
     end
   end
 end

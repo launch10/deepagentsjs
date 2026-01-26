@@ -142,7 +142,7 @@ class SubscriptionsController < ApplicationController
       subscription_data: subscription_data,
       ui_mode: :embedded
     }
-    args[:consent_collection] = {terms_of_service: :required}
+    args[:consent_collection] = {terms_of_service: :required} if Rails.env.production?
     args[:quantity] = current_account.per_unit_quantity if @plan.charge_per_unit?
     @checkout_session = payment_processor.checkout(**args)
   end

@@ -41,8 +41,9 @@ module Credits
         validate_plan_change!(previous_plan, new_plan_tier, subscription)
 
         total, plan_bal, pack_bal = current_balances
+        action = get_action(previous_plan, new_plan_tier)
 
-        if previous_plan && downgrade?(previous_plan, new_plan_tier)
+        if action == :downgrade
           handle_downgrade!(
             subscription: subscription,
             new_plan_tier: new_plan_tier,
@@ -50,14 +51,14 @@ module Credits
             current_balances: [total, plan_bal, pack_bal],
             idempotency_key: idempotency_key
           )
-        elsif previous_plan && upgrade?(previous_plan, new_plan_tier)
+        elsif action == :upgrade
           handle_upgrade!(
             subscription: subscription,
             new_plan_tier: new_plan_tier,
             current_balances: [total, plan_bal, pack_bal],
             idempotency_key: idempotency_key
           )
-        else
+        elsif action == :renewal
           # Renewal - validate this is actually at a billing cycle boundary
           # Skip validation for monthly resets (yearly subscriptions with monthly credit refresh)
           unless idempotency_key.start_with?("monthly_reset:")
@@ -72,6 +73,12 @@ module Credits
           )
         end
       end
+    end
+
+    def get_action(previous_plan, new_plan_tier)
+      return :downgrade if previous_plan && downgrade?(previous_plan, new_plan_tier)
+      return :upgrade if previous_plan && upgrade?(previous_plan, new_plan_tier)
+      :renewal
     end
 
     private
@@ -118,11 +125,15 @@ module Credits
     end
 
     def downgrade?(previous_plan, new_plan_tier)
+      return false unless previous_plan.present?
+
       previous_credits = previous_plan.plan_tier&.credits || 0
       new_plan_tier.credits < previous_credits
     end
 
     def upgrade?(previous_plan, new_plan_tier)
+      return false unless previous_plan.present?
+
       previous_credits = previous_plan.plan_tier&.credits || 0
       new_plan_tier.credits > previous_credits
     end
