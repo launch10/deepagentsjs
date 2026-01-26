@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { authMiddleware, type AuthContext } from "../middleware/auth";
-import { creditCheckMiddleware, getCreditState } from "../middleware/creditCheck";
+import { creditCheckMiddleware, getCreditState } from "@server/middleware";
 import { validateThreadOrError } from "../middleware/threadValidation";
 import { DeployAPI } from "@api";
 

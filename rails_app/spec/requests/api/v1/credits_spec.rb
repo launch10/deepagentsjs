@@ -8,20 +8,6 @@ RSpec.describe "API::V1::Credits", type: :request do
   describe "GET /api/v1/credits/check" do
     let(:account) { create(:account) }
 
-    # Internal service authentication helpers (same pattern as llm_usage_spec)
-    def generate_internal_signature(ts)
-      secret = Rails.application.credentials.devise_jwt_secret_key!
-      OpenSSL::HMAC.hexdigest("SHA256", secret, ts)
-    end
-
-    def internal_headers(timestamp = Time.current.to_i.to_s)
-      sig = generate_internal_signature(timestamp)
-      {
-        "X-Signature" => sig,
-        "X-Timestamp" => timestamp
-      }
-    end
-
     def setup_account_credits(plan_millicredits:, pack_millicredits: 0)
       total = plan_millicredits + pack_millicredits
       account.update!(

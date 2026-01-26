@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Hono } from "hono";
-import { creditCheckMiddleware, getCreditState, type CreditState } from "@middleware"
+import { creditCheckMiddleware, getCreditState, type CreditState } from "@server/middleware";
 import { CreditCheckError } from "@core/billing";
 
 // Mock the checkCredits function

@@ -178,7 +178,7 @@ jobs:
           command: |
             sleep 5
             cat ~/rails_server.log
-            dockerize -wait http://localhost:${RAILS_PORT:-3001} -timeout 60s
+            dockerize -wait http://localhost:${RAILS_PORT:-3001}/up -timeout 60s
           environment:
             <<: *langgraph-env
       - run:
