@@ -1,10 +1,9 @@
 <% if Jumpstart.config.stripe? %>
-  <%# Full-width Stripe checkout page %>
-  <div class="min-h-screen" style="background-color: #FAFAF9;">
-    <%# Full-width Stripe Checkout - logo is in the minimal layout %>
-    <div class="w-full px-4 py-8">
-      <%= render "subscriptions/forms/stripe", client_secret: @checkout_session.client_secret %>
-    </div>
+  <% content_for :body_style, "background-color: #FAFAF9;" %>
+  <div class="py-12 px-6 container mx-auto">
+    <h1 class="mb-4 lg:mb-8 text-center"><%= t(".title") %></h1>
+    <%= render "subscriptions/forms/stripe", client_secret: @checkout_session.client_secret %>
+    <%= render "subscriptions/new/testimonial" %>
   </div>
 <% else %>
   <div class="p-4 max-w-6xl mx-auto grid lg:grid-cols-2 lg:gap-48 lg:py-24">
