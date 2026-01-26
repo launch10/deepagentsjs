@@ -1,164 +1,165 @@
 # frozen_string_literal: true
 
-require "rails_helper"
+require "swagger_helper"
 
-RSpec.describe "API::V1::Credits", type: :request do
+RSpec.describe "Credits API", type: :request do
   include ActiveSupport::Testing::TimeHelpers
 
-  describe "GET /api/v1/credits/check" do
-    let(:account) { create(:account) }
+  let!(:user1) { create(:user, name: "User 1") }
+  let!(:user2) { create(:user, name: "User 2") }
 
-    def setup_account_credits(plan_millicredits:, pack_millicredits: 0)
-      total = plan_millicredits + pack_millicredits
-      account.update!(
-        plan_millicredits: plan_millicredits,
-        pack_millicredits: pack_millicredits,
-        total_millicredits: total
-      )
-    end
+  let!(:user1_account) { user1.owned_account }
+  let!(:user2_account) { user2.owned_account }
 
-    context "with valid internal service authentication" do
-      it "returns ok=true when account has positive balance" do
-        setup_account_credits(plan_millicredits: 5_000_000) # 5000 credits
+  before do
+    ensure_plans_exist
+    subscribe_account(user1_account, plan_name: "growth_monthly")
+    subscribe_account(user2_account, plan_name: "growth_monthly")
+  end
 
-        get "/api/v1/credits/check",
-            params: { account_id: account.id },
-            headers: internal_headers
+  # Helper to set up account credits - takes credits, converts to millicredits internally
+  def setup_account_credits(account, plan_credits:, pack_credits: 0)
+    plan_millicredits = plan_credits * 1000
+    pack_millicredits = pack_credits * 1000
+    total = plan_millicredits + pack_millicredits
+    account.update!(
+      plan_millicredits: plan_millicredits,
+      pack_millicredits: pack_millicredits,
+      total_millicredits: total
+    )
+  end
 
-        expect(response).to have_http_status(:ok)
-        json = JSON.parse(response.body)
+  path "/api/v1/credits/check" do
+    get "Checks account credit balance" do
+      tags "Credits"
+      produces "application/json"
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: true
+      parameter name: "X-Signature", in: :header, type: :string, required: false
+      parameter name: "X-Timestamp", in: :header, type: :string, required: false
 
-        expect(json["ok"]).to be true
-        expect(json["balance_millicredits"]).to eq(5_000_000)
-        expect(json["plan_millicredits"]).to eq(5_000_000)
-        expect(json["pack_millicredits"]).to eq(0)
+      response "200", "returns ok=true when account has positive balance" do
+        schema APISchemas::Credit.check_response
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+
+        before do
+          setup_account_credits(user1_account, plan_credits: 5000)
+        end
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+
+          expect(json["ok"]).to be true
+          expect(json["balance_millicredits"]).to eq(5_000_000)
+          expect(json["plan_millicredits"]).to eq(5_000_000)
+          expect(json["pack_millicredits"]).to eq(0)
+        end
       end
 
-      it "returns ok=true when account has only pack credits" do
-        setup_account_credits(plan_millicredits: 0, pack_millicredits: 1_000_000)
+      response "200", "returns ok=true when account has only pack credits" do
+        schema APISchemas::Credit.check_response
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
 
-        get "/api/v1/credits/check",
-            params: { account_id: account.id },
-            headers: internal_headers
+        before do
+          setup_account_credits(user1_account, plan_credits: 0, pack_credits: 1000)
+        end
 
-        expect(response).to have_http_status(:ok)
-        json = JSON.parse(response.body)
+        run_test! do |response|
+          json = JSON.parse(response.body)
 
-        expect(json["ok"]).to be true
-        expect(json["balance_millicredits"]).to eq(1_000_000)
-        expect(json["plan_millicredits"]).to eq(0)
-        expect(json["pack_millicredits"]).to eq(1_000_000)
+          expect(json["ok"]).to be true
+          expect(json["balance_millicredits"]).to eq(1_000_000)
+          expect(json["plan_millicredits"]).to eq(0)
+          expect(json["pack_millicredits"]).to eq(1_000_000)
+        end
       end
 
-      it "returns ok=false when account has zero balance" do
-        setup_account_credits(plan_millicredits: 0, pack_millicredits: 0)
+      response "200", "returns ok=false when account has zero balance" do
+        schema APISchemas::Credit.check_response
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
 
-        get "/api/v1/credits/check",
-            params: { account_id: account.id },
-            headers: internal_headers
+        before do
+          setup_account_credits(user1_account, plan_credits: 0, pack_credits: 0)
+        end
 
-        expect(response).to have_http_status(:ok)
-        json = JSON.parse(response.body)
+        run_test! do |response|
+          json = JSON.parse(response.body)
 
-        expect(json["ok"]).to be false
-        expect(json["balance_millicredits"]).to eq(0)
+          expect(json["ok"]).to be false
+          expect(json["balance_millicredits"]).to eq(0)
+        end
       end
 
-      it "returns ok=false when account has negative balance (debt)" do
-        # Simulate debt scenario
-        account.update!(
-          plan_millicredits: -500_000,
-          pack_millicredits: 0,
-          total_millicredits: -500_000
-        )
+      response "200", "returns ok=false when account has negative balance (debt)" do
+        schema APISchemas::Credit.check_response
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
 
-        get "/api/v1/credits/check",
-            params: { account_id: account.id },
-            headers: internal_headers
+        before do
+          # Simulate debt scenario - set millicredits directly for negative balance
+          user1_account.update!(
+            plan_millicredits: -500_000,
+            pack_millicredits: 0,
+            total_millicredits: -500_000
+          )
+        end
 
-        expect(response).to have_http_status(:ok)
-        json = JSON.parse(response.body)
+        run_test! do |response|
+          json = JSON.parse(response.body)
 
-        expect(json["ok"]).to be false
-        expect(json["balance_millicredits"]).to eq(-500_000)
+          expect(json["ok"]).to be false
+          expect(json["balance_millicredits"]).to eq(-500_000)
+        end
       end
 
-      it "returns 404 for non-existent account" do
-        get "/api/v1/credits/check",
-            params: { account_id: 999999 },
-            headers: internal_headers
+      response "200", "returns breakdown of plan and pack credits" do
+        schema APISchemas::Credit.check_response
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
 
-        expect(response).to have_http_status(:not_found)
+        before do
+          setup_account_credits(user1_account, plan_credits: 3000, pack_credits: 2000)
+        end
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+
+          expect(json["ok"]).to be true
+          expect(json["balance_millicredits"]).to eq(5_000_000)
+          expect(json["plan_millicredits"]).to eq(3_000_000)
+          expect(json["pack_millicredits"]).to eq(2_000_000)
+        end
       end
 
-      it "returns breakdown of plan and pack credits" do
-        setup_account_credits(plan_millicredits: 3_000_000, pack_millicredits: 2_000_000)
+      response "401", "unauthorized - missing token" do
+        let(:Authorization) { nil }
 
-        get "/api/v1/credits/check",
-            params: { account_id: account.id },
-            headers: internal_headers
-
-        expect(response).to have_http_status(:ok)
-        json = JSON.parse(response.body)
-
-        expect(json["ok"]).to be true
-        expect(json["balance_millicredits"]).to eq(5_000_000)
-        expect(json["plan_millicredits"]).to eq(3_000_000)
-        expect(json["pack_millicredits"]).to eq(2_000_000)
-      end
-    end
-
-    context "without internal service authentication" do
-      it "returns 401 when no signature provided" do
-        setup_account_credits(plan_millicredits: 5_000_000)
-
-        get "/api/v1/credits/check",
-            params: { account_id: account.id }
-
-        expect(response).to have_http_status(:unauthorized)
+        run_test!
       end
 
-      it "returns 401 with invalid signature" do
-        setup_account_credits(plan_millicredits: 5_000_000)
+      response "401", "unauthorized - invalid token" do
+        let(:Authorization) { "Bearer invalid_token" }
 
-        get "/api/v1/credits/check",
-            params: { account_id: account.id },
-            headers: {
-              "X-Signature" => "invalid_signature",
-              "X-Timestamp" => Time.current.to_i.to_s
-            }
-
-        expect(response).to have_http_status(:unauthorized)
+        run_test!
       end
 
-      it "returns 401 with expired timestamp (> 5 minutes old)" do
-        setup_account_credits(plan_millicredits: 5_000_000)
-        old_timestamp = 10.minutes.ago.to_i.to_s
+      response "401", "unauthorized - expired token" do
+        let(:Authorization) { "Bearer #{expired_jwt_for(user1)}" }
 
-        get "/api/v1/credits/check",
-            params: { account_id: account.id },
-            headers: internal_headers(old_timestamp)
-
-        expect(response).to have_http_status(:unauthorized)
-      end
-
-      it "returns 401 if Authorization header is present" do
-        setup_account_credits(plan_millicredits: 5_000_000)
-
-        get "/api/v1/credits/check",
-            params: { account_id: account.id },
-            headers: internal_headers.merge("Authorization" => "Bearer fake_token")
-
-        expect(response).to have_http_status(:unauthorized)
-      end
-    end
-
-    context "parameter validation" do
-      it "returns 400 when account_id is missing" do
-        get "/api/v1/credits/check",
-            headers: internal_headers
-
-        expect(response).to have_http_status(:bad_request)
+        run_test!
       end
     end
   end

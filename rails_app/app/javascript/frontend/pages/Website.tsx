@@ -2,7 +2,7 @@ import WebsiteLoader from "@components/website/WebsiteLoader";
 import WebsiteSidebar from "@components/website/sidebar/WebsiteSidebar";
 import { WebsitePreview } from "@components/website/preview";
 import { Chat } from "@components/shared/chat/Chat";
-import { CreditExhaustionDetector } from "@components/credits";
+import { CreditExhaustionDetector, CreditStatusWatcher } from "@components/credits";
 import { Button } from "@components/ui/button";
 import { twMerge } from "tailwind-merge";
 import { useEffect, useEffectEvent, useRef } from "react";
@@ -13,11 +13,17 @@ import {
   useWebsiteChatIsLoadingHistory,
   useWebsiteChatActions,
   useWebsiteChatIsStreaming,
+  useWebsiteSelector,
 } from "@hooks/website";
 
 interface WebsitePageProps {
   website?: { id?: number };
   project?: { id?: number };
+}
+
+function WebsiteCreditStatusWatcher() {
+  const creditStatus = useWebsiteSelector((s) => s.state.creditStatus);
+  return <CreditStatusWatcher creditStatus={creditStatus} />;
 }
 
 const websiteLoaderSteps = [{ id: "1", label: "Setting up branding & colors" }];
@@ -121,6 +127,7 @@ export default function Website() {
   return (
     <Chat.Root chat={chat}>
       <CreditExhaustionDetector />
+      <WebsiteCreditStatusWatcher />
       <div className="h-full flex flex-col">
         {/* Main content area - no bottom padding so preview extends behind footer */}
         <main className="flex-1 min-h-0 grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%] pt-[2.5%]">

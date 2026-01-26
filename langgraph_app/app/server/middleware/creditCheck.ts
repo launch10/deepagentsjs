@@ -41,7 +41,7 @@ export const creditCheckMiddleware = async (c: Context, next: Next) => {
   }
 
   try {
-    const result = await checkCredits(auth.accountId);
+    const result = await checkCredits(auth.jwt);
 
     if (!result.ok) {
       return c.json(

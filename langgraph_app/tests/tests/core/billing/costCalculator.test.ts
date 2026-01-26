@@ -4,18 +4,19 @@ import { calculateCost, calculateRunCost, type UsageRecord, type ModelConfig } f
 /**
  * Cost Calculator Tests
  *
- * Formula: millicredits = tokens × price_per_million / 10
+ * Credit System:
+ *   - 1 credit = 1 cent = $0.01
+ *   - 1 millicredit = 1/1000 credit = $0.00001
+ *   - $1.00 = 100 credits = 100,000 millicredits
  *
- * Where:
- * - price_per_million is the cost in dollars per million tokens
- * - 1 millicredit = 0.001 credits = 0.001 cents = $0.00001
- * - 1 credit = 1000 millicredits = 1 cent
+ * Formula Derivation:
+ *   cost_in_dollars = tokens × price_per_million / 1,000,000
+ *   cost_in_millicredits = cost_in_dollars × 100,000 (since $1 = 100,000 millicredits)
+ *   Simplifying: millicredits = tokens × price_per_million / 10
  *
- * Example verification:
- *   100 Haiku input tokens at $1/M:
- *   - Actual cost: 100 × $1/1,000,000 = $0.0001 = 0.01 cents
- *   - Formula: 100 × 1 / 10 = 10 millicredits
- *   - 10 millicredits = 10/1000 credits = 0.01 credits = 0.01 cents ✓
+ * Example: 1M tokens at $1/M
+ *   - Cost: $1.00 = 100 cents = 100 credits = 100,000 millicredits
+ *   - Formula: 1,000,000 × 1 / 10 = 100,000 millicredits ✓
  */
 describe.sequential("costCalculator", () => {
   // Test model configs matching Rails test data (snake_case)
@@ -290,8 +291,8 @@ describe.sequential("costCalculator", () => {
   });
 
   describe("formula verification", () => {
-    // Verify the formula: millicredits = tokens × price_per_million / 10
-    // 1 millicredit = 0.001 credits = 0.001 cents = $0.00001
+    // Verify: millicredits = tokens × price_per_million / 10
+    // where $1.00 = 100 credits = 100,000 millicredits
 
     it("100 Haiku input tokens costs 10 millicredits ($0.0001)", () => {
       const configs = createConfigMap(haikuConfig);

@@ -1,6 +1,6 @@
 import { Annotation, messagesStateReducer } from "@langchain/langgraph";
 
-import type { ErrorStateType, BaseMessage, PrimaryKeyType, ThreadIDType } from "@types";
+import type { ErrorStateType, BaseMessage, PrimaryKeyType, ThreadIDType, CreditStatus } from "@types";
 
 export const BaseAnnotation = Annotation.Root({
   threadId: Annotation<ThreadIDType | undefined>(),
@@ -42,6 +42,18 @@ export const BaseAnnotation = Annotation.Root({
 
   // Chat ID for thread ownership tracking (set by createChat nodes)
   chatId: Annotation<PrimaryKeyType | undefined>({
+    default: () => undefined,
+    reducer: (current, next) => next ?? current,
+  }),
+
+  // Pre-run credit balance in millicredits (set by middleware)
+  preRunCreditsRemaining: Annotation<number | undefined>({
+    default: () => undefined,
+    reducer: (current, next) => next ?? current,
+  }),
+
+  // Credit status calculated at end of run (for frontend exhaustion notification)
+  creditStatus: Annotation<CreditStatus | undefined>({
     default: () => undefined,
     reducer: (current, next) => next ?? current,
   }),

@@ -5,6 +5,7 @@ import {
   initPhasesNode,
   taskExecutorNode,
   taskExecutorRouter,
+  calculateCreditStatusNode,
 } from "@nodes";
 
 /**
@@ -65,24 +66,32 @@ export const deployGraph = new StateGraph(DeployAnnotation)
   // --------------------------------------------------------------------------
   .addNode("taskExecutor", taskExecutorNode)
 
+  // --------------------------------------------------------------------------
+  // Credit Status: Calculate credit status before exiting
+  // --------------------------------------------------------------------------
+  .addNode("calculateCreditStatus", calculateCreditStatusNode)
+
   // ==========================================================================
   // ROUTING
   // ==========================================================================
 
   // Chat is pre-created by Rails, route from START
-  // Either end early if nothing to deploy, or initialize phases
+  // Either end early if nothing to deploy (via credit status), or initialize phases
   .addConditionalEdges(START, (state: DeployGraphState) => {
     // Exit early if nothing to deploy
-    if (!Deploy.shouldDeployAnything(state)) return END;
+    if (!Deploy.shouldDeployAnything(state)) return "calculateCreditStatus";
     return "initPhases";
   })
 
   // After init phases, proceed to task executor
   .addEdge("initPhases", "taskExecutor")
 
-  // Task executor routing: continue, wait, or end
+  // Task executor routing: continue, wait (via credit status), or end (via credit status)
   .addConditionalEdges("taskExecutor", taskExecutorRouter, {
     continue: "taskExecutor", // Loop back for next task
-    wait: END, // Exit, waiting for webhook
-    end: END, // All done
-  });
+    wait: "calculateCreditStatus", // Exit, waiting for webhook (via credit status)
+    end: "calculateCreditStatus", // All done (via credit status)
+  })
+
+  // Credit status always goes to END
+  .addEdge("calculateCreditStatus", END);

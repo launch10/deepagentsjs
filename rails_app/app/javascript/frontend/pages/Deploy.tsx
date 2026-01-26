@@ -4,10 +4,14 @@ import { PhaseProgress, type Phase } from "@components/deploy";
 import LogoSpinner from "@components/ui/logo-spinner";
 import WorkflowPanel from "@components/ads/WorkflowPanel";
 import { useDeployChatWithPolling, type DeployProps } from "@hooks/useDeployChat";
+import { useCreditStatusWatcher } from "@hooks/useCreditStatusWatcher";
 
 export default function Deploy() {
   const { deploy } = usePage<DeployProps>().props;
   const { state, isLoading, isPolling, error, startDeploy } = useDeployChatWithPolling();
+
+  // Watch for credit status changes
+  useCreditStatusWatcher(state.creditStatus);
 
   // Auto-start deploy if it's a new deploy (pending status, no thread)
   useEffect(() => {

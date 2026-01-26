@@ -4,6 +4,62 @@
  */
 
 export interface paths {
+    "/api/v1/credits/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Checks account credit balance */
+        get: {
+            parameters: {
+                query?: never;
+                header: {
+                    Authorization: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns breakdown of plan and pack credits */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Whether the account can proceed (has positive balance) */
+                            ok: boolean;
+                            /** @description Total balance in millicredits */
+                            balance_millicredits: number;
+                            /** @description Plan credits in millicredits (expire at renewal) */
+                            plan_millicredits: number;
+                            /** @description Pack credits in millicredits (persist until used) */
+                            pack_millicredits: number;
+                        };
+                    };
+                };
+                /** @description unauthorized - expired token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/brainstorms": {
         parameters: {
             query?: never;

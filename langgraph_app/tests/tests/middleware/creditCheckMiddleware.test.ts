@@ -54,7 +54,7 @@ describe("creditCheckMiddleware", () => {
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json).toEqual({ success: true });
-      expect(mockCheckCredits).toHaveBeenCalledWith(123);
+      expect(mockCheckCredits).toHaveBeenCalledWith("test-jwt");
     });
 
     it("sets creditState with balance and accountId", async () => {
@@ -323,7 +323,7 @@ describe("creditCheckMiddleware", () => {
       expect(res.status).toBe(200);
     });
 
-    it("calls checkCredits with correct accountId from auth", async () => {
+    it("calls checkCredits with JWT from auth context", async () => {
       mockCheckCredits.mockResolvedValue({
         ok: true,
         balanceMillicredits: 1000,
@@ -338,7 +338,7 @@ describe("creditCheckMiddleware", () => {
       await app.request("/test");
 
       expect(mockCheckCredits).toHaveBeenCalledTimes(1);
-      expect(mockCheckCredits).toHaveBeenCalledWith(42);
+      expect(mockCheckCredits).toHaveBeenCalledWith("test-jwt");
     });
   });
 });

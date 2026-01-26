@@ -4,6 +4,56 @@ info:
   title: API V1
   version: v1
 paths:
+  "/api/v1/credits/check":
+    get:
+      summary: Checks account credit balance
+      tags:
+      - Credits
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: returns breakdown of plan and pack credits
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    description: Whether the account can proceed (has positive balance)
+                  balance_millicredits:
+                    type: integer
+                    description: Total balance in millicredits
+                  plan_millicredits:
+                    type: integer
+                    description: Plan credits in millicredits (expire at renewal)
+                  pack_millicredits:
+                    type: integer
+                    description: Pack credits in millicredits (persist until used)
+                required:
+                - ok
+                - balance_millicredits
+                - plan_millicredits
+                - pack_millicredits
+        '401':
+          description: unauthorized - expired token
   "/api/v1/brainstorms":
     post:
       summary: Creates a brainstorm

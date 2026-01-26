@@ -7,6 +7,7 @@ import {
   prepareRefreshNode,
   resetNode,
   guardrailsNode,
+  calculateCreditStatusNode,
 } from "@nodes";
 import { type AdsGraphState } from "@state";
 import { NodeMiddleware } from "@middleware";
@@ -38,15 +39,17 @@ export const adsGraph = new StateGraph(AdsAnnotation)
   .addNode("prepareRefresh", prepareRefreshNode)
   .addNode("adsAgent", adsAgent)
   .addNode("reset", resetNode)
+  .addNode("calculateCreditStatus", calculateCreditStatusNode)
 
   .addEdge(START, "prepare")
   .addEdge("prepare", "createCampaign")
   .addConditionalEdges("createCampaign", guardrailsNode, {
     beforeGenerate: "beforeGenerate",
-    __end__: END,
+    calculateCreditStatus: "calculateCreditStatus",
   })
   .addEdge("beforeGenerate", "getBusinessContext")
   .addEdge("getBusinessContext", "prepareRefresh")
   .addEdge("prepareRefresh", "adsAgent")
   .addEdge("adsAgent", "reset")
-  .addEdge("reset", END);
+  .addEdge("reset", "calculateCreditStatus")
+  .addEdge("calculateCreditStatus", END);

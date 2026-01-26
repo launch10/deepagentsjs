@@ -38,54 +38,47 @@ export class CreditCheckError extends Error {
 /**
  * Check the account's credit balance before a graph run.
  *
- * @param accountId - The account ID to check
+ * @param jwt - JWT token for authentication (identifies the account)
  * @param baseUrl - Optional base URL for Rails API (defaults to env)
  * @returns Credit check result with balance information
  * @throws CreditCheckError if the check fails
  */
 export async function checkCredits(
-  accountId: number,
+  jwt: string,
   baseUrl?: string
 ): Promise<CreditCheckResult> {
-  if (!accountId) {
-    throw new CreditCheckError("account_id is required", 400);
+  if (!jwt) {
+    throw new CreditCheckError("JWT token is required", 401);
   }
 
   try {
     const client = await createRailsApiClient({
-      internalServiceCall: true,
+      jwt,
       baseUrl,
     });
 
     // Call the credits check endpoint
-    // TODO: Add rswag specs to Rails controller so this endpoint is in generated types
-    const response = await client.GET("/api/v1/credits/check" as any, {
+    // Note: Authorization header is added by client wrapper based on JWT
+    const response = await client.GET("/api/v1/credits/check", {
       params: {
-        query: { account_id: accountId },
+        header: {
+          Authorization: `Bearer ${jwt}`,
+        },
       },
     });
 
-    if (response.error) {
-      const error = response.error as { error?: string };
+    if (response.error || !response.data) {
       throw new CreditCheckError(
-        error?.error || "Credit check failed",
-        response.response?.status,
-        accountId
+        "Credit check failed",
+        response.response?.status
       );
     }
 
-    const data = response.data as {
-      ok: boolean;
-      balance_millicredits: number;
-      plan_millicredits: number;
-      pack_millicredits: number;
-    };
-
     return {
-      ok: data.ok,
-      balanceMillicredits: data.balance_millicredits,
-      planMillicredits: data.plan_millicredits,
-      packMillicredits: data.pack_millicredits,
+      ok: response.data.ok,
+      balanceMillicredits: response.data.balance_millicredits,
+      planMillicredits: response.data.plan_millicredits,
+      packMillicredits: response.data.pack_millicredits,
     };
   } catch (error) {
     if (error instanceof CreditCheckError) {
@@ -94,9 +87,7 @@ export async function checkCredits(
 
     // Network or other errors
     throw new CreditCheckError(
-      `Credit check failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-      undefined,
-      accountId
+      `Credit check failed: ${error instanceof Error ? error.message : "Unknown error"}`
     );
   }
 }

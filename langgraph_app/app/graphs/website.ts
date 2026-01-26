@@ -8,6 +8,7 @@ import {
   cacheModeNode,
   isCacheModeEnabled,
   improveCopyNode,
+  calculateCreditStatusNode,
 } from "@nodes";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 
@@ -37,6 +38,7 @@ export const websiteGraph = new StateGraph(WebsiteAnnotation)
       improveCopyStyle: undefined,
     };
   })
+  .addNode("calculateCreditStatus", calculateCreditStatusNode)
 
   // Chat is pre-created by Rails, route directly from START
   .addConditionalEdges(START, routeFromStart, {
@@ -50,4 +52,5 @@ export const websiteGraph = new StateGraph(WebsiteAnnotation)
   .addEdge("improveCopy", "cleanupFilesystem")
   .addEdge("cleanupFilesystem", "syncFiles")
   .addEdge("syncFiles", "cleanupState")
-  .addEdge("cleanupState", END);
+  .addEdge("cleanupState", "calculateCreditStatus")
+  .addEdge("calculateCreditStatus", END);
