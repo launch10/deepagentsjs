@@ -53,7 +53,7 @@ async function createModelConfig(data: {
   // If priceTier is specified, use the corresponding costs (unless costIn/costOut are explicitly provided)
   const tierCosts = data.priceTier ? TIER_COSTS[data.priceTier] : undefined;
   // Default to tier 3 costs if no costs specified — models must have cost config
-  const defaultCosts = TIER_COSTS[3];
+  const defaultCosts = TIER_COSTS[3]!;
   await db.insert(modelConfigs).values({
     modelKey: data.modelKey,
     enabled: data.enabled ?? true,

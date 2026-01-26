@@ -14,7 +14,7 @@ import {
   eq,
   and,
 } from "@db";
-import { Website, isAIMessage } from "@types";
+import { Website, isAIMessage, type ThreadIDType } from "@types";
 import { websiteGraph as uncompiledGraph } from "@graphs";
 import { graphParams } from "@core";
 import type { WebsiteGraphState } from "@annotation";
@@ -154,7 +154,7 @@ describe("Website Builder", () => {
         .withState({
           command: "create",
           websiteId,
-          threadId: existingChat.threadId,
+          threadId: existingChat.threadId as ThreadIDType,
           accountId: website.accountId ?? undefined,
           projectId: website.projectId ?? undefined,
         })

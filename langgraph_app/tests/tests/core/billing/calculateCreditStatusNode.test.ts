@@ -41,7 +41,7 @@ describe.sequential("calculateCreditStatusNode", () => {
   });
 
   const createMockState = (overrides: Partial<CoreGraphState> = {}): CoreGraphState => ({
-    error: null,
+    error: undefined,
     jwt: "test-jwt",
     messages: [],
     threadId: "thread-123" as ThreadIDType,
