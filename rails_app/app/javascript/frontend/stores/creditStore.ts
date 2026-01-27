@@ -12,7 +12,7 @@
  * - `isOutOfCredits` determines if chat inputs should be locked
  */
 import { create } from "zustand";
-import { subscribeWithSelector } from "zustand/middleware";
+import { subscribeWithSelector, persist } from "zustand/middleware";
 
 export interface CreditState {
   // Balance tracking (in credits, decimals allowed)
@@ -117,90 +117,135 @@ function millicreditsToCredits(millicredits: number): number {
 }
 
 export const useCreditStore = create<CreditStore>()(
-  subscribeWithSelector((set, get) => ({
-    ...initialState,
+  persist(
+    subscribeWithSelector(
+      (set, get) => ({
+        ...initialState,
 
-    updateFromCreditStatus: (status) => {
-      const { estimatedRemainingMillicredits, justExhausted } = status;
-      const { modalDismissedAt } = get();
+        updateFromCreditStatus: (status) => {
+          const { estimatedRemainingMillicredits, justExhausted } = status;
+          const { modalDismissedAt } = get();
 
-      const credits = millicreditsToCredits(estimatedRemainingMillicredits);
+          const credits = millicreditsToCredits(estimatedRemainingMillicredits);
 
-      // Determine if we should show the modal
-      let shouldShowModal = false;
-      if (justExhausted) {
-        // Only show if not recently dismissed
-        const now = Date.now();
-        const canShow = !modalDismissedAt || now - modalDismissedAt > MODAL_SUPPRESS_DURATION_MS;
-        shouldShowModal = canShow;
-      }
+          // Determine if we should show the modal
+          let shouldShowModal = false;
+          if (justExhausted) {
+            // Only show if not recently dismissed
+            const now = Date.now();
+            const canShow =
+              !modalDismissedAt || now - modalDismissedAt > MODAL_SUPPRESS_DURATION_MS;
+            shouldShowModal = canShow;
+          }
 
-      set({
-        balance: credits,
-        isOutOfCredits: credits <= 0,
-        showOutOfCreditsModal: shouldShowModal,
-      });
-    },
+          set({
+            balance: credits,
+            isOutOfCredits: credits <= 0,
+            showOutOfCreditsModal: shouldShowModal,
+          });
+        },
 
-    updateFromBalanceCheck: (balance) => {
-      set({
-        balance: millicreditsToCredits(balance.balanceMillicredits),
-        planCredits: millicreditsToCredits(balance.planMillicredits),
-        packCredits: millicreditsToCredits(balance.packMillicredits),
-        isOutOfCredits: balance.isExhausted,
-      });
-    },
+        updateFromBalanceCheck: (balance) => {
+          set({
+            balance: millicreditsToCredits(balance.balanceMillicredits),
+            planCredits: millicreditsToCredits(balance.planMillicredits),
+            packCredits: millicreditsToCredits(balance.packMillicredits),
+            isOutOfCredits: balance.isExhausted,
+          });
+        },
 
-    hydrateFromPageProps: (props) => {
-      if (!props) return;
+        hydrateFromPageProps: (props) => {
+          if (!props) return;
 
-      const { plan_credits, pack_credits, total_credits, plan_credits_allocated } = props;
+          const { plan_credits, pack_credits, total_credits, plan_credits_allocated } = props;
 
-      // Only update if we have actual data
-      const updates: Partial<CreditState> = {};
+          // Only update if we have actual data
+          const updates: Partial<CreditState> = {};
 
-      if (total_credits !== undefined && total_credits !== null) {
-        updates.balance = total_credits;
-        updates.isOutOfCredits = total_credits <= 0;
-      }
-      if (plan_credits !== undefined && plan_credits !== null) {
-        updates.planCredits = plan_credits;
-      }
-      if (pack_credits !== undefined && pack_credits !== null) {
-        updates.packCredits = pack_credits;
-      }
-      if (plan_credits_allocated !== undefined && plan_credits_allocated !== null) {
-        updates.planCreditsAllocated = plan_credits_allocated;
-      }
+          if (total_credits !== undefined && total_credits !== null) {
+            updates.balance = total_credits;
+            updates.isOutOfCredits = total_credits <= 0;
+          }
+          if (plan_credits !== undefined && plan_credits !== null) {
+            updates.planCredits = plan_credits;
+          }
+          if (pack_credits !== undefined && pack_credits !== null) {
+            updates.packCredits = pack_credits;
+          }
+          if (plan_credits_allocated !== undefined && plan_credits_allocated !== null) {
+            updates.planCreditsAllocated = plan_credits_allocated;
+          }
 
-      if (Object.keys(updates).length > 0) {
-        set(updates);
-      }
-    },
+          if (Object.keys(updates).length > 0) {
+            set(updates);
+          }
+        },
 
-    dismissModal: () => {
-      set({
-        showOutOfCreditsModal: false,
-        modalDismissedAt: Date.now(),
-      });
-    },
+        dismissModal: () => {
+          const ts = Date.now();
+          console.log("[creditStore] dismissModal called, setting modalDismissedAt:", ts);
+          set({
+            showOutOfCreditsModal: false,
+            modalDismissedAt: ts,
+          });
+          console.log(
+            "[creditStore] localStorage after dismissModal:",
+            localStorage.getItem("credit-store")
+          );
+        },
 
-    showModal: () => {
-      const { modalDismissedAt } = get();
-      const now = Date.now();
-      const canShow = !modalDismissedAt || now - modalDismissedAt > MODAL_SUPPRESS_DURATION_MS;
+        showModal: () => {
+          const { modalDismissedAt } = get();
+          const now = Date.now();
+          const canShow =
+            !modalDismissedAt || now - modalDismissedAt > MODAL_SUPPRESS_DURATION_MS;
 
-      if (canShow) {
-        set({ showOutOfCreditsModal: true });
-      }
-    },
+          if (canShow) {
+            set({ showOutOfCreditsModal: true });
+          }
+        },
 
-    dismissLowCreditWarning: () => {
-      set({ lowCreditWarningDismissedAt: Date.now() });
-    },
+        dismissLowCreditWarning: () => {
+          const ts = Date.now();
+          console.log(
+            "[creditStore] dismissLowCreditWarning called, setting lowCreditWarningDismissedAt:",
+            ts
+          );
+          set({ lowCreditWarningDismissedAt: ts });
+          console.log(
+            "[creditStore] localStorage after dismissLowCreditWarning:",
+            localStorage.getItem("credit-store")
+          );
+        },
 
-    reset: () => set(initialState),
-  }))
+        reset: () => set(initialState),
+      })
+    ),
+    {
+      name: "credit-store",
+      partialize: (state) => ({
+        modalDismissedAt: state.modalDismissedAt,
+        lowCreditWarningDismissedAt: state.lowCreditWarningDismissedAt,
+      }),
+      onRehydrateStorage: () => {
+        console.log("[creditStore] origin:", window.location.origin);
+        console.log(
+          "[creditStore] rehydrating from localStorage:",
+          localStorage.getItem("credit-store")
+        );
+        console.log(
+          "[creditStore] all localStorage keys:",
+          Object.keys(localStorage)
+        );
+        return (state) => {
+          console.log("[creditStore] rehydrated state:", {
+            modalDismissedAt: state?.modalDismissedAt,
+            lowCreditWarningDismissedAt: state?.lowCreditWarningDismissedAt,
+          });
+        };
+      },
+    }
+  )
 );
 
 // ============================================================================
@@ -276,6 +321,9 @@ export function useShowLowCreditWarning(): boolean {
 
     // Check if recently dismissed
     const now = Date.now();
+    console.log(`s.lowCreditWarningDismissedAt, ${s.lowCreditWarningDismissedAt}`);
+    console.log(`now, ${now}`);
+    console.log(`LOW_CREDIT_WARNING_SUPPRESS_DURATION_MS, ${LOW_CREDIT_WARNING_SUPPRESS_DURATION_MS}`);
     if (
       s.lowCreditWarningDismissedAt &&
       now - s.lowCreditWarningDismissedAt < LOW_CREDIT_WARNING_SUPPRESS_DURATION_MS

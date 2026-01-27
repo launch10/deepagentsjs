@@ -202,6 +202,18 @@ describe("Input", () => {
       renderWithContext(<Input.Textarea />, { status: "streaming" });
       expect(screen.getByRole("textbox")).toBeDisabled();
     });
+
+    it("is disabled when out of credits", () => {
+      useCreditStore.setState({ isOutOfCredits: true });
+      renderWithContext(<Input.Textarea />);
+      expect(screen.getByRole("textbox")).toBeDisabled();
+    });
+
+    it("is enabled when credits are available", () => {
+      useCreditStore.setState({ isOutOfCredits: false });
+      renderWithContext(<Input.Textarea />);
+      expect(screen.getByRole("textbox")).not.toBeDisabled();
+    });
   });
 
   describe("SubmitButton (context-aware)", () => {

@@ -5,6 +5,8 @@ describe("creditStore", () => {
   beforeEach(() => {
     // Reset the store before each test
     useCreditStore.getState().reset();
+    // Clear persisted data so tests don't leak
+    localStorage.removeItem("credit-store");
     // Reset mock timers
     vi.restoreAllMocks();
   });
@@ -424,6 +426,76 @@ describe("creditStore", () => {
       const now = Date.now();
       const timeSinceDismiss = now - state.lowCreditWarningDismissedAt!;
       expect(timeSinceDismiss).toBeGreaterThan(24 * 60 * 60 * 1000);
+    });
+  });
+
+  describe("persist middleware", () => {
+    it("persists dismiss timestamps to localStorage", () => {
+      useCreditStore.getState().dismissModal();
+      useCreditStore.getState().dismissLowCreditWarning();
+
+      const raw = localStorage.getItem("credit-store");
+      expect(raw).not.toBeNull();
+
+      const parsed = JSON.parse(raw!);
+      expect(parsed.state.modalDismissedAt).toEqual(
+        useCreditStore.getState().modalDismissedAt
+      );
+      expect(parsed.state.lowCreditWarningDismissedAt).toEqual(
+        useCreditStore.getState().lowCreditWarningDismissedAt
+      );
+    });
+
+    it("does not persist balance or credit data to localStorage", () => {
+      useCreditStore.setState({
+        balance: 5,
+        planCredits: 4,
+        packCredits: 1,
+        planCreditsAllocated: 10,
+        isOutOfCredits: false,
+        showOutOfCreditsModal: true,
+        modalDismissedAt: 1234567890,
+        lowCreditWarningDismissedAt: 9876543210,
+      });
+
+      const raw = localStorage.getItem("credit-store");
+      const parsed = JSON.parse(raw!);
+
+      expect(parsed.state).toEqual({
+        modalDismissedAt: 1234567890,
+        lowCreditWarningDismissedAt: 9876543210,
+      });
+      expect(parsed.state).not.toHaveProperty("balance");
+      expect(parsed.state).not.toHaveProperty("planCredits");
+      expect(parsed.state).not.toHaveProperty("isOutOfCredits");
+    });
+
+    it("restores dismiss timestamps after rehydration (simulated page reload)", async () => {
+      // Dismiss both modal and warning
+      useCreditStore.getState().dismissModal();
+      useCreditStore.getState().dismissLowCreditWarning();
+
+      const savedModalDismissedAt = useCreditStore.getState().modalDismissedAt;
+      const savedWarningDismissedAt =
+        useCreditStore.getState().lowCreditWarningDismissedAt;
+
+      // Capture what persist wrote to localStorage
+      const persisted = localStorage.getItem("credit-store");
+
+      // Simulate page reload: reset wipes in-memory state (and writes nulls to storage)
+      useCreditStore.getState().reset();
+
+      // Restore the pre-reset localStorage (this is what the browser keeps across reloads)
+      localStorage.setItem("credit-store", persisted!);
+
+      // Rehydrate from localStorage, just like zustand does on page load
+      await useCreditStore.persist.rehydrate();
+
+      const state = useCreditStore.getState();
+      expect(state.modalDismissedAt).toBe(savedModalDismissedAt);
+      expect(state.lowCreditWarningDismissedAt).toBe(savedWarningDismissedAt);
+      // Balance should NOT be restored from localStorage
+      expect(state.balance).toBeNull();
     });
   });
 });

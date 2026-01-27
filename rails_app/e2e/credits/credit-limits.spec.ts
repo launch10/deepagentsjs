@@ -1,6 +1,8 @@
 import { test, expect, loginUser, testUser } from "../fixtures/auth";
 import { DatabaseSnapshotter } from "../fixtures/database";
 import { BrainstormPage } from "../pages/brainstorm.page";
+import { WebsitePage } from "../pages/website.page";
+import { CampaignPage } from "../pages/campaign.page";
 import { e2eConfig } from "../config";
 
 test.describe("Credit Limits", () => {
@@ -85,8 +87,9 @@ test.describe("Credit Limits", () => {
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("basic_account");
 
-      // Set credits to 1 millicent (essentially 0 - will be exhausted after first LLM call)
-      await DatabaseSnapshotter.setCredits(testUser.email, 1, 0);
+      // Set credits to 100 millicredits (0.10 credits) - enough to not be gated
+      // on page load, but will be exhausted after the first LLM call
+      await DatabaseSnapshotter.setCredits(testUser.email, 100, 0);
 
       await loginUser(page);
       brainstormPage = new BrainstormPage(page);
@@ -146,7 +149,7 @@ test.describe("Credit Limits", () => {
     });
   });
 
-  test.describe("Credit Limits Persists Across Reload", () => {
+  test.describe("Credit Gate Persists Across Reload", () => {
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("basic_account");
 
@@ -157,7 +160,7 @@ test.describe("Credit Limits", () => {
       brainstormPage = new BrainstormPage(page);
     });
 
-    test("send button is disabled on page load when credits are 0", async ({ page }) => {
+    test("send button and input are disabled on page load when credits are 0", async ({ page }) => {
       await brainstormPage.goto();
 
       // The CreditGate should be immediately visible
@@ -170,14 +173,18 @@ test.describe("Credit Limits", () => {
         "data-disabled-reason",
         "credits"
       );
+
+      // The textarea should be disabled — user cannot enter input
+      await expect(brainstormPage.chatInput).toBeDisabled();
     });
 
     test("credit exhaustion state persists after page reload", async ({ page }) => {
       await brainstormPage.goto();
 
-      // Verify initial state: credit gate visible, button disabled
+      // Verify initial state: credit gate visible, input disabled
       await expect(page.getByTestId("credit-gate")).toBeVisible({ timeout: 10000 });
       await expect(brainstormPage.sendButton).toBeDisabled();
+      await expect(brainstormPage.chatInput).toBeDisabled();
 
       // Reload the page
       await page.reload();
@@ -194,6 +201,9 @@ test.describe("Credit Limits", () => {
         "data-disabled-reason",
         "credits"
       );
+
+      // Textarea should still be disabled
+      await expect(brainstormPage.chatInput).toBeDisabled();
     });
 
     test("credit gate links to subscriptions page", async ({ page }) => {
@@ -203,6 +213,232 @@ test.describe("Credit Limits", () => {
       const creditGateLink = page.getByTestId("credit-gate-link");
       await expect(creditGateLink).toBeVisible({ timeout: 10000 });
       await expect(creditGateLink).toHaveAttribute("href", "/subscriptions");
+    });
+  });
+
+  // =========================================================================
+  // Credit Gate - All Chat Pages
+  // =========================================================================
+
+  test.describe("Credit Gate - Brainstorm Conversation", () => {
+    let projectUuid: string;
+
+    test.beforeEach(async ({ page }) => {
+      await DatabaseSnapshotter.restoreSnapshot("brainstorm_step");
+      await DatabaseSnapshotter.setCredits(testUser.email, 0, 0);
+
+      const project = await DatabaseSnapshotter.getFirstProject();
+      projectUuid = project.uuid;
+
+      await loginUser(page);
+      brainstormPage = new BrainstormPage(page);
+    });
+
+    test("chat is fully disabled when out of credits", async ({ page }) => {
+      await brainstormPage.gotoConversation(projectUuid);
+
+      await expect(page.getByTestId("credit-gate")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText("Purchase credits to use AI")).toBeVisible();
+
+      await expect(brainstormPage.sendButton).toBeDisabled();
+      await expect(brainstormPage.sendButton).toHaveAttribute("data-disabled-reason", "credits");
+      await expect(brainstormPage.chatInput).toBeDisabled();
+    });
+
+    test("credit gate persists after page reload", async ({ page }) => {
+      await brainstormPage.gotoConversation(projectUuid);
+
+      await expect(page.getByTestId("credit-gate")).toBeVisible({ timeout: 10000 });
+      await expect(brainstormPage.sendButton).toBeDisabled();
+      await expect(brainstormPage.chatInput).toBeDisabled();
+
+      await page.reload();
+      await page.waitForLoadState("domcontentloaded");
+
+      await expect(page.getByTestId("credit-gate")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText("Purchase credits to use AI")).toBeVisible();
+      await expect(brainstormPage.sendButton).toBeDisabled();
+      await expect(brainstormPage.sendButton).toHaveAttribute("data-disabled-reason", "credits");
+      await expect(brainstormPage.chatInput).toBeDisabled();
+    });
+  });
+
+  test.describe("Credit Gate - Website Builder", () => {
+    let websitePage: WebsitePage;
+    let projectUuid: string;
+
+    test.beforeEach(async ({ page }) => {
+      await DatabaseSnapshotter.restoreSnapshot("website_step");
+      await DatabaseSnapshotter.setCredits(testUser.email, 0, 0);
+
+      const project = await DatabaseSnapshotter.getFirstProject();
+      projectUuid = project.uuid;
+
+      await loginUser(page);
+      websitePage = new WebsitePage(page);
+    });
+
+    test("chat is fully disabled when out of credits", async ({ page }) => {
+      await websitePage.goto(projectUuid);
+
+      await expect(page.getByTestId("credit-gate")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText("Purchase credits to use AI")).toBeVisible();
+
+      const sendButton = page.getByTestId("website-chat-submit");
+      await expect(sendButton).toBeDisabled();
+      await expect(sendButton).toHaveAttribute("data-disabled-reason", "credits");
+
+      const chatInput = page.getByTestId("website-chat-input");
+      await expect(chatInput).toBeDisabled();
+    });
+
+    test("credit gate persists after page reload", async ({ page }) => {
+      await websitePage.goto(projectUuid);
+
+      const sendButton = page.getByTestId("website-chat-submit");
+      const chatInput = page.getByTestId("website-chat-input");
+
+      await expect(page.getByTestId("credit-gate")).toBeVisible({ timeout: 10000 });
+      await expect(sendButton).toBeDisabled();
+      await expect(chatInput).toBeDisabled();
+
+      await page.reload();
+      await page.waitForLoadState("domcontentloaded");
+
+      await expect(page.getByTestId("credit-gate")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText("Purchase credits to use AI")).toBeVisible();
+      await expect(sendButton).toBeDisabled();
+      await expect(sendButton).toHaveAttribute("data-disabled-reason", "credits");
+      await expect(chatInput).toBeDisabled();
+    });
+  });
+
+  test.describe("Credit Gate - Ads Campaign", () => {
+    let campaignPage: CampaignPage;
+    let projectUuid: string;
+
+    test.beforeEach(async ({ page }) => {
+      await DatabaseSnapshotter.restoreSnapshot("campaign_content_step");
+      await DatabaseSnapshotter.setCredits(testUser.email, 0, 0);
+
+      const project = await DatabaseSnapshotter.getFirstProject();
+      projectUuid = project.uuid;
+
+      await loginUser(page);
+      campaignPage = new CampaignPage(page);
+    });
+
+    test("chat is fully disabled when out of credits", async ({ page }) => {
+      await campaignPage.goto(projectUuid, "content");
+
+      await expect(page.getByTestId("credit-gate")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText("Purchase credits to use AI")).toBeVisible();
+
+      await expect(campaignPage.adsChatSubmit).toBeDisabled();
+      await expect(campaignPage.adsChatSubmit).toHaveAttribute("data-disabled-reason", "credits");
+      await expect(campaignPage.adsChatInput).toBeDisabled();
+    });
+
+    test("credit gate persists after page reload", async ({ page }) => {
+      await campaignPage.goto(projectUuid, "content");
+
+      await expect(page.getByTestId("credit-gate")).toBeVisible({ timeout: 10000 });
+      await expect(campaignPage.adsChatSubmit).toBeDisabled();
+      await expect(campaignPage.adsChatInput).toBeDisabled();
+
+      await page.reload();
+      await page.waitForLoadState("domcontentloaded");
+
+      await expect(page.getByTestId("credit-gate")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText("Purchase credits to use AI")).toBeVisible();
+      await expect(campaignPage.adsChatSubmit).toBeDisabled();
+      await expect(campaignPage.adsChatSubmit).toHaveAttribute("data-disabled-reason", "credits");
+      await expect(campaignPage.adsChatInput).toBeDisabled();
+    });
+  });
+
+  // =========================================================================
+  // Low Credit Warning (80% threshold)
+  // =========================================================================
+
+  test.describe("Low Credit Warning", () => {
+    test.beforeEach(async ({ page }) => {
+      await DatabaseSnapshotter.restoreSnapshot("basic_account");
+
+      // Set plan credits to 200 millicredits (0.2 credits remaining).
+      // The plan tier allocates 2000+ credits, so this is well above 80% usage.
+      await DatabaseSnapshotter.setCredits(testUser.email, 200, 0);
+
+      await loginUser(page);
+
+      // Clear any persisted dismiss state from localStorage (once, not on every navigation)
+      await page.evaluate(() => localStorage.removeItem("credit-store"));
+    });
+
+    test("shows low credit warning when usage exceeds 80%", async ({ page }) => {
+      const brainstorm = new BrainstormPage(page);
+      await brainstorm.goto();
+
+      // Warning banner should be visible
+      await expect(page.getByTestId("low-credit-warning")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText("Running low on credits")).toBeVisible();
+    });
+
+    test("can dismiss the low credit warning", async ({ page }) => {
+      const brainstorm = new BrainstormPage(page);
+      await brainstorm.goto();
+
+      // Warning visible
+      await expect(page.getByTestId("low-credit-warning")).toBeVisible({ timeout: 10000 });
+
+      // Dismiss it
+      await page.getByTestId("low-credit-warning-dismiss").click();
+
+      // Warning gone
+      await expect(page.getByTestId("low-credit-warning")).not.toBeVisible();
+    });
+
+    test("dismissal persists across page reload", async ({ page }) => {
+      const brainstorm = new BrainstormPage(page);
+      await brainstorm.goto();
+
+      // Warning visible
+      await expect(page.getByTestId("low-credit-warning")).toBeVisible({ timeout: 10000 });
+
+      // Dismiss it
+      await page.getByTestId("low-credit-warning-dismiss").click();
+      await expect(page.getByTestId("low-credit-warning")).not.toBeVisible();
+
+      // Reload
+      await page.reload();
+      await page.waitForLoadState("domcontentloaded");
+
+      // Warning should still be dismissed (zustand persist stores dismissedAt in localStorage)
+      await expect(page.getByTestId("low-credit-warning")).not.toBeVisible({ timeout: 5000 });
+    });
+
+    test("does not show when credits are fully exhausted", async ({ page }) => {
+      // Set credits to 0 — out of credits takes precedence
+      await DatabaseSnapshotter.setCredits(testUser.email, 0, 0);
+
+      const brainstorm = new BrainstormPage(page);
+      await brainstorm.goto();
+
+      // Credit gate should show instead (not the warning)
+      await expect(page.getByTestId("credit-gate")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByTestId("low-credit-warning")).not.toBeVisible();
+    });
+
+    test("warning links to subscriptions page", async ({ page }) => {
+      const brainstorm = new BrainstormPage(page);
+      await brainstorm.goto();
+
+      await expect(page.getByTestId("low-credit-warning")).toBeVisible({ timeout: 10000 });
+
+      // "Purchase Credits" button links to /subscriptions
+      const link = page.getByTestId("low-credit-warning").getByRole("link", { name: "Purchase Credits" });
+      await expect(link).toBeVisible();
+      await expect(link).toHaveAttribute("href", "/subscriptions");
     });
   });
 });
