@@ -56,7 +56,6 @@ export function SubmitButton({
 
   // Out of credits check
   const isOutOfCredits = useCreditStore((s) => s.isOutOfCredits);
-  const showOutOfCreditsModal = useCreditStore((s) => s.showModal);
 
   // When stopIcon is provided, button is enabled during streaming for stop action
   const hasStopMode = stopIcon !== undefined;
@@ -65,9 +64,8 @@ export function SubmitButton({
   // Can submit when composer is ready and not streaming
   const canSubmit = composer.isReady && !isStreaming;
 
-  // Button is enabled when: can submit OR in stop mode
-  // We keep button enabled even when exhausted so user can click and see the modal
-  const isEnabled = canSubmit || isInStopMode;
+  // Button is enabled when: can submit OR in stop mode, AND has credits
+  const isEnabled = (canSubmit && !isOutOfCredits) || isInStopMode;
 
   const handleClick = () => {
     if (isInStopMode) {
@@ -77,13 +75,7 @@ export function SubmitButton({
       } else {
         stop();
       }
-    } else if (canSubmit) {
-      // Check credits before submitting
-      if (isOutOfCredits) {
-        // Show the out of credits modal instead of submitting
-        showOutOfCreditsModal();
-        return;
-      }
+    } else if (canSubmit && !isOutOfCredits) {
       // Send message using context's submit (respects Chat.Root onSubmit)
       submit();
     }
@@ -101,6 +93,7 @@ export function SubmitButton({
         className
       )}
       data-testid="send-button"
+      data-disabled-reason={isOutOfCredits ? "credits" : undefined}
       aria-label={isInStopMode ? "Stop" : "Send message"}
       {...props}
     >

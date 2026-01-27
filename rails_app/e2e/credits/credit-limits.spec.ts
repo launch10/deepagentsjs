@@ -3,7 +3,7 @@ import { DatabaseSnapshotter } from "../fixtures/database";
 import { BrainstormPage } from "../pages/brainstorm.page";
 import { e2eConfig } from "../config";
 
-test.describe("Credit Exhaustion", () => {
+test.describe("Credit Limits", () => {
   let brainstormPage: BrainstormPage;
 
   test.describe("Pre-run 402 Response (Mocked)", () => {
@@ -81,7 +81,7 @@ test.describe("Credit Exhaustion", () => {
     });
   });
 
-  test.describe("Real Credit Exhaustion Flow", () => {
+  test.describe("Real Credit Limits Flow", () => {
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("basic_account");
 
@@ -112,7 +112,7 @@ test.describe("Credit Exhaustion", () => {
       await expect(page.getByRole("link", { name: "Upgrade Plan" })).toBeVisible();
     });
 
-    test("clicking submit when exhausted shows modal instead of sending", async ({ page }) => {
+    test("submit button is disabled and credit gate visible after exhaustion", async ({ page }) => {
       await brainstormPage.goto();
 
       // Send a message to exhaust credits
@@ -128,20 +128,81 @@ test.describe("Credit Exhaustion", () => {
       await page.getByText("Dismiss for now").click();
       await expect(page.getByText("You've run out of credits")).not.toBeVisible();
 
-      // Try to send another message - the button should still be clickable
-      // but clicking it should show the modal instead of submitting
-      await brainstormPage.chatInput.fill("Another test message");
-      await brainstormPage.sendButton.click();
+      // After exhaustion, the send button should be disabled due to credits
+      await expect(brainstormPage.sendButton).toBeDisabled();
+      await expect(brainstormPage.sendButton).toHaveAttribute(
+        "data-disabled-reason",
+        "credits"
+      );
 
-      // The modal should appear again instead of sending the message
-      await expect(page.getByText("You've run out of credits")).toBeVisible({
-        timeout: 5000,
-      });
+      // The CreditGate should be visible with "Purchase credits to use AI"
+      await expect(page.getByTestId("credit-gate")).toBeVisible();
+      await expect(page.getByText("Purchase credits to use AI")).toBeVisible();
 
-      // Verify no new user message was added (the message wasn't sent)
+      // Verify no new user message was added (input was gated)
       const userMessageCount = await brainstormPage.getUserMessageCount();
       // Should still be 1 (only the original message)
       expect(userMessageCount).toBe(1);
+    });
+  });
+
+  test.describe("Credit Limits Persists Across Reload", () => {
+    test.beforeEach(async ({ page }) => {
+      await DatabaseSnapshotter.restoreSnapshot("basic_account");
+
+      // Set credits to 0 (completely exhausted)
+      await DatabaseSnapshotter.setCredits(testUser.email, 0, 0);
+
+      await loginUser(page);
+      brainstormPage = new BrainstormPage(page);
+    });
+
+    test("send button is disabled on page load when credits are 0", async ({ page }) => {
+      await brainstormPage.goto();
+
+      // The CreditGate should be immediately visible
+      await expect(page.getByTestId("credit-gate")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText("Purchase credits to use AI")).toBeVisible();
+
+      // The send button should be disabled due to credits
+      await expect(brainstormPage.sendButton).toBeDisabled();
+      await expect(brainstormPage.sendButton).toHaveAttribute(
+        "data-disabled-reason",
+        "credits"
+      );
+    });
+
+    test("credit exhaustion state persists after page reload", async ({ page }) => {
+      await brainstormPage.goto();
+
+      // Verify initial state: credit gate visible, button disabled
+      await expect(page.getByTestId("credit-gate")).toBeVisible({ timeout: 10000 });
+      await expect(brainstormPage.sendButton).toBeDisabled();
+
+      // Reload the page
+      await page.reload();
+      await page.waitForLoadState("domcontentloaded");
+
+      // After reload, inertia_share hydrates credits again from DB
+      // Credit gate should still be visible
+      await expect(page.getByTestId("credit-gate")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText("Purchase credits to use AI")).toBeVisible();
+
+      // Send button should still be disabled due to credits
+      await expect(brainstormPage.sendButton).toBeDisabled();
+      await expect(brainstormPage.sendButton).toHaveAttribute(
+        "data-disabled-reason",
+        "credits"
+      );
+    });
+
+    test("credit gate links to subscriptions page", async ({ page }) => {
+      await brainstormPage.goto();
+
+      // Verify the "Purchase credits to use AI" link points to subscriptions
+      const creditGateLink = page.getByTestId("credit-gate-link");
+      await expect(creditGateLink).toBeVisible({ timeout: 10000 });
+      await expect(creditGateLink).toHaveAttribute("href", "/subscriptions");
     });
   });
 });
