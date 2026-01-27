@@ -1,3 +1,8 @@
+\restrict kMnWhqOXMdg8S0SbMVBe1npDaDgsmBTMV4mapN7vrE0C1yENmj6yviZkbZpHNfK
+
+-- Dumped from database version 16.11 (Ubuntu 16.11-1.pgdg24.04+1)
+-- Dumped by pg_dump version 16.11 (Ubuntu 16.11-1.pgdg24.04+1)
+
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
@@ -430,6 +435,7 @@ CREATE TABLE public.accounts (
     billing_email character varying,
     account_users_count integer DEFAULT 0,
     time_zone character varying DEFAULT 'America/New_York'::character varying,
+    credit_balance integer DEFAULT 0 NOT NULL,
     plan_millicredits bigint DEFAULT 0 NOT NULL,
     pack_millicredits bigint DEFAULT 0 NOT NULL,
     total_millicredits bigint DEFAULT 0 NOT NULL
@@ -2706,8 +2712,7 @@ CREATE TABLE public.model_configs (
     model_card character varying,
     cache_writes numeric(10,4),
     cache_reads numeric(10,4),
-    cost_reasoning numeric(10,4),
-    provider character varying
+    cost_reasoning numeric(10,4)
 );
 
 
@@ -10311,14 +10316,6 @@ ALTER TABLE ONLY public.website_urls
 
 
 --
--- Name: credit_gifts fk_rails_5dc0a58710; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.credit_gifts
-    ADD CONSTRAINT fk_rails_5dc0a58710 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
-
-
---
 -- Name: account_users fk_rails_685e030c15; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10364,14 +10361,6 @@ ALTER TABLE ONLY public.document_chunks
 
 ALTER TABLE ONLY public.social_links
     ADD CONSTRAINT fk_rails_9c390957fe FOREIGN KEY (project_id) REFERENCES public.projects(id);
-
-
---
--- Name: credit_gifts fk_rails_a73fa2a3d6; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.credit_gifts
-    ADD CONSTRAINT fk_rails_a73fa2a3d6 FOREIGN KEY (admin_id) REFERENCES public.users(id);
 
 
 --
@@ -10450,13 +10439,14 @@ ALTER TABLE ONLY public.job_runs
 -- PostgreSQL database dump complete
 --
 
+\unrestrict kMnWhqOXMdg8S0SbMVBe1npDaDgsmBTMV4mapN7vrE0C1yENmj6yviZkbZpHNfK
+
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
 ('20260127235148'),
 ('20260127170000'),
 ('20260126223106'),
-('20260126203735'),
 ('20260126170112'),
 ('20260126164801'),
 ('20260126164140'),
@@ -10467,15 +10457,16 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20260125205452'),
 ('20260123211427'),
 ('20260123211228'),
+('20260123211124'),
 ('20260123211123'),
 ('20260123211021'),
 ('20260123210921'),
 ('20260123210745'),
-('20260123185919'),
 ('20260122190035'),
 ('20260122150349'),
 ('20260122150336'),
 ('20260122150323'),
+('20260120212812'),
 ('20260120194521'),
 ('20260120155753'),
 ('20260117001808'),

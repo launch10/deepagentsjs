@@ -1,4 +1,4 @@
-class CreateLlmConversationTraces < ActiveRecord::Migration[8.0]
+class CreateLLMConversationTraces < ActiveRecord::Migration[8.0]
   def up
     # Partitioned table - cannot use disable_ddl_transaction! with partitions
     safety_assured do

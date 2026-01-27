@@ -1,4 +1,4 @@
-class CreateLlmUsage < ActiveRecord::Migration[8.0]
+class CreateLLMUsage < ActiveRecord::Migration[8.0]
   disable_ddl_transaction!
 
   def change

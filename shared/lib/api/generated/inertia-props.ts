@@ -229,6 +229,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Settings page props */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Settings page props */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SettingsProps"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{uuid}/campaigns/content": {
         parameters: {
             query?: never;
@@ -950,6 +986,101 @@ export interface components {
                 to?: number | null;
                 series: (number | string)[];
             };
+        };
+        SettingsProps: {
+            /** @description Base URL of the application */
+            root_path: string;
+            /** @description URL of the Langgraph service */
+            langgraph_path: string;
+            /** @description JWT token for API authentication */
+            jwt: string;
+            /** @description Validation errors from session */
+            errors?: {
+                [key: string]: string[];
+            };
+            /** @description Flash messages */
+            flash?: {
+                /** @enum {string} */
+                type: "success" | "error" | "info";
+                message: string;
+            }[];
+            /** @description Currently authenticated user */
+            current_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Original admin user when impersonating */
+            true_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Whether admin is currently impersonating another user */
+            impersonating?: boolean;
+            user: {
+                /** @description User ID */
+                id: number;
+                /** @description User email address */
+                email: string;
+                /** @description User full name */
+                name: string;
+                /** @description User first name */
+                first_name?: string | null;
+                /** @description User last name */
+                last_name?: string | null;
+            };
+            credit_balance: {
+                /** @description Credits available from current plan */
+                plan_credits: number;
+                /** @description Credits available from purchased packs */
+                pack_credits: number;
+                /** @description Total available credits (plan + pack) */
+                total_credits: number;
+                /** @description Monthly credit allocation for plan */
+                plan_credit_limit: number;
+                /** @description When plan credits reset */
+                reset_date?: string | null;
+            };
+            subscription?: {
+                /** @description Subscription ID */
+                id: number;
+                /** @description Subscription status */
+                status: string;
+                /** @description Plan name */
+                plan_name: string;
+                /** @description Human-readable plan name */
+                plan_display_name: string;
+                /** @description Billing interval (month or year) */
+                interval: string;
+                /** @description Plan price in cents */
+                amount_cents: number;
+                /** @description Currency code */
+                currency: string;
+                /** @description Current billing period start */
+                current_period_start?: string | null;
+                /** @description Current billing period end */
+                current_period_end?: string | null;
+                /** @description Plan features */
+                features: string[];
+            } | null;
+            /** @description Recent billing transactions */
+            billing_history?: {
+                /** @description Charge processor ID */
+                id: string;
+                /** @description Amount charged in cents */
+                amount_cents: number;
+                /** @description Currency code */
+                currency: string;
+                /** @description Charge description */
+                description: string;
+                /** @description When the charge was created */
+                created_at: string;
+                /** @description Charge type (charge, refund, subscription) */
+                type: string;
+            }[] | null;
+            /** @description URL to Stripe customer portal */
+            stripe_portal_url?: string | null;
         };
     };
     responses: never;

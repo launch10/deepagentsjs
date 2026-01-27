@@ -21,11 +21,6 @@
 #  index_credit_gifts_on_admin_id                   (admin_id)
 #  index_credit_gifts_on_credits_allocated          (credits_allocated)
 #
-# Foreign Keys
-#
-#  fk_rails_...  (account_id => accounts.id)
-#  fk_rails_...  (admin_id => users.id)
-#
 FactoryBot.define do
   factory :credit_gift do
     association :account

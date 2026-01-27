@@ -1,6 +1,8 @@
 authenticated :user do
   root to: "projects#new", as: :onboarding
 
+  resource :settings, only: [:show, :update]
+
   resources :projects, only: [:new, :show], param: :uuid do
     resources :workflows, only: [:show]
 

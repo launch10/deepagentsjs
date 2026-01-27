@@ -12,7 +12,6 @@
 #  max_usage_percent :integer          default(100)
 #  model_card        :string
 #  model_key         :string           not null
-#  provider          :string
 #  created_at        :datetime         not null
 #  updated_at        :datetime         not null
 #
