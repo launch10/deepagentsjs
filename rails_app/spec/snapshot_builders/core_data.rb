@@ -1,3 +1,5 @@
+require_relative "core/plan_tiers"
+require_relative "core/tier_limits"
 require_relative "core/plans"
 require_relative "core/templates"
 require_relative "core/themes"

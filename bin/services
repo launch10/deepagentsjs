@@ -196,11 +196,15 @@ status() {
 show_env() {
   echo "=== Launch10 Environment Config ==="
   echo ""
+  echo "Instance:          launch${LAUNCH10_INSTANCE} (offset: ${INSTANCE_OFFSET})"
+  echo "Database prefix:   ${DB_PREFIX}"
+  echo "Redis DB:          ${REDIS_DB} (${REDIS_URL})"
   echo "Environment:       ${LAUNCH10_ENV:-development}"
   echo ""
   echo "=== Ports ==="
   echo "RAILS_PORT:        $RAILS_PORT"
   echo "LANGGRAPH_PORT:    $LANGGRAPH_PORT"
+  echo "VITE_PORT:         $VITE_PORT"
   echo ""
   echo "=== Environment Variables ==="
   echo "RAILS_ENV:         $RAILS_ENV"
@@ -255,6 +259,9 @@ dev_mode() {
   export LANGGRAPH_API_URL
   export RAILS_API_URL
   export NODE_ENV
+  export VITE_PORT
+  export DB_PREFIX
+  export REDIS_URL
   # Export SIDEKIQ_INLINE if set by caller (for e2e tests)
   [[ -n "$SIDEKIQ_INLINE" ]] && export SIDEKIQ_INLINE
 
