@@ -109,23 +109,28 @@ export class LeadsPage {
   async goToPage(pageNum: number): Promise<void> {
     const pageButton = this.page.getByTestId(`pagination-page-${pageNum}`);
     await pageButton.click();
-    await this.page.waitForLoadState("networkidle");
+    // Wait for URL to update with page param
+    await this.page.waitForURL(`**?page=${pageNum}`, { timeout: 10000 });
   }
 
   /**
    * Click Previous button
    */
   async clickPrevious(): Promise<void> {
+    const currentPage = await this.getCurrentPage();
     await this.prevButton.click();
-    await this.page.waitForLoadState("networkidle");
+    // Wait for URL to update with new page param
+    await this.page.waitForURL(`**?page=${currentPage - 1}`, { timeout: 10000 });
   }
 
   /**
    * Click Next button
    */
   async clickNext(): Promise<void> {
+    const currentPage = await this.getCurrentPage();
     await this.nextButton.click();
-    await this.page.waitForLoadState("networkidle");
+    // Wait for URL to update with new page param
+    await this.page.waitForURL(`**?page=${currentPage + 1}`, { timeout: 10000 });
   }
 
   /**

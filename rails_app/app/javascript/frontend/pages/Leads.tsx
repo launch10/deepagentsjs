@@ -4,36 +4,13 @@ import { LeadsPagination } from "@components/leads/LeadsPagination";
 import { EmptyLeads } from "@components/leads/EmptyLeads";
 import { Button } from "@components/ui/button";
 import { ChevronLeft, Download } from "lucide-react";
+import type { InertiaProps } from "@shared";
 
-export interface Lead {
-  id: number;
-  name: string | null;
-  email: string;
-  date: string;
-}
+export type LeadsProps =
+  InertiaProps.paths["/projects/{uuid}/leads"]["get"]["responses"]["200"]["content"]["application/json"];
 
-export interface Pagination {
-  current_page: number;
-  total_pages: number;
-  total_count: number;
-  prev_page: number | null;
-  next_page: number | null;
-  from: number | null;
-  to: number | null;
-  series: (number | string)[];
-}
-
-export interface LeadsProps {
-  project: {
-    id: number;
-    uuid: string;
-    name: string;
-    account_id: number;
-  };
-  leads: Lead[];
-  pagination: Pagination;
-  [key: string]: unknown;
-}
+export type Lead = LeadsProps["leads"][number];
+export type Pagination = LeadsProps["pagination"];
 
 export default function Leads() {
   const { project, leads, pagination } = usePage<LeadsProps>().props;

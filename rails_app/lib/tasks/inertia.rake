@@ -16,6 +16,7 @@ namespace :inertia do
     require_relative "../../spec/support/schemas/inertia/website_schema"
     require_relative "../../spec/support/schemas/inertia/campaigns_schema"
     require_relative "../../spec/support/schemas/inertia/launch_schema"
+    require_relative "../../spec/support/schemas/inertia/leads_schema"
 
     generator = InertiaOpenApiGenerator.new
 
@@ -24,6 +25,7 @@ namespace :inertia do
     generator.add_component("WebsiteProps", InertiaSchemas::Website)
     generator.add_component("CampaignsProps", InertiaSchemas::Campaigns)
     generator.add_component("LaunchProps", InertiaSchemas::Launch)
+    generator.add_component("LeadsProps", InertiaSchemas::Leads)
 
     generator.add_page(
       "/projects/new",
@@ -40,6 +42,12 @@ namespace :inertia do
     generator.add_page(
       "/projects/{uuid}/website",
       ref: "WebsiteProps",
+      tag: "Inertia Pages",
+      params: [UUID_PARAM]
+    )
+    generator.add_page(
+      "/projects/{uuid}/leads",
+      ref: "LeadsProps",
       tag: "Inertia Pages",
       params: [UUID_PARAM]
     )
