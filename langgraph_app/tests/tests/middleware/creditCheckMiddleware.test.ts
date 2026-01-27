@@ -17,9 +17,13 @@ vi.mock("@core/billing", async () => {
   };
 });
 
-vi.mock("@core/env", () => ({
-  env: mockEnv,
-}));
+vi.mock("@core", async () => {
+  const actual = await vi.importActual("@core");
+  return {
+    ...actual,
+    env: mockEnv,
+  };
+});
 
 describe("creditCheckMiddleware", () => {
   let app: Hono;

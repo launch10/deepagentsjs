@@ -18,7 +18,7 @@ export interface CreditStatus {
 }
 
 export type CoreGraphState = {
-    error: ErrorStateType | null;
+    error: ErrorStateType | undefined;
     jwt: string | undefined;
     messages: BaseMessage[];
     threadId: ThreadIDType | undefined;

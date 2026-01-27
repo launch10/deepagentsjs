@@ -45,7 +45,7 @@ export class UnknownModelCostError extends Error {
 export function hasValidCostConfig(config: ModelConfig): boolean {
   const hasCostIn = config.cost_in !== null && config.cost_in > 0;
   const hasCostOut = config.cost_out !== null && config.cost_out > 0;
-  return hasCostIn || hasCostOut;
+  return hasCostIn && hasCostOut;
 }
 
 /**

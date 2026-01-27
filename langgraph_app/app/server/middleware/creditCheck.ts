@@ -13,7 +13,7 @@
 import type { Context, Next } from "hono";
 import type { AuthContext } from "./auth";
 import { checkCredits, CreditCheckError, type CreditCheckResult } from "@core/billing";
-import { env } from "@core/env";
+import { env } from "@core";
 
 /**
  * Credit state set by the middleware, available via c.get("creditState").

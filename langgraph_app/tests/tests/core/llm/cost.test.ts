@@ -118,20 +118,20 @@ describe.sequential("cost", () => {
       expect(hasValidCostConfig(haikuConfig)).toBe(true);
     });
 
-    it("returns true when only cost_in > 0 (cost_out null)", () => {
+    it("returns false when only cost_in > 0 (cost_out null)", () => {
       expect(hasValidCostConfig({
         ...haikuConfig,
         cost_in: 1.0,
         cost_out: null,
-      })).toBe(true);
+      })).toBe(false);
     });
 
-    it("returns true when only cost_out > 0 (cost_in null)", () => {
+    it("returns false when only cost_out > 0 (cost_in null)", () => {
       expect(hasValidCostConfig({
         ...haikuConfig,
         cost_in: null,
         cost_out: 5.0,
-      })).toBe(true);
+      })).toBe(false);
     });
 
     it("returns false when both cost_in and cost_out are null", () => {

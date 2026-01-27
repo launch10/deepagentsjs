@@ -34,6 +34,10 @@ export const envSchema = z.object({
     .string()
     .transform((val) => val === "true" || val === "1")
     .default("false"),
+  CACHE_MODE: z
+    .string()
+    .transform((val) => val === "true" || val === "1")
+    .default("false"),
   NODE_ENV: z.enum(Environments).default("development"),
   ALLOWED_ORIGINS: z.string().optional(),
   CREDITS_DISABLED: z
@@ -83,6 +87,7 @@ export const env = ((): RuntimeEnv => {
 
   try {
     const parsedEnv = environmentConfigSchema.parse(process.env);
+    console.log(parsedEnv);
     return parsedEnv;
   } catch (error) {
     if (error instanceof z.ZodError) {

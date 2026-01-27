@@ -38,6 +38,7 @@ export async function checkCredits(
   jwt: string,
   baseUrl?: string
 ): Promise<CreditCheckResult> {
+  debugger;
   if (!jwt) {
     throw new CreditCheckError("JWT token is required", 401);
   }

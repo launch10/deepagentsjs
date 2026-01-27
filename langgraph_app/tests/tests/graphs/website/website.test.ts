@@ -70,7 +70,7 @@ const assertMessageContent = async (result: { state: WebsiteGraphState }, websit
 
 // describe.sequential
 // temporarily skipping because caching is failing on CI - use this mainly for local testing and debugging speed
-describe.skip("Website Builder", () => {
+describe("Website Builder", () => {
   let websiteId: number;
   let website: DBTypes.WebsiteType;
   let themeColors: string[];
@@ -138,11 +138,23 @@ describe.skip("Website Builder", () => {
 
   describe("Page Generation", () => {
     it("generates a complete landing page with required sections", async () => {
+      // Load the chat's threadId from the snapshot so the graph state matches the DB
+      const [existingChat] = await db
+        .select()
+        .from(chats)
+        .where(and(eq(chats.contextableId, websiteId), eq(chats.contextableType, "Website")))
+        .limit(1);
+
+      if (!existingChat?.threadId) {
+        throw new Error("No chat with threadId found in snapshot for website");
+      }
+
       const result = await testGraph<WebsiteGraphState>()
         .withGraph(websiteGraph)
         .withState({
           command: "create",
           websiteId,
+          threadId: existingChat.threadId,
           accountId: website.accountId ?? undefined,
           projectId: website.projectId ?? undefined,
         })

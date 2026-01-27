@@ -17,6 +17,7 @@
 import type { CoreGraphState } from "@types";
 import { getUsageContext, deriveCreditStatus } from "@core/billing";
 import { LLMManager, calculateRunCost } from "@core";
+import { env } from "@core";
 
 /**
  * Calculate credit status based on pre-run balance and usage during the run.
