@@ -86,26 +86,10 @@ RSpec.describe 'Settings Inertia Page', type: :request, inertia: true do
         sign_in user
       end
 
-      it 'renders the Settings component' do
+      it 'redirects to pricing page' do
         get settings_path
 
-        expect(response).to have_http_status(:ok)
-        expect(inertia.component).to eq('Settings')
-      end
-
-      it 'props conform to Settings schema with nil subscription' do
-        get settings_path
-
-        expect_inertia_props_to_match_schema(InertiaSchemas::Settings.props_schema)
-        expect(inertia.props[:subscription]).to be_nil
-      end
-
-      it 'includes credit balance with zero values' do
-        get settings_path
-
-        credit_props = inertia.props[:credit_balance]
-        expect(credit_props[:plan_credits]).to eq(0)
-        expect(credit_props[:plan_credit_limit]).to eq(0)
+        expect(response).to redirect_to(pricing_path)
       end
     end
 

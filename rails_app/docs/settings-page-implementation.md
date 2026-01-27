@@ -16,7 +16,7 @@ This document describes the implementation of the Settings page for Launch10, pr
 
 **Controller**: `SettingsController` (inherits from `SubscribedController`)
 
-- `skip_before_action :require_subscription!` - allows non-subscribed users to access settings
+- Requires active subscription (inherited from `SubscribedController`)
 - `GET /settings` - renders Settings page with props
 - `PATCH /settings` - updates user profile (first_name, last_name)
 
@@ -134,8 +134,8 @@ This document describes the implementation of the Settings page for Launch10, pr
 
 - Schema validation for all props
 - Subscribed user happy path
-- Non-subscribed user (nil subscription)
-- Unauthenticated user (404)
+- Non-subscribed user (redirected to pricing)
+- Unauthenticated user (redirected to login)
 - Billing history from Pay::Charge
 - Profile update (PATCH)
 
@@ -153,8 +153,7 @@ This document describes the implementation of the Settings page for Launch10, pr
 
 1. **BuyCreditsModal**: Credit pack selection UI (removed from current scope)
 2. **Stripe Integration**: Wire up stubbed actions to actual Stripe customer portal
-3. **Non-subscribed user view**: Enhanced UI for users without active subscription
-4. **Additional edge cases**: Past due subscriptions, multiple subscriptions
+3. **Additional edge cases**: Past due subscriptions, multiple subscriptions
 
 ## Files Changed
 

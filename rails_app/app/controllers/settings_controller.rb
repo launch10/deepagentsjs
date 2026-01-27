@@ -1,5 +1,4 @@
 class SettingsController < SubscribedController
-  skip_before_action :require_subscription!
 
   def show
     @subscription = current_account.subscriptions.active.first
