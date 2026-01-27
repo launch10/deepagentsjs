@@ -128,8 +128,14 @@ module Database
     end
 
     def truncate(except: [])
-      except = Array(except) + EXCLUDED_HEAVY_TABLES
-      DatabaseCleaner.clean_with(:truncation, except: except)
+      except = Array(except) + EXCLUDED_HEAVY_TABLES + EXCLUDED_SYSTEM_TABLES
+      tables = ActiveRecord::Base.connection.tables - except
+      return if tables.empty?
+
+      # Use CASCADE to handle foreign key constraints
+      ActiveRecord::Base.connection.execute(
+        "TRUNCATE TABLE #{tables.join(", ")} CASCADE"
+      )
     end
 
     def snapshot_exists?(name)

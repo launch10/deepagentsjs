@@ -16,5 +16,11 @@ authenticated :user do
 
       get :deploy
     end
+
+    resources :leads, only: [:index], controller: "leads" do
+      collection do
+        get :export
+      end
+    end
   end
 end

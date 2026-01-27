@@ -24,6 +24,7 @@
 #
 
 class Project < ApplicationRecord
+  include ProjectConcerns::Leads
   include ProjectConcerns::Serialization
   acts_as_paranoid
 

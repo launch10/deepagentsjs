@@ -2782,7 +2782,8 @@ CREATE TABLE public.model_configs (
     model_card character varying,
     cache_writes numeric(10,4),
     cache_reads numeric(10,4),
-    cost_reasoning numeric(10,4)
+    cost_reasoning numeric(10,4),
+    provider character varying
 );
 
 
@@ -9364,6 +9365,13 @@ CREATE INDEX index_website_leads_on_website_id ON public.website_leads USING btr
 
 
 --
+-- Name: index_website_leads_on_website_id_and_created_at_desc; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_leads_on_website_id_and_created_at_desc ON public.website_leads USING btree (website_id, created_at DESC);
+
+
+--
 -- Name: index_website_uploads_on_upload_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -10925,6 +10933,8 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260126223106'),
+('20260126203735'),
 ('20260126170112'),
 ('20260126164801'),
 ('20260126164140'),
