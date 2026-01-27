@@ -45,8 +45,9 @@ export function withCreditExhaustion<
   // The outer graph uses the same annotation as the inner graph,
   // so all state flows through correctly to the frontend.
   // calculateCreditStatusNode only needs CoreGraphState fields (via BaseAnnotation).
+  // Compile inner graph without checkpointer - outer graph's compile() handles that.
   return new StateGraph(annotation)
-    .addNode("run", innerGraph.compile())
+    .addNode("run", innerGraph.compile() as any)
     .addNode("creditExhaustion", calculateCreditStatusNode)
     .addEdge(START, "run")
     .addEdge("run", "creditExhaustion")
