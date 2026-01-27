@@ -213,19 +213,12 @@ function useOutOfCreditsDetection<TState extends Record<string, unknown>>(
     chat,
     (s) => (s.state as { creditStatus?: CreditStatus })?.creditStatus?.estimatedRemainingMillicredits
   );
-  const creditStatus = useChatSelector(
-    chat,
-    (s) => (s.state as { creditStatus?: CreditStatus })?.creditStatus
-  );
-  console.log(`creditStatus: ${creditStatus ? JSON.stringify(creditStatus) : "null"}`);
-  console.log(`justExhausted: ${justExhausted}, estimatedRemaining: ${estimatedRemaining}`);
-
   useEffect(() => {
     // Only process if creditStatus exists (estimatedRemaining is defined)
     if (estimatedRemaining === undefined) return;
 
     useCreditStore.getState().updateFromCreditStatus({
-      estimatedCreditsRemaining: estimatedRemaining,
+      estimatedRemainingMillicredits: estimatedRemaining,
       justExhausted: justExhausted ?? false,
     });
   }, [justExhausted, estimatedRemaining]);

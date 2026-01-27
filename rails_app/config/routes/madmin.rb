@@ -40,5 +40,10 @@ namespace :madmin, path: :admin do
     resources :subscriptions
   end
 
+  # Credits management
+  resources :credit_transactions, only: [:index, :show]
+  resources :credit_packs
+  resources :credit_gifts, only: [:index, :show, :new, :create]
+
   root to: "dashboard#show"
 end

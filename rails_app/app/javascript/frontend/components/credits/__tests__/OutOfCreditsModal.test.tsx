@@ -16,9 +16,10 @@ describe("OutOfCreditsModal", () => {
   beforeEach(() => {
     // Reset the store to initial state
     useCreditStore.setState({
-      balanceMillicredits: 0,
-      planMillicredits: null,
-      packMillicredits: null,
+      balance: 0,
+      planCredits: null,
+      packCredits: null,
+      planCreditsAllocated: null,
       isOutOfCredits: true,
       showOutOfCreditsModal: true,
       modalDismissedAt: null,
@@ -46,16 +47,16 @@ describe("OutOfCreditsModal", () => {
     });
 
     it("displays formatted balance", () => {
-      useCreditStore.setState({ balanceMillicredits: 500 });
+      useCreditStore.setState({ balance: 0.5 });
 
       render(<OutOfCreditsModal />);
 
-      // formatCredits(500) = 0.5 credits
+      // formatCredits(0.5) = "0.5"
       expect(screen.getByText(/0.5 credits/)).toBeInTheDocument();
     });
 
     it("displays zero balance correctly", () => {
-      useCreditStore.setState({ balanceMillicredits: 0 });
+      useCreditStore.setState({ balance: 0 });
 
       render(<OutOfCreditsModal />);
 
@@ -140,27 +141,27 @@ describe("formatCredits", () => {
     expect(formatCredits(null)).toBe("—");
   });
 
-  it("formats 0 millicredits as 0", () => {
+  it("formats 0 credits as 0", () => {
     expect(formatCredits(0)).toBe("0");
   });
 
   it("formats small values with decimal", () => {
-    expect(formatCredits(500)).toBe("0.5");
-    expect(formatCredits(5500)).toBe("5.5");
+    expect(formatCredits(0.5)).toBe("0.5");
+    expect(formatCredits(5.5)).toBe("5.5");
   });
 
   it("formats values >= 10 without decimals", () => {
-    expect(formatCredits(10_000)).toBe("10");
-    expect(formatCredits(50_000)).toBe("50");
+    expect(formatCredits(10)).toBe("10");
+    expect(formatCredits(50)).toBe("50");
   });
 
   it("formats large values with k suffix", () => {
-    expect(formatCredits(1_000_000)).toBe("1k");
-    expect(formatCredits(5_500_000)).toBe("5.5k");
+    expect(formatCredits(1000)).toBe("1.0k");
+    expect(formatCredits(5500)).toBe("5.5k");
   });
 
   it("handles negative values", () => {
-    expect(formatCredits(-1000)).toBe("-1");
-    expect(formatCredits(-500)).toBe("-0.5");
+    expect(formatCredits(-1)).toBe("-1");
+    expect(formatCredits(-0.5)).toBe("-0.5");
   });
 });

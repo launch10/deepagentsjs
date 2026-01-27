@@ -5,9 +5,10 @@ import { usePage } from "@inertiajs/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WorkflowProvider } from "@context/WorkflowProvider";
 import { Toaster } from "@components/ui/sonner";
-import { OutOfCreditsModal } from "@components/credits";
+import { OutOfCreditsModal, LowCreditWarning } from "@components/credits";
 import { useProjectStore } from "~/stores/projectStore";
 import { useSessionStore } from "~/stores/sessionStore";
+import { useCreditStore } from "~/stores/creditStore";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,13 @@ interface SharedPageProps {
   brainstorm?: { id?: number } | null;
   campaign?: { id?: number } | null;
   thread_id?: string;
+  // Credits (values are in credits, not millicredits)
+  credits?: {
+    plan_credits: number;
+    pack_credits: number;
+    total_credits: number;
+    plan_credits_allocated: number;
+  } | null;
 }
 
 export const SiteLayout = ({ children }: { children: React.ReactNode }): React.ReactNode => {
@@ -49,7 +57,11 @@ export const SiteLayout = ({ children }: { children: React.ReactNode }): React.R
       root_path: props.root_path,
     });
 
-    // 2. Project data (resets on URL change, then hydrates fresh)
+    // 2. Credits data (persists across navigation - no reset)
+    // This ensures credit exhaustion state survives page transitions
+    useCreditStore.getState().hydrateFromPageProps(props.credits ?? null);
+
+    // 3. Project data (resets on URL change, then hydrates fresh)
     if (lastUrlRef.current !== null && lastUrlRef.current !== url) {
       useProjectStore.getState().reset();
     }
@@ -74,6 +86,7 @@ export const SiteLayout = ({ children }: { children: React.ReactNode }): React.R
         <div className="flex h-screen overflow-hidden">
           <AppSidebar />
           <div className="flex-1 flex flex-col bg-background overflow-hidden">
+            <LowCreditWarning />
             <Header />
             <main ref={mainRef} className="flex-1 overflow-auto">
               {children}

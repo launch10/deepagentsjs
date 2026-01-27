@@ -20,7 +20,7 @@ import { useCreditStore, formatCredits } from "~/stores/creditStore";
  */
 export function OutOfCreditsModal() {
   const showModal = useCreditStore((s) => s.showOutOfCreditsModal);
-  const balance = useCreditStore((s) => s.balanceMillicredits);
+  const balance = useCreditStore((s) => s.balance);
   const dismissModal = useCreditStore((s) => s.dismissModal);
 
   return (
