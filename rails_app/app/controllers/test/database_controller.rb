@@ -111,10 +111,25 @@ class Test::DatabaseController < Test::TestController
       }, status: :not_found and return
     end
 
-    account.update!(
-      plan_millicredits: params_obj[:plan_millicredits] || 0,
-      pack_millicredits: params_obj[:pack_millicredits] || 0
+    plan = params_obj[:plan_millicredits] || 0
+    pack = params_obj[:pack_millicredits] || 0
+    total = plan + pack
+
+    # Create adjust transaction with sequence validation bypassed (test-only)
+    tx = account.credit_transactions.new(
+      transaction_type: "adjust",
+      credit_type: "plan",
+      reason: "e2e_test_setup",
+      amount_millicredits: total - account.total_millicredits,
+      balance_after_millicredits: total,
+      plan_balance_after_millicredits: plan,
+      pack_balance_after_millicredits: pack,
+      idempotency_key: "e2e_test:#{account.id}:#{Time.current.to_i}"
     )
+    tx.skip_sequence_validation = true
+    tx.save!
+
+    # update_account_balances callback handles the account update
 
     render json: {
       status: "ok",
