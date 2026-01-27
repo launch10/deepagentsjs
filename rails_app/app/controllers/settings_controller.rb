@@ -1,7 +1,6 @@
 class SettingsController < SubscribedController
-
   def show
-    @subscription = current_account.subscriptions.active.first
+    @subscription = current_account.active_subscription
     @plan = @subscription&.plan
 
     render inertia: "Settings",
@@ -26,7 +25,6 @@ class SettingsController < SubscribedController
   def settings_props
     {
       user: user_props,
-      credit_balance: credit_balance_props,
       subscription: subscription_props,
       billing_history: billing_history_props,
       stripe_portal_url: stripe_portal_url
@@ -40,16 +38,6 @@ class SettingsController < SubscribedController
       name: current_user.name,
       first_name: current_user.first_name,
       last_name: current_user.last_name
-    }
-  end
-
-  def credit_balance_props
-    {
-      plan_credits: current_account.plan_credits,
-      pack_credits: current_account.pack_credits,
-      total_credits: current_account.total_credits,
-      plan_credit_limit: @plan&.credits || 0,
-      reset_date: @subscription&.current_period_end&.strftime("%b %d, %Y")
     }
   end
 

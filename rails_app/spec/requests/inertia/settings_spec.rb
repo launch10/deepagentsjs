@@ -101,6 +101,28 @@ RSpec.describe 'Settings Inertia Page', type: :request, inertia: true do
       end
     end
 
+    context 'when viewing settings as a different user' do
+      let!(:other_user) { create(:user) }
+      let!(:other_account) { other_user.owned_account }
+
+      before do
+        ensure_plans_exist
+        subscribe_account(account, plan_name: "growth_monthly")
+        subscribe_account(other_account, plan_name: "growth_monthly")
+        sign_in user
+      end
+
+      it 'only shows the current user settings, not other users' do
+        get settings_path
+
+        expect(response).to have_http_status(:ok)
+        expect(inertia.props[:user][:id]).to eq(user.id)
+        expect(inertia.props[:user][:id]).not_to eq(other_user.id)
+        expect(inertia.props[:user][:email]).to eq(user.email)
+        expect(inertia.props[:user][:email]).not_to eq(other_user.email)
+      end
+    end
+
     context 'with billing history' do
       before do
         ensure_plans_exist

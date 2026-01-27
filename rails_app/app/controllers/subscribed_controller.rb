@@ -64,4 +64,21 @@ class SubscribedController < ApplicationController
   def sign_in_jwt
     sign_in(jwt_user, store: false)
   end
+
+  private
+
+  def credit_balance_shared_props
+    return nil unless current_account
+
+    subscription = current_account.active_subscription
+    plan = subscription&.plan
+
+    {
+      plan_credits: current_account.plan_credits,
+      pack_credits: current_account.pack_credits,
+      total_credits: current_account.total_credits,
+      plan_credit_limit: plan&.credits || 0,
+      reset_date: subscription&.current_period_end&.strftime("%b %d, %Y")
+    }
+  end
 end

@@ -5,7 +5,6 @@
 #  id                  :bigint           not null, primary key
 #  account_users_count :integer          default(0)
 #  billing_email       :string
-#  credit_balance      :integer          default(0), not null
 #  domain              :string
 #  extra_billing_info  :text
 #  name                :string           not null
@@ -87,8 +86,12 @@ class Account < ApplicationRecord
     owner_id == user&.id
   end
 
+  def active_subscription
+    subscriptions.active.order(id: :desc).limit(1).first
+  end
+
   def plan
-    subscriptions.active.order(id: :desc).limit(1).first&.plan
+    active_subscription&.plan
   end
 
   def google_connected_account
