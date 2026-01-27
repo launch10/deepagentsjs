@@ -1,31 +1,12 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-
-// Use vi.hoisted so mocks are available when vi.mock factory runs (hoisted to top)
-const { mockClient, mockCreateRailsApiClient } = vi.hoisted(() => {
-  const mockClient = { GET: vi.fn() };
-  const mockCreateRailsApiClient = vi.fn().mockResolvedValue(mockClient);
-  return { mockClient, mockCreateRailsApiClient };
-});
-
-// Mock @rails_api using the same pattern as other tests (googleConnectNode, etc.)
-vi.mock("@rails_api", async () => {
-  const actual = await vi.importActual("@rails_api");
-  return {
-    ...actual,
-    createRailsApiClient: mockCreateRailsApiClient,
-  };
-});
-
+import { describe, it, expect } from "vitest";
 import { canProceedWithRun, checkCredits, CreditCheckError, type CreditCheckResult } from "@core";
 
 /**
  * Credit Check Tests
  *
- * Tests for the pre-run balance check functionality.
- * This fetches the account's credit balance from Rails before graph execution.
- *
- * API: GET /api/v1/credits/check (JWT authenticated, account derived from token)
- * Response: { ok: boolean, balance_millicredits: number, plan_millicredits: number, pack_millicredits: number }
+ * Tests for the pure functions and error types used in credit checking.
+ * The actual checkCredits API call is tested via integration tests
+ * using DatabaseSnapshotter.setCredits + real Rails API.
  */
 describe.sequential("creditCheck", () => {
   describe("canProceedWithRun", () => {
@@ -97,119 +78,9 @@ describe.sequential("creditCheck", () => {
   });
 
   describe("checkCredits", () => {
-    beforeEach(() => {
-      mockClient.GET.mockReset();
-      mockCreateRailsApiClient.mockClear();
-      mockCreateRailsApiClient.mockResolvedValue(mockClient);
-    });
-
-    afterEach(() => {
-      vi.clearAllMocks();
-    });
-
     it("throws CreditCheckError when JWT is missing", async () => {
       await expect(checkCredits("")).rejects.toThrow(CreditCheckError);
       await expect(checkCredits("")).rejects.toThrow("JWT token is required");
-    });
-
-    it("returns CreditCheckResult on successful response", async () => {
-      mockClient.GET.mockResolvedValue({
-        data: {
-          ok: true,
-          balance_millicredits: 5_000_000,
-          plan_millicredits: 4_000_000,
-          pack_millicredits: 1_000_000,
-        },
-        error: undefined,
-      });
-
-      const result = await checkCredits("valid-jwt");
-
-      expect(result).toEqual({
-        ok: true,
-        balance_millicredits: 5_000_000,
-        plan_millicredits: 4_000_000,
-        pack_millicredits: 1_000_000,
-      });
-      expect(mockClient.GET).toHaveBeenCalledWith("/api/v1/credits/check", {
-        params: {
-          header: {
-            Authorization: "Bearer valid-jwt",
-          },
-        },
-      });
-    });
-
-    it("returns ok=false when account has zero credits", async () => {
-      mockClient.GET.mockResolvedValue({
-        data: {
-          ok: false,
-          balance_millicredits: 0,
-          plan_millicredits: 0,
-          pack_millicredits: 0,
-        },
-        error: undefined,
-      });
-
-      const result = await checkCredits("valid-jwt");
-
-      expect(result.ok).toBe(false);
-      expect(result.balance_millicredits).toBe(0);
-    });
-
-    it("throws CreditCheckError on API error", async () => {
-      mockClient.GET.mockResolvedValue({
-        data: undefined,
-        error: { error: "Unauthorized" },
-        response: { status: 401 },
-      });
-
-      await expect(checkCredits("invalid-jwt")).rejects.toThrow(CreditCheckError);
-    });
-
-    it("throws CreditCheckError on network failure", async () => {
-      mockClient.GET.mockRejectedValue(new Error("Network error"));
-
-      await expect(checkCredits("valid-jwt")).rejects.toThrow(CreditCheckError);
-      await expect(checkCredits("valid-jwt")).rejects.toThrow("Credit check failed: Network error");
-    });
-
-    it("calls Rails API with correct options", async () => {
-      mockClient.GET.mockResolvedValue({
-        data: {
-          ok: true,
-          balance_millicredits: 1000,
-          plan_millicredits: 1000,
-          pack_millicredits: 0,
-        },
-        error: undefined,
-      });
-
-      await checkCredits("test-jwt");
-
-      expect(mockCreateRailsApiClient).toHaveBeenCalledWith({
-        jwt: "test-jwt",
-        baseUrl: undefined,
-      });
-    });
-
-    it("passes custom baseUrl when provided", async () => {
-      mockClient.GET.mockResolvedValue({
-        data: {
-          ok: true,
-          balance_millicredits: 1000,
-          plan_millicredits: 1000,
-          pack_millicredits: 0,
-        },
-        error: undefined,
-      });
-
-      await checkCredits("test-jwt", "http://custom-url:3000");
-
-      expect(mockCreateRailsApiClient).toHaveBeenCalledWith({
-        jwt: "test-jwt",
-        baseUrl: "http://custom-url:3000",
-      });
     });
   });
 });

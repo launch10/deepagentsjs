@@ -32,9 +32,6 @@ export {
 // Rails notification
 export { notifyRails } from "./notifyRails";
 
-// Cost calculation (for predictive credit status)
-export { calculateCost, calculateRunCost } from "./costCalculator";
-
 // Credit check (pre-run balance check)
 export {
   checkCredits,

@@ -3,8 +3,11 @@ import { Hono } from "hono";
 import { creditCheckMiddleware, getCreditState, type CreditState } from "@server/middleware";
 import { CreditCheckError } from "@core/billing";
 
-// Mock the checkCredits function
-const mockCheckCredits = vi.fn();
+// vi.mock is hoisted — use vi.hoisted for variables referenced inside mocks
+const { mockCheckCredits, mockEnv } = vi.hoisted(() => ({
+  mockCheckCredits: vi.fn(),
+  mockEnv: { CREDITS_DISABLED: false } as { CREDITS_DISABLED: boolean },
+}));
 
 vi.mock("@core/billing", async () => {
   const actual = await vi.importActual("@core/billing");
@@ -13,6 +16,10 @@ vi.mock("@core/billing", async () => {
     checkCredits: (...args: unknown[]) => mockCheckCredits(...args),
   };
 });
+
+vi.mock("@core/env", () => ({
+  env: mockEnv,
+}));
 
 describe("creditCheckMiddleware", () => {
   let app: Hono;
@@ -297,6 +304,64 @@ describe("creditCheckMiddleware", () => {
         accountId: 100,
         preRunCreditsRemaining: 12345,
       });
+    });
+  });
+
+  describe("CREDITS_DISABLED", () => {
+    afterEach(() => {
+      mockEnv.CREDITS_DISABLED = false;
+    });
+
+    it("skips credit check and allows request when CREDITS_DISABLED is true", async () => {
+      mockEnv.CREDITS_DISABLED = true;
+
+      app.use("*", withAuth(123));
+      app.use("*", creditCheckMiddleware);
+      app.get("/test", (c) => c.json({ success: true }));
+
+      const res = await app.request("/test");
+
+      expect(res.status).toBe(200);
+      expect(mockCheckCredits).not.toHaveBeenCalled();
+    });
+
+    it("sets preRunCreditsRemaining to MAX_SAFE_INTEGER when disabled", async () => {
+      mockEnv.CREDITS_DISABLED = true;
+
+      let capturedState: CreditState | undefined;
+
+      app.use("*", withAuth(456));
+      app.use("*", creditCheckMiddleware);
+      app.get("/test", (c) => {
+        capturedState = getCreditState(c);
+        return c.json({ success: true });
+      });
+
+      await app.request("/test");
+
+      expect(capturedState).toEqual({
+        accountId: 456,
+        preRunCreditsRemaining: Number.MAX_SAFE_INTEGER,
+      });
+    });
+
+    it("still checks credits when CREDITS_DISABLED is false", async () => {
+      mockEnv.CREDITS_DISABLED = false;
+
+      mockCheckCredits.mockResolvedValue({
+        ok: true,
+        balance_millicredits: 5000,
+        plan_millicredits: 5000,
+        pack_millicredits: 0,
+      });
+
+      app.use("*", withAuth(123));
+      app.use("*", creditCheckMiddleware);
+      app.get("/test", (c) => c.json({ success: true }));
+
+      await app.request("/test");
+
+      expect(mockCheckCredits).toHaveBeenCalledWith("test-jwt");
     });
   });
 

@@ -8,7 +8,6 @@ vi.mock("@core/billing", async (importOriginal) => {
   return {
     ...original,
     getUsageContext: vi.fn(),
-    calculateRunCost: vi.fn(),
   };
 });
 
@@ -19,11 +18,12 @@ vi.mock("@core", async (importOriginal) => {
     LLMManager: {
       getModelConfigs: vi.fn().mockResolvedValue({}),
     },
+    calculateRunCost: vi.fn(),
   };
 });
 
-import { getUsageContext, calculateRunCost } from "@core/billing";
-import { LLMManager } from "@core";
+import { getUsageContext } from "@core/billing";
+import { LLMManager, calculateRunCost } from "@core";
 
 /**
  * Calculate Credit Status Node Tests

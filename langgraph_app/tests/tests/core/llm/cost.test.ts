@@ -1,5 +1,13 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { calculateCost, calculateRunCost, type UsageRecord, type ModelConfig } from "@core";
+import { describe, it, expect } from "vitest";
+import {
+  calculateCost,
+  calculateRunCost,
+  hasValidCostConfig,
+  findModelConfig,
+  UnknownModelCostError,
+  type UsageRecord,
+  type ModelConfig,
+} from "@core";
 
 /**
  * Cost Calculator Tests
@@ -18,7 +26,7 @@ import { calculateCost, calculateRunCost, type UsageRecord, type ModelConfig } f
  *   - Cost: $1.00 = 100 cents = 100 credits = 100,000 millicredits
  *   - Formula: 1,000,000 × 1 / 10 = 100,000 millicredits ✓
  */
-describe.sequential("costCalculator", () => {
+describe.sequential("cost", () => {
   // Test model configs matching Rails test data (snake_case)
   const haikuConfig: ModelConfig = {
     enabled: true,
@@ -102,6 +110,56 @@ describe.sequential("costCalculator", () => {
       ...overrides,
     };
   }
+
+  // ============ hasValidCostConfig ============
+
+  describe("hasValidCostConfig", () => {
+    it("returns true when cost_in > 0 and cost_out > 0", () => {
+      expect(hasValidCostConfig(haikuConfig)).toBe(true);
+    });
+
+    it("returns true when only cost_in > 0 (cost_out null)", () => {
+      expect(hasValidCostConfig({
+        ...haikuConfig,
+        cost_in: 1.0,
+        cost_out: null,
+      })).toBe(true);
+    });
+
+    it("returns true when only cost_out > 0 (cost_in null)", () => {
+      expect(hasValidCostConfig({
+        ...haikuConfig,
+        cost_in: null,
+        cost_out: 5.0,
+      })).toBe(true);
+    });
+
+    it("returns false when both cost_in and cost_out are null", () => {
+      expect(hasValidCostConfig({
+        ...haikuConfig,
+        cost_in: null,
+        cost_out: null,
+      })).toBe(false);
+    });
+
+    it("returns false when both are 0", () => {
+      expect(hasValidCostConfig({
+        ...haikuConfig,
+        cost_in: 0,
+        cost_out: 0,
+      })).toBe(false);
+    });
+
+    it("returns false when cost_in is 0 and cost_out is null", () => {
+      expect(hasValidCostConfig({
+        ...haikuConfig,
+        cost_in: 0,
+        cost_out: null,
+      })).toBe(false);
+    });
+  });
+
+  // ============ calculateCost ============
 
   describe("calculateCost (single record)", () => {
     it("calculates correct cost for input tokens only", () => {
@@ -199,7 +257,7 @@ describe.sequential("costCalculator", () => {
       expect(cost).toBe(500);
     });
 
-    it("returns 0 for unknown model (graceful degradation)", () => {
+    it("throws UnknownModelCostError for unknown model", () => {
       const configs = createConfigMap(haikuConfig);
 
       const record = createUsageRecord({
@@ -207,14 +265,10 @@ describe.sequential("costCalculator", () => {
         inputTokens: 1000,
       });
 
-      // Should return 0 and log warning instead of throwing
-      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const cost = calculateCost(record, configs);
-      expect(cost).toBe(0);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Unknown model: completely-unknown-model")
+      expect(() => calculateCost(record, configs)).toThrow(UnknownModelCostError);
+      expect(() => calculateCost(record, configs)).toThrow(
+        "Unknown model: completely-unknown-model"
       );
-      consoleSpy.mockRestore();
     });
 
     it("returns 0 for all zero token counts", () => {
@@ -290,6 +344,8 @@ describe.sequential("costCalculator", () => {
     });
   });
 
+  // ============ formula verification ============
+
   describe("formula verification", () => {
     // Verify: millicredits = tokens × price_per_million / 10
     // where $1.00 = 100 credits = 100,000 millicredits
@@ -324,6 +380,8 @@ describe.sequential("costCalculator", () => {
     });
   });
 
+  // ============ calculateRunCost ============
+
   describe("calculateRunCost (multiple records)", () => {
     it("sums cost across multiple usage records", () => {
       const configs = createConfigMap(haikuConfig, sonnetConfig);
@@ -355,10 +413,9 @@ describe.sequential("costCalculator", () => {
       expect(cost).toBe(0);
     });
 
-    it("handles mixed known and unknown models gracefully", () => {
+    it("throws UnknownModelCostError when encountering unknown model", () => {
       const configs = createConfigMap(haikuConfig);
 
-      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       const records: UsageRecord[] = [
         createUsageRecord({
           model: "claude-haiku-4-5-20251001",
@@ -366,22 +423,17 @@ describe.sequential("costCalculator", () => {
         }),
         createUsageRecord({
           model: "unknown-model",
-          inputTokens: 5000, // Should be 0 cost
+          inputTokens: 5000,
         }),
       ];
 
-      const cost = calculateRunCost(records, configs);
-      // Only Haiku: 1000 × 1 / 10 = 100 millicredits
-      // Unknown: 0 (graceful degradation)
-      expect(cost).toBe(100);
-      consoleSpy.mockRestore();
+      expect(() => calculateRunCost(records, configs)).toThrow(UnknownModelCostError);
     });
   });
 
-  describe("model normalization", () => {
-    // Models come with version suffixes that need to be normalized
-    // e.g., "claude-haiku-4-5-20251001" -> matches config for "claude-haiku-4-5-20251001"
+  // ============ model normalization ============
 
+  describe("model normalization", () => {
     it("matches model with exact model card", () => {
       const configs = createConfigMap(haikuConfig);
 
@@ -395,10 +447,8 @@ describe.sequential("costCalculator", () => {
     });
 
     it("matches model with version suffix to base model", () => {
-      // Config has modelCard: "claude-sonnet-4-5-20250220"
       const configs = createConfigMap(sonnetConfig);
 
-      // Usage might come with a slightly different version
       const record = createUsageRecord({
         model: "claude-sonnet-4-5-20250220",
         inputTokens: 1000,
@@ -409,11 +459,44 @@ describe.sequential("costCalculator", () => {
     });
   });
 
+  // ============ findModelConfig ============
+
+  describe("findModelConfig", () => {
+    it("finds config by exact key match", () => {
+      const configs = createConfigMap(haikuConfig);
+      const result = findModelConfig("claude-haiku-4-5-20251001", configs);
+      expect(result).toBe(haikuConfig);
+    });
+
+    it("finds config by model_card field", () => {
+      const configs = { haiku: haikuConfig };
+      const result = findModelConfig("claude-haiku-4-5-20251001", configs);
+      expect(result).toBe(haikuConfig);
+    });
+
+    it("finds config by prefix matching", () => {
+      const baseConfig: ModelConfig = {
+        ...haikuConfig,
+        model_card: "claude-haiku-4-5",
+      };
+      const configs = { haiku: baseConfig };
+      const result = findModelConfig("claude-haiku-4-5-20251001", configs);
+      expect(result).toBe(baseConfig);
+    });
+
+    it("returns undefined for unknown model", () => {
+      const configs = createConfigMap(haikuConfig);
+      const result = findModelConfig("completely-unknown", configs);
+      expect(result).toBeUndefined();
+    });
+  });
+
+  // ============ integration with UsageContext ============
+
   describe("integration with UsageContext", () => {
     it("can calculate cost from UsageContext records", () => {
       const configs = createConfigMap(haikuConfig);
 
-      // Simulating what would come from UsageContext.records
       const contextRecords: UsageRecord[] = [
         {
           runId: "run_abc",

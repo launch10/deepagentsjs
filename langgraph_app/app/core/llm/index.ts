@@ -5,6 +5,13 @@ export {
   unavailableModelFallbackMiddleware,
   isAvailabilityError,
 } from "./unavailableModelFallbackMiddleware";
+export {
+  calculateCost,
+  calculateRunCost,
+  hasValidCostConfig,
+  findModelConfig,
+  UnknownModelCostError,
+} from "./cost";
 
 export type {
   LLMSkill,

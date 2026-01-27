@@ -3471,6 +3471,108 @@ paths:
                   - name
               required:
               - snapshot
+  "/test/database/set_credits":
+    post:
+      summary: Sets credits for a user account
+      tags:
+      - Test Database
+      description: Sets plan and pack credits for the account owned by the given
+        user email. Uses AllocationService for proper credit adjustment. Only available
+        in development/test environments.
+      parameters: []
+      responses:
+        '200':
+          description: credits set successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+                    example: Credits updated
+                  account:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      plan_millicredits:
+                        type: integer
+                      pack_millicredits:
+                        type: integer
+                      total_millicredits:
+                        type: integer
+                    required:
+                    - id
+                    - plan_millicredits
+                    - pack_millicredits
+                    - total_millicredits
+                required:
+                - status
+                - message
+                - account
+        '404':
+          description: user or account not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - status
+                - errors
+        '422':
+          description: failed to set credits
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - status
+                - errors
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                credits:
+                  type: object
+                  properties:
+                    email:
+                      type: string
+                      description: Email of the user whose account credits should
+                        be set
+                    plan_millicredits:
+                      type: integer
+                      description: Plan credits in millicredits
+                      default: 0
+                    pack_millicredits:
+                      type: integer
+                      description: Pack credits in millicredits
+                      default: 0
+                  required:
+                  - email
+              required:
+              - credits
   "/api/v1/themes":
     get:
       summary: Lists official themes + themes in account

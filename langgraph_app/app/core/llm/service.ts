@@ -5,7 +5,9 @@ import { ChatGroq } from "@langchain/groq";
 import { ChatOllama } from "@langchain/ollama";
 import { env } from "@app";
 import { cache } from "@core";
+import { rollbar } from "../errors";
 import { createRailsApiClient } from "@rails_api";
+import { hasValidCostConfig } from "./cost";
 import { LLMTestResponder } from "./test";
 import type {
   LLMProvider,
@@ -179,6 +181,18 @@ class LLMService {
       if (usagePercent > (modelConfig.max_usage_percent ?? 100)) continue;
       // Filter by maxTier: only allow models with tier >= maxTier (higher tier = cheaper)
       if (maxTier !== undefined && modelConfig.price_tier < maxTier) continue;
+
+      // Skip models without valid cost configuration to prevent revenue leakage
+      if (!hasValidCostConfig(modelConfig)) {
+        if (models.length === 0) {
+          // First-choice model is uncosted — alert ops
+          rollbar.error(
+            new Error(`Model ${key} (${modelConfig.model_card}) has no cost configuration — skipping`),
+            { modelKey: key, modelCard: modelConfig.model_card ?? "unknown", skill, speed, cost: cost as string }
+          );
+        }
+        continue;
+      }
 
       const model = this.createModel(key, modelConfig);
       if (model) models.push({

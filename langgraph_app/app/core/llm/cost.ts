@@ -1,5 +1,5 @@
 /**
- * Cost Calculator for Langgraph
+ * Cost Calculator for LLM Usage
  *
  * Calculates the cost in millicredits for usage records.
  * This mirrors the Rails Credits::CostCalculator for predictive cost calculation.
@@ -19,15 +19,42 @@
  *   - Formula: 1,000,000 × 1 / 10 = 100,000 millicredits ✓
  */
 
-import type { UsageRecord } from "./types";
-import type { ModelConfig } from "../llm/types";
+import type { UsageRecord } from "../billing/types";
+import type { ModelConfig } from "./types";
+
+/**
+ * Error thrown when cost is requested for a model with no cost configuration.
+ * With the LLM selection layer guaranteeing costed models, an unknown model
+ * at calculation time is a bug.
+ */
+export class UnknownModelCostError extends Error {
+  public readonly modelName: string;
+
+  constructor(modelName: string) {
+    super(`Unknown model: ${modelName}. No cost configuration found.`);
+    this.name = "UnknownModelCostError";
+    this.modelName = modelName;
+  }
+}
+
+/**
+ * Check whether a model config has valid cost configuration.
+ * A model is considered costed if at least one of cost_in or cost_out is > 0.
+ * Every LLM call produces input or output tokens, so if neither has a rate, cost is always 0.
+ */
+export function hasValidCostConfig(config: ModelConfig): boolean {
+  const hasCostIn = config.cost_in !== null && config.cost_in > 0;
+  const hasCostOut = config.cost_out !== null && config.cost_out > 0;
+  return hasCostIn || hasCostOut;
+}
 
 /**
  * Calculate the cost in millicredits for a single usage record.
  *
  * @param record - The usage record with token counts
  * @param configs - Map of model card name to model config
- * @returns Cost in millicredits (rounded to nearest integer), or 0 if model unknown
+ * @returns Cost in millicredits (rounded to nearest integer)
+ * @throws UnknownModelCostError if model is not found in configs
  */
 export function calculateCost(
   record: UsageRecord,
@@ -36,11 +63,7 @@ export function calculateCost(
   const config = findModelConfig(record.model, configs);
 
   if (!config) {
-    // Graceful degradation: log warning and return 0 for unknown models
-    console.warn(
-      `[costCalculator] Unknown model: ${record.model}. Returning 0 cost.`
-    );
-    return 0;
+    throw new UnknownModelCostError(record.model);
   }
 
   let cost = 0;
@@ -71,6 +94,7 @@ export function calculateCost(
  * @param records - Array of usage records
  * @param configs - Map of model card name to model config
  * @returns Total cost in millicredits
+ * @throws UnknownModelCostError if any model is not found in configs
  */
 export function calculateRunCost(
   records: UsageRecord[],
@@ -115,7 +139,7 @@ function tokenCost(tokens: number, rate: number | null): number {
  * @param configs - Map of model card name to model config
  * @returns The model config or undefined if not found
  */
-function findModelConfig(
+export function findModelConfig(
   modelName: string,
   configs: Record<string, ModelConfig>
 ): ModelConfig | undefined {

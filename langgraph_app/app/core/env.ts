@@ -36,6 +36,10 @@ export const envSchema = z.object({
     .default("false"),
   NODE_ENV: z.enum(Environments).default("development"),
   ALLOWED_ORIGINS: z.string().optional(),
+  CREDITS_DISABLED: z
+    .string()
+    .transform((val) => val === "true" || val === "1")
+    .default("false"),
 });
 
 export const testEnvSchema = envSchema.extend({
@@ -54,6 +58,10 @@ const environmentConfigSchema = z.discriminatedUnion("NODE_ENV", [
   }),
   envSchema.extend({
     NODE_ENV: z.literal("production"),
+    // CREDITS_DISABLED must never be true in production
+    CREDITS_DISABLED: z
+      .any()
+      .transform(() => false),
   }),
 ]);
 

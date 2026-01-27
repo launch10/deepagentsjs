@@ -13,6 +13,7 @@
 import type { Context, Next } from "hono";
 import type { AuthContext } from "./auth";
 import { checkCredits, CreditCheckError, type CreditCheckResult } from "@core/billing";
+import { env } from "@core/env";
 
 /**
  * Credit state set by the middleware, available via c.get("creditState").
@@ -38,6 +39,15 @@ export const creditCheckMiddleware = async (c: Context, next: Next) => {
   if (!auth) {
     console.error("[creditCheckMiddleware] No auth context - must run after authMiddleware");
     return c.json({ error: "Internal server error" }, 500);
+  }
+
+  // Dev kill switch: skip all credit checks when CREDITS_DISABLED is set
+  if (env.CREDITS_DISABLED) {
+    c.set("creditState", {
+      accountId: auth.accountId,
+      preRunCreditsRemaining: Number.MAX_SAFE_INTEGER,
+    } satisfies CreditState);
+    return next();
   }
 
   try {

@@ -3103,6 +3103,101 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/test/database/set_credits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sets credits for a user account
+         * @description Sets plan and pack credits for the account owned by the given user email. Uses AllocationService for proper credit adjustment. Only available in development/test environments.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        credits: {
+                            /** @description Email of the user whose account credits should be set */
+                            email: string;
+                            /**
+                             * @description Plan credits in millicredits
+                             * @default 0
+                             */
+                            plan_millicredits?: number;
+                            /**
+                             * @description Pack credits in millicredits
+                             * @default 0
+                             */
+                            pack_millicredits?: number;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description credits set successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example ok */
+                            status: string;
+                            /** @example Credits updated */
+                            message: string;
+                            account: {
+                                id: number;
+                                plan_millicredits: number;
+                                pack_millicredits: number;
+                                total_millicredits: number;
+                            };
+                        };
+                    };
+                };
+                /** @description user or account not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example error */
+                            status: string;
+                            errors: string[];
+                        };
+                    };
+                };
+                /** @description failed to set credits */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example error */
+                            status: string;
+                            errors: string[];
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/themes": {
         parameters: {
             query?: never;

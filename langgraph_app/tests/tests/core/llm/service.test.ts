@@ -52,12 +52,14 @@ async function createModelConfig(data: {
   const timestamp = now();
   // If priceTier is specified, use the corresponding costs (unless costIn/costOut are explicitly provided)
   const tierCosts = data.priceTier ? TIER_COSTS[data.priceTier] : undefined;
+  // Default to tier 3 costs if no costs specified — models must have cost config
+  const defaultCosts = TIER_COSTS[3];
   await db.insert(modelConfigs).values({
     modelKey: data.modelKey,
     enabled: data.enabled ?? true,
     maxUsagePercent: data.maxUsagePercent ?? 100,
-    costIn: data.costIn ?? tierCosts?.costIn ?? null,
-    costOut: data.costOut ?? tierCosts?.costOut ?? null,
+    costIn: data.costIn !== undefined ? data.costIn : (tierCosts?.costIn ?? defaultCosts.costIn),
+    costOut: data.costOut !== undefined ? data.costOut : (tierCosts?.costOut ?? defaultCosts.costOut),
     modelCard: data.modelCard ?? null,
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -698,6 +700,116 @@ describe.sequential("LLMService Integration Tests", () => {
       // Should skip unknown model and return haiku
       const model = await LLMManager.get("coding", "slow", "paid", 0);
       expect(getModelCard(model)).toBe("claude-haiku-4-5");
+    });
+  });
+
+  describe("Cost Config Validation", () => {
+    it("skips model with no cost config and falls back to next", async () => {
+      // First model has no cost config (both null)
+      await createModelConfig({
+        modelKey: "sonnet",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: null,
+        costOut: null,
+        modelCard: "claude-sonnet-4-5",
+      });
+      // Second model has valid cost config
+      await createModelConfig({
+        modelKey: "haiku",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: "1.0",
+        costOut: "5.0",
+        modelCard: "claude-haiku-4-5",
+        priceTier: 5,
+      });
+      await createModelPreference({
+        costTier: "paid",
+        speedTier: "slow",
+        skill: "coding",
+        modelKeys: ["sonnet", "haiku"],
+      });
+
+      await LLMManager.clearCache();
+
+      const model = await LLMManager.get("coding", "slow", "paid", 0);
+      expect(getModelCard(model)).toBe("claude-haiku-4-5");
+    });
+
+    it("accepts model with only cost_in configured", async () => {
+      await createModelConfig({
+        modelKey: "haiku",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: "1.0",
+        costOut: null,
+        modelCard: "claude-haiku-4-5",
+      });
+      await createModelPreference({
+        costTier: "paid",
+        speedTier: "slow",
+        skill: "coding",
+        modelKeys: ["haiku"],
+      });
+
+      await LLMManager.clearCache();
+
+      const model = await LLMManager.get("coding", "slow", "paid", 0);
+      expect(getModelCard(model)).toBe("claude-haiku-4-5");
+    });
+
+    it("accepts model with only cost_out configured", async () => {
+      await createModelConfig({
+        modelKey: "haiku",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: null,
+        costOut: "5.0",
+        modelCard: "claude-haiku-4-5",
+      });
+      await createModelPreference({
+        costTier: "paid",
+        speedTier: "slow",
+        skill: "coding",
+        modelKeys: ["haiku"],
+      });
+
+      await LLMManager.clearCache();
+
+      const model = await LLMManager.get("coding", "slow", "paid", 0);
+      expect(getModelCard(model)).toBe("claude-haiku-4-5");
+    });
+
+    it("throws when all models in preference chain have no cost config", async () => {
+      await createModelConfig({
+        modelKey: "sonnet",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: null,
+        costOut: null,
+        modelCard: "claude-sonnet-4-5",
+      });
+      await createModelConfig({
+        modelKey: "haiku",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: null,
+        costOut: null,
+        modelCard: "claude-haiku-4-5",
+      });
+      await createModelPreference({
+        costTier: "paid",
+        speedTier: "slow",
+        skill: "coding",
+        modelKeys: ["sonnet", "haiku"],
+      });
+
+      await LLMManager.clearCache();
+
+      await expect(LLMManager.get("coding", "slow", "paid", 0)).rejects.toThrow(
+        "No available model"
+      );
     });
   });
 });

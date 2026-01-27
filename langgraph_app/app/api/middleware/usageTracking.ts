@@ -23,7 +23,7 @@ import {
   deriveCreditStatus,
   type UsageContext,
   type UsageSummary,
-} from "@core/billing";
+} from "@core";
 import { db, eq, chats as chatsTable } from "@db";
 
 /**
