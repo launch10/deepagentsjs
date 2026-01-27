@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useEffect, useRef, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useEffect, type ReactNode } from "react";
 import type { UIMessage } from "ai";
 import type { ChatSnapshot, ChatActions, LanggraphChat } from "langgraph-ai-sdk-react";
 import { useChatSelector, ChatSelectors } from "langgraph-ai-sdk-react";
@@ -157,75 +157,72 @@ export interface ChatProviderProps<TState extends Record<string, unknown>> {
 }
 
 /**
- * Internal hook that watches for out-of-credits state.
- * Handles both:
- * - 402 errors from middleware (pre-run rejection)
- * - creditStatus in stream (ran out mid-run)
+ * Detects out-of-credits state from chat errors and stream data.
+ * Updates the credit store which triggers the OutOfCreditsModal.
  *
- * This is called automatically by ChatProvider, so pages don't need
- * to manually wire up credit detection.
+ * Two detection paths:
+ * 1. 402 error from middleware (blocked before run starts)
+ * 2. creditStatus in stream (ran out during the run)
+ *
+ * Called automatically by ChatProvider.
  */
-function useCreditIntegration<TState extends Record<string, unknown>>(
+function useOutOfCreditsDetection<TState extends Record<string, unknown>>(
   chat: LanggraphChat<UIMessage, TState>
 ) {
-  const updateFromCreditStatus = useCreditStore((s) => s.updateFromCreditStatus);
-  const updateFromBalanceCheck = useCreditStore((s) => s.updateFromBalanceCheck);
-  const showModal = useCreditStore((s) => s.showModal);
-
-  // Track last processed to avoid duplicate updates
-  const lastProcessedRef = useRef<string | null>(null);
-
-  // Watch for 402 errors (pre-run rejection)
+  // === Path 1: 402 error from middleware ===
   const error = useChatSelector(chat, ChatSelectors.error);
 
   useEffect(() => {
     if (!error) return;
     const message = error.message || "";
 
-    if (message.includes("CREDITS_EXHAUSTED") || message.includes("Insufficient credits")) {
-      try {
-        const parsed = JSON.parse(message);
-        if (parsed.code === "CREDITS_EXHAUSTED") {
-          updateFromBalanceCheck({
-            balanceMillicredits: parsed.balance ?? 0,
-            planMillicredits: parsed.planCredits ?? 0,
-            packMillicredits: parsed.packCredits ?? 0,
-            isExhausted: true,
-          });
-          showModal();
-        }
-      } catch {
-        // If we can't parse, just mark as exhausted and show modal
-        updateFromBalanceCheck({
-          balanceMillicredits: 0,
-          planMillicredits: 0,
-          packMillicredits: 0,
+    if (!message.includes("CREDITS_EXHAUSTED") && !message.includes("Insufficient credits")) {
+      return;
+    }
+
+    const store = useCreditStore.getState();
+    try {
+      const parsed = JSON.parse(message);
+      if (parsed.code === "CREDITS_EXHAUSTED") {
+        store.updateFromBalanceCheck({
+          balanceMillicredits: parsed.balance ?? 0,
+          planMillicredits: parsed.planCredits ?? 0,
+          packMillicredits: parsed.packCredits ?? 0,
           isExhausted: true,
         });
-        showModal();
+        store.showModal();
       }
+    } catch {
+      store.updateFromBalanceCheck({
+        balanceMillicredits: 0,
+        planMillicredits: 0,
+        packMillicredits: 0,
+        isExhausted: true,
+      });
+      store.showModal();
     }
-  }, [error, updateFromBalanceCheck, showModal]);
+  }, [error]);
 
-  // Watch for creditStatus in stream (ran out mid-run)
-  const creditStatus = useChatSelector(
+  // === Path 2: creditStatus from stream ===
+  // Select primitives to avoid reacting to object reference changes
+  const justExhausted = useChatSelector(
     chat,
-    (s) => (s.state as { creditStatus?: CreditStatus })?.creditStatus
+    (s) => (s.state as { creditStatus?: CreditStatus })?.creditStatus?.justExhausted
+  );
+  const estimatedRemaining = useChatSelector(
+    chat,
+    (s) => (s.state as { creditStatus?: CreditStatus })?.creditStatus?.estimatedRemainingMillicredits
   );
 
   useEffect(() => {
-    if (!creditStatus) return;
+    // Only process if creditStatus exists (estimatedRemaining is defined)
+    if (estimatedRemaining === undefined) return;
 
-    // Create a fingerprint to detect changes and avoid duplicate processing
-    const fingerprint = `${creditStatus.preRunMillicredits}-${creditStatus.estimatedCostMillicredits}`;
-    if (lastProcessedRef.current === fingerprint) return;
-    lastProcessedRef.current = fingerprint;
-
-    updateFromCreditStatus({
-      estimatedCreditsRemaining: creditStatus.estimatedRemainingMillicredits,
-      justExhausted: creditStatus.justExhausted,
+    useCreditStore.getState().updateFromCreditStatus({
+      estimatedCreditsRemaining: estimatedRemaining,
+      justExhausted: justExhausted ?? false,
     });
-  }, [creditStatus, updateFromCreditStatus]);
+  }, [justExhausted, estimatedRemaining]);
 }
 
 /**
@@ -240,8 +237,8 @@ export function ChatProvider<TState extends Record<string, unknown>>({
   children,
   onSubmit,
 }: ChatProviderProps<TState>) {
-  // Automatic credit integration - watches for 402 errors and creditStatus in stream
-  useCreditIntegration(chat);
+  // Detect out-of-credits from errors and stream data
+  useOutOfCreditsDetection(chat);
 
   // Create a stable context value - the chat instance is stable,
   // and onSubmit should be memoized by the caller
