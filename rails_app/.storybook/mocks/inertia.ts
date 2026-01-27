@@ -30,10 +30,8 @@ export const router = {
   on: () => () => {},
 };
 
-export const Link = ({ children, href, className, ...props }: any) => {
-  const { createElement } = require("react");
-  return createElement("a", { href, className, ...props }, children);
-};
+export const Link = ({ children, href, className, ...props }: any) =>
+  createElement("a", { href, className, ...props }, children);
 export const Head = ({ children }: any) => null;
 export const useForm = () => ({
   data: {},

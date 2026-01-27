@@ -131,16 +131,10 @@ export const useCreditStore = create<CreditStore>()(
           const { estimatedRemainingMillicredits, justExhausted } = status;
 
           const credits = millicreditsToCredits(estimatedRemainingMillicredits);
-          console.log("[creditStore] updateFromCreditStatus:", {
-            estimatedRemainingMillicredits,
-            justExhausted,
-            credits,
-          });
 
           if (justExhausted) {
             // Force-show exhausted modal (overrides any previous dismiss)
             // and close the low credit modal since exhausted takes priority
-            console.log("[creditStore] justExhausted=true → force-showing exhausted modal");
             set({
               balance: credits,
               isOutOfCredits: true,
@@ -156,7 +150,6 @@ export const useCreditStore = create<CreditStore>()(
         },
 
         updateFromBalanceCheck: (balance) => {
-          console.log("[creditStore] updateFromBalanceCheck:", balance);
           set({
             balance: millicreditsToCredits(balance.balanceMillicredits),
             planCredits: millicreditsToCredits(balance.planMillicredits),
@@ -236,7 +229,6 @@ export const useCreditStore = create<CreditStore>()(
           const canShow =
             !modalDismissedAt || now - modalDismissedAt > MODAL_SUPPRESS_DURATION_MS;
 
-          console.log("[creditStore] showModal:", { canShow, modalDismissedAt, now });
           if (canShow) {
             set({ showOutOfCreditsModal: true });
           }

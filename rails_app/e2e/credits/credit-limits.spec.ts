@@ -158,6 +158,24 @@ test.describe("Credit Limits", () => {
       const userMessageCount = await brainstormPage.getUserMessageCount();
       // Should still be 1 (only the original message)
       expect(userMessageCount).toBe(1);
+
+      // Reload the page — credit gate should persist via inertia_share hydration
+      await page.reload();
+      await page.waitForLoadState("domcontentloaded");
+
+      // After reload, credit gate should still be visible
+      await expect(page.getByTestId("credit-gate")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText("Purchase credits to use AI")).toBeVisible();
+
+      // Send button still disabled with credits reason
+      await expect(brainstormPage.sendButton).toBeDisabled();
+      await expect(brainstormPage.sendButton).toHaveAttribute(
+        "data-disabled-reason",
+        "credits"
+      );
+
+      // Textarea still disabled
+      await expect(brainstormPage.chatInput).toBeDisabled();
     });
   });
 

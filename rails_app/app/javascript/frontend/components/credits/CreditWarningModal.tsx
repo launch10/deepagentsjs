@@ -1,5 +1,5 @@
 import { Link } from "@inertiajs/react";
-import { AlertTriangle, X } from "lucide-react";
+import { X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -62,6 +62,14 @@ export function CreditWarningModal() {
     ? `Resets on ${new Date(periodEndsAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
     : null;
 
+  // Variant-specific colors
+  const circleBg = variant === "exhausted" ? "bg-[#fee9e4]" : "bg-[#faecdb]";
+  const iconFill = variant === "exhausted" ? "#8B3523" : "#BF873F";
+  const barGradient =
+    variant === "exhausted"
+      ? "bg-gradient-to-r from-[#ea9e86] to-[#ba543e]"
+      : "bg-gradient-to-r from-[#f2d0a5] to-[#e5a24c]";
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-[600px] p-0 gap-0 [&>button]:hidden" data-testid="credit-modal">
@@ -87,8 +95,10 @@ export function CreditWarningModal() {
 
           {/* Icon */}
           <div className="flex justify-center my-6">
-            <div className="h-[60px] w-[60px] rounded-full bg-[#fee9e4] flex items-center justify-center">
-              <AlertTriangle className="h-7 w-7 text-[#8b3523]" />
+            <div className={`h-[60px] w-[60px] rounded-full ${circleBg} flex items-center justify-center`}>
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path fillRule="evenodd" clipRule="evenodd" d="M10.9677 3.50488C12.3146 1.17025 15.6841 1.17025 17.031 3.50488L25.611 18.377C26.9572 20.7103 25.2732 23.626 22.5794 23.626H5.41928C2.72548 23.626 1.04148 20.7103 2.38763 18.377L10.9677 3.50488ZM13.9996 9.62592C14.4828 9.62592 14.8746 10.0177 14.8746 10.5009V14.8759C14.8746 15.3592 14.4828 15.7509 13.9996 15.7509C13.5163 15.7509 13.1246 15.3592 13.1246 14.8759V10.5009C13.1246 10.0177 13.5163 9.62592 13.9996 9.62592ZM13.9996 19.2509C14.4828 19.2509 14.8746 18.8592 14.8746 18.3759C14.8746 17.8927 14.4828 17.5009 13.9996 17.5009C13.5163 17.5009 13.1246 17.8927 13.1246 18.3759C13.1246 18.8592 13.5163 19.2509 13.9996 19.2509Z" fill={iconFill}/>
+              </svg>
             </div>
           </div>
 
@@ -102,7 +112,7 @@ export function CreditWarningModal() {
             </div>
             <div className="h-[6px] w-full rounded-full bg-[#ededec] overflow-hidden" data-testid="credit-modal-progress">
               <div
-                className="h-full rounded-full transition-all bg-gradient-to-r from-[#ea9e86] to-[#ba543e]"
+                className={`h-full rounded-full transition-all ${barGradient}`}
                 style={{ width: `${Math.min(progressPercent, 100)}%` }}
               />
             </div>
