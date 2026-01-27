@@ -11,15 +11,15 @@ import { Button } from "@components/ui/button";
 import { useCreditStore, formatCredits } from "~/stores/creditStore";
 
 /**
- * Modal shown when a user's credits are exhausted.
+ * Modal shown when a user runs out of credits.
  * Provides options to upgrade their plan or purchase credit packs.
  *
  * This modal is controlled by the creditStore:
- * - Shows when `showExhaustionModal` is true
+ * - Shows when `showOutOfCreditsModal` is true
  * - Dismisses and records timestamp to prevent re-showing for 1 hour
  */
-export function ExhaustionModal() {
-  const showModal = useCreditStore((s) => s.showExhaustionModal);
+export function OutOfCreditsModal() {
+  const showModal = useCreditStore((s) => s.showOutOfCreditsModal);
   const balance = useCreditStore((s) => s.balanceMillicredits);
   const dismissModal = useCreditStore((s) => s.dismissModal);
 
@@ -30,11 +30,9 @@ export function ExhaustionModal() {
           <DialogTitle className="text-xl">You've run out of credits</DialogTitle>
           <DialogDescription className="text-base pt-2">
             Your current balance is{" "}
-            <span className="font-medium text-foreground">
-              {formatCredits(balance)} credits
-            </span>
-            . To continue using AI features, you can upgrade your plan for more monthly
-            credits or purchase a credit pack for immediate use.
+            <span className="font-medium text-foreground">{formatCredits(balance)} credits</span>.
+            To continue using AI features, you can upgrade your plan for more monthly credits or
+            purchase a credit pack for immediate use.
           </DialogDescription>
         </DialogHeader>
 

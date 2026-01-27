@@ -5,7 +5,7 @@ import { usePage } from "@inertiajs/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WorkflowProvider } from "@context/WorkflowProvider";
 import { Toaster } from "@components/ui/sonner";
-import { ExhaustionModal } from "@components/credits/ExhaustionModal";
+import { OutOfCreditsModal } from "@components/credits";
 import { useProjectStore } from "~/stores/projectStore";
 import { useSessionStore } from "~/stores/sessionStore";
 
@@ -81,7 +81,7 @@ export const SiteLayout = ({ children }: { children: React.ReactNode }): React.R
           </div>
         </div>
         <Toaster />
-        <ExhaustionModal />
+        <OutOfCreditsModal />
       </WorkflowProvider>
     </QueryClientProvider>
   );

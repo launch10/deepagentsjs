@@ -90,10 +90,57 @@ class Test::DatabaseController < Test::TestController
     end
   end
 
+  # Sets credits for an account (for e2e testing credit exhaustion)
+  # Expects: { credits: { email: string, plan_millicredits: number, pack_millicredits: number } }
+  def set_credits
+    params_obj = credits_params
+    user = User.find_by(email: params_obj[:email])
+
+    unless user
+      render json: {
+        status: "error",
+        errors: ["User not found: #{params_obj[:email]}"]
+      }, status: :not_found and return
+    end
+
+    account = user.owned_account
+    unless account
+      render json: {
+        status: "error",
+        errors: ["Account not found for user: #{params_obj[:email]}"]
+      }, status: :not_found and return
+    end
+
+    account.update!(
+      plan_millicredits: params_obj[:plan_millicredits] || 0,
+      pack_millicredits: params_obj[:pack_millicredits] || 0
+    )
+
+    render json: {
+      status: "ok",
+      message: "Credits updated",
+      account: {
+        id: account.id,
+        plan_millicredits: account.plan_millicredits,
+        pack_millicredits: account.pack_millicredits,
+        total_millicredits: account.total_millicredits
+      }
+    }, status: :ok
+  rescue => e
+    render json: {
+      status: "error",
+      errors: ["Failed to set credits: #{e.message}"]
+    }, status: :unprocessable_content
+  end
+
   private
 
   def snapshot_params
     params.require(:snapshot).permit(:name, :truncate_first)
+  end
+
+  def credits_params
+    params.require(:credits).permit(:email, :plan_millicredits, :pack_millicredits)
   end
 
   def ensure_snapshots_directory_exists

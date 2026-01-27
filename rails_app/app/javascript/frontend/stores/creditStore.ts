@@ -1,13 +1,13 @@
 /**
  * Credit Store
  *
- * Global state for credit balance and exhaustion status.
+ * Global state for credit balance and out-of-credits status.
  * Updated from Langgraph stream responses via CreditStatus events.
  *
  * Key behaviors:
- * - `justExhausted` triggers the modal to show
+ * - `justRanOut` triggers the modal to show
  * - Modal is dismissable but won't re-show for 1 hour
- * - `isExhausted` determines if chat inputs should be locked
+ * - `isOutOfCredits` determines if chat inputs should be locked
  */
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
@@ -18,36 +18,36 @@ export interface CreditState {
   planMillicredits: number | null;
   packMillicredits: number | null;
 
-  // Exhaustion state
-  isExhausted: boolean;
+  // Out of credits state
+  isOutOfCredits: boolean;
 
   // Modal control
-  showExhaustionModal: boolean;
+  showOutOfCreditsModal: boolean;
   modalDismissedAt: number | null;
 }
 
 export interface CreditActions {
   /**
-   * Update credit balance from API or stream response.
-   * If justExhausted is true, triggers the modal to show (respecting dismiss timeout).
+   * Update credit balance from stream response.
+   * If justRanOut is true, triggers the modal to show (respecting dismiss timeout).
    */
   updateFromCreditStatus: (status: {
     estimatedCreditsRemaining: number;
-    justExhausted: boolean;
+    justExhausted: boolean; // Keep param name for compatibility with Langgraph
   }) => void;
 
   /**
-   * Update balance from a direct API check (e.g., page load).
+   * Update balance from a direct API check (e.g., 402 error).
    */
   updateFromBalanceCheck: (balance: {
     balanceMillicredits: number;
     planMillicredits: number;
     packMillicredits: number;
-    isExhausted: boolean;
+    isExhausted: boolean; // Keep param name for compatibility
   }) => void;
 
   /**
-   * Dismiss the exhaustion modal.
+   * Dismiss the out-of-credits modal.
    * Records the dismiss time to prevent re-showing for 1 hour.
    */
   dismissModal: () => void;
@@ -71,8 +71,8 @@ const initialState: CreditState = {
   balanceMillicredits: null,
   planMillicredits: null,
   packMillicredits: null,
-  isExhausted: false,
-  showExhaustionModal: false,
+  isOutOfCredits: false,
+  showOutOfCreditsModal: false,
   modalDismissedAt: null,
 };
 
@@ -81,23 +81,22 @@ export const useCreditStore = create<CreditStore>()(
     ...initialState,
 
     updateFromCreditStatus: (status) => {
-      const { estimatedCreditsRemaining, justExhausted } = status;
+      const { estimatedCreditsRemaining, justExhausted: justRanOut } = status;
       const { modalDismissedAt } = get();
 
       // Determine if we should show the modal
-      let showModal = false;
-      if (justExhausted) {
+      let shouldShowModal = false;
+      if (justRanOut) {
         // Only show if not recently dismissed
         const now = Date.now();
-        const canShow =
-          !modalDismissedAt || now - modalDismissedAt > MODAL_SUPPRESS_DURATION_MS;
-        showModal = canShow;
+        const canShow = !modalDismissedAt || now - modalDismissedAt > MODAL_SUPPRESS_DURATION_MS;
+        shouldShowModal = canShow;
       }
 
       set({
         balanceMillicredits: estimatedCreditsRemaining,
-        isExhausted: estimatedCreditsRemaining <= 0,
-        showExhaustionModal: showModal,
+        isOutOfCredits: estimatedCreditsRemaining <= 0,
+        showOutOfCreditsModal: shouldShowModal,
       });
     },
 
@@ -106,13 +105,13 @@ export const useCreditStore = create<CreditStore>()(
         balanceMillicredits: balance.balanceMillicredits,
         planMillicredits: balance.planMillicredits,
         packMillicredits: balance.packMillicredits,
-        isExhausted: balance.isExhausted,
+        isOutOfCredits: balance.isExhausted,
       });
     },
 
     dismissModal: () => {
       set({
-        showExhaustionModal: false,
+        showOutOfCreditsModal: false,
         modalDismissedAt: Date.now(),
       });
     },
@@ -120,11 +119,10 @@ export const useCreditStore = create<CreditStore>()(
     showModal: () => {
       const { modalDismissedAt } = get();
       const now = Date.now();
-      const canShow =
-        !modalDismissedAt || now - modalDismissedAt > MODAL_SUPPRESS_DURATION_MS;
+      const canShow = !modalDismissedAt || now - modalDismissedAt > MODAL_SUPPRESS_DURATION_MS;
 
       if (canShow) {
-        set({ showExhaustionModal: true });
+        set({ showOutOfCreditsModal: true });
       }
     },
 
@@ -137,19 +135,19 @@ export const useCreditStore = create<CreditStore>()(
 // ============================================================================
 
 export const selectBalanceMillicredits = (s: CreditStore) => s.balanceMillicredits;
-export const selectIsExhausted = (s: CreditStore) => s.isExhausted;
-export const selectShowExhaustionModal = (s: CreditStore) => s.showExhaustionModal;
+export const selectIsOutOfCredits = (s: CreditStore) => s.isOutOfCredits;
+export const selectShowOutOfCreditsModal = (s: CreditStore) => s.showOutOfCreditsModal;
 
 // ============================================================================
 // Convenience hooks
 // ============================================================================
 
-export function useCreditsExhausted() {
-  return useCreditStore(selectIsExhausted);
+export function useIsOutOfCredits() {
+  return useCreditStore(selectIsOutOfCredits);
 }
 
-export function useShowExhaustionModal() {
-  return useCreditStore(selectShowExhaustionModal);
+export function useShowOutOfCreditsModal() {
+  return useCreditStore(selectShowOutOfCreditsModal);
 }
 
 export function useCreditBalance() {

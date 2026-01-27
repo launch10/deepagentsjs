@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { ExhaustionModal } from "../ExhaustionModal";
+import { OutOfCreditsModal } from "../OutOfCreditsModal";
 import { useCreditStore, formatCredits } from "~/stores/creditStore";
 
 // Mock Inertia's Link component
@@ -10,7 +10,7 @@ vi.mock("@inertiajs/react", () => ({
   ),
 }));
 
-describe("ExhaustionModal", () => {
+describe("OutOfCreditsModal", () => {
   const mockDismissModal = vi.fn();
 
   beforeEach(() => {
@@ -19,8 +19,8 @@ describe("ExhaustionModal", () => {
       balanceMillicredits: 0,
       planMillicredits: null,
       packMillicredits: null,
-      isExhausted: true,
-      showExhaustionModal: true,
+      isOutOfCredits: true,
+      showOutOfCreditsModal: true,
       modalDismissedAt: null,
     });
     mockDismissModal.mockClear();
@@ -31,16 +31,16 @@ describe("ExhaustionModal", () => {
   });
 
   describe("rendering", () => {
-    it("renders when showExhaustionModal is true", () => {
-      render(<ExhaustionModal />);
+    it("renders when showOutOfCreditsModal is true", () => {
+      render(<OutOfCreditsModal />);
 
       expect(screen.getByText("You've run out of credits")).toBeInTheDocument();
     });
 
-    it("does not render when showExhaustionModal is false", () => {
-      useCreditStore.setState({ showExhaustionModal: false });
+    it("does not render when showOutOfCreditsModal is false", () => {
+      useCreditStore.setState({ showOutOfCreditsModal: false });
 
-      render(<ExhaustionModal />);
+      render(<OutOfCreditsModal />);
 
       expect(screen.queryByText("You've run out of credits")).not.toBeInTheDocument();
     });
@@ -48,7 +48,7 @@ describe("ExhaustionModal", () => {
     it("displays formatted balance", () => {
       useCreditStore.setState({ balanceMillicredits: 500 });
 
-      render(<ExhaustionModal />);
+      render(<OutOfCreditsModal />);
 
       // formatCredits(500) = 0.5 credits
       expect(screen.getByText(/0.5 credits/)).toBeInTheDocument();
@@ -57,7 +57,7 @@ describe("ExhaustionModal", () => {
     it("displays zero balance correctly", () => {
       useCreditStore.setState({ balanceMillicredits: 0 });
 
-      render(<ExhaustionModal />);
+      render(<OutOfCreditsModal />);
 
       expect(screen.getByText(/0 credits/)).toBeInTheDocument();
     });
@@ -65,19 +65,19 @@ describe("ExhaustionModal", () => {
 
   describe("interactions", () => {
     it("dismisses modal on dismiss button click", () => {
-      render(<ExhaustionModal />);
+      render(<OutOfCreditsModal />);
 
       const dismissButton = screen.getByText("Dismiss for now");
       fireEvent.click(dismissButton);
 
-      // The modal should be dismissed (showExhaustionModal becomes false)
+      // The modal should be dismissed (showOutOfCreditsModal becomes false)
       const state = useCreditStore.getState();
-      expect(state.showExhaustionModal).toBe(false);
+      expect(state.showOutOfCreditsModal).toBe(false);
     });
 
     it("records dismiss timestamp", () => {
       const beforeTime = Date.now();
-      render(<ExhaustionModal />);
+      render(<OutOfCreditsModal />);
 
       const dismissButton = screen.getByText("Dismiss for now");
       fireEvent.click(dismissButton);
@@ -90,14 +90,14 @@ describe("ExhaustionModal", () => {
 
   describe("navigation", () => {
     it("links to /subscriptions for upgrade", () => {
-      render(<ExhaustionModal />);
+      render(<OutOfCreditsModal />);
 
       const upgradeLink = screen.getByRole("link", { name: /upgrade plan/i });
       expect(upgradeLink).toHaveAttribute("href", "/subscriptions");
     });
 
     it("links to /subscriptions for credit packs", () => {
-      render(<ExhaustionModal />);
+      render(<OutOfCreditsModal />);
 
       const packLink = screen.getByRole("link", { name: /purchase credit pack/i });
       expect(packLink).toHaveAttribute("href", "/subscriptions");
@@ -109,28 +109,28 @@ describe("ExhaustionModal", () => {
       const oneHourAgo = Date.now() - 30 * 60 * 1000; // 30 minutes ago (within 1 hour)
       useCreditStore.setState({
         modalDismissedAt: oneHourAgo,
-        showExhaustionModal: false,
+        showOutOfCreditsModal: false,
       });
 
       // Try to show the modal again
       useCreditStore.getState().showModal();
 
       // Should not show because we're within the 1-hour timeout
-      expect(useCreditStore.getState().showExhaustionModal).toBe(false);
+      expect(useCreditStore.getState().showOutOfCreditsModal).toBe(false);
     });
 
     it("shows again after timeout expires", () => {
       const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000; // 2 hours ago
       useCreditStore.setState({
         modalDismissedAt: twoHoursAgo,
-        showExhaustionModal: false,
+        showOutOfCreditsModal: false,
       });
 
       // Try to show the modal again
       useCreditStore.getState().showModal();
 
       // Should show because we're past the 1-hour timeout
-      expect(useCreditStore.getState().showExhaustionModal).toBe(true);
+      expect(useCreditStore.getState().showOutOfCreditsModal).toBe(true);
     });
   });
 });

@@ -49,14 +49,14 @@ export function SubmitButton({
   stopIcon,
   ...props
 }: SubmitButtonProps) {
-  const composer = useChatComposer()
-  const isStreaming = useChatIsStreaming()
-  const submit = useChatSubmit()
-  const stop = useChatStop()
+  const composer = useChatComposer();
+  const isStreaming = useChatIsStreaming();
+  const submit = useChatSubmit();
+  const stop = useChatStop();
 
-  // Credit exhaustion check
-  const isCreditsExhausted = useCreditStore((s) => s.isExhausted);
-  const showExhaustionModal = useCreditStore((s) => s.showModal);
+  // Out of credits check
+  const isOutOfCredits = useCreditStore((s) => s.isOutOfCredits);
+  const showOutOfCreditsModal = useCreditStore((s) => s.showModal);
 
   // When stopIcon is provided, button is enabled during streaming for stop action
   const hasStopMode = stopIcon !== undefined;
@@ -79,9 +79,9 @@ export function SubmitButton({
       }
     } else if (canSubmit) {
       // Check credits before submitting
-      if (isCreditsExhausted) {
-        // Show the exhaustion modal instead of submitting
-        showExhaustionModal();
+      if (isOutOfCredits) {
+        // Show the out of credits modal instead of submitting
+        showOutOfCreditsModal();
         return;
       }
       // Send message using context's submit (respects Chat.Root onSubmit)

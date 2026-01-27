@@ -42,9 +42,7 @@ export const DatabaseSnapshotter = {
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(
-        `Failed to restore snapshot '${name}': ${response.status} - ${error}`
-      );
+      throw new Error(`Failed to restore snapshot '${name}': ${response.status} - ${error}`);
     }
 
     return response.json();
@@ -121,5 +119,44 @@ export const DatabaseSnapshotter = {
 
     const data = await response.json();
     return data.website;
+  },
+
+  /**
+   * Sets credits for a user's account.
+   * Useful for testing credit exhaustion scenarios.
+   *
+   * @param email - The user's email address
+   * @param planMillicredits - Plan credits in millicredits (1000 = 1 credit)
+   * @param packMillicredits - Pack credits in millicredits (1000 = 1 credit)
+   */
+  async setCredits(
+    email: string,
+    planMillicredits: number,
+    packMillicredits: number = 0
+  ): Promise<{
+    id: number;
+    plan_millicredits: number;
+    pack_millicredits: number;
+    total_millicredits: number;
+  }> {
+    const response = await fetch(`${BASE_URL}/test/database/set_credits`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        credits: {
+          email,
+          plan_millicredits: planMillicredits,
+          pack_millicredits: packMillicredits,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to set credits: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    return data.account;
   },
 };

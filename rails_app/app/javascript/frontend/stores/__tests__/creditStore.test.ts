@@ -10,20 +10,20 @@ describe("creditStore", () => {
   });
 
   describe("initial state", () => {
-    it("starts with null balance and not exhausted", () => {
+    it("starts with null balance and not out of credits", () => {
       const state = useCreditStore.getState();
 
       expect(state.balanceMillicredits).toBeNull();
       expect(state.planMillicredits).toBeNull();
       expect(state.packMillicredits).toBeNull();
-      expect(state.isExhausted).toBe(false);
-      expect(state.showExhaustionModal).toBe(false);
+      expect(state.isOutOfCredits).toBe(false);
+      expect(state.showOutOfCreditsModal).toBe(false);
       expect(state.modalDismissedAt).toBeNull();
     });
   });
 
   describe("updateFromCreditStatus", () => {
-    it("updates balance and sets isExhausted when estimatedCreditsRemaining is 0", () => {
+    it("updates balance and sets isOutOfCredits when estimatedCreditsRemaining is 0", () => {
       useCreditStore.getState().updateFromCreditStatus({
         estimatedCreditsRemaining: 0,
         justExhausted: false,
@@ -31,10 +31,10 @@ describe("creditStore", () => {
 
       const state = useCreditStore.getState();
       expect(state.balanceMillicredits).toBe(0);
-      expect(state.isExhausted).toBe(true);
+      expect(state.isOutOfCredits).toBe(true);
     });
 
-    it("updates balance and keeps isExhausted false when credits remain", () => {
+    it("updates balance and keeps isOutOfCredits false when credits remain", () => {
       useCreditStore.getState().updateFromCreditStatus({
         estimatedCreditsRemaining: 5000,
         justExhausted: false,
@@ -42,7 +42,7 @@ describe("creditStore", () => {
 
       const state = useCreditStore.getState();
       expect(state.balanceMillicredits).toBe(5000);
-      expect(state.isExhausted).toBe(false);
+      expect(state.isOutOfCredits).toBe(false);
     });
 
     it("shows modal when justExhausted is true", () => {
@@ -52,7 +52,7 @@ describe("creditStore", () => {
       });
 
       const state = useCreditStore.getState();
-      expect(state.showExhaustionModal).toBe(true);
+      expect(state.showOutOfCreditsModal).toBe(true);
     });
 
     it("does not show modal when justExhausted is false", () => {
@@ -62,7 +62,7 @@ describe("creditStore", () => {
       });
 
       const state = useCreditStore.getState();
-      expect(state.showExhaustionModal).toBe(false);
+      expect(state.showOutOfCreditsModal).toBe(false);
     });
 
     it("respects dismiss timeout when showing modal", () => {
@@ -76,7 +76,7 @@ describe("creditStore", () => {
       });
 
       const state = useCreditStore.getState();
-      expect(state.showExhaustionModal).toBe(false);
+      expect(state.showOutOfCreditsModal).toBe(false);
     });
 
     it("shows modal after dismiss timeout expires", () => {
@@ -95,7 +95,7 @@ describe("creditStore", () => {
       });
 
       const state = useCreditStore.getState();
-      expect(state.showExhaustionModal).toBe(true);
+      expect(state.showOutOfCreditsModal).toBe(true);
     });
   });
 
@@ -112,10 +112,10 @@ describe("creditStore", () => {
       expect(state.balanceMillicredits).toBe(5000);
       expect(state.planMillicredits).toBe(4000);
       expect(state.packMillicredits).toBe(1000);
-      expect(state.isExhausted).toBe(false);
+      expect(state.isOutOfCredits).toBe(false);
     });
 
-    it("sets isExhausted correctly", () => {
+    it("sets isOutOfCredits correctly", () => {
       useCreditStore.getState().updateFromBalanceCheck({
         balanceMillicredits: 0,
         planMillicredits: 0,
@@ -124,14 +124,14 @@ describe("creditStore", () => {
       });
 
       const state = useCreditStore.getState();
-      expect(state.isExhausted).toBe(true);
+      expect(state.isOutOfCredits).toBe(true);
     });
   });
 
   describe("dismissModal", () => {
     it("hides the modal and records dismiss time", () => {
       // First show the modal
-      useCreditStore.setState({ showExhaustionModal: true });
+      useCreditStore.setState({ showOutOfCreditsModal: true });
 
       // Dismiss it
       const beforeDismiss = Date.now();
@@ -139,7 +139,7 @@ describe("creditStore", () => {
       const afterDismiss = Date.now();
 
       const state = useCreditStore.getState();
-      expect(state.showExhaustionModal).toBe(false);
+      expect(state.showOutOfCreditsModal).toBe(false);
       expect(state.modalDismissedAt).toBeGreaterThanOrEqual(beforeDismiss);
       expect(state.modalDismissedAt).toBeLessThanOrEqual(afterDismiss);
     });
@@ -150,7 +150,7 @@ describe("creditStore", () => {
       useCreditStore.getState().showModal();
 
       const state = useCreditStore.getState();
-      expect(state.showExhaustionModal).toBe(true);
+      expect(state.showOutOfCreditsModal).toBe(true);
     });
 
     it("does not show modal when recently dismissed", () => {
@@ -161,7 +161,7 @@ describe("creditStore", () => {
       useCreditStore.getState().showModal();
 
       const state = useCreditStore.getState();
-      expect(state.showExhaustionModal).toBe(false);
+      expect(state.showOutOfCreditsModal).toBe(false);
     });
 
     it("shows modal after dismiss timeout expires", () => {
@@ -174,7 +174,7 @@ describe("creditStore", () => {
       useCreditStore.getState().showModal();
 
       const state = useCreditStore.getState();
-      expect(state.showExhaustionModal).toBe(true);
+      expect(state.showOutOfCreditsModal).toBe(true);
     });
   });
 
@@ -185,8 +185,8 @@ describe("creditStore", () => {
         balanceMillicredits: 5000,
         planMillicredits: 4000,
         packMillicredits: 1000,
-        isExhausted: true,
-        showExhaustionModal: true,
+        isOutOfCredits: true,
+        showOutOfCreditsModal: true,
         modalDismissedAt: Date.now(),
       });
 
@@ -197,8 +197,8 @@ describe("creditStore", () => {
       expect(state.balanceMillicredits).toBeNull();
       expect(state.planMillicredits).toBeNull();
       expect(state.packMillicredits).toBeNull();
-      expect(state.isExhausted).toBe(false);
-      expect(state.showExhaustionModal).toBe(false);
+      expect(state.isOutOfCredits).toBe(false);
+      expect(state.showOutOfCreditsModal).toBe(false);
       expect(state.modalDismissedAt).toBeNull();
     });
   });
