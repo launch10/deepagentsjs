@@ -113,24 +113,19 @@ class Test::DatabaseController < Test::TestController
 
     plan = params_obj[:plan_millicredits] || 0
     pack = params_obj[:pack_millicredits] || 0
-    total = plan + pack
 
-    # Create adjust transaction with sequence validation bypassed (test-only)
-    tx = account.credit_transactions.new(
-      transaction_type: "adjust",
-      credit_type: "plan",
+    # Use the proper AllocationService for credit adjustment
+    admin = test_admin_user
+    Credits::AllocationService.new(account).adjust_credits!(
+      plan_millicredits: plan,
+      pack_millicredits: pack,
       reason: "e2e_test_setup",
-      amount_millicredits: total - account.total_millicredits,
-      balance_after_millicredits: total,
-      plan_balance_after_millicredits: plan,
-      pack_balance_after_millicredits: pack,
+      admin: admin,
+      notes: "Set via test endpoint",
       idempotency_key: "e2e_test:#{account.id}:#{Time.current.to_i}"
     )
-    tx.skip_sequence_validation = true
-    tx.save!
 
-    # update_account_balances callback handles the account update
-
+    account.reload
     render json: {
       status: "ok",
       message: "Credits updated",
@@ -164,5 +159,23 @@ class Test::DatabaseController < Test::TestController
 
   def actually_truncate
     Database::Snapshotter.new.truncate
+  end
+
+  # Find or create a test admin user for credit adjustments
+  def test_admin_user
+    User.find_by(admin: true) || User.find_by(email: "brett@launch10.ai") || create_test_admin
+  end
+
+  def create_test_admin
+    User.create!(
+      email: "test_admin@launch10.ai",
+      password: "TestAdminPass123!",
+      password_confirmation: "TestAdminPass123!",
+      first_name: "Test",
+      last_name: "Admin",
+      terms_of_service: true,
+      confirmed_at: Time.current,
+      admin: true
+    )
   end
 end

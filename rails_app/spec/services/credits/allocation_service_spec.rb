@@ -1277,4 +1277,243 @@ RSpec.describe Credits::AllocationService do
       end
     end
   end
+
+  # ==========================================================================
+  # ADMIN CREDIT ADJUSTMENT
+  # ==========================================================================
+
+  describe "#adjust_credits!" do
+    let(:admin) { create(:user, admin: true) }
+
+    context "setting credits from zero" do
+      it "sets plan credits to specified amount" do
+        service.adjust_credits!(
+          plan_millicredits: 5_000_000,
+          pack_millicredits: 0,
+          reason: "e2e_test_setup",
+          admin: admin
+        )
+
+        account.reload
+        expect(account.plan_millicredits).to eq(5_000_000)
+        expect(account.pack_millicredits).to eq(0)
+        expect(account.total_millicredits).to eq(5_000_000)
+      end
+
+      it "sets pack credits to specified amount" do
+        service.adjust_credits!(
+          plan_millicredits: 0,
+          pack_millicredits: 1_000_000,
+          reason: "e2e_test_setup",
+          admin: admin
+        )
+
+        account.reload
+        expect(account.plan_millicredits).to eq(0)
+        expect(account.pack_millicredits).to eq(1_000_000)
+        expect(account.total_millicredits).to eq(1_000_000)
+      end
+
+      it "sets both plan and pack credits" do
+        service.adjust_credits!(
+          plan_millicredits: 3_000_000,
+          pack_millicredits: 500_000,
+          reason: "e2e_test_setup",
+          admin: admin
+        )
+
+        account.reload
+        expect(account.plan_millicredits).to eq(3_000_000)
+        expect(account.pack_millicredits).to eq(500_000)
+        expect(account.total_millicredits).to eq(3_500_000)
+      end
+    end
+
+    context "adjusting existing credits" do
+      before { setup_account_state(plan_credits: 5000, pack_credits: 500) }
+
+      it "increases plan credits" do
+        service.adjust_credits!(
+          plan_millicredits: 10_000_000,
+          pack_millicredits: 500_000,
+          reason: "admin_adjustment",
+          admin: admin
+        )
+
+        account.reload
+        expect(account.plan_millicredits).to eq(10_000_000)
+        expect(account.pack_millicredits).to eq(500_000)
+      end
+
+      it "decreases plan credits" do
+        service.adjust_credits!(
+          plan_millicredits: 1_000_000,
+          pack_millicredits: 500_000,
+          reason: "admin_adjustment",
+          admin: admin
+        )
+
+        account.reload
+        expect(account.plan_millicredits).to eq(1_000_000)
+      end
+
+      it "sets credits to near-zero for exhaustion testing" do
+        service.adjust_credits!(
+          plan_millicredits: 1,
+          pack_millicredits: 0,
+          reason: "e2e_test_setup",
+          admin: admin
+        )
+
+        account.reload
+        expect(account.plan_millicredits).to eq(1)
+        expect(account.pack_millicredits).to eq(0)
+        expect(account.total_millicredits).to eq(1)
+      end
+    end
+
+    context "transaction creation" do
+      it "creates CreditTransaction with type: adjust" do
+        expect {
+          service.adjust_credits!(
+            plan_millicredits: 5_000_000,
+            pack_millicredits: 0,
+            reason: "admin_adjustment",
+            admin: admin
+          )
+        }.to change { CreditTransaction.count }.by(1)
+
+        transaction = CreditTransaction.last
+        expect(transaction.transaction_type).to eq("adjust")
+        expect(transaction.reason).to eq("admin_adjustment")
+      end
+
+      it "records admin info in metadata" do
+        service.adjust_credits!(
+          plan_millicredits: 5_000_000,
+          pack_millicredits: 0,
+          reason: "admin_adjustment",
+          admin: admin,
+          notes: "Testing credit exhaustion"
+        )
+
+        transaction = CreditTransaction.last
+        expect(transaction.metadata["admin_id"]).to eq(admin.id)
+        expect(transaction.metadata["admin_email"]).to eq(admin.email)
+        expect(transaction.metadata["notes"]).to eq("Testing credit exhaustion")
+      end
+
+      it "records previous and new balances in metadata" do
+        setup_account_state(plan_credits: 5000, pack_credits: 500)
+
+        service.adjust_credits!(
+          plan_millicredits: 1_000_000,
+          pack_millicredits: 0,
+          reason: "admin_adjustment",
+          admin: admin
+        )
+
+        transaction = CreditTransaction.last
+        expect(transaction.metadata["previous_plan_millicredits"]).to eq(5_000_000)
+        expect(transaction.metadata["previous_pack_millicredits"]).to eq(500_000)
+        expect(transaction.metadata["new_plan_millicredits"]).to eq(1_000_000)
+        expect(transaction.metadata["new_pack_millicredits"]).to eq(0)
+      end
+
+      it "calculates correct amount (delta)" do
+        setup_account_state(plan_credits: 5000, pack_credits: 500)
+
+        service.adjust_credits!(
+          plan_millicredits: 3_000_000,
+          pack_millicredits: 500_000,
+          reason: "admin_adjustment",
+          admin: admin
+        )
+
+        transaction = CreditTransaction.last
+        # Delta: (3M + 500K) - (5M + 500K) = -2M
+        expect(transaction.amount_millicredits).to eq(-2_000_000)
+      end
+    end
+
+    context "validation" do
+      it "raises error when admin is nil" do
+        expect {
+          service.adjust_credits!(
+            plan_millicredits: 5_000_000,
+            pack_millicredits: 0,
+            reason: "admin_adjustment",
+            admin: nil
+          )
+        }.to raise_error(ArgumentError, /admin is required/)
+      end
+
+      it "raises error when reason is blank" do
+        expect {
+          service.adjust_credits!(
+            plan_millicredits: 5_000_000,
+            pack_millicredits: 0,
+            reason: "",
+            admin: admin
+          )
+        }.to raise_error(ArgumentError, /reason is required/)
+      end
+    end
+
+    context "idempotency" do
+      it "uses idempotency key when provided" do
+        key = "test_adjustment:#{account.id}:#{Time.current.to_i}"
+
+        service.adjust_credits!(
+          plan_millicredits: 5_000_000,
+          pack_millicredits: 0,
+          reason: "admin_adjustment",
+          admin: admin,
+          idempotency_key: key
+        )
+
+        expect(CreditTransaction.last.idempotency_key).to eq(key)
+      end
+
+      it "skips duplicate adjustment with same idempotency key" do
+        key = "test_adjustment:#{account.id}:unique"
+
+        service.adjust_credits!(
+          plan_millicredits: 5_000_000,
+          pack_millicredits: 0,
+          reason: "admin_adjustment",
+          admin: admin,
+          idempotency_key: key
+        )
+
+        expect {
+          service.adjust_credits!(
+            plan_millicredits: 10_000_000,
+            pack_millicredits: 0,
+            reason: "admin_adjustment",
+            admin: admin,
+            idempotency_key: key
+          )
+        }.not_to change { CreditTransaction.count }
+
+        # Balance should still be from first call
+        account.reload
+        expect(account.plan_millicredits).to eq(5_000_000)
+      end
+    end
+
+    context "transaction locking" do
+      it "locks account row during operation" do
+        expect(account).to receive(:lock!).and_call_original
+        allow(Account).to receive(:transaction).and_yield
+
+        service.adjust_credits!(
+          plan_millicredits: 5_000_000,
+          pack_millicredits: 0,
+          reason: "admin_adjustment",
+          admin: admin
+        )
+      end
+    end
+  end
 end

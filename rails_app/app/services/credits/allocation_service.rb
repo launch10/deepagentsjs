@@ -197,6 +197,74 @@ module Credits
       end
     end
 
+    # Adjust credits to specific values (admin override)
+    #
+    # Sets plan and pack credits to exact values, creating an audit trail.
+    # Used for admin corrections, test setup, and special adjustments.
+    #
+    # @param plan_millicredits [Integer] Target plan credit balance in millicredits
+    # @param pack_millicredits [Integer] Target pack credit balance in millicredits
+    # @param reason [String] Reason for adjustment (e.g., "admin_adjustment", "e2e_test_setup")
+    # @param admin [User] Admin performing the adjustment
+    # @param notes [String, nil] Optional notes for audit trail
+    # @param idempotency_key [String, nil] Optional idempotency key
+    #
+    # @raise [ArgumentError] if admin or reason is missing
+    #
+    def adjust_credits!(plan_millicredits:, pack_millicredits:, reason:, admin:, notes: nil, idempotency_key: nil)
+      raise ArgumentError, "admin is required" if admin.nil?
+      raise ArgumentError, "reason is required" if reason.blank?
+
+      Account.transaction do
+        @account.lock!
+
+        # Idempotency check
+        if idempotency_key.present? && CreditTransaction.exists?(idempotency_key: idempotency_key)
+          return
+        end
+
+        previous_plan = @account.plan_millicredits
+        previous_pack = @account.pack_millicredits
+        previous_total = @account.total_millicredits
+
+        new_total = plan_millicredits + pack_millicredits
+        amount = new_total - previous_total
+
+        # Determine credit_type based on what changed
+        credit_type = if plan_millicredits != previous_plan && pack_millicredits != previous_pack
+          "split"
+        elsif pack_millicredits != previous_pack
+          "pack"
+        else
+          "plan"
+        end
+
+        tx = @account.credit_transactions.new(
+          transaction_type: "adjust",
+          credit_type: credit_type,
+          reason: reason,
+          amount_millicredits: amount,
+          balance_after_millicredits: new_total,
+          plan_balance_after_millicredits: plan_millicredits,
+          pack_balance_after_millicredits: pack_millicredits,
+          idempotency_key: idempotency_key,
+          metadata: {
+            admin_id: admin.id,
+            admin_email: admin.email,
+            notes: notes,
+            previous_plan_millicredits: previous_plan,
+            previous_pack_millicredits: previous_pack,
+            new_plan_millicredits: plan_millicredits,
+            new_pack_millicredits: pack_millicredits
+          }
+        )
+        tx.skip_sequence_validation = true
+        tx.save!
+
+        # update_account_balances callback handles the account update
+      end
+    end
+
     def get_action(previous_plan, new_plan_tier)
       return :downgrade if previous_plan && downgrade?(previous_plan, new_plan_tier)
       return :upgrade if previous_plan && upgrade?(previous_plan, new_plan_tier)
