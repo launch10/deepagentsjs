@@ -16,19 +16,34 @@ set -a  # Auto-export all variables
 # Determine project root (where this config lives)
 LAUNCH10_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# Auto-detect instance from directory name (launch1, launch2, etc.)
+_dir_name=$(basename "$LAUNCH10_ROOT")
+if [[ "$_dir_name" =~ ^launch([1-4])$ ]]; then
+  LAUNCH10_INSTANCE="${BASH_REMATCH[1]}"
+  INSTANCE_OFFSET=$(( LAUNCH10_INSTANCE * 100 ))
+  REDIS_DB="$LAUNCH10_INSTANCE"
+else
+  LAUNCH10_INSTANCE=10
+  INSTANCE_OFFSET=0
+  REDIS_DB=0
+fi
+
+DB_PREFIX="launch${LAUNCH10_INSTANCE}"
+REDIS_URL="redis://localhost:6379/${REDIS_DB}"
+
 case "${LAUNCH10_ENV:-development}" in
   test|e2e|ci)
-    RAILS_PORT=3001
-    LANGGRAPH_PORT=4001
-    VITE_PORT=3037
+    RAILS_PORT=$((3000 + INSTANCE_OFFSET + 1))
+    LANGGRAPH_PORT=$((4000 + INSTANCE_OFFSET + 1))
+    VITE_PORT=$((3036 + INSTANCE_OFFSET + 1))
     RAILS_ENV=test
     NODE_ENV=test
     USE_LOCAL_STORAGE=true  # Use local disk for uploads instead of R2
     ;;
   *)  # development
-    RAILS_PORT=3000
-    LANGGRAPH_PORT=4000
-    VITE_PORT=3036
+    RAILS_PORT=$((3000 + INSTANCE_OFFSET))
+    LANGGRAPH_PORT=$((4000 + INSTANCE_OFFSET))
+    VITE_PORT=$((3036 + INSTANCE_OFFSET))
     RAILS_ENV=development
     NODE_ENV=development
     ;;
@@ -60,8 +75,11 @@ set +a  # Stop auto-exporting
 # Debug output if requested
 if [[ "${LAUNCH10_DEBUG:-}" == "true" ]]; then
   echo "=== Launch10 Service Config ==="
+  echo "LAUNCH10_INSTANCE:      launch${LAUNCH10_INSTANCE} (offset: ${INSTANCE_OFFSET})"
   echo "LAUNCH10_ENV:           ${LAUNCH10_ENV:-development}"
   echo "LAUNCH10_ROOT:          $LAUNCH10_ROOT"
+  echo "DB_PREFIX:              $DB_PREFIX"
+  echo "REDIS_URL:              $REDIS_URL"
   echo "RAILS_PORT:             $RAILS_PORT"
   echo "LANGGRAPH_PORT:         $LANGGRAPH_PORT"
   echo "RAILS_API_URL:          $RAILS_API_URL"

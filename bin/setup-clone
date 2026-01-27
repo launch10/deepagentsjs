@@ -1,0 +1,219 @@
+#!/bin/bash
+# bin/setup-clone - One-command setup for parallel development clones
+#
+# Detects the instance from the directory name (launch1, launch2, etc.),
+# generates .env files from the primary repo (launch10), creates databases,
+# runs migrations, and installs dependencies.
+#
+# Usage:
+#   bin/setup-clone           # Full setup
+#   bin/setup-clone --env     # Only regenerate .env files
+#   bin/setup-clone --db      # Only create databases and run migrations
+#
+# This script is idempotent - safe to run multiple times.
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/../config/services.sh"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+log_info()  { echo -e "${GREEN}[setup-clone]${NC} $1"; }
+log_warn()  { echo -e "${YELLOW}[setup-clone]${NC} $1"; }
+log_error() { echo -e "${RED}[setup-clone]${NC} $1"; }
+log_step()  { echo -e "${BLUE}[setup-clone]${NC} ${BOLD}$1${NC}"; }
+
+# Ensure we're running from a clone, not the primary repo
+if [[ "$LAUNCH10_INSTANCE" == "10" ]]; then
+  log_error "This script is for clone directories (launch1-launch4), not the primary repo."
+  log_error "Current directory: $(basename "$LAUNCH10_ROOT")"
+  exit 1
+fi
+
+# Find the primary repo (launch10) as a sibling directory
+PRIMARY_ROOT="$(dirname "$LAUNCH10_ROOT")/launch10"
+if [[ ! -d "$PRIMARY_ROOT" ]]; then
+  log_error "Primary repo not found at: $PRIMARY_ROOT"
+  log_error "Expected launch10/ as a sibling directory."
+  exit 1
+fi
+
+# Compute all port values
+RAILS_DEV_PORT=$((3000 + INSTANCE_OFFSET))
+LANGGRAPH_DEV_PORT=$((4000 + INSTANCE_OFFSET))
+VITE_DEV_PORT=$((3036 + INSTANCE_OFFSET))
+RAILS_TEST_PORT=$((3000 + INSTANCE_OFFSET + 1))
+LANGGRAPH_TEST_PORT=$((4000 + INSTANCE_OFFSET + 1))
+VITE_TEST_PORT=$((3036 + INSTANCE_OFFSET + 1))
+
+DEV_DB="${DB_PREFIX}_development"
+TEST_DB="${DB_PREFIX}_test"
+
+# --- .env generation ---
+
+generate_env_files() {
+  log_step "Generating .env files from primary repo (launch10)..."
+
+  local primary_rails_env="$PRIMARY_ROOT/rails_app/.env"
+  local primary_rails_env_test="$PRIMARY_ROOT/rails_app/.env.test"
+  local primary_lg_env="$PRIMARY_ROOT/langgraph_app/.env"
+  local primary_lg_env_test="$PRIMARY_ROOT/langgraph_app/.env.test"
+
+  # --- Rails .env ---
+  if [[ -f "$primary_rails_env" ]]; then
+    log_info "Generating rails_app/.env"
+    sed \
+      -e "s|LANGGRAPH_API_URL=http://localhost:[0-9]*|LANGGRAPH_API_URL=http://localhost:${LANGGRAPH_DEV_PORT}|g" \
+      -e "s|VITE_LANGGRAPH_API_URL=http://localhost:[0-9]*|VITE_LANGGRAPH_API_URL=http://localhost:${LANGGRAPH_DEV_PORT}|g" \
+      "$primary_rails_env" > "$RAILS_APP_DIR/.env"
+  else
+    log_warn "Primary rails_app/.env not found, skipping"
+  fi
+
+  # --- Rails .env.test ---
+  if [[ -f "$primary_rails_env_test" ]]; then
+    log_info "Generating rails_app/.env.test"
+    sed \
+      -e "s|RAILS_API_URL=http://localhost:[0-9]*|RAILS_API_URL=http://localhost:${RAILS_TEST_PORT}|g" \
+      -e "s|VITE_RAILS_API_URL=http://localhost:[0-9]*|VITE_RAILS_API_URL=http://localhost:${RAILS_TEST_PORT}|g" \
+      -e "s|LANGGRAPH_API_URL=http://localhost:[0-9]*|LANGGRAPH_API_URL=http://localhost:${LANGGRAPH_TEST_PORT}|g" \
+      -e "s|VITE_LANGGRAPH_API_URL=http://localhost:[0-9]*|VITE_LANGGRAPH_API_URL=http://localhost:${LANGGRAPH_TEST_PORT}|g" \
+      "$primary_rails_env_test" > "$RAILS_APP_DIR/.env.test"
+  else
+    log_warn "Primary rails_app/.env.test not found, skipping"
+  fi
+
+  # --- Langgraph .env ---
+  if [[ -f "$primary_lg_env" ]]; then
+    log_info "Generating langgraph_app/.env"
+    sed \
+      -e "s|DATABASE_URL=postgresql://[^[:space:]]*|DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${DEV_DB}|g" \
+      -e "s|REDIS_URL=redis://[^[:space:]]*|REDIS_URL=${REDIS_URL}|g" \
+      -e "s|RAILS_API_URL=http://localhost:[0-9]*|RAILS_API_URL=http://localhost:${RAILS_DEV_PORT}|g" \
+      -e "s|ALLOWED_HOSTS=.*|ALLOWED_HOSTS=localhost:${RAILS_DEV_PORT},127.0.0.1:${RAILS_DEV_PORT}|g" \
+      "$primary_lg_env" > "$LANGGRAPH_APP_DIR/.env"
+  else
+    log_warn "Primary langgraph_app/.env not found, skipping"
+  fi
+
+  # --- Langgraph .env.test ---
+  if [[ -f "$primary_lg_env_test" ]]; then
+    log_info "Generating langgraph_app/.env.test"
+    sed \
+      -e "s|DATABASE_URL=postgresql://[^[:space:]]*|DATABASE_URL=postgresql://postgres:postgres@localhost:5432/${TEST_DB}|g" \
+      -e "s|REDIS_URL=redis://[^[:space:]]*|REDIS_URL=${REDIS_URL}|g" \
+      -e "s|RAILS_PORT=[0-9]*|RAILS_PORT=${RAILS_TEST_PORT}|g" \
+      -e "s|RAILS_API_URL=http://localhost:[0-9]*|RAILS_API_URL=http://localhost:${RAILS_TEST_PORT}|g" \
+      -e "s|ALLOWED_HOSTS=.*|ALLOWED_HOSTS=localhost:${RAILS_TEST_PORT},127.0.0.1:${RAILS_TEST_PORT}|g" \
+      "$primary_lg_env_test" > "$LANGGRAPH_APP_DIR/.env.test"
+  else
+    log_warn "Primary langgraph_app/.env.test not found, skipping"
+  fi
+
+  log_info ".env files generated"
+}
+
+# --- Database setup ---
+
+setup_databases() {
+  log_step "Setting up databases..."
+
+  # Create databases if they don't exist
+  for db in "$DEV_DB" "$TEST_DB"; do
+    if psql -lqt | cut -d \| -f 1 | grep -qw "$db"; then
+      log_info "Database $db already exists"
+    else
+      log_info "Creating database $db"
+      createdb -U postgres "$db"
+    fi
+  done
+
+  # Run Rails migrations for development
+  log_info "Running Rails migrations (development)..."
+  cd "$RAILS_APP_DIR"
+  DB_PREFIX="$DB_PREFIX" RAILS_ENV=development bundle exec rails db:migrate
+
+  # Run Rails migrations for test
+  log_info "Running Rails migrations (test)..."
+  DB_PREFIX="$DB_PREFIX" RAILS_ENV=test bundle exec rails db:migrate
+
+  # Reflect Langgraph schema from Rails-managed DB
+  log_info "Reflecting Langgraph schema..."
+  cd "$LANGGRAPH_APP_DIR"
+  pnpm run db:reflect
+
+  # Seed the development database
+  log_info "Seeding development database..."
+  cd "$RAILS_APP_DIR"
+  DB_PREFIX="$DB_PREFIX" RAILS_ENV=development bundle exec rails db:seed
+
+  log_info "Databases ready"
+}
+
+# --- Dependency installation ---
+
+install_dependencies() {
+  log_step "Installing dependencies..."
+
+  log_info "Installing Ruby gems..."
+  cd "$RAILS_APP_DIR"
+  bundle install
+
+  log_info "Installing Node packages..."
+  cd "$LANGGRAPH_APP_DIR"
+  pnpm install
+
+  log_info "Dependencies installed"
+}
+
+# --- Summary ---
+
+print_summary() {
+  echo ""
+  echo -e "${BOLD}=== Setup Complete: launch${LAUNCH10_INSTANCE} ===${NC}"
+  echo ""
+  echo "  Instance:        launch${LAUNCH10_INSTANCE}"
+  echo "  Database prefix: ${DB_PREFIX}"
+  echo "  Redis DB:        ${REDIS_DB} (${REDIS_URL})"
+  echo ""
+  echo "  Development ports:"
+  echo "    Rails:         ${RAILS_DEV_PORT}"
+  echo "    Langgraph:     ${LANGGRAPH_DEV_PORT}"
+  echo "    Vite:          ${VITE_DEV_PORT}"
+  echo ""
+  echo "  Test ports:"
+  echo "    Rails:         ${RAILS_TEST_PORT}"
+  echo "    Langgraph:     ${LANGGRAPH_TEST_PORT}"
+  echo "    Vite:          ${VITE_TEST_PORT}"
+  echo ""
+  echo "  Databases:"
+  echo "    Development:   ${DEV_DB}"
+  echo "    Test:          ${TEST_DB}"
+  echo ""
+  echo -e "  Start with: ${GREEN}bin/dev${NC} or ${GREEN}bin/services dev${NC}"
+  echo ""
+}
+
+# --- Main ---
+
+case "${1:-all}" in
+  --env)
+    generate_env_files
+    ;;
+  --db)
+    setup_databases
+    ;;
+  all|*)
+    install_dependencies
+    generate_env_files
+    setup_databases
+    print_summary
+    ;;
+esac

@@ -6,13 +6,16 @@ default: &default
   username: postgres
   password: postgres
 
+# Auto-detect instance from directory name (launch1-4 use separate DBs)
+<% db_prefix = ENV.fetch("DB_PREFIX") { File.basename(File.expand_path("../..", __dir__)) =~ /\Alaunch([1-4])\z/ ? "launch#{$1}" : "launch10" } %>
+
 development:
   <<: *default
-  database: launch10_development
+  database: <%= db_prefix %>_development
 
 test:
   <<: *default
-  database: launch10_test
+  database: <%= db_prefix %>_test
 
 staging:
   <<: *default

@@ -112,7 +112,7 @@ launch10/
 ### Development Setup
 
 ```bash
-# Initial setup
+# Initial setup (primary repo - launch10)
 cd rails_app
 bundle install
 bundle exec rake db:create db:migrate db:seed
@@ -120,6 +120,9 @@ bundle exec rake db:create db:migrate db:seed
 cd ../langgraph_app
 pnpm install
 pnpm run db:migrate
+
+# Clone setup (launch1-launch4) — one command does everything
+bin/setup-clone
 ```
 
 ### Running Development Servers
@@ -128,10 +131,20 @@ All services are managed through a unified infrastructure in `config/services.sh
 
 #### Environments & Ports
 
-| Environment | Rails Port | Langgraph Port | Vite Port |
-| ----------- | ---------- | -------------- | --------- |
-| development | 3000       | 4000           | 3036      |
-| test/e2e    | 3001       | 4001           | 3037      |
+Ports are auto-detected from the directory name. The primary repo (`launch10/`) uses the default ports. Clones (`launch1/`-`launch4/`) get offset ports so they can run simultaneously. See [Parallel Development](#parallel-development) for details.
+
+| Instance | Environment | Rails | Langgraph | Vite |
+| -------- | ----------- | ----- | --------- | ---- |
+| launch10 | development | 3000  | 4000      | 3036 |
+| launch10 | test/e2e    | 3001  | 4001      | 3037 |
+| launch1  | development | 3100  | 4100      | 3136 |
+| launch1  | test/e2e    | 3101  | 4101      | 3137 |
+| launch2  | development | 3200  | 4200      | 3236 |
+| launch2  | test/e2e    | 3201  | 4201      | 3237 |
+| launch3  | development | 3300  | 4300      | 3336 |
+| launch3  | test/e2e    | 3301  | 4301      | 3337 |
+| launch4  | development | 3400  | 4400      | 3436 |
+| launch4  | test/e2e    | 3401  | 4401      | 3437 |
 
 #### Development Mode
 
@@ -342,6 +355,65 @@ When using browser automation to access Google Ads (ads.google.com):
 3. **Never access other accounts** - Do not log into any other Google Ads accounts, even if they appear in the account selector
 
 This ensures all testing and development work is isolated to the designated test environment.
+
+## Parallel Development
+
+Multiple Claude Code agents (or developers) can work simultaneously by running the repo from separate clones (`launch1/`-`launch4/`). Each clone gets its own ports, databases, and Redis namespace automatically based on the directory name.
+
+### How It Works
+
+`config/services.sh` detects the directory name at startup:
+- `launch10/` (the primary repo) uses default ports (3000/4000/3036), database prefix `launch10`, Redis DB 0
+- `launch1/`-`launch4/` use offset ports, separate databases, and separate Redis DBs
+
+All isolation is automatic — no manual configuration needed.
+
+### Setting Up a Clone
+
+```bash
+# 1. Clone the repo into a numbered directory
+cd ~/programming/business
+git clone <repo-url> launch3
+
+# 2. Run the one-command setup
+cd launch3
+bin/setup-clone
+```
+
+`bin/setup-clone` does the following:
+1. Detects the instance from the directory name
+2. Copies `.env` files from `launch10/` and substitutes all instance-specific values (ports, DATABASE_URL, REDIS_URL, ALLOWED_HOSTS)
+3. Creates Postgres databases (`launch3_development`, `launch3_test`)
+4. Runs Rails migrations (dev + test)
+5. Reflects Langgraph Drizzle schema
+6. Seeds the development database
+7. Installs Ruby and Node dependencies
+
+The script is idempotent — safe to run again at any time. It also supports partial runs:
+
+```bash
+bin/setup-clone --env    # Only regenerate .env files
+bin/setup-clone --db     # Only create databases and run migrations
+```
+
+### Instance Isolation
+
+| Resource   | launch10 (primary)       | launch2 (clone)          |
+|------------|--------------------------|--------------------------|
+| Rails port | 3000                     | 3200                     |
+| LG port    | 4000                     | 4200                     |
+| Vite port  | 3036                     | 3236                     |
+| Dev DB     | launch10_development     | launch2_development      |
+| Test DB    | launch10_test            | launch2_test             |
+| Redis      | redis://localhost:6379/0 | redis://localhost:6379/2 |
+
+Sidekiq and Zhong use `REDIS_URL` from the environment, so their queues and locks are isolated per instance with no additional configuration.
+
+### Checking Instance Config
+
+```bash
+bin/services env    # Shows instance, ports, databases, Redis
+```
 
 ## Tips
 

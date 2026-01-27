@@ -7,8 +7,8 @@ module Core
       ActiveRecord::Base.establish_connection
 
       # Ensure tiers and limits exist first
-      PlanTiers.new.seed
-      TierLimits.new.seed
+      Core::PlanTiers.new.seed
+      Core::TierLimits.new.seed
 
       starter_tier = PlanTier.find_by!(name: "starter")
       growth_tier = PlanTier.find_by!(name: "growth")
