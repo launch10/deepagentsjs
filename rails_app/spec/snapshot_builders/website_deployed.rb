@@ -1,10 +1,10 @@
-class LeadsPage < BaseBuilder
+class WebsiteDeployed < BaseBuilder
   def base_snapshot
-    "website_step"
+    "deploy_step"
   end
 
   def output_name
-    "leads_page"
+    "website_deployed"
   end
 
   def build
@@ -14,22 +14,21 @@ class LeadsPage < BaseBuilder
 
     # Create 25 leads for pagination testing (20 per page = 2 pages)
     # Include some with null names
-    25.times do |i|
-      name = i % 5 == 0 ? nil : Faker::Name.name
+    leads = 25.times.map do |i|
+      name = (i % 5 == 0) ? nil : Faker::Name.name
       lead = Lead.create!(
         account: account,
         name: name,
         email: "lead#{i + 1}@example.com"
       )
 
-      WebsiteLead.create!(
+      WebsiteLead.new(
         lead: lead,
         website: website,
         created_at: (25 - i).hours.ago
       )
-
-      puts "Created lead #{i + 1}: #{lead.email} (name: #{name || 'NULL'})"
     end
+    WebsiteLead.import(leads)
 
     puts "Total leads for project: #{project.leads_count}"
   end

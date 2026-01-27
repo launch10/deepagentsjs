@@ -109,7 +109,7 @@ RSpec.describe Credits::CostCalculator do
     context "with reasoning tokens" do
       it "uses cost_reasoning when available" do
         # Create config with different reasoning cost
-        config = create(:model_config,
+        create(:model_config,
           model_key: "reasoning_test",
           model_card: "claude-reasoning-test",
           cost_in: 1.0,
@@ -131,7 +131,7 @@ RSpec.describe Credits::CostCalculator do
       end
 
       it "falls back to cost_out when cost_reasoning is nil" do
-        config = create(:model_config,
+        create(:model_config,
           model_key: "no_reasoning_cost",
           model_card: "claude-no-reasoning",
           cost_in: 1.0,
@@ -210,7 +210,7 @@ RSpec.describe Credits::CostCalculator do
 
     context "with nil rate values in config" do
       it "treats nil rates as zero cost" do
-        config = create(:model_config,
+        create(:model_config,
           model_key: "partial_rates",
           model_card: "claude-partial-rates",
           cost_in: 1.0,

@@ -128,8 +128,8 @@ module Credits
     end
 
     def create_consumption_transaction!(cost_millicredits:, plan_consumed:, pack_consumed:,
-                                        new_plan_bal:, new_pack_bal:, credit_type:,
-                                        reference_id:, idempotency_key:, metadata:)
+      new_plan_bal:, new_pack_bal:, credit_type:,
+      reference_id:, idempotency_key:, metadata:)
       tx = @account.credit_transactions.create!(
         transaction_type: "consume",
         credit_type: credit_type,

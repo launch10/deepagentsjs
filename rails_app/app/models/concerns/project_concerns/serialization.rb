@@ -5,6 +5,7 @@ module ProjectConcerns
     def to_mini_json
       {
         id: id,
+        uuid: uuid,
         website_id: website&.id,
         account_id: account_id,
         name: name,

@@ -12,9 +12,9 @@ test.describe("Leads Page", () => {
   let leadsPage: LeadsPage;
   let projectUuid: string;
 
-  test.describe("With Leads (leads_page snapshot)", () => {
+  test.describe("With Leads (website_deployed snapshot)", () => {
     test.beforeEach(async ({ page }) => {
-      await DatabaseSnapshotter.restoreSnapshot("leads_page");
+      await DatabaseSnapshotter.restoreSnapshot("website_deployed");
       const project = await DatabaseSnapshotter.getFirstProject();
       projectUuid = project.uuid;
       await loginUser(page);

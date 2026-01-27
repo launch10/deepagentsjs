@@ -134,7 +134,7 @@ module Database
 
       # Use CASCADE to handle foreign key constraints
       ActiveRecord::Base.connection.execute(
-        "TRUNCATE TABLE #{tables.join(', ')} CASCADE"
+        "TRUNCATE TABLE #{tables.join(", ")} CASCADE"
       )
     end
 

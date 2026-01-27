@@ -45,13 +45,14 @@ module InertiaSchemas
         type: :object,
         properties: {
           id: InertiaSchemas.integer_field,
+          uuid: InertiaSchemas.string_field,
           website_id: InertiaSchemas.nullable(type: :integer),
           account_id: InertiaSchemas.integer_field,
           name: InertiaSchemas.string_field,
           created_at: {}, # Any type (Time object serializes as various formats)
           updated_at: {}  # Any type (Time object serializes as various formats)
         },
-        required: %w[id account_id name]
+        required: %w[id uuid account_id name]
       }
     end
 
