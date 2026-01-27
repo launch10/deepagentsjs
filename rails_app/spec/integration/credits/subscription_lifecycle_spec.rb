@@ -50,6 +50,8 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       Credits::RenewalHandler.new.call(event)
     when "stripe.customer.subscription.updated"
       Credits::PlanChangeHandler.new.call(event)
+    when "stripe.customer.subscription.deleted"
+      Credits::CancellationHandler.new.call(event)
     else
       # For events we don't handle, use Pay's instrument (may trigger Stripe sync)
       Pay::Webhooks.instrument(event: event, type: event.type)
@@ -798,6 +800,144 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
     end
   end
 
+  describe "subscription cancellation (subscription.deleted webhook)" do
+    it "expires plan credits when subscription is deleted" do
+      subscription = subscribe_to(growth_monthly)
+      consume_credits(2000)  # Use 2000 of 5000
+
+      account.reload
+      expect(account.plan_credits).to eq(3000)
+
+      # Subscription period ends, Stripe fires subscription.deleted
+      event = subscription_deleted_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id
+      )
+
+      # Mark subscription as canceled (in production, Pay does this from webhook)
+      subscription.update!(status: "canceled")
+
+      process_webhook(event)
+
+      account.reload
+      expect(account.plan_credits).to eq(0)  # Plan credits expired
+
+      # Should have an expire transaction
+      expire_tx = account.credit_transactions.where(transaction_type: "expire").last
+      expect(expire_tx).to be_present
+      expect(expire_tx.reason).to eq("plan_credits_expired")
+      expect(expire_tx.amount).to eq(-3000)  # 3000 unused credits expired
+    end
+
+    it "preserves pack credits when subscription is deleted" do
+      subscription = subscribe_to(growth_monthly)
+      purchase_pack_credits(1000)
+
+      account.reload
+      expect(account.pack_credits).to eq(1000)
+      expect(account.plan_credits).to eq(5000)
+
+      event = subscription_deleted_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id
+      )
+
+      subscription.update!(status: "canceled")
+      process_webhook(event)
+
+      account.reload
+      expect(account.plan_credits).to eq(0)     # Plan credits expired
+      expect(account.pack_credits).to eq(1000)   # Pack credits preserved!
+      expect(account.total_credits).to eq(1000)
+    end
+
+    it "does not create expire transaction when plan credits are already zero" do
+      subscription = subscribe_to(growth_monthly)
+      consume_credits(5000)  # Use all credits
+
+      account.reload
+      expect(account.plan_credits).to eq(0)
+
+      event = subscription_deleted_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id
+      )
+
+      subscription.update!(status: "canceled")
+
+      expect {
+        process_webhook(event)
+      }.not_to change { account.credit_transactions.where(transaction_type: "expire").count }
+    end
+
+    it "is idempotent - duplicate deleted events do not double-expire" do
+      subscription = subscribe_to(growth_monthly)
+
+      account.reload
+      expect(account.plan_credits).to eq(5000)
+
+      event = subscription_deleted_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id
+      )
+
+      subscription.update!(status: "canceled")
+
+      process_webhook(event)
+      account.reload
+      expect(account.plan_credits).to eq(0)
+
+      expire_count = account.credit_transactions.where(transaction_type: "expire").count
+
+      # Process same event again
+      process_webhook(event)
+
+      # Should not create another expire transaction
+      expect(account.credit_transactions.where(transaction_type: "expire").count).to eq(expire_count)
+      expect(account.reload.plan_credits).to eq(0)
+    end
+
+    it "handles negative plan balance (debt) - no expire needed" do
+      subscription = subscribe_to(growth_monthly)
+      consume_credits(5000)
+
+      # Simulate going into debt
+      account.reload
+      account.credit_transactions.create!(
+        transaction_type: "consume",
+        credit_type: "plan",
+        reason: "ai_generation",
+        amount_millicredits: -500_000,
+        balance_after_millicredits: -500_000,
+        plan_balance_after_millicredits: -500_000,
+        pack_balance_after_millicredits: 0,
+        reference_type: "llm_run",
+        reference_id: SecureRandom.uuid
+      )
+
+      event = subscription_deleted_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id
+      )
+
+      subscription.update!(status: "canceled")
+
+      # Should not create expire for negative balance
+      expect {
+        process_webhook(event)
+      }.not_to change { account.credit_transactions.where(transaction_type: "expire").count }
+    end
+
+    it "ignores deleted events for unknown subscriptions" do
+      event = subscription_deleted_event(
+        subscription_id: "sub_does_not_exist",
+        customer_id: "cus_unknown"
+      )
+
+      expect { process_webhook(event) }.not_to raise_error
+    end
+  end
+
   describe "full subscription lifecycle" do
     it "handles create -> use -> renew -> upgrade -> cancel" do
       # 1. Create subscription (initial allocation via callback)
@@ -850,6 +990,15 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
         )
         process_webhook(cancel_event)
         expect(account.reload.plan_credits).to eq(5000)  # Keeps credits until end
+
+        # 7. Subscription period ends, Stripe fires subscription.deleted
+        deleted_event = subscription_deleted_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id
+        )
+        subscription.update!(status: "canceled")
+        process_webhook(deleted_event)
+        expect(account.reload.plan_credits).to eq(0)  # Credits expired
       end
     end
   end

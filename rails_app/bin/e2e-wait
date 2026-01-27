@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Wait for test services to be ready before running Playwright tests.
+# Used by test:e2e:start in package.json.
+
+set -e
+
+RAILS_URL="http://localhost:3001"
+MAX_ATTEMPTS=60
+
+echo "[e2e-wait] Waiting for Rails on $RAILS_URL..."
+
+for ((i=1; i<=MAX_ATTEMPTS; i++)); do
+  if curl -sf "$RAILS_URL/up" >/dev/null 2>&1; then
+    echo "[e2e-wait] Rails ready."
+    exit 0
+  fi
+  sleep 1
+done
+
+echo "[e2e-wait] Rails failed to start within ${MAX_ATTEMPTS}s" >&2
+exit 1
