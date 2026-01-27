@@ -11,3 +11,4 @@ export * from "./jobRunAPIService";
 export * from "./contextAPIService";
 export * from "./deployAPIService";
 export * from "./chatsAPIService";
+export * from "./creditsAPIService";

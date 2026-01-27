@@ -38,9 +38,9 @@ describe("creditCheckMiddleware", () => {
     it("allows request when ok is true", async () => {
       mockCheckCredits.mockResolvedValue({
         ok: true,
-        balanceMillicredits: 5000,
-        planMillicredits: 4000,
-        packMillicredits: 1000,
+        balance_millicredits: 5000,
+        plan_millicredits: 4000,
+        pack_millicredits: 1000,
       });
 
       app.use("*", withAuth(123));
@@ -60,9 +60,9 @@ describe("creditCheckMiddleware", () => {
     it("sets creditState with balance and accountId", async () => {
       mockCheckCredits.mockResolvedValue({
         ok: true,
-        balanceMillicredits: 5000,
-        planMillicredits: 4000,
-        packMillicredits: 1000,
+        balance_millicredits: 5000,
+        plan_millicredits: 4000,
+        pack_millicredits: 1000,
       });
 
       let capturedState: CreditState | undefined;
@@ -86,9 +86,9 @@ describe("creditCheckMiddleware", () => {
       // Edge case: ok is true but balance is 0 (shouldn't happen, but handle it)
       mockCheckCredits.mockResolvedValue({
         ok: true,
-        balanceMillicredits: 0,
-        planMillicredits: 0,
-        packMillicredits: 0,
+        balance_millicredits: 0,
+        plan_millicredits: 0,
+        pack_millicredits: 0,
       });
 
       app.use("*", withAuth(123));
@@ -105,9 +105,9 @@ describe("creditCheckMiddleware", () => {
     it("returns 402 when ok is false", async () => {
       mockCheckCredits.mockResolvedValue({
         ok: false,
-        balanceMillicredits: 0,
-        planMillicredits: 0,
-        packMillicredits: 0,
+        balance_millicredits: 0,
+        plan_millicredits: 0,
+        pack_millicredits: 0,
       });
 
       app.use("*", withAuth(123));
@@ -130,9 +130,9 @@ describe("creditCheckMiddleware", () => {
     it("returns correct balance breakdown in 402 response", async () => {
       mockCheckCredits.mockResolvedValue({
         ok: false,
-        balanceMillicredits: -500, // debt
-        planMillicredits: -500,
-        packMillicredits: 0,
+        balance_millicredits: -500, // debt
+        plan_millicredits: -500,
+        pack_millicredits: 0,
       });
 
       app.use("*", withAuth(123));
@@ -155,9 +155,9 @@ describe("creditCheckMiddleware", () => {
     it("does not call route handler when credits exhausted", async () => {
       mockCheckCredits.mockResolvedValue({
         ok: false,
-        balanceMillicredits: 0,
-        planMillicredits: 0,
-        packMillicredits: 0,
+        balance_millicredits: 0,
+        plan_millicredits: 0,
+        pack_millicredits: 0,
       });
 
       const routeHandler = vi.fn(() => new Response("OK"));
@@ -277,9 +277,9 @@ describe("creditCheckMiddleware", () => {
     it("returns credit state when middleware has run", async () => {
       mockCheckCredits.mockResolvedValue({
         ok: true,
-        balanceMillicredits: 12345,
-        planMillicredits: 10000,
-        packMillicredits: 2345,
+        balance_millicredits: 12345,
+        plan_millicredits: 10000,
+        pack_millicredits: 2345,
       });
 
       let capturedState: CreditState | undefined;
@@ -304,9 +304,9 @@ describe("creditCheckMiddleware", () => {
     it("works with POST requests", async () => {
       mockCheckCredits.mockResolvedValue({
         ok: true,
-        balanceMillicredits: 5000,
-        planMillicredits: 5000,
-        packMillicredits: 0,
+        balance_millicredits: 5000,
+        plan_millicredits: 5000,
+        pack_millicredits: 0,
       });
 
       app.use("*", withAuth(123));
@@ -326,9 +326,9 @@ describe("creditCheckMiddleware", () => {
     it("calls checkCredits with JWT from auth context", async () => {
       mockCheckCredits.mockResolvedValue({
         ok: true,
-        balanceMillicredits: 1000,
-        planMillicredits: 1000,
-        packMillicredits: 0,
+        balance_millicredits: 1000,
+        plan_millicredits: 1000,
+        pack_millicredits: 0,
       });
 
       app.use("*", withAuth(42));

@@ -5,21 +5,12 @@
  * Called before graph execution to decide if the run should proceed.
  */
 
-import { createRailsApiClient } from "@rails_api";
+import { createRailsApiClient, type CheckCreditsResponse } from "@rails_api";
 
 /**
- * Result of a credit check.
+ * Result of a credit check — derived from the generated API path type.
  */
-export interface CreditCheckResult {
-  /** Whether the account can proceed with the run (has positive balance) */
-  ok: boolean;
-  /** Total balance in millicredits */
-  balanceMillicredits: number;
-  /** Plan credits in millicredits (expire at renewal) */
-  planMillicredits: number;
-  /** Pack credits in millicredits (persist until used) */
-  packMillicredits: number;
-}
+export type CreditCheckResult = CheckCreditsResponse;
 
 /**
  * Error thrown when credit check fails.
@@ -52,13 +43,7 @@ export async function checkCredits(
   }
 
   try {
-    const client = await createRailsApiClient({
-      jwt,
-      baseUrl,
-    });
-
-    // Call the credits check endpoint
-    // Note: Authorization header is added by client wrapper based on JWT
+    const client = await createRailsApiClient({ jwt, baseUrl });
     const response = await client.GET("/api/v1/credits/check", {
       params: {
         header: {
@@ -74,12 +59,7 @@ export async function checkCredits(
       );
     }
 
-    return {
-      ok: response.data.ok,
-      balanceMillicredits: response.data.balance_millicredits,
-      planMillicredits: response.data.plan_millicredits,
-      packMillicredits: response.data.pack_millicredits,
-    };
+    return response.data;
   } catch (error) {
     if (error instanceof CreditCheckError) {
       throw error;

@@ -5,7 +5,6 @@
 #  id                 :bigint           not null, primary key
 #  content            :string           not null
 #  content_tsv        :tsvector
-#  embedding          :vector(1536)
 #  history_ended_at   :datetime
 #  history_started_at :datetime         not null
 #  path               :string           not null

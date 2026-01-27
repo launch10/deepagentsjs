@@ -1,20 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { canProceedWithRun, checkCredits, CreditCheckError, type CreditCheckResult } from "@core";
 
-// Mock the Rails API client using the async pattern
-const mockClient = {
-  GET: vi.fn(),
-};
+// Use vi.hoisted so mocks are available when vi.mock factory runs (hoisted to top)
+const { mockClient, mockCreateRailsApiClient } = vi.hoisted(() => {
+  const mockClient = { GET: vi.fn() };
+  const mockCreateRailsApiClient = vi.fn().mockResolvedValue(mockClient);
+  return { mockClient, mockCreateRailsApiClient };
+});
 
+// Mock @rails_api using the same pattern as other tests (googleConnectNode, etc.)
 vi.mock("@rails_api", async () => {
   const actual = await vi.importActual("@rails_api");
   return {
     ...actual,
-    createRailsApiClient: vi.fn().mockResolvedValue(mockClient),
+    createRailsApiClient: mockCreateRailsApiClient,
   };
 });
 
-import { createRailsApiClient } from "@rails_api";
+import { canProceedWithRun, checkCredits, CreditCheckError, type CreditCheckResult } from "@core";
 
 /**
  * Credit Check Tests
@@ -30,9 +32,9 @@ describe.sequential("creditCheck", () => {
     it("returns true when ok is true", () => {
       const result: CreditCheckResult = {
         ok: true,
-        balanceMillicredits: 5_000_000,
-        planMillicredits: 4_000_000,
-        packMillicredits: 1_000_000,
+        balance_millicredits: 5_000_000,
+        plan_millicredits: 4_000_000,
+        pack_millicredits: 1_000_000,
       };
 
       expect(canProceedWithRun(result)).toBe(true);
@@ -41,9 +43,9 @@ describe.sequential("creditCheck", () => {
     it("returns false when ok is false", () => {
       const result: CreditCheckResult = {
         ok: false,
-        balanceMillicredits: 0,
-        planMillicredits: 0,
-        packMillicredits: 0,
+        balance_millicredits: 0,
+        plan_millicredits: 0,
+        pack_millicredits: 0,
       };
 
       expect(canProceedWithRun(result)).toBe(false);
@@ -52,9 +54,9 @@ describe.sequential("creditCheck", () => {
     it("returns false when ok is false with negative balance", () => {
       const result: CreditCheckResult = {
         ok: false,
-        balanceMillicredits: -500_000,
-        planMillicredits: -500_000,
-        packMillicredits: 0,
+        balance_millicredits: -500_000,
+        plan_millicredits: -500_000,
+        pack_millicredits: 0,
       };
 
       expect(canProceedWithRun(result)).toBe(false);
@@ -63,9 +65,9 @@ describe.sequential("creditCheck", () => {
     it("returns true when ok is true with only pack credits", () => {
       const result: CreditCheckResult = {
         ok: true,
-        balanceMillicredits: 1_000_000,
-        planMillicredits: 0,
-        packMillicredits: 1_000_000,
+        balance_millicredits: 1_000_000,
+        plan_millicredits: 0,
+        pack_millicredits: 1_000_000,
       };
 
       expect(canProceedWithRun(result)).toBe(true);
@@ -97,7 +99,8 @@ describe.sequential("creditCheck", () => {
   describe("checkCredits", () => {
     beforeEach(() => {
       mockClient.GET.mockReset();
-      vi.mocked(createRailsApiClient).mockClear();
+      mockCreateRailsApiClient.mockClear();
+      mockCreateRailsApiClient.mockResolvedValue(mockClient);
     });
 
     afterEach(() => {
@@ -124,9 +127,9 @@ describe.sequential("creditCheck", () => {
 
       expect(result).toEqual({
         ok: true,
-        balanceMillicredits: 5_000_000,
-        planMillicredits: 4_000_000,
-        packMillicredits: 1_000_000,
+        balance_millicredits: 5_000_000,
+        plan_millicredits: 4_000_000,
+        pack_millicredits: 1_000_000,
       });
       expect(mockClient.GET).toHaveBeenCalledWith("/api/v1/credits/check", {
         params: {
@@ -151,7 +154,7 @@ describe.sequential("creditCheck", () => {
       const result = await checkCredits("valid-jwt");
 
       expect(result.ok).toBe(false);
-      expect(result.balanceMillicredits).toBe(0);
+      expect(result.balance_millicredits).toBe(0);
     });
 
     it("throws CreditCheckError on API error", async () => {
@@ -171,7 +174,7 @@ describe.sequential("creditCheck", () => {
       await expect(checkCredits("valid-jwt")).rejects.toThrow("Credit check failed: Network error");
     });
 
-    it("calls Rails API with correct path", async () => {
+    it("calls Rails API with correct options", async () => {
       mockClient.GET.mockResolvedValue({
         data: {
           ok: true,
@@ -184,7 +187,7 @@ describe.sequential("creditCheck", () => {
 
       await checkCredits("test-jwt");
 
-      expect(createRailsApiClient).toHaveBeenCalledWith({
+      expect(mockCreateRailsApiClient).toHaveBeenCalledWith({
         jwt: "test-jwt",
         baseUrl: undefined,
       });
@@ -203,7 +206,7 @@ describe.sequential("creditCheck", () => {
 
       await checkCredits("test-jwt", "http://custom-url:3000");
 
-      expect(createRailsApiClient).toHaveBeenCalledWith({
+      expect(mockCreateRailsApiClient).toHaveBeenCalledWith({
         jwt: "test-jwt",
         baseUrl: "http://custom-url:3000",
       });

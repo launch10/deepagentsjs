@@ -16,50 +16,6 @@ module Credits
       @account = account
     end
 
-    # Expire all remaining plan credits (e.g., when subscription ends).
-    #
-    # Pack credits are never affected.
-    #
-    # @param reason [Symbol] Reason for expiration (e.g., :plan_credits_expired)
-    # @param idempotency_key [String] Unique key to prevent duplicate expiration
-    #
-    # @return [CreditTransaction, nil] The expire transaction, or nil if no credits to expire
-    #
-    def expire_plan_credits!(reason:, idempotency_key:)
-      Account.transaction do
-        @account.lock!
-
-        # Idempotency check
-        existing = CreditTransaction.find_by(idempotency_key: idempotency_key)
-        return existing if existing
-
-        return nil if @account.plan_millicredits <= 0
-
-        plan_bal = @account.plan_millicredits
-        pack_bal = @account.pack_millicredits
-        new_total = pack_bal  # plan goes to 0
-
-        tx = @account.credit_transactions.create!(
-          transaction_type: "expire",
-          credit_type: "plan",
-          reason: reason.to_s,
-          amount_millicredits: -plan_bal,
-          balance_after_millicredits: new_total,
-          plan_balance_after_millicredits: 0,
-          pack_balance_after_millicredits: pack_bal,
-          idempotency_key: idempotency_key,
-          metadata: {expired_millicredits: plan_bal}
-        )
-
-        @account.update!(
-          plan_millicredits: 0,
-          total_millicredits: new_total
-        )
-
-        tx
-      end
-    end
-
     # Consume credits for an LLM run.
     #
     # @param cost_millicredits [Integer] Total cost in millicredits

@@ -5,7 +5,6 @@
 #  id          :bigint           not null, primary key
 #  content     :string           not null
 #  content_tsv :tsvector
-#  embedding   :vector(1536)
 #  path        :string           not null
 #  shasum      :string
 #  created_at  :datetime         not null
@@ -15,7 +14,6 @@
 # Indexes
 #
 #  idx_website_files_content_tsv                      (content_tsv) USING gin
-#  idx_website_files_embedding                        (embedding) USING ivfflat
 #  idx_website_files_path_trgm                        (path) USING gin
 #  index_website_files_on_created_at                  (created_at)
 #  index_website_files_on_shasum                      (shasum)
@@ -27,7 +25,6 @@
 class WebsiteFile < ApplicationRecord
   include Historiographer::Safe
   historiographer_mode :snapshot_only
-  include Embeddable
 
   belongs_to :website, inverse_of: :website_files
 

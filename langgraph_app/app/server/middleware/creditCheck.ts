@@ -48,9 +48,9 @@ export const creditCheckMiddleware = async (c: Context, next: Next) => {
         {
           error: "Insufficient credits",
           code: "CREDITS_EXHAUSTED",
-          balance: result.balanceMillicredits,
-          planCredits: result.planMillicredits,
-          packCredits: result.packMillicredits,
+          balance: result.balance_millicredits,
+          planCredits: result.plan_millicredits,
+          packCredits: result.pack_millicredits,
         },
         402 // Payment Required
       );
@@ -59,7 +59,7 @@ export const creditCheckMiddleware = async (c: Context, next: Next) => {
     // Set credit state for route handler to use
     c.set("creditState", {
       accountId: auth.accountId,
-      preRunCreditsRemaining: result.balanceMillicredits,
+      preRunCreditsRemaining: result.balance_millicredits,
     } satisfies CreditState);
 
     await next();

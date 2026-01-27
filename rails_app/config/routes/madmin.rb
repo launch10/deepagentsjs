@@ -27,6 +27,8 @@ namespace :madmin, path: :admin do
   end
   resources :users do
     resource :impersonate, module: :user
+    resources :credit_gifts, only: [:index, :create], module: :user
+    resources :credit_transactions, only: [:index], module: :user
   end
   resources :connected_accounts
   resources :accounts
@@ -41,9 +43,7 @@ namespace :madmin, path: :admin do
   end
 
   # Credits management
-  resources :credit_transactions, only: [:index, :show]
   resources :credit_packs
-  resources :credit_gifts, only: [:index, :show, :new, :create]
 
   root to: "dashboard#show"
 end

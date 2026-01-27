@@ -14,7 +14,8 @@ module Madmin
 
       render inertia: "Madmin/Users/Show",
         props: {
-          user: serialize_user(@user, detailed: true)
+          user: serialize_user(@user, detailed: true),
+          creditReasons: CreditGift::REASONS
         }
     end
 
@@ -31,6 +32,7 @@ module Madmin
       }
 
       if detailed
+        account = user.owned_account
         data.merge!(
           firstName: user.first_name,
           lastName: user.last_name,
@@ -39,7 +41,10 @@ module Madmin
           confirmedAt: user.confirmed_at&.iso8601,
           acceptedTermsAt: user.accepted_terms_at&.iso8601,
           acceptedPrivacyAt: user.accepted_privacy_at&.iso8601,
-          updatedAt: user.updated_at&.iso8601
+          updatedAt: user.updated_at&.iso8601,
+          totalCredits: account&.total_credits || 0,
+          planCredits: account&.plan_credits || 0,
+          packCredits: account&.pack_credits || 0
         )
       end
 

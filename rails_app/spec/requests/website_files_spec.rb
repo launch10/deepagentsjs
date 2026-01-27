@@ -1,7 +1,6 @@
 require 'swagger_helper'
 
 RSpec.describe "Website Files API", type: :request do
-  let(:fake_embedding) { Array.new(1536) { rand(-1.0..1.0) } }
   let!(:template) { Template.first || create(:template) }
   let!(:user1) { create(:user, name: "User 1") }
   let!(:user2) { create(:user, name: "User 2") }
@@ -59,23 +58,12 @@ RSpec.describe "Website Files API", type: :request do
           }
         end
 
-        before do
-          Embeddable.generate_in_test = true
-          allow(EmbeddingService).to receive(:generate).and_return(fake_embedding)
-        end
-
-        after do
-          Embeddable.generate_in_test = false
-        end
-
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data["files"].length).to eq(2)
           expect(data["files"].map { |f| f["path"] }).to contain_exactly("index.html", "styles.css")
 
           expect(website1_owned.website_files.count).to eq(2)
-          expect(EmbeddingService).to have_received(:generate).twice
-          expect(website1_owned.website_files.reload.map(&:embedding).map(&:count)).to all(eq fake_embedding.count)
         end
       end
 

@@ -800,141 +800,139 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
     end
   end
 
-  describe "subscription cancellation (subscription.deleted webhook)" do
-    it "expires plan credits when subscription is deleted" do
-      subscription = subscribe_to(growth_monthly)
-      consume_credits(2000)  # Use 2000 of 5000
+  describe "subscription cancellation" do
+    context "subscription.deleted webhook" do
+      it "does not immediately expire plan credits" do
+        subscription = subscribe_to(growth_monthly)
+        consume_credits(2000)  # Use 2000 of 5000
 
-      account.reload
-      expect(account.plan_credits).to eq(3000)
+        account.reload
+        expect(account.plan_credits).to eq(3000)
 
-      # Subscription period ends, Stripe fires subscription.deleted
-      event = subscription_deleted_event(
-        subscription_id: subscription.processor_id,
-        customer_id: subscription.customer.processor_id
-      )
+        # Subscription period ends, Stripe fires subscription.deleted
+        event = subscription_deleted_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id
+        )
 
-      # Mark subscription as canceled (in production, Pay does this from webhook)
-      subscription.update!(status: "canceled")
-
-      process_webhook(event)
-
-      account.reload
-      expect(account.plan_credits).to eq(0)  # Plan credits expired
-
-      # Should have an expire transaction
-      expire_tx = account.credit_transactions.where(transaction_type: "expire").last
-      expect(expire_tx).to be_present
-      expect(expire_tx.reason).to eq("plan_credits_expired")
-      expect(expire_tx.amount).to eq(-3000)  # 3000 unused credits expired
-    end
-
-    it "preserves pack credits when subscription is deleted" do
-      subscription = subscribe_to(growth_monthly)
-      purchase_pack_credits(1000)
-
-      account.reload
-      expect(account.pack_credits).to eq(1000)
-      expect(account.plan_credits).to eq(5000)
-
-      event = subscription_deleted_event(
-        subscription_id: subscription.processor_id,
-        customer_id: subscription.customer.processor_id
-      )
-
-      subscription.update!(status: "canceled")
-      process_webhook(event)
-
-      account.reload
-      expect(account.plan_credits).to eq(0)     # Plan credits expired
-      expect(account.pack_credits).to eq(1000)   # Pack credits preserved!
-      expect(account.total_credits).to eq(1000)
-    end
-
-    it "does not create expire transaction when plan credits are already zero" do
-      subscription = subscribe_to(growth_monthly)
-      consume_credits(5000)  # Use all credits
-
-      account.reload
-      expect(account.plan_credits).to eq(0)
-
-      event = subscription_deleted_event(
-        subscription_id: subscription.processor_id,
-        customer_id: subscription.customer.processor_id
-      )
-
-      subscription.update!(status: "canceled")
-
-      expect {
+        subscription.update!(status: "canceled")
         process_webhook(event)
-      }.not_to change { account.credit_transactions.where(transaction_type: "expire").count }
-    end
 
-    it "is idempotent - duplicate deleted events do not double-expire" do
-      subscription = subscribe_to(growth_monthly)
+        # Credits are NOT immediately expired - user keeps remaining balance
+        account.reload
+        expect(account.plan_credits).to eq(3000)
 
-      account.reload
-      expect(account.plan_credits).to eq(5000)
+        # No expire transaction should be created
+        expect(account.credit_transactions.where(transaction_type: "expire").count).to eq(0)
+      end
 
-      event = subscription_deleted_event(
-        subscription_id: subscription.processor_id,
-        customer_id: subscription.customer.processor_id
-      )
+      it "preserves both plan and pack credits when subscription is deleted" do
+        subscription = subscribe_to(growth_monthly)
+        purchase_pack_credits(1000)
 
-      subscription.update!(status: "canceled")
+        account.reload
+        expect(account.pack_credits).to eq(1000)
+        expect(account.plan_credits).to eq(5000)
 
-      process_webhook(event)
-      account.reload
-      expect(account.plan_credits).to eq(0)
+        event = subscription_deleted_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id
+        )
 
-      expire_count = account.credit_transactions.where(transaction_type: "expire").count
-
-      # Process same event again
-      process_webhook(event)
-
-      # Should not create another expire transaction
-      expect(account.credit_transactions.where(transaction_type: "expire").count).to eq(expire_count)
-      expect(account.reload.plan_credits).to eq(0)
-    end
-
-    it "handles negative plan balance (debt) - no expire needed" do
-      subscription = subscribe_to(growth_monthly)
-      consume_credits(5000)
-
-      # Simulate going into debt
-      account.reload
-      account.credit_transactions.create!(
-        transaction_type: "consume",
-        credit_type: "plan",
-        reason: "ai_generation",
-        amount_millicredits: -500_000,
-        balance_after_millicredits: -500_000,
-        plan_balance_after_millicredits: -500_000,
-        pack_balance_after_millicredits: 0,
-        reference_type: "llm_run",
-        reference_id: SecureRandom.uuid
-      )
-
-      event = subscription_deleted_event(
-        subscription_id: subscription.processor_id,
-        customer_id: subscription.customer.processor_id
-      )
-
-      subscription.update!(status: "canceled")
-
-      # Should not create expire for negative balance
-      expect {
+        subscription.update!(status: "canceled")
         process_webhook(event)
-      }.not_to change { account.credit_transactions.where(transaction_type: "expire").count }
+
+        # Both plan and pack credits preserved
+        account.reload
+        expect(account.plan_credits).to eq(5000)
+        expect(account.pack_credits).to eq(1000)
+        expect(account.total_credits).to eq(6000)
+      end
+
+      it "ignores deleted events for unknown subscriptions" do
+        event = subscription_deleted_event(
+          subscription_id: "sub_does_not_exist",
+          customer_id: "cus_unknown"
+        )
+
+        expect { process_webhook(event) }.not_to raise_error
+      end
     end
 
-    it "ignores deleted events for unknown subscriptions" do
-      event = subscription_deleted_event(
-        subscription_id: "sub_does_not_exist",
-        customer_id: "cus_unknown"
-      )
+    context "yearly subscriber monthly resets" do
+      it "does not grant monthly credit reset to yearly subscriber with pending cancellation" do
+        subscription = subscribe_to(growth_annual)
+        consume_credits(3000)
 
-      expect { process_webhook(event) }.not_to raise_error
+        account.reload
+        expect(account.plan_credits).to eq(2000)
+
+        # Before cancel: ends_at is nil (active subscription)
+        expect(subscription.ends_at).to be_nil
+
+        # User cancels at period end.
+        # Pay's .cancel sets ends_at to current_period_end (distinct from current_period_end column).
+        # ends_at being non-nil is the signal that the subscription is ending.
+        subscription.update!(ends_at: subscription.current_period_end)
+        expect(subscription.ends_at).to be_present
+
+        # Travel to next month's billing day
+        billing_day = subscription.current_period_start.day
+        next_reset = (Date.current + 1.month).change(day: [billing_day, (Date.current + 1.month).end_of_month.day].min)
+
+        travel_to next_reset do
+          initial_count = account.credit_transactions.count
+
+          Credits::DailyReconciliationWorker.new.perform
+
+          # Should NOT grant new credits - ends_at is set (pending cancellation)
+          expect(account.credit_transactions.count).to eq(initial_count)
+          account.reload
+          expect(account.plan_credits).to eq(2000)  # Unchanged
+        end
+      end
+
+      it "still grants monthly credit reset to active yearly subscriber (ends_at nil)" do
+        subscription = subscribe_to(growth_annual)
+        consume_credits(3000)
+
+        account.reload
+        expect(account.plan_credits).to eq(2000)
+
+        # Active subscription: ends_at is nil
+        expect(subscription.ends_at).to be_nil
+
+        billing_day = subscription.current_period_start.day
+        next_reset = (Date.current + 1.month).change(day: [billing_day, (Date.current + 1.month).end_of_month.day].min)
+
+        travel_to next_reset do
+          Credits::DailyReconciliationWorker.new.perform
+
+          account.reload
+          expect(account.plan_credits).to eq(5000)  # Fresh allocation
+        end
+      end
+    end
+
+    context "no new credits after cancellation" do
+      it "renewal webhook does not allocate credits for canceled subscription" do
+        subscription = subscribe_to(growth_monthly)
+        initial_count = account.credit_transactions.count
+
+        subscription.update!(status: "canceled")
+
+        # Even if a stale invoice.paid event arrives, it should be ignored
+        event = invoice_paid_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id,
+          billing_reason: "subscription_cycle"
+        )
+
+        process_webhook(event)
+
+        # No new credits allocated
+        expect(account.credit_transactions.count).to eq(initial_count)
+      end
     end
   end
 
@@ -992,13 +990,14 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
         expect(account.reload.plan_credits).to eq(5000)  # Keeps credits until end
 
         # 7. Subscription period ends, Stripe fires subscription.deleted
+        #    Credits are NOT immediately expired - they remain until used
         deleted_event = subscription_deleted_event(
           subscription_id: subscription.processor_id,
           customer_id: subscription.customer.processor_id
         )
         subscription.update!(status: "canceled")
         process_webhook(deleted_event)
-        expect(account.reload.plan_credits).to eq(0)  # Credits expired
+        expect(account.reload.plan_credits).to eq(5000)  # Credits remain, no new ones granted
       end
     end
   end

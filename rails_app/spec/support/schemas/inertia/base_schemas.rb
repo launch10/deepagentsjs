@@ -44,6 +44,20 @@ module InertiaSchemas
     }
   end
 
+  def self.credits_schema
+    nullable({
+      type: :object,
+      properties: {
+        plan_credits: { type: :number },
+        pack_credits: { type: :number },
+        total_credits: { type: :number },
+        plan_credits_allocated: { type: :number },
+        period_ends_at: nullable(string_field)
+      },
+      required: %w[plan_credits pack_credits total_credits plan_credits_allocated]
+    })
+  end
+
   def self.shared_props
     {
       root_path: { type: :string, description: 'Base URL of the application' },
@@ -64,7 +78,8 @@ module InertiaSchemas
       },
       current_user: nullable(user_schema).merge(description: 'Currently authenticated user'),
       true_user: nullable(user_schema).merge(description: 'Original admin user when impersonating'),
-      impersonating: boolean_field(description: 'Whether admin is currently impersonating another user')
+      impersonating: boolean_field(description: 'Whether admin is currently impersonating another user'),
+      credits: credits_schema.merge(description: 'Credit balance for the current account')
     }
   end
 

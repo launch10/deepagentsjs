@@ -146,6 +146,33 @@ RSpec.describe Credits::DailyReconciliationWorker do
       end
     end
 
+    context "yearly subscriber with pending cancellation" do
+      it "does not process yearly subscribers whose subscription is ending (ends_at set)" do
+        account = create(:account)
+        subscription = create_yearly_subscription(account: account, billing_day: 15)
+        setup_account_state(account: account, plan_credits: 3000, pack_credits: 0)
+
+        # Before cancel: ends_at is nil
+        expect(subscription.ends_at).to be_nil
+
+        # User cancels at period end. Pay sets ends_at to current_period_end.
+        # ends_at != nil is what signals the subscription is winding down.
+        subscription.update!(ends_at: subscription.current_period_end)
+        expect(subscription.ends_at).to eq(subscription.current_period_end)
+
+        next_month_15th = Date.current.next_month.beginning_of_month + 14.days
+        travel_to next_month_15th do
+          allow_any_instance_of(Pay::Subscription).to receive(:plan).and_return(yearly_plan)
+
+          expect {
+            worker.perform
+          }.not_to change { CreditTransaction.count }
+
+          expect(account.reload.plan_credits).to eq(3000) # Unchanged
+        end
+      end
+    end
+
     context "monthly subscribers" do
       it "does not process monthly subscribers" do
         account = create(:account)

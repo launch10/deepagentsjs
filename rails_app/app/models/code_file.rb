@@ -4,7 +4,6 @@
 #
 #  content     :string
 #  content_tsv :tsvector
-#  embedding   :vector(1536)
 #  path        :string
 #  shasum      :string
 #  source_type :text
