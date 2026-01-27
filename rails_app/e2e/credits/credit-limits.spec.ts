@@ -38,14 +38,14 @@ test.describe("Credit Limits", () => {
       await brainstormPage.sendButton.click();
 
       // Verify the exhaustion modal appears
-      await expect(page.getByText("You've run out of credits")).toBeVisible({
+      await expect(page.getByTestId("credit-modal")).toBeVisible({
         timeout: 10000,
       });
+      await expect(page.getByText("You\u2019ve reached your credit limit")).toBeVisible();
 
       // Verify the modal has the expected content
       await expect(page.getByRole("link", { name: "Upgrade Plan" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Purchase Credit Pack" })).toBeVisible();
-      await expect(page.getByText("Dismiss for now")).toBeVisible();
+      await expect(page.getByRole("link", { name: "Purchase Credits" })).toBeVisible();
     });
 
     test("can dismiss the exhaustion modal", async ({ page }) => {
@@ -71,15 +71,15 @@ test.describe("Credit Limits", () => {
       await brainstormPage.sendButton.click();
 
       // Wait for modal to appear
-      await expect(page.getByText("You've run out of credits")).toBeVisible({
+      await expect(page.getByTestId("credit-modal")).toBeVisible({
         timeout: 10000,
       });
 
-      // Dismiss the modal
-      await page.getByText("Dismiss for now").click();
+      // Dismiss the modal via close button
+      await page.getByTestId("credit-modal-close").click();
 
       // Verify modal is hidden
-      await expect(page.getByText("You've run out of credits")).not.toBeVisible();
+      await expect(page.getByTestId("credit-modal")).not.toBeVisible();
     });
   });
 
@@ -87,9 +87,9 @@ test.describe("Credit Limits", () => {
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("basic_account");
 
-      // Set credits to 100 millicredits (0.10 credits) - enough to not be gated
-      // on page load, but will be exhausted after the first LLM call
-      await DatabaseSnapshotter.setCredits(testUser.email, 100, 0);
+      // Set credits to 10 millicredits (0.01 credits) - non-zero so textarea
+      // isn't disabled, but small enough to be exhausted by one LLM call (~57mc)
+      await DatabaseSnapshotter.setCredits(testUser.email, 10, 0);
 
       await loginUser(page);
       brainstormPage = new BrainstormPage(page);
@@ -98,18 +98,25 @@ test.describe("Credit Limits", () => {
     test("shows exhaustion modal after real brainstorm depletes credits", async ({ page }) => {
       await brainstormPage.goto();
 
+      // Low credit warning modal appears first (0.10 credits = ~100% usage)
+      // Dismiss it so we can interact with the chat
+      await expect(page.getByTestId("credit-modal")).toBeVisible({ timeout: 10000 });
+      await page.getByTestId("credit-modal-close").click();
+      await expect(page.getByTestId("credit-modal")).not.toBeVisible();
+
       // Send a real brainstorm message
-      // This will make an actual LLM call which costs more than 1 millicent
+      // This will make an actual LLM call which costs more than 0.10 credits
       await brainstormPage.sendMessage("I want to start a coffee subscription service");
 
       // Wait for the AI response to complete
       await brainstormPage.waitForResponse(e2eConfig.timeouts.aiResponse);
 
-      // After the response, the credit status should trigger the modal
-      // The modal should appear when justExhausted is detected
-      await expect(page.getByText("You've run out of credits")).toBeVisible({
+      // After the response, the credit status should trigger the exhausted modal
+      // justExhausted force-shows it even though we dismissed the low credit modal
+      await expect(page.getByTestId("credit-modal")).toBeVisible({
         timeout: 15000,
       });
+      await expect(page.getByText("You\u2019ve reached your credit limit")).toBeVisible();
 
       // Verify modal content shows the low/negative balance
       await expect(page.getByRole("link", { name: "Upgrade Plan" })).toBeVisible();
@@ -118,18 +125,23 @@ test.describe("Credit Limits", () => {
     test("submit button is disabled and credit gate visible after exhaustion", async ({ page }) => {
       await brainstormPage.goto();
 
+      // Low credit warning modal appears first — dismiss it
+      await expect(page.getByTestId("credit-modal")).toBeVisible({ timeout: 10000 });
+      await page.getByTestId("credit-modal-close").click();
+      await expect(page.getByTestId("credit-modal")).not.toBeVisible();
+
       // Send a message to exhaust credits
       await brainstormPage.sendMessage("I want to start a coffee subscription service");
       await brainstormPage.waitForResponse(e2eConfig.timeouts.aiResponse);
 
-      // Wait for the modal to appear (confirms exhaustion detected)
-      await expect(page.getByText("You've run out of credits")).toBeVisible({
+      // Wait for the exhausted modal to appear (confirms exhaustion detected)
+      await expect(page.getByTestId("credit-modal")).toBeVisible({
         timeout: 15000,
       });
 
-      // Dismiss the modal
-      await page.getByText("Dismiss for now").click();
-      await expect(page.getByText("You've run out of credits")).not.toBeVisible();
+      // Dismiss the exhausted modal via close button
+      await page.getByTestId("credit-modal-close").click();
+      await expect(page.getByTestId("credit-modal")).not.toBeVisible();
 
       // After exhaustion, the send button should be disabled due to credits
       await expect(brainstormPage.sendButton).toBeDisabled();
@@ -375,70 +387,75 @@ test.describe("Credit Limits", () => {
       await page.evaluate(() => localStorage.removeItem("credit-store"));
     });
 
-    test("shows low credit warning when usage exceeds 80%", async ({ page }) => {
+    test("shows low credit warning modal when usage exceeds 80%", async ({ page }) => {
       const brainstorm = new BrainstormPage(page);
       await brainstorm.goto();
 
-      // Warning banner should be visible
-      await expect(page.getByTestId("low-credit-warning")).toBeVisible({ timeout: 10000 });
-      await expect(page.getByText("Running low on credits")).toBeVisible();
+      // Warning modal should be visible
+      await expect(page.getByTestId("credit-modal")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText("running low on credits")).toBeVisible();
     });
 
-    test("can dismiss the low credit warning", async ({ page }) => {
+    test("can dismiss the low credit warning modal", async ({ page }) => {
       const brainstorm = new BrainstormPage(page);
       await brainstorm.goto();
 
-      // Warning visible
-      await expect(page.getByTestId("low-credit-warning")).toBeVisible({ timeout: 10000 });
+      // Warning modal visible
+      await expect(page.getByTestId("credit-modal")).toBeVisible({ timeout: 10000 });
 
       // Dismiss it
-      await page.getByTestId("low-credit-warning-dismiss").click();
+      await page.getByTestId("credit-modal-close").click();
 
-      // Warning gone
-      await expect(page.getByTestId("low-credit-warning")).not.toBeVisible();
+      // Modal gone
+      await expect(page.getByTestId("credit-modal")).not.toBeVisible();
     });
 
     test("dismissal persists across page reload", async ({ page }) => {
       const brainstorm = new BrainstormPage(page);
       await brainstorm.goto();
 
-      // Warning visible
-      await expect(page.getByTestId("low-credit-warning")).toBeVisible({ timeout: 10000 });
+      // Warning modal visible
+      await expect(page.getByTestId("credit-modal")).toBeVisible({ timeout: 10000 });
 
       // Dismiss it
-      await page.getByTestId("low-credit-warning-dismiss").click();
-      await expect(page.getByTestId("low-credit-warning")).not.toBeVisible();
+      await page.getByTestId("credit-modal-close").click();
+      await expect(page.getByTestId("credit-modal")).not.toBeVisible();
 
       // Reload
       await page.reload();
       await page.waitForLoadState("domcontentloaded");
 
       // Warning should still be dismissed (zustand persist stores dismissedAt in localStorage)
-      await expect(page.getByTestId("low-credit-warning")).not.toBeVisible({ timeout: 5000 });
+      await expect(page.getByTestId("credit-modal")).not.toBeVisible({ timeout: 5000 });
     });
 
-    test("does not show when credits are fully exhausted", async ({ page }) => {
+    test("does not show low credit warning when credits are fully exhausted", async ({ page }) => {
       // Set credits to 0 — out of credits takes precedence
       await DatabaseSnapshotter.setCredits(testUser.email, 0, 0);
 
       const brainstorm = new BrainstormPage(page);
       await brainstorm.goto();
 
-      // Credit gate should show instead (not the warning)
+      // Credit gate should show instead (not the low credit modal)
       await expect(page.getByTestId("credit-gate")).toBeVisible({ timeout: 10000 });
-      await expect(page.getByTestId("low-credit-warning")).not.toBeVisible();
+      // The low credit modal should not appear (out-of-credits state prevents it)
+      await expect(page.getByText("running low on credits")).not.toBeVisible();
     });
 
-    test("warning links to subscriptions page", async ({ page }) => {
+    test("warning modal links to subscriptions page", async ({ page }) => {
       const brainstorm = new BrainstormPage(page);
       await brainstorm.goto();
 
-      await expect(page.getByTestId("low-credit-warning")).toBeVisible({ timeout: 10000 });
+      await expect(page.getByTestId("credit-modal")).toBeVisible({ timeout: 10000 });
 
-      // "Purchase Credits" button links to /subscriptions
-      const link = page.getByTestId("low-credit-warning").getByRole("link", { name: "Purchase Credits" });
-      await expect(link).toBeVisible();
-      await expect(link).toHaveAttribute("href", "/subscriptions");
+      // "Purchase Credits" and "Upgrade Plan" buttons link to /subscriptions
+      const purchaseLink = page.getByTestId("credit-modal").getByRole("link", { name: "Purchase Credits" });
+      await expect(purchaseLink).toBeVisible();
+      await expect(purchaseLink).toHaveAttribute("href", "/subscriptions");
+
+      const upgradeLink = page.getByTestId("credit-modal").getByRole("link", { name: "Upgrade Plan" });
+      await expect(upgradeLink).toBeVisible();
+      await expect(upgradeLink).toHaveAttribute("href", "/subscriptions");
     });
   });
 });

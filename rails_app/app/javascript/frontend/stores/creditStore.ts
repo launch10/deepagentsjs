@@ -20,6 +20,7 @@ export interface CreditState {
   planCredits: number | null;
   packCredits: number | null;
   planCreditsAllocated: number | null; // Total credits allocated per period
+  periodEndsAt: string | null; // ISO 8601 date when credits reset
 
   // Out of credits state
   isOutOfCredits: boolean;
@@ -28,7 +29,8 @@ export interface CreditState {
   showOutOfCreditsModal: boolean;
   modalDismissedAt: number | null;
 
-  // Low credit warning (80% threshold)
+  // Low credit warning modal (80% threshold)
+  showLowCreditModal: boolean;
   lowCreditWarningDismissedAt: number | null;
 }
 
@@ -65,6 +67,7 @@ export interface CreditActions {
       pack_credits?: number | null;
       total_credits?: number | null;
       plan_credits_allocated?: number | null;
+      period_ends_at?: string | null;
     } | null
   ) => void;
 
@@ -80,7 +83,7 @@ export interface CreditActions {
   showModal: () => void;
 
   /**
-   * Dismiss the low credit warning banner.
+   * Dismiss the low credit warning modal.
    * Records the dismiss time to prevent re-showing for 24 hours.
    */
   dismissLowCreditWarning: () => void;
@@ -102,9 +105,11 @@ const initialState: CreditState = {
   planCredits: null,
   packCredits: null,
   planCreditsAllocated: null,
+  periodEndsAt: null,
   isOutOfCredits: false,
   showOutOfCreditsModal: false,
   modalDismissedAt: null,
+  showLowCreditModal: false,
   lowCreditWarningDismissedAt: null,
 };
 
@@ -124,28 +129,34 @@ export const useCreditStore = create<CreditStore>()(
 
         updateFromCreditStatus: (status) => {
           const { estimatedRemainingMillicredits, justExhausted } = status;
-          const { modalDismissedAt } = get();
 
           const credits = millicreditsToCredits(estimatedRemainingMillicredits);
-
-          // Determine if we should show the modal
-          let shouldShowModal = false;
-          if (justExhausted) {
-            // Only show if not recently dismissed
-            const now = Date.now();
-            const canShow =
-              !modalDismissedAt || now - modalDismissedAt > MODAL_SUPPRESS_DURATION_MS;
-            shouldShowModal = canShow;
-          }
-
-          set({
-            balance: credits,
-            isOutOfCredits: credits <= 0,
-            showOutOfCreditsModal: shouldShowModal,
+          console.log("[creditStore] updateFromCreditStatus:", {
+            estimatedRemainingMillicredits,
+            justExhausted,
+            credits,
           });
+
+          if (justExhausted) {
+            // Force-show exhausted modal (overrides any previous dismiss)
+            // and close the low credit modal since exhausted takes priority
+            console.log("[creditStore] justExhausted=true → force-showing exhausted modal");
+            set({
+              balance: credits,
+              isOutOfCredits: true,
+              showOutOfCreditsModal: true,
+              showLowCreditModal: false,
+            });
+          } else {
+            set({
+              balance: credits,
+              isOutOfCredits: credits <= 0,
+            });
+          }
         },
 
         updateFromBalanceCheck: (balance) => {
+          console.log("[creditStore] updateFromBalanceCheck:", balance);
           set({
             balance: millicreditsToCredits(balance.balanceMillicredits),
             planCredits: millicreditsToCredits(balance.planMillicredits),
@@ -157,7 +168,7 @@ export const useCreditStore = create<CreditStore>()(
         hydrateFromPageProps: (props) => {
           if (!props) return;
 
-          const { plan_credits, pack_credits, total_credits, plan_credits_allocated } = props;
+          const { plan_credits, pack_credits, total_credits, plan_credits_allocated, period_ends_at } = props;
 
           // Only update if we have actual data
           const updates: Partial<CreditState> = {};
@@ -175,23 +186,48 @@ export const useCreditStore = create<CreditStore>()(
           if (plan_credits_allocated !== undefined && plan_credits_allocated !== null) {
             updates.planCreditsAllocated = plan_credits_allocated;
           }
+          if (period_ends_at !== undefined) {
+            updates.periodEndsAt = period_ends_at ?? null;
+          }
 
           if (Object.keys(updates).length > 0) {
             set(updates);
           }
+
+          // Check if low credit modal should be triggered.
+          // This runs after setting updates so we use fresh + existing state.
+          const state = get();
+          const effectiveAllocated = updates.planCreditsAllocated ?? state.planCreditsAllocated;
+          const effectivePlanCredits = updates.planCredits ?? state.planCredits;
+          const effectiveOutOfCredits = updates.isOutOfCredits ?? state.isOutOfCredits;
+
+          if (
+            !effectiveOutOfCredits &&
+            !state.showLowCreditModal &&
+            effectiveAllocated !== null && effectiveAllocated > 0 &&
+            effectivePlanCredits !== null
+          ) {
+            const used = effectiveAllocated - effectivePlanCredits;
+            const usagePercent = Math.round((used / effectiveAllocated) * 100);
+
+            if (usagePercent >= LOW_CREDIT_WARNING_THRESHOLD_PERCENT) {
+              const now = Date.now();
+              const canShow =
+                !state.lowCreditWarningDismissedAt ||
+                now - state.lowCreditWarningDismissedAt > LOW_CREDIT_WARNING_SUPPRESS_DURATION_MS;
+
+              if (canShow) {
+                set({ showLowCreditModal: true });
+              }
+            }
+          }
         },
 
         dismissModal: () => {
-          const ts = Date.now();
-          console.log("[creditStore] dismissModal called, setting modalDismissedAt:", ts);
           set({
             showOutOfCreditsModal: false,
-            modalDismissedAt: ts,
+            modalDismissedAt: Date.now(),
           });
-          console.log(
-            "[creditStore] localStorage after dismissModal:",
-            localStorage.getItem("credit-store")
-          );
         },
 
         showModal: () => {
@@ -200,22 +236,17 @@ export const useCreditStore = create<CreditStore>()(
           const canShow =
             !modalDismissedAt || now - modalDismissedAt > MODAL_SUPPRESS_DURATION_MS;
 
+          console.log("[creditStore] showModal:", { canShow, modalDismissedAt, now });
           if (canShow) {
             set({ showOutOfCreditsModal: true });
           }
         },
 
         dismissLowCreditWarning: () => {
-          const ts = Date.now();
-          console.log(
-            "[creditStore] dismissLowCreditWarning called, setting lowCreditWarningDismissedAt:",
-            ts
-          );
-          set({ lowCreditWarningDismissedAt: ts });
-          console.log(
-            "[creditStore] localStorage after dismissLowCreditWarning:",
-            localStorage.getItem("credit-store")
-          );
+          set({
+            showLowCreditModal: false,
+            lowCreditWarningDismissedAt: Date.now(),
+          });
         },
 
         reset: () => set(initialState),
@@ -227,23 +258,6 @@ export const useCreditStore = create<CreditStore>()(
         modalDismissedAt: state.modalDismissedAt,
         lowCreditWarningDismissedAt: state.lowCreditWarningDismissedAt,
       }),
-      onRehydrateStorage: () => {
-        console.log("[creditStore] origin:", window.location.origin);
-        console.log(
-          "[creditStore] rehydrating from localStorage:",
-          localStorage.getItem("credit-store")
-        );
-        console.log(
-          "[creditStore] all localStorage keys:",
-          Object.keys(localStorage)
-        );
-        return (state) => {
-          console.log("[creditStore] rehydrated state:", {
-            modalDismissedAt: state?.modalDismissedAt,
-            lowCreditWarningDismissedAt: state?.lowCreditWarningDismissedAt,
-          });
-        };
-      },
     }
   )
 );
@@ -288,50 +302,6 @@ export function useUsagePercent(): number | null {
 
     const used = s.planCreditsAllocated - s.planCredits;
     return Math.round((used / s.planCreditsAllocated) * 100);
-  });
-}
-
-/**
- * Calculate usage percentage (selector version for internal use).
- */
-function selectUsagePercent(s: CreditStore): number | null {
-  if (s.planCreditsAllocated === null || s.planCreditsAllocated === 0) return null;
-  if (s.planCredits === null) return null;
-  const used = s.planCreditsAllocated - s.planCredits;
-  return Math.round((used / s.planCreditsAllocated) * 100);
-}
-
-/**
- * Returns true if the low credit warning should be shown.
- * Conditions:
- * - Usage >= 80%
- * - Not already out of credits (has its own modal)
- * - Not dismissed within the last 24 hours
- */
-export function useShowLowCreditWarning(): boolean {
-  return useCreditStore((s) => {
-    // Don't show if already out of credits (separate modal handles that)
-    if (s.isOutOfCredits) return false;
-
-    const usagePercent = selectUsagePercent(s);
-    if (usagePercent === null) return false;
-
-    // Only show if usage >= 80%
-    if (usagePercent < LOW_CREDIT_WARNING_THRESHOLD_PERCENT) return false;
-
-    // Check if recently dismissed
-    const now = Date.now();
-    console.log(`s.lowCreditWarningDismissedAt, ${s.lowCreditWarningDismissedAt}`);
-    console.log(`now, ${now}`);
-    console.log(`LOW_CREDIT_WARNING_SUPPRESS_DURATION_MS, ${LOW_CREDIT_WARNING_SUPPRESS_DURATION_MS}`);
-    if (
-      s.lowCreditWarningDismissedAt &&
-      now - s.lowCreditWarningDismissedAt < LOW_CREDIT_WARNING_SUPPRESS_DURATION_MS
-    ) {
-      return false;
-    }
-
-    return true;
   });
 }
 

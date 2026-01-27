@@ -5,7 +5,7 @@ import { usePage } from "@inertiajs/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WorkflowProvider } from "@context/WorkflowProvider";
 import { Toaster } from "@components/ui/sonner";
-import { OutOfCreditsModal, LowCreditWarning } from "@components/credits";
+import { CreditWarningModal } from "@components/credits";
 import { useProjectStore } from "~/stores/projectStore";
 import { useSessionStore } from "~/stores/sessionStore";
 import { useCreditStore } from "~/stores/creditStore";
@@ -34,6 +34,7 @@ interface SharedPageProps {
     pack_credits: number;
     total_credits: number;
     plan_credits_allocated: number;
+    period_ends_at: string | null;
   } | null;
 }
 
@@ -86,7 +87,6 @@ export const SiteLayout = ({ children }: { children: React.ReactNode }): React.R
         <div className="flex h-screen overflow-hidden">
           <AppSidebar />
           <div className="flex-1 flex flex-col bg-background overflow-hidden">
-            <LowCreditWarning />
             <Header />
             <main ref={mainRef} className="flex-1 overflow-auto">
               {children}
@@ -94,7 +94,7 @@ export const SiteLayout = ({ children }: { children: React.ReactNode }): React.R
           </div>
         </div>
         <Toaster />
-        <OutOfCreditsModal />
+        <CreditWarningModal />
       </WorkflowProvider>
     </QueryClientProvider>
   );

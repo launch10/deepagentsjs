@@ -180,10 +180,12 @@ function useOutOfCreditsDetection<TState extends Record<string, unknown>>(
       return;
     }
 
+    console.log("[ChatContext] Path 1: 402 error detected:", message);
     const store = useCreditStore.getState();
     try {
       const parsed = JSON.parse(message);
       if (parsed.code === "CREDITS_EXHAUSTED") {
+        console.log("[ChatContext] Path 1: parsed CREDITS_EXHAUSTED, calling updateFromBalanceCheck + showModal");
         store.updateFromBalanceCheck({
           balanceMillicredits: parsed.balance ?? 0,
           planMillicredits: parsed.planCredits ?? 0,
@@ -193,6 +195,7 @@ function useOutOfCreditsDetection<TState extends Record<string, unknown>>(
         store.showModal();
       }
     } catch {
+      console.log("[ChatContext] Path 1: parse failed, calling updateFromBalanceCheck + showModal");
       store.updateFromBalanceCheck({
         balanceMillicredits: 0,
         planMillicredits: 0,
@@ -217,6 +220,10 @@ function useOutOfCreditsDetection<TState extends Record<string, unknown>>(
     // Only process if creditStatus exists (estimatedRemaining is defined)
     if (estimatedRemaining === undefined) return;
 
+    console.log("[ChatContext] Path 2: creditStatus from stream:", {
+      justExhausted,
+      estimatedRemaining,
+    });
     useCreditStore.getState().updateFromCreditStatus({
       estimatedRemainingMillicredits: estimatedRemaining,
       justExhausted: justExhausted ?? false,

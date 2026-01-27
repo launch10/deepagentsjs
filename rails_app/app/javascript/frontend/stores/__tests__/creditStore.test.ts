@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { useCreditStore, formatCredits, useShowLowCreditWarning } from "../creditStore";
+import { useCreditStore, formatCredits } from "../creditStore";
 
 describe("creditStore", () => {
   beforeEach(() => {
@@ -21,6 +21,7 @@ describe("creditStore", () => {
       expect(state.planCreditsAllocated).toBeNull();
       expect(state.isOutOfCredits).toBe(false);
       expect(state.showOutOfCreditsModal).toBe(false);
+      expect(state.showLowCreditModal).toBe(false);
       expect(state.modalDismissedAt).toBeNull();
     });
   });
@@ -78,30 +79,11 @@ describe("creditStore", () => {
       expect(state.showOutOfCreditsModal).toBe(false);
     });
 
-    it("respects dismiss timeout when showing modal", () => {
+    it("force-shows modal when justExhausted even if recently dismissed", () => {
       // First, dismiss the modal
       useCreditStore.getState().dismissModal();
 
-      // Try to show modal - should not show because it was just dismissed
-      useCreditStore.getState().updateFromCreditStatus({
-        estimatedRemainingMillicredits: 0,
-        justExhausted: true,
-      });
-
-      const state = useCreditStore.getState();
-      expect(state.showOutOfCreditsModal).toBe(false);
-    });
-
-    it("shows modal after dismiss timeout expires", () => {
-      // Dismiss the modal
-      useCreditStore.getState().dismissModal();
-
-      // Manually set modalDismissedAt to 2 hours ago
-      useCreditStore.setState({
-        modalDismissedAt: Date.now() - 2 * 60 * 60 * 1000,
-      });
-
-      // Now justExhausted should show the modal
+      // justExhausted should override the dismiss
       useCreditStore.getState().updateFromCreditStatus({
         estimatedRemainingMillicredits: 0,
         justExhausted: true,
@@ -109,6 +91,20 @@ describe("creditStore", () => {
 
       const state = useCreditStore.getState();
       expect(state.showOutOfCreditsModal).toBe(true);
+    });
+
+    it("closes low credit modal when justExhausted fires", () => {
+      // Low credit modal is showing
+      useCreditStore.setState({ showLowCreditModal: true });
+
+      useCreditStore.getState().updateFromCreditStatus({
+        estimatedRemainingMillicredits: 0,
+        justExhausted: true,
+      });
+
+      const state = useCreditStore.getState();
+      expect(state.showOutOfCreditsModal).toBe(true);
+      expect(state.showLowCreditModal).toBe(false);
     });
   });
 
@@ -313,119 +309,112 @@ describe("creditStore", () => {
       expect(state.planCreditsAllocated).toBeNull();
       expect(state.isOutOfCredits).toBe(false);
       expect(state.showOutOfCreditsModal).toBe(false);
+      expect(state.showLowCreditModal).toBe(false);
       expect(state.modalDismissedAt).toBeNull();
       expect(state.lowCreditWarningDismissedAt).toBeNull();
     });
   });
 
   describe("dismissLowCreditWarning", () => {
-    it("records dismiss time", () => {
+    it("hides modal and records dismiss time", () => {
+      useCreditStore.setState({ showLowCreditModal: true });
+
       const beforeDismiss = Date.now();
       useCreditStore.getState().dismissLowCreditWarning();
       const afterDismiss = Date.now();
 
       const state = useCreditStore.getState();
+      expect(state.showLowCreditModal).toBe(false);
       expect(state.lowCreditWarningDismissedAt).toBeGreaterThanOrEqual(beforeDismiss);
       expect(state.lowCreditWarningDismissedAt).toBeLessThanOrEqual(afterDismiss);
     });
   });
 
-  describe("useShowLowCreditWarning selector", () => {
-    it("returns false when usage data is not available", () => {
-      useCreditStore.setState({
-        planCredits: null,
-        planCreditsAllocated: null,
-        isOutOfCredits: false,
+  describe("showLowCreditModal via hydrateFromPageProps", () => {
+    it("triggers when usage >= 80% and not dismissed", () => {
+      useCreditStore.getState().hydrateFromPageProps({
+        plan_credits: 15,
+        pack_credits: 0,
+        total_credits: 15,
+        plan_credits_allocated: 100,
       });
 
-      // Access the selector directly via the store
-      const shouldShow = useCreditStore.getState();
-      // Check conditions manually since we can't use the hook outside React
-      expect(shouldShow.planCredits).toBeNull();
+      expect(useCreditStore.getState().showLowCreditModal).toBe(true);
     });
 
-    it("returns false when usage is below 80%", () => {
-      useCreditStore.setState({
-        planCredits: 50, // 50% remaining = 50% used
-        planCreditsAllocated: 100,
-        isOutOfCredits: false,
+    it("does not trigger when usage < 80%", () => {
+      useCreditStore.getState().hydrateFromPageProps({
+        plan_credits: 50,
+        pack_credits: 0,
+        total_credits: 50,
+        plan_credits_allocated: 100,
       });
 
-      // 50% usage < 80% threshold
-      const state = useCreditStore.getState();
-      const usagePercent =
-        ((state.planCreditsAllocated! - state.planCredits!) / state.planCreditsAllocated!) * 100;
-      expect(usagePercent).toBe(50);
+      expect(useCreditStore.getState().showLowCreditModal).toBe(false);
     });
 
-    it("returns false when already out of credits (modal takes precedence)", () => {
-      useCreditStore.setState({
-        planCredits: 0,
-        planCreditsAllocated: 100,
-        isOutOfCredits: true,
+    it("triggers at exactly 80% usage", () => {
+      useCreditStore.getState().hydrateFromPageProps({
+        plan_credits: 20,
+        pack_credits: 0,
+        total_credits: 20,
+        plan_credits_allocated: 100,
       });
 
-      const state = useCreditStore.getState();
-      expect(state.isOutOfCredits).toBe(true);
+      expect(useCreditStore.getState().showLowCreditModal).toBe(true);
     });
 
-    it("returns false when recently dismissed (within 24 hours)", () => {
+    it("does not trigger when out of credits", () => {
+      useCreditStore.getState().hydrateFromPageProps({
+        plan_credits: 0,
+        pack_credits: 0,
+        total_credits: 0,
+        plan_credits_allocated: 100,
+      });
+
+      expect(useCreditStore.getState().showLowCreditModal).toBe(false);
+    });
+
+    it("does not trigger when recently dismissed (within 24 hours)", () => {
       const twelveHoursAgo = Date.now() - 12 * 60 * 60 * 1000;
-      useCreditStore.setState({
-        planCredits: 10, // 90% used
-        planCreditsAllocated: 100,
-        isOutOfCredits: false,
-        lowCreditWarningDismissedAt: twelveHoursAgo,
+      useCreditStore.setState({ lowCreditWarningDismissedAt: twelveHoursAgo });
+
+      useCreditStore.getState().hydrateFromPageProps({
+        plan_credits: 10,
+        pack_credits: 0,
+        total_credits: 10,
+        plan_credits_allocated: 100,
       });
 
-      const state = useCreditStore.getState();
-      expect(state.lowCreditWarningDismissedAt).toBe(twelveHoursAgo);
+      expect(useCreditStore.getState().showLowCreditModal).toBe(false);
     });
 
-    it("conditions for showing warning are correct at 80% usage", () => {
-      useCreditStore.setState({
-        planCredits: 20, // 80% used
-        planCreditsAllocated: 100,
-        isOutOfCredits: false,
-        lowCreditWarningDismissedAt: null,
-      });
-
-      const state = useCreditStore.getState();
-      const usagePercent =
-        ((state.planCreditsAllocated! - state.planCredits!) / state.planCreditsAllocated!) * 100;
-      expect(usagePercent).toBe(80);
-      expect(state.isOutOfCredits).toBe(false);
-      expect(state.lowCreditWarningDismissedAt).toBeNull();
-    });
-
-    it("conditions for showing warning are correct at 90% usage", () => {
-      useCreditStore.setState({
-        planCredits: 10, // 90% used
-        planCreditsAllocated: 100,
-        isOutOfCredits: false,
-        lowCreditWarningDismissedAt: null,
-      });
-
-      const state = useCreditStore.getState();
-      const usagePercent =
-        ((state.planCreditsAllocated! - state.planCredits!) / state.planCreditsAllocated!) * 100;
-      expect(usagePercent).toBe(90);
-    });
-
-    it("shows warning after dismiss timeout expires (25 hours)", () => {
+    it("triggers after dismiss timeout expires (25 hours)", () => {
       const twentyFiveHoursAgo = Date.now() - 25 * 60 * 60 * 1000;
-      useCreditStore.setState({
-        planCredits: 10, // 90% used
-        planCreditsAllocated: 100,
-        isOutOfCredits: false,
-        lowCreditWarningDismissedAt: twentyFiveHoursAgo,
+      useCreditStore.setState({ lowCreditWarningDismissedAt: twentyFiveHoursAgo });
+
+      useCreditStore.getState().hydrateFromPageProps({
+        plan_credits: 10,
+        pack_credits: 0,
+        total_credits: 10,
+        plan_credits_allocated: 100,
       });
 
-      const state = useCreditStore.getState();
-      // After 25 hours, the dismiss should have expired
-      const now = Date.now();
-      const timeSinceDismiss = now - state.lowCreditWarningDismissedAt!;
-      expect(timeSinceDismiss).toBeGreaterThan(24 * 60 * 60 * 1000);
+      expect(useCreditStore.getState().showLowCreditModal).toBe(true);
+    });
+
+    it("does not re-trigger when already showing", () => {
+      useCreditStore.setState({ showLowCreditModal: true });
+
+      useCreditStore.getState().hydrateFromPageProps({
+        plan_credits: 10,
+        pack_credits: 0,
+        total_credits: 10,
+        plan_credits_allocated: 100,
+      });
+
+      // Still true, not toggled
+      expect(useCreditStore.getState().showLowCreditModal).toBe(true);
     });
   });
 

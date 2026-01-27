@@ -43,7 +43,8 @@ class SubscribedController < ApplicationController
       plan_credits: millicredits_to_credits(current_account.plan_millicredits),
       pack_credits: millicredits_to_credits(current_account.pack_millicredits),
       total_credits: millicredits_to_credits(current_account.total_millicredits),
-      plan_credits_allocated: plan_credits_allocated
+      plan_credits_allocated: plan_credits_allocated,
+      period_ends_at: current_account.subscriptions.active.order(id: :desc).first&.current_period_end&.iso8601
     }
   end
 
