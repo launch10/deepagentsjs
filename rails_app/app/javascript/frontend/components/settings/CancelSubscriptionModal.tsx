@@ -53,13 +53,13 @@ export function CancelSubscriptionModal({
               onClick={handleCancelSubscription}
               className="h-11 px-3 font-['Plus_Jakarta_Sans'] text-base font-normal text-[#D14F34] hover:text-[#D14F34] hover:bg-transparent"
             >
-              Cancel Subscription
+              Confirm Cancellation
             </Button>
             <Button
               onClick={() => onOpenChange(false)}
               className="h-11 px-3 min-w-[165px] bg-[#2E3238] hover:bg-[#1a1e22] border border-[#2E3238] rounded-lg font-['Plus_Jakarta_Sans'] text-base font-normal text-white"
             >
-              Keep My Subscription
+              Keep Subscription
             </Button>
           </div>
         </div>

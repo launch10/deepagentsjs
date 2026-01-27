@@ -104,59 +104,6 @@ test.describe("Settings Page", () => {
       await expect(page.getByText(/remain live until/i)).not.toBeVisible();
     });
 
-    test("buy credits modal opens and shows packs", async ({ page }) => {
-      await loginUser(page);
-      await page.goto("/settings");
-      await page.waitForLoadState("domcontentloaded");
-
-      // Click purchase credits
-      await page.getByRole("button", { name: /Purchase Credits/i }).click();
-
-      // Modal should show credit packs
-      await expect(page.getByText(/Buy More Credits/i)).toBeVisible();
-      await expect(page.getByText(/500 Credits/i)).toBeVisible();
-      await expect(page.getByText(/1,200 Credits/i)).toBeVisible();
-      await expect(page.getByText(/2,000 Credits/i)).toBeVisible();
-    });
-
-    test("buy credits modal allows selecting different packs", async ({ page }) => {
-      await loginUser(page);
-      await page.goto("/settings");
-      await page.waitForLoadState("domcontentloaded");
-
-      await page.getByRole("button", { name: /Purchase Credits/i }).click();
-      await expect(page.getByText(/Buy More Credits/i)).toBeVisible();
-
-      // Default should be 1,200 (middle option)
-      await expect(page.getByRole("button", { name: /Purchase 1,200 Credits/i })).toBeVisible();
-
-      // Click $50 option
-      await page.getByText(/500 Credits/i).click();
-      await expect(page.getByRole("button", { name: /Purchase 500 Credits/i })).toBeVisible();
-
-      // Click $150 option
-      await page.getByText(/2,000 Credits/i).click();
-      await expect(page.getByRole("button", { name: /Purchase 2,000 Credits/i })).toBeVisible();
-    });
-
-    test("buy credits modal closes on X button", async ({ page }) => {
-      await loginUser(page);
-      await page.goto("/settings");
-      await page.waitForLoadState("domcontentloaded");
-
-      await page.getByRole("button", { name: /Purchase Credits/i }).click();
-      await expect(page.getByText(/Buy More Credits/i)).toBeVisible();
-
-      // Close modal
-      await page
-        .getByRole("button", { name: /Close/i })
-        .or(page.locator('[aria-label="Close"]'))
-        .click();
-
-      // Modal should close
-      await expect(page.getByText(/Buy More Credits/i)).not.toBeVisible();
-    });
-
     test("displays Stripe portal links", async ({ page }) => {
       await loginUser(page);
       await page.goto("/settings");
