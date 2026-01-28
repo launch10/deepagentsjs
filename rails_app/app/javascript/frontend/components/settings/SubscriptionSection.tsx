@@ -24,11 +24,11 @@ export function SubscriptionSection({ subscription }: SubscriptionSectionProps) 
 
   if (!subscription) {
     return (
-      <Card className="border-[#D3D2D0] rounded-2xl">
+      <Card className="bg-white border-neutral-300 rounded-2xl w-full lg:w-[911px]">
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#EAF5F3]">
-              <ArrowPathIcon className="h-4 w-4 text-[#375E56]" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-green-100">
+              <ArrowPathIcon className="h-4 w-4 text-accent-green-500" />
             </div>
             <CardTitle className="font-['Plus_Jakarta_Sans'] text-lg font-semibold text-[#2E3238]">
               Subscription
@@ -52,12 +52,12 @@ export function SubscriptionSection({ subscription }: SubscriptionSectionProps) 
 
   return (
     <>
-      <Card className="border-[#D3D2D0] rounded-2xl">
+      <Card className="bg-white border-neutral-300 rounded-2xl w-full lg:w-[911px]">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#EAF5F3]">
-                <ArrowPathIcon className="h-4 w-4 text-[#375E56]" />
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent-green-100">
+                <ArrowPathIcon className="h-4 w-4 text-accent-green-500" />
               </div>
               <CardTitle className="font-['Plus_Jakarta_Sans'] text-lg font-semibold text-[#2E3238]">
                 Subscription
@@ -75,14 +75,14 @@ export function SubscriptionSection({ subscription }: SubscriptionSectionProps) 
                 onClick={() => {
                   // TODO: Redirect to Stripe customer portal
                 }}
-                className="bg-[#2E3238] hover:bg-[#1a1e22] text-white font-['Plus_Jakarta_Sans'] text-sm"
+                className="bg-[#2E3238] hover:bg-[#1a1e22] text-white font-['Plus_Jakarta_Sans'] text-sm py-1.5 px-4 h-auto"
               >
                 Change Plan
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-5">
+        <CardContent className="space-y-5 w-full lg:max-w-[704px]">
           {/* Plan Info */}
           <div className="space-y-1">
             <p className="font-['Plus_Jakarta_Sans'] text-xs text-[#96989B]">Current Plan</p>

@@ -25,7 +25,6 @@ class SettingsController < SubscribedController
   def settings_props
     {
       user: user_props,
-      credit_balance: credit_balance_props,
       subscription: subscription_props,
       billing_history: billing_history_props,
       stripe_portal_url: stripe_portal_url
@@ -67,32 +66,25 @@ class SettingsController < SubscribedController
         id: charge.processor_id,
         amount_cents: charge.amount,
         currency: charge.currency || "usd",
-        description: charge.subscription_id ? "Subscription payment" : "Payment",
+        description: charge_description(charge),
         created_at: charge.created_at.iso8601,
         type: (charge.amount_refunded.to_i > 0) ? "refund" : "charge"
       }
     end
   end
 
+  def charge_description(charge)
+    return "Payment" unless charge.subscription_id
+
+    subscription = current_account.subscriptions.find_by(id: charge.subscription_id)
+    plan = subscription&.plan
+    plan_name = plan&.display_name || plan&.name&.titleize || "Plan"
+    interval = plan&.interval == "year" ? "Yearly" : "Monthly"
+    "#{plan_name} Plan - #{interval}"
+  end
+
   def stripe_portal_url
     return nil unless current_account.payment_processor&.processor == "stripe"
     @stripe_portal_url ||= current_account.payment_processor.billing_portal(return_url: settings_url).url
-  end
-
-  def credit_balance_props
-    plan_tier = @plan&.plan_tier
-
-    {
-      plan_credits: millicredits_to_credits(current_account.plan_millicredits),
-      pack_credits: millicredits_to_credits(current_account.pack_millicredits),
-      total_credits: millicredits_to_credits(current_account.total_millicredits),
-      plan_credit_limit: plan_tier&.credits || 0,
-      reset_date: @subscription&.current_period_end&.strftime("%b %d, %Y")
-    }
-  end
-
-  def millicredits_to_credits(millicredits)
-    return 0 if millicredits.nil?
-    (millicredits / 1000.0).round(2)
   end
 end

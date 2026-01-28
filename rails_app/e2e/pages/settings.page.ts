@@ -25,6 +25,9 @@ export class SettingsPage {
   readonly creditUsageText: Locator;
   readonly updatePaymentMethodLink: Locator;
   readonly viewBillingHistoryLink: Locator;
+  readonly billingHistoryPrevButton: Locator;
+  readonly billingHistoryNextButton: Locator;
+  readonly billingHistoryPageIndicator: Locator;
 
   // Subscription section
   readonly subscriptionSection: Locator;
@@ -47,7 +50,7 @@ export class SettingsPage {
     this.profileSection = page.getByText(/Profile/i).first();
     this.userEmail = page.getByTestId("user-email");
     this.userName = page.getByTestId("user-name");
-    this.editProfileButton = page.getByRole("button", { name: /Edit/i });
+    this.editProfileButton = page.getByTestId("edit-profile-button");
     this.firstNameInput = page.locator('input[name="user[first_name]"]');
     this.lastNameInput = page.locator('input[name="user[last_name]"]');
     this.saveProfileButton = page.getByRole("button", { name: /Save/i });
@@ -58,6 +61,9 @@ export class SettingsPage {
     this.creditUsageText = page.getByText(/Credit Usage/i);
     this.updatePaymentMethodLink = page.getByText(/Update Payment Method/i);
     this.viewBillingHistoryLink = page.getByText(/View Billing History/i);
+    this.billingHistoryPrevButton = page.getByLabel("Previous page");
+    this.billingHistoryNextButton = page.getByLabel("Next page");
+    this.billingHistoryPageIndicator = page.getByText(/\d+ \/ \d+/);
 
     // Subscription section
     this.subscriptionSection = page.getByText(/Subscription/i).first();
@@ -223,5 +229,35 @@ export class SettingsPage {
     await this.page.reload();
     await this.page.waitForLoadState("domcontentloaded");
     await this.pageTitle.waitFor({ state: "visible", timeout: 10000 });
+  }
+
+  /**
+   * Check if billing history pagination is visible
+   */
+  async expectBillingHistoryPaginationVisible(): Promise<void> {
+    await expect(this.billingHistoryPrevButton).toBeVisible();
+    await expect(this.billingHistoryNextButton).toBeVisible();
+    await expect(this.billingHistoryPageIndicator).toBeVisible();
+  }
+
+  /**
+   * Navigate to next page in billing history
+   */
+  async goToNextBillingHistoryPage(): Promise<void> {
+    await this.billingHistoryNextButton.click();
+  }
+
+  /**
+   * Navigate to previous page in billing history
+   */
+  async goToPrevBillingHistoryPage(): Promise<void> {
+    await this.billingHistoryPrevButton.click();
+  }
+
+  /**
+   * Get current billing history page indicator text
+   */
+  async getBillingHistoryPageText(): Promise<string | null> {
+    return await this.billingHistoryPageIndicator.textContent();
   }
 }

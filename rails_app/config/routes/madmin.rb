@@ -28,6 +28,7 @@ namespace :madmin, path: :admin do
   resources :users do
     resource :impersonate, module: :user
     resources :credit_gifts, only: [:index, :create], module: :user
+    resources :credit_usage_adjustments, only: [:index, :create], module: :user
     resources :credit_transactions, only: [:index], module: :user
   end
   resources :connected_accounts

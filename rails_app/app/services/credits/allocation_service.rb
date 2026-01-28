@@ -265,6 +265,68 @@ module Credits
       end
     end
 
+    # Adjust usage (consume credits) via admin action
+    #
+    # Creates a "consume" transaction that mimics AI generation usage,
+    # but is tracked as an admin adjustment. This allows adjusting
+    # "credits used" without changing the perceived allocation.
+    #
+    # @param millicredits [Integer] Amount to consume (positive number)
+    # @param reason [String] Reason for adjustment (e.g., "admin_adjustment")
+    # @param admin [User] Admin performing the adjustment
+    # @param notes [String, nil] Optional notes for audit trail
+    # @param idempotency_key [String, nil] Optional idempotency key
+    #
+    # @raise [ArgumentError] if admin or reason is missing
+    #
+    def adjust_usage!(millicredits:, reason:, admin:, notes: nil, idempotency_key: nil)
+      raise ArgumentError, "admin is required" if admin.nil?
+      raise ArgumentError, "reason is required" if reason.blank?
+      raise ArgumentError, "millicredits must be positive" if millicredits <= 0
+
+      Account.transaction do
+        @account.lock!
+
+        # Idempotency check
+        if idempotency_key.present? && CreditTransaction.exists?(idempotency_key: idempotency_key)
+          return
+        end
+
+        plan_bal = @account.plan_millicredits
+        pack_bal = @account.pack_millicredits
+
+        # Use the same consumption logic as ConsumptionService
+        split = calculate_admin_consumption_split(millicredits, plan_bal, pack_bal)
+
+        tx = @account.credit_transactions.new(
+          transaction_type: "consume",
+          credit_type: split[:credit_type],
+          reason: reason,
+          amount_millicredits: -millicredits,
+          balance_after_millicredits: split[:new_plan_bal] + split[:new_pack_bal],
+          plan_balance_after_millicredits: split[:new_plan_bal],
+          pack_balance_after_millicredits: split[:new_pack_bal],
+          idempotency_key: idempotency_key,
+          metadata: {
+            admin_id: admin.id,
+            admin_email: admin.email,
+            notes: notes,
+            plan_consumed: split[:plan_consumed],
+            pack_consumed: split[:pack_consumed]
+          }
+        )
+        tx.skip_sequence_validation = true
+        tx.save!
+
+        # Update account balances
+        @account.update!(
+          plan_millicredits: split[:new_plan_bal],
+          pack_millicredits: split[:new_pack_bal],
+          total_millicredits: split[:new_plan_bal] + split[:new_pack_bal]
+        )
+      end
+    end
+
     def get_action(previous_plan, new_plan_tier)
       return :downgrade if previous_plan && downgrade?(previous_plan, new_plan_tier)
       return :upgrade if previous_plan && upgrade?(previous_plan, new_plan_tier)
@@ -503,6 +565,74 @@ module Credits
 
     def credits_to_millicredits(credits)
       Millicredits.from_credits(credits)
+    end
+
+    # Calculate how to split admin consumption between plan and pack credits.
+    # Same logic as ConsumptionService - plan first, then pack, then overdraft.
+    def calculate_admin_consumption_split(cost, plan_bal, pack_bal)
+      if plan_bal >= cost
+        # All from plan
+        {
+          plan_consumed: cost,
+          pack_consumed: 0,
+          new_plan_bal: plan_bal - cost,
+          new_pack_bal: pack_bal,
+          credit_type: "plan"
+        }
+      elsif plan_bal > 0
+        # Split between plan and pack
+        remaining = cost - plan_bal
+
+        if pack_bal >= remaining
+          {
+            plan_consumed: plan_bal,
+            pack_consumed: remaining,
+            new_plan_bal: 0,
+            new_pack_bal: pack_bal - remaining,
+            credit_type: "split"
+          }
+        else
+          # Pack exhausted, remainder goes to plan overdraft
+          overdraft = remaining - pack_bal
+          {
+            plan_consumed: plan_bal + overdraft,
+            pack_consumed: pack_bal,
+            new_plan_bal: -overdraft,
+            new_pack_bal: 0,
+            credit_type: "split"
+          }
+        end
+      elsif pack_bal > 0
+        # Plan is 0 or negative, use pack
+        if pack_bal >= cost
+          {
+            plan_consumed: 0,
+            pack_consumed: cost,
+            new_plan_bal: plan_bal,
+            new_pack_bal: pack_bal - cost,
+            credit_type: "pack"
+          }
+        else
+          # Pack exhausted, remainder goes to plan overdraft
+          overdraft = cost - pack_bal
+          {
+            plan_consumed: overdraft,
+            pack_consumed: pack_bal,
+            new_plan_bal: plan_bal - overdraft,
+            new_pack_bal: 0,
+            credit_type: "split"
+          }
+        end
+      else
+        # Both exhausted, full overdraft on plan
+        {
+          plan_consumed: cost,
+          pack_consumed: 0,
+          new_plan_bal: plan_bal - cost,
+          new_pack_bal: pack_bal,
+          credit_type: "plan"
+        }
+      end
     end
 
     def create_transaction!(attrs)

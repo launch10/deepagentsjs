@@ -17,21 +17,6 @@ module InertiaSchemas
       }
     end
 
-    def self.credit_balance_props
-      {
-        type: :object,
-        additionalProperties: false,
-        properties: {
-          plan_credits: { type: :number, description: 'Credits available from current plan' },
-          pack_credits: { type: :number, description: 'Credits available from purchased packs' },
-          total_credits: { type: :number, description: 'Total available credits (plan + pack)' },
-          plan_credit_limit: { type: :integer, description: 'Monthly credit allocation for plan' },
-          reset_date: InertiaSchemas.nullable(InertiaSchemas.string_field(description: 'When plan credits reset'))
-        },
-        required: %w[plan_credits pack_credits total_credits plan_credit_limit]
-      }
-    end
-
     def self.subscription_props
       InertiaSchemas.nullable(
         type: :object,
@@ -71,7 +56,6 @@ module InertiaSchemas
     def self.page_props
       {
         user: user_props,
-        credit_balance: credit_balance_props,
         subscription: subscription_props,
         billing_history: InertiaSchemas.nullable(
           type: :array,
@@ -83,7 +67,7 @@ module InertiaSchemas
     end
 
     def self.page_required
-      %w[user credit_balance]
+      %w[user]
     end
 
     def self.props_schema

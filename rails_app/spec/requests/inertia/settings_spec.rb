@@ -38,14 +38,15 @@ RSpec.describe 'Settings Inertia Page', type: :request, inertia: true do
         expect(user_props[:name]).to eq(user.name)
       end
 
-      it 'includes credit balance from Account model' do
+      it 'includes shared credits data from SubscribedController' do
         get settings_path
 
-        credit_props = inertia.props[:credit_balance]
-        expect(credit_props[:plan_credits]).to eq(account.plan_credits)
-        expect(credit_props[:pack_credits]).to eq(account.pack_credits)
-        expect(credit_props[:total_credits]).to eq(account.total_credits)
-        expect(credit_props[:plan_credit_limit]).to eq(account.plan&.credits || 0)
+        # Credits come from SubscribedController's inertia_share, not Settings-specific props
+        credits = inertia.props[:credits]
+        expect(credits).to be_present
+        expect(credits[:plan_credits]).to eq(account.plan_credits)
+        expect(credits[:pack_credits]).to eq(account.pack_credits)
+        expect(credits[:total_credits]).to eq(account.total_credits)
       end
 
       it 'includes subscription props with plan details' do
@@ -124,17 +125,22 @@ RSpec.describe 'Settings Inertia Page', type: :request, inertia: true do
     end
 
     context 'with billing history' do
+      let!(:subscription) { account.subscriptions.active.first }
+
       before do
         ensure_plans_exist
         subscribe_account(account, plan_name: "growth_monthly")
 
-        # Create Pay::Charge records
-        account.payment_processor.charges.create!(
-          processor_id: "ch_test_#{SecureRandom.hex(8)}",
-          amount: 14900,
-          currency: "usd",
-          created_at: 1.week.ago
-        )
+        # Create 10 Pay::Charge records for pagination testing
+        10.times do |i|
+          account.payment_processor.charges.create!(
+            processor_id: "ch_test_#{SecureRandom.hex(8)}",
+            amount: 7900,
+            currency: "usd",
+            subscription_id: account.subscriptions.active.first&.id,
+            created_at: (i + 1).months.ago
+          )
+        end
 
         sign_in user
       end
@@ -144,8 +150,23 @@ RSpec.describe 'Settings Inertia Page', type: :request, inertia: true do
 
         billing_history = inertia.props[:billing_history]
         expect(billing_history).to be_an(Array)
-        expect(billing_history.length).to be > 0
-        expect(billing_history.first[:amount_cents]).to eq(14900)
+        expect(billing_history.length).to eq(10)
+        expect(billing_history.first[:amount_cents]).to eq(7900)
+      end
+
+      it 'returns billing history in descending date order' do
+        get settings_path
+
+        billing_history = inertia.props[:billing_history]
+        dates = billing_history.map { |item| Time.parse(item[:created_at]) }
+        expect(dates).to eq(dates.sort.reverse)
+      end
+
+      it 'includes plan name in billing history description' do
+        get settings_path
+
+        billing_history = inertia.props[:billing_history]
+        expect(billing_history.first[:description]).to match(/Plan - Monthly/)
       end
     end
   end

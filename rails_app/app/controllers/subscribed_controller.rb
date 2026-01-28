@@ -43,34 +43,12 @@ class SubscribedController < ApplicationController
       plan_credits: Millicredits.to_credits(current_account.plan_millicredits),
       pack_credits: Millicredits.to_credits(current_account.pack_millicredits),
       total_credits: Millicredits.to_credits(current_account.total_millicredits),
-      plan_credits_allocated: plan_credits_allocated,
+      plan_credits_allocated: current_account.full_plan_credits,
       period_ends_at: current_account.subscriptions.active.order(id: :desc).first&.current_period_end&.iso8601
     }
   end
 
-  def plan_credits_allocated
-    plan = current_account.plan
-    return 0 unless plan&.plan_tier
-
-    plan.plan_tier.credits
-  end
-
   def sign_in_jwt
     sign_in(jwt_user, store: false)
-  end
-
-  def credit_balance_shared_props
-    return nil unless current_account
-
-    subscription = current_account.active_subscription
-    plan = subscription&.plan
-
-    {
-      plan_credits: current_account.plan_credits,
-      pack_credits: current_account.pack_credits,
-      total_credits: current_account.total_credits,
-      plan_credit_limit: plan&.credits || 0,
-      reset_date: subscription&.current_period_end&.strftime("%b %d, %Y")
-    }
   end
 end

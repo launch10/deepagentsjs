@@ -15,7 +15,8 @@ module Madmin
       render inertia: "Madmin/Users/Show",
         props: {
           user: serialize_user(@user, detailed: true),
-          creditReasons: CreditGift::REASONS
+          creditReasons: CreditGift::REASONS,
+          usageAdjustmentReasons: CreditUsageAdjustment::REASONS
         }
     end
 

@@ -1,4 +1,6 @@
 class Madmin::User::ImpersonatesController < Madmin::ApplicationController
+  skip_before_action :stop_impersonating_on_admin_access, only: :destroy
+
   def create
     user = ::User.find(params[:user_id])
     impersonate_user(user)

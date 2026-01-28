@@ -64,6 +64,7 @@ class Account < ApplicationRecord
   has_many :credit_transactions, dependent: :destroy
   has_many :credit_pack_purchases, dependent: :destroy
   has_many :credit_gifts, dependent: :destroy
+  has_many :credit_usage_adjustments, dependent: :destroy
 
   scope :personal, -> { where(personal: true) }
   scope :team, -> { where(personal: false) }

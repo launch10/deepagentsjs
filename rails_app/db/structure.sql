@@ -1,8 +1,3 @@
-\restrict wIQdZBkgKB7PJy7fmDTq52yJ5967sLqLDHTL9KdqwgTFLbmBNLe1hGe9L64eV1Y
-
--- Dumped from database version 16.11 (Ubuntu 16.11-1.pgdg24.04+1)
--- Dumped by pg_dump version 16.11 (Ubuntu 16.11-1.pgdg24.04+1)
-
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
@@ -1955,6 +1950,42 @@ CREATE SEQUENCE public.credit_transactions_id_seq
 --
 
 ALTER SEQUENCE public.credit_transactions_id_seq OWNED BY public.credit_transactions.id;
+
+
+--
+-- Name: credit_usage_adjustments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.credit_usage_adjustments (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    admin_id bigint NOT NULL,
+    amount integer NOT NULL,
+    reason character varying NOT NULL,
+    notes text,
+    credits_adjusted boolean DEFAULT false NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: credit_usage_adjustments_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.credit_usage_adjustments_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: credit_usage_adjustments_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.credit_usage_adjustments_id_seq OWNED BY public.credit_usage_adjustments.id;
 
 
 --
@@ -4647,6 +4678,13 @@ ALTER TABLE ONLY public.credit_transactions ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: credit_usage_adjustments id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.credit_usage_adjustments ALTER COLUMN id SET DEFAULT nextval('public.credit_usage_adjustments_id_seq'::regclass);
+
+
+--
 -- Name: deploy_files id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5475,6 +5513,14 @@ ALTER TABLE ONLY public.credit_packs
 
 ALTER TABLE ONLY public.credit_transactions
     ADD CONSTRAINT credit_transactions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: credit_usage_adjustments credit_usage_adjustments_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.credit_usage_adjustments
+    ADD CONSTRAINT credit_usage_adjustments_pkey PRIMARY KEY (id);
 
 
 --
@@ -8080,6 +8126,34 @@ CREATE UNIQUE INDEX index_credit_transactions_on_idempotency_key ON public.credi
 --
 
 CREATE INDEX index_credit_transactions_on_reference_type_and_reference_id ON public.credit_transactions USING btree (reference_type, reference_id);
+
+
+--
+-- Name: index_credit_usage_adjustments_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_credit_usage_adjustments_on_account_id ON public.credit_usage_adjustments USING btree (account_id);
+
+
+--
+-- Name: index_credit_usage_adjustments_on_account_id_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_credit_usage_adjustments_on_account_id_and_created_at ON public.credit_usage_adjustments USING btree (account_id, created_at);
+
+
+--
+-- Name: index_credit_usage_adjustments_on_admin_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_credit_usage_adjustments_on_admin_id ON public.credit_usage_adjustments USING btree (admin_id);
+
+
+--
+-- Name: index_credit_usage_adjustments_on_credits_adjusted; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_credit_usage_adjustments_on_credits_adjusted ON public.credit_usage_adjustments USING btree (credits_adjusted);
 
 
 --
@@ -10856,6 +10930,22 @@ ALTER TABLE ONLY public.pay_subscriptions
 
 
 --
+-- Name: credit_usage_adjustments fk_rails_bd70944f0c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.credit_usage_adjustments
+    ADD CONSTRAINT fk_rails_bd70944f0c FOREIGN KEY (admin_id) REFERENCES public.users(id);
+
+
+--
+-- Name: credit_usage_adjustments fk_rails_c3dc680e42; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.credit_usage_adjustments
+    ADD CONSTRAINT fk_rails_c3dc680e42 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
 -- Name: deploys fk_rails_c721010c48; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10915,11 +11005,10 @@ ALTER TABLE ONLY public.job_runs
 -- PostgreSQL database dump complete
 --
 
-\unrestrict wIQdZBkgKB7PJy7fmDTq52yJ5967sLqLDHTL9KdqwgTFLbmBNLe1hGe9L64eV1Y
-
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260128183648'),
 ('20260127235148'),
 ('20260127170000'),
 ('20260126223106'),

@@ -108,6 +108,36 @@ test.describe("Settings Page", () => {
 
       await settingsPage.expectStripeLinksVisible();
     });
+
+    test("displays billing history with pagination", async ({ page }) => {
+      await loginUser(page);
+      await settingsPage.goto();
+
+      // Verify pagination controls are visible
+      await settingsPage.expectBillingHistoryPaginationVisible();
+
+      // Should start on page 1
+      const initialPage = await settingsPage.getBillingHistoryPageText();
+      expect(initialPage).toContain("1 /");
+
+      // Navigate to next page
+      await settingsPage.goToNextBillingHistoryPage();
+      const secondPage = await settingsPage.getBillingHistoryPageText();
+      expect(secondPage).toContain("2 /");
+
+      // Navigate back
+      await settingsPage.goToPrevBillingHistoryPage();
+      const backToFirst = await settingsPage.getBillingHistoryPageText();
+      expect(backToFirst).toContain("1 /");
+    });
+
+    test("billing history shows plan name in description", async ({ page }) => {
+      await loginUser(page);
+      await settingsPage.goto();
+
+      // Should show "Growth Plan - Monthly" for the test user's plan (multiple items visible)
+      await expect(page.getByText(/Growth Plan - Monthly/i).first()).toBeVisible();
+    });
   });
 
   test.describe("Page Layout", () => {
