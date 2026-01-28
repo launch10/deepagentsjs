@@ -44,7 +44,7 @@ RSpec.describe "Madmin::Users", type: :request do
 
   describe "GET /admin/users/:user_id/credit_gifts.json" do
     it "returns paginated gift history" do
-      gifts = Array.new(3) do |i|
+      Array.new(3) do |i|
         CreditGift.create!(
           account: target_user.owned_account,
           admin: admin,

@@ -17,7 +17,7 @@ module Credits
 
     def credits_disabled?
       return false if Rails.env.production?
-      return true if ENV["CREDITS_DISABLED"] == "true"
+      true if ENV["CREDITS_DISABLED"] == "true"
     end
 
     def perform(run_id)

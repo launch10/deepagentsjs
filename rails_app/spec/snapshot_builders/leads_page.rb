@@ -15,7 +15,7 @@ class LeadsPage < BaseBuilder
     # Create 25 leads for pagination testing (20 per page = 2 pages)
     # Include some with null names
     25.times do |i|
-      name = i % 5 == 0 ? nil : Faker::Name.name
+      name = (i % 5 == 0) ? nil : Faker::Name.name
       lead = Lead.create!(
         account: account,
         name: name,
@@ -28,7 +28,7 @@ class LeadsPage < BaseBuilder
         created_at: (25 - i).hours.ago
       )
 
-      puts "Created lead #{i + 1}: #{lead.email} (name: #{name || 'NULL'})"
+      puts "Created lead #{i + 1}: #{lead.email} (name: #{name || "NULL"})"
     end
 
     puts "Total leads for project: #{project.leads_count}"
