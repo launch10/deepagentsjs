@@ -1,30 +1,40 @@
 import { StateGraph, START, END } from "@langchain/langgraph";
 import { InsightsAnnotation } from "@annotation";
-import { generateInsightsNode } from "@nodes";
+import { generateInsightsNode, fetchMetricsNode, saveInsightsNode } from "@nodes";
 
 /**
  * Insights Graph
  *
- * A simple graph that generates analytics insights from metrics data.
- * Input: metricsInput (from Rails InsightsMetricsService)
- * Output: insights array (exactly 3 actionable insights)
+ * A graph that generates analytics insights from metrics data.
+ * 1. Fetches metrics from Rails (if not already provided)
+ * 2. Generates exactly 3 actionable insights using an LLM
+ * 3. Saves insights back to Rails
  *
  * Flow:
  * ┌───────────────────────────────────────────┐
  * │ START                                     │
  * │   │                                       │
  * │   ▼                                       │
- * │ generateInsights                          │
+ * │ fetchMetrics (from Rails API)             │
+ * │   │                                       │
+ * │   ▼                                       │
+ * │ generateInsights (LLM)                    │
+ * │   │                                       │
+ * │   ▼                                       │
+ * │ saveInsights (to Rails API)               │
  * │   │                                       │
  * │   ▼                                       │
  * │ END                                       │
  * └───────────────────────────────────────────┘
  *
- * This is intentionally simple - insights don't require multi-step
- * processing or conversation history. It's a single LLM call with
- * structured output.
+ * The graph can be invoked with metricsInput already set (for testing)
+ * or it will fetch from Rails if not provided.
  */
 export const insightsGraph = new StateGraph(InsightsAnnotation)
+  .addNode("fetchMetrics", fetchMetricsNode)
   .addNode("generateInsights", generateInsightsNode)
-  .addEdge(START, "generateInsights")
-  .addEdge("generateInsights", END);
+  .addNode("saveInsights", saveInsightsNode)
+  .addEdge(START, "fetchMetrics")
+  .addEdge("fetchMetrics", "generateInsights")
+  .addEdge("generateInsights", "saveInsights")
+  .addEdge("saveInsights", END);

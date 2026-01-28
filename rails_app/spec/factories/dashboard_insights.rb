@@ -21,7 +21,31 @@
 FactoryBot.define do
   factory :dashboard_insight do
     association :account
-    insights { [{ title: "Test Insight", description: "Test description", sentiment: "positive", metric_type: "leads" }] }
+    insights do
+      [
+        {
+          title: "Lead Generation Up",
+          description: "Leads increased by 23% this week.",
+          sentiment: "positive",
+          project_uuid: nil,
+          action: { label: "View Analytics", url: "/dashboard" }
+        },
+        {
+          title: "Project Needs Attention",
+          description: "One project hasn't generated leads recently.",
+          sentiment: "negative",
+          project_uuid: nil,
+          action: { label: "Review Project", url: "/projects" }
+        },
+        {
+          title: "CTR Improving",
+          description: "Click-through rate trending upward.",
+          sentiment: "neutral",
+          project_uuid: nil,
+          action: { label: "View Details", url: "/dashboard" }
+        }
+      ]
+    end
     generated_at { 1.hour.ago }
   end
 end
