@@ -13,11 +13,13 @@ A single environment variable — `CREDITS_DISABLED=true` — checked at **two s
 **File:** `langgraph_app/app/server/middleware/creditCheck.ts`
 
 When `CREDITS_DISABLED=true`, the middleware:
+
 - Skips the Rails API call entirely
 - Sets `preRunCreditsRemaining` to `Number.MAX_SAFE_INTEGER`
 - Allows the request to proceed unconditionally
 
 **Cascade effect** (no additional code needed):
+
 - `calculateCreditStatus` node sees a massive `preRunCreditsRemaining`, so `deriveCreditStatus()` never sets `justExhausted = true`
 - Frontend `creditStore` never receives a `justExhausted` signal
 - `CreditWarningModal` never fires
@@ -28,6 +30,7 @@ When `CREDITS_DISABLED=true`, the middleware:
 **File:** `rails_app/app/workers/credits/charge_run_worker.rb`
 
 When `CREDITS_DISABLED=true`, the worker:
+
 - Returns early without processing usage records
 - Usage records still get **created** (by Langgraph's usage tracking middleware), preserving observability
 - No `CreditTransaction` records are created
@@ -46,6 +49,7 @@ CREDITS_DISABLED=true
 ```
 
 **Production safety:** Both sides hard-reject this flag in production:
+
 - **Langgraph:** `env.ts` production schema forces `CREDITS_DISABLED` to `false` regardless of env var value
 - **Rails:** `ChargeRunWorker#credits_disabled?` returns `false` when `Rails.env.production?`
 
@@ -53,13 +57,13 @@ Even if someone accidentally sets `CREDITS_DISABLED=true` in a production env, c
 
 ## Why not Flipper?
 
-| Concern | Flipper | Env var at 2 chokepoints |
-|---|---|---|
-| Langgraph access | Needs HTTP bridge to Rails | Native `process.env` check |
-| Integration points to wire | 8 | 2 |
-| Runtime overhead | Redis/DB lookup per request | Zero-cost string check |
-| Dev setup | Flipper gem + UI or console | One line in `.env` |
-| Risk of missing a spot | High (8 places) | Low (2 chokepoints) |
+| Concern                    | Flipper                     | Env var at 2 chokepoints   |
+| -------------------------- | --------------------------- | -------------------------- |
+| Langgraph access           | Needs HTTP bridge to Rails  | Native `process.env` check |
+| Integration points to wire | 8                           | 2                          |
+| Runtime overhead           | Redis/DB lookup per request | Zero-cost string check     |
+| Dev setup                  | Flipper gem + UI or console | One line in `.env`         |
+| Risk of missing a spot     | High (8 places)             | Low (2 chokepoints)        |
 
 ## What still works when disabled
 

@@ -120,7 +120,7 @@ end
 ```typescript
 export interface UsageContext {
   // ... existing fields
-  preRunCreditsRemaining?: number;  // Set before graph.invoke()
+  preRunCreditsRemaining?: number; // Set before graph.invoke()
 }
 ```
 
@@ -161,7 +161,7 @@ export function calculateCostMillicredits(records: UsageRecord[]): number {
 
 function tokenCost(tokens: number, rate: number | null | undefined): number {
   if (!tokens || !rate) return 0;
-  return tokens * rate / 10;
+  return (tokens * rate) / 10;
 }
 ```
 
@@ -170,6 +170,7 @@ function tokenCost(tokens: number, rate: number | null | undefined): number {
 **File**: `langgraph_app/app/lib/server/langgraph/executeWithTracking.ts`
 
 Before `graph.invoke()`:
+
 - Call `GET /credits/check`
 - Store `balance_millicredits` in `UsageContext.preRunCreditsRemaining`
 - If `ok === false`: reject run with appropriate error
@@ -190,6 +191,7 @@ setUsageContext({
 #### 6. Post-run credit status calculation
 
 After graph completes:
+
 - Calculate `estimatedCost` from `UsageContext.records`
 - Derive: `estimatedRemaining = preRunCreditsRemaining - estimatedCost`
 - Derive: `justExhausted = preRunCreditsRemaining > 0 && estimatedRemaining <= 0`
@@ -205,9 +207,9 @@ const justExhausted = context.preRunCreditsRemaining > 0 && estimatedRemaining <
 
 ```typescript
 interface CreditStatus {
-  justExhausted: boolean;           // true = show the modal!
+  justExhausted: boolean; // true = show the modal!
   estimatedCreditsRemaining: number;
-  preRunCreditsRemaining: number;   // for debugging
+  preRunCreditsRemaining: number; // for debugging
 }
 ```
 
@@ -260,8 +262,7 @@ export const useCreditStore = create<CreditState & CreditActions>((set, get) => 
     // 1. justExhausted is true (we just ran out)
     // 2. Modal hasn't been dismissed in the last hour
     const shouldShowModal =
-      justExhausted &&
-      (!state.modalDismissedAt || Date.now() - state.modalDismissedAt > 3600000);
+      justExhausted && (!state.modalDismissedAt || Date.now() - state.modalDismissedAt > 3600000);
 
     set({
       balanceMillicredits: balance,
@@ -321,31 +322,31 @@ export const useCreditStore = create<CreditState & CreditActions>((set, get) => 
 
 ### Rails
 
-| File | Action |
-|------|--------|
+| File                                           | Action                  |
+| ---------------------------------------------- | ----------------------- |
 | `app/controllers/api/v1/credits_controller.rb` | Create (check endpoint) |
-| `config/routes/api.rb` | Add credits routes |
-| `spec/requests/api/v1/credits_spec.rb` | Create |
+| `config/routes/api.rb`                         | Add credits routes      |
+| `spec/requests/api/v1/credits_spec.rb`         | Create                  |
 
 ### Langgraph
 
-| File | Action |
-|------|--------|
-| `langgraph_app/app/core/billing/costCalculator.ts` | Create |
-| `langgraph_app/app/core/billing/creditCheck.ts` | Create (pre-run balance fetch) |
-| `langgraph_app/app/core/billing/creditStatus.ts` | Create (post-run derivation) |
-| `langgraph_app/app/core/billing/types.ts` | Extend UsageContext |
+| File                                                            | Action                                  |
+| --------------------------------------------------------------- | --------------------------------------- |
+| `langgraph_app/app/core/billing/costCalculator.ts`              | Create                                  |
+| `langgraph_app/app/core/billing/creditCheck.ts`                 | Create (pre-run balance fetch)          |
+| `langgraph_app/app/core/billing/creditStatus.ts`                | Create (post-run derivation)            |
+| `langgraph_app/app/core/billing/types.ts`                       | Extend UsageContext                     |
 | `langgraph_app/app/lib/server/langgraph/executeWithTracking.ts` | Modify (pre-run check, post-run status) |
-| `langgraph_app/app/core/billing/*.test.ts` | Create tests |
+| `langgraph_app/app/core/billing/*.test.ts`                      | Create tests                            |
 
 ### Frontend
 
-| File | Action |
-|------|--------|
-| `app/javascript/frontend/stores/creditStore.ts` | Create |
-| `app/javascript/frontend/components/credits/ExhaustionModal.tsx` | Create |
-| `app/javascript/frontend/components/shared/chat/input/SubmitButton.tsx` | Modify (guard) |
-| `app/javascript/frontend/layouts/site-layout.tsx` | Modify (add modal) |
+| File                                                                    | Action             |
+| ----------------------------------------------------------------------- | ------------------ |
+| `app/javascript/frontend/stores/creditStore.ts`                         | Create             |
+| `app/javascript/frontend/components/credits/ExhaustionModal.tsx`        | Create             |
+| `app/javascript/frontend/components/shared/chat/input/SubmitButton.tsx` | Modify (guard)     |
+| `app/javascript/frontend/layouts/site-layout.tsx`                       | Modify (add modal) |
 
 ---
 
@@ -435,14 +436,14 @@ spec/integration/credits/exhaustion_flow_spec.rb
 
 ## Implementation Phases
 
-| Phase | Task | Duration |
-|-------|------|----------|
-| 1 | Rails `/credits/check` endpoint | 0.5 day |
-| 2 | Langgraph `costCalculator.ts` using model_configs | 0.5 day |
-| 3 | Langgraph `creditCheck.ts` (pre-run balance fetch) | 0.5 day |
-| 4 | Langgraph `creditStatus.ts` (post-run derivation) + `executeWithTracking` integration | 1 day |
-| 5 | Credit-state in stream/response | 0.5 day |
-| 6 | Frontend `creditStore` and `ExhaustionModal` | 1 day |
-| 7 | `SubmitButton` guard and layout integration | 0.5 day |
-| 8 | Unit + integration tests | 1 day |
-| **Total** | | **~5.5 days** |
+| Phase     | Task                                                                                  | Duration      |
+| --------- | ------------------------------------------------------------------------------------- | ------------- |
+| 1         | Rails `/credits/check` endpoint                                                       | 0.5 day       |
+| 2         | Langgraph `costCalculator.ts` using model_configs                                     | 0.5 day       |
+| 3         | Langgraph `creditCheck.ts` (pre-run balance fetch)                                    | 0.5 day       |
+| 4         | Langgraph `creditStatus.ts` (post-run derivation) + `executeWithTracking` integration | 1 day         |
+| 5         | Credit-state in stream/response                                                       | 0.5 day       |
+| 6         | Frontend `creditStore` and `ExhaustionModal`                                          | 1 day         |
+| 7         | `SubmitButton` guard and layout integration                                           | 0.5 day       |
+| 8         | Unit + integration tests                                                              | 1 day         |
+| **Total** |                                                                                       | **~5.5 days** |

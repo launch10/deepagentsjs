@@ -5,12 +5,14 @@
 When a user cancels their subscription, the following rules apply to their credits:
 
 ### Plan Credits
+
 - **During grace period**: User retains full access to plan credits until the billing period ends
 - **After subscription ends**: Plan credits remain in the account but no new credits are ever granted
 - **No monthly resets**: Yearly subscribers with pending cancellation do not receive monthly credit resets
 - **No renewal allocations**: Canceled subscriptions are skipped by the renewal handler
 
 ### Pack Credits
+
 - **Never affected by subscription status**: Pack credits purchased are owned by the user permanently
 - **No expiration**: Even after subscription cancellation, pack credits remain usable
 - **Can be used without subscription**: Users with pack credits can still use AI features even without an active subscription
@@ -18,6 +20,7 @@ When a user cancels their subscription, the following rules apply to their credi
 ## Current Implementation Status
 
 ### Implemented
+
 - Graceful cancellation preserves credits until period end
 - Pack credits are preserved during all subscription operations
 - Renewals and plan changes properly manage credits
@@ -53,14 +56,17 @@ There is no single "expire credits" action. Instead, cancellation is enforced by
 ## Edge Cases
 
 ### Reactivation After Cancellation
+
 - If user resubscribes within the same billing period: No change (still had credits)
 - If user resubscribes after period ends: Fresh allocation on new subscription creation
 
 ### Pause vs Cancel
+
 - **Pause**: Not currently supported by Stripe integration
 - **Cancel**: Full policy above applies
 
 ### Immediate Cancellation (cancel_now)
+
 - Same as period-end cancellation for credits
 - Credits remain in the account, no new grants
 

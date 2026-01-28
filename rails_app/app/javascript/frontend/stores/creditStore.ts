@@ -106,7 +106,7 @@ const initialState: CreditState = {
   packCredits: null,
   planCreditsAllocated: null,
   periodEndsAt: null,
-  isOutOfCredits: false,
+  isOutOfCredits: true, // Default to disabled until hydration confirms credits
   showOutOfCreditsModal: false,
   modalDismissedAt: null,
   showLowCreditModal: false,
@@ -123,127 +123,131 @@ function millicreditsToCredits(millicredits: number): number {
 
 export const useCreditStore = create<CreditStore>()(
   persist(
-    subscribeWithSelector(
-      (set, get) => ({
-        ...initialState,
+    subscribeWithSelector((set, get) => ({
+      ...initialState,
 
-        updateFromCreditStatus: (status) => {
-          const { estimatedRemainingMillicredits, justExhausted } = status;
+      updateFromCreditStatus: (status) => {
+        const { estimatedRemainingMillicredits, justExhausted } = status;
 
-          const credits = millicreditsToCredits(estimatedRemainingMillicredits);
+        const credits = millicreditsToCredits(estimatedRemainingMillicredits);
 
-          if (justExhausted) {
-            // Force-show exhausted modal (overrides any previous dismiss)
-            // and close the low credit modal since exhausted takes priority
-            set({
-              balance: credits,
-              isOutOfCredits: true,
-              showOutOfCreditsModal: true,
-              showLowCreditModal: false,
-            });
-          } else {
-            set({
-              balance: credits,
-              isOutOfCredits: credits <= 0,
-            });
-          }
-        },
-
-        updateFromBalanceCheck: (balance) => {
+        if (justExhausted) {
+          // Force-show exhausted modal (overrides any previous dismiss)
+          // and close the low credit modal since exhausted takes priority
           set({
-            balance: millicreditsToCredits(balance.balanceMillicredits),
-            planCredits: millicreditsToCredits(balance.planMillicredits),
-            packCredits: millicreditsToCredits(balance.packMillicredits),
-            isOutOfCredits: balance.isExhausted,
+            balance: credits,
+            isOutOfCredits: true,
+            showOutOfCreditsModal: true,
+            showLowCreditModal: false,
           });
-        },
+        } else {
+          set({
+            balance: credits,
+            isOutOfCredits: credits <= 0,
+          });
+        }
+      },
 
-        hydrateFromPageProps: (props) => {
-          if (!props) return;
+      updateFromBalanceCheck: (balance) => {
+        set({
+          balance: millicreditsToCredits(balance.balanceMillicredits),
+          planCredits: millicreditsToCredits(balance.planMillicredits),
+          packCredits: millicreditsToCredits(balance.packMillicredits),
+          isOutOfCredits: balance.isExhausted,
+        });
+      },
 
-          const { plan_credits, pack_credits, total_credits, plan_credits_allocated, period_ends_at } = props;
+      hydrateFromPageProps: (props) => {
+        if (!props) return;
 
-          // Only update if we have actual data
-          const updates: Partial<CreditState> = {};
+        const {
+          plan_credits,
+          pack_credits,
+          total_credits,
+          plan_credits_allocated,
+          period_ends_at,
+        } = props;
 
-          if (total_credits !== undefined && total_credits !== null) {
-            updates.balance = total_credits;
-            updates.isOutOfCredits = total_credits <= 0;
-          }
-          if (plan_credits !== undefined && plan_credits !== null) {
-            updates.planCredits = plan_credits;
-          }
-          if (pack_credits !== undefined && pack_credits !== null) {
-            updates.packCredits = pack_credits;
-          }
-          if (plan_credits_allocated !== undefined && plan_credits_allocated !== null) {
-            updates.planCreditsAllocated = plan_credits_allocated;
-          }
-          if (period_ends_at !== undefined) {
-            updates.periodEndsAt = period_ends_at ?? null;
-          }
+        // Only update if we have actual data
+        const updates: Partial<CreditState> = {};
 
-          if (Object.keys(updates).length > 0) {
-            set(updates);
-          }
+        if (total_credits !== undefined && total_credits !== null) {
+          updates.balance = total_credits;
+          updates.isOutOfCredits = total_credits <= 0;
+        }
+        if (plan_credits !== undefined && plan_credits !== null) {
+          updates.planCredits = plan_credits;
+        }
+        if (pack_credits !== undefined && pack_credits !== null) {
+          updates.packCredits = pack_credits;
+        }
+        if (plan_credits_allocated !== undefined && plan_credits_allocated !== null) {
+          updates.planCreditsAllocated = plan_credits_allocated;
+        }
+        if (period_ends_at !== undefined) {
+          updates.periodEndsAt = period_ends_at ?? null;
+        }
 
-          // Check if low credit modal should be triggered.
-          // This runs after setting updates so we use fresh + existing state.
-          const state = get();
-          const effectiveAllocated = updates.planCreditsAllocated ?? state.planCreditsAllocated;
-          const effectivePlanCredits = updates.planCredits ?? state.planCredits;
-          const effectiveOutOfCredits = updates.isOutOfCredits ?? state.isOutOfCredits;
+        if (Object.keys(updates).length > 0) {
+          set(updates);
+        }
 
-          if (
-            !effectiveOutOfCredits &&
-            !state.showLowCreditModal &&
-            effectiveAllocated !== null && effectiveAllocated > 0 &&
-            effectivePlanCredits !== null
-          ) {
-            const used = effectiveAllocated - effectivePlanCredits;
-            const usagePercent = Math.round((used / effectiveAllocated) * 100);
+        // Check if low credit modal should be triggered.
+        // This runs after setting updates so we use fresh + existing state.
+        const state = get();
+        const effectiveAllocated = updates.planCreditsAllocated ?? state.planCreditsAllocated;
+        const effectivePlanCredits = updates.planCredits ?? state.planCredits;
+        const effectiveOutOfCredits = updates.isOutOfCredits ?? state.isOutOfCredits;
 
-            if (usagePercent >= LOW_CREDIT_WARNING_THRESHOLD_PERCENT) {
-              const now = Date.now();
-              const canShow =
-                !state.lowCreditWarningDismissedAt ||
-                now - state.lowCreditWarningDismissedAt > LOW_CREDIT_WARNING_SUPPRESS_DURATION_MS;
+        if (
+          !effectiveOutOfCredits &&
+          !state.showLowCreditModal &&
+          effectiveAllocated !== null &&
+          effectiveAllocated > 0 &&
+          effectivePlanCredits !== null
+        ) {
+          const used = effectiveAllocated - effectivePlanCredits;
+          const usagePercent = Math.round((used / effectiveAllocated) * 100);
 
-              if (canShow) {
-                set({ showLowCreditModal: true });
-              }
+          if (usagePercent >= LOW_CREDIT_WARNING_THRESHOLD_PERCENT) {
+            const now = Date.now();
+            const canShow =
+              !state.lowCreditWarningDismissedAt ||
+              now - state.lowCreditWarningDismissedAt > LOW_CREDIT_WARNING_SUPPRESS_DURATION_MS;
+
+            if (canShow) {
+              set({ showLowCreditModal: true });
             }
           }
-        },
+        }
+      },
 
-        dismissModal: () => {
-          set({
-            showOutOfCreditsModal: false,
-            modalDismissedAt: Date.now(),
-          });
-        },
+      dismissModal: () => {
+        set({
+          showOutOfCreditsModal: false,
+          modalDismissedAt: Date.now(),
+        });
+      },
 
-        showModal: () => {
-          const { modalDismissedAt } = get();
-          const now = Date.now();
-          const canShow =
-            !modalDismissedAt || now - modalDismissedAt > MODAL_SUPPRESS_DURATION_MS;
+      showModal: () => {
+        const { modalDismissedAt } = get();
+        const now = Date.now();
+        const canShow = !modalDismissedAt || now - modalDismissedAt > MODAL_SUPPRESS_DURATION_MS;
 
-          if (canShow) {
-            set({ showOutOfCreditsModal: true });
-          }
-        },
+        if (canShow) {
+          set({ showOutOfCreditsModal: true });
+        }
+      },
 
-        dismissLowCreditWarning: () => {
-          set({
-            showLowCreditModal: false,
-            lowCreditWarningDismissedAt: Date.now(),
-          });
-        },
+      dismissLowCreditWarning: () => {
+        set({
+          showLowCreditModal: false,
+          lowCreditWarningDismissedAt: Date.now(),
+        });
+      },
 
-        reset: () => set(initialState),
-      })
-    ),
+      reset: () => set(initialState),
+    })),
     {
       name: "credit-store",
       partialize: (state) => ({

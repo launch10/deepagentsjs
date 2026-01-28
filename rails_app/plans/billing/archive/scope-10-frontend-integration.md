@@ -87,6 +87,7 @@
 Creates Stripe checkout session for pack.
 
 **Request**:
+
 ```json
 {
   "success_url": "/settings/credits?purchased=true",
@@ -95,6 +96,7 @@ Creates Stripe checkout session for pack.
 ```
 
 **Response**:
+
 ```json
 {
   "checkout_url": "https://checkout.stripe.com/...",
@@ -117,7 +119,7 @@ Creates Stripe checkout session for pack.
 
 ```tsx
 interface CreditBalanceDisplayProps {
-  variant?: "compact" | "full";  // compact for header, full for settings
+  variant?: "compact" | "full"; // compact for header, full for settings
   showBreakdown?: boolean;
 }
 ```
@@ -168,7 +170,7 @@ interface TransactionHistoryProps {
 
 ```tsx
 interface LowCreditWarningProps {
-  threshold?: number;  // default 80
+  threshold?: number; // default 80
   variant?: "banner" | "toast";
 }
 ```
@@ -182,6 +184,7 @@ interface LowCreditWarningProps {
 **File**: `app/javascript/frontend/pages/settings/Credits.tsx`
 
 Layout:
+
 ```
 ┌─────────────────────────────────────────────────────┐
 │ Credits                                              │
@@ -214,18 +217,18 @@ Layout:
 
 ## Files to Create/Modify
 
-| File | Action |
-|------|--------|
-| `app/controllers/api/v1/credits_controller.rb` | Extend (balance, transactions) |
-| `app/controllers/api/v1/credit_packs_controller.rb` | Create |
-| `config/routes/api.rb` | Add routes |
-| `app/javascript/frontend/components/credits/CreditBalanceDisplay.tsx` | Create |
-| `app/javascript/frontend/components/credits/TransactionHistory.tsx` | Create |
-| `app/javascript/frontend/components/credits/CreditPackPurchaseCard.tsx` | Create |
-| `app/javascript/frontend/components/credits/CreditUsageChart.tsx` | Create |
-| `app/javascript/frontend/components/credits/LowCreditWarning.tsx` | Create |
-| `app/javascript/frontend/pages/settings/Credits.tsx` | Create |
-| `app/javascript/frontend/hooks/useCredits.ts` | Create (data fetching) |
+| File                                                                    | Action                         |
+| ----------------------------------------------------------------------- | ------------------------------ |
+| `app/controllers/api/v1/credits_controller.rb`                          | Extend (balance, transactions) |
+| `app/controllers/api/v1/credit_packs_controller.rb`                     | Create                         |
+| `config/routes/api.rb`                                                  | Add routes                     |
+| `app/javascript/frontend/components/credits/CreditBalanceDisplay.tsx`   | Create                         |
+| `app/javascript/frontend/components/credits/TransactionHistory.tsx`     | Create                         |
+| `app/javascript/frontend/components/credits/CreditPackPurchaseCard.tsx` | Create                         |
+| `app/javascript/frontend/components/credits/CreditUsageChart.tsx`       | Create                         |
+| `app/javascript/frontend/components/credits/LowCreditWarning.tsx`       | Create                         |
+| `app/javascript/frontend/pages/settings/Credits.tsx`                    | Create                         |
+| `app/javascript/frontend/hooks/useCredits.ts`                           | Create (data fetching)         |
 
 ---
 
@@ -305,13 +308,13 @@ components/credits/LowCreditWarning.test.tsx
 
 ## Implementation Phases
 
-| Phase | Task | Duration |
-|-------|------|----------|
-| 1 | Balance display UI and `/credits` API | 1 day |
-| 2 | Transaction history API and component | 1 day |
-| 3 | Credit pack purchase UI and API | 1 day |
-| 4 | Low credit warning (80%) | 0.5 day |
-| **Total** | | **~3.5 days** |
+| Phase     | Task                                  | Duration      |
+| --------- | ------------------------------------- | ------------- |
+| 1         | Balance display UI and `/credits` API | 1 day         |
+| 2         | Transaction history API and component | 1 day         |
+| 3         | Credit pack purchase UI and API       | 1 day         |
+| 4         | Low credit warning (80%)              | 0.5 day       |
+| **Total** |                                       | **~3.5 days** |
 
 ---
 
@@ -325,15 +328,15 @@ components/credits/LowCreditWarning.test.tsx
 
 ### Transaction Type Icons
 
-| Type | Icon | Color |
-|------|------|-------|
-| allocate | Plus circle | Green |
-| consume | Minus circle | Red |
-| purchase | Credit card | Blue |
-| gift | Gift | Purple |
-| expire | Clock | Gray |
-| refund | Arrow left | Green |
-| adjust | Sliders | Orange |
+| Type     | Icon         | Color  |
+| -------- | ------------ | ------ |
+| allocate | Plus circle  | Green  |
+| consume  | Minus circle | Red    |
+| purchase | Credit card  | Blue   |
+| gift     | Gift         | Purple |
+| expire   | Clock        | Gray   |
+| refund   | Arrow left   | Green  |
+| adjust   | Sliders      | Orange |
 
 ### Warning Thresholds
 
