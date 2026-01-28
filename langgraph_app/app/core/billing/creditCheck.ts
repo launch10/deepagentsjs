@@ -34,11 +34,7 @@ export class CreditCheckError extends Error {
  * @returns Credit check result with balance information
  * @throws CreditCheckError if the check fails
  */
-export async function checkCredits(
-  jwt: string,
-  baseUrl?: string
-): Promise<CreditCheckResult> {
-  debugger;
+export async function checkCredits(jwt: string, baseUrl?: string): Promise<CreditCheckResult> {
   if (!jwt) {
     throw new CreditCheckError("JWT token is required", 401);
   }
@@ -54,10 +50,7 @@ export async function checkCredits(
     });
 
     if (response.error || !response.data) {
-      throw new CreditCheckError(
-        "Credit check failed",
-        response.response?.status
-      );
+      throw new CreditCheckError("Credit check failed", response.response?.status);
     }
 
     return response.data;

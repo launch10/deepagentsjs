@@ -38,9 +38,8 @@ import { calculateCreditStatusNode } from "@nodes";
  * @returns A new StateGraph with credit exhaustion detection
  */
 export function withCreditExhaustion<
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   A extends ReturnType<typeof import("@langchain/langgraph").Annotation.Root<any>>,
-  T extends StateGraph<any, any, any, any, any, any, any, any>
+  T extends StateGraph<any, any, any, any, any, any, any, any>,
 >(innerGraph: T, annotation: A): T {
   // The outer graph uses the same annotation as the inner graph,
   // so all state flows through correctly to the frontend.

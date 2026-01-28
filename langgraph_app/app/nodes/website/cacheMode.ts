@@ -94,7 +94,6 @@ export const cacheModeNode = async (
   // Transform to structured message format so it has parsed_blocks in response_metadata
   const [aiMessage] = await toStructuredMessage(rawMessage);
 
-  debugger;
   return {
     messages: [...(state.messages || []), aiMessage],
     files,

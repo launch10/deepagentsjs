@@ -63,9 +63,7 @@ const environmentConfigSchema = z.discriminatedUnion("NODE_ENV", [
   envSchema.extend({
     NODE_ENV: z.literal("production"),
     // CREDITS_DISABLED must never be true in production
-    CREDITS_DISABLED: z
-      .any()
-      .transform(() => false),
+    CREDITS_DISABLED: z.any().transform(() => false),
   }),
 ]);
 
@@ -87,7 +85,6 @@ export const env = ((): RuntimeEnv => {
 
   try {
     const parsedEnv = environmentConfigSchema.parse(process.env);
-    console.log(parsedEnv);
     return parsedEnv;
   } catch (error) {
     if (error instanceof z.ZodError) {
