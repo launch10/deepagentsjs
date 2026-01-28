@@ -70,8 +70,8 @@ module GoogleAds
             metrics.conversions,
             metrics.conversions_value
           FROM campaign
-          WHERE segments.date >= '#{start_date.strftime('%Y-%m-%d')}'
-            AND segments.date <= '#{end_date.strftime('%Y-%m-%d')}'
+          WHERE segments.date >= '#{start_date.strftime("%Y-%m-%d")}'
+            AND segments.date <= '#{end_date.strftime("%Y-%m-%d")}'
             AND campaign.status != 'REMOVED'
         GAQL
       end

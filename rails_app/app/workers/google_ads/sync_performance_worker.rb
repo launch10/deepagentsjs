@@ -23,7 +23,7 @@ module GoogleAds
         next unless ads_account.google_customer_id.present?
 
         sync_for_account(ads_account, start_date, end_date)
-      rescue StandardError => e
+      rescue => e
         Rails.logger.error("[SyncPerformanceWorker] Failed for ads_account #{ads_account.id}: #{e.message}")
         Rollbar.error(e, ads_account_id: ads_account.id)
         # Continue processing other accounts

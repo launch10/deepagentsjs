@@ -23,7 +23,7 @@ module Analytics
 
       Account.find_each do |account|
         compute_for_account(account, target_date)
-      rescue StandardError => e
+      rescue => e
         Rails.logger.error("[ComputeDailyMetricsWorker] Failed for account #{account.id}: #{e.message}")
         Rollbar.error(e, account_id: account.id, date: target_date)
         # Continue processing other accounts

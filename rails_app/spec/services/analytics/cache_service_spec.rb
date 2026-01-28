@@ -47,13 +47,14 @@ RSpec.describe Analytics::CacheService do
     end
 
     it "uses 15-minute bucket in cache key" do
-      freeze_time do
+      # Start at a known time safely within a 15-minute bucket (minute 1 of the bucket)
+      travel_to Time.zone.local(2026, 1, 28, 10, 1, 0) do
         key1 = described_class.cache_key(account.id, "leads", 30)
 
-        travel 10.minutes
+        travel 10.minutes # Now at minute 11, still same bucket
         key2 = described_class.cache_key(account.id, "leads", 30)
 
-        travel 10.minutes # Now 20 minutes total, new bucket
+        travel 10.minutes # Now at minute 21, new bucket (15-30)
         key3 = described_class.cache_key(account.id, "leads", 30)
 
         expect(key1).to eq(key2)

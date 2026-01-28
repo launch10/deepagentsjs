@@ -80,7 +80,7 @@ RSpec.describe Analytics::ComputeDailyMetricsWorker do
 
       before do
         create(:ad_performance_daily, campaign: campaign, date: target_date,
-               impressions: 1000, clicks: 50, cost_micros: 25_000_000)
+          impressions: 1000, clicks: 50, cost_micros: 25_000_000)
       end
 
       it "aggregates ads metrics correctly" do
