@@ -6,7 +6,7 @@ module InertiaSchemas
     def self.shared_props
       {
         csrf_token: InertiaSchemas.string_field(description: 'CSRF token'),
-        google_oauth_path: InertiaSchemas.string_field(description: 'Google OAuth path'),
+        google_oauth_path: InertiaSchemas.nullable(InertiaSchemas.string_field(description: 'Google OAuth path (null if OAuth disabled)')),
         flash: {
           type: :array,
           items: InertiaSchemas.flash_message_schema,
@@ -16,7 +16,7 @@ module InertiaSchemas
     end
 
     def self.required
-      %w[csrf_token google_oauth_path]
+      %w[csrf_token]
     end
 
     def self.with_props(page_props:, page_required: [])

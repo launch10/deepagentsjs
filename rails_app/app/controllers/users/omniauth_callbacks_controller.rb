@@ -27,16 +27,13 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
   # 1. Find the most recently active deploy (user_active_at within last 10 minutes)
   # 2. Find the pending/running GoogleOAuthConnect job for that deploy
   def google_oauth2_connected(connected_account)
-    continue_active_deploy!
-  end
-
-  def account
-    @account ||= connected_account.owner.owned_account
+    continue_active_deploy!(connected_account)
   end
 
   private
 
-  def continue_active_deploy!
+  def continue_active_deploy!(connected_account)
+    account = connected_account.owner.owned_account
     return unless account
 
     # Users that signup in the traditional signup flow wouldn't have deploys

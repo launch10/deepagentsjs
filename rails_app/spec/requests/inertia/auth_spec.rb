@@ -34,7 +34,9 @@ RSpec.describe 'Auth Inertia Pages', type: :request, inertia: true do
       it 'signs in and redirects' do
         post user_session_path, params: { user: { email: 'test@example.com', password: 'password123' } }
 
-        expect(response).to have_http_status(:redirect)
+        # Inertia redirects return 409 (Conflict) with X-Inertia-Location header
+        expect(response).to have_http_status(:conflict)
+        expect(response.headers['X-Inertia-Location']).to be_present
       end
     end
 
@@ -85,7 +87,9 @@ RSpec.describe 'Auth Inertia Pages', type: :request, inertia: true do
           spinner: InvisibleCaptcha.encode("#{Time.zone.now.iso8601}-127.0.0.1")
         }
 
-        expect(response).to have_http_status(:redirect)
+        # Inertia redirects return 409 (Conflict) with X-Inertia-Location header
+        expect(response).to have_http_status(:conflict)
+        expect(response.headers['X-Inertia-Location']).to be_present
         expect(User.find_by(email: 'newuser@example.com')).to be_present
       end
     end
