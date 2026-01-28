@@ -27,7 +27,19 @@ module Authentication
 
   def after_sign_in_path_for(resource_or_scope)
     return "/reset_app" if hotwire_native_app?
-    stored_location_for(resource_or_scope) || super
+    stored_location_for(resource_or_scope) || default_sign_in_path_for(resource_or_scope)
+  end
+
+  def default_sign_in_path_for(resource_or_scope)
+    user = resource_or_scope.is_a?(User) ? resource_or_scope : current_user
+    return pricing_path unless user
+
+    account = user.accounts.order(personal: :desc, created_at: :asc).first
+    if account&.payment_processor&.subscribed?
+      new_project_path
+    else
+      pricing_path
+    end
   end
 
   # Helper method for verifying authentication in a before_action, but redirecting to sign up instead of login

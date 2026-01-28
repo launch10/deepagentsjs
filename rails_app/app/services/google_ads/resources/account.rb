@@ -192,12 +192,13 @@ module GoogleAds
       end
 
       def fetch_by_name
-        return nil unless account.name.present?
+        email = account.owner&.email
+        return nil unless email.present?
 
         query = <<~QUERY
           SELECT customer_client.id, customer_client.descriptive_name
           FROM customer_client
-          WHERE customer_client.descriptive_name = '#{account.name.gsub("'", "\\\\'")}'
+          WHERE customer_client.descriptive_name = '#{email.gsub("'", "\\\\'")}'
         QUERY
 
         response = client.service.google_ads.search(

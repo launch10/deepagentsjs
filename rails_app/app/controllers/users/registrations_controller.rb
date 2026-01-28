@@ -30,7 +30,6 @@ class Users::RegistrationsController < Devise::RegistrationsController
     build_resource(sign_up_params)
     resource.save
 
-    binding.pry
     if resource.persisted?
       if resource.active_for_authentication?
         set_flash_message!(:notice, :signed_up)
@@ -45,7 +44,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
       clean_up_passwords resource
       set_minimum_password_length
       setup_captcha_session
-      render inertia: "Auth/SignUp", props: { errors: resource.errors.to_hash(true) }
+      render inertia: "Auth/SignUp", props: { errors: resource.errors.to_hash(true) }, status: :unprocessable_entity
     end
   end
 

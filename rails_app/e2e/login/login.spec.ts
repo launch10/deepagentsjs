@@ -34,8 +34,9 @@ async function loginNonSubscribedUser(
   });
 }
 
-test.describe("Subscription Flow", () => {
+test.describe("Login Flow", () => {
   test.describe("Unauthenticated Access", () => {
+    // TODO: Make this go to Login page once we deploy Pricing page via static website
     test("unauthenticated user visiting root is redirected to pricing", async ({
       page,
     }) => {
@@ -66,6 +67,38 @@ test.describe("Subscription Flow", () => {
   });
 
   test.describe("Subscribed User Access", () => {
+    test("subscribed user signing in is redirected to /projects/new", async ({ page }) => {
+      await DatabaseSnapshotter.restoreSnapshot("basic_account");
+
+      // Go to sign in page
+      await page.goto("/users/sign_in");
+      await page.waitForLoadState("domcontentloaded");
+
+      // Click "Continue with Email" to reveal the sign-in form
+      const continueWithEmail = page.getByRole("button", { name: "Continue with Email" });
+      await continueWithEmail.waitFor({ state: "visible", timeout: 10000 });
+      await continueWithEmail.click();
+
+      // Fill in credentials
+      const emailInput = page.locator('input[name="user[email]"]');
+      await emailInput.waitFor({ state: "visible", timeout: 10000 });
+      await emailInput.fill(testUser.email);
+
+      const passwordInput = page.locator('input[name="user[password]"]');
+      await passwordInput.fill(testUser.password);
+
+      // Submit form
+      await page.click('button[type="submit"]');
+
+      // Should be redirected to /projects/new
+      await expect(page).toHaveURL(/\/projects\/new/, { timeout: 10000 });
+
+      // Should see the BrainstormLanding page with chat input
+      await expect(page.getByText("Tell us your next big idea")).toBeVisible({
+        timeout: 15000,
+      });
+    });
+
     test("subscribed user lands on BrainstormLanding", async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("basic_account");
 

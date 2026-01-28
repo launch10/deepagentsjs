@@ -260,15 +260,17 @@ RSpec.describe GoogleAds::Resources::Account do
 
       context 'and matching name exists in Google (content-based lookup)' do
         it 'returns remote and backfills ID' do
-          # First call: search by name
+          owner_email = account.owner.email
+
+          # First call: search by owner email (used as descriptive_name at creation)
           name_response = mock_search_response_with_customer_client(
             customer_id: 456789,
-            descriptive_name: "Test Account"
+            descriptive_name: owner_email
           )
           # Second call: verify customer by ID
           customer_client_response, auto_tagging_response = mock_verify_customer_responses(
             customer_id: 456789,
-            descriptive_name: "Test Account",
+            descriptive_name: owner_email,
             auto_tagging_enabled: true,
             status: :ENABLED
           )
@@ -413,10 +415,12 @@ RSpec.describe GoogleAds::Resources::Account do
     end
 
     context 'content-based matching' do
-      it 'returns true when found by name with matching fields' do
+      it 'returns true when found by owner email with matching fields' do
+        owner_email = account.owner.email
+
         name_response = mock_search_response_with_customer_client(
           customer_id: 456789,
-          descriptive_name: "Test Account"
+          descriptive_name: owner_email
         )
         customer_client_response, auto_tagging_response = mock_verify_customer_responses(
           customer_id: 456789,

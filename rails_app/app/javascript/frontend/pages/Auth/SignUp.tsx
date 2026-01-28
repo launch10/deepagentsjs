@@ -1,9 +1,13 @@
-import { useState, useRef, type ReactNode, type FormEvent } from "react";
-import { usePage, Link } from "@inertiajs/react";
-import { EnvelopeIcon } from "@heroicons/react/24/outline";
+import { useState, type ReactNode, type FormEvent } from "react";
+import { router, usePage, Link } from "@inertiajs/react";
 import { AuthLayout } from "~/layouts/auth-layout";
+import { Input } from "@components/ui/input";
+import { Button } from "@components/ui/button";
+import { Field, FieldError } from "@components/ui/field";
+import { GoogleOAuthButton } from "@components/auth/GoogleOAuthButton";
+import { AuthLegalFooter } from "@components/auth/AuthLegalFooter";
+import { toFieldErrors } from "@components/auth/utils";
 import rocketLaunch from "@assets/rocket-launch.png";
-import googleLogo from "@assets/google_logo.png";
 
 interface SignUpProps {
   csrf_token: string;
@@ -17,8 +21,6 @@ interface SignUpProps {
 function SignUp() {
   const { csrf_token, google_oauth_path, captcha_field_name, spinner, errors: serverErrors } =
     usePage<SignUpProps>().props;
-  const [showForm, setShowForm] = useState(!!serverErrors && Object.keys(serverErrors).length > 0);
-  const googleFormRef = useRef<HTMLFormElement>(null);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -27,215 +29,124 @@ function SignUp() {
   const [errors, setErrors] = useState<Record<string, string[]>>(serverErrors || {});
   const [processing, setProcessing] = useState(false);
 
-  function handleGoogleSignIn() {
-    googleFormRef.current?.submit();
-  }
-
-  async function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setProcessing(true);
     setErrors({});
 
-    const body = new FormData();
-    body.append("user[name]", name);
-    body.append("user[email]", email);
-    body.append("user[password]", password);
-    body.append("user[password_confirmation]", passwordConfirmation);
-    body.append("user[terms_of_service]", "1");
-    body.append("user[owned_accounts_attributes][0][name]", name);
-    body.append(captcha_field_name, "");
-    body.append("spinner", spinner);
-
-    try {
-      const res = await fetch("/users", {
-        method: "POST",
-        body,
-        headers: {
-          "X-CSRF-Token": csrf_token,
-          "X-Inertia": "true",
-        },
-      });
-
-      if (res.redirected) {
-        window.location.href = res.url;
-        return;
-      }
-
-      const data = await res.json();
-      if (data.props?.errors) {
-        setErrors(data.props.errors);
-      }
-    } finally {
-      setProcessing(false);
-    }
-  }
-
-  function fieldErrors(field: string): string[] | undefined {
-    return errors?.[field];
+    router.post("/users", {
+      user: {
+        name,
+        email,
+        password,
+        password_confirmation: passwordConfirmation,
+        terms_of_service: "1",
+        owned_accounts_attributes: [{ name }],
+      },
+      [captcha_field_name]: "",
+      spinner,
+    }, {
+      onError: (errs) => setErrors(errs as Record<string, string[]>),
+      onFinish: () => setProcessing(false),
+      preserveState: true,
+    });
   }
 
   return (
     <div className="flex w-full max-w-[508px] flex-col items-center">
       <img src={rocketLaunch} alt="" className="mb-6 h-48 w-48" />
 
-      {/* Hidden Google OAuth form */}
-      <form ref={googleFormRef} method="post" action={google_oauth_path} className="hidden">
-        <input type="hidden" name="authenticity_token" value={csrf_token} />
+      <h1 className="font-serif text-4xl font-semibold leading-10 text-base-500">
+        Start building with Launch10
+      </h1>
+      <p className="mt-3 max-w-[589px] text-center font-sans text-lg leading-[22px] text-base-500 opacity-70">
+        Set up your account to start building landing pages and launching
+        ads, all in one place. No technical setup required.
+      </p>
+
+      <div className="mt-8 w-full">
+        <GoogleOAuthButton
+          csrfToken={csrf_token}
+          oauthPath={google_oauth_path}
+          label="Sign up with Google"
+        />
+      </div>
+
+      <form onSubmit={handleSubmit} className="mt-6 flex w-full flex-col gap-4">
+        <Field>
+          <Input
+            id="name"
+            type="text"
+            autoComplete="name"
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            aria-invalid={!!errors?.name}
+            className="h-12 rounded-lg"
+            placeholder="Full Name"
+          />
+          <FieldError errors={toFieldErrors(errors, "name")} />
+        </Field>
+
+        <Field>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            aria-invalid={!!errors?.email}
+            className="h-12 rounded-lg"
+            placeholder="Email"
+          />
+          <FieldError errors={toFieldErrors(errors, "email")} />
+        </Field>
+
+        <Field>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            aria-invalid={!!errors?.password}
+            className="h-12 rounded-lg"
+            placeholder="Password"
+          />
+          <FieldError errors={toFieldErrors(errors, "password")} />
+        </Field>
+
+        <Field>
+          <Input
+            id="password_confirmation"
+            type="password"
+            autoComplete="new-password"
+            value={passwordConfirmation}
+            onChange={(e) => setPasswordConfirmation(e.target.value)}
+            aria-invalid={!!errors?.password_confirmation}
+            className="h-12 rounded-lg"
+            placeholder="Confirm Password"
+          />
+          <FieldError errors={toFieldErrors(errors, "password_confirmation")} />
+        </Field>
+
+        <Button
+          type="submit"
+          disabled={processing}
+          className="h-12"
+        >
+          {processing ? "Creating account..." : "Create Account"}
+        </Button>
       </form>
 
-      {!showForm ? (
-        /* Welcome state */
-        <>
-          <h1 className="font-['IBM_Plex_Serif'] text-4xl font-semibold leading-10 text-[#2E3238]">
-            Start building with Launch10
-          </h1>
-          <p className="mt-3 max-w-[589px] text-center font-['Plus_Jakarta_Sans',sans-serif] text-lg leading-[22px] text-[#2E3238] opacity-70">
-            Set up your account to start building landing pages and launching
-            ads, all in one place. No technical setup required.
-          </p>
+      <p className="mt-4 font-sans text-base text-base-500">
+        Already have an account?{" "}
+        <Link href="/users/sign_in" className="text-primary-500">
+          Sign In
+        </Link>
+      </p>
 
-          <div className="mt-8 flex w-full flex-col gap-4">
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              className="flex h-12 w-full items-center justify-center gap-2.5 rounded-lg border border-[#8E918F] bg-[#131314] px-3 text-sm font-medium text-[#E3E3E3] hover:bg-[#2a2a2b]"
-            >
-              <img src={googleLogo} alt="" className="h-5 w-5" />
-              Sign in with Google
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowForm(true)}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-[#D3D2D0] bg-[#FAFAF9] px-3 font-['Plus_Jakarta_Sans',sans-serif] text-base text-[#2E3238] hover:bg-[#F0EFEE]"
-            >
-              <EnvelopeIcon className="h-6 w-6" />
-              Continue with Email
-            </button>
-          </div>
-
-          <p className="mt-4 font-['Plus_Jakarta_Sans',sans-serif] text-base text-[#2E3238]">
-            Already have an account?{" "}
-            <Link href="/users/sign_in" className="text-[#3748B8]">
-              Sign in
-            </Link>
-          </p>
-
-          <p className="mt-6 max-w-[508px] text-center font-['Plus_Jakarta_Sans',sans-serif] text-xs leading-4 text-[#74767A]">
-            By clicking Log In or Sign Up, you agree to the{" "}
-            <a href="https://launch10.ai/terms" className="underline">Launch10 Terms of Service</a>{" "}
-            and{" "}
-            <a href="https://launch10.ai/privacy" className="underline">Privacy Notice</a>.
-          </p>
-        </>
-      ) : (
-        /* Sign Up form state */
-        <>
-          <h1 className="font-['IBM_Plex_Serif'] text-4xl font-semibold leading-10 text-[#2E3238]">
-            Start building with Launch10
-          </h1>
-          <p className="mt-3 max-w-[589px] text-center font-['Plus_Jakarta_Sans',sans-serif] text-lg leading-[22px] text-[#2E3238] opacity-70">
-            Set up your account to start building landing pages and launching
-            ads, all in one place. No technical setup required.
-          </p>
-
-          <div className="mt-8 w-full">
-            <button
-              type="button"
-              onClick={handleGoogleSignIn}
-              className="flex h-12 w-full items-center justify-center gap-2.5 rounded-lg border border-[#8E918F] bg-[#131314] px-3 text-sm font-medium text-[#E3E3E3] hover:bg-[#2a2a2b]"
-            >
-              <img src={googleLogo} alt="" className="h-5 w-5" />
-              Sign in with Google
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="mt-6 flex w-full flex-col gap-4">
-            <div className="flex flex-col gap-1">
-              <input
-                id="name"
-                type="text"
-                autoComplete="name"
-                autoFocus
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-12 rounded-lg border border-[#D3D2D0] bg-white px-3 text-sm text-[#2E3238] placeholder:text-[#74767A] focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                placeholder="Full Name"
-              />
-              {fieldErrors("name")?.map((msg) => (
-                <p key={msg} className="text-xs text-destructive">{msg}</p>
-              ))}
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-12 rounded-lg border border-[#D3D2D0] bg-white px-3 text-sm text-[#2E3238] placeholder:text-[#74767A] focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                placeholder="Email"
-              />
-              {fieldErrors("email")?.map((msg) => (
-                <p key={msg} className="text-xs text-destructive">{msg}</p>
-              ))}
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <input
-                id="password"
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-12 rounded-lg border border-[#D3D2D0] bg-white px-3 text-sm text-[#2E3238] placeholder:text-[#74767A] focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                placeholder="Password"
-              />
-              {fieldErrors("password")?.map((msg) => (
-                <p key={msg} className="text-xs text-destructive">{msg}</p>
-              ))}
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <input
-                id="password_confirmation"
-                type="password"
-                autoComplete="new-password"
-                value={passwordConfirmation}
-                onChange={(e) => setPasswordConfirmation(e.target.value)}
-                className="h-12 rounded-lg border border-[#D3D2D0] bg-white px-3 text-sm text-[#2E3238] placeholder:text-[#74767A] focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                placeholder="Confirm Password"
-              />
-              {fieldErrors("password_confirmation")?.map((msg) => (
-                <p key={msg} className="text-xs text-destructive">{msg}</p>
-              ))}
-            </div>
-
-            <button
-              type="submit"
-              disabled={processing}
-              className="h-12 rounded-lg bg-[#131314] text-sm font-medium text-[#E3E3E3] hover:bg-[#2a2a2b] disabled:opacity-50"
-            >
-              {processing ? "Creating account..." : "Create Account"}
-            </button>
-          </form>
-
-          <p className="mt-4 font-['Plus_Jakarta_Sans',sans-serif] text-base text-[#2E3238]">
-            Already have an account?{" "}
-            <Link href="/users/sign_in" className="text-[#3748B8]">
-              Sign In
-            </Link>
-          </p>
-
-          <p className="mt-6 max-w-[508px] text-center font-['Plus_Jakarta_Sans',sans-serif] text-xs leading-4 text-[#74767A]">
-            By clicking Log In or Sign Up, you agree to the{" "}
-            <a href="https://launch10.ai/terms" className="underline">Launch10 Terms of Service</a>{" "}
-            and{" "}
-            <a href="https://launch10.ai/privacy" className="underline">Privacy Notice</a>.
-          </p>
-        </>
-      )}
+      <AuthLegalFooter />
     </div>
   );
 }

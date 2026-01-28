@@ -5,14 +5,40 @@ info:
   version: v1
   description: Type definitions for Inertia.js page props.
 paths:
+  "/users/sign_in":
+    get:
+      summary: Sign In page props
+      tags:
+      - Auth Pages
+      parameters: []
+      responses:
+        '200':
+          description: Sign In page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SignInProps"
+  "/users/sign_up":
+    get:
+      summary: Sign Up page props
+      tags:
+      - Auth Pages
+      parameters: []
+      responses:
+        '200':
+          description: Sign Up page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SignUpProps"
   "/projects/new":
     get:
       summary: New page props
       tags:
-        - Inertia Pages
+      - Inertia Pages
       parameters: []
       responses:
-        "200":
+        '200':
           description: New page props
           content:
             application/json:
@@ -22,16 +48,16 @@ paths:
     get:
       summary: Brainstorm page props
       tags:
-        - Inertia Pages
+      - Inertia Pages
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Brainstorm page props
           content:
             application/json:
@@ -41,16 +67,16 @@ paths:
     get:
       summary: Website page props
       tags:
-        - Inertia Pages
+      - Inertia Pages
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Website page props
           content:
             application/json:
@@ -60,16 +86,16 @@ paths:
     get:
       summary: Leads page props
       tags:
-        - Inertia Pages
+      - Inertia Pages
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Leads page props
           content:
             application/json:
@@ -79,16 +105,16 @@ paths:
     get:
       summary: Content page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Content page props
           content:
             application/json:
@@ -98,16 +124,16 @@ paths:
     get:
       summary: Highlights page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Highlights page props
           content:
             application/json:
@@ -117,16 +143,16 @@ paths:
     get:
       summary: Keywords page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Keywords page props
           content:
             application/json:
@@ -136,16 +162,16 @@ paths:
     get:
       summary: Settings page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Settings page props
           content:
             application/json:
@@ -155,16 +181,16 @@ paths:
     get:
       summary: Launch page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Launch page props
           content:
             application/json:
@@ -174,16 +200,16 @@ paths:
     get:
       summary: Review page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Review page props
           content:
             application/json:
@@ -191,6 +217,89 @@ paths:
                 "$ref": "#/components/schemas/CampaignsProps"
 components:
   schemas:
+    SignInProps:
+      type: object
+      additionalProperties: false
+      properties:
+        csrf_token:
+          type: string
+          description: CSRF token
+        google_oauth_path:
+          type: string
+          description: Google OAuth path
+        flash:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                - success
+                - error
+                - info
+              message:
+                type: string
+            required:
+            - type
+            - message
+          description: Flash messages
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          nullable: true
+      required:
+      - csrf_token
+      - google_oauth_path
+    SignUpProps:
+      type: object
+      additionalProperties: false
+      properties:
+        csrf_token:
+          type: string
+          description: CSRF token
+        google_oauth_path:
+          type: string
+          description: Google OAuth path
+        flash:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                - success
+                - error
+                - info
+              message:
+                type: string
+            required:
+            - type
+            - message
+          description: Flash messages
+        captcha_field_name:
+          type: string
+        minimum_password_length:
+          type: integer
+        spinner:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          nullable: true
+      required:
+      - csrf_token
+      - google_oauth_path
+      - captcha_field_name
+      - minimum_password_length
+      - spinner
     NewBrainstormProps:
       type: object
       additionalProperties: false
@@ -219,14 +328,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         current_user:
           type: object
@@ -238,9 +347,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -253,30 +362,30 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
           type: boolean
           description: Whether admin is currently impersonating another user
         thread_id:
-          type: "null"
+          type: 'null'
           description: Langgraph thread ID for the conversation
         project:
           type: object
           additionalProperties: false
           properties:
             uuid:
-              type: "null"
+              type: 'null'
               description: Project UUID
           nullable: true
       required:
-        - root_path
-        - langgraph_path
-        - jwt
-        - thread_id
+      - root_path
+      - langgraph_path
+      - jwt
+      - thread_id
     BrainstormProps:
       type: object
       additionalProperties: false
@@ -305,14 +414,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         current_user:
           type: object
@@ -324,9 +433,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -339,9 +448,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
@@ -423,10 +532,10 @@ components:
               type: string
           nullable: true
       required:
-        - root_path
-        - langgraph_path
-        - jwt
-        - thread_id
+      - root_path
+      - langgraph_path
+      - jwt
+      - thread_id
     WebsiteProps:
       type: object
       additionalProperties: false
@@ -455,14 +564,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         current_user:
           type: object
@@ -474,9 +583,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -489,9 +598,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
@@ -547,9 +656,9 @@ components:
               type: string
           nullable: true
       required:
-        - root_path
-        - langgraph_path
-        - jwt
+      - root_path
+      - langgraph_path
+      - jwt
     CampaignsProps:
       type: object
       additionalProperties: false
@@ -578,14 +687,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         current_user:
           type: object
@@ -597,9 +706,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -612,9 +721,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
@@ -840,9 +949,9 @@ components:
               type: string
           nullable: true
       required:
-        - root_path
-        - langgraph_path
-        - jwt
+      - root_path
+      - langgraph_path
+      - jwt
     LaunchProps:
       type: object
       additionalProperties: false
@@ -871,14 +980,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         current_user:
           type: object
@@ -890,9 +999,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -905,9 +1014,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
@@ -1142,9 +1251,9 @@ components:
               type: string
           nullable: true
       required:
-        - root_path
-        - langgraph_path
-        - jwt
+      - root_path
+      - langgraph_path
+      - jwt
     LeadsProps:
       type: object
       additionalProperties: false
@@ -1173,14 +1282,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         current_user:
           type: object
@@ -1192,9 +1301,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -1207,9 +1316,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
@@ -1232,10 +1341,10 @@ components:
             created_at: {}
             updated_at: {}
           required:
-            - id
-            - uuid
-            - account_id
-            - name
+          - id
+          - uuid
+          - account_id
+          - name
         leads:
           type: array
           items:
@@ -1251,9 +1360,9 @@ components:
               date:
                 type: string
             required:
-              - id
-              - email
-              - date
+            - id
+            - email
+            - date
         pagination:
           type: object
           properties:
@@ -1279,24 +1388,24 @@ components:
               type: array
               items:
                 oneOf:
-                  - type: integer
-                  - type: string
+                - type: integer
+                - type: string
           required:
-            - current_page
-            - total_pages
-            - total_count
-            - prev_page
-            - next_page
-            - series
+          - current_page
+          - total_pages
+          - total_count
+          - prev_page
+          - next_page
+          - series
       required:
-        - root_path
-        - langgraph_path
-        - jwt
-        - project
-        - leads
-        - pagination
+      - root_path
+      - langgraph_path
+      - jwt
+      - project
+      - leads
+      - pagination
 servers:
-  - url: https://{defaultHost}
-    variables:
-      defaultHost:
-        default: www.example.com
+- url: https://{defaultHost}
+  variables:
+    defaultHost:
+      default: www.example.com

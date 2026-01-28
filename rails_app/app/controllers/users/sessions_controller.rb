@@ -23,6 +23,19 @@ class Users::SessionsController < Devise::SessionsController
     render inertia: "Auth/SignIn"
   end
 
+  def create
+    self.resource = warden.authenticate(auth_options)
+
+    if resource
+      set_flash_message!(:notice, :signed_in)
+      sign_in(resource_name, resource)
+      redirect_to after_sign_in_path_for(resource)
+    else
+      render inertia: "Auth/SignIn",
+             props: { errors: { base: [t("devise.failure.invalid", authentication_keys: "Email")] } },
+             status: :unprocessable_entity
+    end
+  end
 
   def authenticate_with_two_factor
     if sign_in_params[:email]
@@ -56,7 +69,7 @@ class Users::SessionsController < Devise::SessionsController
       remember_me(resource) if session.delete(:remember_me)
       set_flash_message!(:notice, :signed_in)
       sign_in(resource, event: :authentication)
-      respond_with resource, location: after_sign_in_path_for(resource)
+      redirect_to after_sign_in_path_for(resource)
     else
       flash.now[:alert] = t(".incorrect_verification_code")
       render :otp, status: :unprocessable_entity

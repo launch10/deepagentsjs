@@ -2,7 +2,7 @@ import Header from "@components/shared/header/Header";
 
 export const AuthLayout = ({ children }: { children: React.ReactNode }): React.ReactNode => {
   return (
-    <div className="flex min-h-screen flex-col bg-[#FAFAF9]">
+    <div className="flex min-h-screen flex-col bg-background">
       <Header />
 
       {/* Centered content */}
