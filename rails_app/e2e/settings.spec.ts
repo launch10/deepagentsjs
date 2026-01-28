@@ -116,19 +116,39 @@ test.describe("Settings Page", () => {
       // Verify pagination controls are visible
       await settingsPage.expectBillingHistoryPaginationVisible();
 
-      // Should start on page 1
-      const initialPage = await settingsPage.getBillingHistoryPageText();
-      expect(initialPage).toContain("1 /");
+      // Should start on page 1 of 4 (10 items, 3 per page)
+      expect(await settingsPage.getBillingHistoryPageText()).toBe("1 / 4");
 
-      // Navigate to next page
+      // Previous button should be disabled on first page
+      await expect(settingsPage.billingHistoryPrevButton).toBeDisabled();
+      await expect(settingsPage.billingHistoryNextButton).toBeEnabled();
+
+      // Navigate forward through all pages
       await settingsPage.goToNextBillingHistoryPage();
-      const secondPage = await settingsPage.getBillingHistoryPageText();
-      expect(secondPage).toContain("2 /");
+      expect(await settingsPage.getBillingHistoryPageText()).toBe("2 / 4");
 
-      // Navigate back
+      await settingsPage.goToNextBillingHistoryPage();
+      expect(await settingsPage.getBillingHistoryPageText()).toBe("3 / 4");
+
+      await settingsPage.goToNextBillingHistoryPage();
+      expect(await settingsPage.getBillingHistoryPageText()).toBe("4 / 4");
+
+      // Next button should be disabled on last page
+      await expect(settingsPage.billingHistoryNextButton).toBeDisabled();
+      await expect(settingsPage.billingHistoryPrevButton).toBeEnabled();
+
+      // Navigate backward through all pages
       await settingsPage.goToPrevBillingHistoryPage();
-      const backToFirst = await settingsPage.getBillingHistoryPageText();
-      expect(backToFirst).toContain("1 /");
+      expect(await settingsPage.getBillingHistoryPageText()).toBe("3 / 4");
+
+      await settingsPage.goToPrevBillingHistoryPage();
+      expect(await settingsPage.getBillingHistoryPageText()).toBe("2 / 4");
+
+      await settingsPage.goToPrevBillingHistoryPage();
+      expect(await settingsPage.getBillingHistoryPageText()).toBe("1 / 4");
+
+      // Back to first page - previous should be disabled again
+      await expect(settingsPage.billingHistoryPrevButton).toBeDisabled();
     });
 
     test("billing history shows plan name in description", async ({ page }) => {

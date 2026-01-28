@@ -27,7 +27,8 @@ class SettingsController < SubscribedController
       user: user_props,
       subscription: subscription_props,
       billing_history: billing_history_props,
-      stripe_portal_url: stripe_portal_url
+      stripe_portal_url: stripe_portal_url,
+      credit_packs: credit_packs_props
     }
   end
 
@@ -79,12 +80,24 @@ class SettingsController < SubscribedController
     subscription = current_account.subscriptions.find_by(id: charge.subscription_id)
     plan = subscription&.plan
     plan_name = plan&.display_name || plan&.name&.titleize || "Plan"
-    interval = plan&.interval == "year" ? "Yearly" : "Monthly"
+    interval = (plan&.interval == "year") ? "Yearly" : "Monthly"
     "#{plan_name} Plan - #{interval}"
   end
 
   def stripe_portal_url
     return nil unless current_account.payment_processor&.processor == "stripe"
     @stripe_portal_url ||= current_account.payment_processor.billing_portal(return_url: settings_url).url
+  end
+
+  def credit_packs_props
+    CreditPack.visible.by_credits.map do |pack|
+      {
+        id: pack.id,
+        name: pack.name,
+        credits: pack.credits,
+        price_cents: pack.price_cents,
+        stripe_price_id: pack.stripe_price_id
+      }
+    end
   end
 end

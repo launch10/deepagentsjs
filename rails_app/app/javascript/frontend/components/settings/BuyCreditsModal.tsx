@@ -24,6 +24,7 @@ interface BuyCreditsModalProps {
   onOpenChange: (open: boolean) => void;
   onPurchase?: (packId: number) => void;
   creditPacks?: CreditPack[];
+  isLoading?: boolean;
 }
 
 // Tag configuration based on pack name
@@ -37,6 +38,7 @@ export function BuyCreditsModal({
   onOpenChange,
   onPurchase,
   creditPacks = [],
+  isLoading = false,
 }: BuyCreditsModalProps) {
   // Default to the middle pack (Medium) if available
   const defaultPackId = creditPacks.length > 1 ? creditPacks[1].id : creditPacks[0]?.id;
@@ -54,8 +56,6 @@ export function BuyCreditsModal({
     if (onPurchase && selectedPackId) {
       onPurchase(selectedPackId);
     }
-    // TODO: Integrate with Stripe checkout
-    onOpenChange(false);
   };
 
   if (creditPacks.length === 0) {
@@ -99,9 +99,10 @@ export function BuyCreditsModal({
         <div className="flex justify-end px-12 pb-6">
           <Button
             onClick={handlePurchase}
-            className="h-11 min-w-[183px] bg-[#2E3238] hover:bg-[#1a1e22] text-white font-['Plus_Jakarta_Sans'] text-base font-normal rounded-lg"
+            disabled={isLoading || !selectedPackId}
+            className="h-11 min-w-[183px] bg-[#2E3238] hover:bg-[#1a1e22] text-white font-['Plus_Jakarta_Sans'] text-base font-normal rounded-lg disabled:opacity-50"
           >
-            Continue to Payment
+            {isLoading ? "Loading..." : "Continue to Payment"}
           </Button>
         </div>
       </DialogContent>

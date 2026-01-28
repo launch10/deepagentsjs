@@ -6,7 +6,8 @@ export type SettingsProps =
   InertiaProps.paths["/settings"]["get"]["responses"]["200"]["content"]["application/json"];
 
 export default function Settings() {
-  const { user, subscription, stripe_portal_url, billing_history } = usePage<SettingsProps>().props;
+  const { user, subscription, stripe_portal_url, billing_history, credit_packs } =
+    usePage<SettingsProps>().props;
 
   return (
     <main className="min-h-screen bg-[#FAFAF9]">
@@ -20,6 +21,7 @@ export default function Settings() {
           <BillingCreditsSection
             stripePortalUrl={stripe_portal_url}
             billingHistory={billing_history}
+            creditPacks={credit_packs}
           />
           <SubscriptionSection subscription={subscription ?? null} />
         </div>

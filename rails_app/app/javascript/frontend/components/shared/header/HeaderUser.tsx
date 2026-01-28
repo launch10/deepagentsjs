@@ -1,6 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { CircleUserIcon, SettingsIcon, LogOutIcon, ChevronDownIcon } from "lucide-react";
+import {
+  CircleUserIcon,
+  SettingsIcon,
+  LogOutIcon,
+  ChevronDownIcon,
+  ShieldIcon,
+  HomeIcon,
+} from "lucide-react";
 import { router } from "@inertiajs/react";
 import { twMerge } from "tailwind-merge";
 import { useCurrentUser, type SessionUser } from "~/stores/sessionStore";
@@ -74,11 +81,33 @@ export default function HeaderUser({ className, headerClassName }: HeaderUserPro
             ref={containerRef}
             className={twMerge(
               "z-20 w-[180px] overflow-hidden transition-all duration-200 ease-out",
-              open ? "max-h-40 opacity-100" : "max-h-0 opacity-0",
+              open ? "max-h-64 opacity-100" : "max-h-0 opacity-0",
               headerClassName
             )}
           >
             <div className="rounded-bl-xl border-l border-b border-base-200 bg-background px-1.5 pb-1.5 pt-2 font-['Plus_Jakarta_Sans',sans-serif]">
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  router.visit("/");
+                }}
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm text-[#2E3238] transition-colors hover:bg-[#F0EFEE] cursor-pointer text-left"
+              >
+                <HomeIcon className="h-4 w-4 text-[#74767A]" />
+                Home
+              </button>
+              {currentUser.admin && (
+                <button
+                  onClick={() => {
+                    setOpen(false);
+                    router.visit("/admin");
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm text-[#2E3238] transition-colors hover:bg-[#F0EFEE] cursor-pointer text-left"
+                >
+                  <ShieldIcon className="h-4 w-4 text-[#74767A]" />
+                  Admin
+                </button>
+              )}
               <button
                 onClick={() => {
                   setOpen(false);

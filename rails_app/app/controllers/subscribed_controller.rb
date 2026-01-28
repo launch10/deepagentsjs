@@ -27,7 +27,7 @@ class SubscribedController < ApplicationController
       jwt: cookies[:jwt],
       errors: session.delete(:errors) || {},
       flash: flash_messages,
-      current_user: current_user&.slice(:id, :name, :email),
+      current_user: current_user_props,
       true_user: true_user&.slice(:id, :name, :email),
       impersonating: current_user && true_user && current_user.id != true_user.id,
       credits: credits_data
@@ -50,5 +50,10 @@ class SubscribedController < ApplicationController
 
   def sign_in_jwt
     sign_in(jwt_user, store: false)
+  end
+
+  def current_user_props
+    return nil unless current_user
+    current_user.slice(:id, :name, :email).merge(admin: current_user.admin?)
   end
 end

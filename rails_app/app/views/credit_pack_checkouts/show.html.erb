@@ -1,0 +1,13 @@
+<% content_for :body_style, "background-color: #FAFAF9;" %>
+
+<div class="py-12 px-6 container mx-auto">
+  <h1 class="mb-4 lg:mb-8 text-center font-['IBM_Plex_Serif'] text-2xl font-semibold text-[#2E3238]">
+    Purchase <%= number_with_delimiter(@credit_pack.credits) %> Credits
+  </h1>
+
+  <div class="text-center mb-6 text-gray-600">
+    <p><%= number_to_currency(@credit_pack.price_cents / 100.0) %></p>
+  </div>
+
+  <%= render "subscriptions/forms/stripe", client_secret: @client_secret %>
+</div>

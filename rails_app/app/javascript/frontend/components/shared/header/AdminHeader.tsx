@@ -1,27 +1,17 @@
-import { usePage } from "@inertiajs/react";
-import { CircleUserIcon } from "lucide-react";
+import { Link } from "@inertiajs/react";
+import HeaderUser from "./HeaderUser";
 import ImpersonationBanner from "../ImpersonationBanner";
 
-interface PageProps {
-  current_user?: {
-    name?: string;
-    email?: string;
-  };
-}
-
 export default function AdminHeader() {
-  const { current_user } = usePage<{ props: PageProps }>().props as PageProps;
-
   return (
     <>
       <ImpersonationBanner />
-      <header className="bg-background py-3 sticky top-0 z-10 border-b border-border">
+      <header className="bg-background py-3 sticky top-0 z-10 border-b border-border relative">
         <div className="flex justify-between items-center px-6">
-          <img src="/images/launch10-logo.svg" alt="Launch10" className="h-8" />
-          <div className="flex items-center text-muted-foreground text-sm">
-            <CircleUserIcon className="mr-2 w-5 h-5" />
-            {current_user?.name || current_user?.email || "Admin"}
-          </div>
+          <Link href="/">
+            <img src="/images/launch10-logo.svg" alt="Launch10" className="h-8" />
+          </Link>
+          <HeaderUser headerClassName="absolute right-0 top-full" />
         </div>
       </header>
     </>
