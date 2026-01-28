@@ -20,8 +20,8 @@ module Millicredits
 
   # Convert millicredits to credits for display
   # @param millicredits [Integer] Millicredits (storage unit)
-  # @return [Float] Credits (user-facing unit)
+  # @return [Float] Credits (user-facing unit), rounded to 2 decimal places
   def self.to_credits(millicredits)
-    millicredits / FACTOR.to_f
+    (millicredits / FACTOR.to_f).round(2)
   end
 end

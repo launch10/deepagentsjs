@@ -40,9 +40,9 @@ class SubscribedController < ApplicationController
     return nil unless current_account
 
     {
-      plan_credits: Millicredits.to_credits(current_account.plan_millicredits).round(2),
-      pack_credits: Millicredits.to_credits(current_account.pack_millicredits).round(2),
-      total_credits: Millicredits.to_credits(current_account.total_millicredits).round(2),
+      plan_credits: Millicredits.to_credits(current_account.plan_millicredits),
+      pack_credits: Millicredits.to_credits(current_account.pack_millicredits),
+      total_credits: Millicredits.to_credits(current_account.total_millicredits),
       plan_credits_allocated: plan_credits_allocated,
       period_ends_at: current_account.subscriptions.active.order(id: :desc).first&.current_period_end&.iso8601
     }
@@ -58,8 +58,6 @@ class SubscribedController < ApplicationController
   def sign_in_jwt
     sign_in(jwt_user, store: false)
   end
-
-  private
 
   def credit_balance_shared_props
     return nil unless current_account
