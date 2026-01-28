@@ -20,7 +20,7 @@
 #
 # Indexes
 #
-#  index_accounts_on_name      (name) UNIQUE
+#  index_accounts_on_name      (name)
 #  index_accounts_on_owner_id  (owner_id)
 #
 # Foreign Keys

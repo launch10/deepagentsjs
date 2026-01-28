@@ -10,7 +10,7 @@ export default function Header() {
         {/* Logo and User at actual edges - NO max-width constraint */}
         <div className="flex justify-between items-center px-6">
           <img src="/images/launch10-logo.svg" alt="Launch10" className="h-8" />
-          <HeaderUser />
+          <HeaderUser headerClassName="absolute right-0 top-full" />
         </div>
         {/* Stepper overlaid, inside max-w-7xl container to align with chat content */}
         <div className="hidden lg:block absolute inset-0 pointer-events-none">

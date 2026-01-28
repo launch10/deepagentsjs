@@ -14,6 +14,11 @@ async function loginNonSubscribedUser(
   await page.goto("/users/sign_in");
   await page.waitForLoadState("domcontentloaded");
 
+  // Click "Continue with Email" to reveal the sign-in form
+  const continueWithEmail = page.getByRole("button", { name: "Continue with Email" });
+  await continueWithEmail.waitFor({ state: "visible", timeout: 10000 });
+  await continueWithEmail.click();
+
   const emailInput = page.locator('input[name="user[email]"]');
   await emailInput.waitFor({ state: "visible", timeout: 10000 });
   await emailInput.fill(email);
@@ -21,7 +26,7 @@ async function loginNonSubscribedUser(
   const passwordInput = page.locator('input[name="user[password]"]');
   await passwordInput.fill(password);
 
-  await page.click('input[type="submit"], button[type="submit"]');
+  await page.click('button[type="submit"]');
 
   // Wait for navigation away from sign_in page - will redirect to pricing for non-subscribed
   await page.waitForURL((url) => !url.toString().includes("/users/sign_in"), {
@@ -102,18 +107,20 @@ test.describe("Subscription Flow", () => {
       // Unauthenticated users are redirected to signup first (with stored location for redirect after)
       await expect(page).toHaveURL(/\/users\/sign_up/);
 
+      // Click "Continue with Email" to reveal the sign-up form
+      const continueWithEmail = page.getByRole("button", { name: "Continue with Email" });
+      await continueWithEmail.waitFor({ state: "visible", timeout: 10000 });
+      await continueWithEmail.click();
+
       // Complete signup form
       const testEmail = `testuser_${Date.now()}@test.com`;
-      await page.getByLabel("Account Name").fill("Test Account");
-      await page.getByLabel("Full name").fill("Test User");
+      await page.getByLabel("Full Name").fill("Test User");
       await page.getByLabel("Email").fill(testEmail);
-      await page.getByLabel("Password").fill("TestPass123!");
-
-      // Check terms checkbox
-      await page.getByRole("checkbox", { name: /terms of service/i }).check();
+      await page.getByLabel("Password", { exact: true }).fill("TestPass123!");
+      await page.getByLabel("Confirm Password").fill("TestPass123!");
 
       // Use getByRole to find the submit button
-      const signupButton = page.getByRole('button', { name: 'Sign up' });
+      const signupButton = page.getByRole('button', { name: 'Create Account' });
       await expect(signupButton).toBeVisible();
 
       // Click and wait for the checkout page to appear (Turbo handles navigation)

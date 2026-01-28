@@ -6725,7 +6725,7 @@ CREATE UNIQUE INDEX index_account_users_on_account_id_and_user_id ON public.acco
 -- Name: index_accounts_on_name; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_accounts_on_name ON public.accounts USING btree (name);
+CREATE INDEX index_accounts_on_name ON public.accounts USING btree (name);
 
 
 --

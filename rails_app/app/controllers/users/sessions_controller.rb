@@ -1,9 +1,28 @@
 class Users::SessionsController < Devise::SessionsController
   include Devise::Controllers::Rememberable
+  include InertiaConcerns
+
+  layout "auth", only: [:new]
+
+  inertia_share do
+    flash_messages = []
+    flash_messages << { type: "alert", message: flash[:alert] } if flash[:alert]
+    flash_messages << { type: "notice", message: flash[:notice] } if flash[:notice]
+    {
+      flash: flash_messages,
+      csrf_token: form_authenticity_token,
+      google_oauth_path: user_google_oauth2_omniauth_authorize_path
+    }
+  end
 
   # We need to intercept the Sessions#create action for processing OTP
   prepend_before_action :authenticate_with_two_factor, only: [:create]
   rate_limit to: 10, within: 3.minutes, only: :create, with: -> { redirect_to new_user_session_path, alert: "Try again later." }
+
+  def new
+    render inertia: "Auth/SignIn"
+  end
+
 
   def authenticate_with_two_factor
     if sign_in_params[:email]
