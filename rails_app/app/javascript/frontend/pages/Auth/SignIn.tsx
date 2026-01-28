@@ -1,5 +1,5 @@
 import { useState, type ReactNode, type FormEvent } from "react";
-import { router, usePage, Link } from "@inertiajs/react";
+import { router, usePage } from "@inertiajs/react";
 import { AuthLayout } from "~/layouts/auth-layout";
 import { Input } from "@components/ui/input";
 import { Button } from "@components/ui/button";
@@ -95,9 +95,9 @@ function SignIn() {
 
       <p className="mt-4 font-sans text-base text-base-500">
         Don&apos;t have an account?{" "}
-        <Link href="/users/sign_up" className="text-primary-500">
+        <a href="/users/sign_up" className="text-primary-500">
           Sign Up
-        </Link>
+        </a>
       </p>
 
       <AuthLegalFooter />

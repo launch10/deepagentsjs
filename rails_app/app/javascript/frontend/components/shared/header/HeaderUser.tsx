@@ -96,25 +96,14 @@ export default function HeaderUser({ className, headerClassName }: HeaderUserPro
             <button
               onClick={() => {
                 setOpen(false);
-                // Full page navigation — sign_out redirects to a non-Inertia page
-                const form = document.createElement("form");
-                form.method = "POST";
-                form.action = "/users/sign_out";
-                const methodInput = document.createElement("input");
-                methodInput.type = "hidden";
-                methodInput.name = "_method";
-                methodInput.value = "delete";
-                form.appendChild(methodInput);
-                const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
-                if (csrfToken) {
-                  const csrfInput = document.createElement("input");
-                  csrfInput.type = "hidden";
-                  csrfInput.name = "authenticity_token";
-                  csrfInput.value = csrfToken;
-                  form.appendChild(csrfInput);
-                }
-                document.body.appendChild(form);
-                form.submit();
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+                fetch("/users/sign_out", {
+                  method: "DELETE",
+                  headers: { "X-CSRF-Token": csrfToken || "" },
+                  credentials: "same-origin",
+                }).then(() => {
+                  window.location.replace("/users/sign_in");
+                });
               }}
               className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm text-[#2E3238] transition-colors hover:bg-[#F0EFEE] cursor-pointer text-left"
             >

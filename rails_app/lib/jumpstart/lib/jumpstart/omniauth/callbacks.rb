@@ -20,10 +20,13 @@ module Jumpstart
             # User is signed in, but hasn't connected this account before
             attach_account
 
-          elsif User.exists?(email: auth.info.email)
-            # We haven't seen this account before, but we have an existing user with a matching email
-            flash.alert = t(".account_exists")
-            redirect_to new_user_session_path
+          elsif (existing_user = User.find_by(email: auth.info.email))
+            # User previously signed in with email, but now they used OAuth,
+            # create the connected account, and sign them in.
+            existing_user.connected_accounts.create(connected_account_params)
+            sign_in_and_redirect(existing_user, event: :authentication)
+            run_connected_callback(existing_user.connected_accounts.last)
+            success_message!(kind: auth.provider)
 
           else
             # We've never seen this user before, so let's sign them up

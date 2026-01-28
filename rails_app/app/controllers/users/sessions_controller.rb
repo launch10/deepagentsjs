@@ -29,7 +29,7 @@ class Users::SessionsController < Devise::SessionsController
     if resource
       set_flash_message!(:notice, :signed_in)
       sign_in(resource_name, resource)
-      redirect_to after_sign_in_path_for(resource)
+      inertia_location after_sign_in_path_for(resource)
     else
       render inertia: "Auth/SignIn",
              props: { errors: { base: [t("devise.failure.invalid", authentication_keys: "Email")] } },
@@ -69,7 +69,7 @@ class Users::SessionsController < Devise::SessionsController
       remember_me(resource) if session.delete(:remember_me)
       set_flash_message!(:notice, :signed_in)
       sign_in(resource, event: :authentication)
-      redirect_to after_sign_in_path_for(resource)
+      inertia_location after_sign_in_path_for(resource)
     else
       flash.now[:alert] = t(".incorrect_verification_code")
       render :otp, status: :unprocessable_entity
@@ -81,9 +81,4 @@ class Users::SessionsController < Devise::SessionsController
   end
 
   private
-
-  def after_sign_in_path_for(resource)
-    refresh_jwt
-    super
-  end
 end

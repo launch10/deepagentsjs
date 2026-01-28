@@ -54,14 +54,14 @@ business:
       - Unlimited access
 
 personal_annual:
-  name: Personal
+  name: Personal Annual
   amount: 19000
   interval: year
   stripe_id: personal-annual
   braintree_id: personal-annual
 
 business_annual:
-  name: Business
+  name: Business Annual
   amount: 79000
   interval: year
   stripe_id: business-annual

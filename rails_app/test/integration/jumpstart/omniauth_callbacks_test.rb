@@ -37,16 +37,40 @@ if defined? OmniAuth
       assert_equal "12345", user.connected_accounts.developer.last.uid
     end
 
-    test "cannot login with social if email is taken but not connected yet" do
+    test "links account and signs in when email exists but not connected yet" do
       user = users(:one)
       user.connected_accounts.delete_all
 
       OmniAuth.config.add_mock(:developer, uid: "12345", info: {email: user.email}, credentials: {token: 1})
 
-      get "/users/auth/developer/callback"
+      assert_difference "ConnectedAccount.count", 1 do
+        get "/users/auth/developer/callback"
+      end
 
-      assert user.connected_accounts.developer.none?
-      assert_equal I18n.t("users.omniauth_callbacks.account_exists"), flash[:alert]
+      assert_equal user, controller.current_user
+      user.reload
+      assert_equal "developer", user.connected_accounts.last.provider
+      assert_equal "12345", user.connected_accounts.last.uid
+    end
+
+    test "links account and signs in when email exists - subsequent login uses connected account" do
+      user = users(:one)
+      user.connected_accounts.delete_all
+
+      OmniAuth.config.add_mock(:developer, uid: "99999", info: {email: user.email}, credentials: {token: 1})
+
+      # First login: links the account
+      get "/users/auth/developer/callback"
+      assert_equal user, controller.current_user
+
+      sign_out user
+
+      # Second login: uses the existing connected account
+      assert_no_difference "ConnectedAccount.count" do
+        get "/users/auth/developer/callback"
+      end
+
+      assert_equal user, controller.current_user
     end
 
     test "can connect a social account with another model" do
