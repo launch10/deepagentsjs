@@ -58,6 +58,25 @@ Devise.setup do |config|
 
   config.omniauth :developer if Rails.env.test? && defined?(OmniAuth)
 
+  # Enable OmniAuth test mode for E2E tests - allows mocking OAuth callbacks
+  if Rails.env.test? && defined?(OmniAuth)
+    OmniAuth.config.test_mode = true
+    # Default mock for developer provider - uses the same email as the test user
+    # in basic_account snapshot so OAuth login links to existing subscribed account
+    OmniAuth.config.mock_auth[:developer] = OmniAuth::AuthHash.new({
+      provider: "developer",
+      uid: "test-uid-123",
+      info: {
+        email: "test_user@launch10.ai",
+        name: "Test User"
+      },
+      credentials: {
+        token: "test-token",
+        expires_in: 3600
+      }
+    })
+  end
+
   config.warden do |manager|
     manager.failure_app = TurboFailureApp
 

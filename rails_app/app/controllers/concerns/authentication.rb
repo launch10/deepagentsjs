@@ -27,7 +27,18 @@ module Authentication
 
   def after_sign_in_path_for(resource_or_scope)
     return "/reset_app" if hotwire_native_app?
-    stored_location_for(resource_or_scope) || super
+
+    refresh_jwt
+
+    stored = stored_location_for(resource_or_scope)
+    if stored
+      # Subscribed users don't need subscription/pricing paths — send them to the app.
+      # Unsubscribed users keep these paths to carry their plan selection to checkout.
+      return new_project_path if subscribed? && stored.match?(%r{\A/(subscriptions|pricing)})
+      return stored
+    end
+
+    subscribed? ? new_project_path : pricing_path
   end
 
   # Helper method for verifying authentication in a before_action, but redirecting to sign up instead of login

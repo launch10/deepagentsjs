@@ -58,6 +58,7 @@ one:
   accepted_privacy_at: <%= Time.current %>
   time_zone: "Central Time (US & Canada)"
   confirmed_at: <%= Time.current %>
+  jti: <%= SecureRandom.uuid %>
 
 two:
   email: two@example.com
@@ -68,6 +69,7 @@ two:
   accepted_privacy_at: <%= Time.current %>
   time_zone: "Central Time (US & Canada)"
   confirmed_at: <%= Time.current %>
+  jti: <%= SecureRandom.uuid %>
 
 admin:
   email: admin@example.com
@@ -79,6 +81,7 @@ admin:
   time_zone: "Central Time (US & Canada)"
   confirmed_at: <%= Time.current %>
   admin: true
+  jti: <%= SecureRandom.uuid %>
 
 invited:
   email: invited@example.com
@@ -89,6 +92,7 @@ invited:
   accepted_privacy_at: <%= Time.current %>
   time_zone: "Central Time (US & Canada)"
   confirmed_at: <%= Time.current %>
+  jti: <%= SecureRandom.uuid %>
 
 noaccount:
   email: noaccount@example.com
@@ -99,6 +103,7 @@ noaccount:
   accepted_privacy_at: <%= Time.current %>
   time_zone: "Central Time (US & Canada)"
   confirmed_at: <%= Time.current %>
+  jti: <%= SecureRandom.uuid %>
 
 twofactor:
   email: twofactor@example.com
@@ -117,6 +122,7 @@ twofactor:
     - "0000000003"
     - "0000000004"
     - "0000000005"
+  jti: <%= SecureRandom.uuid %>
 
 user_without_billing_address:
   email: noaddress@example.com
@@ -127,6 +133,7 @@ user_without_billing_address:
   accepted_privacy_at: <%= Time.current %>
   time_zone: "Central Time (US & Canada)"
   confirmed_at: <%= Time.current %>
+  jti: <%= SecureRandom.uuid %>
 
 fake_processor:
   email: fake@example.com
@@ -137,6 +144,7 @@ fake_processor:
   accepted_privacy_at: <%= Time.current %>
   time_zone: "Central Time (US & Canada)"
   confirmed_at: <%= Time.current %>
+  jti: <%= SecureRandom.uuid %>
 
 subscribed:
   email: subscribed@example.com
@@ -147,3 +155,4 @@ subscribed:
   accepted_privacy_at: <%= Time.current %>
   time_zone: "Central Time (US & Canada)"
   confirmed_at: <%= Time.current %>
+  jti: <%= SecureRandom.uuid %>

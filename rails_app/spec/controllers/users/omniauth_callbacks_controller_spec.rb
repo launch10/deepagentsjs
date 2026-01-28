@@ -61,6 +61,7 @@ RSpec.describe Users::OmniauthCallbacksController, type: :controller do
     end
 
     context "when no active deploy exists" do
+      let(:project) { create(:project, account: account) }
       let!(:job_run) do
         create(:job_run,
           account: account,
@@ -70,6 +71,7 @@ RSpec.describe Users::OmniauthCallbacksController, type: :controller do
       end
 
       before do
+        project # ensure project exists
         sign_in user
         allow(ENV).to receive(:[]).and_call_original
         allow(ENV).to receive(:[]).with("LANGGRAPH_API_URL").and_return("http://localhost:4000")
@@ -119,6 +121,7 @@ RSpec.describe Users::OmniauthCallbacksController, type: :controller do
     end
 
     context "when job run is pending" do
+      let(:project) { create(:project, account: account) }
       let!(:job_run) do
         create(:job_run,
           account: account,
@@ -128,6 +131,7 @@ RSpec.describe Users::OmniauthCallbacksController, type: :controller do
       end
 
       before do
+        project # ensure project exists
         sign_in user
         allow(ENV).to receive(:[]).and_call_original
         allow(ENV).to receive(:[]).with("LANGGRAPH_API_URL").and_return("http://localhost:4000")

@@ -1,6 +1,52 @@
 class Users::RegistrationsController < Devise::RegistrationsController
+  include InertiaConcerns
+
+  layout "auth", only: [:new, :create]
+
   invisible_captcha only: :create
   rate_limit to: 10, within: 3.minutes, only: :create, with: -> { redirect_to new_user_registration_path, alert: "Try again later." }
+
+  before_action :setup_captcha_session, only: [:new]
+
+  inertia_share do
+    flash_messages = []
+    flash_messages << { type: "alert", message: flash[:alert] } if flash[:alert]
+    flash_messages << { type: "notice", message: flash[:notice] } if flash[:notice]
+    {
+      flash: flash_messages,
+      csrf_token: form_authenticity_token,
+      google_oauth_path: google_oauth_enabled? ? user_google_oauth2_omniauth_authorize_path : nil,
+      captcha_field_name: InvisibleCaptcha.honeypots.sample,
+      minimum_password_length: resource_class.password_length.min,
+      spinner: session[:invisible_captcha_spinner]
+    }
+  end
+
+  def new
+    render inertia: "Auth/SignUp"
+  end
+
+  def create
+    build_resource(sign_up_params)
+    resource.save
+
+    if resource.persisted?
+      if resource.active_for_authentication?
+        set_flash_message!(:notice, :signed_up)
+        sign_up(resource_name, resource)
+        inertia_location after_sign_up_path_for(resource)
+      else
+        set_flash_message!(:notice, :"signed_up_but_#{resource.inactive_message}")
+        expire_data_after_sign_in!
+        inertia_location after_inactive_sign_up_path_for(resource)
+      end
+    else
+      clean_up_passwords resource
+      set_minimum_password_length
+      setup_captcha_session
+      render inertia: "Auth/SignUp", props: { errors: resource.errors.to_hash(true) }, status: :unprocessable_entity
+    end
+  end
 
   protected
 
@@ -40,5 +86,16 @@ class Users::RegistrationsController < Devise::RegistrationsController
       # Clear redirect to account invitation since it's already been accepted
       stored_location_for(:user)
     end
+  end
+
+  private
+
+  def setup_captcha_session
+    session[:invisible_captcha_timestamp] = Time.zone.now.iso8601
+    session[:invisible_captcha_spinner] = InvisibleCaptcha.encode("#{session[:invisible_captcha_timestamp]}-#{request.remote_ip}")
+  end
+
+  def google_oauth_enabled?
+    Jumpstart::Omniauth.enabled?("google-oauth2")
   end
 end

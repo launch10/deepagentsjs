@@ -12,6 +12,7 @@ namespace :inertia do
   desc "Generate OpenAPI YAML from Inertia prop schemas"
   task generate_rswag: :environment do
     require_relative "../../spec/support/schemas/inertia/base_schemas"
+    require_relative "../../spec/support/schemas/inertia/auth_schema"
     require_relative "../../spec/support/schemas/inertia/brainstorm_schema"
     require_relative "../../spec/support/schemas/inertia/website_schema"
     require_relative "../../spec/support/schemas/inertia/campaigns_schema"
@@ -20,12 +21,17 @@ namespace :inertia do
 
     generator = InertiaOpenApiGenerator.new
 
+    generator.add_component("SignInProps", InertiaSchemas::SignIn)
+    generator.add_component("SignUpProps", InertiaSchemas::SignUp)
     generator.add_component("NewBrainstormProps", InertiaSchemas::NewBrainstorm)
     generator.add_component("BrainstormProps", InertiaSchemas::Brainstorm)
     generator.add_component("WebsiteProps", InertiaSchemas::Website)
     generator.add_component("CampaignsProps", InertiaSchemas::Campaigns)
     generator.add_component("LaunchProps", InertiaSchemas::Launch)
     generator.add_component("LeadsProps", InertiaSchemas::Leads)
+
+    generator.add_page("/users/sign_in", ref: "SignInProps", tag: "Auth Pages", params: [])
+    generator.add_page("/users/sign_up", ref: "SignUpProps", tag: "Auth Pages", params: [])
 
     generator.add_page(
       "/projects/new",

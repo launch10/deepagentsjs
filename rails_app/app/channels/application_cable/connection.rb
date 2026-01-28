@@ -29,6 +29,12 @@ module ApplicationCable
       !!current_user
     end
 
+    # WebSocket connections are never internal API requests
+    # This is needed because JwtHelpers#get_jwt checks this method
+    def internal_api_request?
+      false
+    end
+
     # Used by set_request_details
     def set_current_tenant(account)
       ActsAsTenant.current_tenant = account

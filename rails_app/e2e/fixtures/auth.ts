@@ -33,16 +33,16 @@ export async function loginUser(
   // Don't use networkidle - Vite HMR keeps websocket active
   await page.waitForLoadState("domcontentloaded");
 
-  // Wait for and fill in login form
-  const emailInput = page.locator('input[name="user[email]"]');
+  // Wait for and fill in login form (form is directly visible)
+  const emailInput = page.getByPlaceholder("Email");
   await emailInput.waitFor({ state: "visible", timeout: 10000 });
   await emailInput.fill(email);
 
-  const passwordInput = page.locator('input[name="user[password]"]');
+  const passwordInput = page.getByPlaceholder("Password");
   await passwordInput.fill(password);
 
   // Submit form
-  await page.click('input[type="submit"], button[type="submit"]');
+  await page.getByRole("button", { name: "Sign In", exact: true }).click();
 
   // Wait for navigation away from sign_in page
   await page.waitForURL((url) => !url.toString().includes("/users/sign_in"), {
@@ -63,9 +63,7 @@ export async function loginUser(
  */
 export async function logoutUser(page: Page): Promise<void> {
   // Find and click logout button/link
-  const logoutButton = page.locator(
-    '[data-testid="logout-button"], a[href*="sign_out"]'
-  );
+  const logoutButton = page.locator('[data-testid="logout-button"], a[href*="sign_out"]');
   if (await logoutButton.isVisible()) {
     await logoutButton.click();
     await page.waitForURL("**/users/sign_in**");

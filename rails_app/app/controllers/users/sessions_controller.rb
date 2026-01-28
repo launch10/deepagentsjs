@@ -1,9 +1,41 @@
 class Users::SessionsController < Devise::SessionsController
   include Devise::Controllers::Rememberable
+  include InertiaConcerns
+
+  layout "auth", only: [:new]
+
+  inertia_share do
+    flash_messages = []
+    flash_messages << { type: "alert", message: flash[:alert] } if flash[:alert]
+    flash_messages << { type: "notice", message: flash[:notice] } if flash[:notice]
+    {
+      flash: flash_messages,
+      csrf_token: form_authenticity_token,
+      google_oauth_path: google_oauth_enabled? ? user_google_oauth2_omniauth_authorize_path : nil
+    }
+  end
 
   # We need to intercept the Sessions#create action for processing OTP
   prepend_before_action :authenticate_with_two_factor, only: [:create]
   rate_limit to: 10, within: 3.minutes, only: :create, with: -> { redirect_to new_user_session_path, alert: "Try again later." }
+
+  def new
+    render inertia: "Auth/SignIn"
+  end
+
+  def create
+    self.resource = warden.authenticate(auth_options)
+
+    if resource
+      set_flash_message!(:notice, :signed_in)
+      sign_in(resource_name, resource)
+      inertia_location after_sign_in_path_for(resource)
+    else
+      render inertia: "Auth/SignIn",
+        props: { errors: { base: [t("devise.failure.invalid", authentication_keys: "Email")] } },
+        status: :unprocessable_entity
+    end
+  end
 
   def authenticate_with_two_factor
     if sign_in_params[:email]
@@ -37,7 +69,7 @@ class Users::SessionsController < Devise::SessionsController
       remember_me(resource) if session.delete(:remember_me)
       set_flash_message!(:notice, :signed_in)
       sign_in(resource, event: :authentication)
-      respond_with resource, location: after_sign_in_path_for(resource)
+      inertia_location after_sign_in_path_for(resource)
     else
       flash.now[:alert] = t(".incorrect_verification_code")
       render :otp, status: :unprocessable_entity
@@ -50,8 +82,7 @@ class Users::SessionsController < Devise::SessionsController
 
   private
 
-  def after_sign_in_path_for(resource)
-    refresh_jwt
-    super
+  def google_oauth_enabled?
+    Jumpstart::Omniauth.enabled?("google-oauth2")
   end
 end
