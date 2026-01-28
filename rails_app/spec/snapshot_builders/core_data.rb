@@ -1,6 +1,7 @@
 require_relative "core/plan_tiers"
 require_relative "core/tier_limits"
 require_relative "core/plans"
+require_relative "core/credit_packs"
 require_relative "core/templates"
 require_relative "core/themes"
 require_relative "core/faqs"
@@ -19,6 +20,7 @@ class CoreData < BaseBuilder
   def build
     seed_core_data
     seed_plans
+    seed_credit_packs
     seed_templates
     seed_themes
     seed_faqs
@@ -41,6 +43,10 @@ class CoreData < BaseBuilder
 
   def seed_plans
     Core::Plans.new.seed
+  end
+
+  def seed_credit_packs
+    Core::CreditPacks.new.seed
   end
 
   def seed_templates

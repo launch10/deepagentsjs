@@ -1,5 +1,10 @@
 import { CardContent, CardFooter } from "@components/ui/card";
-import { useAdsChat, useAdsChatIsReady, useAdsChatIsStreaming, useAdsChatIsLoadingHistory } from "@components/ads/hooks";
+import {
+  useAdsChat,
+  useAdsChatIsReady,
+  useAdsChatIsStreaming,
+  useAdsChatIsLoadingHistory,
+} from "@components/ads/hooks";
 import { Chat } from "@components/shared/chat/Chat";
 import AdsChatMessages from "./ads-chat/AdsChatMessages";
 import AdsChatInput from "./ads-chat/AdsChatInput";
@@ -11,6 +16,7 @@ export default function AdsChat() {
   const isStreaming = useAdsChatIsStreaming();
   const isReady = useAdsChatIsReady();
 
+  // Credit integration is automatic via ChatProvider - no manual wiring needed
   return (
     <Chat.Root chat={chat}>
       <div
@@ -20,7 +26,10 @@ export default function AdsChat() {
         data-streaming={isStreaming}
         data-ready={isReady}
       >
-        <CardContent className="flex-1 overflow-y-auto px-4 py-4 max-h-[300px]" data-testid="ads-chat-messages">
+        <CardContent
+          className="flex-1 overflow-y-auto px-4 py-4 max-h-[300px]"
+          data-testid="ads-chat-messages"
+        >
           <AdsChatMessages />
         </CardContent>
         <CardFooter className="flex-col gap-1 px-4 pb-4 pt-0 items-start">

@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { twMerge } from "tailwind-merge";
 import { useChatComposer, useChatIsStreaming, useChatSubmit, useChatStop } from "../ChatContext";
+import { useCreditStore } from "~/stores/creditStore";
 
 export interface SubmitButtonProps extends Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
@@ -48,10 +49,13 @@ export function SubmitButton({
   stopIcon,
   ...props
 }: SubmitButtonProps) {
-  const composer = useChatComposer()
-  const isStreaming = useChatIsStreaming()
-  const submit = useChatSubmit()
-  const stop = useChatStop()
+  const composer = useChatComposer();
+  const isStreaming = useChatIsStreaming();
+  const submit = useChatSubmit();
+  const stop = useChatStop();
+
+  // Out of credits check
+  const isOutOfCredits = useCreditStore((s) => s.isOutOfCredits);
 
   // When stopIcon is provided, button is enabled during streaming for stop action
   const hasStopMode = stopIcon !== undefined;
@@ -60,8 +64,8 @@ export function SubmitButton({
   // Can submit when composer is ready and not streaming
   const canSubmit = composer.isReady && !isStreaming;
 
-  // Button is enabled when: can submit OR in stop mode
-  const isEnabled = canSubmit || isInStopMode;
+  // Button is enabled when: can submit OR in stop mode, AND has credits
+  const isEnabled = (canSubmit && !isOutOfCredits) || isInStopMode;
 
   const handleClick = () => {
     if (isInStopMode) {
@@ -71,7 +75,7 @@ export function SubmitButton({
       } else {
         stop();
       }
-    } else if (canSubmit) {
+    } else if (canSubmit && !isOutOfCredits) {
       // Send message using context's submit (respects Chat.Root onSubmit)
       submit();
     }
@@ -89,6 +93,7 @@ export function SubmitButton({
         className
       )}
       data-testid="send-button"
+      data-disabled-reason={isOutOfCredits ? "credits" : undefined}
       aria-label={isInStopMode ? "Stop" : "Send message"}
       {...props}
     >

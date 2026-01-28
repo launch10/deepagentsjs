@@ -122,6 +122,9 @@ ActiveSupport.on_load(:pay) do
 
   # Plan changes: subscription.updated with previous_attributes.items
   Pay::Webhooks.delegator.subscribe "stripe.customer.subscription.updated", Credits::PlanChangeHandler.new
+
+  # Cancellations: subscription.deleted when subscription ends
+  Pay::Webhooks.delegator.subscribe "stripe.customer.subscription.deleted", Credits::CancellationHandler.new
 end
 
 Rails.configuration.to_prepare do

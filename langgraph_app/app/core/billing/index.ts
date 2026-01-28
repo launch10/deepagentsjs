@@ -31,3 +31,14 @@ export {
 
 // Rails notification
 export { notifyRails } from "./notifyRails";
+
+// Credit check (pre-run balance check)
+export {
+  checkCredits,
+  canProceedWithRun,
+  CreditCheckError,
+  type CreditCheckResult,
+} from "./creditCheck";
+
+// Credit status (post-run derivation)
+export { deriveCreditStatus, type CreditStatus, type CreditStatusInput } from "./creditStatus";

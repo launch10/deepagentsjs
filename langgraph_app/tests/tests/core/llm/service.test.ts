@@ -29,11 +29,11 @@ function now() {
  * Tier 1: $100+ (premium), Tier 2: $40-100, Tier 3: $15-40, Tier 4: $5-15, Tier 5: <$5
  */
 const TIER_COSTS: Record<number, { costIn: string; costOut: string }> = {
-  1: { costIn: "15.0", costOut: "75.0" },   // effective: 15 + (75 * 4) = 315
-  2: { costIn: "3.0", costOut: "15.0" },    // effective: 3 + (15 * 4) = 63
-  3: { costIn: "1.0", costOut: "5.0" },     // effective: 1 + (5 * 4) = 21
-  4: { costIn: "0.5", costOut: "2.0" },     // effective: 0.5 + (2 * 4) = 8.5
-  5: { costIn: "0.1", costOut: "0.5" },     // effective: 0.1 + (0.5 * 4) = 2.1
+  1: { costIn: "15.0", costOut: "75.0" }, // effective: 15 + (75 * 4) = 315
+  2: { costIn: "3.0", costOut: "15.0" }, // effective: 3 + (15 * 4) = 63
+  3: { costIn: "1.0", costOut: "5.0" }, // effective: 1 + (5 * 4) = 21
+  4: { costIn: "0.5", costOut: "2.0" }, // effective: 0.5 + (2 * 4) = 8.5
+  5: { costIn: "0.1", costOut: "0.5" }, // effective: 0.1 + (0.5 * 4) = 2.1
 };
 
 /**
@@ -52,12 +52,15 @@ async function createModelConfig(data: {
   const timestamp = now();
   // If priceTier is specified, use the corresponding costs (unless costIn/costOut are explicitly provided)
   const tierCosts = data.priceTier ? TIER_COSTS[data.priceTier] : undefined;
+  // Default to tier 3 costs if no costs specified — models must have cost config
+  const defaultCosts = TIER_COSTS[3]!;
   await db.insert(modelConfigs).values({
     modelKey: data.modelKey,
     enabled: data.enabled ?? true,
     maxUsagePercent: data.maxUsagePercent ?? 100,
-    costIn: data.costIn ?? tierCosts?.costIn ?? null,
-    costOut: data.costOut ?? tierCosts?.costOut ?? null,
+    costIn: data.costIn !== undefined ? data.costIn : (tierCosts?.costIn ?? defaultCosts.costIn),
+    costOut:
+      data.costOut !== undefined ? data.costOut : (tierCosts?.costOut ?? defaultCosts.costOut),
     modelCard: data.modelCard ?? null,
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -320,18 +323,21 @@ describe.sequential("LLMService Integration Tests", () => {
         enabled: true,
         maxUsagePercent: 50, // Only available below 50%
         modelCard: "claude-opus-4-5",
+        priceTier: 1, // Most expensive
       });
       await createModelConfig({
         modelKey: "sonnet",
         enabled: true,
         maxUsagePercent: 80, // Only available below 80%
         modelCard: "claude-sonnet-4-5",
+        priceTier: 2,
       });
       await createModelConfig({
         modelKey: "haiku",
         enabled: true,
         maxUsagePercent: 100, // Always available
         modelCard: "claude-haiku-4-5",
+        priceTier: 3, // Cheapest
       });
       await createModelPreference({
         costTier: "paid",
@@ -357,13 +363,19 @@ describe.sequential("LLMService Integration Tests", () => {
     it("cascades through fallback chain as usage increases", async () => {
       await setupTieredModels();
       // At 0% - get opus (best model)
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 0))).toBe("claude-opus-4-5");
+      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 0))).toBe(
+        "claude-opus-4-5"
+      );
 
       // At 51% - opus excluded, get sonnet
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 51))).toBe("claude-sonnet-4-5");
+      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 51))).toBe(
+        "claude-sonnet-4-5"
+      );
 
       // At 81% - opus and sonnet excluded, get haiku
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 81))).toBe("claude-haiku-4-5");
+      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 81))).toBe(
+        "claude-haiku-4-5"
+      );
     });
 
     it("model with 100% threshold is always available", async () => {
@@ -372,11 +384,12 @@ describe.sequential("LLMService Integration Tests", () => {
       expect(getModelCard(model)).toBe("claude-haiku-4-5"); // Only haiku available at 99%
     });
 
-    it("throws error when usage exceeds all thresholds", async () => {
+    it("falls back to cheapest model when usage exceeds all thresholds", async () => {
       await setupTieredModels();
-      await expect(LLMManager.get("coding", "slow", "paid", 101)).rejects.toThrow(
-        "No available model"
-      );
+      // All models in preference chain are excluded by usage (101% > all thresholds)
+      // Fallback picks the cheapest valid model in the system (haiku, highest price_tier)
+      const model = await LLMManager.get("coding", "slow", "paid", 101);
+      expect(getModelCard(model)).toBe("claude-haiku-4-5");
     });
 
     it("getFallbacks returns all available models filtered by usage", async () => {
@@ -391,10 +404,7 @@ describe.sequential("LLMService Integration Tests", () => {
 
       // At 51%, opus excluded
       fallbacks = await LLMManager.getFallbacks("coding", "slow", "paid", 51);
-      expect(fallbacks.map(getModelCard)).toEqual([
-        "claude-sonnet-4-5",
-        "claude-haiku-4-5",
-      ]);
+      expect(fallbacks.map(getModelCard)).toEqual(["claude-sonnet-4-5", "claude-haiku-4-5"]);
 
       // At 81%, only haiku
       fallbacks = await LLMManager.getFallbacks("coding", "slow", "paid", 81);
@@ -511,7 +521,11 @@ describe.sequential("LLMService Integration Tests", () => {
       await setupTieredPriceModels();
 
       const fallbacks = await LLMManager.getFallbacks("coding", "slow", "paid", 0);
-      expect(fallbacks.map(getModelCard)).toEqual(["claude-opus-4-5", "claude-sonnet-4-5", "claude-haiku-4-5"]);
+      expect(fallbacks.map(getModelCard)).toEqual([
+        "claude-opus-4-5",
+        "claude-sonnet-4-5",
+        "claude-haiku-4-5",
+      ]);
     });
 
     it("filters out premium models when maxTier=2", async () => {
@@ -534,22 +548,28 @@ describe.sequential("LLMService Integration Tests", () => {
       await setupTieredPriceModels();
 
       // Without maxTier, returns opus (first in preference)
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 0))).toBe("claude-opus-4-5");
+      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 0))).toBe(
+        "claude-opus-4-5"
+      );
 
       // With maxTier=2, skips opus and returns sonnet
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 0, 2))).toBe("claude-sonnet-4-5");
+      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 0, 2))).toBe(
+        "claude-sonnet-4-5"
+      );
 
       // With maxTier=3, skips opus and sonnet, returns haiku
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 0, 3))).toBe("claude-haiku-4-5");
+      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 0, 3))).toBe(
+        "claude-haiku-4-5"
+      );
     });
 
-    it("throws error when no models match the tier constraint", async () => {
+    it("falls back to cheapest model when no models match the tier constraint", async () => {
       await setupTieredPriceModels();
 
       // maxTier=4 means only tier 4+ allowed, but our cheapest is tier 3
-      await expect(LLMManager.get("coding", "slow", "paid", 0, 4)).rejects.toThrow(
-        "No available model"
-      );
+      // Fallback ignores tier constraint and picks cheapest valid model (haiku, tier 3)
+      const model = await LLMManager.get("coding", "slow", "paid", 0, 4);
+      expect(getModelCard(model)).toBe("claude-haiku-4-5");
     });
 
     it("combines maxTier with usage-based filtering", async () => {
@@ -590,21 +610,28 @@ describe.sequential("LLMService Integration Tests", () => {
       await LLMManager.clearCache();
 
       // At 0% usage with maxTier=2: opus excluded by tier, sonnet and haiku available
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 0, 2))).toBe("claude-sonnet-4-5");
+      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 0, 2))).toBe(
+        "claude-sonnet-4-5"
+      );
 
       // At 60% usage with maxTier=2: opus excluded by tier AND usage, sonnet available
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 60, 2))).toBe("claude-sonnet-4-5");
+      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 60, 2))).toBe(
+        "claude-sonnet-4-5"
+      );
 
       // At 85% usage with maxTier=2: opus excluded by tier, sonnet excluded by usage, haiku available
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 85, 2))).toBe("claude-haiku-4-5");
+      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 85, 2))).toBe(
+        "claude-haiku-4-5"
+      );
     });
 
-    it("includes error message with maxTier when no models available", async () => {
+    it("falls back to cheapest model when maxTier excludes all preferred models", async () => {
       await setupTieredPriceModels();
 
-      await expect(LLMManager.get("coding", "slow", "paid", 0, 5)).rejects.toThrow(
-        "maxTier=5"
-      );
+      // maxTier=5 means only tier 5+ allowed, but our cheapest is tier 3
+      // Fallback ignores tier constraint and picks cheapest valid model (haiku, tier 3)
+      const model = await LLMManager.get("coding", "slow", "paid", 0, 5);
+      expect(getModelCard(model)).toBe("claude-haiku-4-5");
     });
   });
 
@@ -698,6 +725,225 @@ describe.sequential("LLMService Integration Tests", () => {
       // Should skip unknown model and return haiku
       const model = await LLMManager.get("coding", "slow", "paid", 0);
       expect(getModelCard(model)).toBe("claude-haiku-4-5");
+    });
+  });
+
+  describe("Cost Config Validation", () => {
+    it("skips model with no cost config and falls back to next", async () => {
+      // First model has no cost config (both null)
+      await createModelConfig({
+        modelKey: "sonnet",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: null,
+        costOut: null,
+        modelCard: "claude-sonnet-4-5",
+      });
+      // Second model has valid cost config
+      await createModelConfig({
+        modelKey: "haiku",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: "1.0",
+        costOut: "5.0",
+        modelCard: "claude-haiku-4-5",
+        priceTier: 5,
+      });
+      await createModelPreference({
+        costTier: "paid",
+        speedTier: "slow",
+        skill: "coding",
+        modelKeys: ["sonnet", "haiku"],
+      });
+
+      await LLMManager.clearCache();
+
+      const model = await LLMManager.get("coding", "slow", "paid", 0);
+      expect(getModelCard(model)).toBe("claude-haiku-4-5");
+    });
+
+    it("rejects model with only cost_in and falls back to cheapest valid model", async () => {
+      // haiku has only cost_in — invalid cost config
+      await createModelConfig({
+        modelKey: "haiku",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: "1.0",
+        costOut: null,
+        modelCard: "claude-haiku-4-5",
+      });
+      // sonnet has valid cost config — should be selected as fallback
+      await createModelConfig({
+        modelKey: "sonnet",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: "3.0",
+        costOut: "15.0",
+        modelCard: "claude-sonnet-4-5",
+        priceTier: 2,
+      });
+      await createModelPreference({
+        costTier: "paid",
+        speedTier: "slow",
+        skill: "coding",
+        modelKeys: ["haiku"],
+      });
+
+      await LLMManager.clearCache();
+
+      const model = await LLMManager.get("coding", "slow", "paid", 0);
+      // haiku rejected (missing cost_out), falls back to cheapest valid model
+      expect(getModelCard(model)).toBe("claude-sonnet-4-5");
+    });
+
+    it("rejects model with only cost_out and falls back to cheapest valid model", async () => {
+      // haiku has only cost_out — invalid cost config
+      await createModelConfig({
+        modelKey: "haiku",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: null,
+        costOut: "5.0",
+        modelCard: "claude-haiku-4-5",
+      });
+      // sonnet has valid cost config — should be selected as fallback
+      await createModelConfig({
+        modelKey: "sonnet",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: "3.0",
+        costOut: "15.0",
+        modelCard: "claude-sonnet-4-5",
+        priceTier: 2,
+      });
+      await createModelPreference({
+        costTier: "paid",
+        speedTier: "slow",
+        skill: "coding",
+        modelKeys: ["haiku"],
+      });
+
+      await LLMManager.clearCache();
+
+      const model = await LLMManager.get("coding", "slow", "paid", 0);
+      // haiku rejected (missing cost_in), falls back to cheapest valid model
+      expect(getModelCard(model)).toBe("claude-sonnet-4-5");
+    });
+
+    it("falls back to cheapest valid model when preference chain has no valid cost configs", async () => {
+      // Both preferred models have no cost config
+      await createModelConfig({
+        modelKey: "sonnet",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: null,
+        costOut: null,
+        modelCard: "claude-sonnet-4-5",
+      });
+      await createModelConfig({
+        modelKey: "opus",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: null,
+        costOut: null,
+        modelCard: "claude-opus-4-5",
+      });
+      // haiku exists outside the preference chain with valid cost config
+      await createModelConfig({
+        modelKey: "haiku",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: "1.0",
+        costOut: "5.0",
+        modelCard: "claude-haiku-4-5",
+        priceTier: 3,
+      });
+      await createModelPreference({
+        costTier: "paid",
+        speedTier: "slow",
+        skill: "coding",
+        modelKeys: ["sonnet", "opus"], // Neither has cost config
+      });
+
+      await LLMManager.clearCache();
+
+      // Should fall back to haiku (cheapest valid model in the system)
+      const model = await LLMManager.get("coding", "slow", "paid", 0);
+      expect(getModelCard(model)).toBe("claude-haiku-4-5");
+    });
+
+    it("picks the cheapest valid model when multiple fallback candidates exist", async () => {
+      // Preferred model has no cost config
+      await createModelConfig({
+        modelKey: "opus",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: null,
+        costOut: null,
+        modelCard: "claude-opus-4-5",
+      });
+      // Two valid models outside preference chain — should pick cheapest
+      await createModelConfig({
+        modelKey: "sonnet",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: "3.0",
+        costOut: "15.0",
+        modelCard: "claude-sonnet-4-5",
+        priceTier: 2,
+      });
+      await createModelConfig({
+        modelKey: "haiku",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: "1.0",
+        costOut: "5.0",
+        modelCard: "claude-haiku-4-5",
+        priceTier: 3,
+      });
+      await createModelPreference({
+        costTier: "paid",
+        speedTier: "slow",
+        skill: "coding",
+        modelKeys: ["opus"],
+      });
+
+      await LLMManager.clearCache();
+
+      // Should fall back to haiku (tier 3 > tier 2, so haiku is cheaper)
+      const model = await LLMManager.get("coding", "slow", "paid", 0);
+      expect(getModelCard(model)).toBe("claude-haiku-4-5");
+    });
+
+    it("throws when no models in the entire system have valid cost config", async () => {
+      await createModelConfig({
+        modelKey: "sonnet",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: null,
+        costOut: null,
+        modelCard: "claude-sonnet-4-5",
+      });
+      await createModelConfig({
+        modelKey: "haiku",
+        enabled: true,
+        maxUsagePercent: 100,
+        costIn: null,
+        costOut: null,
+        modelCard: "claude-haiku-4-5",
+      });
+      await createModelPreference({
+        costTier: "paid",
+        speedTier: "slow",
+        skill: "coding",
+        modelKeys: ["sonnet", "haiku"],
+      });
+
+      await LLMManager.clearCache();
+
+      await expect(LLMManager.get("coding", "slow", "paid", 0)).rejects.toThrow(
+        "No available model"
+      );
     });
   });
 });

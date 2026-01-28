@@ -44,6 +44,51 @@ RSpec.describe Credits::ChargeRunWorker do
   describe "#perform" do
     let(:run_id) { "run_#{SecureRandom.hex(8)}" }
 
+    context "when CREDITS_DISABLED is set" do
+      around do |example|
+        ENV["CREDITS_DISABLED"] = "true"
+        example.run
+      ensure
+        ENV.delete("CREDITS_DISABLED")
+      end
+
+      it "returns early without processing any records" do
+        setup_account_state(plan_millicredits: 5_000_000)
+
+        create(:llm_usage,
+          chat: chat,
+          run_id: run_id,
+          model_raw: "claude-haiku-4-5-20251001",
+          input_tokens: 1000,
+          output_tokens: 500,
+          processed_at: nil)
+
+        expect {
+          worker.perform(run_id)
+        }.not_to change { CreditTransaction.count }
+
+        # Usage records should remain unprocessed
+        expect(LLMUsage.unprocessed.for_run(run_id).count).to eq(1)
+      end
+
+      it "does not deduct from account balance" do
+        setup_account_state(plan_millicredits: 5_000_000)
+
+        create(:llm_usage,
+          chat: chat,
+          run_id: run_id,
+          model_raw: "claude-haiku-4-5-20251001",
+          input_tokens: 1000,
+          output_tokens: 500,
+          processed_at: nil)
+
+        worker.perform(run_id)
+
+        account.reload
+        expect(account.plan_millicredits).to eq(5_000_000)
+      end
+    end
+
     context "with unprocessed usage records" do
       before do
         setup_account_state(plan_millicredits: 5_000_000)

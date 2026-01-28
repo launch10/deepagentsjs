@@ -4,6 +4,56 @@ info:
   title: API V1
   version: v1
 paths:
+  "/api/v1/credits/check":
+    get:
+      summary: Checks account credit balance
+      tags:
+      - Credits
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: returns breakdown of plan and pack credits
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    description: Whether the account can proceed (has positive balance)
+                  balance_millicredits:
+                    type: integer
+                    description: Total balance in millicredits
+                  plan_millicredits:
+                    type: integer
+                    description: Plan credits in millicredits (expire at renewal)
+                  pack_millicredits:
+                    type: integer
+                    description: Pack credits in millicredits (persist until used)
+                required:
+                - ok
+                - balance_millicredits
+                - plan_millicredits
+                - pack_millicredits
+        '401':
+          description: unauthorized - expired token
   "/api/v1/brainstorms":
     post:
       summary: Creates a brainstorm
@@ -2437,29 +2487,45 @@ paths:
                         enabled:
                           type: boolean
                           description: Whether this model is enabled
-                        maxUsagePercent:
+                        max_usage_percent:
                           type: integer
+                          nullable: true
                           description: Maximum usage percentage for this model
-                        costIn:
+                        cost_in:
                           type: number
                           nullable: true
-                          description: Cost per input token
-                        costOut:
+                          description: Cost per million input tokens in dollars
+                        cost_out:
                           type: number
                           nullable: true
-                          description: Cost per output token
-                        modelCard:
+                          description: Cost per million output tokens in dollars
+                        cost_reasoning:
+                          type: number
+                          nullable: true
+                          description: Cost per million reasoning tokens in dollars
+                        cache_reads:
+                          type: number
+                          nullable: true
+                          description: Cost per million cache read tokens in dollars
+                        cache_writes:
+                          type: number
+                          nullable: true
+                          description: Cost per million cache write tokens in dollars
+                        model_card:
                           type: string
                           nullable: true
-                          description: Model card identifier
-                        priceTier:
+                          description: Model card identifier (e.g., claude-sonnet-4-5-20250220)
+                        provider:
+                          type: string
+                          nullable: true
+                          description: LLM provider (anthropic, openai, groq, ollama)
+                        price_tier:
                           type: integer
                           description: Price tier (1=premium, 5=cheap) based on weighted
                             effective cost
                       required:
                       - enabled
-                      - maxUsagePercent
-                      - priceTier
+                      - price_tier
                   preferences:
                     type: object
                     description: Nested map of cost_tier -> speed_tier -> skill ->
@@ -2472,7 +2538,7 @@ paths:
                           type: array
                           items:
                             type: string
-                  updatedAt:
+                  updated_at:
                     type: string
                     format: date-time
                     nullable: true
@@ -3405,6 +3471,108 @@ paths:
                   - name
               required:
               - snapshot
+  "/test/database/set_credits":
+    post:
+      summary: Sets credits for a user account
+      tags:
+      - Test Database
+      description: Sets plan and pack credits for the account owned by the given
+        user email. Uses AllocationService for proper credit adjustment. Only available
+        in development/test environments.
+      parameters: []
+      responses:
+        '200':
+          description: credits set successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  message:
+                    type: string
+                    example: Credits updated
+                  account:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      plan_millicredits:
+                        type: integer
+                      pack_millicredits:
+                        type: integer
+                      total_millicredits:
+                        type: integer
+                    required:
+                    - id
+                    - plan_millicredits
+                    - pack_millicredits
+                    - total_millicredits
+                required:
+                - status
+                - message
+                - account
+        '404':
+          description: user or account not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - status
+                - errors
+        '422':
+          description: failed to set credits
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - status
+                - errors
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                credits:
+                  type: object
+                  properties:
+                    email:
+                      type: string
+                      description: Email of the user whose account credits should
+                        be set
+                    plan_millicredits:
+                      type: integer
+                      description: Plan credits in millicredits
+                      default: 0
+                    pack_millicredits:
+                      type: integer
+                      description: Pack credits in millicredits
+                      default: 0
+                  required:
+                  - email
+              required:
+              - credits
   "/api/v1/themes":
     get:
       summary: Lists official themes + themes in account

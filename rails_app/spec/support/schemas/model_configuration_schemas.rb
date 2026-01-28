@@ -8,13 +8,17 @@ module APISchemas
         type: :object,
         properties: {
           enabled: {type: :boolean, description: "Whether this model is enabled"},
-          maxUsagePercent: {type: :integer, description: "Maximum usage percentage for this model"},
-          costIn: {type: :number, nullable: true, description: "Cost per input token"},
-          costOut: {type: :number, nullable: true, description: "Cost per output token"},
-          modelCard: {type: :string, nullable: true, description: "Model card identifier"},
-          priceTier: {type: :integer, description: "Price tier (1=premium, 5=cheap) based on weighted effective cost"}
+          max_usage_percent: {type: :integer, nullable: true, description: "Maximum usage percentage for this model"},
+          cost_in: {type: :number, nullable: true, description: "Cost per million input tokens in dollars"},
+          cost_out: {type: :number, nullable: true, description: "Cost per million output tokens in dollars"},
+          cost_reasoning: {type: :number, nullable: true, description: "Cost per million reasoning tokens in dollars"},
+          cache_reads: {type: :number, nullable: true, description: "Cost per million cache read tokens in dollars"},
+          cache_writes: {type: :number, nullable: true, description: "Cost per million cache write tokens in dollars"},
+          model_card: {type: :string, nullable: true, description: "Model card identifier (e.g., claude-sonnet-4-5-20250220)"},
+          provider: {type: :string, nullable: true, description: "LLM provider (anthropic, openai, groq, ollama)"},
+          price_tier: {type: :integer, description: "Price tier (1=premium, 5=cheap) based on weighted effective cost"}
         },
-        required: %w[enabled maxUsagePercent priceTier]
+        required: %w[enabled price_tier]
       }
     end
 
@@ -42,7 +46,7 @@ module APISchemas
               }
             }
           },
-          updatedAt: {
+          updated_at: {
             type: :string,
             format: "date-time",
             nullable: true,

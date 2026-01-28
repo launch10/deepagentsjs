@@ -29,6 +29,14 @@ export type RestoreSnapshotResponse = NonNullable<
   paths["/test/database/restore_snapshot"]["post"]["responses"][200]["content"]
 >["application/json"];
 
+export type SetCreditsRequest = NonNullable<
+  paths["/test/database/set_credits"]["post"]["requestBody"]
+>["content"]["application/json"];
+
+export type SetCreditsResponse = NonNullable<
+  paths["/test/database/set_credits"]["post"]["responses"][200]["content"]
+>["application/json"];
+
 export interface DatabaseOperationResult {
   status: string;
   message: string;
@@ -137,6 +145,40 @@ export class DatabaseSnapshotterAPI extends RailsAPIBase {
     }
 
     return response.data satisfies DatabaseOperationResult;
+  }
+
+  /**
+   * Sets credits for an account by user email
+   * @param email - Email of the user whose account credits should be set
+   * @param planMillicredits - Plan credits in millicredits
+   * @param packMillicredits - Pack credits in millicredits
+   * @returns Response with updated account credit balances
+   */
+  async setCredits(
+    email: string,
+    planMillicredits: number,
+    packMillicredits: number
+  ): Promise<SetCreditsResponse> {
+    const client = await this.getClient();
+    const response = await client.POST("/test/database/set_credits", {
+      body: {
+        credits: {
+          email,
+          plan_millicredits: planMillicredits,
+          pack_millicredits: packMillicredits,
+        },
+      },
+    });
+
+    if (response.error) {
+      throw new Error(`Failed to set credits: ${JSON.stringify(response.error)}`);
+    }
+
+    if (!response.data) {
+      throw new Error(`Failed to set credits: no data returned`);
+    }
+
+    return response.data satisfies SetCreditsResponse;
   }
 }
 

@@ -8,10 +8,9 @@ export default function Brainstorm() {
   const chat = useBrainstormChat();
   const isNewConversation = useBrainstormIsNewConversation();
 
+  // Credit integration is automatic via ChatProvider - no manual wiring needed
   return (
     <Chat.Root chat={chat}>
-      {" "}
-      {/** Child components subscribe to the chat state they need */}
       {isNewConversation ? <BrainstormLandingPage /> : <BrainstormConversationPage />}
     </Chat.Root>
   );

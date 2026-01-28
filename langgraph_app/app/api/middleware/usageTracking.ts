@@ -3,6 +3,10 @@
  *
  * Wraps graph streams with billing tracking. Automatically captures
  * token usage and persists traces when the stream completes.
+ *
+ * Credit tracking:
+ * - Extracts accountId and preRunCreditsRemaining from state
+ * - Credit status is emitted to frontend via withCreditTracking graph wrapper
  */
 import {
   createBridgeFactory,
@@ -15,9 +19,11 @@ import {
   persistUsage,
   persistTrace,
   notifyRails,
+  calculateRunCost,
+  deriveCreditStatus,
   type UsageContext,
   type UsageSummary,
-} from "@core/billing";
+} from "@core";
 import { db, eq, chats as chatsTable } from "@db";
 
 /**
@@ -34,6 +40,24 @@ async function getChatIdFromThread(threadId: string): Promise<number | undefined
 }
 
 /**
+ * Extract credit state from graph state if available.
+ */
+function extractCreditState(state?: Record<string, unknown>): {
+  accountId?: number;
+  preRunCreditsRemaining?: number;
+} {
+  if (!state) return {};
+
+  return {
+    accountId: typeof state.accountId === "number" ? state.accountId : undefined,
+    preRunCreditsRemaining:
+      typeof state.preRunCreditsRemaining === "number"
+        ? state.preRunCreditsRemaining
+        : undefined,
+  };
+}
+
+/**
  * Middleware that tracks usage and persists billing data.
  */
 const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddleware<any, UsageContext>({
@@ -41,11 +65,19 @@ const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddleware<a
   storage: usageStorage,
 
   createContext(ctx) {
-    return createUsageContext({ threadId: ctx.threadId, graphName: ctx.graphName });
+    // Extract credit tracking state if provided
+    const creditState = extractCreditState(ctx.state);
+
+    return createUsageContext({
+      threadId: ctx.threadId,
+      graphName: ctx.graphName,
+      accountId: creditState.accountId,
+      preRunCreditsRemaining: creditState.preRunCreditsRemaining,
+    });
   },
 
   async onComplete(ctx, usageContext) {
-    const { records, messages, runId } = usageContext;
+    const { records, messages, runId, accountId, preRunCreditsRemaining } = usageContext;
 
     if (records.length === 0 && messages.length === 0) return;
 
@@ -87,6 +119,7 @@ const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddleware<a
 /**
  * Bridge factory with usage tracking baked in.
  * All graph APIs use this to get automatic billing.
+ *
  */
 export const createAppBridge = createBridgeFactory({
   middleware: [usageTrackingMiddleware],

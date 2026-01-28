@@ -90,10 +90,67 @@ class Test::DatabaseController < Test::TestController
     end
   end
 
+  # Sets credits for an account (for e2e testing credit exhaustion)
+  # Expects: { credits: { email: string, plan_millicredits: number, pack_millicredits: number } }
+  def set_credits
+    params_obj = credits_params
+    user = User.find_by(email: params_obj[:email])
+
+    unless user
+      render json: {
+        status: "error",
+        errors: ["User not found: #{params_obj[:email]}"]
+      }, status: :not_found and return
+    end
+
+    account = user.owned_account
+    unless account
+      render json: {
+        status: "error",
+        errors: ["Account not found for user: #{params_obj[:email]}"]
+      }, status: :not_found and return
+    end
+
+    plan = params_obj[:plan_millicredits] || 0
+    pack = params_obj[:pack_millicredits] || 0
+
+    # Use the proper AllocationService for credit adjustment
+    admin = test_admin_user
+    Credits::AllocationService.new(account).adjust_credits!(
+      plan_millicredits: plan,
+      pack_millicredits: pack,
+      reason: "e2e_test_setup",
+      admin: admin,
+      notes: "Set via test endpoint",
+      idempotency_key: "e2e_test:#{account.id}:#{Time.current.to_i}"
+    )
+
+    account.reload
+    render json: {
+      status: "ok",
+      message: "Credits updated",
+      account: {
+        id: account.id,
+        plan_millicredits: account.plan_millicredits,
+        pack_millicredits: account.pack_millicredits,
+        total_millicredits: account.total_millicredits
+      }
+    }, status: :ok
+  rescue => e
+    render json: {
+      status: "error",
+      errors: ["Failed to set credits: #{e.message}"]
+    }, status: :unprocessable_content
+  end
+
   private
 
   def snapshot_params
     params.require(:snapshot).permit(:name, :truncate_first)
+  end
+
+  def credits_params
+    params.require(:credits).permit(:email, :plan_millicredits, :pack_millicredits)
   end
 
   def ensure_snapshots_directory_exists
@@ -102,5 +159,23 @@ class Test::DatabaseController < Test::TestController
 
   def actually_truncate
     Database::Snapshotter.new.truncate
+  end
+
+  # Find or create a test admin user for credit adjustments
+  def test_admin_user
+    User.find_by(admin: true) || User.find_by(email: "brett@launch10.ai") || create_test_admin
+  end
+
+  def create_test_admin
+    User.create!(
+      email: "test_admin@launch10.ai",
+      password: "TestAdminPass123!",
+      password_confirmation: "TestAdminPass123!",
+      first_name: "Test",
+      last_name: "Admin",
+      terms_of_service: true,
+      confirmed_at: Time.current,
+      admin: true
+    )
   end
 end

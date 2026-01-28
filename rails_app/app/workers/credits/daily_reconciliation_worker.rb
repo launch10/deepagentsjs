@@ -25,6 +25,7 @@ module Credits
         .joins("INNER JOIN accounts ON accounts.id = pay_customers.owner_id AND pay_customers.owner_type = 'Account'")
         .joins(plan_join_sql)
         .where(status: "active")
+        .where(ends_at: nil) # Exclude subscriptions pending cancellation
         .where("plans.interval = ?", "year")
         .where(is_reset_day_sql(today))
         .where.not(has_current_month_allocation_sql(today))

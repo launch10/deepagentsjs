@@ -71,7 +71,9 @@ class BasicAccount < BaseBuilder
       plan = Plan.find_by(name: "growth_monthly") || Plan.last
       subscription = admin_account.payment_processor.subscribe(
         plan: plan.fake_processor_id,
-        ends_at: nil
+        ends_at: nil,
+        current_period_start: Time.current,
+        current_period_end: 30.days.from_now
       )
       puts "Admin Subscription: #{subscription.processor_plan} (Status: #{subscription.status})"
 

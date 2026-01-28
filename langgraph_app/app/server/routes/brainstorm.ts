@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { authMiddleware, type AuthContext } from "../middleware/auth";
+import { type AuthContext, streamMiddleware, readOnlyMiddleware, getCreditState } from "@server/middleware";
 import { validateThreadOrError } from "../middleware/threadValidation";
 import { BrainstormAPI } from "@api";
 
@@ -9,8 +9,9 @@ type Variables = {
 
 export const brainstormRoutes = new Hono<{ Variables: Variables }>();
 
-brainstormRoutes.post("/stream", authMiddleware, async (c) => {
+brainstormRoutes.post("/stream", ...streamMiddleware, async (c) => {
   const auth = c.get("auth") as AuthContext;
+  const creditState = getCreditState(c);
   const body = await c.req.json();
 
   const { messages, threadId, state } = body;
@@ -29,12 +30,13 @@ brainstormRoutes.post("/stream", authMiddleware, async (c) => {
     state: {
       threadId,
       jwt: auth.jwt,
+      ...creditState,
       ...stateObj,
     },
   });
 });
 
-brainstormRoutes.get("/stream", authMiddleware, async (c) => {
+brainstormRoutes.get("/stream", ...readOnlyMiddleware, async (c) => {
   const auth = c.get("auth") as AuthContext;
   const threadId = c.req.query("threadId");
 

@@ -32,9 +32,8 @@ RSpec.describe Credits::CostCalculator do
   describe "#call" do
     context "with known model and basic tokens" do
       # Formula: millicredits = tokens × price_per_million / 10
-      # Example: 100 input tokens at $1/M
-      #   100 × 1 / 10 = 10 millicredits
-      # Which equals 10/1000 = 0.01 credits = 0.01 cents = $0.0001 ✓
+      # Example: 100 input tokens at $1/M = 10 millicredits = 0.01 credits = $0.0001 ✓
+      # 100 @ $1/M = (1M = $1) / (100 = X(1M)) = 0.0001 => Cost and credits are identical, so this = 10 millicredits
 
       it "calculates correct cost for input tokens only" do
         usage = create(:llm_usage,
@@ -47,6 +46,8 @@ RSpec.describe Credits::CostCalculator do
           cache_read_tokens: 0)
 
         cost = described_class.new(usage).call
+        # 10 tokens × $1/m / 10 = 1 millicredit
+        # 100 tokens × $1/m / 10 = 10 millicredits
         # 1000 tokens × $1/M / 10 = 100 millicredits
         expect(cost).to eq(100)
       end
@@ -284,8 +285,8 @@ RSpec.describe Credits::CostCalculator do
     end
 
     context "formula verification" do
-      # Verify the formula: millicredits = tokens × price_per_million / 10
-      # 1 millicredit = 0.001 credits = 0.001 cents = $0.00001
+      # Verify: millicredits = tokens × price_per_million / 10
+      # where $1.00 = 100 credits = 100,000 millicredits
 
       it "100 Haiku input tokens costs 10 millicredits ($0.0001)" do
         usage = create(:llm_usage,
@@ -305,7 +306,7 @@ RSpec.describe Credits::CostCalculator do
         # Actual Haiku cost: 100 tokens × $1/1M = $0.0001 ✓
       end
 
-      it "1 million input tokens equals $1 (10,000 credits = 10,000,000 millicredits)" do
+      it "1 million input tokens at $1/M equals $1 (100 credits = 100,000 millicredits)" do
         usage = create(:llm_usage,
           chat: chat,
           model_raw: "claude-haiku-4-5-20251001",

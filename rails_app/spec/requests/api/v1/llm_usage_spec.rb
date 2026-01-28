@@ -8,18 +8,6 @@ RSpec.describe "API::V1::LLMUsage", type: :request do
     let(:timestamp) { Time.current.to_i.to_s }
     let(:signature) { generate_internal_signature(timestamp) }
 
-    def generate_internal_signature(ts)
-      secret = Rails.application.credentials.devise_jwt_secret_key!
-      OpenSSL::HMAC.hexdigest("SHA256", secret, ts)
-    end
-
-    def internal_headers
-      {
-        "X-Signature" => signature,
-        "X-Timestamp" => timestamp
-      }
-    end
-
     context "with valid internal service auth" do
       it "enqueues ChargeRunWorker and returns 202" do
         expect(Credits::ChargeRunWorker).to receive(:perform_async).with(run_id)

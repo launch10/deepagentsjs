@@ -3,9 +3,14 @@ import { usePage } from "@inertiajs/react";
 import { PhaseProgress, type Phase } from "@components/deploy";
 import LogoSpinner from "@components/ui/logo-spinner";
 import WorkflowPanel from "@components/ads/WorkflowPanel";
-import { useDeployChatWithPolling, type DeployProps } from "@hooks/useDeployChat";
+import { Chat } from "@components/shared/chat/Chat";
+import {
+  useDeployChatInstance,
+  useDeployChatWithPolling,
+  type DeployProps,
+} from "@hooks/useDeployChat";
 
-export default function Deploy() {
+function DeployContent() {
   const { deploy } = usePage<DeployProps>().props;
   const { state, isLoading, isPolling, error, startDeploy } = useDeployChatWithPolling();
 
@@ -191,5 +196,15 @@ export default function Deploy() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function Deploy() {
+  const chat = useDeployChatInstance();
+
+  return (
+    <Chat.Root chat={chat}>
+      <DeployContent />
+    </Chat.Root>
   );
 }

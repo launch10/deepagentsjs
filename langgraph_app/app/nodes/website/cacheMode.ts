@@ -10,8 +10,9 @@ import {
   getSchedulingToolShorterFiles,
 } from "@cache";
 import type { Website } from "@types";
+import { env } from "@core";
 
-export const CACHE_MODE = process.env.CACHE_MODE === "true";
+export const CACHE_MODE = env.CACHE_MODE === true;
 
 /**
  * Get files and message for improve_copy command based on style.

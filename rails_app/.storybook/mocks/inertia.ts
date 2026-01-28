@@ -1,5 +1,6 @@
 // Mock for @inertiajs/react in Storybook
 // This provides default mock values for usePage and other Inertia hooks
+import { createElement } from "react";
 
 export const defaultPageProps = {
   project: { uuid: "mock-project-uuid" },
@@ -29,7 +30,8 @@ export const router = {
   on: () => () => {},
 };
 
-export const Link = ({ children, ...props }: any) => children;
+export const Link = ({ children, href, className, ...props }: any) =>
+  createElement("a", { href, className, ...props }, children);
 export const Head = ({ children }: any) => null;
 export const useForm = () => ({
   data: {},

@@ -15,7 +15,14 @@ module Credits
   class ChargeRunWorker < ApplicationWorker
     sidekiq_options queue: :billing, retry: 3
 
+    def credits_disabled?
+      return false if Rails.env.production?
+      true if ENV["CREDITS_DISABLED"] == "true"
+    end
+
     def perform(run_id)
+      return if credits_disabled?
+
       records = LLMUsage.unprocessed.for_run(run_id).to_a
       return if records.empty?
 

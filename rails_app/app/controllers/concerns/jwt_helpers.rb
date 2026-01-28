@@ -39,14 +39,14 @@ module JwtHelpers
     sub = real_jwt_field("sub")
     return nil if sub.blank?
 
-    User.find(sub)
+    User.find_by(id: sub)
   end
 
   def real_jwt_account
     account_id = real_jwt_field("account_id")
     return nil if account_id.blank?
 
-    Account.find(account_id)
+    Account.find_by(id: account_id)
   end
 
   def real_jwt_field(field)

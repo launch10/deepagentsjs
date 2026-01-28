@@ -1,9 +1,12 @@
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { usePage } from "@inertiajs/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AdminSidebar } from "@components/navigation";
 import AdminHeader from "@components/shared/header/AdminHeader";
 import { Toaster } from "@components/ui/sonner";
 import { useSessionStore } from "~/stores/sessionStore";
+
+const queryClient = new QueryClient();
 
 // Type for shared page props that all pages receive
 interface SharedPageProps {
@@ -34,15 +37,17 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }): React.
   }, [url]);
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <AdminSidebar />
-      <div className="flex-1 flex flex-col bg-background overflow-hidden">
-        <AdminHeader />
-        <main ref={mainRef} className="flex-1 overflow-auto">
-          {children}
-        </main>
+    <QueryClientProvider client={queryClient}>
+      <div className="flex h-screen overflow-hidden">
+        <AdminSidebar />
+        <div className="flex-1 flex flex-col bg-background overflow-hidden">
+          <AdminHeader />
+          <main ref={mainRef} className="flex-1 overflow-auto">
+            {children}
+          </main>
+        </div>
+        <Toaster />
       </div>
-      <Toaster />
-    </div>
+    </QueryClientProvider>
   );
 };

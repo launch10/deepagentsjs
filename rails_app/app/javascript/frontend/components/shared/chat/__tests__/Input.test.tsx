@@ -5,6 +5,7 @@ import { Input } from "../input";
 import { ChatProvider } from "../Chat";
 import type { UIMessage } from "ai";
 import type { LanggraphChat, ChatSnapshot } from "langgraph-ai-sdk-react";
+import { useCreditStore } from "~/stores/creditStore";
 
 // Mock composer for testing context-aware components
 function createMockComposer() {
@@ -31,7 +32,7 @@ let mockSnapshotOverrides: Partial<ChatSnapshot<Record<string, unknown>>> = {};
 
 // Mock the langgraph-ai-sdk-react module
 vi.mock("langgraph-ai-sdk-react", async (importOriginal) => {
-  const actual = await importOriginal() as any;
+  const actual = (await importOriginal()) as any;
   return {
     ...actual,
     useChatSelector: vi.fn((chat, selector) => {
@@ -160,10 +161,30 @@ function renderWithContext(
   return render(<ChatProvider chat={mockChat}>{ui}</ChatProvider>);
 }
 
+// Mock Inertia's Link component (needed for CreditGate)
+vi.mock("@inertiajs/react", () => ({
+  Link: ({
+    children,
+    href,
+    ...props
+  }: {
+    children: React.ReactNode;
+    href: string;
+    [key: string]: any;
+  }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
+
 describe("Input", () => {
   beforeEach(() => {
     // Reset mocks before each test
     mockSnapshotOverrides = {};
+    // Reset credit store and enable credits (default is disabled until hydration)
+    useCreditStore.getState().reset();
+    useCreditStore.setState({ isOutOfCredits: false });
   });
 
   describe("Textarea (context-aware)", () => {
@@ -191,6 +212,18 @@ describe("Input", () => {
     it("is disabled when streaming", () => {
       renderWithContext(<Input.Textarea />, { status: "streaming" });
       expect(screen.getByRole("textbox")).toBeDisabled();
+    });
+
+    it("is disabled when out of credits", () => {
+      useCreditStore.setState({ isOutOfCredits: true });
+      renderWithContext(<Input.Textarea />);
+      expect(screen.getByRole("textbox")).toBeDisabled();
+    });
+
+    it("is enabled when credits are available", () => {
+      useCreditStore.setState({ isOutOfCredits: false });
+      renderWithContext(<Input.Textarea />);
+      expect(screen.getByRole("textbox")).not.toBeDisabled();
     });
   });
 
@@ -221,7 +254,10 @@ describe("Input", () => {
     it("is disabled when streaming", () => {
       const composer = createMockComposer();
       composer.isReady = true;
-      renderWithContext(<Input.SubmitButton>Send</Input.SubmitButton>, { status: "streaming", composer });
+      renderWithContext(<Input.SubmitButton>Send</Input.SubmitButton>, {
+        status: "streaming",
+        composer,
+      });
       expect(screen.getByRole("button")).toBeDisabled();
     });
   });
@@ -287,6 +323,95 @@ describe("Input", () => {
 
       expect(screen.getByPlaceholderText("Ask...")).toBeInTheDocument();
       expect(screen.getAllByRole("button")).toHaveLength(2); // FileButton + SubmitButton
+    });
+  });
+
+  describe("SubmitButton credit gating", () => {
+    it("is disabled when out of credits", () => {
+      const composer = createMockComposer();
+      composer.isReady = true;
+      useCreditStore.setState({ isOutOfCredits: true });
+
+      renderWithContext(<Input.SubmitButton>Send</Input.SubmitButton>, { composer });
+
+      expect(screen.getByRole("button")).toBeDisabled();
+    });
+
+    it("has data-disabled-reason='credits' when out of credits", () => {
+      const composer = createMockComposer();
+      composer.isReady = true;
+      useCreditStore.setState({ isOutOfCredits: true });
+
+      renderWithContext(<Input.SubmitButton>Send</Input.SubmitButton>, { composer });
+
+      expect(screen.getByRole("button")).toHaveAttribute("data-disabled-reason", "credits");
+    });
+
+    it("does not call sendMessage when out of credits", async () => {
+      const user = userEvent.setup();
+      const composer = createMockComposer();
+      composer.isReady = true;
+      const sendMessage = vi.fn();
+      useCreditStore.setState({ isOutOfCredits: true });
+
+      renderWithContext(<Input.SubmitButton>Send</Input.SubmitButton>, { composer, sendMessage });
+
+      // Button is disabled so click won't fire, but verify sendMessage was not called
+      await user.click(screen.getByRole("button")).catch(() => {});
+      expect(sendMessage).not.toHaveBeenCalled();
+    });
+
+    it("is enabled when credits are available", () => {
+      const composer = createMockComposer();
+      composer.isReady = true;
+      useCreditStore.setState({ isOutOfCredits: false });
+
+      renderWithContext(<Input.SubmitButton>Send</Input.SubmitButton>, { composer });
+
+      expect(screen.getByRole("button")).not.toBeDisabled();
+      expect(screen.getByRole("button")).not.toHaveAttribute("data-disabled-reason");
+    });
+  });
+
+  describe("CreditGate", () => {
+    it("renders children when credits are available", () => {
+      useCreditStore.setState({ isOutOfCredits: false });
+
+      renderWithContext(
+        <Input.CreditGate>
+          <div data-testid="child-content">Normal input</div>
+        </Input.CreditGate>
+      );
+
+      expect(screen.getByTestId("child-content")).toBeInTheDocument();
+      expect(screen.queryByTestId("credit-gate")).not.toBeInTheDocument();
+    });
+
+    it("shows purchase link below children when out of credits", () => {
+      useCreditStore.setState({ isOutOfCredits: true });
+
+      renderWithContext(
+        <Input.CreditGate>
+          <div data-testid="child-content">Normal input</div>
+        </Input.CreditGate>
+      );
+
+      expect(screen.getByTestId("credit-gate")).toBeInTheDocument();
+      expect(screen.getByTestId("child-content")).toBeInTheDocument();
+      expect(screen.getByText("Purchase credits to use AI")).toBeInTheDocument();
+    });
+
+    it("links to subscriptions page", () => {
+      useCreditStore.setState({ isOutOfCredits: true });
+
+      renderWithContext(
+        <Input.CreditGate>
+          <div>Content</div>
+        </Input.CreditGate>
+      );
+
+      const link = screen.getByTestId("credit-gate-link");
+      expect(link).toHaveAttribute("href", "/subscriptions");
     });
   });
 });

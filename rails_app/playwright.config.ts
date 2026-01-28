@@ -68,13 +68,9 @@ export default defineConfig({
     // },
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: process.env.CI
-    ? undefined
-    : {
-        command: "SIDEKIQ_INLINE=true bin/dev-test",
-        url: baseURL,
-        reuseExistingServer: true, // Reuse existing server if running
-        timeout: 120 * 1000,
-      },
+  /* Run your local dev server before starting the tests.
+   * Disabled — services are started separately via bin/dev-test.
+   * The webServer plugin's reuseExistingServer check hangs in Playwright 1.57+,
+   * so we skip it entirely and rely on the server already running. */
+  webServer: undefined,
 });

@@ -1,6 +1,7 @@
 import { forwardRef, type TextareaHTMLAttributes } from "react";
 import { twMerge } from "tailwind-merge";
 import { useChatComposer, useChatIsStreaming, useChatSubmit } from "../ChatContext";
+import { useCreditStore } from "~/stores/creditStore";
 
 export interface TextareaProps extends Omit<
   TextareaHTMLAttributes<HTMLTextAreaElement>,
@@ -36,6 +37,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     const composer = useChatComposer()
     const isStreaming = useChatIsStreaming()
     const submit = useChatSubmit()
+    const isOutOfCredits = useCreditStore((s) => s.isOutOfCredits)
 
     const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       if (onChange) {
@@ -61,7 +63,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         value={value ?? composer.text}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        disabled={disabled ?? isStreaming}
+        disabled={disabled ?? (isStreaming || isOutOfCredits)}
         placeholder={placeholder}
         className={twMerge(
           "w-full resize-none border-0 bg-transparent",

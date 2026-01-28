@@ -1,8 +1,10 @@
-import { createContext, useContext, useMemo, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useEffect, type ReactNode } from "react";
 import type { UIMessage } from "ai";
 import type { ChatSnapshot, ChatActions, LanggraphChat } from "langgraph-ai-sdk-react";
 import { useChatSelector, ChatSelectors } from "langgraph-ai-sdk-react";
 import type { Composer, AnyMessageWithBlocks } from "langgraph-ai-sdk-types";
+import type { CreditStatus } from "@shared";
+import { useCreditStore } from "~/stores/creditStore";
 
 /**
  * Chat context value - stores the chat INSTANCE (stable reference).
@@ -13,7 +15,9 @@ import type { Composer, AnyMessageWithBlocks } from "langgraph-ai-sdk-types";
  * Child components use `useChatContextSelector` to subscribe to specific
  * pieces of data, achieving fine-grained reactivity.
  */
-export interface ChatContextValue<TState extends Record<string, unknown> = Record<string, unknown>> {
+export interface ChatContextValue<
+  TState extends Record<string, unknown> = Record<string, unknown>,
+> {
   /** The chat instance (stable reference) */
   chat: LanggraphChat<UIMessage, TState>;
   /** Optional custom submit handler for Chat.Input components */
@@ -36,7 +40,9 @@ const ChatContext = createContext<ChatContextValue | null>(null);
  * }
  * ```
  */
-export function useChatFromContext<TState extends Record<string, unknown> = Record<string, unknown>>(): LanggraphChat<UIMessage, TState> {
+export function useChatFromContext<
+  TState extends Record<string, unknown> = Record<string, unknown>,
+>(): LanggraphChat<UIMessage, TState> {
   const ctx = useContext(ChatContext);
   if (!ctx) {
     throw new Error("useChatFromContext must be used within Chat.Root");
@@ -65,10 +71,8 @@ export function useChatFromContext<TState extends Record<string, unknown> = Reco
  */
 export function useChatContextSelector<
   TState extends Record<string, unknown> = Record<string, unknown>,
-  TSelected = unknown
->(
-  selector: (snapshot: ChatSnapshot<TState>) => TSelected
-): TSelected {
+  TSelected = unknown,
+>(selector: (snapshot: ChatSnapshot<TState>) => TSelected): TSelected {
   const chat = useChatFromContext<TState>();
   return useChatSelector(chat, selector);
 }
@@ -118,7 +122,9 @@ export function useChatStop() {
   return useChatContextSelector(ChatSelectors.stop);
 }
 
-export function useChatState<TState extends Record<string, unknown> = Record<string, unknown>>(): Partial<TState> {
+export function useChatState<
+  TState extends Record<string, unknown> = Record<string, unknown>,
+>(): Partial<TState> {
   return useChatContextSelector<TState, Partial<TState>>(ChatSelectors.state);
 }
 
@@ -151,27 +157,100 @@ export interface ChatProviderProps<TState extends Record<string, unknown>> {
 }
 
 /**
+ * Detects out-of-credits state from chat errors and stream data.
+ * Updates the credit store which triggers the OutOfCreditsModal.
+ *
+ * Two detection paths:
+ * 1. 402 error from middleware (blocked before run starts)
+ * 2. creditStatus in stream (ran out during the run)
+ *
+ * Called automatically by ChatProvider.
+ */
+function useOutOfCreditsDetection<TState extends Record<string, unknown>>(
+  chat: LanggraphChat<UIMessage, TState>
+) {
+  // === Path 1: 402 error from middleware ===
+  const error = useChatSelector(chat, ChatSelectors.error);
+
+  useEffect(() => {
+    if (!error) return;
+    const message = error.message || "";
+
+    if (!message.includes("CREDITS_EXHAUSTED") && !message.includes("Insufficient credits")) {
+      return;
+    }
+
+    console.log("[ChatContext] Path 1: 402 error detected:", message);
+    const store = useCreditStore.getState();
+    try {
+      const parsed = JSON.parse(message);
+      if (parsed.code === "CREDITS_EXHAUSTED") {
+        console.log("[ChatContext] Path 1: parsed CREDITS_EXHAUSTED, calling updateFromBalanceCheck + showModal");
+        store.updateFromBalanceCheck({
+          balanceMillicredits: parsed.balance ?? 0,
+          planMillicredits: parsed.planCredits ?? 0,
+          packMillicredits: parsed.packCredits ?? 0,
+          isExhausted: true,
+        });
+        store.showModal();
+      }
+    } catch {
+      console.log("[ChatContext] Path 1: parse failed, calling updateFromBalanceCheck + showModal");
+      store.updateFromBalanceCheck({
+        balanceMillicredits: 0,
+        planMillicredits: 0,
+        packMillicredits: 0,
+        isExhausted: true,
+      });
+      store.showModal();
+    }
+  }, [error]);
+
+  // === Path 2: creditStatus from stream ===
+  // Select primitives to avoid reacting to object reference changes
+  const justExhausted = useChatSelector(
+    chat,
+    (s) => (s.state as { creditStatus?: CreditStatus })?.creditStatus?.justExhausted
+  );
+  const estimatedRemaining = useChatSelector(
+    chat,
+    (s) => (s.state as { creditStatus?: CreditStatus })?.creditStatus?.estimatedRemainingMillicredits
+  );
+  useEffect(() => {
+    // Only process if creditStatus exists (estimatedRemaining is defined)
+    if (estimatedRemaining === undefined) return;
+
+    console.log("[ChatContext] Path 2: creditStatus from stream:", {
+      justExhausted,
+      estimatedRemaining,
+    });
+    useCreditStore.getState().updateFromCreditStatus({
+      estimatedRemainingMillicredits: estimatedRemaining,
+      justExhausted: justExhausted ?? false,
+    });
+  }, [justExhausted, estimatedRemaining]);
+}
+
+/**
  * Internal provider component - used by Chat.Root.
  * The context value is stable (chat instance + optional onSubmit),
  * so it doesn't cause unnecessary re-renders.
+ *
+ * Automatically integrates out-of-credits detection - no manual wiring needed.
  */
 export function ChatProvider<TState extends Record<string, unknown>>({
   chat,
   children,
   onSubmit,
 }: ChatProviderProps<TState>) {
+  // Detect out-of-credits from errors and stream data
+  useOutOfCreditsDetection(chat);
+
   // Create a stable context value - the chat instance is stable,
   // and onSubmit should be memoized by the caller
-  const value = useMemo<ChatContextValue<TState>>(
-    () => ({ chat, onSubmit }),
-    [chat, onSubmit]
-  );
+  const value = useMemo<ChatContextValue<TState>>(() => ({ chat, onSubmit }), [chat, onSubmit]);
 
-  return (
-    <ChatContext.Provider value={value as ChatContextValue}>
-      {children}
-    </ChatContext.Provider>
-  );
+  return <ChatContext.Provider value={value as ChatContextValue}>{children}</ChatContext.Provider>;
 }
 
 // Re-export the context for testing purposes

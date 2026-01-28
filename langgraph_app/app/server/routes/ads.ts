@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { authMiddleware, type AuthContext } from "../middleware/auth";
+import { type AuthContext, streamMiddleware, readOnlyMiddleware, getCreditState } from "@server/middleware";
 import { validateThreadOrError } from "../middleware/threadValidation";
 import { AdsAPI } from "@api";
 
@@ -9,8 +9,9 @@ type Variables = {
 
 export const adsRoutes = new Hono<{ Variables: Variables }>();
 
-adsRoutes.post("/stream", authMiddleware, async (c) => {
+adsRoutes.post("/stream", ...streamMiddleware, async (c) => {
   const auth = c.get("auth") as AuthContext;
+  const creditState = getCreditState(c);
   const body = await c.req.json();
 
   const { messages, threadId, state } = body;
@@ -34,6 +35,7 @@ adsRoutes.post("/stream", authMiddleware, async (c) => {
       state: {
         threadId,
         jwt: auth.jwt,
+        ...creditState,
         ...stateObj,
       },
     });
@@ -43,7 +45,7 @@ adsRoutes.post("/stream", authMiddleware, async (c) => {
   }
 });
 
-adsRoutes.get("/stream", authMiddleware, async (c) => {
+adsRoutes.get("/stream", ...readOnlyMiddleware, async (c) => {
   const auth = c.get("auth") as AuthContext;
   const threadId = c.req.query("threadId");
 

@@ -117,6 +117,7 @@ export default function Website() {
   // 2. Sending message
   const isLoading = isLoadingHistory || isStreaming;
 
+  // Credit integration is automatic via ChatProvider - no manual wiring needed
   return (
     <Chat.Root chat={chat}>
       <div className="h-full flex flex-col">

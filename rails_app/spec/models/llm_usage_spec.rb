@@ -112,4 +112,26 @@ RSpec.describe LLMUsage, type: :model do
       expect(usage.total_tokens).to eq(190)
     end
   end
+
+  describe "#cost_cents" do
+    it "converts millicredits to cents (1000 millicredits = 1 cent)" do
+      usage = build(:llm_usage, cost_millicredits: 1500)
+      expect(usage.cost_cents).to eq(1.5)
+    end
+
+    it "returns nil when cost_millicredits is nil" do
+      usage = build(:llm_usage, cost_millicredits: nil)
+      expect(usage.cost_cents).to be_nil
+    end
+
+    it "handles sub-cent costs" do
+      usage = build(:llm_usage, cost_millicredits: 150)
+      expect(usage.cost_cents).to eq(0.15)
+    end
+
+    it "handles zero cost" do
+      usage = build(:llm_usage, cost_millicredits: 0)
+      expect(usage.cost_cents).to eq(0.0)
+    end
+  end
 end

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { authMiddleware, type AuthContext } from "../middleware/auth";
+import { type AuthContext, streamMiddleware, readOnlyMiddleware, getCreditState } from "@server/middleware";
 import { validateThreadOrError } from "../middleware/threadValidation";
 import { DeployAPI } from "@api";
 
@@ -9,8 +9,9 @@ type Variables = {
 
 export const deployRoutes = new Hono<{ Variables: Variables }>();
 
-deployRoutes.post("/stream", authMiddleware, async (c) => {
+deployRoutes.post("/stream", ...streamMiddleware, async (c) => {
   const auth = c.get("auth") as AuthContext;
+  const creditState = getCreditState(c);
   const body = await c.req.json();
 
   const { threadId, state } = body;
@@ -43,6 +44,7 @@ deployRoutes.post("/stream", authMiddleware, async (c) => {
       deployId,
       websiteId,
       campaignId,
+      ...creditState,
       // Default deploy instructions - deploy both if not specified
       deploy: state?.deploy ?? { website: true, googleAds: true },
       ...state,
@@ -50,7 +52,7 @@ deployRoutes.post("/stream", authMiddleware, async (c) => {
   });
 });
 
-deployRoutes.get("/stream", authMiddleware, async (c) => {
+deployRoutes.get("/stream", ...readOnlyMiddleware, async (c) => {
   const auth = c.get("auth") as AuthContext;
   const threadId = c.req.query("threadId");
 

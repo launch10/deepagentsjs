@@ -1,6 +1,7 @@
 import { usePage } from "@inertiajs/react";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useLanggraph, type ChatSnapshot } from "langgraph-ai-sdk-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLanggraph, type ChatSnapshot, type LanggraphChat } from "langgraph-ai-sdk-react";
+import type { UIMessage } from "ai";
 import { Deploy } from "@shared";
 import { useChatOptions } from "@hooks/useChatOptions";
 
@@ -31,6 +32,27 @@ function useDeployChatOptions() {
     getInitialThreadId: () => deploy.langgraph_thread_id ?? undefined,
     includeAttachments: false,
   });
+}
+
+/**
+ * Get the deploy chat instance for use with Chat.Root.
+ * Returns a stable chat instance that can be passed to Chat.Root.
+ *
+ * @example
+ * ```tsx
+ * function DeployPage() {
+ *   const chat = useDeployChatInstance();
+ *   return (
+ *     <Chat.Root chat={chat}>
+ *       <DeployContent />
+ *     </Chat.Root>
+ *   );
+ * }
+ * ```
+ */
+export function useDeployChatInstance(): LanggraphChat<UIMessage, Deploy.DeployGraphState> {
+  const options = useDeployChatOptions();
+  return useLanggraph(options, (s) => s.chat);
 }
 
 export function useDeployChat<TSelected = DeploySnapshot>(

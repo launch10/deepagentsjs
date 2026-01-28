@@ -4,6 +4,62 @@
  */
 
 export interface paths {
+    "/api/v1/credits/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Checks account credit balance */
+        get: {
+            parameters: {
+                query?: never;
+                header: {
+                    Authorization: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns breakdown of plan and pack credits */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Whether the account can proceed (has positive balance) */
+                            ok: boolean;
+                            /** @description Total balance in millicredits */
+                            balance_millicredits: number;
+                            /** @description Plan credits in millicredits (expire at renewal) */
+                            plan_millicredits: number;
+                            /** @description Pack credits in millicredits (persist until used) */
+                            pack_millicredits: number;
+                        };
+                    };
+                };
+                /** @description unauthorized - expired token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/brainstorms": {
         parameters: {
             query?: never;
@@ -2122,15 +2178,23 @@ export interface paths {
                                     /** @description Whether this model is enabled */
                                     enabled: boolean;
                                     /** @description Maximum usage percentage for this model */
-                                    maxUsagePercent: number;
-                                    /** @description Cost per input token */
-                                    costIn?: number | null;
-                                    /** @description Cost per output token */
-                                    costOut?: number | null;
-                                    /** @description Model card identifier */
-                                    modelCard?: string | null;
+                                    max_usage_percent?: number | null;
+                                    /** @description Cost per million input tokens in dollars */
+                                    cost_in?: number | null;
+                                    /** @description Cost per million output tokens in dollars */
+                                    cost_out?: number | null;
+                                    /** @description Cost per million reasoning tokens in dollars */
+                                    cost_reasoning?: number | null;
+                                    /** @description Cost per million cache read tokens in dollars */
+                                    cache_reads?: number | null;
+                                    /** @description Cost per million cache write tokens in dollars */
+                                    cache_writes?: number | null;
+                                    /** @description Model card identifier (e.g., claude-sonnet-4-5-20250220) */
+                                    model_card?: string | null;
+                                    /** @description LLM provider (anthropic, openai, groq, ollama) */
+                                    provider?: string | null;
                                     /** @description Price tier (1=premium, 5=cheap) based on weighted effective cost */
-                                    priceTier: number;
+                                    price_tier: number;
                                 };
                             };
                             /** @description Nested map of cost_tier -> speed_tier -> skill -> model_keys array */
@@ -2145,7 +2209,7 @@ export interface paths {
                              * Format: date-time
                              * @description Most recent update timestamp across all configs
                              */
-                            updatedAt?: string | null;
+                            updated_at?: string | null;
                         };
                     };
                 };
@@ -3019,6 +3083,101 @@ export interface paths {
                     };
                 };
                 /** @description missing required parameters */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example error */
+                            status: string;
+                            errors: string[];
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/test/database/set_credits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sets credits for a user account
+         * @description Sets plan and pack credits for the account owned by the given user email. Uses AllocationService for proper credit adjustment. Only available in development/test environments.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        credits: {
+                            /** @description Email of the user whose account credits should be set */
+                            email: string;
+                            /**
+                             * @description Plan credits in millicredits
+                             * @default 0
+                             */
+                            plan_millicredits?: number;
+                            /**
+                             * @description Pack credits in millicredits
+                             * @default 0
+                             */
+                            pack_millicredits?: number;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description credits set successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example ok */
+                            status: string;
+                            /** @example Credits updated */
+                            message: string;
+                            account: {
+                                id: number;
+                                plan_millicredits: number;
+                                pack_millicredits: number;
+                                total_millicredits: number;
+                            };
+                        };
+                    };
+                };
+                /** @description user or account not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example error */
+                            status: string;
+                            errors: string[];
+                        };
+                    };
+                };
+                /** @description failed to set credits */
                 422: {
                     headers: {
                         [name: string]: unknown;
