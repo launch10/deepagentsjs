@@ -63,6 +63,9 @@ class Project < ApplicationRecord
   # Deploy tracking
   has_many :deploys, dependent: :destroy
 
+  # Analytics
+  has_many :analytics_daily_metrics, dependent: :destroy
+
   def self.with_launch_relations
     Project.includes(
       :brainstorm,
