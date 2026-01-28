@@ -128,6 +128,38 @@ test.describe("Settings Page", () => {
       await expect(settingsPage.pageTitle).toBeVisible({ timeout: 10000 });
     });
 
+    test("reactivate cancelled subscription", async ({ page }) => {
+      await loginUser(page);
+      await settingsPage.goto();
+
+      // Close any credit warning modals that may appear
+      const creditModal = page.getByTestId("credit-modal");
+      if (await creditModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await page.locator('[data-testid="credit-modal"] button:has(svg)').first().click();
+        await creditModal.waitFor({ state: "hidden", timeout: 5000 });
+      }
+
+      // First cancel the subscription
+      await settingsPage.openCancelSubscriptionModal();
+      await settingsPage.confirmCancellation();
+      await settingsPage.cancelModal.waitFor({ state: "hidden", timeout: 10000 });
+      await expect(settingsPage.pageTitle).toBeVisible({ timeout: 10000 });
+
+      // Verify subscription shows as cancelled
+      await expect(settingsPage.cancelledBadge).toBeVisible({ timeout: 5000 });
+      await expect(settingsPage.reactivatePlanButton).toBeVisible();
+
+      // Reactivate the subscription
+      await settingsPage.reactivateSubscription();
+
+      // Wait for page to reload
+      await expect(settingsPage.pageTitle).toBeVisible({ timeout: 10000 });
+
+      // Verify subscription is reactivated (cancel button should be visible again)
+      await expect(settingsPage.cancelSubscriptionButton).toBeVisible({ timeout: 5000 });
+      expect(await settingsPage.isSubscriptionCancelled()).toBe(false);
+    });
+
     test("displays Stripe portal links", async ({ page }) => {
       await loginUser(page);
       await settingsPage.goto();
@@ -228,6 +260,106 @@ test.describe("Settings Page", () => {
       // (This verifies the backend is scoping to current user)
       const pageContent = await page.content();
       expect(pageContent).toContain(testUser.email);
+    });
+  });
+
+  test.describe("Password Change", () => {
+    let settingsPage: SettingsPage;
+
+    test.beforeEach(async ({ page }) => {
+      await DatabaseSnapshotter.restoreSnapshot("basic_account");
+      // Set credits high enough to avoid the low credit warning modal
+      await DatabaseSnapshotter.setCredits(testUser.email, 4000000, 0); // 4000 credits
+      settingsPage = new SettingsPage(page);
+    });
+
+    test("displays Change Your Password link", async ({ page }) => {
+      await loginUser(page);
+      await settingsPage.goto();
+
+      await expect(settingsPage.changePasswordLink).toBeVisible();
+    });
+
+    test("clicking Change Your Password shows password form", async ({ page }) => {
+      await loginUser(page);
+      await settingsPage.goto();
+
+      await settingsPage.clickChangePassword();
+
+      await expect(settingsPage.currentPasswordInput).toBeVisible();
+      await expect(settingsPage.newPasswordInput).toBeVisible();
+      await expect(settingsPage.confirmPasswordInput).toBeVisible();
+      await expect(settingsPage.savePasswordButton).toBeVisible();
+      await expect(settingsPage.cancelPasswordButton).toBeVisible();
+    });
+
+    test("can cancel password change form", async ({ page }) => {
+      await loginUser(page);
+      await settingsPage.goto();
+
+      await settingsPage.clickChangePassword();
+      expect(await settingsPage.isPasswordFormVisible()).toBe(true);
+
+      // Click cancel button
+      await settingsPage.cancelPasswordButton.click();
+
+      // Wait for form to close
+      await expect(settingsPage.currentPasswordInput).not.toBeVisible({ timeout: 5000 });
+
+      // Change Password link should be visible again
+      await expect(settingsPage.changePasswordLink).toBeVisible();
+    });
+
+    test("shows error when passwords do not match", async ({ page }) => {
+      await loginUser(page);
+      await settingsPage.goto();
+
+      await settingsPage.clickChangePassword();
+      await settingsPage.fillPasswordForm("currentpass", "newpassword123", "differentpassword");
+      await settingsPage.submitPasswordChange();
+
+      const error = await settingsPage.getPasswordError();
+      expect(error).toContain("don't match");
+    });
+
+    test("shows error when new password is too short", async ({ page }) => {
+      await loginUser(page);
+      await settingsPage.goto();
+
+      await settingsPage.clickChangePassword();
+      await settingsPage.fillPasswordForm("currentpass", "short", "short");
+      await settingsPage.submitPasswordChange();
+
+      const error = await settingsPage.getPasswordError();
+      expect(error).toContain("6 characters");
+    });
+
+    test("shows error when current password is incorrect", async ({ page }) => {
+      await loginUser(page);
+      await settingsPage.goto();
+
+      await settingsPage.clickChangePassword();
+      await settingsPage.fillPasswordForm("wrongpassword", "newpassword123", "newpassword123");
+      await settingsPage.submitPasswordChange();
+
+      // Wait for server response
+      await page.waitForTimeout(1000);
+
+      const error = await settingsPage.getPasswordError();
+      expect(error).toBeTruthy();
+    });
+
+    test("successfully changes password with correct credentials", async ({ page }) => {
+      await loginUser(page);
+      await settingsPage.goto();
+
+      // Use the test user's password (from auth fixtures)
+      await settingsPage.changePassword(testUser.password, "newpassword123");
+
+      await settingsPage.waitForPasswordSuccess();
+
+      // Form should close after success
+      await expect(settingsPage.changePasswordLink).toBeVisible({ timeout: 5000 });
     });
   });
 

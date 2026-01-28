@@ -168,11 +168,11 @@ export function BillingCreditsSection({
           </div>
         </CardHeader>
         <CardContent className="space-y-6 w-full lg:max-w-[704px]">
-          {/* Credits Balance */}
+          {/* Credits Usage */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-['Plus_Jakarta_Sans'] text-sm font-semibold text-[#0F1113]">
-                Credits Balance
+                Credits Used
               </span>
               <span className="font-['Plus_Jakarta_Sans'] text-sm text-[#2E3238]">
                 {(balance ?? 0).toLocaleString()}

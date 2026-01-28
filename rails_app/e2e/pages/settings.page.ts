@@ -34,6 +34,8 @@ export class SettingsPage {
   readonly currentPlanName: Locator;
   readonly changePlanLink: Locator;
   readonly cancelSubscriptionButton: Locator;
+  readonly reactivatePlanButton: Locator;
+  readonly cancelledBadge: Locator;
 
   // Cancel subscription modal
   readonly cancelModal: Locator;
@@ -45,6 +47,16 @@ export class SettingsPage {
   readonly buyCreditsModal: Locator;
   readonly buyCreditsModalTitle: Locator;
   readonly continueToPaymentButton: Locator;
+
+  // Password change
+  readonly changePasswordLink: Locator;
+  readonly currentPasswordInput: Locator;
+  readonly newPasswordInput: Locator;
+  readonly confirmPasswordInput: Locator;
+  readonly savePasswordButton: Locator;
+  readonly cancelPasswordButton: Locator;
+  readonly passwordError: Locator;
+  readonly passwordSuccess: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -64,7 +76,7 @@ export class SettingsPage {
 
     // Billing & Credits section
     this.billingSection = page.getByText(/Billing & Credits/i);
-    this.creditUsageText = page.getByText(/Credit Usage/i);
+    this.creditUsageText = page.getByText(/Credits Used/i);
     this.updatePaymentMethodLink = page.getByText(/Update Payment Method/i);
     this.viewBillingHistoryLink = page.getByText(/View Billing History/i);
     this.billingHistoryPrevButton = page.getByLabel("Previous page");
@@ -76,6 +88,8 @@ export class SettingsPage {
     this.currentPlanName = page.getByText(/Current Plan/i);
     this.changePlanLink = page.getByText(/Change Plan/i);
     this.cancelSubscriptionButton = page.getByText(/Cancel Subscription/i);
+    this.reactivatePlanButton = page.getByRole("button", { name: /Reactivate Plan/i });
+    this.cancelledBadge = page.getByText("Cancelled");
 
     // Cancel subscription modal
     this.cancelModal = page.getByText(/remain live until/i);
@@ -87,6 +101,19 @@ export class SettingsPage {
     this.buyCreditsModal = page.getByRole("dialog").filter({ hasText: "Buy More Credits" });
     this.buyCreditsModalTitle = page.getByText("Buy More Credits");
     this.continueToPaymentButton = page.getByRole("button", { name: /Continue to Payment/i });
+
+    // Password change
+    this.changePasswordLink = page.getByText("Change Your Password");
+    this.currentPasswordInput = page.getByPlaceholder("Enter current password");
+    this.newPasswordInput = page.getByPlaceholder("Enter new password");
+    this.confirmPasswordInput = page.getByPlaceholder("Confirm new password");
+    this.savePasswordButton = page.getByRole("button", { name: /Save Password/i });
+    // The cancel button is the one that appears after Save Password in the password section
+    this.cancelPasswordButton = page.getByRole("button", { name: "Cancel" }).last();
+    this.passwordError = page
+      .locator("p")
+      .filter({ hasText: /(don't match|at least 6 characters|Failed|error|invalid)/i });
+    this.passwordSuccess = page.getByText("Password updated successfully");
   }
 
   /**
@@ -163,6 +190,20 @@ export class SettingsPage {
    */
   async isCancelModalVisible(): Promise<boolean> {
     return await this.cancelModal.isVisible();
+  }
+
+  /**
+   * Click the Reactivate Plan button
+   */
+  async reactivateSubscription(): Promise<void> {
+    await this.reactivatePlanButton.click();
+  }
+
+  /**
+   * Check if subscription is showing as cancelled
+   */
+  async isSubscriptionCancelled(): Promise<boolean> {
+    return await this.cancelledBadge.isVisible();
   }
 
   /**
@@ -319,5 +360,79 @@ export class SettingsPage {
     const closeButton = this.buyCreditsModal.locator('button:has(.sr-only:text("Close"))');
     await closeButton.click();
     await this.buyCreditsModal.waitFor({ state: "hidden", timeout: 5000 });
+  }
+
+  /**
+   * Click the change password link to show password form
+   */
+  async clickChangePassword(): Promise<void> {
+    await this.changePasswordLink.click();
+    await this.currentPasswordInput.waitFor({ state: "visible", timeout: 5000 });
+  }
+
+  /**
+   * Fill in the password change form
+   * @param currentPassword - Current password
+   * @param newPassword - New password
+   * @param confirmPassword - Confirm new password (defaults to newPassword if not provided)
+   */
+  async fillPasswordForm(
+    currentPassword: string,
+    newPassword: string,
+    confirmPassword?: string
+  ): Promise<void> {
+    await this.currentPasswordInput.fill(currentPassword);
+    await this.newPasswordInput.fill(newPassword);
+    await this.confirmPasswordInput.fill(confirmPassword ?? newPassword);
+  }
+
+  /**
+   * Submit the password change form
+   */
+  async submitPasswordChange(): Promise<void> {
+    await this.savePasswordButton.click();
+  }
+
+  /**
+   * Change password with all steps
+   * @param currentPassword - Current password
+   * @param newPassword - New password
+   */
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await this.clickChangePassword();
+    await this.fillPasswordForm(currentPassword, newPassword);
+    await this.submitPasswordChange();
+  }
+
+  /**
+   * Cancel password change
+   */
+  async cancelPasswordChange(): Promise<void> {
+    await this.cancelPasswordButton.click();
+    await this.currentPasswordInput.waitFor({ state: "hidden", timeout: 5000 });
+  }
+
+  /**
+   * Check if password form is visible
+   */
+  async isPasswordFormVisible(): Promise<boolean> {
+    return await this.currentPasswordInput.isVisible();
+  }
+
+  /**
+   * Wait for password change success message
+   */
+  async waitForPasswordSuccess(): Promise<void> {
+    await expect(this.passwordSuccess).toBeVisible({ timeout: 5000 });
+  }
+
+  /**
+   * Get password error message
+   */
+  async getPasswordError(): Promise<string | null> {
+    if (await this.passwordError.isVisible()) {
+      return await this.passwordError.textContent();
+    }
+    return null;
   }
 }
