@@ -3,7 +3,7 @@ import { useForm } from "@inertiajs/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
-import { UserCircleIcon, PencilIcon, CheckIcon } from "@heroicons/react/24/outline";
+import { UserCircleIcon, PencilIcon, CheckIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import type { SettingsUser } from "@pages/Settings";
 
 interface ProfileSectionProps {
@@ -132,8 +132,21 @@ export function ProfileSection({ user }: ProfileSectionProps) {
           <label className="font-['Plus_Jakarta_Sans'] text-sm font-semibold text-[#2E3238]">
             Email
           </label>
-          <div className="flex items-center px-4 py-3 h-10 bg-white border border-[#D3D2D0] rounded-lg">
-            <span className="font-['Plus_Jakarta_Sans'] text-xs text-[#2E3238]">{user.email}</span>
+          <div
+            className={`flex items-center px-4 py-3 h-10 border rounded-lg ${
+              isEditing
+                ? "bg-[#F5F5F4] border-[#E5E5E4] cursor-not-allowed"
+                : "bg-white border-[#D3D2D0]"
+            }`}
+          >
+            <span
+              className={`font-['Plus_Jakarta_Sans'] text-xs ${
+                isEditing ? "text-[#96989B]" : "text-[#2E3238]"
+              }`}
+            >
+              {user.email}
+            </span>
+            {isEditing && <LockClosedIcon className="ml-auto h-4 w-4 text-[#96989B]" />}
           </div>
         </div>
 

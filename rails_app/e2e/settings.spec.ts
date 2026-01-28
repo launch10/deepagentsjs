@@ -300,8 +300,14 @@ test.describe("Settings Page", () => {
       await settingsPage.clickChangePassword();
       expect(await settingsPage.isPasswordFormVisible()).toBe(true);
 
-      // Click cancel button
-      await settingsPage.cancelPasswordButton.click();
+      // Find the Cancel button that's a sibling of Save Password button
+      // Both are within the Password section of the form
+      const savePasswordBtn = page.getByRole("button", { name: /Save Password/i });
+      await expect(savePasswordBtn).toBeVisible();
+
+      // The Cancel button is the next sibling button after Save Password
+      const cancelBtn = savePasswordBtn.locator("..").getByRole("button", { name: "Cancel" });
+      await cancelBtn.click();
 
       // Wait for form to close
       await expect(settingsPage.currentPasswordInput).not.toBeVisible({ timeout: 5000 });

@@ -254,7 +254,8 @@ export class SettingsPage {
    * @param planName - Expected plan name (e.g., "Growth")
    */
   async expectPlanNameVisible(planName: string): Promise<void> {
-    await expect(this.page.getByText(new RegExp(planName, "i"))).toBeVisible();
+    // Use exact match to avoid matching "Growth Plan - Monthly" in billing history
+    await expect(this.page.getByText(planName, { exact: true })).toBeVisible();
   }
 
   /**
