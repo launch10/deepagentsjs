@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { router } from "@inertiajs/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { Button } from "@components/ui/button";
 import {
@@ -10,6 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useCreditStore } from "~/stores/creditStore";
 import { BuyCreditsModal } from "./BuyCreditsModal";
+import { useReactivateSubscription } from "./hooks/useReactivateSubscription";
 import type { SettingsProps } from "@pages/Settings";
 
 interface BillingCreditsSectionProps {
@@ -53,7 +53,9 @@ export function BillingCreditsSection({
   const [currentPage, setCurrentPage] = useState(0);
   const [buyCreditsModalOpen, setBuyCreditsModalOpen] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [isReactivating, setIsReactivating] = useState(false);
+  const { reactivate, isReactivating } = useReactivateSubscription({
+    subscriptionPrefixId,
+  });
 
   const isCancelled = !!expiresAt;
 
@@ -99,35 +101,6 @@ export function BillingCreditsSection({
       alert(error instanceof Error ? error.message : "Failed to start checkout");
     } finally {
       setIsCheckingOut(false);
-    }
-  };
-
-  const handleReactivate = async () => {
-    if (!subscriptionPrefixId) return;
-
-    setIsReactivating(true);
-    try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
-
-      const response = await fetch(`/subscriptions/${subscriptionPrefixId}/resume`, {
-        method: "POST",
-        headers: {
-          "X-CSRF-Token": csrfToken || "",
-          Accept: "application/json",
-        },
-        credentials: "same-origin",
-      });
-
-      if (response.ok) {
-        router.reload();
-      } else {
-        const text = await response.text();
-        alert(text || "Failed to reactivate subscription. Please try again.");
-      }
-    } catch {
-      alert("An error occurred. Please try again.");
-    } finally {
-      setIsReactivating(false);
     }
   };
 
@@ -192,7 +165,7 @@ export function BillingCreditsSection({
           {/* Purchase Credits / Reactivate Button */}
           {isCancelled ? (
             <Button
-              onClick={handleReactivate}
+              onClick={reactivate}
               disabled={isReactivating}
               className="w-full bg-[#3748B8] hover:bg-[#2d3a9a] text-white font-['Plus_Jakarta_Sans'] text-sm py-2 disabled:opacity-50"
             >

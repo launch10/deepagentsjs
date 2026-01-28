@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { router } from "@inertiajs/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { Button } from "@components/ui/button";
 import { ArrowPathIcon, CheckIcon } from "@heroicons/react/24/outline";
 import { CancelSubscriptionModal } from "./CancelSubscriptionModal";
+import { useReactivateSubscription } from "./hooks/useReactivateSubscription";
 import type { SettingsSubscription } from "@pages/Settings";
 
 interface SubscriptionSectionProps {
@@ -20,38 +20,11 @@ function formatDate(dateString: string) {
 
 export function SubscriptionSection({ subscription }: SubscriptionSectionProps) {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
-  const [isReactivating, setIsReactivating] = useState(false);
+  const { reactivate, isReactivating } = useReactivateSubscription({
+    subscriptionPrefixId: subscription?.prefix_id,
+  });
 
   const isCancelled = subscription?.ends_at != null;
-
-  const handleReactivate = async () => {
-    if (!subscription) return;
-
-    setIsReactivating(true);
-    try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
-
-      const response = await fetch(`/subscriptions/${subscription.prefix_id}/resume`, {
-        method: "POST",
-        headers: {
-          "X-CSRF-Token": csrfToken || "",
-          Accept: "application/json",
-        },
-        credentials: "same-origin",
-      });
-
-      if (response.ok) {
-        router.reload();
-      } else {
-        const text = await response.text();
-        alert(text || "Failed to reactivate subscription. Please try again.");
-      }
-    } catch {
-      alert("An error occurred. Please try again.");
-    } finally {
-      setIsReactivating(false);
-    }
-  };
 
   if (!subscription) {
     return (
@@ -96,7 +69,7 @@ export function SubscriptionSection({ subscription }: SubscriptionSectionProps) 
             </div>
             {isCancelled ? (
               <Button
-                onClick={handleReactivate}
+                onClick={reactivate}
                 disabled={isReactivating}
                 className="bg-[#2E3238] hover:bg-[#1a1e22] text-white font-['Plus_Jakarta_Sans'] text-sm py-1.5 px-4 h-auto disabled:opacity-50"
               >

@@ -77,8 +77,8 @@ export class SettingsPage {
     // Billing & Credits section
     this.billingSection = page.getByText(/Billing & Credits/i);
     this.creditUsageText = page.getByText(/Credits Used/i);
-    this.updatePaymentMethodLink = page.getByText(/Update Payment Method/i);
-    this.viewBillingHistoryLink = page.getByText(/View Billing History/i);
+    this.updatePaymentMethodLink = page.getByText(/Update Payment/i);
+    this.viewBillingHistoryLink = page.getByText(/View All/i);
     this.billingHistoryPrevButton = page.getByLabel("Previous page");
     this.billingHistoryNextButton = page.getByLabel("Next page");
     this.billingHistoryPageIndicator = page.getByText(/\d+ \/ \d+/);
@@ -88,8 +88,8 @@ export class SettingsPage {
     this.currentPlanName = page.getByText(/Current Plan/i);
     this.changePlanLink = page.getByText(/Change Plan/i);
     this.cancelSubscriptionButton = page.getByText(/Cancel Subscription/i);
-    this.reactivatePlanButton = page.getByRole("button", { name: /Reactivate Plan/i });
-    this.cancelledBadge = page.getByText("Cancelled");
+    this.reactivatePlanButton = page.getByRole("button", { name: /Reactivate Plan/i }).first();
+    this.cancelledBadge = page.getByText("Cancelled", { exact: true });
 
     // Cancel subscription modal
     this.cancelModal = page.getByText(/remain live until/i);
