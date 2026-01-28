@@ -102,6 +102,32 @@ test.describe("Settings Page", () => {
       expect(await settingsPage.isCancelModalVisible()).toBe(false);
     });
 
+    test("cancel subscription confirms and reloads page", async ({ page }) => {
+      await loginUser(page);
+      await settingsPage.goto();
+
+      // Close any credit warning modals that may appear
+      const creditModal = page.getByTestId("credit-modal");
+      if (await creditModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+        await page
+          .getByRole("button", { name: /close/i })
+          .or(page.locator('[data-testid="credit-modal"] button:has(svg)'))
+          .first()
+          .click();
+        await creditModal.waitFor({ state: "hidden", timeout: 5000 });
+      }
+
+      // Open modal and confirm cancellation
+      await settingsPage.openCancelSubscriptionModal();
+      await settingsPage.confirmCancellation();
+
+      // Modal should close and page should reload
+      await settingsPage.cancelModal.waitFor({ state: "hidden", timeout: 10000 });
+
+      // Page should still show the settings (confirms reload worked)
+      await expect(settingsPage.pageTitle).toBeVisible({ timeout: 10000 });
+    });
+
     test("displays Stripe portal links", async ({ page }) => {
       await loginUser(page);
       await settingsPage.goto();

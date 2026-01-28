@@ -8,6 +8,7 @@ resources :credit_packs, only: [] do
     post :checkout, to: "credit_pack_checkouts#create"
   end
 end
+get "credit_packs/complete", to: "credit_pack_checkouts#complete", as: :complete_credit_pack_checkouts
 
 namespace :subscriptions do
   resource :paddle_billing, controller: :paddle_billing, only: [:show, :edit]

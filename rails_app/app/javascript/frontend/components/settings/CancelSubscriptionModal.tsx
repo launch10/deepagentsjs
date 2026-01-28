@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { router } from "@inertiajs/react";
 import { Dialog, DialogContent } from "@components/ui/dialog";
 import { Button } from "@components/ui/button";
 import { XMarkIcon } from "@heroicons/react/24/outline";
@@ -5,14 +7,19 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 interface CancelSubscriptionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  subscriptionPrefixId: string;
   currentPeriodEnd?: string | null;
 }
 
 export function CancelSubscriptionModal({
   open,
   onOpenChange,
+  subscriptionPrefixId,
   currentPeriodEnd,
 }: CancelSubscriptionModalProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const formatDate = (dateString: string | null | undefined) => {
     if (!dateString) return "the end of your billing period";
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -22,8 +29,34 @@ export function CancelSubscriptionModal({
     });
   };
 
-  const handleCancelSubscription = () => {
-    // TODO: Redirect to Stripe customer portal
+  const handleCancelSubscription = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+
+      const response = await fetch(`/subscriptions/${subscriptionPrefixId}/cancel`, {
+        method: "DELETE",
+        headers: {
+          "X-CSRF-Token": csrfToken || "",
+          Accept: "application/json",
+        },
+        credentials: "same-origin",
+      });
+
+      if (response.ok || response.redirected) {
+        onOpenChange(false);
+        router.reload();
+      } else {
+        const text = await response.text();
+        setError(text || "Failed to cancel subscription. Please try again.");
+      }
+    } catch (err) {
+      setError("An error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -46,18 +79,25 @@ export function CancelSubscriptionModal({
             </p>
           </div>
 
+          {/* Error message */}
+          {error && (
+            <p className="mt-4 font-['Plus_Jakarta_Sans'] text-sm text-[#D14F34]">{error}</p>
+          )}
+
           {/* Buttons */}
           <div className="flex justify-end gap-4 mt-12">
             <Button
               variant="ghost"
               onClick={handleCancelSubscription}
-              className="h-11 px-3 font-['Plus_Jakarta_Sans'] text-base font-normal text-[#D14F34] hover:text-[#D14F34] hover:bg-transparent"
+              disabled={isLoading}
+              className="h-11 px-3 font-['Plus_Jakarta_Sans'] text-base font-normal text-[#D14F34] hover:text-[#D14F34] hover:bg-transparent disabled:opacity-50"
             >
-              Confirm Cancellation
+              {isLoading ? "Cancelling..." : "Confirm Cancellation"}
             </Button>
             <Button
               onClick={() => onOpenChange(false)}
-              className="h-11 px-3 min-w-[165px] bg-[#2E3238] hover:bg-[#1a1e22] border border-[#2E3238] rounded-lg font-['Plus_Jakarta_Sans'] text-base font-normal text-white"
+              disabled={isLoading}
+              className="h-11 px-3 min-w-[165px] bg-[#2E3238] hover:bg-[#1a1e22] border border-[#2E3238] rounded-lg font-['Plus_Jakarta_Sans'] text-base font-normal text-white disabled:opacity-50"
             >
               Keep Subscription
             </Button>

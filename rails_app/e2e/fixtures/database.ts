@@ -122,6 +122,41 @@ export const DatabaseSnapshotter = {
   },
 
   /**
+   * Sets stripe_price_id on a credit pack.
+   * Required for testing Stripe checkout flow.
+   *
+   * @param creditPackId - The credit pack ID
+   * @param stripePriceId - The Stripe price ID to set
+   */
+  async setCreditPackStripePrice(
+    creditPackId: number,
+    stripePriceId: string
+  ): Promise<{
+    id: number;
+    name: string;
+    stripe_price_id: string;
+  }> {
+    const response = await fetch(`${BASE_URL}/test/database/set_credit_pack_stripe_price`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        credit_pack: {
+          id: creditPackId,
+          stripe_price_id: stripePriceId,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to set stripe price: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    return data.credit_pack;
+  },
+
+  /**
    * Sets credits for a user's account.
    * Useful for testing credit exhaustion scenarios.
    *

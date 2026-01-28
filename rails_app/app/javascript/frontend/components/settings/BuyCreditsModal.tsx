@@ -10,20 +10,13 @@ import {
 import { Button } from "@components/ui/button";
 import { SparklesIcon } from "@heroicons/react/24/solid";
 import { X } from "lucide-react";
-
-interface CreditPack {
-  id: number;
-  name: string;
-  credits: number;
-  price_cents: number;
-  stripe_price_id?: string | null;
-}
+import type { SettingsCreditPack } from "@pages/Settings";
 
 interface BuyCreditsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPurchase?: (packId: number) => void;
-  creditPacks?: CreditPack[];
+  creditPacks?: SettingsCreditPack[];
   isLoading?: boolean;
 }
 
@@ -111,7 +104,7 @@ export function BuyCreditsModal({
 }
 
 interface CreditPackOptionProps {
-  pack: CreditPack;
+  pack: SettingsCreditPack;
   selected: boolean;
   onSelect: () => void;
   tag?: { label: string; color: "green" | "yellow" };

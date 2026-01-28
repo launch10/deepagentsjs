@@ -1,38 +1,43 @@
 import { useState } from "react";
+import { router } from "@inertiajs/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { Button } from "@components/ui/button";
-import { Progress } from "@components/ui/progress";
 import {
   CreditCardIcon,
   ArrowTopRightOnSquareIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
-import { useCreditStore, useUsagePercent } from "~/stores/creditStore";
+import { useCreditStore } from "~/stores/creditStore";
 import { BuyCreditsModal } from "./BuyCreditsModal";
-
-interface BillingHistoryItem {
-  id: string;
-  amount_cents: number;
-  currency: string;
-  description: string;
-  created_at: string;
-  type: string;
-}
-
-interface CreditPack {
-  id: number;
-  name: string;
-  credits: number;
-  price_cents: number;
-  stripe_price_id?: string | null;
-}
+import type { SettingsProps } from "@pages/Settings";
 
 interface BillingCreditsSectionProps {
-  stripePortalUrl?: string | null;
-  billingHistory?: BillingHistoryItem[] | null;
-  creditPacks?: CreditPack[];
+  stripePortalUrl?: SettingsProps["stripe_portal_url"];
+  billingHistory?: SettingsProps["billing_history"];
+  creditPacks?: SettingsProps["credit_packs"];
+  expiresAt?: string | null;
+  subscriptionPrefixId?: string;
+  paymentMethod?: SettingsProps["payment_method"];
 }
+
+// Map payment method brands/types to logo file names
+const PAYMENT_METHOD_LOGOS: Record<string, string> = {
+  // Card brands
+  visa: "/images/card-brands/visa.png",
+  mastercard: "/images/card-brands/mastercard.png",
+  amex: "/images/card-brands/amex.png",
+  "american express": "/images/card-brands/amex.png",
+  discover: "/images/card-brands/discover.png",
+  diners: "/images/card-brands/diners.png",
+  "diners club": "/images/card-brands/diners.png",
+  jcb: "/images/card-brands/jcb.png",
+  // BNPL providers
+  affirm: "/images/card-brands/affirm.png",
+  klarna: "/images/card-brands/klarna.png",
+  afterpay: "/images/card-brands/afterpay.png",
+  afterpay_clearpay: "/images/card-brands/afterpay.png",
+};
 
 const ITEMS_PER_PAGE = 3;
 
@@ -40,14 +45,17 @@ export function BillingCreditsSection({
   stripePortalUrl,
   billingHistory,
   creditPacks = [],
+  expiresAt,
+  subscriptionPrefixId,
+  paymentMethod,
 }: BillingCreditsSectionProps) {
-  const { planCredits, planCreditsAllocated, periodEndsAt } = useCreditStore();
-  const usagePercentage = useUsagePercent() ?? 0;
+  const { balance, periodEndsAt } = useCreditStore();
   const [currentPage, setCurrentPage] = useState(0);
   const [buyCreditsModalOpen, setBuyCreditsModalOpen] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [isReactivating, setIsReactivating] = useState(false);
 
-  const creditsUsed = (planCreditsAllocated ?? 0) - (planCredits ?? 0);
+  const isCancelled = !!expiresAt;
 
   const totalPages = billingHistory ? Math.ceil(billingHistory.length / ITEMS_PER_PAGE) : 0;
   const paginatedHistory = billingHistory?.slice(
@@ -94,6 +102,35 @@ export function BillingCreditsSection({
     }
   };
 
+  const handleReactivate = async () => {
+    if (!subscriptionPrefixId) return;
+
+    setIsReactivating(true);
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+
+      const response = await fetch(`/subscriptions/${subscriptionPrefixId}/resume`, {
+        method: "POST",
+        headers: {
+          "X-CSRF-Token": csrfToken || "",
+          Accept: "application/json",
+        },
+        credentials: "same-origin",
+      });
+
+      if (response.ok) {
+        router.reload();
+      } else {
+        const text = await response.text();
+        alert(text || "Failed to reactivate subscription. Please try again.");
+      }
+    } catch {
+      alert("An error occurred. Please try again.");
+    } finally {
+      setIsReactivating(false);
+    }
+  };
+
   const handlePrevPage = () => {
     setCurrentPage((prev) => Math.max(0, prev - 1));
   };
@@ -131,38 +168,45 @@ export function BillingCreditsSection({
           </div>
         </CardHeader>
         <CardContent className="space-y-6 w-full lg:max-w-[704px]">
-          {/* Credits Used */}
+          {/* Credits Balance */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="font-['Plus_Jakarta_Sans'] text-sm font-semibold text-[#0F1113]">
-                Credits Used
+                Credits Balance
               </span>
-              <span className="font-['Plus_Jakarta_Sans'] text-xs text-[#2E3238]">
-                {Math.max(0, creditsUsed).toLocaleString()}/
-                {(planCreditsAllocated ?? 0).toLocaleString()}
+              <span className="font-['Plus_Jakarta_Sans'] text-sm text-[#2E3238]">
+                {(balance ?? 0).toLocaleString()}
               </span>
             </div>
-            <Progress value={usagePercentage} className="h-3.5" />
-            {periodEndsAt && (
+            {expiresAt ? (
               <p className="font-['Plus_Jakarta_Sans'] text-xs text-[#96989B]">
-                Resets on{" "}
-                {new Date(periodEndsAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
+                Expires {formatDate(expiresAt)}
               </p>
-            )}
+            ) : periodEndsAt ? (
+              <p className="font-['Plus_Jakarta_Sans'] text-xs text-[#96989B]">
+                Plan credits reset on {formatDate(periodEndsAt)}
+              </p>
+            ) : null}
           </div>
 
-          {/* Purchase Credits Button */}
-          <Button
-            onClick={handlePurchaseCredits}
-            disabled={creditPacks.length === 0}
-            className="w-full bg-[#3748B8] hover:bg-[#2d3a9a] text-white font-['Plus_Jakarta_Sans'] text-sm py-2"
-          >
-            Purchase Credits
-          </Button>
+          {/* Purchase Credits / Reactivate Button */}
+          {isCancelled ? (
+            <Button
+              onClick={handleReactivate}
+              disabled={isReactivating}
+              className="w-full bg-[#3748B8] hover:bg-[#2d3a9a] text-white font-['Plus_Jakarta_Sans'] text-sm py-2 disabled:opacity-50"
+            >
+              {isReactivating ? "Reactivating..." : "Reactivate Plan"}
+            </Button>
+          ) : (
+            <Button
+              onClick={handlePurchaseCredits}
+              disabled={creditPacks.length === 0}
+              className="w-full bg-[#3748B8] hover:bg-[#2d3a9a] text-white font-['Plus_Jakarta_Sans'] text-sm py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Purchase Credits
+            </Button>
+          )}
 
           {/* Billing History */}
           <div className="space-y-3">
@@ -232,15 +276,76 @@ export function BillingCreditsSection({
             )}
           </div>
 
-          {/* Update Payment Method Link */}
-          <button
-            onClick={handleStripePortal}
-            className="flex items-center gap-2 font-['Plus_Jakarta_Sans'] text-sm text-[#2E3238] hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!stripePortalUrl}
-          >
-            Update Payment Method
-            <ArrowTopRightOnSquareIcon className="h-4 w-4" />
-          </button>
+          {/* Payment Method */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="font-['Plus_Jakarta_Sans'] text-sm font-semibold text-[#0F1113]">
+                Payment Method
+              </span>
+              {stripePortalUrl && (
+                <button
+                  onClick={handleStripePortal}
+                  className="flex items-center gap-1 font-['Plus_Jakarta_Sans'] text-sm text-[#2E3238] hover:underline"
+                >
+                  Update Payment
+                  <ArrowTopRightOnSquareIcon className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            {/*
+              Payment method display is commented out for now.
+              Stripe Link intercepts card checkouts and stores them as "link" type,
+              making it difficult to reliably show card brand/last4. Users can still
+              update their payment method via the Stripe portal link above.
+
+              TODO: Re-enable when we have a better solution for displaying payment
+              method info consistently across card, Link, and BNPL payment types.
+            */}
+            {/* paymentMethod?.type ? (
+              <div className="flex items-center gap-[3px]">
+                {(() => {
+                  const logoKey =
+                    paymentMethod.type === "card" && paymentMethod.brand
+                      ? paymentMethod.brand.toLowerCase()
+                      : paymentMethod.type.toLowerCase();
+                  const logoUrl = PAYMENT_METHOD_LOGOS[logoKey];
+                  const displayName =
+                    paymentMethod.type === "card" && paymentMethod.brand
+                      ? paymentMethod.brand
+                      : paymentMethod.type;
+
+                  return (
+                    <div className="h-[25px] w-[52px] rounded border border-[#E2E1E0] overflow-hidden flex items-center justify-center bg-white">
+                      {logoUrl ? (
+                        <img
+                          src={logoUrl}
+                          alt={displayName}
+                          className="h-full w-full object-contain"
+                        />
+                      ) : (
+                        <span className="font-['Plus_Jakarta_Sans'] text-[10px] font-medium text-[#74767A]">
+                          {displayName}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
+                <span className="font-['Plus_Jakarta_Sans'] text-xs font-medium text-[#74767A]">
+                  {paymentMethod.type === "card" && paymentMethod.last4
+                    ? `•••• •••• •••• ${paymentMethod.last4}`
+                    : paymentMethod.type === "link" && paymentMethod.email
+                      ? paymentMethod.email
+                      : paymentMethod.last4
+                        ? `ending in ${paymentMethod.last4}`
+                        : null}
+                </span>
+              </div>
+            ) : (
+              <span className="font-['Plus_Jakarta_Sans'] text-sm text-[#96989B]">
+                No payment method on file
+              </span>
+            ) */}
+          </div>
         </CardContent>
       </Card>
 

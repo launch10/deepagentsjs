@@ -2,8 +2,8 @@
 
 class CreditPackCheckoutsController < ApplicationController
   before_action :authenticate_user!
-  before_action :set_credit_pack
-  before_action :require_active_subscription
+  before_action :set_credit_pack, only: [:show, :create]
+  before_action :require_active_subscription, only: [:create]
 
   def show
     @client_secret = params[:client_secret]
@@ -25,15 +25,25 @@ class CreditPackCheckoutsController < ApplicationController
     render json: { client_secret: checkout_session.client_secret }
   end
 
+  # Handle Stripe redirect after payment completion
+  def complete
+    Pay.sync(params)
+    flash[:notice] = {
+      title: "Credits purchased!",
+      description: "Your credits have been added to your account."
+    }.to_json
+    redirect_to settings_path
+  end
+
   private
 
   def create_checkout_session
-    payment_processor = current_account.set_payment_processor(:stripe)
+    payment_processor = current_account.add_payment_processor(:stripe)
 
     payment_processor.checkout(
       mode: :payment,
       line_items: @credit_pack.stripe_price_id,
-      return_url: checkout_return_url(return_to: settings_path),
+      return_url: complete_credit_pack_checkouts_url,
       ui_mode: :embedded,
       payment_intent_data: {
         metadata: {

@@ -239,7 +239,8 @@ components:
           description: CSRF token
         google_oauth_path:
           type: string
-          description: Google OAuth path
+          description: Google OAuth path (null if OAuth disabled)
+          nullable: true
         flash:
           type: array
           items:
@@ -266,7 +267,6 @@ components:
           nullable: true
       required:
         - csrf_token
-        - google_oauth_path
     SignUpProps:
       type: object
       additionalProperties: false
@@ -276,7 +276,8 @@ components:
           description: CSRF token
         google_oauth_path:
           type: string
-          description: Google OAuth path
+          description: Google OAuth path (null if OAuth disabled)
+          nullable: true
         flash:
           type: array
           items:
@@ -309,7 +310,6 @@ components:
           nullable: true
       required:
         - csrf_token
-        - google_oauth_path
         - captcha_field_name
         - minimum_password_length
         - spinner
@@ -383,6 +383,27 @@ components:
         impersonating:
           type: boolean
           description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+            - plan_credits
+            - pack_credits
+            - total_credits
+            - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
         thread_id:
           type: "null"
           description: Langgraph thread ID for the conversation
@@ -469,6 +490,27 @@ components:
         impersonating:
           type: boolean
           description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+            - plan_credits
+            - pack_credits
+            - total_credits
+            - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
         thread_id:
           type: string
           description: Langgraph thread ID for the conversation
@@ -619,6 +661,27 @@ components:
         impersonating:
           type: boolean
           description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+            - plan_credits
+            - pack_credits
+            - total_credits
+            - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
         thread_id:
           type: string
           description: Langgraph thread ID for the conversation
@@ -742,6 +805,27 @@ components:
         impersonating:
           type: boolean
           description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+            - plan_credits
+            - pack_credits
+            - total_credits
+            - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
         thread_id:
           type: string
           description: Langgraph thread ID for the conversation
@@ -1035,6 +1119,27 @@ components:
         impersonating:
           type: boolean
           description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+            - plan_credits
+            - pack_credits
+            - total_credits
+            - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
         thread_id:
           type: string
           description: Langgraph thread ID for the conversation
@@ -1337,6 +1442,27 @@ components:
         impersonating:
           type: boolean
           description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+            - plan_credits
+            - pack_credits
+            - total_credits
+            - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
         project:
           type: object
           properties:
@@ -1487,6 +1613,27 @@ components:
         impersonating:
           type: boolean
           description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+            - plan_credits
+            - pack_credits
+            - total_credits
+            - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
         user:
           type: object
           additionalProperties: false
@@ -1512,31 +1659,6 @@ components:
             - id
             - email
             - name
-        credit_balance:
-          type: object
-          additionalProperties: false
-          properties:
-            plan_credits:
-              type: number
-              description: Credits available from current plan
-            pack_credits:
-              type: number
-              description: Credits available from purchased packs
-            total_credits:
-              type: number
-              description: Total available credits (plan + pack)
-            plan_credit_limit:
-              type: integer
-              description: Monthly credit allocation for plan
-            reset_date:
-              type: string
-              description: When plan credits reset
-              nullable: true
-          required:
-            - plan_credits
-            - pack_credits
-            - total_credits
-            - plan_credit_limit
         subscription:
           type: object
           additionalProperties: false
@@ -1544,6 +1666,9 @@ components:
             id:
               type: integer
               description: Subscription ID
+            prefix_id:
+              type: string
+              description: Subscription prefix ID for API calls
             status:
               type: string
               description: Subscription status
@@ -1570,6 +1695,10 @@ components:
               type: string
               description: Current billing period end
               nullable: true
+            ends_at:
+              type: string
+              description: When subscription ends (if canceled)
+              nullable: true
             features:
               type: array
               items:
@@ -1577,6 +1706,7 @@ components:
               description: Plan features
           required:
             - id
+            - prefix_id
             - status
             - plan_name
             - plan_display_name
@@ -1622,12 +1752,69 @@ components:
           type: string
           description: URL to Stripe customer portal
           nullable: true
+        credit_packs:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                type: integer
+                description: Credit pack ID
+              name:
+                type: string
+                description: Credit pack name
+              credits:
+                type: integer
+                description: Number of credits in pack
+              price_cents:
+                type: integer
+                description: Price in cents
+              stripe_price_id:
+                type: string
+                description: Stripe price ID
+                nullable: true
+            required:
+              - id
+              - name
+              - credits
+              - price_cents
+          description: Available credit packs for purchase
+        payment_method:
+          type: object
+          additionalProperties: false
+          properties:
+            type:
+              type: string
+              description: Payment method type (card, link, affirm, etc.)
+              nullable: true
+            brand:
+              type: string
+              description: Card brand (Visa, Mastercard, etc.)
+              nullable: true
+            last4:
+              type: string
+              description: Last 4 digits of card or account
+              nullable: true
+            exp_month:
+              type: string
+              description: Card expiration month
+              nullable: true
+            exp_year:
+              type: string
+              description: Card expiration year
+              nullable: true
+            email:
+              type: string
+              description: Email for Link or PayPal payment methods
+              nullable: true
+          required: []
+          nullable: true
       required:
         - root_path
         - langgraph_path
         - jwt
         - user
-        - credit_balance
 servers:
   - url: https://{defaultHost}
     variables:

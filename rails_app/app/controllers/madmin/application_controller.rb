@@ -10,8 +10,8 @@ module Madmin
 
     inertia_share do
       {
-        current_user: current_user ? current_user.slice(:id, :name, :email).merge(admin: current_user.admin?) : nil,
-        true_user: true_user ? true_user.slice(:id, :name, :email).merge(admin: true_user.admin?) : nil,
+        current_user: current_user&.slice(:id, :name, :email)&.merge(admin: current_user.admin?),
+        true_user: true_user&.slice(:id, :name, :email)&.merge(admin: true_user.admin?),
         impersonating: current_user && true_user && current_user.id != true_user.id
       }
     end

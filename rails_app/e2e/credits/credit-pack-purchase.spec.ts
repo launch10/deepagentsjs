@@ -1,6 +1,17 @@
-import { test, expect, loginUser } from "../fixtures/auth";
+import { test, expect, loginUser, testUser } from "../fixtures/auth";
 import { DatabaseSnapshotter } from "../fixtures/database";
 import { SettingsPage } from "../pages/settings.page";
+
+/**
+ * Helper to dismiss the low credit warning modal if it appears
+ */
+async function dismissLowCreditModalIfPresent(page: import("@playwright/test").Page) {
+  const modal = page.getByTestId("credit-modal");
+  if (await modal.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await page.getByTestId("credit-modal-close").click();
+    await expect(modal).not.toBeVisible();
+  }
+}
 
 test.describe("Credit Pack Purchase", () => {
   let settingsPage: SettingsPage;
@@ -8,6 +19,8 @@ test.describe("Credit Pack Purchase", () => {
   test.describe("Buy Credits Modal", () => {
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("basic_account");
+      // Set credits high enough to avoid the low credit warning modal
+      await DatabaseSnapshotter.setCredits(testUser.email, 4000000, 0); // 4000 credits
       settingsPage = new SettingsPage(page);
     });
 
@@ -114,10 +127,15 @@ test.describe("Credit Pack Purchase", () => {
   test.describe("Checkout Flow (Mocked)", () => {
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("basic_account");
+      // Set credits high enough to avoid the low credit warning modal
+      await DatabaseSnapshotter.setCredits(testUser.email, 4000000, 0); // 4000 credits
       settingsPage = new SettingsPage(page);
     });
 
     test("shows error when credit pack has no stripe_price_id", async ({ page }) => {
+      // Clear the stripe_price_id to test the error case
+      await DatabaseSnapshotter.setCreditPackStripePrice(1, "");
+
       await loginUser(page);
       await settingsPage.goto();
 
@@ -136,44 +154,7 @@ test.describe("Credit Pack Purchase", () => {
       await expect(settingsPage.buyCreditsModal).toBeVisible();
     });
 
-    test("redirects to checkout page when stripe_price_id is set", async ({ page }) => {
-      // Set up a mock stripe price ID on the credit pack
-      await DatabaseSnapshotter.setCreditPackStripePrice(1, "price_test_mock_123");
-
-      await loginUser(page);
-      await settingsPage.goto();
-
-      await settingsPage.openBuyCreditsModal();
-      await settingsPage.selectCreditPack("small");
-
-      // Mock the checkout API to return a fake client_secret
-      await page.route("**/credit_packs/1/checkout", async (route) => {
-        if (route.request().method() === "POST") {
-          await route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify({
-              client_secret: "cs_test_mock_client_secret_12345",
-            }),
-          });
-        } else {
-          await route.continue();
-        }
-      });
-
-      // Click continue to payment
-      await settingsPage.clickContinueToPayment();
-
-      // Should redirect to checkout page with client_secret
-      await page.waitForURL(/\/credit_packs\/1\/checkout\?client_secret=/);
-
-      // Verify we're on the checkout page
-      await expect(page.getByText("Purchase 500 Credits")).toBeVisible();
-    });
-
     test("shows loading state while creating checkout session", async ({ page }) => {
-      await DatabaseSnapshotter.setCreditPackStripePrice(1, "price_test_mock_123");
-
       await loginUser(page);
       await settingsPage.goto();
 
@@ -183,13 +164,7 @@ test.describe("Credit Pack Purchase", () => {
       // Slow down the checkout API response
       await page.route("**/credit_packs/1/checkout", async (route) => {
         await new Promise((resolve) => setTimeout(resolve, 500));
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            client_secret: "cs_test_mock_client_secret_12345",
-          }),
-        });
+        await route.continue();
       });
 
       // Click continue and immediately check for loading state
@@ -197,6 +172,78 @@ test.describe("Credit Pack Purchase", () => {
 
       // Button should show loading state
       await expect(page.getByRole("button", { name: /Loading/i })).toBeVisible();
+    });
+  });
+
+  test.describe("Real Stripe Checkout", () => {
+    test.beforeEach(async ({ page }) => {
+      await DatabaseSnapshotter.restoreSnapshot("basic_account");
+      // Set credits high enough to avoid the low credit warning modal
+      await DatabaseSnapshotter.setCredits(testUser.email, 4000000, 0); // 4000 credits
+      settingsPage = new SettingsPage(page);
+    });
+
+    test("navigates to Stripe embedded checkout page", async ({ page }) => {
+      await loginUser(page);
+      await settingsPage.goto();
+
+      await settingsPage.openBuyCreditsModal();
+      await settingsPage.selectCreditPack("small");
+      await settingsPage.clickContinueToPayment();
+
+      // Should redirect to checkout page with real client_secret
+      await page.waitForURL(/\/credit_packs\/1\/checkout\?client_secret=/, { timeout: 15000 });
+
+      // Verify we're on the checkout page with the title
+      await expect(page.getByText("Purchase 500 Credits")).toBeVisible();
+      await expect(page.getByText("$25.00")).toBeVisible();
+    });
+
+    test("displays Stripe embedded checkout form", async ({ page }) => {
+      await loginUser(page);
+      await settingsPage.goto();
+
+      await settingsPage.openBuyCreditsModal();
+      await settingsPage.selectCreditPack("small");
+      await settingsPage.clickContinueToPayment();
+
+      // Wait for checkout page
+      await page.waitForURL(/\/credit_packs\/1\/checkout\?client_secret=/, { timeout: 15000 });
+
+      // Wait for Stripe iframe to load (it takes a moment)
+      const stripeFrame = page.frameLocator('iframe[name^="__privateStripeFrame"]').first();
+
+      // The Stripe checkout should eventually show payment form elements
+      // Note: Stripe's embedded checkout loads asynchronously
+      await expect(page.locator('[data-controller="stripe--embedded-checkout"]')).toBeVisible({
+        timeout: 10000,
+      });
+    });
+
+    test("Stripe checkout loads with iframe", async ({ page }) => {
+      await loginUser(page);
+      await settingsPage.goto();
+
+      await settingsPage.openBuyCreditsModal();
+      await settingsPage.selectCreditPack("small");
+      await settingsPage.clickContinueToPayment();
+
+      // Wait for checkout page
+      await page.waitForURL(/\/credit_packs\/1\/checkout\?client_secret=/, { timeout: 15000 });
+
+      // Wait for Stripe embedded checkout to load
+      await expect(page.locator('[data-controller="stripe--embedded-checkout"]')).toBeVisible({
+        timeout: 10000,
+      });
+
+      // Verify our page shows the correct credit pack info
+      await expect(page.getByText("Purchase 500 Credits")).toBeVisible();
+      await expect(page.getByText("$25.00")).toBeVisible();
+
+      // Verify Stripe iframe loads (embedded checkout creates an iframe)
+      await expect(
+        page.locator('[data-controller="stripe--embedded-checkout"] iframe')
+      ).toBeVisible({ timeout: 15000 });
     });
   });
 });

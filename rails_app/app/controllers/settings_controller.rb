@@ -16,10 +16,31 @@ class SettingsController < SubscribedController
     end
   end
 
+  def update_password
+    if current_user.update_with_password(password_params)
+      # Sign in the user again to prevent session invalidation
+      bypass_sign_in(current_user)
+
+      respond_to do |format|
+        format.html { redirect_to settings_path, notice: "Password updated successfully" }
+        format.json { render json: { success: true }, status: :ok }
+      end
+    else
+      respond_to do |format|
+        format.html { redirect_to settings_path, alert: current_user.errors.full_messages.join(", ") }
+        format.json { render json: { errors: current_user.errors.full_messages }, status: :unprocessable_entity }
+      end
+    end
+  end
+
   private
 
   def user_params
     params.require(:user).permit(:first_name, :last_name)
+  end
+
+  def password_params
+    params.require(:user).permit(:current_password, :password, :password_confirmation)
   end
 
   def settings_props
@@ -28,7 +49,8 @@ class SettingsController < SubscribedController
       subscription: subscription_props,
       billing_history: billing_history_props,
       stripe_portal_url: stripe_portal_url,
-      credit_packs: credit_packs_props
+      credit_packs: credit_packs_props,
+      payment_method: payment_method_props
     }
   end
 
@@ -47,6 +69,7 @@ class SettingsController < SubscribedController
 
     {
       id: @subscription.id,
+      prefix_id: @subscription.prefix_id,
       status: @subscription.status,
       plan_name: @plan.name,
       plan_display_name: @plan.display_name || @plan.name.titleize,
@@ -55,6 +78,7 @@ class SettingsController < SubscribedController
       currency: @plan.currency,
       current_period_start: @subscription.current_period_start&.iso8601,
       current_period_end: @subscription.current_period_end&.iso8601,
+      ends_at: @subscription.ends_at&.iso8601,
       features: @plan.features || []
     }
   end
@@ -99,5 +123,23 @@ class SettingsController < SubscribedController
         stripe_price_id: pack.stripe_price_id
       }
     end
+  end
+
+  def payment_method_props
+    processor = current_account.payment_processor
+    return nil unless processor
+
+    # Try default first, fall back to first payment method
+    pm = processor.default_payment_method || processor.payment_methods.first
+    return nil unless pm
+
+    {
+      type: pm.payment_method_type,
+      brand: pm.brand,
+      last4: pm.last4,
+      exp_month: pm.exp_month,
+      exp_year: pm.exp_year,
+      email: pm.email
+    }
   end
 end

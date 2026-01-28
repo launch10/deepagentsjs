@@ -506,8 +506,8 @@ export interface components {
         SignInProps: {
             /** @description CSRF token */
             csrf_token: string;
-            /** @description Google OAuth path */
-            google_oauth_path: string;
+            /** @description Google OAuth path (null if OAuth disabled) */
+            google_oauth_path?: string | null;
             /** @description Flash messages */
             flash?: {
                 /** @enum {string} */
@@ -521,8 +521,8 @@ export interface components {
         SignUpProps: {
             /** @description CSRF token */
             csrf_token: string;
-            /** @description Google OAuth path */
-            google_oauth_path: string;
+            /** @description Google OAuth path (null if OAuth disabled) */
+            google_oauth_path?: string | null;
             /** @description Flash messages */
             flash?: {
                 /** @enum {string} */
@@ -567,6 +567,14 @@ export interface components {
             } | null;
             /** @description Whether admin is currently impersonating another user */
             impersonating?: boolean;
+            /** @description Credit balance for the current account */
+            credits?: {
+                plan_credits: number;
+                pack_credits: number;
+                total_credits: number;
+                plan_credits_allocated: number;
+                period_ends_at?: string | null;
+            } | null;
             /** @description Langgraph thread ID for the conversation */
             thread_id: null;
             project?: {
@@ -605,6 +613,14 @@ export interface components {
             } | null;
             /** @description Whether admin is currently impersonating another user */
             impersonating?: boolean;
+            /** @description Credit balance for the current account */
+            credits?: {
+                plan_credits: number;
+                pack_credits: number;
+                total_credits: number;
+                plan_credits_allocated: number;
+                period_ends_at?: string | null;
+            } | null;
             /** @description Langgraph thread ID for the conversation */
             thread_id: string | null;
             project?: {
@@ -669,6 +685,14 @@ export interface components {
             } | null;
             /** @description Whether admin is currently impersonating another user */
             impersonating?: boolean;
+            /** @description Credit balance for the current account */
+            credits?: {
+                plan_credits: number;
+                pack_credits: number;
+                total_credits: number;
+                plan_credits_allocated: number;
+                period_ends_at?: string | null;
+            } | null;
             /** @description Langgraph thread ID for the conversation */
             thread_id?: string | null;
             project?: {
@@ -723,6 +747,14 @@ export interface components {
             } | null;
             /** @description Whether admin is currently impersonating another user */
             impersonating?: boolean;
+            /** @description Credit balance for the current account */
+            credits?: {
+                plan_credits: number;
+                pack_credits: number;
+                total_credits: number;
+                plan_credits_allocated: number;
+                period_ends_at?: string | null;
+            } | null;
             /** @description Langgraph thread ID for the conversation */
             thread_id?: string | null;
             project?: {
@@ -840,6 +872,14 @@ export interface components {
             } | null;
             /** @description Whether admin is currently impersonating another user */
             impersonating?: boolean;
+            /** @description Credit balance for the current account */
+            credits?: {
+                plan_credits: number;
+                pack_credits: number;
+                total_credits: number;
+                plan_credits_allocated: number;
+                period_ends_at?: string | null;
+            } | null;
             /** @description Langgraph thread ID for the conversation */
             thread_id?: string | null;
             project?: {
@@ -961,6 +1001,14 @@ export interface components {
             } | null;
             /** @description Whether admin is currently impersonating another user */
             impersonating?: boolean;
+            /** @description Credit balance for the current account */
+            credits?: {
+                plan_credits: number;
+                pack_credits: number;
+                total_credits: number;
+                plan_credits_allocated: number;
+                period_ends_at?: string | null;
+            } | null;
             project: {
                 id: number;
                 uuid: string;
@@ -1018,6 +1066,14 @@ export interface components {
             } | null;
             /** @description Whether admin is currently impersonating another user */
             impersonating?: boolean;
+            /** @description Credit balance for the current account */
+            credits?: {
+                plan_credits: number;
+                pack_credits: number;
+                total_credits: number;
+                plan_credits_allocated: number;
+                period_ends_at?: string | null;
+            } | null;
             user: {
                 /** @description User ID */
                 id: number;
@@ -1030,21 +1086,11 @@ export interface components {
                 /** @description User last name */
                 last_name?: string | null;
             };
-            credit_balance: {
-                /** @description Credits available from current plan */
-                plan_credits: number;
-                /** @description Credits available from purchased packs */
-                pack_credits: number;
-                /** @description Total available credits (plan + pack) */
-                total_credits: number;
-                /** @description Monthly credit allocation for plan */
-                plan_credit_limit: number;
-                /** @description When plan credits reset */
-                reset_date?: string | null;
-            };
             subscription?: {
                 /** @description Subscription ID */
                 id: number;
+                /** @description Subscription prefix ID for API calls */
+                prefix_id: string;
                 /** @description Subscription status */
                 status: string;
                 /** @description Plan name */
@@ -1061,6 +1107,8 @@ export interface components {
                 current_period_start?: string | null;
                 /** @description Current billing period end */
                 current_period_end?: string | null;
+                /** @description When subscription ends (if canceled) */
+                ends_at?: string | null;
                 /** @description Plan features */
                 features: string[];
             } | null;
@@ -1081,6 +1129,33 @@ export interface components {
             }[] | null;
             /** @description URL to Stripe customer portal */
             stripe_portal_url?: string | null;
+            /** @description Available credit packs for purchase */
+            credit_packs?: {
+                /** @description Credit pack ID */
+                id: number;
+                /** @description Credit pack name */
+                name: string;
+                /** @description Number of credits in pack */
+                credits: number;
+                /** @description Price in cents */
+                price_cents: number;
+                /** @description Stripe price ID */
+                stripe_price_id?: string | null;
+            }[];
+            payment_method?: {
+                /** @description Payment method type (card, link, affirm, etc.) */
+                type?: string | null;
+                /** @description Card brand (Visa, Mastercard, etc.) */
+                brand?: string | null;
+                /** @description Last 4 digits of card or account */
+                last4?: string | null;
+                /** @description Card expiration month */
+                exp_month?: string | null;
+                /** @description Card expiration year */
+                exp_year?: string | null;
+                /** @description Email for Link or PayPal payment methods */
+                email?: string | null;
+            } | null;
         };
     };
     responses: never;

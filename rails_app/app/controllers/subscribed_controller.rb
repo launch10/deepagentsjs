@@ -15,11 +15,19 @@ class SubscribedController < ApplicationController
   inertia_share do
     flash_messages = []
 
-    flash_messages << {type: "success", message: flash[:notice]} if flash[:notice]
+    # Support both simple string flashes and structured {title:, description:} JSON strings
+    [:notice, :error, :info].each do |flash_type|
+      next unless flash[flash_type]
 
-    flash_messages << {type: "error", message: flash[:error]} if flash[:error]
+      type_map = {notice: "success", error: "error", info: "info"}
+      parsed = parse_flash_message(flash[flash_type])
 
-    flash_messages << {type: "info", message: flash[:info]} if flash[:info]
+      if parsed.is_a?(Hash) && parsed["title"]
+        flash_messages << {type: type_map[flash_type], title: parsed["title"], description: parsed["description"]}
+      else
+        flash_messages << {type: type_map[flash_type], message: flash[flash_type]}
+      end
+    end
 
     {
       root_path: root_path,
@@ -55,5 +63,14 @@ class SubscribedController < ApplicationController
   def current_user_props
     return nil unless current_user
     current_user.slice(:id, :name, :email).merge(admin: current_user.admin?)
+  end
+
+  # Try to parse a flash message as JSON, returning the original string if it fails
+  def parse_flash_message(message)
+    return message unless message.is_a?(String) && message.start_with?("{")
+
+    JSON.parse(message)
+  rescue JSON::ParserError
+    message
   end
 end

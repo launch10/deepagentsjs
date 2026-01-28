@@ -40,6 +40,12 @@ export class SettingsPage {
   readonly keepSubscriptionButton: Locator;
   readonly confirmCancellationButton: Locator;
 
+  // Buy Credits modal
+  readonly purchaseCreditsButton: Locator;
+  readonly buyCreditsModal: Locator;
+  readonly buyCreditsModalTitle: Locator;
+  readonly continueToPaymentButton: Locator;
+
   constructor(page: Page) {
     this.page = page;
 
@@ -75,6 +81,12 @@ export class SettingsPage {
     this.cancelModal = page.getByText(/remain live until/i);
     this.keepSubscriptionButton = page.getByRole("button", { name: /Keep Subscription/i });
     this.confirmCancellationButton = page.getByText(/Confirm Cancellation/i);
+
+    // Buy Credits modal
+    this.purchaseCreditsButton = page.getByRole("button", { name: /Purchase Credits/i });
+    this.buyCreditsModal = page.getByRole("dialog").filter({ hasText: "Buy More Credits" });
+    this.buyCreditsModalTitle = page.getByText("Buy More Credits");
+    this.continueToPaymentButton = page.getByRole("button", { name: /Continue to Payment/i });
   }
 
   /**
@@ -259,5 +271,53 @@ export class SettingsPage {
    */
   async getBillingHistoryPageText(): Promise<string | null> {
     return await this.billingHistoryPageIndicator.textContent();
+  }
+
+  /**
+   * Open the Buy Credits modal
+   */
+  async openBuyCreditsModal(): Promise<void> {
+    await this.purchaseCreditsButton.click();
+    await this.buyCreditsModal.waitFor({ state: "visible", timeout: 5000 });
+  }
+
+  /**
+   * Select a credit pack by name (small, medium, big)
+   * @param packName - The name of the pack to select (small, medium, big)
+   */
+  async selectCreditPack(packName: string): Promise<void> {
+    const displayNames: Record<string, string> = {
+      small: "Small",
+      medium: "Medium",
+      big: "Large",
+    };
+    const displayName = displayNames[packName] || packName;
+    const packOption = this.page
+      .locator("button")
+      .filter({ hasText: new RegExp(`^${displayName}`, "i") });
+    await packOption.click();
+  }
+
+  /**
+   * Click continue to payment button
+   */
+  async clickContinueToPayment(): Promise<void> {
+    await this.continueToPaymentButton.click();
+  }
+
+  /**
+   * Check if Buy Credits modal is visible
+   */
+  async isBuyCreditsModalVisible(): Promise<boolean> {
+    return await this.buyCreditsModal.isVisible();
+  }
+
+  /**
+   * Close the Buy Credits modal
+   */
+  async closeBuyCreditsModal(): Promise<void> {
+    const closeButton = this.buyCreditsModal.locator('button:has(.sr-only:text("Close"))');
+    await closeButton.click();
+    await this.buyCreditsModal.waitFor({ state: "hidden", timeout: 5000 });
   }
 }
