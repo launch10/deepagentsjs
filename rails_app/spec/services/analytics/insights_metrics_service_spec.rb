@@ -5,6 +5,7 @@ require "rails_helper"
 RSpec.describe Analytics::InsightsMetricsService do
   let(:account) { create(:account) }
   let(:project) { create(:project, account: account) }
+  let(:website) { create(:website, project: project) }
   let(:dashboard_service) { Analytics::DashboardService.new(account, days: 30, status_filter: "all") }
 
   subject { described_class.new(dashboard_service) }
@@ -12,7 +13,7 @@ RSpec.describe Analytics::InsightsMetricsService do
   before do
     Analytics::CacheService.clear_for_account(account.id)
     create(:analytics_daily_metric, account: account, project: project,
-      date: 5.days.ago, leads_count: 10, page_views_count: 100)
+      date: 5.days.ago, leads_count: 10, page_views_count: 100, cost_micros: 50_000_000)
   end
 
   describe "#summary" do
@@ -30,6 +31,12 @@ RSpec.describe Analytics::InsightsMetricsService do
       expect(result[:totals]).to have_key(:cpl_available)
     end
 
+    it "includes total spend in dollars" do
+      result = subject.summary
+      expect(result[:totals]).to have_key(:total_spend_dollars)
+      expect(result[:totals][:total_spend_dollars]).to eq(50.0)
+    end
+
     it "extracts project summaries" do
       result = subject.summary
       expect(result[:projects]).to be_an(Array)
@@ -37,10 +44,37 @@ RSpec.describe Analytics::InsightsMetricsService do
       expect(result[:projects].first).to have_key(:name)
     end
 
+    it "includes days_since_last_lead in project summaries" do
+      lead = create(:lead, account: account, email: "test@example.com")
+      create(:website_lead, website: website, lead: lead, created_at: 3.days.ago)
+
+      result = subject.summary
+      expect(result[:projects].first).to have_key(:days_since_last_lead)
+      expect(result[:projects].first[:days_since_last_lead]).to eq(3)
+    end
+
+    it "includes spend_dollars in project summaries" do
+      result = subject.summary
+      expect(result[:projects].first).to have_key(:spend_dollars)
+      expect(result[:projects].first[:spend_dollars]).to eq(50.0)
+    end
+
     it "extracts trends" do
       result = subject.summary
       expect(result[:trends]).to have_key(:leads_trend)
       expect(result[:trends]).to have_key(:page_views_trend)
+    end
+
+    it "includes flags for insight detection" do
+      result = subject.summary
+      expect(result[:flags]).to have_key(:has_stalled_project)
+      expect(result[:flags]).to have_key(:has_high_performer)
+      expect(result[:flags]).to have_key(:has_new_first_lead)
+    end
+
+    it "includes period string" do
+      result = subject.summary
+      expect(result[:period]).to eq("Last 30 Days")
     end
 
     it "serializes to JSON without errors" do
@@ -52,6 +86,26 @@ RSpec.describe Analytics::InsightsMetricsService do
       result = subject.summary
       expect(result[:trends][:leads_trend]).to have_key(:direction)
       expect(result[:trends][:leads_trend]).to have_key(:percent)
+    end
+  end
+
+  describe "flags detection" do
+    context "stalled project" do
+      it "detects stalled project when no leads in 7+ days" do
+        lead = create(:lead, account: account, email: "test@example.com")
+        create(:website_lead, website: website, lead: lead, created_at: 10.days.ago)
+
+        result = subject.summary
+        expect(result[:flags][:has_stalled_project]).to be true
+      end
+
+      it "does not flag as stalled when recent lead exists" do
+        lead = create(:lead, account: account, email: "test@example.com")
+        create(:website_lead, website: website, lead: lead, created_at: 2.days.ago)
+
+        result = subject.summary
+        expect(result[:flags][:has_stalled_project]).to be false
+      end
     end
   end
 end

@@ -6,15 +6,7 @@ RSpec.describe Analytics::ComputeDailyMetricsWorker do
   let(:account) { create(:account) }
   let(:project) { create(:project, account: account) }
   let(:website) { create(:website, project: project) }
-  let(:domain) { create(:domain, account: account, website: website) }
   let(:target_date) { Date.yesterday }
-
-  # Ensure partitions exist for domain_request_counts
-  before(:all) do
-    start_time = 2.days.ago
-    end_time = 1.day.from_now
-    ensure_partitions_exist_for_range(start_time, end_time)
-  end
 
   describe "#perform" do
     context "with date argument" do
@@ -23,7 +15,10 @@ RSpec.describe Analytics::ComputeDailyMetricsWorker do
       before do
         # Create source data
         create(:website_lead, website: website, lead: lead, created_at: target_date.to_time)
-        create(:domain_request_count, domain: domain, account: account, hour: target_date.to_time, request_count: 500)
+        # Create Ahoy visits for page views (L10.track)
+        create(:ahoy_visit, website: website, started_at: target_date.to_time)
+        create(:ahoy_visit, website: website, started_at: target_date.to_time + 1.hour)
+        create(:ahoy_visit, website: website, started_at: target_date.to_time + 2.hours)
       end
 
       it "creates analytics_daily_metric record" do
@@ -38,10 +33,10 @@ RSpec.describe Analytics::ComputeDailyMetricsWorker do
         expect(metric.leads_count).to eq(1)
       end
 
-      it "aggregates page views correctly" do
+      it "aggregates page views from Ahoy visits correctly" do
         subject.perform(target_date.iso8601)
         metric = AnalyticsDailyMetric.last
-        expect(metric.page_views_count).to eq(500)
+        expect(metric.page_views_count).to eq(3)
       end
 
       it "upserts on conflict (idempotent)" do

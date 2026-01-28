@@ -10,7 +10,7 @@ module Analytics
   #
   # Sources:
   # - website_leads -> leads_count
-  # - domain_request_counts -> page_views_count
+  # - ahoy_visits (L10.track) -> page_views_count
   # - ad_performance_daily -> impressions, clicks, cost_micros
   #
   class ComputeDailyMetricsWorker < ApplicationWorker
@@ -65,13 +65,10 @@ module Analytics
     def count_page_views(project, date)
       return 0 unless project.website
 
-      domain_ids = project.website.domains.pluck(:id)
-      return 0 if domain_ids.empty?
-
-      DomainRequestCount
-        .where(domain_id: domain_ids)
-        .where(hour: date.all_day)
-        .sum(:request_count)
+      Ahoy::Visit
+        .where(website: project.website)
+        .where(started_at: date.all_day)
+        .count
     end
 
     def aggregate_ads_metrics(project, date)

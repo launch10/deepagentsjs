@@ -2,10 +2,10 @@
 
 module Analytics
   module Metrics
-    # Calculates page views metrics from domain_request_counts.
+    # Calculates page views metrics from Ahoy visits (L10.track).
     #
     # For historical dates, uses pre-computed data from analytics_daily_metrics.
-    # For today, queries live from domain_request_counts.
+    # For today, queries live from ahoy_visits.
     #
     class PageViewsMetric < BaseMetric
       # Generate time series data for page views.
@@ -80,13 +80,10 @@ module Analytics
       def live_count_for_project_today(project)
         return 0 unless project.website
 
-        domain_ids = project.website.domains.pluck(:id)
-        return 0 if domain_ids.empty?
-
-        DomainRequestCount
-          .where(domain_id: domain_ids)
-          .where(hour: Date.current.all_day)
-          .sum(:request_count)
+        Ahoy::Visit
+          .where(website: project.website)
+          .where(started_at: Date.current.all_day)
+          .count
       end
     end
   end
