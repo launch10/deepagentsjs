@@ -40,9 +40,9 @@ class SubscribedController < ApplicationController
     return nil unless current_account
 
     {
-      plan_credits: millicredits_to_credits(current_account.plan_millicredits),
-      pack_credits: millicredits_to_credits(current_account.pack_millicredits),
-      total_credits: millicredits_to_credits(current_account.total_millicredits),
+      plan_credits: Millicredits.to_credits(current_account.plan_millicredits).round(2),
+      pack_credits: Millicredits.to_credits(current_account.pack_millicredits).round(2),
+      total_credits: Millicredits.to_credits(current_account.total_millicredits).round(2),
       plan_credits_allocated: plan_credits_allocated,
       period_ends_at: current_account.subscriptions.active.order(id: :desc).first&.current_period_end&.iso8601
     }
@@ -53,12 +53,6 @@ class SubscribedController < ApplicationController
     return 0 unless plan&.plan_tier
 
     plan.plan_tier.credits
-  end
-
-  def millicredits_to_credits(millicredits)
-    return 0 if millicredits.nil?
-
-    (millicredits / 1000.0).round(2)
   end
 
   def sign_in_jwt
