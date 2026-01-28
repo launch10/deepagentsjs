@@ -5,7 +5,6 @@
 #  id                  :bigint           not null, primary key
 #  account_users_count :integer          default(0)
 #  billing_email       :string
-#  credit_balance      :integer          default(0), not null
 #  domain              :string
 #  extra_billing_info  :text
 #  name                :string           not null

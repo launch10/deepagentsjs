@@ -25,6 +25,7 @@ class SettingsController < SubscribedController
   def settings_props
     {
       user: user_props,
+      credit_balance: credit_balance_props,
       subscription: subscription_props,
       billing_history: billing_history_props,
       stripe_portal_url: stripe_portal_url
@@ -76,5 +77,22 @@ class SettingsController < SubscribedController
   def stripe_portal_url
     return nil unless current_account.payment_processor&.processor == "stripe"
     @stripe_portal_url ||= current_account.payment_processor.billing_portal(return_url: settings_url).url
+  end
+
+  def credit_balance_props
+    plan_tier = @plan&.plan_tier
+
+    {
+      plan_credits: millicredits_to_credits(current_account.plan_millicredits),
+      pack_credits: millicredits_to_credits(current_account.pack_millicredits),
+      total_credits: millicredits_to_credits(current_account.total_millicredits),
+      plan_credit_limit: plan_tier&.credits || 0,
+      reset_date: @subscription&.current_period_end&.strftime("%b %d, %Y")
+    }
+  end
+
+  def millicredits_to_credits(millicredits)
+    return 0 if millicredits.nil?
+    (millicredits / 1000.0).round(2)
   end
 end
