@@ -32,8 +32,8 @@ class Users::SessionsController < Devise::SessionsController
       inertia_location after_sign_in_path_for(resource)
     else
       render inertia: "Auth/SignIn",
-             props: { errors: { base: [t("devise.failure.invalid", authentication_keys: "Email")] } },
-             status: :unprocessable_entity
+        props: { errors: { base: [t("devise.failure.invalid", authentication_keys: "Email")] } },
+        status: :unprocessable_entity
     end
   end
 

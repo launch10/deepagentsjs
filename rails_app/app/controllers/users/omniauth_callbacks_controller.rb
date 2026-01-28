@@ -34,7 +34,8 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     @account ||= connected_account.owner.owned_account
   end
 
-private
+  private
+
   def continue_active_deploy!
     return unless account
 
