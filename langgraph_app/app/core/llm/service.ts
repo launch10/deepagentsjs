@@ -49,9 +49,9 @@ const MODEL_PROVIDERS: Record<string, LLMProvider> = {
 };
 
 type ModelWithDetails = {
-  model: BaseChatModel,
-  config: ModelConfig
-}
+  model: BaseChatModel;
+  config: ModelConfig;
+};
 
 /**
  * Unified LLM service - fetches config from Rails and creates model instances.
@@ -76,7 +76,7 @@ class LLMService {
         }
         throw new Error(
           "Failed to fetch model configuration from Rails. " +
-          "Ensure Rails is running and the /api/v1/model_configuration endpoint is available."
+            "Ensure Rails is running and the /api/v1/model_configuration endpoint is available."
         );
       },
       CACHE_TTL_SECONDS
@@ -137,14 +137,18 @@ class LLMService {
     usagePercent: number = 0,
     maxTier?: number
   ): Promise<BaseChatModel> {
-    const models = await this.getModels(skill, speed, cost, usagePercent, maxTier)
-    const modelWithConfig = models.at(0)
+    const models = await this.getModels(skill, speed, cost, usagePercent, maxTier);
+    const modelWithConfig = models.at(0);
     if (!modelWithConfig) {
       const tierMsg = maxTier !== undefined ? ` with maxTier=${maxTier}` : "";
-      throw new Error(`No available model for ${skill}/${speed}/${cost} at ${usagePercent}% usage${tierMsg}`);
+      throw new Error(
+        `No available model for ${skill}/${speed}/${cost} at ${usagePercent}% usage${tierMsg}`
+      );
     }
-    console.log(`Using model tier ${modelWithConfig.config.price_tier} model: ${modelWithConfig.config.model_card}`)
-    return modelWithConfig.model
+    console.log(
+      `Using model tier ${modelWithConfig.config.price_tier} model: ${modelWithConfig.config.model_card}`
+    );
+    return modelWithConfig.model;
   }
 
   /**
@@ -165,10 +169,12 @@ class LLMService {
     maxTier?: number
   ): Promise<ModelWithDetails[]> {
     if (this.useTest()) {
-      return [{
-        model: LLMTestResponder.get(),
-        config: {} as any
-      }];
+      return [
+        {
+          model: LLMTestResponder.get(),
+          config: {} as any,
+        },
+      ];
     }
 
     const config = await this.fetchConfig();
@@ -187,24 +193,42 @@ class LLMService {
         if (models.length === 0) {
           // First-choice model is uncosted — alert ops
           rollbar.error(
-            new Error(`Model ${key} (${modelConfig.model_card}) has no cost configuration — skipping`),
-            { modelKey: key, modelCard: modelConfig.model_card ?? "unknown", skill, speed, cost: cost as string }
+            new Error(
+              `Model ${key} (${modelConfig.model_card}) has no cost configuration — skipping`
+            ),
+            {
+              modelKey: key,
+              modelCard: modelConfig.model_card ?? "unknown",
+              skill,
+              speed,
+              cost: cost as string,
+            }
           );
         }
         continue;
       }
 
       const model = this.createModel(key, modelConfig);
-      if (model) models.push({
-        model,
-        config: modelConfig
-      });
+      if (model)
+        models.push({
+          model,
+          config: modelConfig,
+        });
     }
 
     if (models.length === 0) {
+      // Fallback: find the cheapest enabled model with valid cost config across all models
+      const fallback = this.findCheapestFallback(config);
+      if (fallback) {
+        console.warn(
+          `No models matched ${skill}/${speed}/${cost} preferences — falling back to cheapest model: ${fallback.config.model_card}`
+        );
+        return [fallback];
+      }
+
       const tierMsg = maxTier !== undefined ? ` with maxTier=${maxTier}` : "";
       throw new Error(
-        `No available models for ${skill}/${speed}/${cost} at ${usagePercent}% usage${tierMsg}`
+        `No available model for ${skill}/${speed}/${cost} at ${usagePercent}% usage${tierMsg}`
       );
     }
 
@@ -228,8 +252,9 @@ class LLMService {
     usagePercent: number = 0,
     maxTier?: number
   ): Promise<BaseChatModel[]> {
-    return await this.getModels(skill, speed, cost, usagePercent, maxTier)
-                     .then(models => models.map(model => model.model));
+    return await this.getModels(skill, speed, cost, usagePercent, maxTier).then((models) =>
+      models.map((model) => model.model)
+    );
   }
 
   /**
@@ -249,6 +274,34 @@ class LLMService {
     }
 
     return result;
+  }
+
+  // ============ Fallback ============
+
+  /**
+   * Find the cheapest enabled model with valid cost config across all models.
+   * Used as a last-resort fallback when no models match the preference chain.
+   * Cheapest = highest price_tier number (tier 5 is cheapest, tier 1 is most expensive).
+   */
+  private findCheapestFallback(config: ModelConfigurationResponse): ModelWithDetails | null {
+    const candidates: { key: string; config: ModelConfig }[] = [];
+
+    for (const [key, modelConfig] of Object.entries(config.models)) {
+      if (!modelConfig.enabled) continue;
+      if (!hasValidCostConfig(modelConfig)) continue;
+      candidates.push({ key, config: modelConfig });
+    }
+
+    if (candidates.length === 0) return null;
+
+    // Sort by price_tier descending (higher tier number = cheaper)
+    candidates.sort((a, b) => (b.config.price_tier ?? 0) - (a.config.price_tier ?? 0));
+
+    const cheapest = candidates[0]!;
+    const model = this.createModel(cheapest.key, cheapest.config);
+    if (!model) return null;
+
+    return { model, config: cheapest.config };
   }
 
   // ============ Test Support ============

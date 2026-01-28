@@ -32,7 +32,7 @@ let mockSnapshotOverrides: Partial<ChatSnapshot<Record<string, unknown>>> = {};
 
 // Mock the langgraph-ai-sdk-react module
 vi.mock("langgraph-ai-sdk-react", async (importOriginal) => {
-  const actual = await importOriginal() as any;
+  const actual = (await importOriginal()) as any;
   return {
     ...actual,
     useChatSelector: vi.fn((chat, selector) => {
@@ -163,8 +163,18 @@ function renderWithContext(
 
 // Mock Inertia's Link component (needed for CreditGate)
 vi.mock("@inertiajs/react", () => ({
-  Link: ({ children, href, ...props }: { children: React.ReactNode; href: string; [key: string]: any }) => (
-    <a href={href} {...props}>{children}</a>
+  Link: ({
+    children,
+    href,
+    ...props
+  }: {
+    children: React.ReactNode;
+    href: string;
+    [key: string]: any;
+  }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
   ),
 }));
 
@@ -172,8 +182,9 @@ describe("Input", () => {
   beforeEach(() => {
     // Reset mocks before each test
     mockSnapshotOverrides = {};
-    // Reset credit store
+    // Reset credit store and enable credits (default is disabled until hydration)
     useCreditStore.getState().reset();
+    useCreditStore.setState({ isOutOfCredits: false });
   });
 
   describe("Textarea (context-aware)", () => {
@@ -243,7 +254,10 @@ describe("Input", () => {
     it("is disabled when streaming", () => {
       const composer = createMockComposer();
       composer.isReady = true;
-      renderWithContext(<Input.SubmitButton>Send</Input.SubmitButton>, { status: "streaming", composer });
+      renderWithContext(<Input.SubmitButton>Send</Input.SubmitButton>, {
+        status: "streaming",
+        composer,
+      });
       expect(screen.getByRole("button")).toBeDisabled();
     });
   });

@@ -12,14 +12,14 @@ describe("creditStore", () => {
   });
 
   describe("initial state", () => {
-    it("starts with null balance and not out of credits", () => {
+    it("starts with null balance and out of credits (disabled until hydration)", () => {
       const state = useCreditStore.getState();
 
       expect(state.balance).toBeNull();
       expect(state.planCredits).toBeNull();
       expect(state.packCredits).toBeNull();
       expect(state.planCreditsAllocated).toBeNull();
-      expect(state.isOutOfCredits).toBe(false);
+      expect(state.isOutOfCredits).toBe(true);
       expect(state.showOutOfCreditsModal).toBe(false);
       expect(state.showLowCreditModal).toBe(false);
       expect(state.modalDismissedAt).toBeNull();
@@ -307,7 +307,7 @@ describe("creditStore", () => {
       expect(state.planCredits).toBeNull();
       expect(state.packCredits).toBeNull();
       expect(state.planCreditsAllocated).toBeNull();
-      expect(state.isOutOfCredits).toBe(false);
+      expect(state.isOutOfCredits).toBe(true);
       expect(state.showOutOfCreditsModal).toBe(false);
       expect(state.showLowCreditModal).toBe(false);
       expect(state.modalDismissedAt).toBeNull();
@@ -427,9 +427,7 @@ describe("creditStore", () => {
       expect(raw).not.toBeNull();
 
       const parsed = JSON.parse(raw!);
-      expect(parsed.state.modalDismissedAt).toEqual(
-        useCreditStore.getState().modalDismissedAt
-      );
+      expect(parsed.state.modalDismissedAt).toEqual(useCreditStore.getState().modalDismissedAt);
       expect(parsed.state.lowCreditWarningDismissedAt).toEqual(
         useCreditStore.getState().lowCreditWarningDismissedAt
       );
@@ -465,8 +463,7 @@ describe("creditStore", () => {
       useCreditStore.getState().dismissLowCreditWarning();
 
       const savedModalDismissedAt = useCreditStore.getState().modalDismissedAt;
-      const savedWarningDismissedAt =
-        useCreditStore.getState().lowCreditWarningDismissedAt;
+      const savedWarningDismissedAt = useCreditStore.getState().lowCreditWarningDismissedAt;
 
       // Capture what persist wrote to localStorage
       const persisted = localStorage.getItem("credit-store");

@@ -39,8 +39,8 @@ export class UnknownModelCostError extends Error {
 
 /**
  * Check whether a model config has valid cost configuration.
- * A model is considered costed if at least one of cost_in or cost_out is > 0.
- * Every LLM call produces input or output tokens, so if neither has a rate, cost is always 0.
+ * A model is considered costed only if BOTH cost_in AND cost_out are > 0.
+ * Both rates are required to prevent revenue leakage from uncosted token types.
  */
 export function hasValidCostConfig(config: ModelConfig): boolean {
   const hasCostIn = config.cost_in !== null && config.cost_in > 0;
@@ -56,10 +56,7 @@ export function hasValidCostConfig(config: ModelConfig): boolean {
  * @returns Cost in millicredits (rounded to nearest integer)
  * @throws UnknownModelCostError if model is not found in configs
  */
-export function calculateCost(
-  record: UsageRecord,
-  configs: Record<string, ModelConfig>
-): number {
+export function calculateCost(record: UsageRecord, configs: Record<string, ModelConfig>): number {
   const config = findModelConfig(record.model, configs);
 
   if (!config) {
@@ -128,7 +125,7 @@ function tokenCost(tokens: number, rate: number | null): number {
   }
 
   // Formula: tokens × price_per_million / 10
-  return tokens * rate / 10;
+  return (tokens * rate) / 10;
 }
 
 /**
