@@ -33,7 +33,7 @@ threads threads_count, threads_count
 unless ENV["PORT"]
   services_sh = File.expand_path("../../config/services.sh", __dir__)
   if File.exist?(services_sh)
-    launch10_env = ENV.fetch("RAILS_ENV", "development") == "test" ? "test" : "development"
+    launch10_env = (ENV.fetch("RAILS_ENV", "development") == "test") ? "test" : "development"
     detected = `LAUNCH10_ENV=#{launch10_env} bash -c 'source "#{services_sh}" && echo $RAILS_PORT'`.strip
     ENV["PORT"] = detected if detected.match?(/\A\d+\z/)
   end

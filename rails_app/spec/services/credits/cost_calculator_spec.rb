@@ -33,6 +33,7 @@ RSpec.describe Credits::CostCalculator do
     context "with known model and basic tokens" do
       # Formula: millicredits = tokens × price_per_million / 10
       # Example: 100 input tokens at $1/M = 10 millicredits = 0.01 credits = $0.0001 ✓
+      # 100 @ $1/M = (1M = $1) / (100 = X(1M)) = 0.0001 => Cost and credits are identical, so this = 10 millicredits
 
       it "calculates correct cost for input tokens only" do
         usage = create(:llm_usage,
@@ -45,6 +46,8 @@ RSpec.describe Credits::CostCalculator do
           cache_read_tokens: 0)
 
         cost = described_class.new(usage).call
+        # 10 tokens × $1/m / 10 = 1 millicredit
+        # 100 tokens × $1/m / 10 = 10 millicredits
         # 1000 tokens × $1/M / 10 = 100 millicredits
         expect(cost).to eq(100)
       end

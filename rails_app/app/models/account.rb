@@ -135,4 +135,12 @@ class Account < ApplicationRecord
   def total_credits
     Millicredits.to_credits(total_millicredits)
   end
+
+  def credits
+    total_credits
+  end
+
+  def credits_used
+    [plan_credits - credits, 0].max
+  end
 end

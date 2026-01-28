@@ -70,6 +70,43 @@ RSpec.describe Credits::AllocationService do
     account.update!(plan_millicredits: plan_mc, pack_millicredits: pack_mc, total_millicredits: total_mc)
   end
 
+  # Helper for downgrade tests: creates realistic transaction history
+  # with an initial allocation followed by consumption
+  # Note: Input is in credits, but stored as millicredits (×1000)
+  def setup_plan_with_usage(initial_allocation:, usage:, pack_credits: 0)
+    initial_mc = initial_allocation * 1000
+    usage_mc = usage * 1000
+    pack_mc = pack_credits * 1000
+    remaining_mc = initial_mc - usage_mc
+    total_mc = remaining_mc + pack_mc
+
+    # Step 1: Allocate initial plan credits
+    account.credit_transactions.create!(
+      transaction_type: "allocate",
+      credit_type: "plan",
+      reason: "plan_renewal",
+      amount_millicredits: initial_mc,
+      balance_after_millicredits: initial_mc + pack_mc,
+      plan_balance_after_millicredits: initial_mc,
+      pack_balance_after_millicredits: pack_mc,
+      skip_sequence_validation: true
+    )
+
+    # Step 2: Consume credits (creates the transaction the downgrade logic looks for)
+    account.credit_transactions.create!(
+      transaction_type: "consume",
+      credit_type: "plan",
+      reason: "ai_generation",
+      amount_millicredits: -usage_mc,
+      balance_after_millicredits: total_mc,
+      plan_balance_after_millicredits: remaining_mc,
+      pack_balance_after_millicredits: pack_mc,
+      skip_sequence_validation: true
+    )
+
+    account.update!(plan_millicredits: remaining_mc, pack_millicredits: pack_mc, total_millicredits: total_mc)
+  end
+
   before do
     # Ensure plan has fake_processor_id
     current_plan.update!(fake_processor_id: current_plan.name) unless current_plan.fake_processor_id.present?
@@ -301,7 +338,7 @@ RSpec.describe Credits::AllocationService do
       let(:current_plan) { growth_monthly }
 
       before do
-        setup_account_state(plan_credits: 10000, pack_credits: 0)
+        setup_plan_with_usage(initial_allocation: 15000, usage: 5000)
       end
 
       it "pro-rates balance based on usage" do
@@ -330,7 +367,7 @@ RSpec.describe Credits::AllocationService do
       let(:current_plan) { growth_monthly }
 
       before do
-        setup_account_state(plan_credits: 0, pack_credits: 0)
+        setup_plan_with_usage(initial_allocation: 15000, usage: 15000)
       end
 
       it "floors balance at 0 (no negative from downgrade)" do
@@ -356,7 +393,7 @@ RSpec.describe Credits::AllocationService do
       let(:current_plan) { starter_monthly }
 
       before do
-        setup_account_state(plan_credits: 4000, pack_credits: 0)
+        setup_plan_with_usage(initial_allocation: 5000, usage: 1000)
       end
 
       it "pro-rates: new_balance = starter_credits - usage" do
@@ -366,7 +403,7 @@ RSpec.describe Credits::AllocationService do
           previous_plan: growth_monthly
         )
 
-        # usage = 5000 - 4000 = 1000
+        # usage = 1000 (from actual consume transaction)
         # new_balance = 2000 - 1000 = 1000
         account.reload
         expect(account.plan_credits).to eq(1000)
