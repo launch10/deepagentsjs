@@ -12,7 +12,7 @@ RSpec.describe Analytics::InsightsMetricsService do
   before do
     Analytics::CacheService.clear_for_account(account.id)
     create(:analytics_daily_metric, account: account, project: project,
-           date: 5.days.ago, leads_count: 10, page_views_count: 100)
+      date: 5.days.ago, leads_count: 10, page_views_count: 100)
   end
 
   describe "#summary" do

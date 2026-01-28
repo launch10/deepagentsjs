@@ -67,17 +67,17 @@ module Analytics
           percent: overview[:page_views][:totals][:trend_percent]
         },
         ctr_trend: if overview[:ctr][:available]
-          {
-            direction: overview[:ctr][:totals][:trend_direction],
-            percent: overview[:ctr][:totals][:trend_percent]
-          }
-        end,
+                     {
+                       direction: overview[:ctr][:totals][:trend_direction],
+                       percent: overview[:ctr][:totals][:trend_percent]
+                     }
+                   end,
         cpl_trend: if overview[:cpl][:available]
-          {
-            direction: overview[:cpl][:totals][:trend_direction],
-            percent: overview[:cpl][:totals][:trend_percent]
-          }
-        end
+                     {
+                       direction: overview[:cpl][:totals][:trend_direction],
+                       percent: overview[:cpl][:totals][:trend_percent]
+                     }
+                   end
       }
     end
   end

@@ -48,4 +48,18 @@ Zhong.schedule do
       Credits::FindUnprocessedRunsWorker.perform_async
     end
   end
+
+  category "Analytics" do
+    # Sync Google Ads performance data with 7-day rolling window
+    # Runs early to capture late-arriving conversions before daily metrics computation
+    every(1.day, "sync google ads performance", at: "04:00") do
+      GoogleAds::SyncPerformanceWorker.perform_async
+    end
+
+    # Compute daily analytics metrics from source tables
+    # Runs after Google Ads sync to include fresh ad performance data
+    every(1.day, "compute daily metrics", at: "05:00") do
+      Analytics::ComputeDailyMetricsWorker.perform_async
+    end
+  end
 end

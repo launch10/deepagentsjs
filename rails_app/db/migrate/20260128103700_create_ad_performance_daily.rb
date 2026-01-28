@@ -18,7 +18,7 @@ class CreateAdPerformanceDaily < ActiveRecord::Migration[8.0]
 
     # Unique constraint enables idempotent upserts (7-day rolling window sync)
     add_index :ad_performance_daily, [:campaign_id, :date],
-              unique: true, name: "idx_ad_perf_daily_campaign_date"
+      unique: true, name: "idx_ad_perf_daily_campaign_date"
 
     # For aggregating by date range
     add_index :ad_performance_daily, :date

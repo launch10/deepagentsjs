@@ -19,9 +19,9 @@ module Analytics
       # @yield Block that computes the data if cache miss
       # @return [Hash] The cached or computed data
       #
-      def fetch(account_id, metric, days, &block)
+      def fetch(account_id, metric, days, &)
         key = cache_key(account_id, metric, days)
-        Rails.cache.fetch(key, expires_in: CACHE_TTL, &block)
+        Rails.cache.fetch(key, expires_in: CACHE_TTL, &)
       end
 
       # Generate a cache key that includes 15-minute time bucket.
@@ -52,7 +52,7 @@ module Analytics
       def time_bucket_key
         now = Time.current
         minute_bucket = (now.min / 15) * 15
-        "#{now.strftime('%Y%m%d%H')}#{minute_bucket.to_s.rjust(2, '0')}"
+        "#{now.strftime("%Y%m%d%H")}#{minute_bucket.to_s.rjust(2, "0")}"
       end
     end
   end

@@ -20,7 +20,7 @@ RSpec.describe Analytics::DashboardService do
   describe "#performance_overview" do
     before do
       create(:analytics_daily_metric, account: account, project: project,
-             date: 5.days.ago, leads_count: 10, page_views_count: 100)
+        date: 5.days.ago, leads_count: 10, page_views_count: 100)
     end
 
     it "returns leads time series" do
@@ -52,7 +52,7 @@ RSpec.describe Analytics::DashboardService do
 
       # Modify data
       create(:analytics_daily_metric, account: account, project: project,
-             date: 3.days.ago, leads_count: 50)
+        date: 3.days.ago, leads_count: 50)
 
       # Second call should return cached result
       result = subject.performance_overview
@@ -63,8 +63,8 @@ RSpec.describe Analytics::DashboardService do
   describe "#projects_summary" do
     it "returns aggregated stats per project" do
       create(:analytics_daily_metric, account: account, project: project,
-             date: 5.days.ago, leads_count: 10, page_views_count: 100,
-             impressions: 1000, clicks: 50, cost_micros: 10_000_000)
+        date: 5.days.ago, leads_count: 10, page_views_count: 100,
+        impressions: 1000, clicks: 50, cost_micros: 10_000_000)
 
       result = subject.projects_summary
       expect(result.first[:uuid]).to eq(project.uuid)
@@ -83,7 +83,7 @@ RSpec.describe Analytics::DashboardService do
 
     it "calculates CPL correctly" do
       create(:analytics_daily_metric, account: account, project: project,
-             date: 5.days.ago, leads_count: 5, cost_micros: 25_000_000) # $25
+        date: 5.days.ago, leads_count: 5, cost_micros: 25_000_000) # $25
 
       result = subject.projects_summary
       project_result = result.find { |p| p[:uuid] == project.uuid }
@@ -92,7 +92,7 @@ RSpec.describe Analytics::DashboardService do
 
     it "returns nil for CPL when no leads" do
       create(:analytics_daily_metric, account: account, project: project,
-             date: 5.days.ago, leads_count: 0, cost_micros: 25_000_000)
+        date: 5.days.ago, leads_count: 0, cost_micros: 25_000_000)
 
       result = subject.projects_summary
       project_result = result.find { |p| p[:uuid] == project.uuid }
@@ -103,9 +103,9 @@ RSpec.describe Analytics::DashboardService do
   describe "date range filtering" do
     it "respects days parameter" do
       create(:analytics_daily_metric, account: account, project: project,
-              date: 60.days.ago, leads_count: 100)
+        date: 60.days.ago, leads_count: 100)
       create(:analytics_daily_metric, account: account, project: project,
-              date: 5.days.ago, leads_count: 10)
+        date: 5.days.ago, leads_count: 10)
 
       service = described_class.new(account, days: 30, status_filter: "all")
       result = service.projects_summary

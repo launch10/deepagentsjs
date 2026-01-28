@@ -51,7 +51,11 @@ module Analytics
           percent = (change.to_f / previous_total * 100).round(1)
           {
             trend_percent: percent.abs,
-            trend_direction: percent > 0 ? "up" : (percent < 0 ? "down" : "flat")
+            trend_direction: if percent > 0
+                               "up"
+                             else
+                               ((percent < 0) ? "down" : "flat")
+                             end
           }
         end
       end

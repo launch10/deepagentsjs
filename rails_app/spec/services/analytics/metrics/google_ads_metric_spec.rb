@@ -51,7 +51,7 @@ RSpec.describe Analytics::Metrics::GoogleAdsMetric do
       before do
         create(:ads_account, account: account)
         create(:ad_performance_daily, campaign: campaign,
-               date: 3.days.ago, impressions: 1000, clicks: 50)
+          date: 3.days.ago, impressions: 1000, clicks: 50)
       end
 
       it "returns available: true with data" do
@@ -66,7 +66,7 @@ RSpec.describe Analytics::Metrics::GoogleAdsMetric do
     before do
       create(:ads_account, account: account)
       create(:ad_performance_daily, campaign: campaign,
-             date: 3.days.ago, impressions: 1000, clicks: 50)
+        date: 3.days.ago, impressions: 1000, clicks: 50)
     end
 
     it "calculates CTR correctly" do
@@ -94,7 +94,7 @@ RSpec.describe Analytics::Metrics::GoogleAdsMetric do
     before do
       create(:ads_account, account: account)
       create(:ad_performance_daily, campaign: campaign,
-             date: 3.days.ago, cost_micros: 50_000_000) # $50
+        date: 3.days.ago, cost_micros: 50_000_000) # $50
       create(:website_lead, website: website, lead: lead, created_at: 3.days.ago)
       create(:website_lead, website: website, lead: create(:lead, account: account, email: "test2@example.com"), created_at: 3.days.ago)
     end
@@ -116,11 +116,11 @@ RSpec.describe Analytics::Metrics::GoogleAdsMetric do
       create(:ads_account, account: account)
       # Previous period: $50 CPL (10 days ago)
       create(:ad_performance_daily, campaign: campaign,
-             date: 10.days.ago, cost_micros: 50_000_000)
+        date: 10.days.ago, cost_micros: 50_000_000)
 
       # Current period: $25 CPL (3 days ago)
       create(:ad_performance_daily, campaign: campaign,
-             date: 3.days.ago, cost_micros: 25_000_000)
+        date: 3.days.ago, cost_micros: 25_000_000)
     end
 
     it "shows 'up' trend when CPL decreases (which is good)" do

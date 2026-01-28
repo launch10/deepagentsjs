@@ -13,9 +13,9 @@ RSpec.describe Analytics::Metrics::LeadsMetric do
     before do
       # Create pre-computed historical data
       create(:analytics_daily_metric, account: account, project: project,
-             date: 3.days.ago, leads_count: 2)
+        date: 3.days.ago, leads_count: 2)
       create(:analytics_daily_metric, account: account, project: project,
-             date: 1.day.ago, leads_count: 1)
+        date: 1.day.ago, leads_count: 1)
     end
 
     it "returns dates array" do
@@ -59,11 +59,11 @@ RSpec.describe Analytics::Metrics::LeadsMetric do
     it "shows positive trend when this period > last period" do
       # Last period (8-14 days ago): 5 leads
       create(:analytics_daily_metric, account: account, project: project,
-             date: 10.days.ago, leads_count: 5)
+        date: 10.days.ago, leads_count: 5)
 
       # This period: 10 leads
       create(:analytics_daily_metric, account: account, project: project,
-             date: 2.days.ago, leads_count: 10)
+        date: 2.days.ago, leads_count: 10)
 
       result = subject.time_series
 
@@ -74,11 +74,11 @@ RSpec.describe Analytics::Metrics::LeadsMetric do
     it "shows negative trend when this period < last period" do
       # Last period: 10 leads
       create(:analytics_daily_metric, account: account, project: project,
-             date: 10.days.ago, leads_count: 10)
+        date: 10.days.ago, leads_count: 10)
 
       # This period: 5 leads
       create(:analytics_daily_metric, account: account, project: project,
-             date: 2.days.ago, leads_count: 5)
+        date: 2.days.ago, leads_count: 5)
 
       result = subject.time_series
 

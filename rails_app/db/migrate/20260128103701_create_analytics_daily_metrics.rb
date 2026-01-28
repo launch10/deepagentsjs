@@ -19,15 +19,15 @@ class CreateAnalyticsDailyMetrics < ActiveRecord::Migration[8.0]
 
     # Unique constraint for idempotent upserts during daily computation
     add_index :analytics_daily_metrics, [:account_id, :project_id, :date],
-              unique: true, name: "idx_analytics_daily_acct_proj_date"
+      unique: true, name: "idx_analytics_daily_acct_proj_date"
 
     # For dashboard queries: get all metrics for an account in a date range
     add_index :analytics_daily_metrics, [:account_id, :date],
-              name: "idx_analytics_daily_acct_date"
+      name: "idx_analytics_daily_acct_date"
 
     # For project-specific queries
     add_index :analytics_daily_metrics, [:project_id, :date],
-              name: "idx_analytics_daily_proj_date"
+      name: "idx_analytics_daily_proj_date"
 
     # Foreign keys - safe on new table creation
     safety_assured do

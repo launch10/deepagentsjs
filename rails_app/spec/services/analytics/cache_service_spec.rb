@@ -41,7 +41,7 @@ RSpec.describe Analytics::CacheService do
 
     it "includes account_id, metric, and days" do
       key = described_class.cache_key(account.id, "leads", 30)
-      expect(key).to include("#{account.id}")
+      expect(key).to include(account.id.to_s)
       expect(key).to include("leads")
       expect(key).to include("30")
     end

@@ -88,9 +88,9 @@ module Analytics
         total_clicks = metrics&.total_clicks.to_i
         total_cost_micros = metrics&.total_cost_micros.to_i
 
-        ctr = total_impressions > 0 ? (total_clicks.to_f / total_impressions).round(4) : nil
+        ctr = (total_impressions > 0) ? (total_clicks.to_f / total_impressions).round(4) : nil
         cost_dollars = total_cost_micros / 1_000_000.0
-        cpl = total_leads > 0 && total_cost_micros > 0 ? (cost_dollars / total_leads).round(2) : nil
+        cpl = (total_leads > 0 && total_cost_micros > 0) ? (cost_dollars / total_leads).round(2) : nil
 
         {
           id: project.id,
