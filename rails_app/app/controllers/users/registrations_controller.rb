@@ -15,7 +15,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
     {
       flash: flash_messages,
       csrf_token: form_authenticity_token,
-      google_oauth_path: user_google_oauth2_omniauth_authorize_path,
+      google_oauth_path: google_oauth_enabled? ? user_google_oauth2_omniauth_authorize_path : nil,
       captcha_field_name: InvisibleCaptcha.honeypots.sample,
       minimum_password_length: resource_class.password_length.min,
       spinner: session[:invisible_captcha_spinner]
@@ -93,5 +93,9 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def setup_captcha_session
     session[:invisible_captcha_timestamp] = Time.zone.now.iso8601
     session[:invisible_captcha_spinner] = InvisibleCaptcha.encode("#{session[:invisible_captcha_timestamp]}-#{request.remote_ip}")
+  end
+
+  def google_oauth_enabled?
+    Jumpstart::Omniauth.enabled?("google-oauth2")
   end
 end

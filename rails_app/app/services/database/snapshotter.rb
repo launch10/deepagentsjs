@@ -133,8 +133,10 @@ module Database
       return if tables.empty?
 
       # Use CASCADE to handle foreign key constraints
+      # Use RESTART IDENTITY to reset auto-incrementing sequences
+      # This prevents duplicate key violations when restoring snapshots
       ActiveRecord::Base.connection.execute(
-        "TRUNCATE TABLE #{tables.join(", ")} CASCADE"
+        "TRUNCATE TABLE #{tables.join(", ")} RESTART IDENTITY CASCADE"
       )
     end
 

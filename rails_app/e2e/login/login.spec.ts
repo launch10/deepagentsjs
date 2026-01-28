@@ -1,45 +1,10 @@
 import { test, expect, loginUser, testUser } from "../fixtures/auth";
 import { DatabaseSnapshotter } from "../fixtures/database";
-import { e2eConfig } from "../config";
-import type { Page } from "@playwright/test";
-
-/**
- * Login helper for non-subscribed users that doesn't expect BrainstormLanding
- */
-async function loginNonSubscribedUser(
-  page: Page,
-  email: string = testUser.email,
-  password: string = testUser.password
-): Promise<void> {
-  await page.goto("/users/sign_in");
-  await page.waitForLoadState("domcontentloaded");
-
-  // Click "Continue with Email" to reveal the sign-in form
-  const continueWithEmail = page.getByRole("button", { name: "Continue with Email" });
-  await continueWithEmail.waitFor({ state: "visible", timeout: 10000 });
-  await continueWithEmail.click();
-
-  const emailInput = page.locator('input[name="user[email]"]');
-  await emailInput.waitFor({ state: "visible", timeout: 10000 });
-  await emailInput.fill(email);
-
-  const passwordInput = page.locator('input[name="user[password]"]');
-  await passwordInput.fill(password);
-
-  await page.click('button[type="submit"]');
-
-  // Wait for navigation away from sign_in page - will redirect to pricing for non-subscribed
-  await page.waitForURL((url) => !url.toString().includes("/users/sign_in"), {
-    timeout: 10000,
-  });
-}
+import { LoginPage } from "../pages/login.page";
 
 test.describe("Login Flow", () => {
   test.describe("Unauthenticated Access", () => {
-    // TODO: Make this go to Login page once we deploy Pricing page via static website
-    test("unauthenticated user visiting root is redirected to pricing", async ({
-      page,
-    }) => {
+    test("unauthenticated user visiting root is redirected to pricing", async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("core_data");
 
       await page.goto("/");
@@ -51,47 +16,33 @@ test.describe("Login Flow", () => {
   });
 
   test.describe("Non-subscribed User Access", () => {
-    test("non-subscribed user accessing app is redirected to pricing", async ({
-      page,
-    }) => {
+    test("non-subscribed user accessing app is redirected to pricing", async ({ page }) => {
+      const loginPage = new LoginPage(page);
+
       // Use a snapshot with a non-subscribed user
       await DatabaseSnapshotter.restoreSnapshot("non_subscribed_account");
 
       // Login without expecting BrainstormLanding
-      await loginNonSubscribedUser(page);
+      await loginPage.gotoSignIn();
+      await loginPage.signInAndWaitForRedirect(testUser.email, testUser.password);
 
       // Should be redirected to pricing since user is not subscribed
-      await expect(page).toHaveURL(/\/pricing/);
+      await loginPage.waitForPricingRedirect();
       await expect(page.getByText("Pricing Plans")).toBeVisible();
     });
   });
 
   test.describe("Subscribed User Access", () => {
     test("subscribed user signing in is redirected to /projects/new", async ({ page }) => {
+      const loginPage = new LoginPage(page);
+
       await DatabaseSnapshotter.restoreSnapshot("basic_account");
 
-      // Go to sign in page
-      await page.goto("/users/sign_in");
-      await page.waitForLoadState("domcontentloaded");
-
-      // Click "Continue with Email" to reveal the sign-in form
-      const continueWithEmail = page.getByRole("button", { name: "Continue with Email" });
-      await continueWithEmail.waitFor({ state: "visible", timeout: 10000 });
-      await continueWithEmail.click();
-
-      // Fill in credentials
-      const emailInput = page.locator('input[name="user[email]"]');
-      await emailInput.waitFor({ state: "visible", timeout: 10000 });
-      await emailInput.fill(testUser.email);
-
-      const passwordInput = page.locator('input[name="user[password]"]');
-      await passwordInput.fill(testUser.password);
-
-      // Submit form
-      await page.click('button[type="submit"]');
+      await loginPage.gotoSignIn();
+      await loginPage.signInAndWaitForRedirect(testUser.email, testUser.password);
 
       // Should be redirected to /projects/new
-      await expect(page).toHaveURL(/\/projects\/new/, { timeout: 10000 });
+      await loginPage.waitForSubscribedRedirect();
 
       // Should see the BrainstormLanding page with chat input
       await expect(page.getByText("Tell us your next big idea")).toBeVisible({
@@ -122,6 +73,8 @@ test.describe("Login Flow", () => {
      * the redirect flow works correctly up to the Stripe checkout step.
      */
     test("user can sign up from pricing and reach subscription checkout", async ({ page }) => {
+      const loginPage = new LoginPage(page);
+
       await DatabaseSnapshotter.restoreSnapshot("core_data");
 
       // Start at pricing page
@@ -132,69 +85,55 @@ test.describe("Login Flow", () => {
       await expect(page.getByRole("heading", { name: "Pricing Plans" })).toBeVisible();
 
       // Select a plan - click the first "Get Started" button
-      const getStartedButton = page
-        .getByRole("link", { name: /get started/i })
-        .first();
+      const getStartedButton = page.getByRole("link", { name: /get started/i }).first();
       await getStartedButton.click();
 
-      // Unauthenticated users are redirected to signup first (with stored location for redirect after)
+      // Unauthenticated users are redirected to signup first
       await expect(page).toHaveURL(/\/users\/sign_up/);
 
-      // Click "Continue with Email" to reveal the sign-up form
-      const continueWithEmail = page.getByRole("button", { name: "Continue with Email" });
-      await continueWithEmail.waitFor({ state: "visible", timeout: 10000 });
-      await continueWithEmail.click();
-
-      // Complete signup form
+      // Complete signup form using LoginPage
       const testEmail = `testuser_${Date.now()}@test.com`;
-      await page.getByLabel("Full Name").fill("Test User");
-      await page.getByLabel("Email").fill(testEmail);
-      await page.getByLabel("Password", { exact: true }).fill("TestPass123!");
-      await page.getByLabel("Confirm Password").fill("TestPass123!");
+      await loginPage.signUp("Test User", testEmail, "TestPass123!");
 
-      // Use getByRole to find the submit button
-      const signupButton = page.getByRole('button', { name: 'Create Account' });
-      await expect(signupButton).toBeVisible();
-
-      // Click and wait for the checkout page to appear (Turbo handles navigation)
-      await signupButton.click({ force: true });
-
-      // Wait for either Checkout heading (subscriptions/new) or Pricing heading (if error)
-      // This handles Turbo's async page replacement
+      // Wait for either Checkout heading or Pricing heading (if error)
       await expect(
-        page.getByRole('heading', { name: 'Checkout' }).or(
-          page.getByRole('heading', { name: 'Pricing Plans' })
-        )
+        page
+          .getByRole("heading", { name: "Checkout" })
+          .or(page.getByRole("heading", { name: "Pricing Plans" }))
       ).toBeVisible({ timeout: 30000 });
 
       // Check if we're on Checkout or Pricing
-      const isOnCheckout = await page.getByRole('heading', { name: 'Checkout' }).isVisible().catch(() => false);
+      const isOnCheckout = await page
+        .getByRole("heading", { name: "Checkout" })
+        .isVisible()
+        .catch(() => false);
 
       if (isOnCheckout) {
         // Stripe is configured - complete the full checkout with test card
         const stripeFrame = page.frameLocator('iframe[name*="embedded-checkout"]').first();
 
         // Wait for payment method section to load
-        await expect(stripeFrame.locator('text=Payment method')).toBeVisible({ timeout: 30000 });
+        await expect(stripeFrame.locator("text=Payment method")).toBeVisible({ timeout: 30000 });
 
         // Wait for the UI to stabilize
         await page.waitForTimeout(1000);
 
-        // The Stripe accordion UI might already have Card selected/expanded
         // Check if card number input is already visible
         const cardNumberInput = stripeFrame.locator('[placeholder="1234 1234 1234 1234"]');
-        const cardInputVisible = await cardNumberInput.isVisible({ timeout: 3000 }).catch(() => false);
+        const cardInputVisible = await cardNumberInput
+          .isVisible({ timeout: 3000 })
+          .catch(() => false);
 
         if (!cardInputVisible) {
-          // Card form not visible - need to click the accordion button to expand it
-          // Use JavaScript click via evaluate to bypass Playwright's actionability checks
-          const cardAccordionButton = stripeFrame.locator('[data-testid="card-accordion-item-button"]');
+          // Card form not visible - click the accordion button to expand it
+          const cardAccordionButton = stripeFrame.locator(
+            '[data-testid="card-accordion-item-button"]'
+          );
           await cardAccordionButton.evaluate((el: HTMLElement) => {
-            el.scrollIntoView({ behavior: 'instant', block: 'center' });
+            el.scrollIntoView({ behavior: "instant", block: "center" });
             el.click();
           });
 
-          // Wait for card number input to appear after expanding
           await expect(cardNumberInput).toBeVisible({ timeout: 15000 });
         }
 
@@ -210,13 +149,17 @@ test.describe("Login Flow", () => {
         }
 
         // Fill billing postal code if shown
-        const postalInput = stripeFrame.locator('[placeholder*="ZIP"], [placeholder*="Postal code"]');
+        const postalInput = stripeFrame.locator(
+          '[placeholder*="ZIP"], [placeholder*="Postal code"]'
+        );
         if (await postalInput.isVisible({ timeout: 2000 }).catch(() => false)) {
           await postalInput.fill("12345");
         }
 
-        // Uncheck "Save my information" to simplify the flow (skip Link phone requirement)
-        const saveInfoCheckbox = stripeFrame.getByRole('checkbox', { name: /save my information/i });
+        // Uncheck "Save my information" to skip Link phone requirement
+        const saveInfoCheckbox = stripeFrame.getByRole("checkbox", {
+          name: /save my information/i,
+        });
         if (await saveInfoCheckbox.isVisible({ timeout: 2000 }).catch(() => false)) {
           if (await saveInfoCheckbox.isChecked().catch(() => false)) {
             await saveInfoCheckbox.uncheck();
@@ -224,24 +167,65 @@ test.describe("Login Flow", () => {
         }
 
         // Click Subscribe button
-        const subscribeButton = stripeFrame.getByRole('button', { name: 'Subscribe' });
+        const subscribeButton = stripeFrame.getByRole("button", { name: "Subscribe" });
         await expect(subscribeButton).toBeEnabled({ timeout: 10000 });
-        await subscribeButton.click();
 
-        // Wait for Stripe to process and redirect back to the app
-        // Should end up on BrainstormLanding after successful subscription
+        await page.waitForTimeout(500);
+
+        await subscribeButton.evaluate((el: HTMLElement) => {
+          el.scrollIntoView({ behavior: "instant", block: "center" });
+          el.click();
+        });
+
+        // Wait for redirect to BrainstormLanding after successful subscription
         await expect(page.getByText("Tell us your next big idea")).toBeVisible({
           timeout: 60000,
         });
-
-        console.log("SUCCESS: Full Stripe subscription flow completed!");
       } else {
-        // Stripe API keys not configured - verify we're on pricing with error
+        // Stripe API keys not configured
         await expect(page.getByRole("heading", { name: "Pricing Plans" })).toBeVisible();
-        // The flow worked correctly, just Stripe isn't configured for test env
-        // This is expected in CI/test environments without Stripe credentials
-        console.log("Note: Stripe API keys not configured - subscription flow verified up to checkout");
       }
+    });
+  });
+
+  test.describe("OAuth Account Linking", () => {
+    /**
+     * Tests that a user who signed up with email can later sign in via OAuth.
+     *
+     * This uses the developer OAuth provider (available in test mode) to simulate
+     * Google OAuth. When a user with a matching email exists, the OAuth login
+     * should link the accounts and sign them in.
+     *
+     * NOTE: This test uses OmniAuth's developer provider in test mode.
+     * The mock is configured in config/initializers/devise.rb with email
+     * matching testUser.email (test_user@launch10.ai).
+     */
+    test("user signed up with email can sign in via OAuth (accounts are linked)", async ({
+      page,
+    }) => {
+      const loginPage = new LoginPage(page);
+
+      // Use basic_account snapshot - has a subscribed user with email test_user@launch10.ai
+      await DatabaseSnapshotter.restoreSnapshot("basic_account");
+
+      // Verify the user exists and can sign in with email first
+      await loginPage.gotoSignIn();
+      await loginPage.signInAndWaitForRedirect(testUser.email, testUser.password);
+
+      // Should redirect to /projects/new (subscribed user experience)
+      await loginPage.waitForSubscribedRedirect();
+
+      // Sign out
+      await loginPage.signOut();
+
+      // Now sign in via OAuth (developer provider simulates Google OAuth in test mode)
+      // The mock uses email: "test_user@launch10.ai" - matching the existing subscribed user
+      await loginPage.signInViaOAuthAndWaitFor(/\/projects\/new/);
+
+      // Should see the BrainstormLanding page with chat input
+      await expect(page.getByText("Tell us your next big idea")).toBeVisible({
+        timeout: 15000,
+      });
     });
   });
 });

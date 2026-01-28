@@ -38,6 +38,7 @@ class Plan < ApplicationRecord
   has_prefix_id :plan
 
   belongs_to :plan_tier, optional: true
+  alias_method :tier, :plan_tier
 
   # Delegate tier-level attributes
   delegate :description, :features, :credits, :display_name, to: :plan_tier, allow_nil: true

@@ -140,7 +140,11 @@ class Account < ApplicationRecord
     total_credits
   end
 
+  def full_plan_credits
+    plan&.tier&.credits
+  end
+
   def credits_used
-    [plan_credits - credits, 0].max
+    [full_plan_credits - credits, 0].max.round(2)
   end
 end

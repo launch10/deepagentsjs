@@ -11,7 +11,7 @@ class Users::SessionsController < Devise::SessionsController
     {
       flash: flash_messages,
       csrf_token: form_authenticity_token,
-      google_oauth_path: user_google_oauth2_omniauth_authorize_path
+      google_oauth_path: google_oauth_enabled? ? user_google_oauth2_omniauth_authorize_path : nil
     }
   end
 
@@ -81,4 +81,8 @@ class Users::SessionsController < Devise::SessionsController
   end
 
   private
+
+  def google_oauth_enabled?
+    Jumpstart::Omniauth.enabled?("google-oauth2")
+  end
 end
