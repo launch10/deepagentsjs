@@ -78,10 +78,10 @@ class SettingsController < SubscribedController
       {
         id: charge.processor_id,
         amount_cents: charge.amount,
-        currency: charge.currency || 'usd',
+        currency: charge.currency || "usd",
         description: charge.subscription_id ? "Subscription payment" : "Payment",
         created_at: charge.created_at.iso8601,
-        type: charge.amount_refunded.to_i > 0 ? 'refund' : 'charge'
+        type: (charge.amount_refunded.to_i > 0) ? "refund" : "charge"
       }
     end
   end
@@ -89,7 +89,5 @@ class SettingsController < SubscribedController
   def stripe_portal_url
     return nil unless current_account.payment_processor&.processor == "stripe"
     @stripe_portal_url ||= current_account.payment_processor.billing_portal(return_url: settings_url).url
-  rescue StandardError
-    nil
   end
 end
