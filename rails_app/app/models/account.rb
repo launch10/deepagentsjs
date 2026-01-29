@@ -65,6 +65,9 @@ class Account < ApplicationRecord
   has_many :credit_pack_purchases, dependent: :destroy
   has_many :credit_gifts, dependent: :destroy
   has_many :credit_usage_adjustments, dependent: :destroy
+  has_many :analytics_daily_metrics, dependent: :destroy
+  has_one :dashboard_insight, dependent: :destroy
+  has_one :insights_chat, -> { where(chat_type: "insights") }, class_name: "Chat", dependent: :destroy
 
   scope :personal, -> { where(personal: true) }
   scope :team, -> { where(personal: false) }
@@ -151,5 +154,14 @@ class Account < ApplicationRecord
 
   def credits_used
     [full_plan_credits - credits, 0].max.round(2)
+  end
+
+  # Find or create the insights chat for this account
+  def find_or_create_insights_chat
+    insights_chat || create_insights_chat!(
+      chat_type: "insights",
+      thread_id: SecureRandom.uuid,
+      name: "Dashboard Insights"
+    )
   end
 end

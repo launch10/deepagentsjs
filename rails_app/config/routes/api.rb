@@ -53,6 +53,13 @@ namespace :api, defaults: {format: :json} do
     end
     resources :job_runs, only: [:create]
 
+    # Dashboard insights for Langgraph
+    resources :dashboard_insights, only: [:index, :create] do
+      collection do
+        get :metrics_summary
+      end
+    end
+
     # Internal service endpoints for Langgraph billing integration
     post "llm_usage/notify", to: "llm_usage#notify"
     get "credits/check", to: "credits#check"

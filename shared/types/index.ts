@@ -18,3 +18,4 @@ export * as Workflow from "./workflow";
 export * as Deploy from "./deploy";
 export * as Core from "./core";
 export * as Task from "./task";
+export * as Insights from "./insights";

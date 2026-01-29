@@ -36,13 +36,13 @@ module Credits
       LLMUsage.transaction do
         records.each do |record|
           # Unknown models raise - fail loudly, don't swallow
-          cost = CostCalculator.new(record).call
+          cost = Credits::CostCalculator.new(record).call
           record.update!(cost_millicredits: cost, processed_at: Time.current)
           total_cost += cost
         end
 
         if total_cost > 0
-          ConsumptionService.new(account).consume!(
+          Credits::ConsumptionService.new(account).consume!(
             cost_millicredits: total_cost,
             idempotency_key: "llm_run:#{run_id}",
             reference_id: run_id,

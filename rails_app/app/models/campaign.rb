@@ -62,6 +62,7 @@ class Campaign < ApplicationRecord
   has_many :ad_groups, dependent: :destroy
   has_many :ads, through: :ad_groups
   has_many :campaign_deploys, dependent: :destroy
+  has_many :ad_performance_dailies, class_name: "AdPerformanceDaily", dependent: :destroy
   has_one :launch_workflow, -> { where(workflow_type: "launch") }, through: :project, source: :workflows
   has_many :ad_schedules, dependent: :destroy
 

@@ -31,7 +31,8 @@ const routeFromStart = (state: WebsiteGraphState): string => {
  * Credit exhaustion is detected via withCreditExhaustion wrapper,
  * which runs this graph as a subgraph, then calculates credit status.
  */
-export const websiteGraph = new StateGraph(WebsiteAnnotation)
+export const websiteGraph = withCreditExhaustion(
+  new StateGraph(WebsiteAnnotation)
     .addNode("buildContext", buildContext)
     .addNode("websiteBuilder", websiteBuilderNode)
     .addNode("cleanupFilesystem", cleanupFilesystemNode)
@@ -57,7 +58,6 @@ export const websiteGraph = new StateGraph(WebsiteAnnotation)
     .addEdge("improveCopy", "cleanupFilesystem")
     .addEdge("cleanupFilesystem", "syncFiles")
     .addEdge("syncFiles", "cleanupState")
-    .addEdge("cleanupState", END)
-// withCreditExhaustion(
-//   WebsiteAnnotation
-// );
+    .addEdge("cleanupState", END),
+  WebsiteAnnotation
+);

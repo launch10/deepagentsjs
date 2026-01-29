@@ -21,7 +21,7 @@ module Credits
         .distinct
         .pluck(:run_id)
 
-      stale_runs.each { |run_id| ChargeRunWorker.perform_async(run_id) }
+      stale_runs.each { |run_id| Credits::ChargeRunWorker.perform_async(run_id) }
     end
   end
 end

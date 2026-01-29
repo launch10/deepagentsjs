@@ -154,7 +154,12 @@ module Database
       raise "Snapshot '#{name}' not found at #{input_path}" unless File.exist?(input_path)
 
       self.truncate if truncate
-      restore(input_path)
+      result = restore(input_path)
+
+      # Clear analytics cache after restore to prevent stale dashboard data
+      clear_analytics_cache
+
+      result
     end
 
     def list_snapshots
@@ -201,6 +206,13 @@ module Database
     end
 
     private
+
+    def clear_analytics_cache
+      Rails.cache.delete_matched("analytics:*")
+      Rails.logger.info "[Database::Snapshotter] Cleared analytics cache after snapshot restore"
+    rescue => e
+      Rails.logger.warn "[Database::Snapshotter] Failed to clear analytics cache: #{e.message}"
+    end
 
     def pg_dump(output_path, **)
       flags = PgDumpFlags.build(**)

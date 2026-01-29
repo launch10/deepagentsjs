@@ -12,3 +12,4 @@ export * from "./contextAPIService";
 export * from "./deployAPIService";
 export * from "./chatsAPIService";
 export * from "./creditsAPIService";
+export * from "./dashboardInsightsAPIService";

@@ -911,6 +911,43 @@ ALTER SEQUENCE public.ad_location_targets_id_seq OWNED BY public.ad_location_tar
 
 
 --
+-- Name: ad_performance_daily; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.ad_performance_daily (
+    id bigint NOT NULL,
+    campaign_id bigint NOT NULL,
+    date date NOT NULL,
+    impressions bigint DEFAULT 0 NOT NULL,
+    clicks bigint DEFAULT 0 NOT NULL,
+    cost_micros bigint DEFAULT 0 NOT NULL,
+    conversions numeric(12,2) DEFAULT 0.0 NOT NULL,
+    conversion_value_micros bigint DEFAULT 0 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: ad_performance_daily_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.ad_performance_daily_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: ad_performance_daily_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.ad_performance_daily_id_seq OWNED BY public.ad_performance_daily.id;
+
+
+--
 -- Name: ad_schedules; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1180,6 +1217,45 @@ ALTER SEQUENCE public.ahoy_visits_id_seq OWNED BY public.ahoy_visits.id;
 
 
 --
+-- Name: analytics_daily_metrics; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.analytics_daily_metrics (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    project_id bigint NOT NULL,
+    date date NOT NULL,
+    leads_count integer DEFAULT 0 NOT NULL,
+    unique_visitors_count bigint DEFAULT 0 NOT NULL,
+    impressions bigint DEFAULT 0 NOT NULL,
+    clicks bigint DEFAULT 0 NOT NULL,
+    cost_micros bigint DEFAULT 0 NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    page_views_count bigint DEFAULT 0 NOT NULL
+);
+
+
+--
+-- Name: analytics_daily_metrics_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.analytics_daily_metrics_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: analytics_daily_metrics_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.analytics_daily_metrics_id_seq OWNED BY public.analytics_daily_metrics.id;
+
+
+--
 -- Name: announcements; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1420,7 +1496,7 @@ CREATE TABLE public.chats (
     name character varying,
     chat_type character varying NOT NULL,
     thread_id character varying NOT NULL,
-    project_id bigint NOT NULL,
+    project_id bigint,
     account_id bigint NOT NULL,
     contextable_type character varying,
     contextable_id bigint,
@@ -1986,6 +2062,40 @@ CREATE SEQUENCE public.credit_usage_adjustments_id_seq
 --
 
 ALTER SEQUENCE public.credit_usage_adjustments_id_seq OWNED BY public.credit_usage_adjustments.id;
+
+
+--
+-- Name: dashboard_insights; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.dashboard_insights (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    insights jsonb DEFAULT '[]'::jsonb NOT NULL,
+    metrics_summary jsonb,
+    generated_at timestamp(6) without time zone NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: dashboard_insights_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.dashboard_insights_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: dashboard_insights_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.dashboard_insights_id_seq OWNED BY public.dashboard_insights.id;
 
 
 --
@@ -4538,6 +4648,13 @@ ALTER TABLE ONLY public.ad_location_targets ALTER COLUMN id SET DEFAULT nextval(
 
 
 --
+-- Name: ad_performance_daily id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_performance_daily ALTER COLUMN id SET DEFAULT nextval('public.ad_performance_daily_id_seq'::regclass);
+
+
+--
 -- Name: ad_schedules id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -4584,6 +4701,13 @@ ALTER TABLE ONLY public.ahoy_events ALTER COLUMN id SET DEFAULT nextval('public.
 --
 
 ALTER TABLE ONLY public.ahoy_visits ALTER COLUMN id SET DEFAULT nextval('public.ahoy_visits_id_seq'::regclass);
+
+
+--
+-- Name: analytics_daily_metrics id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.analytics_daily_metrics ALTER COLUMN id SET DEFAULT nextval('public.analytics_daily_metrics_id_seq'::regclass);
 
 
 --
@@ -4682,6 +4806,13 @@ ALTER TABLE ONLY public.credit_transactions ALTER COLUMN id SET DEFAULT nextval(
 --
 
 ALTER TABLE ONLY public.credit_usage_adjustments ALTER COLUMN id SET DEFAULT nextval('public.credit_usage_adjustments_id_seq'::regclass);
+
+
+--
+-- Name: dashboard_insights id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dashboard_insights ALTER COLUMN id SET DEFAULT nextval('public.dashboard_insights_id_seq'::regclass);
 
 
 --
@@ -5300,6 +5431,14 @@ ALTER TABLE ONLY public.ad_location_targets
 
 
 --
+-- Name: ad_performance_daily ad_performance_daily_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_performance_daily
+    ADD CONSTRAINT ad_performance_daily_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: ad_schedules ad_schedules_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5353,6 +5492,14 @@ ALTER TABLE ONLY public.ahoy_events
 
 ALTER TABLE ONLY public.ahoy_visits
     ADD CONSTRAINT ahoy_visits_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: analytics_daily_metrics analytics_daily_metrics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.analytics_daily_metrics
+    ADD CONSTRAINT analytics_daily_metrics_pkey PRIMARY KEY (id);
 
 
 --
@@ -5521,6 +5668,14 @@ ALTER TABLE ONLY public.credit_transactions
 
 ALTER TABLE ONLY public.credit_usage_adjustments
     ADD CONSTRAINT credit_usage_adjustments_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: dashboard_insights dashboard_insights_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dashboard_insights
+    ADD CONSTRAINT dashboard_insights_pkey PRIMARY KEY (id);
 
 
 --
@@ -6911,10 +7066,38 @@ CREATE INDEX domain_request_counts_2026_12_domain_id_hour_request_count_idx ON p
 
 
 --
+-- Name: idx_ad_perf_daily_campaign_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_ad_perf_daily_campaign_date ON public.ad_performance_daily USING btree (campaign_id, date);
+
+
+--
 -- Name: idx_ads_account_invitations_lookup; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_ads_account_invitations_lookup ON public.ads_account_invitations USING btree (ads_account_id, email_address, platform);
+
+
+--
+-- Name: idx_analytics_daily_acct_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_analytics_daily_acct_date ON public.analytics_daily_metrics USING btree (account_id, date);
+
+
+--
+-- Name: idx_analytics_daily_acct_proj_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_analytics_daily_acct_proj_date ON public.analytics_daily_metrics USING btree (account_id, project_id, date);
+
+
+--
+-- Name: idx_analytics_daily_proj_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_analytics_daily_proj_date ON public.analytics_daily_metrics USING btree (project_id, date);
 
 
 --
@@ -7450,6 +7633,13 @@ CREATE INDEX index_ad_location_targets_on_platform_settings ON public.ad_locatio
 
 
 --
+-- Name: index_ad_performance_daily_on_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ad_performance_daily_on_date ON public.ad_performance_daily USING btree (date);
+
+
+--
 -- Name: index_ad_schedules_on_always_on; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7702,6 +7892,13 @@ CREATE INDEX index_ahoy_visits_on_website_id ON public.ahoy_visits USING btree (
 
 
 --
+-- Name: index_ahoy_visits_on_website_id_and_started_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ahoy_visits_on_website_id_and_started_at ON public.ahoy_visits USING btree (website_id, started_at);
+
+
+--
 -- Name: index_api_tokens_on_token; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7912,10 +8109,17 @@ CREATE INDEX index_chats_on_chat_type ON public.chats USING btree (chat_type);
 
 
 --
+-- Name: index_chats_on_chat_type_and_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_chats_on_chat_type_and_account_id ON public.chats USING btree (chat_type, account_id) WHERE (project_id IS NULL);
+
+
+--
 -- Name: index_chats_on_chat_type_and_project_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_chats_on_chat_type_and_project_id ON public.chats USING btree (chat_type, project_id);
+CREATE UNIQUE INDEX index_chats_on_chat_type_and_project_id ON public.chats USING btree (chat_type, project_id) WHERE (project_id IS NOT NULL);
 
 
 --
@@ -8154,6 +8358,13 @@ CREATE INDEX index_credit_usage_adjustments_on_admin_id ON public.credit_usage_a
 --
 
 CREATE INDEX index_credit_usage_adjustments_on_credits_adjusted ON public.credit_usage_adjustments USING btree (credits_adjusted);
+
+
+--
+-- Name: index_dashboard_insights_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_dashboard_insights_on_account_id ON public.dashboard_insights USING btree (account_id);
 
 
 --
@@ -10826,6 +11037,22 @@ ALTER TABLE ONLY public.deploys
 
 
 --
+-- Name: analytics_daily_metrics fk_rails_0ce0c1e505; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.analytics_daily_metrics
+    ADD CONSTRAINT fk_rails_0ce0c1e505 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: dashboard_insights fk_rails_18fc5689ed; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.dashboard_insights
+    ADD CONSTRAINT fk_rails_18fc5689ed FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
 -- Name: ads_account_invitations fk_rails_1d7b1920c0; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10938,6 +11165,14 @@ ALTER TABLE ONLY public.credit_usage_adjustments
 
 
 --
+-- Name: ad_performance_daily fk_rails_c0834a269a; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.ad_performance_daily
+    ADD CONSTRAINT fk_rails_c0834a269a FOREIGN KEY (campaign_id) REFERENCES public.campaigns(id);
+
+
+--
 -- Name: credit_usage_adjustments fk_rails_c3dc680e42; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -10967,6 +11202,14 @@ ALTER TABLE ONLY public.pay_payment_methods
 
 ALTER TABLE ONLY public.account_users
     ADD CONSTRAINT fk_rails_c96445f213 FOREIGN KEY (account_id) REFERENCES public.accounts(id);
+
+
+--
+-- Name: analytics_daily_metrics fk_rails_d80058f7c6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.analytics_daily_metrics
+    ADD CONSTRAINT fk_rails_d80058f7c6 FOREIGN KEY (project_id) REFERENCES public.projects(id);
 
 
 --
@@ -11008,7 +11251,13 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260129225919'),
+('20260129182538'),
+('20260129120000'),
 ('20260128183648'),
+('20260128103702'),
+('20260128103701'),
+('20260128103700'),
 ('20260127235148'),
 ('20260127170000'),
 ('20260126223106'),

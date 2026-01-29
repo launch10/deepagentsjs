@@ -30,7 +30,7 @@ module Credits
     # @raise [UnknownModelError] If the model is not found in ModelConfig
     #
     def call
-      config = ModelNormalizer.call(@usage.model_raw)
+      config = Credits::ModelNormalizer.call(@usage.model_raw)
       raise UnknownModelError, "Unknown model: #{@usage.model_raw}" unless config
 
       cost = 0

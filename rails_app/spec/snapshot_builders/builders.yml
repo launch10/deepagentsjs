@@ -85,3 +85,36 @@ website_deployed:
   class: WebsiteDeployed
   base_snapshot: deploy_step
   description: "Fully deployed website with 25 leads for testing (pagination: 20 per page)"
+
+campaign_with_metrics:
+  class: CampaignWithMetrics
+  base_snapshot: website_deployed
+  description: "Analytics dashboard with 4 projects, 30 days metrics, ad performance, and insights"
+
+# Analytics snapshots - run actual services to compute metrics
+# Use these for dashboard testing and Langgraph insights tests
+
+analytics/healthy_account:
+  class: SnapshotBuilders::Analytics::HealthyAccount
+  base_snapshot: website_deployed
+  description: "3 healthy projects with ~47 leads, positive trends, good CTR/CPL"
+
+analytics/struggling_account:
+  class: SnapshotBuilders::Analytics::StrugglingAccount
+  base_snapshot: website_deployed
+  description: "1 project with 0 leads, $320 spent, declining metrics"
+
+analytics/stalled_project:
+  class: SnapshotBuilders::Analytics::StalledProject
+  base_snapshot: website_deployed
+  description: "3 projects, 1 stalled (no leads in 14+ days)"
+
+analytics/new_account:
+  class: SnapshotBuilders::Analytics::NewAccount
+  base_snapshot: website_deployed
+  description: "1 project just launched, only 3 days of data"
+
+analytics/empty_account:
+  class: SnapshotBuilders::Analytics::EmptyAccount
+  base_snapshot: basic_account
+  description: "Subscribed account with 0 projects - tests 'Deploy Your First Project' insights"

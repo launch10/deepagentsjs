@@ -5,6 +5,41 @@ import { LLMManager } from "./service";
 import { env } from "@core";
 import { usageTracker } from "../billing";
 
+/**
+ * Custom RunnableBinding that properly forwards withStructuredOutput to the bound model.
+ * This ensures that usage tracking is preserved when using structured output.
+ */
+class StructuredOutputRunnableBinding<
+  RunInput,
+  RunOutput,
+  CallOptions extends RunnableConfig = RunnableConfig,
+> extends RunnableBinding<RunInput, RunOutput, CallOptions> {
+  /**
+   * Forward withStructuredOutput to the bound model, preserving the RunnableBinding wrapper.
+   */
+  withStructuredOutput<RunOutput extends Record<string, any> = Record<string, any>>(
+    outputSchema: any,
+
+    config?: any
+  ): RunnableBinding<RunInput, RunOutput, CallOptions> {
+    const boundModel = this.bound as unknown as BaseChatModel;
+    if (typeof boundModel.withStructuredOutput !== "function") {
+      throw new Error(
+        "Bound model does not support withStructuredOutput. " +
+          "This may happen with test fixtures that don't implement this method."
+      );
+    }
+    const structuredModel = boundModel.withStructuredOutput(outputSchema, config);
+
+    // Create a new RunnableBinding with the structured model, preserving config factories
+    return new StructuredOutputRunnableBinding({
+      bound: structuredModel,
+      config: this.config,
+      configFactories: this.configFactories,
+    }) as unknown as RunnableBinding<RunInput, RunOutput, CallOptions>;
+  }
+}
+
 // Lazy getters for defaults to avoid issues with env not being initialized at module load time
 const getSpeedDefault = (): LLMSpeed => (env.LLM_SPEED === "fast" ? "fast" : "slow");
 const getCostDefault = (): LLMCost => (env.LLM_PAID === "paid" ? "paid" : "free");
@@ -67,7 +102,8 @@ export async function getLLM(options: LLMOptions = {}): Promise<BaseChatModel> {
   // LangGraph or createAgent pass their own config with an empty callbacks array.
   // Using configFactories (vs withConfig) survives through bindTools and other
   // RunnableBinding transformations that would otherwise replace callbacks.
-  return new RunnableBinding({
+  // Uses StructuredOutputRunnableBinding to properly forward withStructuredOutput calls.
+  return new StructuredOutputRunnableBinding({
     bound: model,
     config: {},
     configFactories: [

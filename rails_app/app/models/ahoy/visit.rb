@@ -36,6 +36,7 @@
 #  index_ahoy_visits_on_visit_token                   (visit_token) UNIQUE
 #  index_ahoy_visits_on_visitor_token_and_started_at  (visitor_token,started_at)
 #  index_ahoy_visits_on_website_id                    (website_id)
+#  index_ahoy_visits_on_website_id_and_started_at     (website_id,started_at)
 #
 class Ahoy::Visit < ApplicationRecord
   self.table_name = "ahoy_visits"

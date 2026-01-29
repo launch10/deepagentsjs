@@ -19,6 +19,7 @@ namespace :inertia do
     require_relative "../../spec/support/schemas/inertia/launch_schema"
     require_relative "../../spec/support/schemas/inertia/leads_schema"
     require_relative "../../spec/support/schemas/inertia/settings_schema"
+    require_relative "../../spec/support/schemas/inertia/dashboard_schema"
 
     generator = InertiaOpenApiGenerator.new
 
@@ -31,6 +32,7 @@ namespace :inertia do
     generator.add_component("LaunchProps", InertiaSchemas::Launch)
     generator.add_component("LeadsProps", InertiaSchemas::Leads)
     generator.add_component("SettingsProps", InertiaSchemas::Settings)
+    generator.add_component("DashboardProps", InertiaSchemas::Dashboard)
 
     generator.add_page("/users/sign_in", ref: "SignInProps", tag: "Auth Pages", params: [])
     generator.add_page("/users/sign_up", ref: "SignUpProps", tag: "Auth Pages", params: [])
@@ -62,6 +64,12 @@ namespace :inertia do
     generator.add_page(
       "/settings",
       ref: "SettingsProps",
+      tag: "Inertia Pages",
+      params: []
+    )
+    generator.add_page(
+      "/dashboard",
+      ref: "DashboardProps",
       tag: "Inertia Pages",
       params: []
     )
