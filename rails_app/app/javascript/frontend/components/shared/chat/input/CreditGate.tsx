@@ -39,7 +39,7 @@ export function CreditGate({ children, className }: CreditGateProps) {
       <div className="flex items-center gap-1.5 pt-2">
         <SparklesIcon className="w-4 h-4 text-neutral-400" />
         <Link
-          href="/subscriptions"
+          href="/settings"
           className="text-sm text-neutral-500 underline hover:text-neutral-700 transition-colors"
           data-testid="credit-gate-link"
         >

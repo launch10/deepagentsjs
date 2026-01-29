@@ -35,12 +35,17 @@ class BasicAccount < BaseBuilder
       plan.update!(fake_processor_id: "growth_monthly") unless plan.fake_processor_id.present?
       subscription = account.payment_processor.subscribe(
         plan: plan.fake_processor_id,
-        ends_at: nil
+        ends_at: nil,
+        current_period_start: Time.current,
+        current_period_end: 30.days.from_now
       )
       puts "Subscription: #{subscription.processor_plan} (Status: #{subscription.status})"
 
       # Allocate plan credits (simulates what webhook handlers do in production)
       allocate_credits!(account, plan, subscription)
+
+      # Create billing history for pagination testing
+      create_billing_history!(account, subscription, plan)
     end
 
     puts "Created user: #{user.email}"
@@ -112,5 +117,22 @@ class BasicAccount < BaseBuilder
       reference_id: subscription.id.to_s,
       idempotency_key: "snapshot:#{account.id}:#{subscription.id}"
     )
+  end
+
+  # Creates billing history charges for pagination testing
+  def create_billing_history!(account, subscription, plan)
+    amount = plan.amount || 7900 # Default to $79.00
+
+    10.times do |i|
+      account.payment_processor.charges.create!(
+        processor_id: "ch_fake_#{SecureRandom.hex(12)}",
+        amount: amount,
+        currency: "usd",
+        subscription_id: subscription.id,
+        created_at: (i + 1).months.ago
+      )
+    end
+
+    puts "Created 10 billing history charges for pagination testing"
   end
 end

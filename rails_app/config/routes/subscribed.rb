@@ -1,6 +1,10 @@
 authenticated :user do
   root to: "projects#new", as: :onboarding
 
+  resource :settings, only: [:show, :update] do
+    patch :update_password, on: :member
+  end
+
   resources :projects, only: [:new, :show], param: :uuid do
     resources :workflows, only: [:show]
 

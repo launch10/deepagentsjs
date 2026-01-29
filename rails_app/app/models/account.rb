@@ -64,6 +64,7 @@ class Account < ApplicationRecord
   has_many :credit_transactions, dependent: :destroy
   has_many :credit_pack_purchases, dependent: :destroy
   has_many :credit_gifts, dependent: :destroy
+  has_many :credit_usage_adjustments, dependent: :destroy
 
   scope :personal, -> { where(personal: true) }
   scope :team, -> { where(personal: false) }
@@ -86,8 +87,12 @@ class Account < ApplicationRecord
     owner_id == user&.id
   end
 
+  def active_subscription
+    subscriptions.active.order(id: :desc).limit(1).first
+  end
+
   def plan
-    subscriptions.active.order(id: :desc).limit(1).first&.plan
+    active_subscription&.plan
   end
 
   def google_connected_account

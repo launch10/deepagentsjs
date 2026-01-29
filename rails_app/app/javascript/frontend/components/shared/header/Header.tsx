@@ -1,15 +1,23 @@
+import { Link, usePage } from "@inertiajs/react";
 import HeaderUser from "./HeaderUser";
 import HeaderProgressStepper from "./HeaderProgressStepper";
 import ImpersonationBanner from "../ImpersonationBanner";
 
 export default function Header() {
+  const { url } = usePage();
+  const isHomepage = url === "/" || url.startsWith("/?");
+
   return (
     <>
       <ImpersonationBanner />
-      <header className="bg-background py-6 sticky top-0 z-10 relative border-b border-base-200">
+      <header
+        className={`bg-background py-6 sticky top-0 z-10 relative ${isHomepage ? "" : "border-b border-base-200"}`}
+      >
         {/* Logo and User at actual edges - NO max-width constraint */}
         <div className="flex justify-between items-center px-6">
-          <img src="/images/launch10-logo.svg" alt="Launch10" className="h-8" />
+          <Link href="/">
+            <img src="/images/launch10-logo.svg" alt="Launch10" className="h-8" />
+          </Link>
           <HeaderUser headerClassName="absolute right-0 top-full" />
         </div>
         {/* Stepper overlaid, inside max-w-7xl container to align with chat content */}

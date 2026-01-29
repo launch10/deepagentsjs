@@ -1,7 +1,11 @@
 class StaticController < ApplicationController
   def index
-    # Redirect unauthenticated users to pricing page
-    redirect_to pricing_path unless user_signed_in?
+    if user_signed_in?
+      redirect_to projects_new_path
+    else
+      # Redirect unauthenticated users to pricing page
+      redirect_to pricing_path
+    end
   end
 
   def about

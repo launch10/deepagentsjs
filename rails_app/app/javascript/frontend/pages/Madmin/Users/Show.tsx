@@ -8,6 +8,7 @@ import {
   XCircleIcon,
   UserIcon,
   GiftIcon,
+  AdjustmentsHorizontalIcon,
 } from "@heroicons/react/24/outline";
 import { AdminLayout } from "../../../layouts/admin-layout";
 
@@ -34,6 +35,7 @@ interface User {
 interface UserShowProps {
   user: User;
   creditReasons: string[];
+  usageAdjustmentReasons: string[];
 }
 
 function formatDateTime(dateString: string | null): string {
@@ -118,7 +120,10 @@ function GiftCreditsForm({ userId, reasons }: { userId: number; reasons: string[
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="gift-amount" className="block text-sm font-medium text-muted-foreground mb-1">
+        <label
+          htmlFor="gift-amount"
+          className="block text-sm font-medium text-muted-foreground mb-1"
+        >
           Amount (credits)
         </label>
         <input
@@ -133,7 +138,10 @@ function GiftCreditsForm({ userId, reasons }: { userId: number; reasons: string[
         />
       </div>
       <div>
-        <label htmlFor="gift-reason" className="block text-sm font-medium text-muted-foreground mb-1">
+        <label
+          htmlFor="gift-reason"
+          className="block text-sm font-medium text-muted-foreground mb-1"
+        >
           Reason
         </label>
         <select
@@ -150,7 +158,10 @@ function GiftCreditsForm({ userId, reasons }: { userId: number; reasons: string[
         </select>
       </div>
       <div>
-        <label htmlFor="gift-notes" className="block text-sm font-medium text-muted-foreground mb-1">
+        <label
+          htmlFor="gift-notes"
+          className="block text-sm font-medium text-muted-foreground mb-1"
+        >
           Notes (optional)
         </label>
         <textarea
@@ -256,7 +267,8 @@ function CreditGiftHistory({ userId }: { userId: number }) {
       {data.pagination.total_pages > 1 && (
         <div className="flex items-center justify-between pt-4 border-t border-border mt-4">
           <span className="text-sm text-muted-foreground">
-            Page {data.pagination.current_page} of {data.pagination.total_pages} ({data.pagination.total_count} total)
+            Page {data.pagination.current_page} of {data.pagination.total_pages} (
+            {data.pagination.total_count} total)
           </span>
           <div className="flex gap-2">
             <button
@@ -280,7 +292,214 @@ function CreditGiftHistory({ userId }: { userId: number }) {
   );
 }
 
-function UserShow({ user, creditReasons }: UserShowProps) {
+function UsageAdjustmentForm({ userId, reasons }: { userId: number; reasons: string[] }) {
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState(reasons[0] || "billing_correction");
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    router.post(
+      `/admin/users/${userId}/credit_usage_adjustments`,
+      {
+        credit_usage_adjustment: {
+          amount: parseInt(amount, 10),
+          reason,
+          notes: notes || undefined,
+        },
+      },
+      {
+        onFinish: () => {
+          setSubmitting(false);
+          setAmount("");
+          setNotes("");
+          queryClient.invalidateQueries({ queryKey: ["usageAdjustments", userId] });
+        },
+      }
+    );
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label
+          htmlFor="usage-amount"
+          className="block text-sm font-medium text-muted-foreground mb-1"
+        >
+          Amount (credits to consume)
+        </label>
+        <input
+          id="usage-amount"
+          type="number"
+          min="1"
+          required
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          placeholder="e.g. 50"
+        />
+      </div>
+      <div>
+        <label
+          htmlFor="usage-reason"
+          className="block text-sm font-medium text-muted-foreground mb-1"
+        >
+          Reason
+        </label>
+        <select
+          id="usage-reason"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+        >
+          {reasons.map((r) => (
+            <option key={r} value={r}>
+              {r.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label
+          htmlFor="usage-notes"
+          className="block text-sm font-medium text-muted-foreground mb-1"
+        >
+          Notes (optional)
+        </label>
+        <textarea
+          id="usage-notes"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={2}
+          className="w-full px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+          placeholder="Internal notes about this adjustment..."
+        />
+      </div>
+      <button
+        type="submit"
+        disabled={submitting || !amount}
+        className="w-full px-4 py-2 text-sm font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 transition-colors disabled:opacity-50"
+      >
+        {submitting ? "Adjusting..." : "Adjust Usage"}
+      </button>
+    </form>
+  );
+}
+
+interface UsageAdjustmentRecord {
+  id: number;
+  amount: number;
+  reason: string;
+  notes: string | null;
+  credits_adjusted: boolean;
+  admin_name: string;
+  created_at: string;
+}
+
+interface UsageAdjustmentPagination {
+  current_page: number;
+  total_pages: number;
+  total_count: number;
+  prev_page: number | null;
+  next_page: number | null;
+}
+
+interface UsageAdjustmentResponse {
+  adjustments: UsageAdjustmentRecord[];
+  pagination: UsageAdjustmentPagination;
+}
+
+function UsageAdjustmentHistory({ userId }: { userId: number }) {
+  const [page, setPage] = useState(1);
+
+  const { data, isLoading, isError } = useQuery<UsageAdjustmentResponse>({
+    queryKey: ["usageAdjustments", userId, page],
+    queryFn: async () => {
+      const res = await fetch(`/admin/users/${userId}/credit_usage_adjustments.json?page=${page}`);
+      if (!res.ok) throw new Error("Failed to fetch usage adjustments");
+      return res.json();
+    },
+  });
+
+  if (isLoading) {
+    return <p className="text-sm text-muted-foreground py-4">Loading adjustment history...</p>;
+  }
+
+  if (isError) {
+    return <p className="text-sm text-destructive py-4">Failed to load adjustment history.</p>;
+  }
+
+  if (!data || data.adjustments.length === 0) {
+    return <p className="text-sm text-muted-foreground py-4">No usage adjustments yet.</p>;
+  }
+
+  return (
+    <div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border text-left">
+              <th className="py-2 pr-4 font-medium text-muted-foreground">Date</th>
+              <th className="py-2 pr-4 font-medium text-muted-foreground">Admin</th>
+              <th className="py-2 pr-4 font-medium text-muted-foreground">Amount</th>
+              <th className="py-2 pr-4 font-medium text-muted-foreground">Reason</th>
+              <th className="py-2 pr-4 font-medium text-muted-foreground">Notes</th>
+              <th className="py-2 font-medium text-muted-foreground">Adjusted</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.adjustments.map((adjustment) => (
+              <tr key={adjustment.id} className="border-b border-border last:border-0">
+                <td className="py-2 pr-4 text-foreground">
+                  {formatDateTime(adjustment.created_at)}
+                </td>
+                <td className="py-2 pr-4 text-foreground">{adjustment.admin_name}</td>
+                <td className="py-2 pr-4 text-foreground">{formatCredits(adjustment.amount)}</td>
+                <td className="py-2 pr-4 text-foreground">
+                  {adjustment.reason.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                </td>
+                <td className="py-2 pr-4 text-muted-foreground">{adjustment.notes || "—"}</td>
+                <td className="py-2">
+                  <BooleanBadge value={adjustment.credits_adjusted} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {data.pagination.total_pages > 1 && (
+        <div className="flex items-center justify-between pt-4 border-t border-border mt-4">
+          <span className="text-sm text-muted-foreground">
+            Page {data.pagination.current_page} of {data.pagination.total_pages} (
+            {data.pagination.total_count} total)
+          </span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage((p) => p - 1)}
+              disabled={!data.pagination.prev_page}
+              className="px-3 py-1 text-sm rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!data.pagination.next_page}
+              className="px-3 py-1 text-sm rounded-md border border-border hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UserShow({ user, creditReasons, usageAdjustmentReasons }: UserShowProps) {
   const { current_user } = usePage<{ props: { current_user?: { id: number } } }>().props as {
     current_user?: { id: number };
   };
@@ -372,15 +591,21 @@ function UserShow({ user, creditReasons }: UserShowProps) {
           </div>
           <div className="grid grid-cols-3 gap-4 mb-6">
             <div className="text-center p-4 rounded-lg bg-muted/30">
-              <div className="text-2xl font-bold text-foreground">{formatCredits(user.totalCredits)}</div>
+              <div className="text-2xl font-bold text-foreground">
+                {formatCredits(user.totalCredits)}
+              </div>
               <div className="text-xs text-muted-foreground mt-1">Total</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted/30">
-              <div className="text-2xl font-bold text-foreground">{formatCredits(user.planCredits)}</div>
+              <div className="text-2xl font-bold text-foreground">
+                {formatCredits(user.planCredits)}
+              </div>
               <div className="text-xs text-muted-foreground mt-1">Plan</div>
             </div>
             <div className="text-center p-4 rounded-lg bg-muted/30">
-              <div className="text-2xl font-bold text-foreground">{formatCredits(user.packCredits)}</div>
+              <div className="text-2xl font-bold text-foreground">
+                {formatCredits(user.packCredits)}
+              </div>
               <div className="text-xs text-muted-foreground mt-1">Pack</div>
             </div>
           </div>
@@ -396,6 +621,23 @@ function UserShow({ user, creditReasons }: UserShowProps) {
           <div className="border-t border-border pt-4 mt-4">
             <h3 className="text-sm font-semibold text-foreground mb-4">Gift History</h3>
             <CreditGiftHistory userId={user.id} />
+          </div>
+
+          <div className="border-t border-border pt-4 mt-4">
+            <div className="flex items-center gap-2 mb-4">
+              <AdjustmentsHorizontalIcon className="w-5 h-5 text-muted-foreground" />
+              <h3 className="text-sm font-semibold text-foreground">Adjust Usage</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              Consume credits as if they were used. This decreases the balance without changing the
+              perceived allocation.
+            </p>
+            <UsageAdjustmentForm userId={user.id} reasons={usageAdjustmentReasons} />
+          </div>
+
+          <div className="border-t border-border pt-4 mt-4">
+            <h3 className="text-sm font-semibold text-foreground mb-4">Usage Adjustment History</h3>
+            <UsageAdjustmentHistory userId={user.id} />
           </div>
         </div>
       </div>

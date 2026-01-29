@@ -62,6 +62,35 @@ RSpec.describe "Madmin::User::Impersonates", type: :request do
     end
   end
 
+  describe "auto-stop impersonation on admin access" do
+    before do
+      # First impersonate the user
+      post madmin_user_impersonate_path(target_user)
+    end
+
+    it "automatically stops impersonation when accessing admin pages" do
+      # Verify we're impersonating
+      jwt_before = decode_jwt(cookies[:jwt])
+      expect(jwt_before["sub"]).to eq(target_user.id)
+
+      # Access an admin page
+      get madmin_users_path
+
+      # Should now be the admin again
+      jwt_after = decode_jwt(cookies[:jwt])
+      expect(jwt_after["sub"]).to eq(admin.id)
+      expect(jwt_after["account_id"]).to eq(admin.primary_account.id)
+    end
+
+    it "restores admin session when accessing admin pages" do
+      expect(session[:account_id]).to eq(target_user.primary_account.id)
+
+      get madmin_users_path
+
+      expect(session[:account_id]).to eq(admin.primary_account.id)
+    end
+  end
+
   private
 
   def decode_jwt(jwt)

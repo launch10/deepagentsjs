@@ -69,6 +69,97 @@ RSpec.describe "Admin Credit Adjustment", type: :integration do
     end
   end
 
+  describe "admin can adjust usage (consume credits without AI generation)" do
+    before do
+      # Start with 100 credits (100_000 millicredits)
+      service.adjust_credits!(
+        plan_millicredits: 100_000,
+        pack_millicredits: 0,
+        reason: "initial_setup",
+        admin: admin
+      )
+      account.reload
+    end
+
+    it "creates a consume transaction that decreases balance (increases perceived usage)" do
+      expect(account.plan_millicredits).to eq(100_000)
+
+      service.adjust_usage!(
+        millicredits: 30_000, # 30k credits worth of "usage"
+        reason: "admin_adjustment",
+        admin: admin,
+        notes: "Correcting usage for billing discrepancy"
+      )
+
+      account.reload
+      expect(account.plan_millicredits).to eq(70_000) # Balance reduced by 30k
+      expect(account.total_millicredits).to eq(70_000)
+    end
+
+    it "creates proper audit trail with consume transaction type" do
+      service.adjust_usage!(
+        millicredits: 25_000,
+        reason: "admin_adjustment",
+        admin: admin,
+        notes: "Manual usage correction"
+      )
+
+      tx = CreditTransaction.last
+      expect(tx.transaction_type).to eq("consume")
+      expect(tx.reason).to eq("admin_adjustment")
+      expect(tx.amount_millicredits).to eq(-25_000) # Negative for consumption
+      expect(tx.metadata["admin_id"]).to eq(admin.id)
+      expect(tx.metadata["admin_email"]).to eq(admin.email)
+      expect(tx.metadata["notes"]).to eq("Manual usage correction")
+    end
+
+    it "respects consumption order (plan first, then pack)" do
+      # Add some pack credits
+      service.adjust_credits!(
+        plan_millicredits: 50_000,
+        pack_millicredits: 50_000,
+        reason: "add_pack",
+        admin: admin
+      )
+      account.reload
+
+      # Consume 70_000 - should take 50k from plan, 20k from pack
+      service.adjust_usage!(
+        millicredits: 70_000,
+        reason: "admin_adjustment",
+        admin: admin
+      )
+
+      account.reload
+      expect(account.plan_millicredits).to eq(0)
+      expect(account.pack_millicredits).to eq(30_000)
+    end
+
+    it "is idempotent with idempotency key" do
+      service.adjust_usage!(
+        millicredits: 10_000,
+        reason: "admin_adjustment",
+        admin: admin,
+        idempotency_key: "usage_adj:test123"
+      )
+
+      account.reload
+      balance_after_first = account.plan_millicredits
+
+      # Second call with same key should be no-op
+      service.adjust_usage!(
+        millicredits: 10_000,
+        reason: "admin_adjustment",
+        admin: admin,
+        idempotency_key: "usage_adj:test123"
+      )
+
+      account.reload
+      expect(account.plan_millicredits).to eq(balance_after_first)
+      expect(CreditTransaction.where(idempotency_key: "usage_adj:test123").count).to eq(1)
+    end
+  end
+
   describe "adjusted credits persist across plan operations" do
     let(:plan_tier) { create(:plan_tier, :growth) } # 5000 credits
     let(:plan) { create(:plan, :growth_monthly, plan_tier: plan_tier) }

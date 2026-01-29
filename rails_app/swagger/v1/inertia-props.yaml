@@ -9,10 +9,10 @@ paths:
     get:
       summary: Sign In page props
       tags:
-      - Auth Pages
+        - Auth Pages
       parameters: []
       responses:
-        '200':
+        "200":
           description: Sign In page props
           content:
             application/json:
@@ -22,10 +22,10 @@ paths:
     get:
       summary: Sign Up page props
       tags:
-      - Auth Pages
+        - Auth Pages
       parameters: []
       responses:
-        '200':
+        "200":
           description: Sign Up page props
           content:
             application/json:
@@ -35,10 +35,10 @@ paths:
     get:
       summary: New page props
       tags:
-      - Inertia Pages
+        - Inertia Pages
       parameters: []
       responses:
-        '200':
+        "200":
           description: New page props
           content:
             application/json:
@@ -48,16 +48,16 @@ paths:
     get:
       summary: Brainstorm page props
       tags:
-      - Inertia Pages
+        - Inertia Pages
       parameters:
-      - name: uuid
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Project UUID
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Project UUID
       responses:
-        '200':
+        "200":
           description: Brainstorm page props
           content:
             application/json:
@@ -67,16 +67,16 @@ paths:
     get:
       summary: Website page props
       tags:
-      - Inertia Pages
+        - Inertia Pages
       parameters:
-      - name: uuid
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Project UUID
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Project UUID
       responses:
-        '200':
+        "200":
           description: Website page props
           content:
             application/json:
@@ -86,35 +86,48 @@ paths:
     get:
       summary: Leads page props
       tags:
-      - Inertia Pages
+        - Inertia Pages
       parameters:
-      - name: uuid
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Project UUID
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Project UUID
       responses:
-        '200':
+        "200":
           description: Leads page props
           content:
             application/json:
               schema:
                 "$ref": "#/components/schemas/LeadsProps"
+  "/settings":
+    get:
+      summary: Settings page props
+      tags:
+        - Inertia Pages
+      parameters: []
+      responses:
+        "200":
+          description: Settings page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/SettingsProps"
   "/projects/{uuid}/campaigns/content":
     get:
       summary: Content page props
       tags:
-      - Inertia Pages - Campaigns
+        - Inertia Pages - Campaigns
       parameters:
-      - name: uuid
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Project UUID
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Project UUID
       responses:
-        '200':
+        "200":
           description: Content page props
           content:
             application/json:
@@ -124,16 +137,16 @@ paths:
     get:
       summary: Highlights page props
       tags:
-      - Inertia Pages - Campaigns
+        - Inertia Pages - Campaigns
       parameters:
-      - name: uuid
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Project UUID
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Project UUID
       responses:
-        '200':
+        "200":
           description: Highlights page props
           content:
             application/json:
@@ -143,16 +156,16 @@ paths:
     get:
       summary: Keywords page props
       tags:
-      - Inertia Pages - Campaigns
+        - Inertia Pages - Campaigns
       parameters:
-      - name: uuid
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Project UUID
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Project UUID
       responses:
-        '200':
+        "200":
           description: Keywords page props
           content:
             application/json:
@@ -162,16 +175,16 @@ paths:
     get:
       summary: Settings page props
       tags:
-      - Inertia Pages - Campaigns
+        - Inertia Pages - Campaigns
       parameters:
-      - name: uuid
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Project UUID
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Project UUID
       responses:
-        '200':
+        "200":
           description: Settings page props
           content:
             application/json:
@@ -181,16 +194,16 @@ paths:
     get:
       summary: Launch page props
       tags:
-      - Inertia Pages - Campaigns
+        - Inertia Pages - Campaigns
       parameters:
-      - name: uuid
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Project UUID
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Project UUID
       responses:
-        '200':
+        "200":
           description: Launch page props
           content:
             application/json:
@@ -200,16 +213,16 @@ paths:
     get:
       summary: Review page props
       tags:
-      - Inertia Pages - Campaigns
+        - Inertia Pages - Campaigns
       parameters:
-      - name: uuid
-        in: path
-        required: true
-        schema:
-          type: string
-        description: Project UUID
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Project UUID
       responses:
-        '200':
+        "200":
           description: Review page props
           content:
             application/json:
@@ -226,7 +239,8 @@ components:
           description: CSRF token
         google_oauth_path:
           type: string
-          description: Google OAuth path
+          description: Google OAuth path (null if OAuth disabled)
+          nullable: true
         flash:
           type: array
           items:
@@ -235,14 +249,14 @@ components:
               type:
                 type: string
                 enum:
-                - success
-                - error
-                - info
+                  - success
+                  - error
+                  - info
               message:
                 type: string
             required:
-            - type
-            - message
+              - type
+              - message
           description: Flash messages
         errors:
           type: object
@@ -252,8 +266,7 @@ components:
               type: string
           nullable: true
       required:
-      - csrf_token
-      - google_oauth_path
+        - csrf_token
     SignUpProps:
       type: object
       additionalProperties: false
@@ -263,7 +276,8 @@ components:
           description: CSRF token
         google_oauth_path:
           type: string
-          description: Google OAuth path
+          description: Google OAuth path (null if OAuth disabled)
+          nullable: true
         flash:
           type: array
           items:
@@ -272,14 +286,14 @@ components:
               type:
                 type: string
                 enum:
-                - success
-                - error
-                - info
+                  - success
+                  - error
+                  - info
               message:
                 type: string
             required:
-            - type
-            - message
+              - type
+              - message
           description: Flash messages
         captcha_field_name:
           type: string
@@ -295,11 +309,10 @@ components:
               type: string
           nullable: true
       required:
-      - csrf_token
-      - google_oauth_path
-      - captcha_field_name
-      - minimum_password_length
-      - spinner
+        - csrf_token
+        - captcha_field_name
+        - minimum_password_length
+        - spinner
     NewBrainstormProps:
       type: object
       additionalProperties: false
@@ -328,14 +341,14 @@ components:
               type:
                 type: string
                 enum:
-                - success
-                - error
-                - info
+                  - success
+                  - error
+                  - info
               message:
                 type: string
             required:
-            - type
-            - message
+              - type
+              - message
           description: Flash messages
         current_user:
           type: object
@@ -347,9 +360,9 @@ components:
             email:
               type: string
           required:
-          - id
-          - name
-          - email
+            - id
+            - name
+            - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -362,30 +375,51 @@ components:
             email:
               type: string
           required:
-          - id
-          - name
-          - email
+            - id
+            - name
+            - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
           type: boolean
           description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+            - plan_credits
+            - pack_credits
+            - total_credits
+            - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
         thread_id:
-          type: 'null'
+          type: "null"
           description: Langgraph thread ID for the conversation
         project:
           type: object
           additionalProperties: false
           properties:
             uuid:
-              type: 'null'
+              type: "null"
               description: Project UUID
           nullable: true
       required:
-      - root_path
-      - langgraph_path
-      - jwt
-      - thread_id
+        - root_path
+        - langgraph_path
+        - jwt
+        - thread_id
     BrainstormProps:
       type: object
       additionalProperties: false
@@ -414,14 +448,14 @@ components:
               type:
                 type: string
                 enum:
-                - success
-                - error
-                - info
+                  - success
+                  - error
+                  - info
               message:
                 type: string
             required:
-            - type
-            - message
+              - type
+              - message
           description: Flash messages
         current_user:
           type: object
@@ -433,9 +467,9 @@ components:
             email:
               type: string
           required:
-          - id
-          - name
-          - email
+            - id
+            - name
+            - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -448,14 +482,35 @@ components:
             email:
               type: string
           required:
-          - id
-          - name
-          - email
+            - id
+            - name
+            - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
           type: boolean
           description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+            - plan_credits
+            - pack_credits
+            - total_credits
+            - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
         thread_id:
           type: string
           description: Langgraph thread ID for the conversation
@@ -532,10 +587,10 @@ components:
               type: string
           nullable: true
       required:
-      - root_path
-      - langgraph_path
-      - jwt
-      - thread_id
+        - root_path
+        - langgraph_path
+        - jwt
+        - thread_id
     WebsiteProps:
       type: object
       additionalProperties: false
@@ -564,14 +619,14 @@ components:
               type:
                 type: string
                 enum:
-                - success
-                - error
-                - info
+                  - success
+                  - error
+                  - info
               message:
                 type: string
             required:
-            - type
-            - message
+              - type
+              - message
           description: Flash messages
         current_user:
           type: object
@@ -583,9 +638,9 @@ components:
             email:
               type: string
           required:
-          - id
-          - name
-          - email
+            - id
+            - name
+            - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -598,14 +653,35 @@ components:
             email:
               type: string
           required:
-          - id
-          - name
-          - email
+            - id
+            - name
+            - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
           type: boolean
           description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+            - plan_credits
+            - pack_credits
+            - total_credits
+            - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
         thread_id:
           type: string
           description: Langgraph thread ID for the conversation
@@ -656,9 +732,9 @@ components:
               type: string
           nullable: true
       required:
-      - root_path
-      - langgraph_path
-      - jwt
+        - root_path
+        - langgraph_path
+        - jwt
     CampaignsProps:
       type: object
       additionalProperties: false
@@ -687,14 +763,14 @@ components:
               type:
                 type: string
                 enum:
-                - success
-                - error
-                - info
+                  - success
+                  - error
+                  - info
               message:
                 type: string
             required:
-            - type
-            - message
+              - type
+              - message
           description: Flash messages
         current_user:
           type: object
@@ -706,9 +782,9 @@ components:
             email:
               type: string
           required:
-          - id
-          - name
-          - email
+            - id
+            - name
+            - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -721,14 +797,35 @@ components:
             email:
               type: string
           required:
-          - id
-          - name
-          - email
+            - id
+            - name
+            - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
           type: boolean
           description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+            - plan_credits
+            - pack_credits
+            - total_credits
+            - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
         thread_id:
           type: string
           description: Langgraph thread ID for the conversation
@@ -949,9 +1046,9 @@ components:
               type: string
           nullable: true
       required:
-      - root_path
-      - langgraph_path
-      - jwt
+        - root_path
+        - langgraph_path
+        - jwt
     LaunchProps:
       type: object
       additionalProperties: false
@@ -980,14 +1077,14 @@ components:
               type:
                 type: string
                 enum:
-                - success
-                - error
-                - info
+                  - success
+                  - error
+                  - info
               message:
                 type: string
             required:
-            - type
-            - message
+              - type
+              - message
           description: Flash messages
         current_user:
           type: object
@@ -999,9 +1096,9 @@ components:
             email:
               type: string
           required:
-          - id
-          - name
-          - email
+            - id
+            - name
+            - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -1014,14 +1111,35 @@ components:
             email:
               type: string
           required:
-          - id
-          - name
-          - email
+            - id
+            - name
+            - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
           type: boolean
           description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+            - plan_credits
+            - pack_credits
+            - total_credits
+            - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
         thread_id:
           type: string
           description: Langgraph thread ID for the conversation
@@ -1251,9 +1369,9 @@ components:
               type: string
           nullable: true
       required:
-      - root_path
-      - langgraph_path
-      - jwt
+        - root_path
+        - langgraph_path
+        - jwt
     LeadsProps:
       type: object
       additionalProperties: false
@@ -1282,14 +1400,14 @@ components:
               type:
                 type: string
                 enum:
-                - success
-                - error
-                - info
+                  - success
+                  - error
+                  - info
               message:
                 type: string
             required:
-            - type
-            - message
+              - type
+              - message
           description: Flash messages
         current_user:
           type: object
@@ -1301,9 +1419,9 @@ components:
             email:
               type: string
           required:
-          - id
-          - name
-          - email
+            - id
+            - name
+            - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -1316,14 +1434,35 @@ components:
             email:
               type: string
           required:
-          - id
-          - name
-          - email
+            - id
+            - name
+            - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
           type: boolean
           description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+            - plan_credits
+            - pack_credits
+            - total_credits
+            - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
         project:
           type: object
           properties:
@@ -1341,10 +1480,10 @@ components:
             created_at: {}
             updated_at: {}
           required:
-          - id
-          - uuid
-          - account_id
-          - name
+            - id
+            - uuid
+            - account_id
+            - name
         leads:
           type: array
           items:
@@ -1360,9 +1499,9 @@ components:
               date:
                 type: string
             required:
-            - id
-            - email
-            - date
+              - id
+              - email
+              - date
         pagination:
           type: object
           properties:
@@ -1388,24 +1527,296 @@ components:
               type: array
               items:
                 oneOf:
-                - type: integer
-                - type: string
+                  - type: integer
+                  - type: string
           required:
-          - current_page
-          - total_pages
-          - total_count
-          - prev_page
-          - next_page
-          - series
+            - current_page
+            - total_pages
+            - total_count
+            - prev_page
+            - next_page
+            - series
       required:
-      - root_path
-      - langgraph_path
-      - jwt
-      - project
-      - leads
-      - pagination
+        - root_path
+        - langgraph_path
+        - jwt
+        - project
+        - leads
+        - pagination
+    SettingsProps:
+      type: object
+      additionalProperties: false
+      properties:
+        root_path:
+          type: string
+          description: Base URL of the application
+        langgraph_path:
+          type: string
+          description: URL of the Langgraph service
+        jwt:
+          type: string
+          description: JWT token for API authentication
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Validation errors from session
+        flash:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                  - success
+                  - error
+                  - info
+              message:
+                type: string
+            required:
+              - type
+              - message
+          description: Flash messages
+        current_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+            - id
+            - name
+            - email
+          nullable: true
+          description: Currently authenticated user
+        true_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+            - id
+            - name
+            - email
+          nullable: true
+          description: Original admin user when impersonating
+        impersonating:
+          type: boolean
+          description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+            - plan_credits
+            - pack_credits
+            - total_credits
+            - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
+        user:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+              description: User ID
+            email:
+              type: string
+              description: User email address
+            name:
+              type: string
+              description: User full name
+            first_name:
+              type: string
+              description: User first name
+              nullable: true
+            last_name:
+              type: string
+              description: User last name
+              nullable: true
+          required:
+            - id
+            - email
+            - name
+        subscription:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              type: integer
+              description: Subscription ID
+            prefix_id:
+              type: string
+              description: Subscription prefix ID for API calls
+            status:
+              type: string
+              description: Subscription status
+            plan_name:
+              type: string
+              description: Plan name
+            plan_display_name:
+              type: string
+              description: Human-readable plan name
+            interval:
+              type: string
+              description: Billing interval (month or year)
+            amount_cents:
+              type: integer
+              description: Plan price in cents
+            currency:
+              type: string
+              description: Currency code
+            current_period_start:
+              type: string
+              description: Current billing period start
+              nullable: true
+            current_period_end:
+              type: string
+              description: Current billing period end
+              nullable: true
+            ends_at:
+              type: string
+              description: When subscription ends (if canceled)
+              nullable: true
+            features:
+              type: array
+              items:
+                type: string
+              description: Plan features
+          required:
+            - id
+            - prefix_id
+            - status
+            - plan_name
+            - plan_display_name
+            - interval
+            - amount_cents
+            - currency
+            - features
+          nullable: true
+        billing_history:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                type: string
+                description: Charge processor ID
+              amount_cents:
+                type: integer
+                description: Amount charged in cents
+              currency:
+                type: string
+                description: Currency code
+              description:
+                type: string
+                description: Charge description
+              created_at:
+                type: string
+                description: When the charge was created
+              type:
+                type: string
+                description: Charge type (charge, refund, subscription)
+            required:
+              - id
+              - amount_cents
+              - currency
+              - description
+              - created_at
+              - type
+          description: Recent billing transactions
+          nullable: true
+        stripe_portal_url:
+          type: string
+          description: URL to Stripe customer portal
+          nullable: true
+        credit_packs:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                type: integer
+                description: Credit pack ID
+              name:
+                type: string
+                description: Credit pack name
+              credits:
+                type: integer
+                description: Number of credits in pack
+              price_cents:
+                type: integer
+                description: Price in cents
+              stripe_price_id:
+                type: string
+                description: Stripe price ID
+                nullable: true
+            required:
+              - id
+              - name
+              - credits
+              - price_cents
+          description: Available credit packs for purchase
+        payment_method:
+          type: object
+          additionalProperties: false
+          properties:
+            type:
+              type: string
+              description: Payment method type (card, link, affirm, etc.)
+              nullable: true
+            brand:
+              type: string
+              description: Card brand (Visa, Mastercard, etc.)
+              nullable: true
+            last4:
+              type: string
+              description: Last 4 digits of card or account
+              nullable: true
+            exp_month:
+              type: string
+              description: Card expiration month
+              nullable: true
+            exp_year:
+              type: string
+              description: Card expiration year
+              nullable: true
+            email:
+              type: string
+              description: Email for Link or PayPal payment methods
+              nullable: true
+          required: []
+          nullable: true
+      required:
+        - root_path
+        - langgraph_path
+        - jwt
+        - user
 servers:
-- url: https://{defaultHost}
-  variables:
-    defaultHost:
-      default: www.example.com
+  - url: https://{defaultHost}
+    variables:
+      defaultHost:
+        default: www.example.com

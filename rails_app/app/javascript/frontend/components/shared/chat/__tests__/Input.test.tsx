@@ -411,7 +411,7 @@ describe("Input", () => {
       );
 
       const link = screen.getByTestId("credit-gate-link");
-      expect(link).toHaveAttribute("href", "/subscriptions");
+      expect(link).toHaveAttribute("href", "/settings");
     });
   });
 });

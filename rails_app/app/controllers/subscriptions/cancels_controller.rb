@@ -7,6 +7,8 @@ class Subscriptions::CancelsController < ApplicationController
   end
 
   def destroy
+    Rails.logger.info "[CancelSubscription] Canceling subscription #{@subscription.id} (#{@subscription.processor_id})"
+
     # Metered subscriptions should end immediately so they don't rack up more charges
     if @subscription.metered?
       @subscription.cancel_now!(invoice_now: true)
@@ -20,17 +22,33 @@ class Subscriptions::CancelsController < ApplicationController
       @subscription.cancel
     end
 
-    redirect_to subscriptions_path, status: :see_other
+    Rails.logger.info "[CancelSubscription] Successfully canceled. New status: #{@subscription.reload.status}"
+
+    respond_to do |format|
+      format.html { redirect_to subscriptions_path, status: :see_other }
+      format.json { render json: { status: @subscription.status }, status: :ok }
+    end
   rescue Pay::Error => e
-    flash[:alert] = e.message
-    render :show, status: :unprocessable_entity
+    Rails.logger.error "[CancelSubscription] Pay::Error: #{e.message}"
+    respond_to do |format|
+      format.html do
+        flash[:alert] = e.message
+        render :show, status: :unprocessable_entity
+      end
+      format.json { render json: { error: e.message }, status: :unprocessable_entity }
+    end
   end
 
   private
 
   def set_subscription
     @subscription = current_account.subscriptions.find_by_prefix_id!(params[:subscription_id])
+    Rails.logger.info "[CancelSubscription] Found subscription: #{@subscription.id}, status: #{@subscription.status}"
   rescue ActiveRecord::RecordNotFound
-    redirect_to subscriptions_path
+    Rails.logger.warn "[CancelSubscription] Subscription not found: #{params[:subscription_id]}"
+    respond_to do |format|
+      format.html { redirect_to subscriptions_path }
+      format.json { render json: { error: "Subscription not found" }, status: :not_found }
+    end
   end
 end

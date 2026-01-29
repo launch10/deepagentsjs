@@ -229,6 +229,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Settings page props */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Settings page props */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SettingsProps"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{uuid}/campaigns/content": {
         parameters: {
             query?: never;
@@ -470,8 +506,8 @@ export interface components {
         SignInProps: {
             /** @description CSRF token */
             csrf_token: string;
-            /** @description Google OAuth path */
-            google_oauth_path: string;
+            /** @description Google OAuth path (null if OAuth disabled) */
+            google_oauth_path?: string | null;
             /** @description Flash messages */
             flash?: {
                 /** @enum {string} */
@@ -485,8 +521,8 @@ export interface components {
         SignUpProps: {
             /** @description CSRF token */
             csrf_token: string;
-            /** @description Google OAuth path */
-            google_oauth_path: string;
+            /** @description Google OAuth path (null if OAuth disabled) */
+            google_oauth_path?: string | null;
             /** @description Flash messages */
             flash?: {
                 /** @enum {string} */
@@ -531,6 +567,14 @@ export interface components {
             } | null;
             /** @description Whether admin is currently impersonating another user */
             impersonating?: boolean;
+            /** @description Credit balance for the current account */
+            credits?: {
+                plan_credits: number;
+                pack_credits: number;
+                total_credits: number;
+                plan_credits_allocated: number;
+                period_ends_at?: string | null;
+            } | null;
             /** @description Langgraph thread ID for the conversation */
             thread_id: null;
             project?: {
@@ -569,6 +613,14 @@ export interface components {
             } | null;
             /** @description Whether admin is currently impersonating another user */
             impersonating?: boolean;
+            /** @description Credit balance for the current account */
+            credits?: {
+                plan_credits: number;
+                pack_credits: number;
+                total_credits: number;
+                plan_credits_allocated: number;
+                period_ends_at?: string | null;
+            } | null;
             /** @description Langgraph thread ID for the conversation */
             thread_id: string | null;
             project?: {
@@ -633,6 +685,14 @@ export interface components {
             } | null;
             /** @description Whether admin is currently impersonating another user */
             impersonating?: boolean;
+            /** @description Credit balance for the current account */
+            credits?: {
+                plan_credits: number;
+                pack_credits: number;
+                total_credits: number;
+                plan_credits_allocated: number;
+                period_ends_at?: string | null;
+            } | null;
             /** @description Langgraph thread ID for the conversation */
             thread_id?: string | null;
             project?: {
@@ -687,6 +747,14 @@ export interface components {
             } | null;
             /** @description Whether admin is currently impersonating another user */
             impersonating?: boolean;
+            /** @description Credit balance for the current account */
+            credits?: {
+                plan_credits: number;
+                pack_credits: number;
+                total_credits: number;
+                plan_credits_allocated: number;
+                period_ends_at?: string | null;
+            } | null;
             /** @description Langgraph thread ID for the conversation */
             thread_id?: string | null;
             project?: {
@@ -804,6 +872,14 @@ export interface components {
             } | null;
             /** @description Whether admin is currently impersonating another user */
             impersonating?: boolean;
+            /** @description Credit balance for the current account */
+            credits?: {
+                plan_credits: number;
+                pack_credits: number;
+                total_credits: number;
+                plan_credits_allocated: number;
+                period_ends_at?: string | null;
+            } | null;
             /** @description Langgraph thread ID for the conversation */
             thread_id?: string | null;
             project?: {
@@ -925,6 +1001,14 @@ export interface components {
             } | null;
             /** @description Whether admin is currently impersonating another user */
             impersonating?: boolean;
+            /** @description Credit balance for the current account */
+            credits?: {
+                plan_credits: number;
+                pack_credits: number;
+                total_credits: number;
+                plan_credits_allocated: number;
+                period_ends_at?: string | null;
+            } | null;
             project: {
                 id: number;
                 uuid: string;
@@ -950,6 +1034,128 @@ export interface components {
                 to?: number | null;
                 series: (number | string)[];
             };
+        };
+        SettingsProps: {
+            /** @description Base URL of the application */
+            root_path: string;
+            /** @description URL of the Langgraph service */
+            langgraph_path: string;
+            /** @description JWT token for API authentication */
+            jwt: string;
+            /** @description Validation errors from session */
+            errors?: {
+                [key: string]: string[];
+            };
+            /** @description Flash messages */
+            flash?: {
+                /** @enum {string} */
+                type: "success" | "error" | "info";
+                message: string;
+            }[];
+            /** @description Currently authenticated user */
+            current_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Original admin user when impersonating */
+            true_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Whether admin is currently impersonating another user */
+            impersonating?: boolean;
+            /** @description Credit balance for the current account */
+            credits?: {
+                plan_credits: number;
+                pack_credits: number;
+                total_credits: number;
+                plan_credits_allocated: number;
+                period_ends_at?: string | null;
+            } | null;
+            user: {
+                /** @description User ID */
+                id: number;
+                /** @description User email address */
+                email: string;
+                /** @description User full name */
+                name: string;
+                /** @description User first name */
+                first_name?: string | null;
+                /** @description User last name */
+                last_name?: string | null;
+            };
+            subscription?: {
+                /** @description Subscription ID */
+                id: number;
+                /** @description Subscription prefix ID for API calls */
+                prefix_id: string;
+                /** @description Subscription status */
+                status: string;
+                /** @description Plan name */
+                plan_name: string;
+                /** @description Human-readable plan name */
+                plan_display_name: string;
+                /** @description Billing interval (month or year) */
+                interval: string;
+                /** @description Plan price in cents */
+                amount_cents: number;
+                /** @description Currency code */
+                currency: string;
+                /** @description Current billing period start */
+                current_period_start?: string | null;
+                /** @description Current billing period end */
+                current_period_end?: string | null;
+                /** @description When subscription ends (if canceled) */
+                ends_at?: string | null;
+                /** @description Plan features */
+                features: string[];
+            } | null;
+            /** @description Recent billing transactions */
+            billing_history?: {
+                /** @description Charge processor ID */
+                id: string;
+                /** @description Amount charged in cents */
+                amount_cents: number;
+                /** @description Currency code */
+                currency: string;
+                /** @description Charge description */
+                description: string;
+                /** @description When the charge was created */
+                created_at: string;
+                /** @description Charge type (charge, refund, subscription) */
+                type: string;
+            }[] | null;
+            /** @description URL to Stripe customer portal */
+            stripe_portal_url?: string | null;
+            /** @description Available credit packs for purchase */
+            credit_packs?: {
+                /** @description Credit pack ID */
+                id: number;
+                /** @description Credit pack name */
+                name: string;
+                /** @description Number of credits in pack */
+                credits: number;
+                /** @description Price in cents */
+                price_cents: number;
+                /** @description Stripe price ID */
+                stripe_price_id?: string | null;
+            }[];
+            payment_method?: {
+                /** @description Payment method type (card, link, affirm, etc.) */
+                type?: string | null;
+                /** @description Card brand (Visa, Mastercard, etc.) */
+                brand?: string | null;
+                /** @description Last 4 digits of card or account */
+                last4?: string | null;
+                /** @description Card expiration month */
+                exp_month?: string | null;
+                /** @description Card expiration year */
+                exp_year?: string | null;
+                /** @description Email for Link or PayPal payment methods */
+                email?: string | null;
+            } | null;
         };
     };
     responses: never;

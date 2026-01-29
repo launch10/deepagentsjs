@@ -5,12 +5,22 @@ import { usePage } from "@inertiajs/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WorkflowProvider } from "@context/WorkflowProvider";
 import { Toaster } from "@components/ui/sonner";
+import { toast } from "sonner";
 import { CreditWarningModal } from "@components/credits";
 import { useProjectStore } from "~/stores/projectStore";
 import { useSessionStore } from "~/stores/sessionStore";
 import { useCreditStore } from "~/stores/creditStore";
 
 const queryClient = new QueryClient();
+
+// Type for flash messages from Rails
+// Supports both simple messages and structured messages with title/description
+interface FlashMessage {
+  type: "success" | "error" | "info";
+  message?: string;
+  title?: string;
+  description?: string;
+}
 
 // Type for shared page props that all pages receive
 interface SharedPageProps {
@@ -36,6 +46,8 @@ interface SharedPageProps {
     plan_credits_allocated: number;
     period_ends_at: string | null;
   } | null;
+  // Flash messages
+  flash?: FlashMessage[];
 }
 
 export const SiteLayout = ({ children }: { children: React.ReactNode }): React.ReactNode => {
@@ -81,6 +93,38 @@ export const SiteLayout = ({ children }: { children: React.ReactNode }): React.R
     mainRef.current?.scrollTo(0, 0);
   }, [url]);
 
+  // Show flash messages as toasts
+  useEffect(() => {
+    if (props.flash && props.flash.length > 0) {
+      props.flash.forEach((flash) => {
+        // Support both simple messages and structured title/description
+        const title = flash.title || flash.message;
+
+        // Skip empty toasts
+        if (!title) return;
+
+        const options: { description?: string; duration?: number } = {
+          duration: 5000, // Show for 5 seconds
+        };
+        if (flash.description) {
+          options.description = flash.description;
+        }
+
+        switch (flash.type) {
+          case "success":
+            toast.success(title, options);
+            break;
+          case "error":
+            toast.error(title, options);
+            break;
+          case "info":
+            toast.info(title, options);
+            break;
+        }
+      });
+    }
+  }, [props.flash]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <WorkflowProvider>
@@ -93,7 +137,7 @@ export const SiteLayout = ({ children }: { children: React.ReactNode }): React.R
             </main>
           </div>
         </div>
-        <Toaster />
+        <Toaster position="top-right" />
         <CreditWarningModal />
       </WorkflowProvider>
     </QueryClientProvider>
