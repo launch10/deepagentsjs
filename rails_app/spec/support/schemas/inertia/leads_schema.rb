@@ -49,10 +49,12 @@ module InertiaSchemas
           website_id: InertiaSchemas.nullable(type: :integer),
           account_id: InertiaSchemas.integer_field,
           name: InertiaSchemas.string_field,
+          status: { type: :string, enum: %w[live paused draft] },
+          domain: InertiaSchemas.nullable(type: :string),
           created_at: {}, # Any type (Time object serializes as various formats)
           updated_at: {}  # Any type (Time object serializes as various formats)
         },
-        required: %w[id uuid account_id name]
+        required: %w[id uuid account_id name status]
       }
     end
 

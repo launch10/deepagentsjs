@@ -2,7 +2,9 @@ class ProjectsController < SubscribedController
   before_action :set_project, except: [:index, :new]
 
   def index
-    projects = current_account.projects.order(updated_at: :desc)
+    projects = current_account.projects
+      .includes({ website: :domains }, :deploys, :campaigns)
+      .order(updated_at: :desc)
     render inertia: "Projects",
       props: {
         projects: projects.map(&:to_mini_json),

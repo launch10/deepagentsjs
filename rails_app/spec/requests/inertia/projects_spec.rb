@@ -15,6 +15,23 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     sign_in user
   end
 
+  describe 'GET /projects (index)' do
+    context 'with no projects' do
+      it 'renders the Projects component' do
+        get projects_path
+
+        expect(response).to have_http_status(:ok)
+        expect(inertia.component).to eq('Projects')
+      end
+
+      it 'props conform to Projects schema' do
+        get projects_path
+
+        expect_inertia_props_to_match_schema(InertiaSchemas::Projects.props_schema)
+      end
+    end
+  end
+
   describe 'GET /projects/new (onboarding)' do
     it 'renders the Brainstorm component' do
       get onboarding_path
@@ -34,6 +51,23 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
   let!(:website) { create(:website, account: account, project: project, template: template) }
   let!(:brainstorm) { create(:brainstorm, website: website, project: project) }
   let!(:workflow) { create(:project_workflow, project: project, workflow_type: 'launch', step: 'ad_campaign', substep: 'content') }
+
+  describe 'GET /projects (index) with projects' do
+    it 'props conform to Projects schema' do
+      get projects_path
+
+      expect_inertia_props_to_match_schema(InertiaSchemas::Projects.props_schema)
+    end
+
+    it 'includes project data' do
+      get projects_path
+
+      expect(inertia.props[:projects].length).to eq(1)
+      expect(inertia.props[:total_count]).to eq(1)
+      expect(inertia.props[:projects].first[:status]).to eq('draft')
+    end
+  end
+
   describe 'GET /projects/:uuid/brainstorm' do
     before do
       workflow.update!(step: 'brainstorm', substep: nil)

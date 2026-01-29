@@ -9,9 +9,21 @@ module ProjectConcerns
         website_id: website&.id,
         account_id: account_id,
         name: name,
+        status: derived_status,
+        domain: website&.domain,
         created_at: created_at,
         updated_at: updated_at
       }
+    end
+
+    def derived_status
+      if deploys.loaded? ? deploys.any?(&:is_live) : deploys.live.exists?
+        "live"
+      elsif campaigns.loaded? ? campaigns.any? { |c| c.status == "paused" } : campaigns.where(status: "paused").exists?
+        "paused"
+      else
+        "draft"
+      end
     end
 
     def serialize
