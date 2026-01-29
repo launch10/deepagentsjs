@@ -29,7 +29,8 @@ export const fetchMetricsNode = NodeMiddleware.use(
       return {};
     }
 
-    const jwt = state.jwt;
+    // Get JWT from configurable (passed by InsightsAPI.generate)
+    const jwt = config?.configurable?.jwt as string | undefined;
     if (!jwt) {
       return {
         error: { message: "No JWT token provided for fetching metrics", node: "fetchMetrics" },

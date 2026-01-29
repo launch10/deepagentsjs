@@ -37,11 +37,18 @@ test.describe("Dashboard", () => {
     test("displays performance charts with data", async ({ page }) => {
       await dashboardPage.goto();
 
-      // Check all 4 metric charts are visible
-      await expect(page.getByText("Total Leads")).toBeVisible();
-      await expect(page.getByText("Cost-per-Lead")).toBeVisible();
-      await expect(page.getByText("Click-Through Rate")).toBeVisible();
-      await expect(page.getByText("Page Views")).toBeVisible();
+      // Check all 4 metric charts are visible (use heading locators for specificity)
+      const performanceSection = page
+        .locator("section")
+        .filter({ hasText: "Performance Overview" });
+      await expect(performanceSection.getByRole("heading", { name: "Total Leads" })).toBeVisible();
+      await expect(
+        performanceSection.getByRole("heading", { name: "Cost-per-Lead" })
+      ).toBeVisible();
+      await expect(
+        performanceSection.getByRole("heading", { name: "Click-Through Rate" })
+      ).toBeVisible();
+      await expect(performanceSection.getByRole("heading", { name: "Page Views" })).toBeVisible();
 
       // Charts should have SVG elements (Recharts renders SVGs)
       const charts = page.locator(".recharts-surface");
@@ -51,25 +58,31 @@ test.describe("Dashboard", () => {
     test("displays project cards", async ({ page }) => {
       await dashboardPage.goto();
 
+      // Wait for insights to load first (they can change the DOM)
+      await dashboardPage.waitForInsights();
+
       // Should have 3 projects from healthy_account snapshot
       const projectCards = page.locator('a[href*="/projects/"][href*="/website"]');
       await expect(projectCards).toHaveCount(3);
 
-      // Check project names from the snapshot
-      await expect(page.getByText("Premium Pet Portraits")).toBeVisible();
-      await expect(page.getByText("Budget Travel Guides")).toBeVisible();
-      await expect(page.getByText("Fitness Coaching")).toBeVisible();
+      // Check project names - use the project card links directly
+      await expect(page.getByRole("link", { name: /Premium Pet Portraits.*Live/i })).toBeVisible();
+      await expect(page.getByRole("link", { name: /Budget Travel Guides.*Live/i })).toBeVisible();
+      await expect(page.getByRole("link", { name: /Fitness Coaching.*Live/i })).toBeVisible();
     });
 
     test("displays project metrics on cards", async ({ page }) => {
       await dashboardPage.goto();
 
-      // Each project card should show metrics
-      const firstProject = page.locator('a[href*="/projects/"]').first();
-      await expect(firstProject.getByText("Leads")).toBeVisible();
-      await expect(firstProject.getByText("Page Views")).toBeVisible();
-      await expect(firstProject.getByText("CTR")).toBeVisible();
-      await expect(firstProject.getByText("Cost-per-Lead")).toBeVisible();
+      // Wait for insights to load first
+      await dashboardPage.waitForInsights();
+
+      // Find a project card and check it has metric labels
+      const projectCard = page.getByRole("link", { name: /Premium Pet Portraits.*Live/i });
+      await expect(projectCard.getByText("Leads")).toBeVisible();
+      await expect(projectCard.getByText("Page Views")).toBeVisible();
+      await expect(projectCard.getByText("CTR")).toBeVisible();
+      await expect(projectCard.getByText("Cost-per-Lead")).toBeVisible();
     });
 
     test("allows filtering projects by status", async ({ page }) => {
@@ -109,16 +122,16 @@ test.describe("Dashboard", () => {
       await expect(dateFilter).toHaveValue("90");
 
       // Charts should still be visible (instant client-side switching)
-      await expect(page.getByText("Total Leads")).toBeVisible();
+      const performanceSection = page
+        .locator("section")
+        .filter({ hasText: "Performance Overview" });
+      await expect(performanceSection.getByRole("heading", { name: "Total Leads" })).toBeVisible();
     });
 
     test("generates and displays insights from Langgraph", async ({ page }) => {
       await dashboardPage.goto();
 
       // Wait for insights to load (Langgraph will generate them)
-      // Insights section should show either:
-      // 1. Generated insight cards (3 of them)
-      // 2. Empty state if generation is still pending
       const insightsSection = page.locator("section").filter({ hasText: "Key Insights" });
       await expect(insightsSection).toBeVisible();
 
@@ -192,8 +205,8 @@ test.describe("Dashboard", () => {
       const projectCards = page.locator('a[href*="/projects/"][href*="/website"]');
       await expect(projectCards).toHaveCount(3);
 
-      // Budget Travel Guides is the stalled project
-      await expect(page.getByText("Budget Travel Guides")).toBeVisible();
+      // Budget Travel Guides is the stalled project (use heading to avoid matching legend)
+      await expect(page.getByRole("heading", { name: "Budget Travel Guides" })).toBeVisible();
     });
 
     test("generates insights that flag stalled project", async ({ page }) => {
@@ -234,7 +247,8 @@ test.describe("Dashboard", () => {
       const projectCards = page.locator('a[href*="/projects/"][href*="/website"]');
       await expect(projectCards).toHaveCount(1);
 
-      await expect(page.getByText("My First Startup")).toBeVisible();
+      // Use heading to avoid matching chart legend
+      await expect(page.getByRole("heading", { name: "My First Startup" })).toBeVisible();
     });
 
     test("generates insights for struggling account", async ({ page }) => {
@@ -264,7 +278,8 @@ test.describe("Dashboard", () => {
       const projectCards = page.locator('a[href*="/projects/"][href*="/website"]');
       await expect(projectCards).toHaveCount(1);
 
-      await expect(page.getByText("My New Business")).toBeVisible();
+      // Use heading to avoid matching chart legend
+      await expect(page.getByRole("heading", { name: "My New Business" })).toBeVisible();
     });
 
     test("generates encouraging insights for new account", async ({ page }) => {

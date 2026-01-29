@@ -8,6 +8,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@components/ui/chart";
+import { useInsights } from "@hooks/useInsights";
 
 // Use generated types from RSwag
 export type DashboardProps =
@@ -37,14 +38,11 @@ const PROJECT_COLORS = [
 const DEFAULT_DAYS: DaysKey = "30";
 
 export default function Dashboard() {
-  const {
-    all_performance,
-    all_projects,
-    status_counts,
-    date_range_options,
-    insights,
-    current_user,
-  } = usePage<DashboardProps>().props;
+  const { all_performance, all_projects, status_counts, date_range_options, current_user } =
+    usePage<DashboardProps>().props;
+
+  // Generate insights via Langgraph if not already cached
+  const { insights, isGenerating: isGeneratingInsights } = useInsights();
 
   // Client-side state for instant switching - no server round-trips
   const [selectedDays, setSelectedDays] = useState<DaysKey>(DEFAULT_DAYS);
@@ -104,7 +102,13 @@ export default function Dashboard() {
         {/* Key Insights */}
         <section className="mb-8">
           <h2 className="text-lg font-semibold text-[#2E3238] mb-4">Key Insights</h2>
-          {insights && insights.length > 0 ? (
+          {isGeneratingInsights ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <InsightLoadingCard />
+              <InsightLoadingCard />
+              <InsightLoadingCard />
+            </div>
+          ) : insights && insights.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {insights.map((insight, index) => (
                 <InsightCard key={index} insight={insight} />
@@ -284,6 +288,24 @@ function InsightEmptyCard() {
             Review
             <span aria-hidden="true">&rarr;</span>
           </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InsightLoadingCard() {
+  return (
+    <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-4 animate-pulse">
+      <div className="flex items-start gap-2">
+        <div className="flex-shrink-0 mt-0.5">
+          <div className="w-4 h-4 bg-neutral-200 rounded" />
+        </div>
+        <div className="flex-1 space-y-2">
+          <div className="h-4 bg-neutral-200 rounded w-3/4" />
+          <div className="h-3 bg-neutral-200 rounded w-full" />
+          <div className="h-3 bg-neutral-200 rounded w-5/6" />
+          <div className="h-3 bg-neutral-200 rounded w-1/3 mt-3" />
         </div>
       </div>
     </div>
