@@ -2,13 +2,13 @@
 
 module Analytics
   module Metrics
-    # Calculates page views from Ahoy::Event with name='page_view'.
+    # Calculates unique visitors (sessions) from Ahoy visits.
     #
     # For historical dates, uses pre-computed data from analytics_daily_metrics.
-    # For today, queries live from ahoy_events.
+    # For today, queries live from ahoy_visits.
     #
-    class PageViewsMetric < BaseMetric
-      # Generate time series data for page views.
+    class UniqueVisitorsMetric < BaseMetric
+      # Generate time series data for unique visitors.
       #
       # @return [Hash] Time series with :dates, :series, :totals
       #
@@ -21,7 +21,7 @@ module Analytics
         previous_total = AnalyticsDailyMetric
           .for_account(account)
           .for_date_range(prev_start, prev_end)
-          .sum(:page_views_count)
+          .sum(:unique_visitors_count)
 
         trend = calculate_trend(current_total, previous_total)
 
@@ -49,7 +49,7 @@ module Analytics
       end
 
       def projects_with_data
-        account.projects.includes(website: :domains)
+        account.projects.includes(:website)
       end
 
       def daily_counts_for_project(project)
@@ -73,19 +73,16 @@ module Analytics
         AnalyticsDailyMetric
           .where(project: project)
           .for_date_range(start_date, end_date - 1.day)
-          .pluck(:date, :page_views_count)
+          .pluck(:date, :unique_visitors_count)
           .to_h
       end
 
       def live_count_for_project_today(project)
         return 0 unless project.website
 
-        # Count actual page_view events from Ahoy::Event, not visits
-        Ahoy::Event
-          .joins(:visit)
-          .where(ahoy_visits: { website_id: project.website.id })
-          .where(name: "page_view")
-          .where(time: Date.current.all_day)
+        Ahoy::Visit
+          .where(website: project.website)
+          .where(started_at: Date.current.all_day)
           .count
       end
     end

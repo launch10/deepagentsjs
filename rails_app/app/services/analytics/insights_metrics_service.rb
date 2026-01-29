@@ -41,6 +41,7 @@ module Analytics
       {
         leads: overview[:leads][:totals][:current],
         page_views: overview[:page_views][:totals][:current],
+        unique_visitors: overview[:unique_visitors][:totals][:current],
         ctr: overview[:ctr][:available] ? overview[:ctr][:totals][:current] : nil,
         cpl: overview[:cpl][:available] ? overview[:cpl][:totals][:current] : nil,
         ctr_available: overview[:ctr][:available],
@@ -60,6 +61,7 @@ module Analytics
           name: project[:name],
           total_leads: project[:total_leads],
           total_page_views: project[:total_page_views],
+          total_unique_visitors: project[:total_unique_visitors],
           ctr: project[:ctr],
           cpl: project[:cpl],
           days_since_last_lead: days_since_lead,
@@ -77,6 +79,10 @@ module Analytics
         page_views_trend: {
           direction: overview[:page_views][:totals][:trend_direction],
           percent: overview[:page_views][:totals][:trend_percent]
+        },
+        unique_visitors_trend: {
+          direction: overview[:unique_visitors][:totals][:trend_direction],
+          percent: overview[:unique_visitors][:totals][:trend_percent]
         },
         ctr_trend: if overview[:ctr][:available]
                      {

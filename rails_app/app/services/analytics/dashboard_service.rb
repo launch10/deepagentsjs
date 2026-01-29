@@ -23,12 +23,13 @@ module Analytics
 
     # Get performance overview with all metrics.
     #
-    # @return [Hash] Performance data with :leads, :page_views, :ctr, :cpl
+    # @return [Hash] Performance data with :leads, :unique_visitors, :page_views, :ctr, :cpl
     #
     def performance_overview
       CacheService.fetch(account.id, "overview", days) do
         {
           leads: leads_metric.time_series,
+          unique_visitors: unique_visitors_metric.time_series,
           page_views: page_views_metric.time_series,
           ctr: google_ads_metric.ctr_time_series,
           cpl: google_ads_metric.cpl_time_series
@@ -52,6 +53,10 @@ module Analytics
       @leads_metric ||= Metrics::LeadsMetric.new(account, @start_date, @end_date)
     end
 
+    def unique_visitors_metric
+      @unique_visitors_metric ||= Metrics::UniqueVisitorsMetric.new(account, @start_date, @end_date)
+    end
+
     def page_views_metric
       @page_views_metric ||= Metrics::PageViewsMetric.new(account, @start_date, @end_date)
     end
@@ -66,6 +71,7 @@ module Analytics
         .select(
           "project_id",
           "SUM(leads_count) as total_leads",
+          "SUM(unique_visitors_count) as total_unique_visitors",
           "SUM(page_views_count) as total_page_views",
           "SUM(impressions) as total_impressions",
           "SUM(clicks) as total_clicks",
@@ -83,6 +89,7 @@ module Analytics
         metrics = projects_with_metrics[project.id]
 
         total_leads = metrics&.total_leads.to_i
+        total_unique_visitors = metrics&.total_unique_visitors.to_i
         total_page_views = metrics&.total_page_views.to_i
         total_impressions = metrics&.total_impressions.to_i
         total_clicks = metrics&.total_clicks.to_i
@@ -97,6 +104,7 @@ module Analytics
           uuid: project.uuid,
           name: project.name,
           total_leads: total_leads,
+          total_unique_visitors: total_unique_visitors,
           total_page_views: total_page_views,
           total_impressions: total_impressions,
           total_clicks: total_clicks,

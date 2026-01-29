@@ -1,75 +1,42 @@
 # frozen_string_literal: true
 
 module GoogleAds
-  # Syncs Google Ads performance data using a 7-day rolling window.
+  # Enqueues sync jobs for each eligible Google Ads account.
   #
-  # Uses search_stream for efficient bulk data retrieval.
-  # Upserts into ad_performance_daily to handle late-arriving conversions.
+  # Only processes accounts that:
+  # - Have a Google customer ID configured
+  # - Belong to an account with an active subscription
   #
-  # Why 7-day window: Google Ads conversions have attribution lag - a conversion
-  # today might be attributed to a click from 3 days ago. By re-fetching the last
-  # 7 days on each sync, we capture these late-arriving conversions.
+  # This is a batch coordinator - it iterates over accounts and enqueues
+  # individual SyncPerformanceForAccountWorker jobs for granular retries.
   #
   class SyncPerformanceWorker < ApplicationWorker
     sidekiq_options queue: :analytics, retry: 3
 
-    ROLLING_WINDOW_DAYS = 7
-
     def perform
-      start_date = ROLLING_WINDOW_DAYS.days.ago.to_date
-      end_date = Date.yesterday
-
-      AdsAccount.where(platform: "google").find_each do |ads_account|
-        next unless ads_account.google_customer_id.present?
-
-        sync_for_account(ads_account, start_date, end_date)
-      rescue => e
-        Rails.logger.error("[SyncPerformanceWorker] Failed for ads_account #{ads_account.id}: #{e.message}")
-        Rollbar.error(e, ads_account_id: ads_account.id)
-        # Continue processing other accounts
+      self.class.eligible_ads_accounts.find_each do |ads_account|
+        SyncPerformanceForAccountWorker.perform_async(ads_account.id)
       end
     end
 
-    private
-
-    def sync_for_account(ads_account, start_date, end_date)
-      performance_data = Resources::CampaignPerformance.new(ads_account).fetch_daily_metrics(
-        start_date: start_date,
-        end_date: end_date
-      )
-
-      return if performance_data.empty?
-
-      # Map Google campaign IDs to local campaign IDs
-      google_campaign_ids = performance_data.map { |d| d[:campaign_id] }.uniq
-      campaigns_by_google_id = Campaign
-        .where(account: ads_account.account)
-        .where("platform_settings->'google'->>'campaign_id' IN (?)", google_campaign_ids.map(&:to_s))
-        .index_by { |c| c.google_campaign_id.to_s }
-
-      records_to_upsert = performance_data.filter_map do |data|
-        campaign = campaigns_by_google_id[data[:campaign_id].to_s]
-        next unless campaign
-
-        {
-          campaign_id: campaign.id,
-          date: data[:date],
-          impressions: data[:impressions],
-          clicks: data[:clicks],
-          cost_micros: data[:cost_micros],
-          conversions: data[:conversions],
-          conversion_value_micros: data[:conversion_value_micros],
-          created_at: Time.current,
-          updated_at: Time.current
-        }
-      end
-
-      return if records_to_upsert.empty?
-
-      AdPerformanceDaily.upsert_all(
-        records_to_upsert,
-        unique_by: [:campaign_id, :date]
-      )
+    # Google Ads accounts with customer IDs belonging to subscribed accounts.
+    #
+    # Uses indexed columns:
+    # - ads_accounts.platform
+    # - ads_accounts.platform_settings (GIN index + expression index on google customer_id)
+    # - pay_subscriptions.status (index_pay_subscriptions_on_status)
+    #
+    # @return [ActiveRecord::Relation<AdsAccount>]
+    #
+    def self.eligible_ads_accounts
+      AdsAccount
+        .joins(:account)
+        .joins("INNER JOIN pay_customers ON pay_customers.owner_id = accounts.id AND pay_customers.owner_type = 'Account'")
+        .joins("INNER JOIN pay_subscriptions ON pay_subscriptions.customer_id = pay_customers.id")
+        .where(platform: "google")
+        .where("ads_accounts.platform_settings->'google'->>'customer_id' IS NOT NULL")
+        .where("ads_accounts.platform_settings->'google'->>'customer_id' != ''")
+        .where(pay_subscriptions: { status: "active" })
     end
   end
 end

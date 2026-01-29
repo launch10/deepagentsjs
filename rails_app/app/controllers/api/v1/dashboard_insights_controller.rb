@@ -16,25 +16,7 @@ class API::V1::DashboardInsightsController < API::BaseController
   # @return [401 Unauthorized] When JWT is missing or invalid
   #
   def index
-    insight = current_account.dashboard_insight
-
-    if insight
-      render json: {
-        id: insight.id,
-        insights: insight.insights,
-        generated_at: insight.generated_at,
-        fresh: insight.fresh?,
-        metrics_summary: insight.metrics_summary
-      }
-    else
-      render json: {
-        id: nil,
-        insights: nil,
-        generated_at: nil,
-        fresh: false,
-        metrics_summary: nil
-      }
-    end
+    render json: serialize_insight(current_account.dashboard_insight)
   end
 
   # POST /api/v1/dashboard_insights
@@ -57,13 +39,7 @@ class API::V1::DashboardInsightsController < API::BaseController
 
     if insight.save
       status = insight.previously_new_record? ? :created : :ok
-      render json: {
-        id: insight.id,
-        insights: insight.insights,
-        generated_at: insight.generated_at,
-        fresh: insight.fresh?,
-        metrics_summary: insight.metrics_summary
-      }, status: status
+      render json: serialize_insight(insight), status: status
     else
       render json: { errors: insight.errors.full_messages }, status: :unprocessable_entity
     end
@@ -85,6 +61,16 @@ class API::V1::DashboardInsightsController < API::BaseController
   end
 
   private
+
+  def serialize_insight(insight)
+    {
+      id: insight&.id,
+      insights: insight&.insights,
+      generated_at: insight&.generated_at,
+      fresh: insight&.fresh? || false,
+      metrics_summary: insight&.metrics_summary
+    }
+  end
 
   def create_params
     permitted = params.require(:dashboard_insight).permit(
