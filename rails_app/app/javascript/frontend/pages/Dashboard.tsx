@@ -1,83 +1,56 @@
-import { usePage } from "@inertiajs/react";
+import { usePage, router } from "@inertiajs/react";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import type { InertiaProps } from "@shared";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@components/ui/chart";
 
-// Types based on DashboardController props - matches Analytics::Metrics::BaseMetric output
-interface SeriesData {
-  project_id: number;
-  project_uuid: string;
-  project_name: string;
-  data: number[];
-}
+// Use generated types from RSwag
+export type DashboardProps =
+  InertiaProps.paths["/dashboard"]["get"]["responses"]["200"]["content"]["application/json"];
 
-interface TimeSeries {
-  dates: string[];
-  series: SeriesData[];
-  totals: {
-    current: number;
-    previous: number;
-    trend_percent: number;
-    trend_direction: "up" | "down" | "flat";
-  };
-}
+// Derived types
+type TimeSeries = DashboardProps["performance"]["leads"];
+type SeriesData = TimeSeries["series"][number];
+type Insight = NonNullable<DashboardProps["insights"]>[number];
+type ProjectSummary = DashboardProps["projects"][number];
+type DateRangeOption = DashboardProps["date_range_options"][number];
 
-interface Insight {
-  title: string;
-  description: string;
-  sentiment: "positive" | "negative" | "neutral";
-  project_uuid: string | null;
-  action: {
-    label: string;
-    url: string;
-  };
-}
-
-interface ProjectSummary {
-  id: number;
-  uuid: string;
-  name: string;
-  total_leads: number;
-  total_unique_visitors: number;
-  total_page_views: number;
-  total_impressions: number;
-  total_clicks: number;
-  ctr: number | null;
-  cost_dollars: number;
-  cpl: number | null;
-}
-
-interface DateRangeOption {
-  label: string;
-  days: number;
-}
-
-interface DashboardProps {
-  performance: {
-    leads: TimeSeries;
-    unique_visitors: TimeSeries;
-    page_views: TimeSeries;
-    ctr: TimeSeries;
-    cpl: TimeSeries;
-  };
-  projects: ProjectSummary[];
-  date_range: string;
-  days: number;
-  status_filter: string;
-  date_range_options: DateRangeOption[];
-  insights: Insight[] | null;
-  metrics_summary: Record<string, unknown> | null;
-  // current_user comes from inertia_share in SubscribedController
-  current_user: {
-    id: number;
-    name: string;
-    email: string;
-    admin: boolean;
-  } | null;
-}
+// Color palette for projects (matches Figma)
+const PROJECT_COLORS = [
+  "#0D9488", // teal
+  "#F97316", // orange
+  "#8B5CF6", // purple
+  "#EC4899", // pink
+  "#10B981", // green
+  "#3B82F6", // blue
+];
 
 export default function Dashboard() {
-  const { performance, projects, date_range, insights, current_user } =
+  const { performance, projects, date_range, days, date_range_options, insights, current_user } =
     usePage<DashboardProps>().props;
 
   const firstName = current_user?.name?.split(" ")[0] || "there";
+
+  // Build chart config from project series
+  const buildChartConfig = (series: SeriesData[]): ChartConfig => {
+    const config: ChartConfig = {};
+    series.forEach((s, index) => {
+      config[s.project_uuid] = {
+        label:
+          s.project_name.length > 25 ? s.project_name.substring(0, 25) + "..." : s.project_name,
+        color: PROJECT_COLORS[index % PROJECT_COLORS.length],
+      };
+    });
+    return config;
+  };
+
+  const handleDateRangeChange = (selectedDays: number) => {
+    router.get("/dashboard", { days: selectedDays }, { preserveState: true });
+  };
 
   return (
     <main className="min-h-screen bg-[#FAFAF9]">
@@ -93,33 +66,87 @@ export default function Dashboard() {
         </div>
 
         {/* Key Insights */}
-        {insights && insights.length > 0 && (
-          <section className="mb-8">
-            <h2 className="text-lg font-semibold text-[#2E3238] mb-4">Key Insights</h2>
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold text-[#2E3238] mb-4">Key Insights</h2>
+          {insights && insights.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {insights.map((insight, index) => (
                 <InsightCard key={index} insight={insight} />
               ))}
             </div>
-          </section>
-        )}
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <InsightEmptyCard />
+            </div>
+          )}
+        </section>
 
         {/* Performance Overview */}
         <section className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-[#2E3238]">Performance Overview</h2>
-            <span className="text-sm text-base-500">{date_range}</span>
+            <div className="flex items-center gap-4">
+              <h2 className="text-lg font-semibold text-[#2E3238]">Performance Overview</h2>
+              {/* Project Legend */}
+              <div className="flex items-center gap-4">
+                {performance.leads.series.map((s, index) => (
+                  <div key={s.project_uuid} className="flex items-center gap-1.5">
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: PROJECT_COLORS[index % PROJECT_COLORS.length] }}
+                    />
+                    <span className="text-xs text-base-500">
+                      {s.project_name.length > 20
+                        ? s.project_name.substring(0, 20) + "..."
+                        : s.project_name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-base-500">Filter by:</span>
+              <select
+                value={days}
+                onChange={(e) => handleDateRangeChange(Number(e.target.value))}
+                className="text-sm border border-neutral-300 rounded-md px-3 py-1.5 bg-white"
+              >
+                {date_range_options.map((option: DateRangeOption) => (
+                  <option key={option.days} value={option.days}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <MetricCard title="Total Leads" data={performance?.leads} />
-            <MetricCard title="Cost-per-Lead" data={performance?.cpl} prefix="$" />
-            <MetricCard
-              title="Click-Through Rate"
-              data={performance?.ctr}
-              suffix="%"
-              multiplier={100}
+            <MetricChart
+              title="Total Leads"
+              data={performance.leads}
+              chartConfig={buildChartConfig(performance.leads.series)}
+              dateRange={date_range}
             />
-            <MetricCard title="Page Views" data={performance?.page_views} />
+            <MetricChart
+              title="Cost-per-Lead"
+              data={performance.cpl}
+              chartConfig={buildChartConfig(performance.cpl.series)}
+              dateRange={date_range}
+              prefix="$"
+              valueFormatter={(v) => (v != null ? `$${v.toFixed(2)}` : "-")}
+            />
+            <MetricChart
+              title="Click-Through Rate"
+              data={performance.ctr}
+              chartConfig={buildChartConfig(performance.ctr.series)}
+              dateRange={date_range}
+              suffix="%"
+              valueFormatter={(v) => (v != null ? `${(v * 100).toFixed(1)}%` : "-")}
+            />
+            <MetricChart
+              title="Page Views"
+              data={performance.page_views}
+              chartConfig={buildChartConfig(performance.page_views.series)}
+              dateRange={date_range}
+            />
           </div>
         </section>
 
@@ -175,64 +202,203 @@ function InsightCard({ insight }: { insight: Insight }) {
   );
 }
 
-function MetricCard({
-  title,
-  data,
-  prefix = "",
-  suffix = "",
-  multiplier = 1,
-}: {
-  title: string;
-  data: TimeSeries | undefined;
-  prefix?: string;
-  suffix?: string;
-  multiplier?: number;
-}) {
-  // Handle missing data gracefully
-  if (!data?.totals) {
-    return (
-      <div className="rounded-lg border border-neutral-300 bg-white p-4">
-        <h3 className="text-sm text-base-500 mb-1">{title}</h3>
-        <div className="flex items-baseline gap-2">
-          <span className="text-2xl font-semibold text-[#2E3238]">-</span>
-        </div>
-      </div>
-    );
-  }
-
-  const currentTotal = data.totals.current ?? 0;
-  const displayValue = (currentTotal * multiplier).toFixed(suffix === "%" ? 1 : 0);
-  const trendPercent = data.totals.trend_percent;
-  const trendDirection = data.totals.trend_direction;
-
+function InsightEmptyCard() {
   return (
-    <div className="rounded-lg border border-neutral-300 bg-white p-4">
-      <h3 className="text-sm text-base-500 mb-1">{title}</h3>
-      <div className="flex items-baseline gap-2">
-        <span className="text-2xl font-semibold text-[#2E3238]">
-          {prefix}
-          {displayValue}
-          {suffix}
-        </span>
-        {trendPercent !== undefined && trendDirection !== "flat" && (
-          <span
-            className={`text-xs font-medium ${
-              trendDirection === "up" ? "text-green-600" : "text-red-600"
-            }`}
+    <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
+      <div className="flex items-start gap-2">
+        <div className="flex-shrink-0 mt-0.5">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
           >
-            {trendDirection === "up" ? "+" : "-"}
-            {trendPercent.toFixed(1)}%
-          </span>
-        )}
+            <path
+              d="M10.667 1.333L9.733 4.267L6.8 5.2L9.733 6.133L10.667 9.067L11.6 6.133L14.533 5.2L11.6 4.267L10.667 1.333Z"
+              fill="#F97316"
+            />
+            <path
+              d="M4.667 6L3.867 8.4L1.467 9.2L3.867 10L4.667 12.4L5.467 10L7.867 9.2L5.467 8.4L4.667 6Z"
+              fill="#F97316"
+            />
+            <path
+              d="M8 11.333L7.467 13.067L5.733 13.6L7.467 14.133L8 15.867L8.533 14.133L10.267 13.6L8.533 13.067L8 11.333Z"
+              fill="#F97316"
+            />
+          </svg>
+        </div>
+        <div className="flex-1">
+          <h3 className="font-semibold text-sm mb-1 text-orange-600">Project Recently Launched</h3>
+          <p className="text-xs text-base-600 mb-3">
+            Your project is brand new, so there's no data yet. Check back soon or review your
+            project details to get started.
+          </p>
+          <a
+            href="/projects"
+            className="inline-flex items-center gap-1 text-xs font-medium text-base-700 hover:underline"
+          >
+            Review
+            <span aria-hidden="true">&rarr;</span>
+          </a>
+        </div>
       </div>
     </div>
   );
 }
 
+function MetricChart({
+  title,
+  data,
+  chartConfig,
+  dateRange,
+  prefix = "",
+  suffix = "",
+  valueFormatter,
+}: {
+  title: string;
+  data: TimeSeries;
+  chartConfig: ChartConfig;
+  dateRange: string;
+  prefix?: string;
+  suffix?: string;
+  valueFormatter?: (value: number) => string;
+}) {
+  // Transform data for recharts
+  const chartData = data.dates.map((date, dateIndex) => {
+    const point: Record<string, string | number> = {
+      date,
+      displayDate: formatDate(date),
+    };
+    data.series.forEach((series) => {
+      point[series.project_uuid] = series.data[dateIndex] || 0;
+    });
+    return point;
+  });
+
+  // Calculate date range for subtitle
+  const startDate = data.dates[0];
+  const endDate = data.dates[data.dates.length - 1];
+  const dateSubtitle =
+    startDate && endDate
+      ? `${formatDateShort(startDate)} - ${formatDateShort(endDate)}`
+      : dateRange;
+
+  const trendPercent = data.totals.trend_percent;
+  const trendDirection = data.totals.trend_direction;
+  const currentTotal = data.totals.current;
+
+  // Format the display value
+  const displayValue = valueFormatter
+    ? valueFormatter(currentTotal)
+    : `${prefix}${currentTotal.toLocaleString()}${suffix}`;
+
+  return (
+    <div className="rounded-lg border border-neutral-300 bg-white p-4">
+      <div className="mb-2">
+        <h3 className="text-sm font-medium text-[#2E3238]">{title}</h3>
+        <p className="text-xs text-base-400">{dateSubtitle}</p>
+      </div>
+
+      {data.series.length > 0 && chartData.length > 0 ? (
+        <>
+          <ChartContainer config={chartConfig} className="h-[120px] w-full">
+            <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <defs>
+                {data.series.map((series, index) => (
+                  <linearGradient
+                    key={series.project_uuid}
+                    id={`fill-${series.project_uuid}`}
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop
+                      offset="5%"
+                      stopColor={PROJECT_COLORS[index % PROJECT_COLORS.length]}
+                      stopOpacity={0.3}
+                    />
+                    <stop
+                      offset="95%"
+                      stopColor={PROJECT_COLORS[index % PROJECT_COLORS.length]}
+                      stopOpacity={0.05}
+                    />
+                  </linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E5E5" />
+              <XAxis
+                dataKey="displayDate"
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 9, fill: "#9CA3AF" }}
+                tickMargin={8}
+                minTickGap={30}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 9, fill: "#9CA3AF" }}
+                tickMargin={4}
+                tickFormatter={(value) => {
+                  if (valueFormatter) return valueFormatter(value);
+                  return value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value.toString();
+                }}
+              />
+              <ChartTooltip content={<ChartTooltipContent labelFormatter={(label) => label} />} />
+              {data.series.map((series, index) => (
+                <Area
+                  key={series.project_uuid}
+                  type="monotone"
+                  dataKey={series.project_uuid}
+                  stroke={PROJECT_COLORS[index % PROJECT_COLORS.length]}
+                  strokeWidth={2}
+                  fill={`url(#fill-${series.project_uuid})`}
+                  fillOpacity={1}
+                />
+              ))}
+            </AreaChart>
+          </ChartContainer>
+
+          {/* Trend indicator */}
+          {trendDirection !== "flat" && (
+            <p className="text-xs text-base-500 mt-2">
+              Trending {trendDirection} by {trendPercent.toFixed(1)}% this week{" "}
+              <span className={trendDirection === "up" ? "text-green-600" : "text-red-600"}>
+                {trendDirection === "up" ? "↗" : "↘"}
+              </span>
+            </p>
+          )}
+        </>
+      ) : (
+        <div className="h-[120px] flex flex-col items-center justify-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-neutral-100 flex items-center justify-center">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 20 20"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              className="text-neutral-400"
+            >
+              <rect x="2" y="11" width="4" height="7" rx="1" fill="currentColor" />
+              <rect x="8" y="7" width="4" height="11" rx="1" fill="currentColor" />
+              <rect x="14" y="3" width="4" height="15" rx="1" fill="currentColor" />
+            </svg>
+          </div>
+          <span className="text-xs text-base-400">No data available yet</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProjectCard({ project }: { project: ProjectSummary }) {
-  const formatCurrency = (value: number | null) => (value !== null ? `$${value.toFixed(2)}` : "-");
-  const formatPercent = (value: number | null) =>
-    value !== null ? `${(value * 100).toFixed(1)}%` : "-";
+  const formatCurrency = (value: number | null | undefined) =>
+    value != null ? `$${value.toFixed(2)}` : "-";
+  const formatPercent = (value: number | null | undefined) =>
+    value != null ? `${(value * 100).toFixed(1)}%` : "-";
 
   return (
     <div className="rounded-lg border border-neutral-300 bg-white p-4">
@@ -265,4 +431,14 @@ function ProjectCard({ project }: { project: ProjectSummary }) {
       </div>
     </div>
   );
+}
+
+function formatDate(isoDate: string): string {
+  const date = new Date(isoDate);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function formatDateShort(isoDate: string): string {
+  const date = new Date(isoDate);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }

@@ -6,27 +6,114 @@ import { type InsightsGraphState } from "@annotation";
 
 /**
  * System prompt for generating analytics insights
+ *
+ * This prompt encodes the strategic knowledge from plans/analytics-dashboard-insights.md
+ * to ensure consistent, actionable, and insightful output.
  */
 const INSIGHTS_SYSTEM_PROMPT = `You are an expert marketing analyst helping someone validate their business idea.
 
-Given the metrics below, generate exactly 3 insights that will help them improve.
+Your job is to answer the question: "Is this working?" — not just report data, but synthesize SIGNAL from noise.
 
-RULES:
-1. At least 1 insight MUST be positive (celebrate wins, even small ones)
-2. Every insight must include a specific action they can take
-3. Be specific: name projects, cite numbers, compare to previous periods
-4. Prioritize by urgency: problems first, then opportunities
-5. If a project has no leads for 7+ days, always flag it (days_since_last_lead)
-6. Keep titles short (5 words max)
-7. Include concrete numbers in descriptions
+## THE 3-INSIGHT FORMULA
 
-INSIGHT CATEGORIES (use these to guide your thinking):
-- Lead Health: lead velocity, stalled projects, first leads
-- Cost Efficiency: CPL trends, ROAS, expensive leads warnings
-- Momentum: CTR trends, traffic changes, peak performance
-- Project Comparison: winners vs underperformers
+Generate exactly 3 insights that ALWAYS cover these areas:
+1. **Lead Health** (required) - The north star. Leads = validation.
+2. **Efficiency/Cost** (required) - Are they spending wisely?
+3. **Actionable Next Step** (required) - What should they DO right now?
 
-ACTIONS AVAILABLE (use the project's UUID in URLs):
+## METRIC IMPORTANCE (Tier 1 = Most Critical)
+
+**Tier 1 - North Stars** (always prioritize these):
+- Lead Count: If no leads, nothing else matters
+- Lead Trend: Direction matters more than absolute numbers early on
+- Cost Per Lead (CPL): Can they afford to scale?
+
+**Tier 2 - Efficiency Signals** (include when available):
+- ROAS: Direct ROI when tracking conversions
+- Total Spend: Context for all other metrics ($100 for 2 leads is fine, $1000 for 2 leads is not)
+- CTR Trend: Leading indicator - CTR dropping = problem coming
+
+**Tier 3 - Diagnostics** (use to diagnose WHERE things are breaking):
+- Impressions: Are they reaching people at all?
+- CTR: Are their ads compelling?
+- Page Views: Is traffic reaching the page?
+- Conversion Rate: Is the landing page working?
+
+## TRIGGER THRESHOLDS (use these to identify insights)
+
+| Signal | Threshold | Insight Type |
+|--------|-----------|--------------|
+| Lead stall | days_since_last_lead >= 7 | URGENT: Flag immediately |
+| CPL improving | cpl_trend down >= 15% | POSITIVE: Celebrate efficiency |
+| CPL worsening | cpl_trend up >= 20% | WARNING: Review targeting |
+| Expensive project | project CPL > 2x account average | WARNING: Consider pausing |
+| Great ROAS | roas >= 3.0 | POSITIVE: Scale opportunity |
+| CTR improving | ctr_trend up >= 20% | POSITIVE: Ads resonating |
+| CTR dropping | ctr_trend down >= 25% | WARNING: Ad fatigue |
+| Traffic crash | page_views_trend down >= 50% | URGENT: Check ad status |
+| Bleeding money | spend > $100 AND leads == 0 | URGENT: Pause and reassess |
+| High traffic, no leads | page_views > 200 AND leads == 0 | WARNING: Landing page problem |
+
+## FUNNEL DIAGNOSIS FRAMEWORK
+
+When something's broken, diagnose WHERE:
+
+| Symptom | Diagnosis | Action |
+|---------|-----------|--------|
+| Very low impressions | Targeting too narrow OR budget too low | Expand targeting |
+| High impressions, low CTR (<1%) | Ad copy not resonating | Review ad copy |
+| Good CTR, low page views | Technical issue (page not loading?) | Check landing page |
+| High page views, no leads | Landing page not converting | Review landing page |
+| Good engagement, no form fills | Offer not compelling | Test different offer |
+
+## SELECTION PRIORITY
+
+When multiple insights compete, rank by:
+1. **Urgency** - Problems beat opportunities
+2. **Impact** - Bigger numbers first
+3. **Recency** - Things that just happened
+4. **Actionability** - Clear next step available
+
+## EXAMPLE INSIGHTS (match this quality)
+
+**Lead Health Examples:**
+- Title: "Lead Generation Stalled"
+  Description: "Premium Pet Portraits hasn't generated leads in 7 days. Your ads may need fresh creative or adjusted targeting."
+  Action: { label: "Review Keywords", url: "/projects/[uuid]/campaigns/content" }
+
+- Title: "First Lead!"
+  Description: "Budget Travel Guides just got its first lead! Your idea is showing early traction."
+  Action: { label: "View Project", url: "/projects/[uuid]" }
+
+**Efficiency Examples:**
+- Title: "CPL Dropping Fast"
+  Description: "Cost-per-lead dropped to $28, down 18% from last week. Your targeting improvements are paying off."
+  Action: { label: "View Analytics", url: "/projects/[uuid]/analytics" }
+
+- Title: "Strong ROAS"
+  Description: "Premium Pet Portraits is generating $5 for every $1 spent. Consider increasing budget to scale."
+  Action: { label: "Increase Budget", url: "/projects/[uuid]/campaigns/budget" }
+
+**Problem Diagnosis Examples:**
+- Title: "Ads Not Resonating"
+  Description: "Budget Travel Guides has 5,000 impressions but only 0.5% CTR. Your ad copy isn't grabbing attention."
+  Action: { label: "Review Ad Copy", url: "/projects/[uuid]/campaigns/content" }
+
+- Title: "Landing Page Not Converting"
+  Description: "Great CTR (4.2%) but no leads. 500 people visited but nobody signed up. Your landing page needs work."
+  Action: { label: "Review Landing Page", url: "/projects/[uuid]/website" }
+
+## OUTPUT RULES
+
+1. At least 1 insight MUST be positive (find something to celebrate, even small wins)
+2. Every insight MUST include a specific action with a real URL
+3. Be specific: name projects, cite actual numbers, compare to previous periods
+4. Keep titles short (3-5 words max)
+5. Descriptions: 1-2 sentences with concrete numbers
+6. End with actionable hope, not doom - motivate action
+
+## ACTIONS AVAILABLE (use project UUID in URLs)
+
 - Review ad copy: /projects/[uuid]/campaigns/content
 - Review landing page: /projects/[uuid]/website
 - Adjust targeting: /projects/[uuid]/campaigns/targeting
@@ -34,12 +121,13 @@ ACTIONS AVAILABLE (use the project's UUID in URLs):
 - View project: /projects/[uuid]
 - View analytics: /projects/[uuid]/analytics
 
-SENTIMENT GUIDANCE:
-- "positive": Good news, wins, improvements, milestones
-- "negative": Problems, warnings, urgent issues
+## SENTIMENT
+
+- "positive": Wins, improvements, milestones, opportunities
+- "negative": Problems, warnings, urgent issues requiring action
 - "neutral": Observations, suggestions, informational
 
-Remember: Even when metrics look bad, find something constructive. Your goal is to motivate action, not discourage.`;
+Remember: Your goal is to help them succeed. Even bad news should be delivered constructively with a clear path forward.`;
 
 /**
  * Formats metrics input into a readable string for the LLM

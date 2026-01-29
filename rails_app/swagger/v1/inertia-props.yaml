@@ -114,6 +114,19 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/SettingsProps"
+  "/dashboard":
+    get:
+      summary: Dashboard page props
+      tags:
+        - Inertia Pages
+      parameters: []
+      responses:
+        "200":
+          description: Dashboard page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/DashboardProps"
   "/projects/{uuid}/campaigns/content":
     get:
       summary: Content page props
@@ -1815,6 +1828,562 @@ components:
         - langgraph_path
         - jwt
         - user
+    DashboardProps:
+      type: object
+      additionalProperties: false
+      properties:
+        root_path:
+          type: string
+          description: Base URL of the application
+        langgraph_path:
+          type: string
+          description: URL of the Langgraph service
+        jwt:
+          type: string
+          description: JWT token for API authentication
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Validation errors from session
+        flash:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                  - success
+                  - error
+                  - info
+              message:
+                type: string
+            required:
+              - type
+              - message
+          description: Flash messages
+        current_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+            - id
+            - name
+            - email
+          nullable: true
+          description: Currently authenticated user
+        true_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+            - id
+            - name
+            - email
+          nullable: true
+          description: Original admin user when impersonating
+        impersonating:
+          type: boolean
+          description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+            - plan_credits
+            - pack_credits
+            - total_credits
+            - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
+        performance:
+          type: object
+          additionalProperties: false
+          properties:
+            leads:
+              type: object
+              additionalProperties: false
+              properties:
+                dates:
+                  type: array
+                  items:
+                    type: string
+                  description: ISO formatted dates for x-axis
+                series:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      project_id:
+                        type: integer
+                        description: Project ID
+                      project_uuid:
+                        type: string
+                        description: Project UUID
+                      project_name:
+                        type: string
+                        description: Project name
+                      data:
+                        type: array
+                        items:
+                          type: number
+                        description: Daily metric values for each date in range
+                    required:
+                      - project_id
+                      - project_uuid
+                      - project_name
+                      - data
+                  description: Metric values per project
+                totals:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    current:
+                      type: number
+                      description: Total for current period
+                    previous:
+                      type: number
+                      description: Total for previous period
+                    trend_percent:
+                      type: number
+                      description: Percentage change from previous period
+                    trend_direction:
+                      type: string
+                      enum:
+                        - up
+                        - down
+                        - flat
+                      description: Direction of the trend
+                  required:
+                    - current
+                    - previous
+                    - trend_percent
+                    - trend_direction
+              required:
+                - dates
+                - series
+                - totals
+            unique_visitors:
+              type: object
+              additionalProperties: false
+              properties:
+                dates:
+                  type: array
+                  items:
+                    type: string
+                  description: ISO formatted dates for x-axis
+                series:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      project_id:
+                        type: integer
+                        description: Project ID
+                      project_uuid:
+                        type: string
+                        description: Project UUID
+                      project_name:
+                        type: string
+                        description: Project name
+                      data:
+                        type: array
+                        items:
+                          type: number
+                        description: Daily metric values for each date in range
+                    required:
+                      - project_id
+                      - project_uuid
+                      - project_name
+                      - data
+                  description: Metric values per project
+                totals:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    current:
+                      type: number
+                      description: Total for current period
+                    previous:
+                      type: number
+                      description: Total for previous period
+                    trend_percent:
+                      type: number
+                      description: Percentage change from previous period
+                    trend_direction:
+                      type: string
+                      enum:
+                        - up
+                        - down
+                        - flat
+                      description: Direction of the trend
+                  required:
+                    - current
+                    - previous
+                    - trend_percent
+                    - trend_direction
+              required:
+                - dates
+                - series
+                - totals
+            page_views:
+              type: object
+              additionalProperties: false
+              properties:
+                dates:
+                  type: array
+                  items:
+                    type: string
+                  description: ISO formatted dates for x-axis
+                series:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      project_id:
+                        type: integer
+                        description: Project ID
+                      project_uuid:
+                        type: string
+                        description: Project UUID
+                      project_name:
+                        type: string
+                        description: Project name
+                      data:
+                        type: array
+                        items:
+                          type: number
+                        description: Daily metric values for each date in range
+                    required:
+                      - project_id
+                      - project_uuid
+                      - project_name
+                      - data
+                  description: Metric values per project
+                totals:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    current:
+                      type: number
+                      description: Total for current period
+                    previous:
+                      type: number
+                      description: Total for previous period
+                    trend_percent:
+                      type: number
+                      description: Percentage change from previous period
+                    trend_direction:
+                      type: string
+                      enum:
+                        - up
+                        - down
+                        - flat
+                      description: Direction of the trend
+                  required:
+                    - current
+                    - previous
+                    - trend_percent
+                    - trend_direction
+              required:
+                - dates
+                - series
+                - totals
+            ctr:
+              type: object
+              additionalProperties: false
+              properties:
+                dates:
+                  type: array
+                  items:
+                    type: string
+                  description: ISO formatted dates for x-axis
+                series:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      project_id:
+                        type: integer
+                        description: Project ID
+                      project_uuid:
+                        type: string
+                        description: Project UUID
+                      project_name:
+                        type: string
+                        description: Project name
+                      data:
+                        type: array
+                        items:
+                          type: number
+                        description: Daily metric values for each date in range
+                    required:
+                      - project_id
+                      - project_uuid
+                      - project_name
+                      - data
+                  description: Metric values per project
+                totals:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    current:
+                      type: number
+                      description: Total for current period
+                    previous:
+                      type: number
+                      description: Total for previous period
+                    trend_percent:
+                      type: number
+                      description: Percentage change from previous period
+                    trend_direction:
+                      type: string
+                      enum:
+                        - up
+                        - down
+                        - flat
+                      description: Direction of the trend
+                  required:
+                    - current
+                    - previous
+                    - trend_percent
+                    - trend_direction
+              required:
+                - dates
+                - series
+                - totals
+            cpl:
+              type: object
+              additionalProperties: false
+              properties:
+                dates:
+                  type: array
+                  items:
+                    type: string
+                  description: ISO formatted dates for x-axis
+                series:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: false
+                    properties:
+                      project_id:
+                        type: integer
+                        description: Project ID
+                      project_uuid:
+                        type: string
+                        description: Project UUID
+                      project_name:
+                        type: string
+                        description: Project name
+                      data:
+                        type: array
+                        items:
+                          type: number
+                        description: Daily metric values for each date in range
+                    required:
+                      - project_id
+                      - project_uuid
+                      - project_name
+                      - data
+                  description: Metric values per project
+                totals:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    current:
+                      type: number
+                      description: Total for current period
+                    previous:
+                      type: number
+                      description: Total for previous period
+                    trend_percent:
+                      type: number
+                      description: Percentage change from previous period
+                    trend_direction:
+                      type: string
+                      enum:
+                        - up
+                        - down
+                        - flat
+                      description: Direction of the trend
+                  required:
+                    - current
+                    - previous
+                    - trend_percent
+                    - trend_direction
+              required:
+                - dates
+                - series
+                - totals
+          required:
+            - leads
+            - unique_visitors
+            - page_views
+            - ctr
+            - cpl
+        projects:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                type: integer
+                description: Project ID
+              uuid:
+                type: string
+                description: Project UUID
+              name:
+                type: string
+                description: Project name
+              total_leads:
+                type: integer
+                description: Total leads for period
+              total_unique_visitors:
+                type: integer
+                description: Total unique visitors
+              total_page_views:
+                type: integer
+                description: Total page views
+              total_impressions:
+                type: integer
+                description: Total ad impressions
+              total_clicks:
+                type: integer
+                description: Total ad clicks
+              ctr:
+                type: number
+                description: Click-through rate
+                nullable: true
+              cost_dollars:
+                type: number
+                description: Total ad spend in dollars
+              cpl:
+                type: number
+                description: Cost per lead
+                nullable: true
+            required:
+              - id
+              - uuid
+              - name
+              - total_leads
+              - total_unique_visitors
+              - total_page_views
+              - total_impressions
+              - total_clicks
+              - cost_dollars
+          description: Project summaries with aggregated metrics
+        date_range:
+          type: string
+          description: Human readable date range label
+        days:
+          type: integer
+          description: Number of days in range
+        status_filter:
+          type: string
+          description: Current status filter
+        date_range_options:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              label:
+                type: string
+                description: Display label
+              days:
+                type: integer
+                description: Number of days
+            required:
+              - label
+              - days
+          description: Available date range options
+        insights:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              title:
+                type: string
+                description: Insight title
+              description:
+                type: string
+                description: Insight description
+              sentiment:
+                type: string
+                enum:
+                  - positive
+                  - negative
+                  - neutral
+                description: Insight sentiment
+              project_uuid:
+                type: string
+                description: Related project UUID
+                nullable: true
+              action:
+                type: object
+                additionalProperties: false
+                properties:
+                  label:
+                    type: string
+                    description: Action button label
+                  url:
+                    type: string
+                    description: Action URL
+                required:
+                  - label
+                  - url
+            required:
+              - title
+              - description
+              - sentiment
+              - action
+          description: AI-generated insights (null if stale)
+          nullable: true
+        metrics_summary:
+          type: object
+          additionalProperties: true
+          description: Metrics summary for insight generation
+          nullable: true
+      required:
+        - root_path
+        - langgraph_path
+        - jwt
+        - performance
+        - projects
+        - date_range
+        - days
+        - status_filter
+        - date_range_options
 servers:
   - url: https://{defaultHost}
     variables:

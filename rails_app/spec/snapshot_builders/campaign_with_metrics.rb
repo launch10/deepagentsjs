@@ -69,7 +69,7 @@ class CampaignWithMetrics < BaseBuilder
     project.workflows.create!(workflow_type: "launch", step: with_deploy ? "ads" : "website", substep: 0)
 
     # Create website
-    website = Website.create!(
+    Website.create!(
       account: account,
       project: project,
       name: name,
@@ -104,7 +104,7 @@ class CampaignWithMetrics < BaseBuilder
     campaign = result[:campaign]
     campaign.update_columns(
       status: status,
-      launched_at: status == "active" ? 30.days.ago : nil
+      launched_at: (status == "active") ? 30.days.ago : nil
     )
 
     # Create budget if not already created
@@ -119,14 +119,14 @@ class CampaignWithMetrics < BaseBuilder
 
     # Generate trends based on status
     # Active projects show growth, paused show flat/decline
-    trend_multiplier = status == "active" ? 1.05 : 0.98
+    trend_multiplier = (status == "active") ? 1.05 : 0.98
 
     30.times do |day_offset|
       date = base_date - (29 - day_offset).days
-      day_factor = (day_offset + 1) / 30.0 # 0.03 to 1.0
+      # 0.03 to 1.0
 
       # Base values that trend over time
-      base_leads = status == "active" ? rand(8..15) : rand(0..3)
+      base_leads = (status == "active") ? rand(8..15) : rand(0..3)
       base_visitors = rand(80..150)
       base_page_views = rand(400..800)
       base_impressions = rand(800..1500)
@@ -183,7 +183,7 @@ class CampaignWithMetrics < BaseBuilder
     insights = [
       {
         title: "Lead Generation Stalled",
-        description: "#{live_project&.dig(:name) || 'Your project'} hasn't generated leads in 7 days. Review your keywords or ad copy.",
+        description: "#{live_project&.dig(:name) || "Your project"} hasn't generated leads in 7 days. Review your keywords or ad copy.",
         sentiment: "negative",
         project_uuid: live_project&.dig(:project)&.uuid,
         action: { label: "Review", url: "/projects/#{live_project&.dig(:project)&.uuid}" }

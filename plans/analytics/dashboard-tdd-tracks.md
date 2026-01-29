@@ -111,6 +111,64 @@ This document breaks down the analytics dashboard implementation into 3 independ
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+### Dashboard API Layer
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          DASHBOARD API LAYER                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                    DashboardInsightsController                        │  │
+│  │  GET /api/v1/dashboard_insights         → Current insights + fresh?   │  │
+│  │  GET /api/v1/dashboard_insights/metrics_summary → Metrics for LLM     │  │
+│  │  POST /api/v1/dashboard_insights        → Save generated insights     │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                           │                           │                      │
+│                           ▼                           ▼                      │
+│  ┌─────────────────────────────────┐   ┌────────────────────────────────┐  │
+│  │      DashboardInsight           │   │   InsightsMetricsService       │  │
+│  │  (model, 1 per account)         │   │   • Summarizes for LLM input   │  │
+│  │  • insights (JSONB, 3 items)    │   │   • Extracts trends/flags      │  │
+│  │  • metrics_summary (JSONB)      │   │   • Identifies stalled/high    │  │
+│  │  • generated_at                 │   │     performing projects        │  │
+│  │  • fresh? (< 24 hours)          │   └────────────────────────────────┘  │
+│  └─────────────────────────────────┘               │                        │
+│                                                    ▼                        │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                        DashboardService                               │  │
+│  │  (Main orchestrator, <500ms target via CacheService)                  │  │
+│  │  • performance_overview() → time series for all metrics               │  │
+│  │  • projects_summary()     → per-project aggregates                    │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                    │                                        │
+│         ┌────────────┬─────────────┼─────────────┬────────────┐            │
+│         ▼            ▼             ▼             ▼            ▼            │
+│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌───────────┐    │
+│  │LeadsMetric│ │PageViews  │ │UniqueVisit│ │GoogleAds  │ │CacheService│   │
+│  │           │ │Metric     │ │orsMetric  │ │Metric     │ │           │    │
+│  │• time_    │ │           │ │           │ │• ctr_time │ │• Redis    │    │
+│  │  series() │ │           │ │           │ │  series() │ │• TTL-based│    │
+│  │• trends   │ │           │ │           │ │• cpl_time │ │• Per-acct │    │
+│  │           │ │           │ │           │ │  series() │ │           │    │
+│  └───────────┘ └───────────┘ └───────────┘ └───────────┘ └───────────┘    │
+│         │            │             │             │                          │
+└─────────┼────────────┼─────────────┼─────────────┼──────────────────────────┘
+          │            │             │             │
+          ▼            ▼             ▼             ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                     AnalyticsDailyMetric (pre-computed)                      │
+│  • leads_count, page_views_count, unique_visitors_count                      │
+│  • impressions, clicks, cost_micros, conversions, conversion_value_micros    │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key components:**
+
+- **DashboardService**: Main orchestrator. Creates individual metric objects and wraps responses in `CacheService` for <500ms responses.
+- **Metric classes** (e.g., `LeadsMetric`): Read from `AnalyticsDailyMetric` for historical data and query live tables (e.g., `WebsiteLead`) for today's count. This hybrid approach shows real-time data for "today" while using pre-computed data for historical dates.
+- **DashboardInsight**: AI-generated insights layer. `InsightsMetricsService` extracts a summary (totals, trends, flags) that gets passed to Langgraph. Results are saved with a 24-hour freshness window.
+
 ### Data Architecture Principle
 
 **Store raw, transform later.** Raw Google Ads data goes into `ad_performance_daily` exactly as returned from the API. The `analytics_daily_metrics` table contains transformed/aggregated data that can always be recomputed from raw sources. This means:
@@ -587,6 +645,8 @@ end
 - `ad_performance_daily` stores **raw** Google Ads data - unmassaged, exactly as returned from API
 - `analytics_daily_metrics` is the **transform** layer - can be recomputed from raw sources
 - 7-day rolling window captures late-arriving conversions (attribution lag)
+- **Hourly sync** includes today's partial data for near-real-time dashboard
+- Note: Google Ads reporting has ~2-4 hour lag, so "today" is approximate
 
 ### Tests Required
 

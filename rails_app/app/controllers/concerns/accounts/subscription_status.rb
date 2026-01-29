@@ -19,6 +19,8 @@ module Accounts
       unless subscribed?
         if request.format.json?
           render json: {error: "Unauthorized"}, status: :unauthorized
+        elsif !user_signed_in?
+          redirect_to new_user_session_path
         else
           redirect_to pricing_path
         end

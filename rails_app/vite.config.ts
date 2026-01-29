@@ -30,6 +30,8 @@ export default defineConfig((config) => {
         "swr",
         "throttleit",
         "use-sync-external-store",
+        "use-sync-external-store/shim/with-selector",
+        "recharts",
       ],
       exclude: ["langgraph-ai-sdk-react", "type-fest"],
     },
@@ -38,8 +40,8 @@ export default defineConfig((config) => {
       alias: {
         "~": path.resolve(__dirname, "app/javascript/frontend"),
         "@vercel/oidc": new URL("./app/javascript/stubs/vercel-oidc.ts", import.meta.url).pathname,
+        // Only alias exact paths, not with-selector (needed by recharts)
         "use-sync-external-store/shim/index.js": "react",
-        "use-sync-external-store/shim": "react",
       },
     },
     plugins: [
