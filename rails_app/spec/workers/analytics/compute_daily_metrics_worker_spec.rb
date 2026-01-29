@@ -108,7 +108,7 @@ RSpec.describe Analytics::ComputeDailyMetricsWorker do
       end
     end
 
-    context "without date argument" do
+    context "without date argument (7-day rolling window)" do
       let(:account) { create(:account) }
       let(:project) { create(:project, account: account) }
       let!(:deploy) { create(:deploy, :live, project: project) }
@@ -118,11 +118,50 @@ RSpec.describe Analytics::ComputeDailyMetricsWorker do
         subscribe_account(account, plan_name: "growth_monthly")
       end
 
-      it "defaults to yesterday" do
-        expect(Analytics::ComputeMetricsForProjectWorker).to receive(:perform_async)
-          .with(project.id, Date.yesterday.iso8601)
+      it "enqueues jobs for the past 7 days to match Google Ads sync window" do
+        # Expect 7 calls, one for each day in the rolling window
+        (1..7).each do |days_ago|
+          expect(Analytics::ComputeMetricsForProjectWorker).to receive(:perform_async)
+            .with(project.id, days_ago.days.ago.to_date.iso8601)
+        end
 
         subject.perform
+      end
+
+      it "includes yesterday in the rolling window" do
+        expect(Analytics::ComputeMetricsForProjectWorker).to receive(:perform_async)
+          .with(project.id, Date.yesterday.iso8601)
+        allow(Analytics::ComputeMetricsForProjectWorker).to receive(:perform_async)
+
+        subject.perform
+      end
+
+      it "includes 7 days ago in the rolling window" do
+        expect(Analytics::ComputeMetricsForProjectWorker).to receive(:perform_async)
+          .with(project.id, 7.days.ago.to_date.iso8601)
+        allow(Analytics::ComputeMetricsForProjectWorker).to receive(:perform_async)
+
+        subject.perform
+      end
+    end
+
+    context "with explicit date argument (single-day mode)" do
+      let(:account) { create(:account) }
+      let(:project) { create(:project, account: account) }
+      let!(:deploy) { create(:deploy, :live, project: project) }
+
+      before do
+        ensure_plans_exist
+        subscribe_account(account, plan_name: "growth_monthly")
+      end
+
+      it "only processes the specified date" do
+        specific_date = 3.days.ago.to_date
+
+        expect(Analytics::ComputeMetricsForProjectWorker).to receive(:perform_async)
+          .with(project.id, specific_date.iso8601).once
+
+        subject.perform(specific_date.iso8601)
       end
     end
   end

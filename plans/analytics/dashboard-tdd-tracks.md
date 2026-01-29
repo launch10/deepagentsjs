@@ -44,6 +44,73 @@ This document breaks down the analytics dashboard implementation into 3 independ
 
 ## Phase A1: Database Foundation
 
+### Data Pipeline Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        RAW SOURCE DATA                              │
+├─────────────────────────────────────────────────────────────────────┤
+│  WebsiteLead          → leads                                       │
+│  Ahoy::Visit          → unique visitors (sessions)                  │
+│  Ahoy::Event          → page views (name='page_view')               │
+│  AdPerformanceDaily   → impressions, clicks, cost_micros            │
+│                         (synced from Google Ads API)                │
+└─────────────────────────────────────────────────────────────────────┘
+                                   │
+                                   ▼
+           ComputeMetricsService (aggregates per project/day)
+                                   │
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    AnalyticsDailyMetric                             │
+│                    (per project, per day)                           │
+├─────────────────────────────────────────────────────────────────────┤
+│  leads_count, unique_visitors_count, page_views_count               │
+│  impressions, clicks, cost_micros (rolled up from campaigns)        │
+└─────────────────────────────────────────────────────────────────────┘
+                                   │
+                                   ▼
+              DashboardService + Metric classes
+              (query AnalyticsDailyMetric for historical,
+               raw sources for today's live data)
+                                   │
+                                   ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Dashboard API Response                           │
+│                    (time series, trends, totals)                    │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Worker Orchestration
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Scheduler (Zhong/cron)                                         │
+│  Runs daily                                                     │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  ComputeDailyMetricsWorker                                      │
+│  - Finds all projects with live deploys + active subscriptions  │
+│  - Enqueues one job per project                                 │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼ (fan-out)
+┌─────────────────────────────────────────────────────────────────┐
+│  ComputeMetricsForProjectWorker (per project)                   │
+│  - Calls ComputeMetricsService                                  │
+│  - Enables granular retries per project                         │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  ComputeMetricsService                                          │
+│  - Aggregates from raw sources (leads, visits, events, ads)     │
+│  - Upserts into AnalyticsDailyMetric                            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ### Data Architecture Principle
 
 **Store raw, transform later.** Raw Google Ads data goes into `ad_performance_daily` exactly as returned from the API. The `analytics_daily_metrics` table contains transformed/aggregated data that can always be recomputed from raw sources. This means:

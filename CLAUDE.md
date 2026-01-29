@@ -415,6 +415,80 @@ Sidekiq and Zhong use `REDIS_URL` from the environment, so their queues and lock
 bin/services env    # Shows instance, ports, databases, Redis
 ```
 
+## Coding Patterns
+
+### Worker Batch Pattern
+
+When processing collections of records in background jobs, use a **batch coordinator + individual worker** pattern for granular retries:
+
+```ruby
+# BAD: One failure kills the whole batch
+class ProcessAllAccountsWorker < ApplicationWorker
+  def perform
+    Account.find_each do |account|
+      process_account(account)  # If this fails, the whole job fails
+    rescue => e
+      Rails.logger.error("Failed for #{account.id}")
+      # Continues, but no automatic retry for this account
+    end
+  end
+end
+
+# GOOD: Granular retries per item
+class ProcessAllAccountsWorker < ApplicationWorker
+  def perform
+    Account.find_each do |account|
+      ProcessAccountWorker.perform_async(account.id)
+    end
+  end
+end
+
+class ProcessAccountWorker < ApplicationWorker
+  sidekiq_options retry: 3  # Each account gets its own retries
+
+  def perform(account_id)
+    account = Account.find(account_id)
+    AccountProcessingService.new(account).call
+  end
+end
+```
+
+**Benefits:**
+- Individual items retry independently
+- Failed items don't block successful ones
+- Better observability (see which specific items failed)
+- Parallelism scales with Sidekiq concurrency
+
+### Service Objects for Business Logic
+
+Workers should be thin - just orchestration. Push business logic to service classes:
+
+```ruby
+# Worker: thin, just calls the service
+class SyncPerformanceForAccountWorker < ApplicationWorker
+  def perform(ads_account_id)
+    ads_account = AdsAccount.find(ads_account_id)
+    Analytics::SyncService.new(ads_account).sync_google_ads
+  end
+end
+
+# Service: contains the actual logic
+class Analytics::SyncService
+  def initialize(ads_account)
+    @ads_account = ads_account
+  end
+
+  def sync_google_ads
+    # All the business logic lives here
+  end
+end
+```
+
+**Benefits:**
+- Services are easily testable without Sidekiq
+- Logic can be reused (console, rake tasks, other workers)
+- Workers remain simple to understand
+
 ## Tips
 
 - Use `pnpm` for Langgraph, not `npm` or `yarn`
