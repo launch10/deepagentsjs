@@ -219,12 +219,13 @@ module InertiaSchemas
           type: :object,
           additionalProperties: true,
           description: 'Metrics summary for insight generation'
-        )
+        ),
+        thread_id: InertiaSchemas.string_field(description: 'Thread ID for Langgraph insights generation')
       }
     end
 
     def self.page_required
-      %w[all_performance all_projects status_counts date_range_options]
+      %w[all_performance all_projects status_counts date_range_options thread_id]
     end
 
     def self.props_schema

@@ -3214,6 +3214,9 @@ components:
           additionalProperties: true
           description: Metrics summary for insight generation
           nullable: true
+        thread_id:
+          type: string
+          description: Thread ID for Langgraph insights generation
       required:
         - root_path
         - langgraph_path
@@ -3222,6 +3225,7 @@ components:
         - all_projects
         - status_counts
         - date_range_options
+        - thread_id
 servers:
   - url: https://{defaultHost}
     variables:

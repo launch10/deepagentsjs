@@ -144,7 +144,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-base-500">Filter by:</span>
+              <span className="text-sm text-base-500 w-25">Filter by:</span>
               <select
                 value={selectedDays}
                 onChange={(e) => handleDateRangeChange(Number(e.target.value))}
@@ -239,13 +239,13 @@ function InsightCard({ insight }: { insight: Insight }) {
         {insight.title}
       </h3>
       <p className="text-xs text-base-600 mb-3">{insight.description}</p>
-      <a
+      <Link
         href={insight.action.url}
         className="inline-flex items-center gap-1 text-xs font-medium text-base-700 hover:underline"
       >
         {insight.action.label}
         <span aria-hidden="true">&rarr;</span>
-      </a>
+      </Link>
     </div>
   );
 }
@@ -284,13 +284,13 @@ function InsightEmptyCard() {
             Your project is brand new, so there's no data yet. Check back soon or review your
             project details to get started.
           </p>
-          <a
+          <Link
             href="/projects"
             className="inline-flex items-center gap-1 text-xs font-medium text-base-700 hover:underline"
           >
             Review
             <span aria-hidden="true">&rarr;</span>
-          </a>
+          </Link>
         </div>
       </div>
     </div>

@@ -1805,6 +1805,8 @@ export interface components {
             metrics_summary?: {
                 [key: string]: unknown;
             } | null;
+            /** @description Thread ID for Langgraph insights generation */
+            thread_id: string;
         };
     };
     responses: never;

@@ -24,6 +24,9 @@ class DashboardController < SubscribedController
     # Status counts don't change by date range
     status_counts = Analytics::DashboardService.new(current_account, days: DEFAULT_DAYS).status_counts
 
+    # Ensure insights chat exists for this account
+    insights_chat = current_account.find_or_create_insights_chat
+
     render inertia: "Dashboard", props: {
       # All date ranges pre-fetched for instant switching
       all_performance: all_performance,
@@ -32,7 +35,9 @@ class DashboardController < SubscribedController
       date_range_options: date_range_options,
       # Include insights if fresh, otherwise metrics_summary for generation
       insights: insight&.fresh? ? insight.insights : nil,
-      metrics_summary: (insight&.stale? || insight.nil?) ? insights_metrics_summary : nil
+      metrics_summary: (insight&.stale? || insight.nil?) ? insights_metrics_summary : nil,
+      # Thread ID for Langgraph insights generation
+      thread_id: insights_chat.thread_id
     }
   end
 

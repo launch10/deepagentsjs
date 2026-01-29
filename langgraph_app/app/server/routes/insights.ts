@@ -1,6 +1,12 @@
 import { Hono } from "hono";
 import { v7 as uuidv7 } from "uuid";
-import { type AuthContext, streamMiddleware, getCreditState } from "@server/middleware";
+import {
+  type AuthContext,
+  streamMiddleware,
+  readOnlyMiddleware,
+  getCreditState,
+} from "@server/middleware";
+import { validateThreadOrError } from "../middleware/threadValidation";
 import { InsightsAPI } from "@api";
 
 type Variables = {
@@ -30,6 +36,26 @@ insightsRoutes.post("/generate", ...streamMiddleware, async (c) => {
       ...creditState,
     },
   });
+});
+
+/**
+ * GET /api/insights/generate
+ *
+ * Load history for an existing insights thread.
+ */
+insightsRoutes.get("/generate", ...readOnlyMiddleware, async (c) => {
+  const auth = c.get("auth") as AuthContext;
+  const threadId = c.req.query("threadId");
+
+  if (!threadId) {
+    return c.json({ error: "Missing threadId" }, 400);
+  }
+
+  // Validate thread ownership
+  const validationError = await validateThreadOrError(c, threadId, auth);
+  if (validationError) return validationError;
+
+  return InsightsAPI.loadHistory(threadId);
 });
 
 /**

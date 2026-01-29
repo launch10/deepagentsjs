@@ -120,6 +120,7 @@ When multiple insights compete, rank by:
 4. Keep titles short (3-5 words max)
 5. Descriptions: 1-2 sentences with concrete numbers
 6. End with actionable hope, not doom - motivate action
+7. NEVER use [1], [2], [3] project references in titles or descriptions - always use actual project names. The bracket notation is ONLY for the project_index field.
 
 ## AVAILABLE ACTIONS
 
@@ -348,7 +349,7 @@ export const generateInsightsNode = NodeMiddleware.use(
       });
 
       // Generate insight intents
-      const userPrompt = `Here are the metrics to analyze:\n\n${metricsText}\n\nGenerate exactly 3 actionable insights. Use project numbers [1], [2], etc. and action_type values from the available actions.`;
+      const userPrompt = `Here are the metrics to analyze:\n\n${metricsText}\n\nGenerate exactly 3 actionable insights. For the project_index field, use the project number (1, 2, etc.). In titles and descriptions, ALWAYS use the actual project name - never [1] or [2] brackets.`;
 
       const result = await structuredLlm.invoke(
         [

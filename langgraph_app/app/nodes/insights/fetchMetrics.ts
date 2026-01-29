@@ -29,16 +29,15 @@ export const fetchMetricsNode = NodeMiddleware.use(
       return {};
     }
 
-    // Get JWT from configurable (passed by InsightsAPI.generate)
-    const jwt = config?.configurable?.jwt as string | undefined;
-    if (!jwt) {
+    // Get JWT from state (passed via route)
+    if (!state.jwt) {
       return {
         error: { message: "No JWT token provided for fetching metrics", node: "fetchMetrics" },
       };
     }
 
     try {
-      const apiService = new DashboardInsightsAPIService({ jwt });
+      const apiService = new DashboardInsightsAPIService({ jwt: state.jwt });
 
       // Step 1: Check if we have fresh cached insights
       const existing = await apiService.get();

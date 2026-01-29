@@ -1496,7 +1496,7 @@ CREATE TABLE public.chats (
     name character varying,
     chat_type character varying NOT NULL,
     thread_id character varying NOT NULL,
-    project_id bigint NOT NULL,
+    project_id bigint,
     account_id bigint NOT NULL,
     contextable_type character varying,
     contextable_id bigint,
@@ -8109,10 +8109,17 @@ CREATE INDEX index_chats_on_chat_type ON public.chats USING btree (chat_type);
 
 
 --
+-- Name: index_chats_on_chat_type_and_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_chats_on_chat_type_and_account_id ON public.chats USING btree (chat_type, account_id) WHERE (project_id IS NULL);
+
+
+--
 -- Name: index_chats_on_chat_type_and_project_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_chats_on_chat_type_and_project_id ON public.chats USING btree (chat_type, project_id);
+CREATE UNIQUE INDEX index_chats_on_chat_type_and_project_id ON public.chats USING btree (chat_type, project_id) WHERE (project_id IS NOT NULL);
 
 
 --
@@ -11244,6 +11251,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260129225919'),
 ('20260129182538'),
 ('20260129120000'),
 ('20260128183648'),

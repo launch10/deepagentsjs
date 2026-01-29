@@ -18,18 +18,16 @@ export const saveInsightsNode = NodeMiddleware.use(
       return {};
     }
 
-    // Get JWT from configurable (passed by InsightsAPI.generate)
-    const jwt = config?.configurable?.jwt as string | undefined;
-    if (!jwt) {
+    // Get JWT from state (passed via route)
+    if (!state.jwt) {
       // No JWT means we can't save, but insights were generated successfully.
       // This is expected in test environments or when calling the API directly.
-      // Don't set generationError since that would incorrectly indicate generation failed.
       console.warn("No JWT token provided for saving insights - skipping save");
       return {};
     }
 
     try {
-      const apiService = new DashboardInsightsAPIService({ jwt });
+      const apiService = new DashboardInsightsAPIService({ jwt: state.jwt });
 
       const result = await apiService.save({
         insights: state.insights,
