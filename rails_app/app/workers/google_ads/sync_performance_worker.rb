@@ -15,7 +15,7 @@ module GoogleAds
 
     def perform
       self.class.eligible_ads_accounts.find_each do |ads_account|
-        SyncPerformanceForAccountWorker.perform_async(ads_account.id)
+        GoogleAds::SyncPerformanceForAccountWorker.perform_async(ads_account.id)
       end
     end
 

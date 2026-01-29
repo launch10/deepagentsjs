@@ -34,6 +34,11 @@ RSpec.configure do |config|
   config.include APIHelpers
 
   config.before(:suite) do
+    # Eager load all autoload paths to catch uninitialized constant errors early.
+    # This catches Zeitwerk autoloading issues where unqualified constant references
+    # (e.g., `ModelNormalizer` instead of `Credits::ModelNormalizer`) fail to resolve.
+    Rails.application.eager_load! unless Rails.application.config.eager_load
+
     DatabaseCleaner.clean_with(:truncation)
   end
 

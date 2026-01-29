@@ -16,7 +16,7 @@ module Analytics
       project = Project.find(project_id)
       target_date = Date.parse(date_string)
 
-      ComputeMetricsService.new(project, date: target_date).call
+      Analytics::ComputeMetricsService.new(project, date: target_date).call
     end
   end
 end

@@ -23,14 +23,14 @@ module Analytics
 
       self.class.projects_with_live_deploys.find_each do |project|
         dates.each do |date|
-          ComputeMetricsForProjectWorker.perform_async(project.id, date.iso8601)
+          Analytics::ComputeMetricsForProjectWorker.perform_async(project.id, date.iso8601)
         end
       end
     end
 
     def rolling_window_dates
       # Use the same window as SyncService for Google Ads attribution lag
-      (SyncService::ROLLING_WINDOW_DAYS.days.ago.to_date..Date.yesterday).to_a
+      (Analytics::SyncService::ROLLING_WINDOW_DAYS.days.ago.to_date..Date.yesterday).to_a
     end
 
     # Projects with live deploys belonging to subscribed accounts.
