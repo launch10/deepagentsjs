@@ -16,7 +16,7 @@ export default function Projects() {
   const { projects, total_count } = usePage<ProjectsPageProps>().props;
 
   return (
-    <div className="flex flex-col h-full px-10 pt-12">
+    <div className="flex flex-col h-full px-8 pt-12">
       <div>
         <h1 className="font-serif text-[28px] font-semibold leading-8 text-base-500">
           Your Projects
