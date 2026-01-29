@@ -1,5 +1,15 @@
 class ProjectsController < SubscribedController
-  before_action :set_project, except: [:new]
+  before_action :set_project, except: [:index, :new]
+
+  def index
+    projects = current_account.projects.order(updated_at: :desc)
+    render inertia: "Projects",
+      props: {
+        projects: projects.map(&:to_mini_json),
+        total_count: projects.count
+      },
+      layout: "layouts/webcontainer"
+  end
 
   def new
     respond_to do |format|
