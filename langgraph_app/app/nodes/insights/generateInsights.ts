@@ -3,6 +3,14 @@ import { getLLM } from "@core";
 import { NodeMiddleware } from "@middleware";
 import { Insights } from "@types";
 import { type InsightsGraphState } from "@annotation";
+import { z } from "zod";
+
+/**
+ * Wrapper schema for structured output - Anthropic requires object at root level
+ */
+const insightsOutputSchema = z.object({
+  insights: Insights.insightsArraySchema,
+});
 
 /**
  * System prompt for generating analytics insights
@@ -283,8 +291,9 @@ export const generateInsightsNode = NodeMiddleware.use(
       const metricsText = formatMetricsForPrompt(validatedInput);
 
       // Get LLM with structured output
+      // Note: Anthropic requires an object at the root level, so we wrap the array
       const llm = await getLLM({ skill: "writing", speed: "fast" });
-      const structuredLlm = llm.withStructuredOutput(Insights.insightsArraySchema, {
+      const structuredLlm = llm.withStructuredOutput(insightsOutputSchema, {
         name: "insights",
       });
 
@@ -299,8 +308,9 @@ export const generateInsightsNode = NodeMiddleware.use(
         config
       );
 
-      // Validate the result
-      const insights = validateInsights(result as Insights.Insight[], validatedInput);
+      // Extract insights from wrapper and validate
+      const insightsResult = result as z.infer<typeof insightsOutputSchema>;
+      const insights = validateInsights(insightsResult.insights, validatedInput);
 
       return {
         insights,

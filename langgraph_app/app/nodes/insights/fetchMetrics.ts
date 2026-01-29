@@ -18,7 +18,7 @@ export const fetchMetricsNode = NodeMiddleware.use(
       return {};
     }
 
-    const jwt = config?.configurable?.jwt as string | undefined;
+    const jwt = state.jwt;
     if (!jwt) {
       return {
         generationError: "No JWT token provided for fetching metrics",

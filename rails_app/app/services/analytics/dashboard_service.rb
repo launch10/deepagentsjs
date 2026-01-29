@@ -47,6 +47,23 @@ module Analytics
       end
     end
 
+    # Get counts of projects by status for filter tabs.
+    #
+    # @return [Hash] Status counts { all: N, live: N, paused: N, draft: N }
+    #
+    def status_counts
+      projects = account.projects.includes(:campaigns)
+
+      counts = { all: projects.count, live: 0, paused: 0, draft: 0 }
+
+      projects.each do |project|
+        status = project_status(project)
+        counts[status.to_sym] += 1
+      end
+
+      counts
+    end
+
     private
 
     def leads_metric
@@ -82,8 +99,8 @@ module Analytics
         .group(:project_id)
         .index_by(&:project_id)
 
-      # Get all projects for the account
-      projects = filtered_projects
+      # Get all projects for the account with associations
+      projects = filtered_projects.includes(:campaigns, website: :domains)
 
       projects.map do |project|
         metrics = projects_with_metrics[project.id]
@@ -103,6 +120,9 @@ module Analytics
           id: project.id,
           uuid: project.uuid,
           name: project.name,
+          status: project_status(project),
+          url: project_url(project),
+          thumbnail_url: project_thumbnail_url(project),
           total_leads: total_leads,
           total_unique_visitors: total_unique_visitors,
           total_page_views: total_page_views,
@@ -115,14 +135,43 @@ module Analytics
       end
     end
 
+    def project_status(project)
+      campaigns = project.campaigns
+      return "draft" if campaigns.empty?
+
+      # If any campaign is active, project is "live"
+      return "live" if campaigns.any? { |c| c.status == "active" }
+
+      # If any campaign is paused, project is "paused"
+      return "paused" if campaigns.any? { |c| c.status == "paused" }
+
+      # Otherwise draft
+      "draft"
+    end
+
+    def project_url(project)
+      domain = project.website&.domains&.first
+      return nil unless domain
+
+      "https://#{domain.domain}"
+    end
+
+    def project_thumbnail_url(project)
+      # TODO: Implement actual thumbnail generation
+      # For now return nil, frontend will show placeholder
+      nil
+    end
+
     def filtered_projects
-      projects = account.projects
+      projects = account.projects.includes(:campaigns)
 
       case status_filter
-      when "active"
-        projects.joins(:campaigns).where(campaigns: { status: "active" }).distinct
+      when "live"
+        projects.select { |p| project_status(p) == "live" }
       when "paused"
-        projects.joins(:campaigns).where(campaigns: { status: "paused" }).distinct
+        projects.select { |p| project_status(p) == "paused" }
+      when "draft"
+        projects.select { |p| project_status(p) == "draft" }
       else
         projects
       end

@@ -14,6 +14,44 @@ module SnapshotBuilders
     class Base < ::BaseBuilder
       private
 
+      # Create Ahoy visits and page_view events for a website.
+      #
+      # Generates realistic traffic data where page views > unique visitors
+      # (each visitor views 1-3 pages on average).
+      #
+      # @param website [Website]
+      # @param visits_per_day [Hash<Date, Integer>] date => unique visitor count
+      # @param pages_per_visit [Range] how many page views per visit (default 1..3)
+      #
+      def create_page_views(website, visits_per_day, pages_per_visit: 1..3)
+        visits_per_day.each do |date, visitor_count|
+          visitor_count.times do
+            timestamp = date.to_time + rand(0..23).hours + rand(0..59).minutes
+
+            # Create the visit (unique visitor)
+            visit = Ahoy::Visit.create!(
+              website: website,
+              visit_token: SecureRandom.uuid,
+              visitor_token: SecureRandom.uuid,
+              started_at: timestamp,
+              browser: %w[Chrome Safari Firefox Edge].sample,
+              device_type: %w[Desktop Mobile Tablet].sample,
+              landing_page: "https://#{website.domains.first&.domain || 'example.com'}/"
+            )
+
+            # Create page_view events (1-3 per visit)
+            rand(pages_per_visit).times do |i|
+              Ahoy::Event.create!(
+                visit: visit,
+                name: "page_view",
+                time: timestamp + (i * rand(10..60)).seconds,
+                properties: { page: i == 0 ? "/" : ["/about", "/pricing", "/contact"].sample }
+              )
+            end
+          end
+        end
+      end
+
       # Create website leads for a project on specific dates.
       #
       # Creates both Lead (account-level) and WebsiteLead (join table) records.

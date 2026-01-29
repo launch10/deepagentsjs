@@ -45,9 +45,6 @@ module SnapshotBuilders
         # Run actual analytics services
         compute_metrics_for_project(project, dates)
 
-        # Generate insights
-        generate_insights(account)
-
         puts "Created analytics/new_account snapshot"
         puts "  - 1 project (just started)"
         puts "  - 3 days of data"
@@ -78,54 +75,25 @@ module SnapshotBuilders
         create_leads(website, leads_per_day)
 
         # Limited ad performance data
+        clicks_per_day = {}
         performance = dates.map.with_index do |date, i|
           lead_count = leads_per_day[date] || 0
+          clicks = rand(5..12)
+          clicks_per_day[date] = clicks
           {
             date: date,
             impressions: rand(100..200),    # Still ramping up
-            clicks: rand(5..12),
+            clicks: clicks,
             cost_micros: rand(10..20) * 1_000_000,
             conversions: lead_count.to_f,
             conversion_value_micros: lead_count * rand(50..100) * 1_000_000
           }
         end
         create_ad_performance(campaign, performance)
-      end
 
-      def generate_insights(account)
-        dashboard_service = ::Analytics::DashboardService.new(account, days: 30)
-        metrics_summary = ::Analytics::InsightsMetricsService.new(dashboard_service).summary
-
-        project = account.projects.first
-
-        DashboardInsight.create!(
-          account: account,
-          insights: [
-            {
-              title: "Campaign Just Launched",
-              description: "My New Business has been running for 3 days. Early results show 3 leads - a promising start!",
-              sentiment: "positive",
-              project_uuid: project.uuid,
-              action: { label: "View Campaign", url: "/projects/#{project.uuid}/campaigns" }
-            },
-            {
-              title: "Building Data for Optimization",
-              description: "With only 3 days of data, trends aren't yet reliable. Check back in a week for meaningful insights.",
-              sentiment: "neutral",
-              project_uuid: nil,
-              action: { label: "Set Reminder", url: "/dashboard" }
-            },
-            {
-              title: "Monitor Your Landing Page",
-              description: "Watch for patterns in when leads come in. This will help you optimize your ad schedule.",
-              sentiment: "neutral",
-              project_uuid: project.uuid,
-              action: { label: "View Leads", url: "/projects/#{project.uuid}/leads" }
-            }
-          ],
-          metrics_summary: metrics_summary,
-          generated_at: Time.current
-        )
+        # Page views: early traffic
+        visits_per_day = clicks_per_day.transform_values { |clicks| (clicks * rand(0.8..0.95)).round }
+        create_page_views(website, visits_per_day)
       end
     end
   end

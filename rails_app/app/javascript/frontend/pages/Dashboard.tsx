@@ -18,6 +18,8 @@ type SeriesData = TimeSeries["series"][number];
 type Insight = NonNullable<DashboardProps["insights"]>[number];
 type ProjectSummary = DashboardProps["projects"][number];
 type DateRangeOption = DashboardProps["date_range_options"][number];
+type StatusCounts = DashboardProps["status_counts"];
+type ProjectStatus = ProjectSummary["status"];
 
 // Color palette for projects (matches Figma)
 const PROJECT_COLORS = [
@@ -30,8 +32,17 @@ const PROJECT_COLORS = [
 ];
 
 export default function Dashboard() {
-  const { performance, projects, date_range, days, date_range_options, insights, current_user } =
-    usePage<DashboardProps>().props;
+  const {
+    performance,
+    projects,
+    status_counts,
+    status_filter,
+    date_range,
+    days,
+    date_range_options,
+    insights,
+    current_user,
+  } = usePage<DashboardProps>().props;
 
   const firstName = current_user?.name?.split(" ")[0] || "there";
 
@@ -49,12 +60,20 @@ export default function Dashboard() {
   };
 
   const handleDateRangeChange = (selectedDays: number) => {
-    router.get("/dashboard", { days: selectedDays }, { preserveState: true });
+    router.get(
+      "/dashboard",
+      { days: selectedDays, status: status_filter },
+      { preserveState: true }
+    );
+  };
+
+  const handleStatusFilterChange = (status: string) => {
+    router.get("/dashboard", { days, status }, { preserveState: true });
   };
 
   return (
     <main className="min-h-screen bg-[#FAFAF9]">
-      <div className="px-4 py-6 lg:px-12 lg:py-10 max-w-[1200px]">
+      <div className="pl-4 pr-[3%] py-6 lg:pl-12 lg:pr-[5%] lg:py-10">
         {/* Header */}
         <div className="mb-8">
           <h1 className="font-['IBM_Plex_Serif'] text-[28px] font-semibold text-[#2E3238]">
@@ -153,6 +172,11 @@ export default function Dashboard() {
         {/* Projects */}
         <section>
           <h2 className="text-lg font-semibold text-[#2E3238] mb-4">Projects</h2>
+          <ProjectFilterTabs
+            statusCounts={status_counts}
+            activeFilter={status_filter}
+            onFilterChange={handleStatusFilterChange}
+          />
           {projects && projects.length > 0 ? (
             <div className="space-y-3">
               {projects.map((project) => (
@@ -162,7 +186,9 @@ export default function Dashboard() {
           ) : (
             <div className="rounded-lg border border-neutral-300 bg-white p-8 text-center">
               <p className="text-base-500">
-                No projects yet. Create your first project to get started.
+                {status_filter === "all"
+                  ? "No projects yet. Create your first project to get started."
+                  : `No ${status_filter} projects.`}
               </p>
             </div>
           )}
@@ -394,18 +420,133 @@ function MetricChart({
   );
 }
 
+function ProjectFilterTabs({
+  statusCounts,
+  activeFilter,
+  onFilterChange,
+}: {
+  statusCounts: StatusCounts;
+  activeFilter: string;
+  onFilterChange: (status: string) => void;
+}) {
+  const tabs: { key: string; label: string; count: number }[] = [
+    { key: "all", label: "All", count: statusCounts.all },
+    { key: "live", label: "Live", count: statusCounts.live },
+    { key: "paused", label: "Paused", count: statusCounts.paused },
+    { key: "draft", label: "Draft", count: statusCounts.draft },
+  ];
+
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      {tabs.map((tab) => (
+        <button
+          key={tab.key}
+          onClick={() => onFilterChange(tab.key)}
+          className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+            activeFilter === tab.key
+              ? "bg-[#2E3238] text-white border-[#2E3238]"
+              : "bg-white text-base-600 border-neutral-300 hover:border-neutral-400"
+          }`}
+        >
+          {tab.label} ({tab.count})
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function ProjectCard({ project }: { project: ProjectSummary }) {
   const formatCurrency = (value: number | null | undefined) =>
     value != null ? `$${value.toFixed(2)}` : "-";
   const formatPercent = (value: number | null | undefined) =>
     value != null ? `${(value * 100).toFixed(1)}%` : "-";
 
+  const statusBadge: Record<ProjectStatus, { label: string; className: string }> = {
+    live: { label: "Live", className: "bg-green-100 text-green-700" },
+    paused: { label: "Paused", className: "bg-yellow-100 text-yellow-700" },
+    draft: { label: "Draft", className: "bg-neutral-100 text-neutral-600" },
+  };
+
+  const badge = statusBadge[project.status];
+
   return (
     <div className="rounded-lg border border-neutral-300 bg-white p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold text-[#2E3238]">{project.name}</h3>
+      <div className="flex items-center gap-4">
+        {/* Thumbnail */}
+        <div className="w-[140px] h-[90px] flex-shrink-0 rounded-md bg-neutral-100 overflow-hidden">
+          {project.thumbnail_url ? (
+            <img
+              src={project.thumbnail_url}
+              alt={project.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                className="text-neutral-300"
+              >
+                <rect
+                  x="3"
+                  y="3"
+                  width="18"
+                  height="18"
+                  rx="2"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+                <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" />
+                <path
+                  d="M21 15L16 10L5 21"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+          )}
         </div>
+
+        {/* Project info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-semibold text-[#2E3238] truncate">{project.name}</h3>
+            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${badge.className}`}>
+              {badge.label}
+            </span>
+          </div>
+          {project.url ? (
+            <a
+              href={project.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-base-500 hover:text-base-700 hover:underline inline-flex items-center gap-1"
+            >
+              {project.url.replace("https://", "")}
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="opacity-60">
+                <path
+                  d="M9 6.5V9.5C9 10.0523 8.55228 10.5 8 10.5H2.5C1.94772 10.5 1.5 10.0523 1.5 9.5V4C1.5 3.44772 1.94772 3 2.5 3H5.5"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M7 1.5H10.5V5"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path d="M10.5 1.5L5.5 6.5" stroke="currentColor" strokeLinecap="round" />
+              </svg>
+            </a>
+          ) : (
+            <span className="text-sm text-base-400">No site connected</span>
+          )}
+        </div>
+
+        {/* Metrics */}
         <div className="flex items-center gap-6 text-sm">
           <div className="text-center">
             <div className="text-base-500 text-xs">Leads</div>

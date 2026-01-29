@@ -2264,6 +2264,21 @@ components:
               name:
                 type: string
                 description: Project name
+              status:
+                type: string
+                enum:
+                  - live
+                  - paused
+                  - draft
+                description: Project status derived from campaign states
+              url:
+                type: string
+                description: Published site URL
+                nullable: true
+              thumbnail_url:
+                type: string
+                description: Preview thumbnail URL
+                nullable: true
               total_leads:
                 type: integer
                 description: Total leads for period
@@ -2294,6 +2309,7 @@ components:
               - id
               - uuid
               - name
+              - status
               - total_leads
               - total_unique_visitors
               - total_page_views
@@ -2301,6 +2317,27 @@ components:
               - total_clicks
               - cost_dollars
           description: Project summaries with aggregated metrics
+        status_counts:
+          type: object
+          additionalProperties: false
+          properties:
+            all:
+              type: integer
+              description: Total projects count
+            live:
+              type: integer
+              description: Live projects count
+            paused:
+              type: integer
+              description: Paused projects count
+            draft:
+              type: integer
+              description: Draft projects count
+          required:
+            - all
+            - live
+            - paused
+            - draft
         date_range:
           type: string
           description: Human readable date range label
@@ -2380,6 +2417,7 @@ components:
         - jwt
         - performance
         - projects
+        - status_counts
         - date_range
         - days
         - status_filter

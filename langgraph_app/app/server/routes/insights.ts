@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { type AuthContext, streamMiddleware } from "@server/middleware";
 import { InsightsAPI } from "@api";
-import { Insights } from "@types";
 
 type Variables = {
   auth: AuthContext;
@@ -13,11 +12,7 @@ export const insightsRoutes = new Hono<{ Variables: Variables }>();
  * POST /api/insights/generate
  *
  * Generate 3 actionable insights from analytics metrics.
- *
- * Request body:
- * {
- *   metricsInput: { totals, projects, trends, flags }
- * }
+ * Metrics are fetched from Rails based on the authenticated user's account.
  *
  * Response:
  * {
@@ -26,28 +21,11 @@ export const insightsRoutes = new Hono<{ Variables: Variables }>();
  * }
  */
 insightsRoutes.post("/generate", ...streamMiddleware, async (c) => {
-  const body = await c.req.json();
-
-  const { metricsInput } = body;
-
-  if (!metricsInput) {
-    return c.json({ error: "Missing required field: metricsInput" }, 400);
-  }
-
-  // Validate the input schema
-  const validationResult = Insights.metricsInputSchema.safeParse(metricsInput);
-  if (!validationResult.success) {
-    return c.json(
-      {
-        error: "Invalid metricsInput schema",
-        details: validationResult.error.errors,
-      },
-      400
-    );
-  }
+  const auth = c.get("auth");
+  const { jwt } = auth;
 
   try {
-    const result = await InsightsAPI.generate(validationResult.data);
+    const result = await InsightsAPI.generate({ jwt });
 
     if (result.error) {
       return c.json(

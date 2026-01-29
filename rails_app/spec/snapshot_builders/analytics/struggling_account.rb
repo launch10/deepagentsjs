@@ -63,20 +63,23 @@ module SnapshotBuilders
       end
 
       def generate_struggling_data(project, dates)
-        project.website
+        website = project.website
         campaign = project.campaigns.first
 
         # NO leads at all
         # (don't call create_leads)
 
         # Ad performance: low CTR, declining impressions, money being spent
+        clicks_per_day = {}
         performance = dates.map.with_index do |date, i|
           # Declining trend
           decline = 1.0 - (i * 0.01)
+          clicks = (rand(1..4) * decline).round
+          clicks_per_day[date] = clicks
           {
             date: date,
             impressions: (rand(200..350) * decline).round,
-            clicks: (rand(1..4) * decline).round,  # Terrible CTR ~0.8%
+            clicks: clicks,  # Terrible CTR ~0.8%
             cost_micros: rand(8..14) * 1_000_000,  # Still spending $8-14/day
             conversions: 0.0,
             conversion_value_micros: 0
@@ -84,63 +87,9 @@ module SnapshotBuilders
         end
         create_ad_performance(campaign, performance)
 
-        # Create some page views via Ahoy (declining)
-        dates.each_with_index do |date, i|
-          decline = 1.0 - (i * 0.015)
-          page_view_count = (rand(5..15) * decline).round
-
-          page_view_count.times do
-            visit = Ahoy::Visit.create!(
-              visitor_token: SecureRandom.uuid,
-              visit_token: SecureRandom.uuid,
-              started_at: date.to_time + rand(0..23).hours
-            )
-
-            Ahoy::Event.create!(
-              visit: visit,
-              name: "page_view",
-              time: visit.started_at + rand(1..300).seconds,
-              properties: { url: "https://example.com/#{project.website.id}" }
-            )
-          end
-        end
-      end
-
-      def generate_insights(account)
-        dashboard_service = ::Analytics::DashboardService.new(account, days: 30)
-        metrics_summary = ::Analytics::InsightsMetricsService.new(dashboard_service).summary
-
-        project = account.projects.first
-
-        # Create insights for a struggling account - still actionable
-        DashboardInsight.create!(
-          account: account,
-          insights: [
-            {
-              title: "No Leads Generated",
-              description: "My First Startup has spent $320 over 30 days without generating any leads. Your landing page may need optimization.",
-              sentiment: "negative",
-              project_uuid: project.uuid,
-              action: { label: "Review Landing Page", url: "/projects/#{project.uuid}/website" }
-            },
-            {
-              title: "Click-Through Rate Critically Low",
-              description: "At 0.8% CTR, your ads aren't resonating with your audience. Consider testing new headlines and descriptions.",
-              sentiment: "negative",
-              project_uuid: project.uuid,
-              action: { label: "Review Ad Copy", url: "/projects/#{project.uuid}/campaigns/content" }
-            },
-            {
-              title: "Audience Targeting May Need Adjustment",
-              description: "Low engagement suggests your ads may not be reaching the right people. Review your targeting settings.",
-              sentiment: "neutral",
-              project_uuid: project.uuid,
-              action: { label: "Adjust Targeting", url: "/projects/#{project.uuid}/campaigns/targeting" }
-            }
-          ],
-          metrics_summary: metrics_summary,
-          generated_at: Time.current
-        )
+        # Page views: declining, proportional to clicks
+        visits_per_day = clicks_per_day.transform_values { |clicks| (clicks * rand(0.7..0.9)).round.clamp(1, 100) }
+        create_page_views(website, visits_per_day)
       end
     end
   end

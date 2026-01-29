@@ -1382,6 +1382,15 @@ export interface components {
                 uuid: string;
                 /** @description Project name */
                 name: string;
+                /**
+                 * @description Project status derived from campaign states
+                 * @enum {string}
+                 */
+                status: "live" | "paused" | "draft";
+                /** @description Published site URL */
+                url?: string | null;
+                /** @description Preview thumbnail URL */
+                thumbnail_url?: string | null;
                 /** @description Total leads for period */
                 total_leads: number;
                 /** @description Total unique visitors */
@@ -1399,6 +1408,16 @@ export interface components {
                 /** @description Cost per lead */
                 cpl?: number | null;
             }[];
+            status_counts: {
+                /** @description Total projects count */
+                all: number;
+                /** @description Live projects count */
+                live: number;
+                /** @description Paused projects count */
+                paused: number;
+                /** @description Draft projects count */
+                draft: number;
+            };
             /** @description Human readable date range label */
             date_range: string;
             /** @description Number of days in range */

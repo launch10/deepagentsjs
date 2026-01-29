@@ -57,6 +57,8 @@ module SnapshotBuilders
         puts "Created analytics/healthy_account snapshot"
         puts "  - #{projects.count} projects"
         puts "  - #{WebsiteLead.count} total leads"
+        puts "  - #{Ahoy::Visit.count} unique visitors"
+        puts "  - #{Ahoy::Event.where(name: 'page_view').count} page views"
         puts "  - #{AnalyticsDailyMetric.count} daily metrics computed"
       end
 
@@ -84,18 +86,25 @@ module SnapshotBuilders
         create_leads(website, leads_per_day)
 
         # Ad performance: good CTR, moderate spend
+        clicks_per_day = {}
         performance = dates.map.with_index do |date, i|
           trend = 1.0 + (i * 0.01) # Slight upward trend
+          clicks = (rand(20..35) * trend).round
+          clicks_per_day[date] = clicks
           {
             date: date,
             impressions: (rand(400..600) * trend).round,
-            clicks: (rand(20..35) * trend).round,      # ~5% CTR
+            clicks: clicks,                            # ~5% CTR
             cost_micros: (rand(12..18) * 1_000_000),   # $12-18/day
             conversions: leads_per_day[date].to_f,
             conversion_value_micros: leads_per_day[date] * rand(80..120) * 1_000_000
           }
         end
         create_ad_performance(campaign, performance)
+
+        # Page views: ~80-90% of clicks land on page, each views 1-3 pages
+        visits_per_day = clicks_per_day.transform_values { |clicks| (clicks * rand(0.8..0.95)).round }
+        create_page_views(website, visits_per_day)
       end
 
       def generate_moderate_performer_data(project, dates)
@@ -109,17 +118,24 @@ module SnapshotBuilders
         create_leads(website, leads_per_day)
 
         # Ad performance: moderate CTR
+        clicks_per_day = {}
         performance = dates.map do |date|
+          clicks = rand(10..20)
+          clicks_per_day[date] = clicks
           {
             date: date,
             impressions: rand(300..500),
-            clicks: rand(10..20),              # ~3-4% CTR
+            clicks: clicks,                    # ~3-4% CTR
             cost_micros: rand(8..14) * 1_000_000,
             conversions: leads_per_day[date].to_f,
             conversion_value_micros: leads_per_day[date] * rand(60..100) * 1_000_000
           }
         end
         create_ad_performance(campaign, performance)
+
+        # Page views: ~80-90% of clicks land on page
+        visits_per_day = clicks_per_day.transform_values { |clicks| (clicks * rand(0.8..0.95)).round }
+        create_page_views(website, visits_per_day)
       end
 
       def generate_steady_performer_data(project, dates)
@@ -133,17 +149,24 @@ module SnapshotBuilders
         create_leads(website, leads_per_day)
 
         # Ad performance: steady
+        clicks_per_day = {}
         performance = dates.map do |date|
+          clicks = rand(8..15)
+          clicks_per_day[date] = clicks
           {
             date: date,
             impressions: rand(200..350),
-            clicks: rand(8..15),
+            clicks: clicks,
             cost_micros: rand(5..10) * 1_000_000,
             conversions: leads_per_day[date].to_f,
             conversion_value_micros: leads_per_day[date] * rand(50..80) * 1_000_000
           }
         end
         create_ad_performance(campaign, performance)
+
+        # Page views: ~80-90% of clicks land on page
+        visits_per_day = clicks_per_day.transform_values { |clicks| (clicks * rand(0.8..0.95)).round }
+        create_page_views(website, visits_per_day)
       end
     end
   end

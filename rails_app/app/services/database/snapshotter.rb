@@ -154,10 +154,12 @@ module Database
       raise "Snapshot '#{name}' not found at #{input_path}" unless File.exist?(input_path)
 
       self.truncate if truncate
-      restore(input_path)
+      result = restore(input_path)
 
       # Clear analytics cache after restore to prevent stale dashboard data
       clear_analytics_cache
+
+      result
     end
 
     def list_snapshots

@@ -82,6 +82,13 @@ module InertiaSchemas
           id: InertiaSchemas.integer_field(description: 'Project ID'),
           uuid: InertiaSchemas.string_field(description: 'Project UUID'),
           name: InertiaSchemas.string_field(description: 'Project name'),
+          status: {
+            type: :string,
+            enum: %w[live paused draft],
+            description: 'Project status derived from campaign states'
+          },
+          url: InertiaSchemas.nullable(InertiaSchemas.string_field(description: 'Published site URL')),
+          thumbnail_url: InertiaSchemas.nullable(InertiaSchemas.string_field(description: 'Preview thumbnail URL')),
           total_leads: InertiaSchemas.integer_field(description: 'Total leads for period'),
           total_unique_visitors: InertiaSchemas.integer_field(description: 'Total unique visitors'),
           total_page_views: InertiaSchemas.integer_field(description: 'Total page views'),
@@ -91,8 +98,22 @@ module InertiaSchemas
           cost_dollars: { type: :number, description: 'Total ad spend in dollars' },
           cpl: InertiaSchemas.nullable({ type: :number, description: 'Cost per lead' })
         },
-        required: %w[id uuid name total_leads total_unique_visitors total_page_views
+        required: %w[id uuid name status total_leads total_unique_visitors total_page_views
           total_impressions total_clicks cost_dollars]
+      }
+    end
+
+    def self.status_counts_props
+      {
+        type: :object,
+        additionalProperties: false,
+        properties: {
+          all: InertiaSchemas.integer_field(description: 'Total projects count'),
+          live: InertiaSchemas.integer_field(description: 'Live projects count'),
+          paused: InertiaSchemas.integer_field(description: 'Paused projects count'),
+          draft: InertiaSchemas.integer_field(description: 'Draft projects count')
+        },
+        required: %w[all live paused draft]
       }
     end
 
@@ -147,6 +168,7 @@ module InertiaSchemas
           items: project_summary_props,
           description: 'Project summaries with aggregated metrics'
         },
+        status_counts: status_counts_props,
         date_range: InertiaSchemas.string_field(description: 'Human readable date range label'),
         days: InertiaSchemas.integer_field(description: 'Number of days in range'),
         status_filter: InertiaSchemas.string_field(description: 'Current status filter'),
@@ -169,7 +191,7 @@ module InertiaSchemas
     end
 
     def self.page_required
-      %w[performance projects date_range days status_filter date_range_options]
+      %w[performance projects status_counts date_range days status_filter date_range_options]
     end
 
     def self.props_schema

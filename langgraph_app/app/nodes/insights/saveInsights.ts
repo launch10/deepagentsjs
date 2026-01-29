@@ -20,9 +20,11 @@ export const saveInsightsNode = NodeMiddleware.use(
 
     const jwt = config?.configurable?.jwt as string | undefined;
     if (!jwt) {
-      return {
-        generationError: "No JWT token provided for saving insights",
-      };
+      // No JWT means we can't save, but insights were generated successfully.
+      // This is expected in test environments or when calling the API directly.
+      // Don't set generationError since that would incorrectly indicate generation failed.
+      console.warn("No JWT token provided for saving insights - skipping save");
+      return {};
     }
 
     try {

@@ -54,9 +54,6 @@ module SnapshotBuilders
           compute_metrics_for_project(project, dates)
         end
 
-        # Generate insights
-        generate_insights(account, primary_project)
-
         puts "Created analytics/stalled_project snapshot"
         puts "  - #{projects.count} projects (1 stalled)"
         puts "  - #{WebsiteLead.count} total leads"
@@ -86,18 +83,24 @@ module SnapshotBuilders
         create_leads(website, leads_per_day)
 
         # Ad performance: still spending money, decent impressions
+        clicks_per_day = {}
         performance = dates.map do |date|
-          (Date.current - date).to_i
+          clicks = rand(8..15)
+          clicks_per_day[date] = clicks
           {
             date: date,
             impressions: rand(250..400),
-            clicks: rand(8..15),
+            clicks: clicks,
             cost_micros: rand(6..10) * 1_000_000, # Still spending $6-10/day
             conversions: leads_per_day[date].to_f,
             conversion_value_micros: leads_per_day[date] * rand(60..100) * 1_000_000
           }
         end
         create_ad_performance(campaign, performance)
+
+        # Page views: still getting traffic but no conversions
+        visits_per_day = clicks_per_day.transform_values { |clicks| (clicks * rand(0.8..0.95)).round }
+        create_page_views(website, visits_per_day)
       end
 
       def generate_healthy_project_data(project, dates)
@@ -111,53 +114,24 @@ module SnapshotBuilders
         create_leads(website, leads_per_day)
 
         # Good ad performance
+        clicks_per_day = {}
         performance = dates.map do |date|
+          clicks = rand(15..30)
+          clicks_per_day[date] = clicks
           {
             date: date,
             impressions: rand(350..550),
-            clicks: rand(15..30),
+            clicks: clicks,
             cost_micros: rand(10..16) * 1_000_000,
             conversions: leads_per_day[date].to_f,
             conversion_value_micros: leads_per_day[date] * rand(70..110) * 1_000_000
           }
         end
         create_ad_performance(campaign, performance)
-      end
 
-      def generate_insights(account, stalled_project)
-        dashboard_service = ::Analytics::DashboardService.new(account, days: 30)
-        metrics_summary = ::Analytics::InsightsMetricsService.new(dashboard_service).summary
-
-        healthy_project = account.projects.find_by(name: "Premium Pet Portraits")
-
-        DashboardInsight.create!(
-          account: account,
-          insights: [
-            {
-              title: "Lead Generation Stalled",
-              description: "Budget Travel Guides hasn't generated leads in 14 days despite spending $187. Consider reviewing your targeting or ad copy.",
-              sentiment: "negative",
-              project_uuid: stalled_project.uuid,
-              action: { label: "Review Keywords", url: "/projects/#{stalled_project.uuid}/campaigns/keywords" }
-            },
-            {
-              title: "Premium Pet Portraits Performing Well",
-              description: "This project continues to generate consistent leads with a healthy CPL. Consider scaling the budget.",
-              sentiment: "positive",
-              project_uuid: healthy_project&.uuid,
-              action: { label: "Increase Budget", url: "/projects/#{healthy_project&.uuid}/campaigns/budget" }
-            },
-            {
-              title: "Overall Account Health: Good",
-              description: "2 of 3 projects are performing well. Focus attention on Budget Travel Guides to improve overall returns.",
-              sentiment: "neutral",
-              project_uuid: nil,
-              action: { label: "View Dashboard", url: "/dashboard" }
-            }
-          ],
-          metrics_summary: metrics_summary,
-          generated_at: Time.current
-        )
+        # Page views: healthy traffic
+        visits_per_day = clicks_per_day.transform_values { |clicks| (clicks * rand(0.8..0.95)).round }
+        create_page_views(website, visits_per_day)
       end
     end
   end

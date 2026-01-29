@@ -24,6 +24,7 @@ class DashboardController < SubscribedController
     render inertia: "Dashboard", props: {
       performance: dashboard_service.performance_overview,
       projects: dashboard_service.projects_summary,
+      status_counts: dashboard_service.status_counts,
       date_range: date_range_label(days),
       days: days,
       status_filter: status_filter,
