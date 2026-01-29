@@ -83,7 +83,7 @@ class API::V1::DashboardInsightsController < API::BaseController
       ]
     )
 
-    # Handle metrics_summary as a JSON blob (permit all nested keys)
+    # metrics_summary is from our own Langgraph backend (protected by internal API signature)
     if params[:dashboard_insight][:metrics_summary].present?
       permitted[:metrics_summary] = params[:dashboard_insight][:metrics_summary].to_unsafe_h
     end

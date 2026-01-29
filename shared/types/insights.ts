@@ -111,6 +111,8 @@ export type Sentiment = z.infer<typeof sentimentSchema>;
 export const insightActionTypeSchema = z.enum([
   "review_ad_copy",
   "review_keywords",
+  "review_selling_points",
+  "refine_messaging",
   "adjust_budget",
   "pause_campaign",
   "review_landing_page",
@@ -137,6 +139,14 @@ export const ACTION_REGISTRY: Record<
   review_keywords: {
     label: "Review Keywords",
     urlBuilder: (uuid) => `/projects/${uuid}/campaigns/keywords`,
+  },
+  review_selling_points: {
+    label: "Review Selling Points",
+    urlBuilder: (uuid) => `/projects/${uuid}/campaigns/highlights`,
+  },
+  refine_messaging: {
+    label: "Refine Messaging",
+    urlBuilder: (uuid) => `/projects/${uuid}/brainstorm`,
   },
   adjust_budget: {
     label: "Adjust Budget",
@@ -249,20 +259,23 @@ export function resolveProjectIndex(
  *
  * @param actionType - The type of action
  * @param projectUuid - The project UUID to build the URL with
+ * @param fallbackUuid - Optional fallback UUID if projectUuid is null
  * @returns InsightAction with label and URL
- * @throws Error if projectUuid is null (all current actions require a project)
+ * @throws Error if both projectUuid and fallbackUuid are null
  */
 export function resolveInsightAction(
   actionType: InsightActionType,
-  projectUuid: string | null
+  projectUuid: string | null,
+  fallbackUuid?: string | null
 ): InsightAction {
   const config = ACTION_REGISTRY[actionType];
-  if (!projectUuid) {
+  const uuid = projectUuid ?? fallbackUuid;
+  if (!uuid) {
     throw new Error(`Action ${actionType} requires a project UUID`);
   }
   return {
     label: config.label,
-    url: config.urlBuilder(projectUuid),
+    url: config.urlBuilder(uuid),
   };
 }
 
@@ -277,13 +290,16 @@ export function resolveInsightIntent(
   intent: InsightIntent,
   projects: Array<{ uuid: string; name: string }>
 ): Insight {
-  const projectUuid = resolveProjectIndex(intent.project_index, projects);
+  // Use first project as fallback if LLM outputs null (shouldn't happen with updated prompt)
+  const fallbackUuid = projects[0]?.uuid ?? null;
+  const projectUuid = resolveProjectIndex(intent.project_index, projects) ?? fallbackUuid;
+
   return {
     title: intent.title,
     description: intent.description,
     sentiment: intent.sentiment,
     project_uuid: projectUuid,
-    action: resolveInsightAction(intent.action_type, projectUuid),
+    action: resolveInsightAction(intent.action_type, projectUuid, fallbackUuid),
   };
 }
 

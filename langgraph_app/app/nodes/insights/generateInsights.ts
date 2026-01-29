@@ -127,6 +127,8 @@ When multiple insights compete, rank by:
 |-------------|-------------|
 | review_ad_copy | CTR low, ads not resonating, ad fatigue |
 | review_keywords | Targeting off, impressions low, wrong audience |
+| review_selling_points | Value prop unclear, offer not compelling, benefits need work |
+| refine_messaging | Fundamental positioning issues, core pitch needs revisiting |
 | adjust_budget | ROAS high (scale up) or wasteful spend (scale down) |
 | pause_campaign | Spending with no leads, bleeding money |
 | review_landing_page | Good traffic, no conversions |
@@ -135,7 +137,7 @@ When multiple insights compete, rank by:
 ## OUTPUT FORMAT
 
 For each insight, specify:
-- **project_index**: The number of the project (e.g., 1, 2, 3) or null for account-wide
+- **project_index**: REQUIRED. The number of the project (1, 2, 3, etc.) that this insight relates to. Even for account-wide observations, pick the most relevant project.
 - **action_type**: One of the action types above
 
 Example - if project [1] has stalled:
@@ -147,7 +149,7 @@ Example - if project [1] has stalled:
   "action_type": "review_keywords"
 }
 
-DO NOT generate URLs. Just use the project number from the list and an action_type.
+IMPORTANT: Always provide a project_index. Do NOT use null. Pick the most relevant project for each insight.
 
 ## SENTIMENT
 
@@ -293,7 +295,7 @@ export const generateInsightsNode = NodeMiddleware.use(
   ): Promise<Partial<InsightsGraphState>> => {
     if (!state.metricsInput) {
       return {
-        generationError: "No metrics input provided",
+        error: { message: "No metrics input provided", node: "generateInsights" },
         insights: [],
       };
     }
@@ -301,6 +303,38 @@ export const generateInsightsNode = NodeMiddleware.use(
     try {
       // Validate input
       const validatedInput = Insights.metricsInputSchema.parse(state.metricsInput);
+
+      // If no projects, return "get started" insights instead of calling LLM
+      if (validatedInput.projects.length === 0) {
+        return {
+          insights: [
+            {
+              title: "Deploy Your First Project",
+              description:
+                "Create and deploy a landing page to start collecting leads and tracking performance.",
+              sentiment: "neutral" as const,
+              project_uuid: null,
+              action: { label: "Create Project", url: "/projects/new" },
+            },
+            {
+              title: "Ready to Validate Your Idea",
+              description:
+                "Launch10 helps you test business ideas fast. Deploy a page, run some ads, and see if people are interested.",
+              sentiment: "positive" as const,
+              project_uuid: null,
+              action: { label: "Get Started", url: "/projects/new" },
+            },
+            {
+              title: "Insights Coming Soon",
+              description:
+                "Once you have a live project with traffic, we'll show you actionable insights about what's working.",
+              sentiment: "neutral" as const,
+              project_uuid: null,
+              action: { label: "Learn More", url: "/docs/insights" },
+            },
+          ],
+        };
+      }
 
       // Format metrics for the prompt
       const metricsText = formatMetricsForPrompt(validatedInput);
@@ -333,15 +367,13 @@ export const generateInsightsNode = NodeMiddleware.use(
 
       return {
         insights,
-        generationError: undefined,
       };
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error generating insights";
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error generating insights";
       console.error("Error generating insights:", errorMessage);
 
       return {
-        generationError: errorMessage,
+        error: { message: errorMessage, node: "generateInsights" },
         insights: [],
       };
     }

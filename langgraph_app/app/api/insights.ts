@@ -52,7 +52,7 @@ export const InsightsAPI = {
     return {
       insights: result.insights || [],
       metricsInput: result.metricsInput,
-      error: result.generationError,
+      error: result.error?.message,
     };
   },
 };

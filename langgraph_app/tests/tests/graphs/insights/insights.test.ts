@@ -76,6 +76,12 @@ describe("Insights Generation", () => {
       expect(Insights.ACTION_REGISTRY.view_leads.urlBuilder(uuid)).toBe(
         "/projects/test-uuid-123/leads"
       );
+      expect(Insights.ACTION_REGISTRY.review_selling_points.urlBuilder(uuid)).toBe(
+        "/projects/test-uuid-123/campaigns/highlights"
+      );
+      expect(Insights.ACTION_REGISTRY.refine_messaging.urlBuilder(uuid)).toBe(
+        "/projects/test-uuid-123/brainstorm"
+      );
     });
 
     it("resolves insight intents to full insights", () => {
@@ -118,67 +124,6 @@ describe("Insights Generation", () => {
 
   describe.sequential("Insights Graph Integration", () => {
     describe("with analytics/healthy_account", () => {
-      const healthyMetrics: Insights.MetricsInput = {
-        period: "Last 30 Days",
-        totals: {
-          leads: 74,
-          page_views: 3278,
-          ctr: 4.8,
-          cpl: 13.84,
-          ctr_available: true,
-          cpl_available: true,
-          roas: 3.5,
-          roas_available: true,
-          total_spend_dollars: 1024,
-        },
-        projects: [
-          {
-            uuid: "premium-pet-portraits-uuid",
-            name: "Premium Pet Portraits",
-            total_leads: 45,
-            total_page_views: 2000,
-            ctr: 5.2,
-            cpl: 11.5,
-            days_since_last_lead: 1,
-            roas: 4.2,
-            spend_dollars: 518,
-          },
-          {
-            uuid: "budget-travel-uuid",
-            name: "Budget Travel Guides",
-            total_leads: 20,
-            total_page_views: 800,
-            ctr: 4.1,
-            cpl: 16.5,
-            days_since_last_lead: 2,
-            roas: 2.8,
-            spend_dollars: 330,
-          },
-          {
-            uuid: "fitness-coaching-uuid",
-            name: "Fitness Coaching",
-            total_leads: 9,
-            total_page_views: 478,
-            ctr: 4.0,
-            cpl: 19.5,
-            days_since_last_lead: 3,
-            roas: 2.0,
-            spend_dollars: 176,
-          },
-        ],
-        trends: {
-          leads_trend: { direction: "up", percent: 25 },
-          page_views_trend: { direction: "up", percent: 18 },
-          ctr_trend: { direction: "up", percent: 12 },
-          cpl_trend: { direction: "down", percent: 15 },
-        },
-        flags: {
-          has_stalled_project: false,
-          has_high_performer: true,
-          has_new_first_lead: false,
-        },
-      };
-
       beforeEach(async () => {
         await DatabaseSnapshotter.restoreSnapshot("analytics/healthy_account");
       }, 30000);
@@ -191,7 +136,7 @@ describe("Insights Generation", () => {
           })
           .execute();
 
-        expect(result.state.generationError).toBeUndefined();
+        expect(result.state.error).toBeUndefined();
         expect(result.state.insights).toHaveLength(3);
 
         for (const insight of result.state.insights!) {
@@ -212,14 +157,14 @@ describe("Insights Generation", () => {
           })
           .execute();
 
-        expect(result.state.generationError).toBeUndefined();
+        expect(result.state.error).toBeUndefined();
         expect(result.state.insights).toHaveLength(3);
 
         const positiveInsights = result.state.insights!.filter((i) => i.sentiment === "positive");
         expect(positiveInsights.length).toBeGreaterThanOrEqual(1);
       });
 
-      it.only("includes actionable URLs for each insight", async () => {
+      it("includes actionable URLs for each insight", async () => {
         const result = await testGraph<InsightsGraphState>()
           .withGraph(insightsGraph)
           .withState({
@@ -227,7 +172,7 @@ describe("Insights Generation", () => {
           })
           .execute();
 
-        expect(result.state.generationError).toBeUndefined();
+        expect(result.state.error).toBeUndefined();
 
         for (const insight of result.state.insights!) {
           expect(insight.action.url).toMatch(/^\/projects\//);
@@ -237,62 +182,6 @@ describe("Insights Generation", () => {
     });
 
     describe("with analytics/stalled_project", () => {
-      const stalledMetrics: Insights.MetricsInput = {
-        period: "Last 30 Days",
-        totals: {
-          leads: 106,
-          page_views: 2800,
-          ctr: 3.8,
-          cpl: 18.5,
-          ctr_available: true,
-          cpl_available: true,
-          total_spend_dollars: 780,
-        },
-        projects: [
-          {
-            uuid: "budget-travel-stalled-uuid",
-            name: "Budget Travel Guides",
-            total_leads: 8,
-            total_page_views: 700,
-            ctr: 3.2,
-            cpl: null,
-            days_since_last_lead: 16,
-            spend_dollars: 190,
-          },
-          {
-            uuid: "premium-pet-portraits-uuid",
-            name: "Premium Pet Portraits",
-            total_leads: 55,
-            total_page_views: 1300,
-            ctr: 4.5,
-            cpl: 16.5,
-            days_since_last_lead: 1,
-            spend_dollars: 350,
-          },
-          {
-            uuid: "fitness-coaching-uuid",
-            name: "Fitness Coaching",
-            total_leads: 43,
-            total_page_views: 800,
-            ctr: 3.9,
-            cpl: 19.0,
-            days_since_last_lead: 2,
-            spend_dollars: 240,
-          },
-        ],
-        trends: {
-          leads_trend: { direction: "flat", percent: 5 },
-          page_views_trend: { direction: "up", percent: 8 },
-          ctr_trend: { direction: "flat", percent: 2 },
-          cpl_trend: { direction: "up", percent: 10 },
-        },
-        flags: {
-          has_stalled_project: true,
-          has_high_performer: true,
-          has_new_first_lead: false,
-        },
-      };
-
       beforeEach(async () => {
         await DatabaseSnapshotter.restoreSnapshot("analytics/stalled_project");
       }, 30000);
@@ -305,7 +194,7 @@ describe("Insights Generation", () => {
           })
           .execute();
 
-        expect(result.state.generationError).toBeUndefined();
+        expect(result.state.error).toBeUndefined();
         expect(result.state.insights).toHaveLength(3);
 
         const stalledInsight = result.state.insights!.find(
@@ -324,42 +213,6 @@ describe("Insights Generation", () => {
     });
 
     describe("with analytics/struggling_account", () => {
-      const strugglingMetrics: Insights.MetricsInput = {
-        period: "Last 30 Days",
-        totals: {
-          leads: 0,
-          page_views: 180,
-          ctr: 0.9,
-          cpl: null,
-          ctr_available: true,
-          cpl_available: false,
-          total_spend_dollars: 334,
-        },
-        projects: [
-          {
-            uuid: "my-first-startup-uuid",
-            name: "My First Startup",
-            total_leads: 0,
-            total_page_views: 180,
-            ctr: 0.9,
-            cpl: null,
-            days_since_last_lead: null,
-            spend_dollars: 334,
-          },
-        ],
-        trends: {
-          leads_trend: { direction: "flat", percent: 0 },
-          page_views_trend: { direction: "down", percent: 25 },
-          ctr_trend: { direction: "down", percent: 20 },
-          cpl_trend: null,
-        },
-        flags: {
-          has_stalled_project: false,
-          has_high_performer: false,
-          has_new_first_lead: false,
-        },
-      };
-
       beforeEach(async () => {
         await DatabaseSnapshotter.restoreSnapshot("analytics/struggling_account");
       }, 30000);
@@ -372,7 +225,7 @@ describe("Insights Generation", () => {
           })
           .execute();
 
-        expect(result.state.generationError).toBeUndefined();
+        expect(result.state.error).toBeUndefined();
         expect(result.state.insights).toHaveLength(3);
 
         for (const insight of result.state.insights!) {
@@ -391,7 +244,7 @@ describe("Insights Generation", () => {
           })
           .execute();
 
-        expect(result.state.generationError).toBeUndefined();
+        expect(result.state.error).toBeUndefined();
 
         const insightTexts = result.state
           .insights!.map((i) => `${i.title} ${i.description} ${i.action.label}`)
@@ -412,42 +265,6 @@ describe("Insights Generation", () => {
     });
 
     describe("with analytics/new_account", () => {
-      const newAccountMetrics: Insights.MetricsInput = {
-        period: "Last 3 Days",
-        totals: {
-          leads: 28,
-          page_views: 65,
-          ctr: 3.5,
-          cpl: 12.5,
-          ctr_available: true,
-          cpl_available: true,
-          total_spend_dollars: 48,
-        },
-        projects: [
-          {
-            uuid: "new-business-uuid",
-            name: "My New Business",
-            total_leads: 28,
-            total_page_views: 65,
-            ctr: 3.5,
-            cpl: 12.5,
-            days_since_last_lead: 0,
-            spend_dollars: 48,
-          },
-        ],
-        trends: {
-          leads_trend: { direction: "up", percent: 100 },
-          page_views_trend: { direction: "up", percent: 50 },
-          ctr_trend: null,
-          cpl_trend: null,
-        },
-        flags: {
-          has_stalled_project: false,
-          has_high_performer: false,
-          has_new_first_lead: true,
-        },
-      };
-
       beforeEach(async () => {
         await DatabaseSnapshotter.restoreSnapshot("analytics/new_account");
       }, 30000);
@@ -460,7 +277,7 @@ describe("Insights Generation", () => {
           })
           .execute();
 
-        expect(result.state.generationError).toBeUndefined();
+        expect(result.state.error).toBeUndefined();
         expect(result.state.insights).toHaveLength(3);
 
         const positiveInsights = result.state.insights!.filter((i) => i.sentiment === "positive");
@@ -496,8 +313,10 @@ describe("Insights Generation", () => {
           })
           .execute();
 
-        expect(result.state.generationError).toBeUndefined();
+        // With no projects, we get "get started" insights instead of LLM-generated ones
+        expect(result.state.error).toBeUndefined();
         expect(result.state.insights).toHaveLength(3);
+        expect(result.state.insights![0]!.title).toBe("Deploy Your First Project");
       });
     });
   });
@@ -539,7 +358,7 @@ describe("Insights Generation", () => {
         .execute();
 
       // Should return immediately with cached insights, no LLM call
-      expect(result.state.generationError).toBeUndefined();
+      expect(result.state.error).toBeUndefined();
       expect(result.state.insights).toHaveLength(3);
       expect(result.state.skipGeneration).toBe(true);
       expect(result.state.insights).toEqual(cachedInsights);

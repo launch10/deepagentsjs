@@ -35,12 +35,6 @@ export const InsightsAnnotation = Annotation.Root({
     default: () => false,
     reducer: (current, next) => next,
   }),
-
-  // Error during generation
-  generationError: Annotation<string | undefined>({
-    default: () => undefined,
-    reducer: (current, next) => next,
-  }),
 });
 
 export type InsightsGraphState = typeof InsightsAnnotation.State;

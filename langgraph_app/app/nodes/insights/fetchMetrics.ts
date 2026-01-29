@@ -32,7 +32,7 @@ export const fetchMetricsNode = NodeMiddleware.use(
     const jwt = state.jwt;
     if (!jwt) {
       return {
-        generationError: "No JWT token provided for fetching metrics",
+        error: { message: "No JWT token provided for fetching metrics", node: "fetchMetrics" },
       };
     }
 
@@ -58,13 +58,12 @@ export const fetchMetricsNode = NodeMiddleware.use(
         metricsInput,
         skipGeneration: false,
       };
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error fetching metrics";
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error fetching metrics";
       console.error("Error fetching metrics:", errorMessage);
 
       return {
-        generationError: errorMessage,
+        error: { message: errorMessage, node: "fetchMetrics" },
       };
     }
   }

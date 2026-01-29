@@ -14,7 +14,7 @@ export const saveInsightsNode = NodeMiddleware.use(
     config?: LangGraphRunnableConfig
   ): Promise<Partial<InsightsGraphState>> => {
     // If there was an error or no insights, don't try to save
-    if (state.generationError || !state.insights || state.insights.length === 0) {
+    if (state.error || !state.insights || state.insights.length === 0) {
       return {};
     }
 
