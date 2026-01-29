@@ -38,6 +38,9 @@ class API::V1::DashboardInsightsController < API::BaseController
     insight.generated_at = Time.current
 
     if insight.save
+      # Invalidate dashboard cache so new insights are reflected immediately
+      Analytics::CacheService.clear_for_account(current_account.id)
+
       status = insight.previously_new_record? ? :created : :ok
       render json: serialize_insight(insight), status: status
     else

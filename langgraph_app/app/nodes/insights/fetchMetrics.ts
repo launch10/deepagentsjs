@@ -8,7 +8,7 @@ import { DashboardInsightsAPIService } from "@services";
  *
  * Flow:
  * 1. If skipGeneration already true with insights (testing cache), skip everything
- * 2. If metricsInput already provided (testing), skip to generation
+ * 2. If metrics already provided (testing), skip to generation
  * 3. Check Rails for existing insights and freshness status
  * 4. If fresh: return cached insights, set skipGeneration=true
  * 5. If stale/missing: fetch metrics for generation
@@ -24,8 +24,8 @@ export const fetchMetricsNode = NodeMiddleware.use(
       return {};
     }
 
-    // If metricsInput is already provided (for testing), skip freshness check
-    if (state.metricsInput) {
+    // If metrics already provided (for testing), skip freshness check
+    if (state.metrics) {
       return {};
     }
 
@@ -53,10 +53,10 @@ export const fetchMetricsNode = NodeMiddleware.use(
       }
 
       // Step 2: Insights are stale or missing - fetch metrics for generation
-      const metricsInput = await apiService.getMetricsSummary();
+      const metrics = await apiService.getMetricsSummary();
 
       return {
-        metricsInput,
+        metrics,
         skipGeneration: false,
       };
     } catch (err) {

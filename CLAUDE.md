@@ -489,6 +489,38 @@ end
 - Logic can be reused (console, rake tasks, other workers)
 - Workers remain simple to understand
 
+### Qualified Constant Names in Namespaced Modules
+
+**Always use fully-qualified constant names** when referencing sibling classes in namespaced modules. This prevents Zeitwerk autoloading issues.
+
+```ruby
+# BAD: Unqualified reference fails with Zeitwerk
+module Credits
+  class ChargeRunWorker < ApplicationWorker
+    def perform(run_id)
+      cost = CostCalculator.new(record).call  # NameError: uninitialized constant Credits::ChargeRunWorker::CostCalculator
+    end
+  end
+end
+
+# GOOD: Fully-qualified reference works reliably
+module Credits
+  class ChargeRunWorker < ApplicationWorker
+    def perform(run_id)
+      cost = Credits::CostCalculator.new(record).call  # Always works
+    end
+  end
+end
+```
+
+**Why this matters:**
+- When Ruby sees `CostCalculator` inside `Credits::ChargeRunWorker`, it first looks for `Credits::ChargeRunWorker::CostCalculator`
+- Zeitwerk tries to autoload from that path, which doesn't exist
+- The error only surfaces when the sibling class hasn't been loaded yet (test isolation, load order)
+- Using qualified names (`Credits::CostCalculator`) makes the lookup explicit and reliable
+
+**The test suite verifies this:** `rails_helper.rb` calls `Rails.application.eager_load!` before tests to catch these issues early.
+
 ## Tips
 
 - Use `pnpm` for Langgraph, not `npm` or `yarn`

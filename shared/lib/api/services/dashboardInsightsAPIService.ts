@@ -11,12 +11,12 @@ export interface DashboardInsightRecord {
   insights: Insights.Insight[] | null;
   generated_at: string | null;
   fresh: boolean;
-  metrics_summary: Insights.MetricsInput | null;
+  metrics_summary: Insights.Metrics | null;
 }
 
 export interface CreateDashboardInsightParams {
   insights: Insights.Insight[];
-  metrics_summary?: Insights.MetricsInput;
+  metrics_summary?: Insights.Metrics;
 }
 
 /**
@@ -84,7 +84,7 @@ export class DashboardInsightsAPIService extends RailsAPIBase {
    *
    * @returns The metrics summary from InsightsMetricsService
    */
-  async getMetricsSummary(): Promise<Insights.MetricsInput> {
+  async getMetricsSummary(): Promise<Insights.Metrics> {
     const client = await this.getClient();
     const response = await client.GET("/api/v1/dashboard_insights/metrics_summary" as any, {});
 
@@ -96,6 +96,6 @@ export class DashboardInsightsAPIService extends RailsAPIBase {
       throw new Error(`Failed to get metrics summary: No data returned`);
     }
 
-    return response.data as Insights.MetricsInput;
+    return response.data as Insights.Metrics;
   }
 }

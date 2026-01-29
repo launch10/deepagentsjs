@@ -264,7 +264,7 @@ test.describe("Dashboard", () => {
     });
   });
 
-  test.describe("With New Account (analytics/new_account)", () => {
+  test.describe("With New-ish Account (1 project)", () => {
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("analytics/new_account");
       await loginUser(page);
@@ -299,43 +299,64 @@ test.describe("Dashboard", () => {
     });
   });
 
-  test.describe("With Basic Account (no analytics data)", () => {
+  test.describe("With Truly Empty Account (0 projects)", () => {
     test.beforeEach(async ({ page }) => {
-      await DatabaseSnapshotter.restoreSnapshot("website_deployed");
+      await DatabaseSnapshotter.restoreSnapshot("analytics/empty_account");
       await loginUser(page);
       dashboardPage = new DashboardPage(page);
     });
 
-    test("displays dashboard with empty/minimal state", async ({ page }) => {
+    test("displays dashboard structure for empty account", async ({ page }) => {
       await dashboardPage.goto();
 
       // Dashboard structure should still be visible
       await expect(page.locator("h1")).toContainText("Welcome Back");
       await expect(page.getByText("Key Insights")).toBeVisible();
       await expect(page.getByText("Performance Overview")).toBeVisible();
+      await expect(page.getByText("Projects").first()).toBeVisible();
     });
 
-    test("shows project card even without analytics data", async ({ page }) => {
+    test("shows no project cards", async ({ page }) => {
       await dashboardPage.goto();
 
-      // Should have at least one project from website_deployed snapshot
+      // Should have 0 projects
       const projectCards = page.locator('a[href*="/projects/"][href*="/website"]');
-      const count = await projectCards.count();
-      expect(count).toBeGreaterThanOrEqual(1);
+      await expect(projectCards).toHaveCount(0);
+
+      // Should show empty state message
+      await expect(
+        page.getByText("No projects yet. Create your first project to get started.")
+      ).toBeVisible();
     });
 
-    test("charts show empty state or minimal data", async ({ page }) => {
+    test("generates 'Deploy Your First Project' insights", async ({ page }) => {
       await dashboardPage.goto();
 
-      // Charts section should be visible
-      await expect(page.getByText("Total Leads")).toBeVisible();
+      // Wait for insights to load (Langgraph generates static "get started" insights)
+      const insightsSection = page.locator("section").filter({ hasText: "Key Insights" });
+      const insightCards = insightsSection.locator('[class*="rounded-lg border p-4"]');
+      await expect(insightCards.first()).toBeVisible({ timeout: 30000 });
 
-      // May show "No data available yet" for some charts
-      // Or show charts with minimal/zero data
+      // Should have exactly 3 insights
+      await expect(insightCards).toHaveCount(3);
+
+      // First insight should be "Deploy Your First Project"
+      await expect(insightsSection.getByText("Deploy Your First Project")).toBeVisible();
+    });
+
+    test("charts show empty state", async ({ page }) => {
+      await dashboardPage.goto();
+
+      // All charts should show "No data available yet" since there are no projects
       const performanceSection = page
         .locator("section")
         .filter({ hasText: "Performance Overview" });
       await expect(performanceSection).toBeVisible();
+
+      // Should show empty state placeholders
+      const emptyStates = performanceSection.getByText("No data available yet");
+      const count = await emptyStates.count();
+      expect(count).toBeGreaterThanOrEqual(1);
     });
   });
 });

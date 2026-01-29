@@ -81,9 +81,9 @@ export const flagsSchema = z.object({
 export type Flags = z.infer<typeof flagsSchema>;
 
 /**
- * Full metrics summary input from Rails
+ * Full metrics summary from Rails
  */
-export const metricsInputSchema = z.object({
+export const metricsSchema = z.object({
   period: z.string().optional().default("Last 30 Days"),
   totals: totalsSchema,
   projects: z.array(projectSummarySchema),
@@ -91,7 +91,7 @@ export const metricsInputSchema = z.object({
   flags: flagsSchema.optional(),
 });
 
-export type MetricsInput = z.infer<typeof metricsInputSchema>;
+export type Metrics = z.infer<typeof metricsSchema>;
 
 // ============================================================================
 // Output Schemas (AI-generated insights)

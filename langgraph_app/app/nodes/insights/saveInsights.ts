@@ -33,7 +33,7 @@ export const saveInsightsNode = NodeMiddleware.use(
 
       const result = await apiService.save({
         insights: state.insights,
-        metrics_summary: state.metricsInput,
+        metrics_summary: state.metrics,
       });
 
       return {

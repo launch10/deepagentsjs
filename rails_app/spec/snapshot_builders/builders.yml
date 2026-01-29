@@ -113,3 +113,8 @@ analytics/new_account:
   class: SnapshotBuilders::Analytics::NewAccount
   base_snapshot: website_deployed
   description: "1 project just launched, only 3 days of data"
+
+analytics/empty_account:
+  class: SnapshotBuilders::Analytics::EmptyAccount
+  base_snapshot: basic_account
+  description: "Subscribed account with 0 projects - tests 'Deploy Your First Project' insights"

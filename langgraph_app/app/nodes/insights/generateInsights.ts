@@ -162,7 +162,7 @@ Remember: Your goal is to help them succeed. Even bad news should be delivered c
 /**
  * Formats metrics input into a readable string for the LLM
  */
-function formatMetricsForPrompt(metrics: Insights.MetricsInput): string {
+function formatMetricsForPrompt(metrics: Insights.Metrics): string {
   const lines: string[] = [];
 
   const add = (line: string) => lines.push(line);
@@ -242,7 +242,7 @@ function formatMetricsForPrompt(metrics: Insights.MetricsInput): string {
  */
 function validateInsightIntents(
   intents: Insights.InsightIntent[],
-  metrics: Insights.MetricsInput
+  metrics: Insights.Metrics
 ): void {
   // Ensure we have exactly 3
   if (intents.length !== 3) {
@@ -293,16 +293,16 @@ export const generateInsightsNode = NodeMiddleware.use(
     state: InsightsGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<InsightsGraphState>> => {
-    if (!state.metricsInput) {
+    if (!state.metrics) {
       return {
-        error: { message: "No metrics input provided", node: "generateInsights" },
+        error: { message: "No metrics provided", node: "generateInsights" },
         insights: [],
       };
     }
 
     try {
       // Validate input
-      const validatedInput = Insights.metricsInputSchema.parse(state.metricsInput);
+      const validatedInput = Insights.metricsSchema.parse(state.metrics);
 
       // If no projects, return "get started" insights instead of calling LLM
       if (validatedInput.projects.length === 0) {

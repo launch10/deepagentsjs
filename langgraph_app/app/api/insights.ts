@@ -46,7 +46,7 @@ export const InsightsAPI = {
 
     return {
       insights: result.insights || [],
-      metricsInput: result.metricsInput,
+      metrics: result.metrics,
       error: result.error?.message,
     };
   },

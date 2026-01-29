@@ -13,8 +13,8 @@ import { createAppBridge } from "@api/middleware";
 export const InsightsAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
 
-  // Input: Metrics summary from Rails InsightsMetricsService
-  metricsInput: Annotation<Insights.MetricsInput | undefined>({
+  // Metrics summary from Rails InsightsMetricsService
+  metrics: Annotation<Insights.Metrics | undefined>({
     default: () => undefined,
     reducer: (current, next) => next ?? current,
   }),

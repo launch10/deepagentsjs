@@ -13,7 +13,7 @@ const insightsGraph = uncompiledGraph.compile({ ...graphParams, name: "insights"
  * These match the data that would be fetched from Rails for each snapshot.
  * Using pre-defined metrics in unit tests skips the Rails API call.
  */
-const HEALTHY_ACCOUNT_METRICS: Insights.MetricsInput = {
+const HEALTHY_ACCOUNT_METRICS: Insights.Metrics = {
   period: "Last 30 Days",
   totals: {
     leads: 47,
@@ -71,7 +71,7 @@ const HEALTHY_ACCOUNT_METRICS: Insights.MetricsInput = {
   },
 };
 
-const STALLED_PROJECT_METRICS: Insights.MetricsInput = {
+const STALLED_PROJECT_METRICS: Insights.Metrics = {
   period: "Last 30 Days",
   totals: {
     leads: 25,
@@ -119,7 +119,7 @@ const STALLED_PROJECT_METRICS: Insights.MetricsInput = {
   },
 };
 
-const STRUGGLING_ACCOUNT_METRICS: Insights.MetricsInput = {
+const STRUGGLING_ACCOUNT_METRICS: Insights.Metrics = {
   period: "Last 30 Days",
   totals: {
     leads: 2,
@@ -153,7 +153,7 @@ const STRUGGLING_ACCOUNT_METRICS: Insights.MetricsInput = {
   },
 };
 
-const NEW_ACCOUNT_METRICS: Insights.MetricsInput = {
+const NEW_ACCOUNT_METRICS: Insights.Metrics = {
   period: "Last 7 Days",
   totals: {
     leads: 1,
@@ -311,7 +311,7 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
-            metricsInput: HEALTHY_ACCOUNT_METRICS,
+            metrics: HEALTHY_ACCOUNT_METRICS,
           })
           .execute();
 
@@ -333,7 +333,7 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
-            metricsInput: HEALTHY_ACCOUNT_METRICS,
+            metrics: HEALTHY_ACCOUNT_METRICS,
           })
           .execute();
 
@@ -349,7 +349,7 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
-            metricsInput: HEALTHY_ACCOUNT_METRICS,
+            metrics: HEALTHY_ACCOUNT_METRICS,
           })
           .execute();
 
@@ -372,7 +372,7 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
-            metricsInput: STALLED_PROJECT_METRICS,
+            metrics: STALLED_PROJECT_METRICS,
           })
           .execute();
 
@@ -404,7 +404,7 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
-            metricsInput: STRUGGLING_ACCOUNT_METRICS,
+            metrics: STRUGGLING_ACCOUNT_METRICS,
           })
           .execute();
 
@@ -424,7 +424,7 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
-            metricsInput: STRUGGLING_ACCOUNT_METRICS,
+            metrics: STRUGGLING_ACCOUNT_METRICS,
           })
           .execute();
 
@@ -458,7 +458,7 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
-            metricsInput: NEW_ACCOUNT_METRICS,
+            metrics: NEW_ACCOUNT_METRICS,
           })
           .execute();
 
@@ -470,7 +470,7 @@ describe("Insights Generation", () => {
       });
 
       it("handles missing optional fields gracefully", async () => {
-        const minimalInput: Insights.MetricsInput = {
+        const minimalInput: Insights.Metrics = {
           period: "Last 3 Days",
           totals: {
             leads: 3,
@@ -487,14 +487,14 @@ describe("Insights Generation", () => {
           },
         };
 
-        const parseResult = Insights.metricsInputSchema.safeParse(minimalInput);
+        const parseResult = Insights.metricsSchema.safeParse(minimalInput);
         expect(parseResult.success).toBe(true);
 
         const result = await testGraph<InsightsGraphState>()
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
-            metricsInput: minimalInput,
+            metrics: minimalInput,
           })
           .execute();
 
