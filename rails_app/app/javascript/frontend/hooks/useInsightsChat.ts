@@ -85,7 +85,7 @@ export function useInsightsChat() {
 
   // Store for surviving back/forward navigation
   const storedInsights = useStoredInsights();
-  const setStoredInsights = useInsightsStore((s: InsightsStore) => s.setInsights);
+  const setStoredInsights = useInsightsStore((s) => s.setInsights);
 
   const isGenerating = useRef(false);
 
