@@ -54,9 +54,6 @@ module SnapshotBuilders
           compute_metrics_for_project(project, dates)
         end
 
-        # Generate insights using actual service
-        generate_insights(account)
-
         puts "Created analytics/healthy_account snapshot"
         puts "  - #{projects.count} projects"
         puts "  - #{WebsiteLead.count} total leads"
@@ -81,8 +78,8 @@ module SnapshotBuilders
         leads_per_day = dates.each_with_object({}) do |date, hash|
           # More leads in recent days (trending up)
           day_index = dates.index(date)
-          base = day_index < 15 ? rand(0..1) : rand(1..2)
-          hash[date] = base + (day_index > 25 ? 1 : 0)
+          base = (day_index < 15) ? rand(0..1) : rand(1..2)
+          hash[date] = base + ((day_index > 25) ? 1 : 0)
         end
         create_leads(website, leads_per_day)
 
@@ -131,7 +128,7 @@ module SnapshotBuilders
 
         # Steady performer: ~5 leads, consistent
         leads_per_day = dates.each_with_object({}) do |date, hash|
-          hash[date] = rand(10) < 2 ? 1 : 0 # ~20% chance of lead each day
+          hash[date] = (rand(10) < 2) ? 1 : 0 # ~20% chance of lead each day
         end
         create_leads(website, leads_per_day)
 
@@ -147,41 +144,6 @@ module SnapshotBuilders
           }
         end
         create_ad_performance(campaign, performance)
-      end
-
-      def generate_insights(account)
-        dashboard_service = ::Analytics::DashboardService.new(account, days: 30)
-        metrics_summary = ::Analytics::InsightsMetricsService.new(dashboard_service).summary
-
-        # Create insights matching what LLM would generate for healthy account
-        DashboardInsight.create!(
-          account: account,
-          insights: [
-            {
-              title: "Strong Lead Growth",
-              description: "Premium Pet Portraits is outperforming with 32 leads this month at just $16.34 per lead.",
-              sentiment: "positive",
-              project_uuid: account.projects.find_by(name: "Premium Pet Portraits")&.uuid,
-              action: { label: "View Campaign", url: "/projects/#{account.projects.first.uuid}/campaigns" }
-            },
-            {
-              title: "CTR Improving Across Campaigns",
-              description: "Your click-through rate has improved 10% this month, averaging 4.2% across all projects.",
-              sentiment: "positive",
-              project_uuid: nil,
-              action: { label: "Review Ads", url: "/dashboard" }
-            },
-            {
-              title: "Consider Scaling Budget Travel Guides",
-              description: "With a solid CPL of $22, this project has room to scale. Consider increasing daily budget.",
-              sentiment: "neutral",
-              project_uuid: account.projects.find_by(name: "Budget Travel Guides")&.uuid,
-              action: { label: "Adjust Budget", url: "/projects/#{account.projects.second&.uuid}/campaigns/budget" }
-            }
-          ],
-          metrics_summary: metrics_summary,
-          generated_at: Time.current
-        )
       end
     end
   end

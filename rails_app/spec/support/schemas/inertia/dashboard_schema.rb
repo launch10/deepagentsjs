@@ -92,7 +92,7 @@ module InertiaSchemas
           cpl: InertiaSchemas.nullable({ type: :number, description: 'Cost per lead' })
         },
         required: %w[id uuid name total_leads total_unique_visitors total_page_views
-                     total_impressions total_clicks cost_dollars]
+          total_impressions total_clicks cost_dollars]
       }
     end
 

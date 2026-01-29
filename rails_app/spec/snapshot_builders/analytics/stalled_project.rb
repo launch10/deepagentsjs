@@ -81,13 +81,13 @@ module SnapshotBuilders
         leads_per_day = dates.each_with_object({}) do |date, hash|
           days_ago = (Date.current - date).to_i
           # Leads only 14+ days ago
-          hash[date] = days_ago >= 14 ? rand(0..2) : 0
+          hash[date] = (days_ago >= 14) ? rand(0..2) : 0
         end
         create_leads(website, leads_per_day)
 
         # Ad performance: still spending money, decent impressions
         performance = dates.map do |date|
-          days_ago = (Date.current - date).to_i
+          (Date.current - date).to_i
           {
             date: date,
             impressions: rand(250..400),

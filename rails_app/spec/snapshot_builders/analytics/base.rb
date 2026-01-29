@@ -98,7 +98,7 @@ module SnapshotBuilders
         project.workflows.create!(workflow_type: "launch", step: with_deploy ? "ads" : "website", substep: 0)
 
         # Create website
-        website = Website.create!(
+        Website.create!(
           account: account,
           project: project,
           name: name,
@@ -157,7 +157,7 @@ module SnapshotBuilders
         AdsAccount.create!(
           account: account,
           platform: "google",
-          google_customer_id: "123-456-#{account.id.to_s.rjust(4, '0')}"
+          google_customer_id: "123-456-#{account.id.to_s.rjust(4, "0")}"
         )
       end
 
@@ -180,10 +180,10 @@ module SnapshotBuilders
       #
       def generate_trending_values(base_value, days, trend: :up, variance: 0.1)
         multiplier = case trend
-                     when :up then 1.03
-                     when :down then 0.97
-                     else 1.0
-                     end
+        when :up then 1.03
+        when :down then 0.97
+        else 1.0
+        end
 
         days.times.map do |day|
           value = base_value * (multiplier**day) * rand((1 - variance)..(1 + variance))

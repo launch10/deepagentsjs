@@ -45,9 +45,6 @@ module SnapshotBuilders
         # Run actual analytics services
         compute_metrics_for_project(project, dates)
 
-        # Generate insights using actual service
-        generate_insights(account)
-
         puts "Created analytics/struggling_account snapshot"
         puts "  - 1 project"
         puts "  - 0 leads"
@@ -66,7 +63,7 @@ module SnapshotBuilders
       end
 
       def generate_struggling_data(project, dates)
-        website = project.website
+        project.website
         campaign = project.campaigns.first
 
         # NO leads at all

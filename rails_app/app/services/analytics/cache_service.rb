@@ -7,10 +7,20 @@ module Analytics
   # For historical data (before today), uses pre-computed data from analytics_daily_metrics.
   # For today's data, queries live from source tables.
   #
+  # Set CACHE_MODE=false to disable caching (useful for testing).
+  #
   class CacheService
     CACHE_TTL = 15.minutes
 
     class << self
+      # Check if caching is enabled.
+      #
+      # @return [Boolean] True if caching should be used
+      #
+      def enabled?
+        ENV.fetch("CACHE_MODE", "true") != "false"
+      end
+
       # Fetch cached data or compute it.
       #
       # @param account_id [Integer] Account ID
@@ -19,9 +29,12 @@ module Analytics
       # @yield Block that computes the data if cache miss
       # @return [Hash] The cached or computed data
       #
-      def fetch(account_id, metric, days, &)
+      def fetch(account_id, metric, days, &block)
+        # Skip caching when CACHE_MODE=false
+        return block.call unless enabled?
+
         key = cache_key(account_id, metric, days)
-        Rails.cache.fetch(key, expires_in: CACHE_TTL, &)
+        Rails.cache.fetch(key, expires_in: CACHE_TTL, &block)
       end
 
       # Generate a cache key that includes 15-minute time bucket.
