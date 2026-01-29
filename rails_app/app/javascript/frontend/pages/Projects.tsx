@@ -5,8 +5,12 @@ import { Button } from "@components/ui/button";
 
 interface ProjectsPageProps {
   projects: Array<{
+    id: number;
     uuid: string;
+    website_id: number | null;
+    account_id: number;
     name: string;
+    created_at: string;
     updated_at: string;
   }>;
   total_count: number;
