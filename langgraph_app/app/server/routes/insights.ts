@@ -1,5 +1,6 @@
 import { Hono } from "hono";
-import { type AuthContext, streamMiddleware } from "@server/middleware";
+import { v7 as uuidv7 } from "uuid";
+import { type AuthContext, streamMiddleware, getCreditState } from "@server/middleware";
 import { InsightsAPI } from "@api";
 
 type Variables = {
@@ -13,46 +14,22 @@ export const insightsRoutes = new Hono<{ Variables: Variables }>();
  *
  * Generate 3 actionable insights from analytics metrics.
  * Metrics are fetched from Rails based on the authenticated user's account.
- *
- * Response:
- * {
- *   insights: [{ title, description, sentiment, project_uuid, action }, ...],
- *   error?: string
- * }
  */
 insightsRoutes.post("/generate", ...streamMiddleware, async (c) => {
   const auth = c.get("auth");
-  const { jwt } = auth;
+  const creditState = getCreditState(c);
+  const body = await c.req.json().catch(() => ({}));
+  const threadId = body.threadId ?? uuidv7();
 
-  try {
-    const result = await InsightsAPI.generate({ jwt });
-
-    if (result.error) {
-      return c.json(
-        {
-          error: result.error,
-          insights: [],
-        },
-        500
-      );
-    }
-
-    return c.json({
-      insights: result.insights,
-      generated_at: new Date().toISOString(),
-    });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.error("Error generating insights:", errorMessage);
-
-    return c.json(
-      {
-        error: errorMessage,
-        insights: [],
-      },
-      500
-    );
-  }
+  return InsightsAPI.stream({
+    messages: [],
+    threadId,
+    state: {
+      threadId,
+      jwt: auth.jwt,
+      ...creditState,
+    },
+  });
 });
 
 /**

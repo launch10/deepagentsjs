@@ -106,7 +106,7 @@ module Analytics
         (start_date..end_date).map do |date|
           record = daily_data[date]
           if record && record.impressions.to_i > 0
-            (record.clicks.to_f / record.impressions * 100).round(2)
+            (record.clicks.to_f / record.impressions).round(4)
           else
             0.0
           end
@@ -123,7 +123,7 @@ module Analytics
           .take
 
         current_ctr = if current&.impressions.to_i > 0
-          (current.clicks.to_f / current.impressions * 100).round(2)
+          (current.clicks.to_f / current.impressions).round(4)
         else
           0.0
         end
@@ -136,7 +136,7 @@ module Analytics
           .take
 
         previous_ctr = if previous&.impressions.to_i > 0
-          (previous.clicks.to_f / previous.impressions * 100).round(2)
+          (previous.clicks.to_f / previous.impressions).round(4)
         else
           0.0
         end

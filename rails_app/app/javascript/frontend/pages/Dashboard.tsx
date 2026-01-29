@@ -220,16 +220,17 @@ export default function Dashboard() {
 }
 
 function InsightCard({ insight }: { insight: Insight }) {
+  // Use Launch10 Design System colors (from application.css)
   const sentimentColors = {
-    positive: "border-green-200 bg-green-50",
-    negative: "border-red-200 bg-red-50",
-    neutral: "border-blue-200 bg-blue-50",
+    positive: "border-success-200 bg-success-100",
+    negative: "border-secondary-200 bg-secondary-100",
+    neutral: "border-accent-green-200 bg-accent-green-100",
   };
 
   const titleColors = {
-    positive: "text-green-700",
-    negative: "text-red-700",
-    neutral: "text-blue-700",
+    positive: "text-success-600",
+    negative: "text-secondary-600",
+    neutral: "text-accent-green-600",
   };
 
   return (
@@ -251,7 +252,7 @@ function InsightCard({ insight }: { insight: Insight }) {
 
 function InsightEmptyCard() {
   return (
-    <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
+    <div className="rounded-lg border border-accent-yellow-200 bg-accent-yellow-100 p-4">
       <div className="flex items-start gap-2">
         <div className="flex-shrink-0 mt-0.5">
           <svg
@@ -263,20 +264,22 @@ function InsightEmptyCard() {
           >
             <path
               d="M10.667 1.333L9.733 4.267L6.8 5.2L9.733 6.133L10.667 9.067L11.6 6.133L14.533 5.2L11.6 4.267L10.667 1.333Z"
-              fill="#F97316"
+              fill="#e5a24c"
             />
             <path
               d="M4.667 6L3.867 8.4L1.467 9.2L3.867 10L4.667 12.4L5.467 10L7.867 9.2L5.467 8.4L4.667 6Z"
-              fill="#F97316"
+              fill="#e5a24c"
             />
             <path
               d="M8 11.333L7.467 13.067L5.733 13.6L7.467 14.133L8 15.867L8.533 14.133L10.267 13.6L8.533 13.067L8 11.333Z"
-              fill="#F97316"
+              fill="#e5a24c"
             />
           </svg>
         </div>
         <div className="flex-1">
-          <h3 className="font-semibold text-sm mb-1 text-orange-600">Project Recently Launched</h3>
+          <h3 className="font-semibold text-sm mb-1 text-accent-yellow-700">
+            Project Recently Launched
+          </h3>
           <p className="text-xs text-base-600 mb-3">
             Your project is brand new, so there's no data yet. Check back soon or review your
             project details to get started.
@@ -428,11 +431,12 @@ function MetricChart({
 
           {/* Trend indicator */}
           {trendDirection !== "flat" && (
-            <p className="text-xs text-base-500 mt-2">
-              Trending {trendDirection} by {trendPercent.toFixed(1)}% this week{" "}
-              <span className={trendDirection === "up" ? "text-green-600" : "text-red-600"}>
-                {trendDirection === "up" ? "↗" : "↘"}
-              </span>
+            <p
+              className={`text-xs mt-2 ${trendDirection === "up" ? "text-green-600" : "text-red-600"}`}
+            >
+              {trendDirection === "up" ? "↗" : "↘"}{" "}
+              {trendDirection === "up" ? "Improved" : "Declined"} by {trendPercent.toFixed(1)}% vs
+              previous period
             </p>
           )}
         </>

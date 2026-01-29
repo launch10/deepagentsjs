@@ -76,7 +76,7 @@ RSpec.describe Analytics::Metrics::GoogleAdsMetric do
       day_index = result[:dates].index(3.days.ago.to_date.iso8601)
       ctr_value = result[:series].first[:data][day_index]
 
-      expect(ctr_value).to eq(5.0) # 50/1000 * 100 = 5%
+      expect(ctr_value).to eq(0.05) # 50/1000 = 0.05 (5% as decimal)
     end
 
     it "returns 0 for days with no data" do
