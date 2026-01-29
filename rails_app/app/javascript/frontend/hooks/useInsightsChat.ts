@@ -15,7 +15,7 @@ interface InsightsPageProps {
   [key: string]: unknown;
 }
 
-interface UseInsightsResult {
+interface UseInsightsChatResult {
   insights: Insight[] | null;
   isGenerating: boolean;
   error: string | null;
@@ -30,7 +30,7 @@ interface UseInsightsResult {
  *
  * @returns Current insights state, loading status, and any errors
  */
-export function useInsights(): UseInsightsResult {
+export function useInsightsChat(): UseInsightsChatResult {
   const {
     insights: serverInsights,
     metrics_summary,

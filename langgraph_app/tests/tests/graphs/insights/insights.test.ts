@@ -9,10 +9,188 @@ import type { InsightsGraphState } from "@annotation";
 const insightsGraph = uncompiledGraph.compile({ ...graphParams, name: "insights" });
 
 /**
+ * Sample metrics for each test scenario.
+ * These match the data that would be fetched from Rails for each snapshot.
+ * Using pre-defined metrics in unit tests skips the Rails API call.
+ */
+const HEALTHY_ACCOUNT_METRICS: Insights.MetricsInput = {
+  period: "Last 30 Days",
+  totals: {
+    leads: 47,
+    page_views: 3420,
+    ctr: 4.5,
+    cpl: 18.03,
+    ctr_available: true,
+    cpl_available: true,
+    roas: 3.5,
+    total_spend_dollars: 847.5,
+  },
+  projects: [
+    {
+      uuid: "premium-pet-portraits-uuid",
+      name: "Premium Pet Portraits",
+      total_leads: 32,
+      total_page_views: 2400,
+      ctr: 5.1,
+      cpl: 16.34,
+      roas: 4.2,
+      spend_dollars: 523,
+      days_since_last_lead: 1,
+    },
+    {
+      uuid: "budget-travel-uuid",
+      name: "Budget Travel Guides",
+      total_leads: 10,
+      total_page_views: 600,
+      ctr: 3.8,
+      cpl: 22.5,
+      roas: 2.1,
+      spend_dollars: 225,
+      days_since_last_lead: 2,
+    },
+    {
+      uuid: "fitness-coaching-uuid",
+      name: "Fitness Coaching",
+      total_leads: 5,
+      total_page_views: 420,
+      ctr: 3.2,
+      cpl: 19.9,
+      roas: 2.5,
+      spend_dollars: 99.5,
+      days_since_last_lead: 3,
+    },
+  ],
+  trends: {
+    leads_trend: { direction: "up", percent: 23 },
+    page_views_trend: { direction: "up", percent: 15 },
+    ctr_trend: { direction: "up", percent: 10 },
+    cpl_trend: { direction: "down", percent: 12 },
+  },
+  flags: {
+    has_high_performer: true,
+  },
+};
+
+const STALLED_PROJECT_METRICS: Insights.MetricsInput = {
+  period: "Last 30 Days",
+  totals: {
+    leads: 25,
+    page_views: 2100,
+    ctr: 3.2,
+    cpl: 28.5,
+    ctr_available: true,
+    cpl_available: true,
+  },
+  projects: [
+    {
+      uuid: "premium-pet-portraits-uuid",
+      name: "Premium Pet Portraits",
+      total_leads: 18,
+      total_page_views: 1400,
+      ctr: 4.2,
+      cpl: 22.0,
+      days_since_last_lead: 2,
+    },
+    {
+      uuid: "budget-travel-uuid",
+      name: "Budget Travel Guides",
+      total_leads: 0,
+      total_page_views: 350,
+      ctr: 1.8,
+      cpl: null,
+      days_since_last_lead: 14,
+    },
+    {
+      uuid: "fitness-coaching-uuid",
+      name: "Fitness Coaching",
+      total_leads: 7,
+      total_page_views: 350,
+      ctr: 2.9,
+      cpl: 35.0,
+      days_since_last_lead: 3,
+    },
+  ],
+  trends: {
+    leads_trend: { direction: "down", percent: 15 },
+    page_views_trend: { direction: "flat", percent: 2 },
+  },
+  flags: {
+    has_stalled_project: true,
+  },
+};
+
+const STRUGGLING_ACCOUNT_METRICS: Insights.MetricsInput = {
+  period: "Last 30 Days",
+  totals: {
+    leads: 2,
+    page_views: 890,
+    ctr: 1.1,
+    cpl: 145.0,
+    ctr_available: true,
+    cpl_available: true,
+    total_spend_dollars: 290,
+  },
+  projects: [
+    {
+      uuid: "my-first-startup-uuid",
+      name: "My First Startup",
+      total_leads: 2,
+      total_page_views: 890,
+      ctr: 1.1,
+      cpl: 145.0,
+      spend_dollars: 290,
+      days_since_last_lead: 8,
+    },
+  ],
+  trends: {
+    leads_trend: { direction: "down", percent: 50 },
+    page_views_trend: { direction: "down", percent: 25 },
+    ctr_trend: { direction: "down", percent: 30 },
+    cpl_trend: { direction: "up", percent: 80 },
+  },
+  flags: {
+    has_stalled_project: true,
+  },
+};
+
+const NEW_ACCOUNT_METRICS: Insights.MetricsInput = {
+  period: "Last 7 Days",
+  totals: {
+    leads: 1,
+    page_views: 45,
+    ctr: 2.5,
+    cpl: 15.0,
+    ctr_available: true,
+    cpl_available: true,
+    total_spend_dollars: 15,
+  },
+  projects: [
+    {
+      uuid: "my-new-business-uuid",
+      name: "My New Business",
+      total_leads: 1,
+      total_page_views: 45,
+      ctr: 2.5,
+      cpl: 15.0,
+      spend_dollars: 15,
+      days_since_last_lead: 0,
+    },
+  ],
+  trends: {
+    leads_trend: { direction: "up", percent: 100 },
+    page_views_trend: { direction: "up", percent: 100 },
+  },
+  flags: {
+    has_new_first_lead: true,
+  },
+};
+
+/**
  * INSIGHTS GRAPH INTEGRATION TESTS
  *
  * Uses testGraph pattern with Polly handled automatically via NodeMiddleware.
- * Uses analytics snapshots for realistic test data.
+ * Uses pre-defined metrics data for unit tests (skips Rails API calls).
+ * E2E tests validate the full pipeline including Rails integration.
  */
 
 describe("Insights Generation", () => {
@@ -133,6 +311,7 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
+            metricsInput: HEALTHY_ACCOUNT_METRICS,
           })
           .execute();
 
@@ -154,6 +333,7 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
+            metricsInput: HEALTHY_ACCOUNT_METRICS,
           })
           .execute();
 
@@ -169,6 +349,7 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
+            metricsInput: HEALTHY_ACCOUNT_METRICS,
           })
           .execute();
 
@@ -191,6 +372,7 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
+            metricsInput: STALLED_PROJECT_METRICS,
           })
           .execute();
 
@@ -222,6 +404,7 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
+            metricsInput: STRUGGLING_ACCOUNT_METRICS,
           })
           .execute();
 
@@ -241,6 +424,7 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
+            metricsInput: STRUGGLING_ACCOUNT_METRICS,
           })
           .execute();
 
@@ -274,6 +458,7 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
+            metricsInput: NEW_ACCOUNT_METRICS,
           })
           .execute();
 

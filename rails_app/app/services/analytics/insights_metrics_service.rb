@@ -104,8 +104,18 @@ module Analytics
       {
         has_stalled_project: projects.any? { |p| stalled_project?(p) },
         has_high_performer: projects.any? { |p| high_performer?(p) },
-        has_new_first_lead: false # TODO: implement when tracking first lead milestone
+        has_new_first_lead: has_new_first_lead?
       }
+    end
+
+    # Check if any project got their very first lead within the current date range.
+    # This is a milestone moment worth celebrating!
+    def has_new_first_lead?
+      start_date = dashboard_service.days.days.ago.to_date
+
+      @first_lead_by_website_id.any? do |_website_id, first_lead_at|
+        first_lead_at.to_date >= start_date
+      end
     end
 
     def stalled_project?(project_summary)
@@ -140,6 +150,7 @@ module Analytics
         .index_by(&:uuid)
 
       preload_last_lead_dates
+      preload_first_lead_dates
       preload_project_spends
     end
 
@@ -153,6 +164,18 @@ module Analytics
         .where(website_id: website_ids)
         .group(:website_id)
         .maximum(:created_at)
+    end
+
+    # Single query to get the first lead date for all projects (for milestone tracking)
+    def preload_first_lead_dates
+      website_ids = @projects_by_uuid.values.filter_map { |p| p.website&.id }
+      return @first_lead_by_website_id = {} if website_ids.empty?
+
+      # Get the min created_at per website_id in a single query
+      @first_lead_by_website_id = WebsiteLead
+        .where(website_id: website_ids)
+        .group(:website_id)
+        .minimum(:created_at)
     end
 
     # Single query to get spend per project

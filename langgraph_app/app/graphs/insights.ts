@@ -1,12 +1,16 @@
 import { StateGraph, START, END } from "@langchain/langgraph";
 import { InsightsAnnotation, type InsightsGraphState } from "@annotation";
 import { generateInsightsNode, fetchMetricsNode, saveInsightsNode } from "@nodes";
+import { withCreditExhaustion } from "./shared";
 
 /**
  * Insights Graph
  *
  * A graph that generates analytics insights from metrics data.
  * Includes freshness checking to avoid regenerating fresh insights.
+ *
+ * Credit exhaustion is detected via withCreditExhaustion wrapper,
+ * which runs this graph as a subgraph, then calculates credit status.
  *
  * Flow:
  * ┌───────────────────────────────────────────┐
@@ -43,11 +47,14 @@ function routeAfterFetchMetrics(state: InsightsGraphState): "generateInsights" |
   return "generateInsights";
 }
 
-export const insightsGraph = new StateGraph(InsightsAnnotation)
-  .addNode("fetchMetrics", fetchMetricsNode)
-  .addNode("generateInsights", generateInsightsNode)
-  .addNode("saveInsights", saveInsightsNode)
-  .addEdge(START, "fetchMetrics")
-  .addConditionalEdges("fetchMetrics", routeAfterFetchMetrics)
-  .addEdge("generateInsights", "saveInsights")
-  .addEdge("saveInsights", END);
+export const insightsGraph = withCreditExhaustion(
+  new StateGraph(InsightsAnnotation)
+    .addNode("fetchMetrics", fetchMetricsNode)
+    .addNode("generateInsights", generateInsightsNode)
+    .addNode("saveInsights", saveInsightsNode)
+    .addEdge(START, "fetchMetrics")
+    .addConditionalEdges("fetchMetrics", routeAfterFetchMetrics)
+    .addEdge("generateInsights", "saveInsights")
+    .addEdge("saveInsights", END),
+  InsightsAnnotation
+);

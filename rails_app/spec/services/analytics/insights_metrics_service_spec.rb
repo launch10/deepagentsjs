@@ -109,5 +109,59 @@ RSpec.describe Analytics::InsightsMetricsService do
         expect(result[:flags][:has_stalled_project]).to be false
       end
     end
+
+    context "new first lead" do
+      it "detects when a project got its first lead within the date range" do
+        # First and only lead was 5 days ago (within 30 day range)
+        lead = create(:lead, account: account, email: "first@example.com")
+        create(:website_lead, website: website, lead: lead, created_at: 5.days.ago)
+
+        result = subject.summary
+        expect(result[:flags][:has_new_first_lead]).to be true
+      end
+
+      it "does not flag when first lead was before the date range" do
+        # First lead was 45 days ago (outside 30 day range)
+        lead = create(:lead, account: account, email: "old@example.com")
+        create(:website_lead, website: website, lead: lead, created_at: 45.days.ago)
+
+        result = subject.summary
+        expect(result[:flags][:has_new_first_lead]).to be false
+      end
+
+      it "returns false when no leads exist" do
+        # No leads at all
+        result = subject.summary
+        expect(result[:flags][:has_new_first_lead]).to be false
+      end
+
+      it "checks the first lead, not the most recent" do
+        # First lead was 45 days ago (outside range)
+        old_lead = create(:lead, account: account, email: "old@example.com")
+        create(:website_lead, website: website, lead: old_lead, created_at: 45.days.ago)
+
+        # Recent lead is 2 days ago (but not the first!)
+        new_lead = create(:lead, account: account, email: "new@example.com")
+        create(:website_lead, website: website, lead: new_lead, created_at: 2.days.ago)
+
+        result = subject.summary
+        expect(result[:flags][:has_new_first_lead]).to be false
+      end
+
+      it "detects first lead across multiple projects" do
+        # First project has old lead
+        old_lead = create(:lead, account: account, email: "old@example.com")
+        create(:website_lead, website: website, lead: old_lead, created_at: 45.days.ago)
+
+        # Second project got its first lead recently (celebrate!)
+        project2 = create(:project, account: account)
+        website2 = create(:website, project: project2)
+        new_lead = create(:lead, account: account, email: "new_first@example.com")
+        create(:website_lead, website: website2, lead: new_lead, created_at: 3.days.ago)
+
+        result = subject.summary
+        expect(result[:flags][:has_new_first_lead]).to be true
+      end
+    end
   end
 end

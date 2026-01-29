@@ -8,7 +8,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@components/ui/chart";
-import { useInsights } from "@hooks/useInsights";
+import { useInsightsChat } from "@hooks/useInsightsChat";
 
 // Use generated types from RSwag
 export type DashboardProps =
@@ -42,7 +42,7 @@ export default function Dashboard() {
     usePage<DashboardProps>().props;
 
   // Generate insights via Langgraph if not already cached
-  const { insights, isGenerating: isGeneratingInsights } = useInsights();
+  const { insights, isGenerating: isGeneratingInsights } = useInsightsChat();
 
   // Client-side state for instant switching - no server round-trips
   const [selectedDays, setSelectedDays] = useState<DaysKey>(DEFAULT_DAYS);

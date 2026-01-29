@@ -5,7 +5,7 @@
  */
 import { graphParams } from "@core";
 import { insightsGraph } from "@graphs";
-import { Insights } from "@types";
+import { InsightsBridge } from "@annotation";
 import { v7 as uuidv7 } from "uuid";
 
 const compiledGraph = insightsGraph.compile({
@@ -13,34 +13,29 @@ const compiledGraph = insightsGraph.compile({
   name: "insights",
 });
 
-export interface InsightsAPIOptions {
-  /** JWT token for authentication - required for fetching metrics from Rails */
-  jwt: string;
-  /** Optional thread ID for checkpointing (generates one if not provided) */
-  threadId?: string;
-  /** Optional pre-fetched metrics (for testing - skips fetchMetrics node) */
-  metricsInput?: Insights.MetricsInput;
-}
+// Bridge-bound API for streaming (future use) and usage tracking
+export const InsightsStreamAPI = InsightsBridge.bind(compiledGraph);
 
+// Re-export bridge for consistency with other APIs
+export { InsightsBridge } from "@annotation";
+
+/**
+ * Simple invoke API for one-shot insight generation.
+ * Uses the bridge pattern but provides a direct invoke method.
+ */
 export const InsightsAPI = {
   /**
    * Generate insights for the authenticated user's account
    *
-   * The graph fetches metrics from Rails via the JWT, generates insights,
-   * and optionally saves them back to Rails.
-   *
-   * @param options - Configuration options
+   * @param jwt - JWT token for authentication
+   * @param threadId - Optional thread ID for checkpointing
    * @returns Generated insights
    */
-  async generate(options: InsightsAPIOptions) {
-    const { jwt, threadId, metricsInput } = options;
+  async generate({ jwt, threadId }: { jwt: string; threadId?: string }) {
     const thread_id = threadId ?? uuidv7();
 
     const result = await compiledGraph.invoke(
-      {
-        // If metricsInput provided, skip fetchMetrics node
-        ...(metricsInput ? { metricsInput } : {}),
-      },
+      {},
       {
         configurable: {
           thread_id,

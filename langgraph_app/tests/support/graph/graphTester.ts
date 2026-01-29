@@ -209,7 +209,6 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
     return this;
   }
 
-
   /**
    * Execute the graph up to the target node and return the result.
    * If runNode() was called, executes that single node function in isolation.
@@ -258,10 +257,19 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
    * Execute a node function.
    */
   private async executeNode(initialState: TGraphState): Promise<NodeTestResult<TGraphState>> {
+    // Ensure jwt is in configurable for nodes that read from config
+    const configWithJwt = {
+      ...this.config,
+      configurable: {
+        ...this.config.configurable,
+        jwt: (initialState as any).jwt ?? this.config.configurable?.jwt,
+      },
+    };
+
     try {
       const nodeResult = await this.nodeFunction!(
         initialState,
-        this.config as LangGraphRunnableConfig
+        configWithJwt as LangGraphRunnableConfig
       );
 
       // Handle Send[] return type (routing nodes)
@@ -292,9 +300,19 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
    */
   private async executeGraph(initialState: TGraphState): Promise<NodeTestResult<TGraphState>> {
     const graph = this.graph!;
+
+    // Ensure jwt is in configurable for nodes that read from config (like fetchMetrics)
+    const configWithJwt = {
+      ...this.config,
+      configurable: {
+        ...this.config.configurable,
+        jwt: (initialState as any).jwt ?? this.config.configurable?.jwt,
+      },
+    };
+
     const invokeConfig = this.targetNode
-      ? { ...this.config, interruptAfter: [this.targetNode] }
-      : this.config;
+      ? { ...configWithJwt, interruptAfter: [this.targetNode] }
+      : configWithJwt;
 
     try {
       const result = await graph.invoke(initialState, invokeConfig);

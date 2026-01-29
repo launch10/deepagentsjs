@@ -230,6 +230,13 @@ export const insightsOutputSchema = z.object({
 
 export type InsightsOutput = z.infer<typeof insightsOutputSchema>;
 
+/**
+ * JSON schema for streaming state (used by InsightsBridge)
+ */
+export const jsonSchema = z.object({
+  insights: insightsArraySchema.optional(),
+});
+
 // ============================================================================
 // Helpers
 // ============================================================================

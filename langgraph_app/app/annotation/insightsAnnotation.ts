@@ -1,6 +1,7 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 import { Insights, type PrimaryKeyType } from "@types";
+import { createAppBridge } from "@api/middleware";
 
 /**
  * Insights Graph Annotation
@@ -38,3 +39,11 @@ export const InsightsAnnotation = Annotation.Root({
 });
 
 export type InsightsGraphState = typeof InsightsAnnotation.State;
+
+// Bridge for insights API - uses createAppBridge for automatic usage tracking
+export const InsightsBridge = createAppBridge({
+  endpoint: "/api/insights/generate",
+  stateAnnotation: InsightsAnnotation as any,
+  messageSchema: Insights.jsonSchema,
+  jsonTarget: "state",
+});
