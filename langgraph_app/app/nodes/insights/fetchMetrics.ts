@@ -4,8 +4,14 @@ import { type InsightsGraphState } from "@annotation";
 import { DashboardInsightsAPIService } from "@services";
 
 /**
- * Node that fetches metrics from Rails for insight generation.
- * This node should be called at the start of the graph before generateInsights.
+ * Node that checks freshness and fetches metrics from Rails for insight generation.
+ *
+ * Flow:
+ * 1. If skipGeneration already true with insights (testing cache), skip everything
+ * 2. If metricsInput already provided (testing), skip to generation
+ * 3. Check Rails for existing insights and freshness status
+ * 4. If fresh: return cached insights, set skipGeneration=true
+ * 5. If stale/missing: fetch metrics for generation
  */
 export const fetchMetricsNode = NodeMiddleware.use(
   {},
@@ -13,7 +19,12 @@ export const fetchMetricsNode = NodeMiddleware.use(
     state: InsightsGraphState,
     config?: LangGraphRunnableConfig
   ): Promise<Partial<InsightsGraphState>> => {
-    // If metricsInput is already provided (for testing), skip fetching
+    // If skipGeneration is already set with insights (simulating cache hit), skip everything
+    if (state.skipGeneration && state.insights && state.insights.length > 0) {
+      return {};
+    }
+
+    // If metricsInput is already provided (for testing), skip freshness check
     if (state.metricsInput) {
       return {};
     }
@@ -28,10 +39,24 @@ export const fetchMetricsNode = NodeMiddleware.use(
     try {
       const apiService = new DashboardInsightsAPIService({ jwt });
 
+      // Step 1: Check if we have fresh cached insights
+      const existing = await apiService.get();
+
+      if (existing.fresh && existing.insights && existing.insights.length > 0) {
+        // Insights are fresh - return cached and skip generation
+        return {
+          insights: existing.insights,
+          skipGeneration: true,
+          dashboardInsightId: existing.id ?? undefined,
+        };
+      }
+
+      // Step 2: Insights are stale or missing - fetch metrics for generation
       const metricsInput = await apiService.getMetricsSummary();
 
       return {
         metricsInput,
+        skipGeneration: false,
       };
     } catch (error) {
       const errorMessage =

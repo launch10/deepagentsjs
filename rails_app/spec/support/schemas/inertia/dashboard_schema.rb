@@ -160,18 +160,51 @@ module InertiaSchemas
       }
     end
 
+    # Performance data keyed by days (7, 30, 90)
+    def self.all_performance_props
+      {
+        type: :object,
+        additionalProperties: false,
+        properties: {
+          "7": performance_props,
+          "30": performance_props,
+          "90": performance_props
+        },
+        required: %w[7 30 90]
+      }
+    end
+
+    # Projects data keyed by days (7, 30, 90)
+    def self.all_projects_props
+      {
+        type: :object,
+        additionalProperties: false,
+        properties: {
+          "7": {
+            type: :array,
+            items: project_summary_props,
+            description: 'Project summaries for 7-day range'
+          },
+          "30": {
+            type: :array,
+            items: project_summary_props,
+            description: 'Project summaries for 30-day range'
+          },
+          "90": {
+            type: :array,
+            items: project_summary_props,
+            description: 'Project summaries for 90-day range'
+          }
+        },
+        required: %w[7 30 90]
+      }
+    end
+
     def self.page_props
       {
-        performance: performance_props,
-        projects: {
-          type: :array,
-          items: project_summary_props,
-          description: 'Project summaries with aggregated metrics'
-        },
+        all_performance: all_performance_props,
+        all_projects: all_projects_props,
         status_counts: status_counts_props,
-        date_range: InertiaSchemas.string_field(description: 'Human readable date range label'),
-        days: InertiaSchemas.integer_field(description: 'Number of days in range'),
-        status_filter: InertiaSchemas.string_field(description: 'Current status filter'),
         date_range_options: {
           type: :array,
           items: date_range_option_props,
@@ -191,7 +224,7 @@ module InertiaSchemas
     end
 
     def self.page_required
-      %w[performance projects status_counts date_range days status_filter date_range_options]
+      %w[all_performance all_projects status_counts date_range_options]
     end
 
     def self.props_schema

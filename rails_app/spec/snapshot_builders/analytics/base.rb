@@ -36,7 +36,7 @@ module SnapshotBuilders
               started_at: timestamp,
               browser: %w[Chrome Safari Firefox Edge].sample,
               device_type: %w[Desktop Mobile Tablet].sample,
-              landing_page: "https://#{website.domains.first&.domain || 'example.com'}/"
+              landing_page: "https://#{website.domains.first&.domain || "example.com"}/"
             )
 
             # Create page_view events (1-3 per visit)
@@ -45,7 +45,7 @@ module SnapshotBuilders
                 visit: visit,
                 name: "page_view",
                 time: timestamp + (i * rand(10..60)).seconds,
-                properties: { page: i == 0 ? "/" : ["/about", "/pricing", "/contact"].sample }
+                properties: { page: (i == 0) ? "/" : ["/about", "/pricing", "/contact"].sample }
               )
             end
           end
@@ -185,6 +185,36 @@ module SnapshotBuilders
         ensure_ads_account(project.account)
 
         campaign
+      end
+
+      # Clear all analytics-related data for a project.
+      #
+      # Use this when a snapshot builder extends a base snapshot that
+      # already has analytics data, and you want to replace it with
+      # different data (e.g., making a project "stalled").
+      #
+      # @param project [Project]
+      #
+      def clear_project_analytics_data(project)
+        website = project.website
+        return unless website
+
+        # Clear leads (both WebsiteLead join records and Lead records)
+        lead_ids = website.website_leads.pluck(:lead_id)
+        website.website_leads.delete_all
+        Lead.where(id: lead_ids).delete_all if lead_ids.any?
+
+        # Clear Ahoy visits and events
+        visit_ids = Ahoy::Visit.where(website: website).pluck(:id)
+        Ahoy::Event.where(visit_id: visit_ids).delete_all if visit_ids.any?
+        Ahoy::Visit.where(website: website).delete_all
+
+        # Clear computed analytics metrics
+        AnalyticsDailyMetric.where(project: project).delete_all
+
+        # Clear ad performance data
+        campaign_ids = project.campaigns.pluck(:id)
+        AdPerformanceDaily.where(campaign_id: campaign_ids).delete_all if campaign_ids.any?
       end
 
       # Ensure the account has an ads account for Google Ads data.

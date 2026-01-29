@@ -5,15 +5,6 @@ class DashboardController < SubscribedController
   DEFAULT_DAYS = 30
 
   def show
-    days = parse_days_param
-    status_filter = params[:status] || "all"
-
-    dashboard_service = Analytics::DashboardService.new(
-      current_account,
-      days: days,
-      status_filter: status_filter
-    )
-
     # Handle regenerate_insights request
     if params[:regenerate_insights].present?
       mark_insights_stale
@@ -21,17 +12,27 @@ class DashboardController < SubscribedController
 
     insight = current_account.dashboard_insight
 
+    # Pre-fetch all date ranges for instant client-side switching
+    all_performance = {}
+    all_projects = {}
+    VALID_DATE_RANGES.each do |days|
+      service = Analytics::DashboardService.new(current_account, days: days)
+      all_performance[days] = service.performance_overview
+      all_projects[days] = service.projects_summary
+    end
+
+    # Status counts don't change by date range
+    status_counts = Analytics::DashboardService.new(current_account, days: DEFAULT_DAYS).status_counts
+
     render inertia: "Dashboard", props: {
-      performance: dashboard_service.performance_overview,
-      projects: dashboard_service.projects_summary,
-      status_counts: dashboard_service.status_counts,
-      date_range: date_range_label(days),
-      days: days,
-      status_filter: status_filter,
+      # All date ranges pre-fetched for instant switching
+      all_performance: all_performance,
+      all_projects: all_projects,
+      status_counts: status_counts,
       date_range_options: date_range_options,
       # Include insights if fresh, otherwise metrics_summary for generation
       insights: insight&.fresh? ? insight.insights : nil,
-      metrics_summary: (insight&.stale? || insight.nil?) ? insights_metrics_summary(dashboard_service) : nil
+      metrics_summary: (insight&.stale? || insight.nil?) ? insights_metrics_summary : nil
     }
   end
 
@@ -57,7 +58,8 @@ class DashboardController < SubscribedController
     insight&.update!(generated_at: 1.year.ago)
   end
 
-  def insights_metrics_summary(dashboard_service)
+  def insights_metrics_summary
+    dashboard_service = Analytics::DashboardService.new(current_account, days: DEFAULT_DAYS)
     Analytics::InsightsMetricsService.new(dashboard_service).summary
   end
 end

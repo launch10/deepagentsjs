@@ -6,17 +6,18 @@ module Analytics
   # Coordinates metric services and caching to provide dashboard data
   # with a target response time of <500ms.
   #
+  # Note: Project status filtering is done client-side for instant switching.
+  # The service always returns all projects.
+  #
   class DashboardService
-    attr_reader :account, :days, :status_filter
+    attr_reader :account, :days
 
     # @param account [Account] The account to fetch analytics for
     # @param days [Integer] Number of days to include (default: 30)
-    # @param status_filter [String] Filter projects by status ("all", "active", "paused")
     #
-    def initialize(account, days: 30, status_filter: "all")
+    def initialize(account, days: 30, **)
       @account = account
       @days = days
-      @status_filter = status_filter
       @start_date = days.days.ago.to_date
       @end_date = Date.current
     end
@@ -100,7 +101,7 @@ module Analytics
         .index_by(&:project_id)
 
       # Get all projects for the account with associations
-      projects = filtered_projects.includes(:campaigns, website: :domains)
+      projects = account.projects.includes(:campaigns, website: :domains)
 
       projects.map do |project|
         metrics = projects_with_metrics[project.id]
@@ -160,21 +161,6 @@ module Analytics
       # TODO: Implement actual thumbnail generation
       # For now return nil, frontend will show placeholder
       nil
-    end
-
-    def filtered_projects
-      projects = account.projects.includes(:campaigns)
-
-      case status_filter
-      when "live"
-        projects.select { |p| project_status(p) == "live" }
-      when "paused"
-        projects.select { |p| project_status(p) == "paused" }
-      when "draft"
-        projects.select { |p| project_status(p) == "draft" }
-      else
-        projects
-      end
     end
   end
 end

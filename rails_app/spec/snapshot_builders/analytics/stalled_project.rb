@@ -37,6 +37,9 @@ module SnapshotBuilders
         primary_project.update!(name: "Budget Travel Guides")
         ensure_campaign(primary_project)
 
+        # Clear existing data from base snapshot for the stalled project
+        clear_project_analytics_data(primary_project)
+
         # Create additional healthy projects
         healthy_project1 = create_analytics_project(account, "Premium Pet Portraits", campaign_status: "active")
         healthy_project2 = create_analytics_project(account, "Fitness Coaching", campaign_status: "active")

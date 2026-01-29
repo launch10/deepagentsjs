@@ -306,42 +306,87 @@ const insightSchema = z.object({
     url: z.string()
   })
 });
+
+// Graph state
+const InsightsAnnotation = Annotation.Root({
+  metricsInput: Annotation<MetricsInput | undefined>,
+  insights: Annotation<Insight[]>,
+  skipGeneration: Annotation<boolean>,  // Set by checkFreshness when cached
+  generationError: Annotation<string | undefined>,
+  dashboardInsightId: Annotation<number | undefined>,
+});
 ```
 
-**2. Create generateInsights node** (`app/nodes/generateInsights.ts`)
+**2. Create checkFreshness node** (`app/nodes/insights/checkFreshness.ts`)
+
+- First node in graph, always runs
+- Calls Rails API to check if insights are fresh
+- If fresh: sets `skipGeneration: true` and populates `insights` from cache
+- If stale: fetches metrics_summary for generation
+
+**3. Create generateInsights node** (`app/nodes/insights/generateInsights.ts`)
 
 - Takes metrics_summary from state
 - Calls Claude with structured output
 - Returns exactly 3 insights
 - Ensures at least 1 positive (per requirement)
 
-**3. Create insights graph** (`app/graphs/insights.ts`)
+**4. Create saveInsights node** (`app/nodes/insights/saveInsights.ts`)
 
-- Single node graph for now
-- Input: metrics_summary
-- Output: insights array
+- Saves generated insights back to Rails
+- Sets `generated_at` to now for freshness tracking
 
-**4. Create API route** (`app/routes/insights.ts`)
+**5. Create insights graph** (`app/graphs/insights.ts`)
+
+```
+START → checkFreshness → [conditional] → generateInsights → saveInsights → END
+                              ↓
+                         [if fresh]
+                              ↓
+                             END (return cached)
+```
+
+**6. Create API route** (`app/server/routes/insights.ts`)
 
 - POST /api/insights/generate
-- Accepts metrics_summary, returns insights
-- Saves to dashboard_insights table via Rails API
+- Invokes graph, returns insights (cached or new)
+- Graph handles all freshness logic internally
 
 **Files:**
 
 - `app/annotation/insightsAnnotation.ts`
-- `app/nodes/generateInsights.ts`
+- `app/nodes/insights/checkFreshness.ts`
+- `app/nodes/insights/generateInsights.ts`
+- `app/nodes/insights/saveInsights.ts`
 - `app/graphs/insights.ts`
-- `app/routes/insights.ts`
+- `app/server/routes/insights.ts`
+- `app/services/DashboardInsightsAPIService.ts`
 
-### Phase 3: Integration
+### Phase 3: Frontend Integration
 
-**1. Frontend calls Langgraph** when:
+**1. Create useInsightsInit hook** (`hooks/useInsightsInit.ts`)
 
-- Dashboard loads with stale/no insights
-- User clicks "Regenerate Insights"
+- Called on Dashboard mount
+- Always calls Langgraph (single source of truth pattern)
+- Langgraph handles freshness check internally
+- Returns `{ insights, isLoading, error }`
 
-**2. Langgraph saves insights** back to Rails via API call
+**2. Update Dashboard.tsx**
+
+- Use `useInsightsInit()` hook instead of reading insights from Rails props
+- Show loading state while fetching
+- Display insights from hook state
+
+**3. Manual regeneration**
+
+- "Regenerate Insights" button calls Rails with `regenerate_insights` param
+- Rails marks insights stale (`generated_at = 1.year.ago`)
+- Page reloads, `useInsightsInit` triggers fresh generation
+
+**Files:**
+
+- `app/javascript/frontend/hooks/useInsightsInit.ts`
+- `app/javascript/frontend/pages/Dashboard.tsx`
 
 ---
 
@@ -385,8 +430,276 @@ Respond with exactly 3 insights in this JSON format:
 
 ---
 
+## Caching & Freshness Architecture
+
+### Design Goals
+
+1. **Langgraph as source of truth** - Frontend always calls Langgraph, same pattern as other features
+2. **Rails owns freshness** - Rails determines when insights are stale (24h threshold)
+3. **Idempotency** - Langgraph checks freshness before regenerating, won't duplicate work
+4. **Streaming support** - New insights stream to frontend as they're generated
+
+### Why Rails Owns Freshness
+
+We considered having Langgraph track `generatedAt` in its checkpoint state to avoid a Rails roundtrip. However:
+
+- Rails already has the `regenerate_insights` param for manual refresh
+- Rails `DashboardInsight` model has `fresh?` / `stale?` methods
+- Keeping freshness in one place (Rails) avoids sync issues
+- The Rails roundtrip is fast (~50ms) compared to LLM generation (~2-3s)
+
+### System Components
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ RAILS                                                                       │
+│                                                                             │
+│  DashboardInsight                                                           │
+│  ├── insights (jsonb)        # Cached insight array                         │
+│  ├── metrics_summary (jsonb) # Metrics used for generation                  │
+│  ├── generated_at (datetime) # When insights were generated                 │
+│  └── fresh? / stale?         # 24-hour threshold                            │
+│                                                                             │
+│  API Endpoints:                                                             │
+│  ├── GET  /api/v1/dashboard_insights          # Returns {insights, fresh}   │
+│  ├── POST /api/v1/dashboard_insights          # Saves new insights          │
+│  └── GET  /api/v1/dashboard_insights/metrics_summary  # Metrics for LLM     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ LANGGRAPH                                                                   │
+│                                                                             │
+│  Insights Graph Flow:                                                       │
+│                                                                             │
+│  START                                                                      │
+│    │                                                                        │
+│    ▼                                                                        │
+│  checkFreshness ──────────────────────────────────────┐                     │
+│    │ GET /api/v1/dashboard_insights                   │                     │
+│    │ Returns {insights, fresh, generated_at}          │                     │
+│    │                                                  │                     │
+│    ├── if fresh == true ──────────────────────────────┼──▶ END              │
+│    │   Return cached insights immediately             │    (return cached)  │
+│    │                                                  │                     │
+│    ▼ if fresh == false                                │                     │
+│  fetchMetrics                                         │                     │
+│    │ GET /api/v1/dashboard_insights/metrics_summary   │                     │
+│    │                                                  │                     │
+│    ▼                                                  │                     │
+│  generateInsights                                     │                     │
+│    │ LLM call with structured output                  │                     │
+│    │                                                  │                     │
+│    ▼                                                  │                     │
+│  saveInsights                                         │                     │
+│    │ POST /api/v1/dashboard_insights                  │                     │
+│    │                                                  │                     │
+│    ▼                                                  │                     │
+│  END ◀────────────────────────────────────────────────┘                     │
+│  (return new insights)                                                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ FRONTEND                                                                    │
+│                                                                             │
+│  Dashboard.tsx                                                              │
+│    │                                                                        │
+│    ├── On mount: useInsightsInit() hook                                     │
+│    │     │                                                                  │
+│    │     └── POST /api/insights/generate (Langgraph)                        │
+│    │           │                                                            │
+│    │           ├── Streams response                                         │
+│    │           └── Sets insights state                                      │
+│    │                                                                        │
+│    └── Renders InsightCards from state                                      │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Request Lifecycle
+
+#### Scenario 1: Fresh Insights (< 24 hours old)
+
+```
+1. User loads Dashboard
+2. Frontend calls POST /api/insights/generate (Langgraph)
+3. Langgraph checkFreshness node:
+   - GET /api/v1/dashboard_insights
+   - Rails returns {insights: [...], fresh: true}
+4. Langgraph short-circuits, returns cached insights
+5. Frontend displays insights
+
+Latency: ~100-200ms (Langgraph + Rails roundtrip, no LLM)
+```
+
+#### Scenario 2: Stale/Missing Insights
+
+```
+1. User loads Dashboard
+2. Frontend calls POST /api/insights/generate (Langgraph)
+3. Langgraph checkFreshness node:
+   - GET /api/v1/dashboard_insights
+   - Rails returns {insights: null, fresh: false} or {insights: [...], fresh: false}
+4. Langgraph fetchMetrics node:
+   - GET /api/v1/dashboard_insights/metrics_summary
+   - Rails returns metrics data
+5. Langgraph generateInsights node:
+   - LLM generates 3 insights
+   - Streams response to frontend
+6. Langgraph saveInsights node:
+   - POST /api/v1/dashboard_insights
+   - Rails saves with generated_at = now
+7. Frontend displays streamed insights
+
+Latency: ~2-4s (includes LLM generation)
+```
+
+#### Scenario 3: Manual Regeneration
+
+```
+1. User clicks "Regenerate Insights" on Dashboard
+2. Rails marks insights stale: insight.update!(generated_at: 1.year.ago)
+3. Page reloads, Scenario 2 flow executes
+```
+
+### Frontend Implementation
+
+```tsx
+// hooks/useInsightsInit.ts
+import { useEffect, useRef, useState } from "react";
+import { usePage } from "@inertiajs/react";
+
+interface DashboardProps {
+  langgraph_path: string;
+  jwt: string;
+}
+
+interface Insight {
+  title: string;
+  description: string;
+  sentiment: "positive" | "negative" | "neutral";
+  project_uuid?: string;
+  action: { label: string; url: string };
+}
+
+export function useInsightsInit() {
+  const { langgraph_path, jwt } = usePage<DashboardProps>().props;
+  const [insights, setInsights] = useState<Insight[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const hasInitialized = useRef(false);
+
+  useEffect(() => {
+    if (hasInitialized.current) return;
+    if (!langgraph_path || !jwt) return;
+
+    hasInitialized.current = true;
+    setIsLoading(true);
+
+    fetch(`${langgraph_path}/api/insights/generate`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        "Content-Type": "application/json",
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.error) {
+          setError(data.error);
+        } else {
+          setInsights(data.insights);
+        }
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setIsLoading(false));
+  }, [langgraph_path, jwt]);
+
+  return { insights, isLoading, error };
+}
+```
+
+### Langgraph Implementation
+
+```ts
+// nodes/insights/checkFreshness.ts
+export const checkFreshnessNode = NodeMiddleware.use(
+  {},
+  async (
+    state: InsightsGraphState,
+    config?: LangGraphRunnableConfig
+  ): Promise<Partial<InsightsGraphState>> => {
+    const jwt = config?.configurable?.jwt as string | undefined;
+    if (!jwt) {
+      return { generationError: "No JWT token provided" };
+    }
+
+    const apiService = new DashboardInsightsAPIService({ jwt });
+    const existing = await apiService.get(); // GET /api/v1/dashboard_insights
+
+    if (existing.fresh && existing.insights?.length > 0) {
+      return {
+        insights: existing.insights,
+        skipGeneration: true,
+      };
+    }
+
+    // Stale - need to fetch metrics and generate
+    const metricsInput = await apiService.getMetricsSummary();
+    return { metricsInput };
+  }
+);
+
+// graphs/insights.ts
+export const insightsGraph = new StateGraph(InsightsAnnotation)
+  .addNode("checkFreshness", checkFreshnessNode)
+  .addNode("generateInsights", generateInsightsNode)
+  .addNode("saveInsights", saveInsightsNode)
+  .addEdge(START, "checkFreshness")
+  .addConditionalEdges("checkFreshness", (state) =>
+    state.skipGeneration ? END : "generateInsights"
+  )
+  .addEdge("generateInsights", "saveInsights")
+  .addEdge("saveInsights", END);
+```
+
+### Key Benefits
+
+1. **Single source of truth** - Frontend always calls Langgraph, no local state merging
+2. **Idempotent** - Multiple calls won't regenerate if still fresh
+3. **Consistent pattern** - Same as useWebsiteInit, useStageInit, etc.
+4. **Graceful degradation** - If Langgraph is down, Rails can still serve cached insights
+5. **Manual refresh** - Rails `regenerate_insights` param works naturally
+
+### Edge Cases
+
+| Scenario                         | Behavior                                                |
+| -------------------------------- | ------------------------------------------------------- |
+| First ever load (no insights)    | fresh=false, generates new                              |
+| Insights exist but > 24h old     | fresh=false, regenerates                                |
+| Langgraph down, Rails has cached | Frontend falls back to Rails props (future enhancement) |
+| LLM generation fails             | Returns error, existing insights preserved in Rails     |
+| Concurrent requests              | Second request sees fresh=true from first's save        |
+
+---
+
 ## Verification
 
-1. **Unit tests**: generateInsights node returns valid schema
-2. **Integration test**: Full flow from metrics → insights → saved to DB
-3. **Manual test**: Load dashboard, verify insights render, click actions work
+### Unit Tests
+
+1. **checkFreshness node**: Returns cached insights when fresh, fetches metrics when stale
+2. **generateInsights node**: Returns valid schema, exactly 3 insights, at least 1 positive
+3. **saveInsights node**: Successfully saves to Rails API
+
+### Integration Tests
+
+1. **Fresh path**: Graph returns cached insights without LLM call
+2. **Stale path**: Graph fetches metrics, generates, saves, returns new insights
+3. **Idempotency**: Concurrent requests don't cause duplicate generation
+
+### E2E Tests
+
+1. **Dashboard load**: Insights appear (cached or generated)
+2. **Regenerate button**: Marks stale, regenerates on reload
+3. **Error handling**: Graceful degradation if Langgraph fails

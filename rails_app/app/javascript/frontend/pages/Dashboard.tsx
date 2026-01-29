@@ -1,4 +1,5 @@
-import { usePage, router } from "@inertiajs/react";
+import { useState, useMemo } from "react";
+import { usePage } from "@inertiajs/react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import type { InertiaProps } from "@shared";
 import {
@@ -12,14 +13,16 @@ import {
 export type DashboardProps =
   InertiaProps.paths["/dashboard"]["get"]["responses"]["200"]["content"]["application/json"];
 
-// Derived types
-type TimeSeries = DashboardProps["performance"]["leads"];
+// Derived types - access from the keyed structure
+type Performance = DashboardProps["all_performance"]["7"];
+type TimeSeries = Performance["leads"];
 type SeriesData = TimeSeries["series"][number];
 type Insight = NonNullable<DashboardProps["insights"]>[number];
-type ProjectSummary = DashboardProps["projects"][number];
+type ProjectSummary = DashboardProps["all_projects"]["7"][number];
 type DateRangeOption = DashboardProps["date_range_options"][number];
 type StatusCounts = DashboardProps["status_counts"];
 type ProjectStatus = ProjectSummary["status"];
+type DaysKey = "7" | "30" | "90";
 
 // Color palette for projects (matches Figma)
 const PROJECT_COLORS = [
@@ -31,20 +34,33 @@ const PROJECT_COLORS = [
   "#3B82F6", // blue
 ];
 
+const DEFAULT_DAYS: DaysKey = "30";
+
 export default function Dashboard() {
   const {
-    performance,
-    projects,
+    all_performance,
+    all_projects,
     status_counts,
-    status_filter,
-    date_range,
-    days,
     date_range_options,
     insights,
     current_user,
   } = usePage<DashboardProps>().props;
 
+  // Client-side state for instant switching - no server round-trips
+  const [selectedDays, setSelectedDays] = useState<DaysKey>(DEFAULT_DAYS);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+
   const firstName = current_user?.name?.split(" ")[0] || "there";
+
+  // Get performance and projects for selected date range
+  const performance = all_performance[selectedDays];
+  const projects = all_projects[selectedDays];
+
+  // Filter projects client-side based on selected status
+  const filteredProjects = useMemo(() => {
+    if (statusFilter === "all") return projects;
+    return projects.filter((project) => project.status === statusFilter);
+  }, [projects, statusFilter]);
 
   // Build chart config from project series
   const buildChartConfig = (series: SeriesData[]): ChartConfig => {
@@ -59,17 +75,18 @@ export default function Dashboard() {
     return config;
   };
 
-  const handleDateRangeChange = (selectedDays: number) => {
-    router.get(
-      "/dashboard",
-      { days: selectedDays, status: status_filter },
-      { preserveState: true }
-    );
+  // Date range is now client-side only - instant switching
+  const handleDateRangeChange = (days: number) => {
+    setSelectedDays(String(days) as DaysKey);
   };
 
+  // Status filter is client-side only - instant switching
   const handleStatusFilterChange = (status: string) => {
-    router.get("/dashboard", { days, status }, { preserveState: true });
+    setStatusFilter(status);
   };
+
+  // Generate date range label
+  const dateRangeLabel = `Last ${selectedDays} Days`;
 
   return (
     <main className="min-h-screen bg-[#FAFAF9]">
@@ -125,7 +142,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <span className="text-sm text-base-500">Filter by:</span>
               <select
-                value={days}
+                value={selectedDays}
                 onChange={(e) => handleDateRangeChange(Number(e.target.value))}
                 className="text-sm border border-neutral-300 rounded-md px-3 py-1.5 bg-white"
               >
@@ -142,13 +159,13 @@ export default function Dashboard() {
               title="Total Leads"
               data={performance.leads}
               chartConfig={buildChartConfig(performance.leads.series)}
-              dateRange={date_range}
+              dateRange={dateRangeLabel}
             />
             <MetricChart
               title="Cost-per-Lead"
               data={performance.cpl}
               chartConfig={buildChartConfig(performance.cpl.series)}
-              dateRange={date_range}
+              dateRange={dateRangeLabel}
               prefix="$"
               valueFormatter={(v) => (v != null ? `$${v.toFixed(2)}` : "-")}
             />
@@ -156,7 +173,7 @@ export default function Dashboard() {
               title="Click-Through Rate"
               data={performance.ctr}
               chartConfig={buildChartConfig(performance.ctr.series)}
-              dateRange={date_range}
+              dateRange={dateRangeLabel}
               suffix="%"
               valueFormatter={(v) => (v != null ? `${(v * 100).toFixed(1)}%` : "-")}
             />
@@ -164,7 +181,7 @@ export default function Dashboard() {
               title="Page Views"
               data={performance.page_views}
               chartConfig={buildChartConfig(performance.page_views.series)}
-              dateRange={date_range}
+              dateRange={dateRangeLabel}
             />
           </div>
         </section>
@@ -174,21 +191,21 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold text-[#2E3238] mb-4">Projects</h2>
           <ProjectFilterTabs
             statusCounts={status_counts}
-            activeFilter={status_filter}
+            activeFilter={statusFilter}
             onFilterChange={handleStatusFilterChange}
           />
-          {projects && projects.length > 0 ? (
+          {filteredProjects && filteredProjects.length > 0 ? (
             <div className="space-y-3">
-              {projects.map((project) => (
+              {filteredProjects.map((project) => (
                 <ProjectCard key={project.id} project={project} />
               ))}
             </div>
           ) : (
             <div className="rounded-lg border border-neutral-300 bg-white p-8 text-center">
               <p className="text-base-500">
-                {status_filter === "all"
+                {statusFilter === "all"
                   ? "No projects yet. Create your first project to get started."
-                  : `No ${status_filter} projects.`}
+                  : `No ${statusFilter} projects.`}
               </p>
             </div>
           )}

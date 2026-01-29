@@ -58,7 +58,7 @@ module SnapshotBuilders
         puts "  - #{projects.count} projects"
         puts "  - #{WebsiteLead.count} total leads"
         puts "  - #{Ahoy::Visit.count} unique visitors"
-        puts "  - #{Ahoy::Event.where(name: 'page_view').count} page views"
+        puts "  - #{Ahoy::Event.where(name: "page_view").count} page views"
         puts "  - #{AnalyticsDailyMetric.count} daily metrics computed"
       end
 

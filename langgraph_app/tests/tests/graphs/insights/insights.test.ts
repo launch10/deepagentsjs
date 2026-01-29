@@ -139,14 +139,13 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
-            metricsInput: healthyMetrics,
           })
           .execute();
 
-        expect(result.generationError).toBeUndefined();
-        expect(result.insights).toHaveLength(3);
+        expect(result.state.generationError).toBeUndefined();
+        expect(result.state.insights).toHaveLength(3);
 
-        for (const insight of result.insights) {
+        for (const insight of result.state.insights!) {
           expect(insight.title).toBeDefined();
           expect(insight.title.length).toBeLessThanOrEqual(50);
           expect(insight.description).toBeDefined();
@@ -161,14 +160,13 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
-            metricsInput: healthyMetrics,
           })
           .execute();
 
-        expect(result.generationError).toBeUndefined();
-        expect(result.insights).toHaveLength(3);
+        expect(result.state.generationError).toBeUndefined();
+        expect(result.state.insights).toHaveLength(3);
 
-        const positiveInsights = result.insights.filter((i) => i.sentiment === "positive");
+        const positiveInsights = result.state.insights!.filter((i) => i.sentiment === "positive");
         expect(positiveInsights.length).toBeGreaterThanOrEqual(1);
       });
 
@@ -177,13 +175,12 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
-            metricsInput: healthyMetrics,
           })
           .execute();
 
-        expect(result.generationError).toBeUndefined();
+        expect(result.state.generationError).toBeUndefined();
 
-        for (const insight of result.insights) {
+        for (const insight of result.state.insights!) {
           expect(insight.action.url).toMatch(/^\/projects\//);
           expect(insight.action.label).toBeTruthy();
         }
@@ -256,14 +253,13 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
-            metricsInput: stalledMetrics,
           })
           .execute();
 
-        expect(result.generationError).toBeUndefined();
-        expect(result.insights).toHaveLength(3);
+        expect(result.state.generationError).toBeUndefined();
+        expect(result.state.insights).toHaveLength(3);
 
-        const stalledInsight = result.insights.find(
+        const stalledInsight = result.state.insights!.find(
           (i) =>
             i.description.toLowerCase().includes("budget travel") ||
             i.description.toLowerCase().includes("stalled") ||
@@ -324,14 +320,13 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
-            metricsInput: strugglingMetrics,
           })
           .execute();
 
-        expect(result.generationError).toBeUndefined();
-        expect(result.insights).toHaveLength(3);
+        expect(result.state.generationError).toBeUndefined();
+        expect(result.state.insights).toHaveLength(3);
 
-        for (const insight of result.insights) {
+        for (const insight of result.state.insights!) {
           expect(insight.title).toBeDefined();
           expect(insight.description).toBeDefined();
           expect(insight.action).toBeDefined();
@@ -344,14 +339,13 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
-            metricsInput: strugglingMetrics,
           })
           .execute();
 
-        expect(result.generationError).toBeUndefined();
+        expect(result.state.generationError).toBeUndefined();
 
-        const insightTexts = result.insights
-          .map((i) => `${i.title} ${i.description} ${i.action.label}`)
+        const insightTexts = result.state
+          .insights!.map((i) => `${i.title} ${i.description} ${i.action.label}`)
           .join(" ")
           .toLowerCase();
 
@@ -414,14 +408,13 @@ describe("Insights Generation", () => {
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
-            metricsInput: newAccountMetrics,
           })
           .execute();
 
-        expect(result.generationError).toBeUndefined();
-        expect(result.insights).toHaveLength(3);
+        expect(result.state.generationError).toBeUndefined();
+        expect(result.state.insights).toHaveLength(3);
 
-        const positiveInsights = result.insights.filter((i) => i.sentiment === "positive");
+        const positiveInsights = result.state.insights!.filter((i) => i.sentiment === "positive");
         expect(positiveInsights.length).toBeGreaterThanOrEqual(1);
       });
 
@@ -454,9 +447,53 @@ describe("Insights Generation", () => {
           })
           .execute();
 
-        expect(result.generationError).toBeUndefined();
-        expect(result.insights).toHaveLength(3);
+        expect(result.state.generationError).toBeUndefined();
+        expect(result.state.insights).toHaveLength(3);
       });
+    });
+  });
+
+  describe("Freshness Caching", () => {
+    it("skips generation when insights are already cached (skipGeneration=true)", async () => {
+      // Simulates what happens when fetchMetrics finds fresh insights in Rails
+      const cachedInsights: Insights.Insight[] = [
+        {
+          title: "Cached Insight 1",
+          description: "This is a cached insight from Rails",
+          sentiment: "positive",
+          project_uuid: "test-uuid",
+          action: { label: "View", url: "/projects/test-uuid" },
+        },
+        {
+          title: "Cached Insight 2",
+          description: "Another cached insight",
+          sentiment: "neutral",
+          project_uuid: null,
+          action: { label: "Review", url: "/projects/test-uuid/website" },
+        },
+        {
+          title: "Cached Insight 3",
+          description: "Third cached insight",
+          sentiment: "negative",
+          project_uuid: null,
+          action: { label: "Fix", url: "/projects/test-uuid/campaigns/content" },
+        },
+      ];
+
+      const result = await testGraph<InsightsGraphState>()
+        .withGraph(insightsGraph)
+        .withState({
+          jwt: "test-jwt",
+          insights: cachedInsights,
+          skipGeneration: true,
+        })
+        .execute();
+
+      // Should return immediately with cached insights, no LLM call
+      expect(result.state.generationError).toBeUndefined();
+      expect(result.state.insights).toHaveLength(3);
+      expect(result.state.skipGeneration).toBe(true);
+      expect(result.state.insights).toEqual(cachedInsights);
     });
   });
 });

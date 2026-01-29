@@ -1232,182 +1232,538 @@ export interface components {
                 plan_credits_allocated: number;
                 period_ends_at?: string | null;
             } | null;
-            performance: {
-                leads: {
-                    /** @description ISO formatted dates for x-axis */
-                    dates: string[];
-                    /** @description Metric values per project */
-                    series: {
-                        /** @description Project ID */
-                        project_id: number;
-                        /** @description Project UUID */
-                        project_uuid: string;
-                        /** @description Project name */
-                        project_name: string;
-                        /** @description Daily metric values for each date in range */
-                        data: number[];
-                    }[];
-                    totals: {
-                        /** @description Total for current period */
-                        current: number;
-                        /** @description Total for previous period */
-                        previous: number;
-                        /** @description Percentage change from previous period */
-                        trend_percent: number;
-                        /**
-                         * @description Direction of the trend
-                         * @enum {string}
-                         */
-                        trend_direction: "up" | "down" | "flat";
+            all_performance: {
+                7: {
+                    leads: {
+                        /** @description ISO formatted dates for x-axis */
+                        dates: string[];
+                        /** @description Metric values per project */
+                        series: {
+                            /** @description Project ID */
+                            project_id: number;
+                            /** @description Project UUID */
+                            project_uuid: string;
+                            /** @description Project name */
+                            project_name: string;
+                            /** @description Daily metric values for each date in range */
+                            data: number[];
+                        }[];
+                        totals: {
+                            /** @description Total for current period */
+                            current: number;
+                            /** @description Total for previous period */
+                            previous: number;
+                            /** @description Percentage change from previous period */
+                            trend_percent: number;
+                            /**
+                             * @description Direction of the trend
+                             * @enum {string}
+                             */
+                            trend_direction: "up" | "down" | "flat";
+                        };
+                    };
+                    unique_visitors: {
+                        /** @description ISO formatted dates for x-axis */
+                        dates: string[];
+                        /** @description Metric values per project */
+                        series: {
+                            /** @description Project ID */
+                            project_id: number;
+                            /** @description Project UUID */
+                            project_uuid: string;
+                            /** @description Project name */
+                            project_name: string;
+                            /** @description Daily metric values for each date in range */
+                            data: number[];
+                        }[];
+                        totals: {
+                            /** @description Total for current period */
+                            current: number;
+                            /** @description Total for previous period */
+                            previous: number;
+                            /** @description Percentage change from previous period */
+                            trend_percent: number;
+                            /**
+                             * @description Direction of the trend
+                             * @enum {string}
+                             */
+                            trend_direction: "up" | "down" | "flat";
+                        };
+                    };
+                    page_views: {
+                        /** @description ISO formatted dates for x-axis */
+                        dates: string[];
+                        /** @description Metric values per project */
+                        series: {
+                            /** @description Project ID */
+                            project_id: number;
+                            /** @description Project UUID */
+                            project_uuid: string;
+                            /** @description Project name */
+                            project_name: string;
+                            /** @description Daily metric values for each date in range */
+                            data: number[];
+                        }[];
+                        totals: {
+                            /** @description Total for current period */
+                            current: number;
+                            /** @description Total for previous period */
+                            previous: number;
+                            /** @description Percentage change from previous period */
+                            trend_percent: number;
+                            /**
+                             * @description Direction of the trend
+                             * @enum {string}
+                             */
+                            trend_direction: "up" | "down" | "flat";
+                        };
+                    };
+                    ctr: {
+                        /** @description ISO formatted dates for x-axis */
+                        dates: string[];
+                        /** @description Metric values per project */
+                        series: {
+                            /** @description Project ID */
+                            project_id: number;
+                            /** @description Project UUID */
+                            project_uuid: string;
+                            /** @description Project name */
+                            project_name: string;
+                            /** @description Daily metric values for each date in range */
+                            data: number[];
+                        }[];
+                        totals: {
+                            /** @description Total for current period */
+                            current: number;
+                            /** @description Total for previous period */
+                            previous: number;
+                            /** @description Percentage change from previous period */
+                            trend_percent: number;
+                            /**
+                             * @description Direction of the trend
+                             * @enum {string}
+                             */
+                            trend_direction: "up" | "down" | "flat";
+                        };
+                    };
+                    cpl: {
+                        /** @description ISO formatted dates for x-axis */
+                        dates: string[];
+                        /** @description Metric values per project */
+                        series: {
+                            /** @description Project ID */
+                            project_id: number;
+                            /** @description Project UUID */
+                            project_uuid: string;
+                            /** @description Project name */
+                            project_name: string;
+                            /** @description Daily metric values for each date in range */
+                            data: number[];
+                        }[];
+                        totals: {
+                            /** @description Total for current period */
+                            current: number;
+                            /** @description Total for previous period */
+                            previous: number;
+                            /** @description Percentage change from previous period */
+                            trend_percent: number;
+                            /**
+                             * @description Direction of the trend
+                             * @enum {string}
+                             */
+                            trend_direction: "up" | "down" | "flat";
+                        };
                     };
                 };
-                unique_visitors: {
-                    /** @description ISO formatted dates for x-axis */
-                    dates: string[];
-                    /** @description Metric values per project */
-                    series: {
-                        /** @description Project ID */
-                        project_id: number;
-                        /** @description Project UUID */
-                        project_uuid: string;
-                        /** @description Project name */
-                        project_name: string;
-                        /** @description Daily metric values for each date in range */
-                        data: number[];
-                    }[];
-                    totals: {
-                        /** @description Total for current period */
-                        current: number;
-                        /** @description Total for previous period */
-                        previous: number;
-                        /** @description Percentage change from previous period */
-                        trend_percent: number;
-                        /**
-                         * @description Direction of the trend
-                         * @enum {string}
-                         */
-                        trend_direction: "up" | "down" | "flat";
+                30: {
+                    leads: {
+                        /** @description ISO formatted dates for x-axis */
+                        dates: string[];
+                        /** @description Metric values per project */
+                        series: {
+                            /** @description Project ID */
+                            project_id: number;
+                            /** @description Project UUID */
+                            project_uuid: string;
+                            /** @description Project name */
+                            project_name: string;
+                            /** @description Daily metric values for each date in range */
+                            data: number[];
+                        }[];
+                        totals: {
+                            /** @description Total for current period */
+                            current: number;
+                            /** @description Total for previous period */
+                            previous: number;
+                            /** @description Percentage change from previous period */
+                            trend_percent: number;
+                            /**
+                             * @description Direction of the trend
+                             * @enum {string}
+                             */
+                            trend_direction: "up" | "down" | "flat";
+                        };
+                    };
+                    unique_visitors: {
+                        /** @description ISO formatted dates for x-axis */
+                        dates: string[];
+                        /** @description Metric values per project */
+                        series: {
+                            /** @description Project ID */
+                            project_id: number;
+                            /** @description Project UUID */
+                            project_uuid: string;
+                            /** @description Project name */
+                            project_name: string;
+                            /** @description Daily metric values for each date in range */
+                            data: number[];
+                        }[];
+                        totals: {
+                            /** @description Total for current period */
+                            current: number;
+                            /** @description Total for previous period */
+                            previous: number;
+                            /** @description Percentage change from previous period */
+                            trend_percent: number;
+                            /**
+                             * @description Direction of the trend
+                             * @enum {string}
+                             */
+                            trend_direction: "up" | "down" | "flat";
+                        };
+                    };
+                    page_views: {
+                        /** @description ISO formatted dates for x-axis */
+                        dates: string[];
+                        /** @description Metric values per project */
+                        series: {
+                            /** @description Project ID */
+                            project_id: number;
+                            /** @description Project UUID */
+                            project_uuid: string;
+                            /** @description Project name */
+                            project_name: string;
+                            /** @description Daily metric values for each date in range */
+                            data: number[];
+                        }[];
+                        totals: {
+                            /** @description Total for current period */
+                            current: number;
+                            /** @description Total for previous period */
+                            previous: number;
+                            /** @description Percentage change from previous period */
+                            trend_percent: number;
+                            /**
+                             * @description Direction of the trend
+                             * @enum {string}
+                             */
+                            trend_direction: "up" | "down" | "flat";
+                        };
+                    };
+                    ctr: {
+                        /** @description ISO formatted dates for x-axis */
+                        dates: string[];
+                        /** @description Metric values per project */
+                        series: {
+                            /** @description Project ID */
+                            project_id: number;
+                            /** @description Project UUID */
+                            project_uuid: string;
+                            /** @description Project name */
+                            project_name: string;
+                            /** @description Daily metric values for each date in range */
+                            data: number[];
+                        }[];
+                        totals: {
+                            /** @description Total for current period */
+                            current: number;
+                            /** @description Total for previous period */
+                            previous: number;
+                            /** @description Percentage change from previous period */
+                            trend_percent: number;
+                            /**
+                             * @description Direction of the trend
+                             * @enum {string}
+                             */
+                            trend_direction: "up" | "down" | "flat";
+                        };
+                    };
+                    cpl: {
+                        /** @description ISO formatted dates for x-axis */
+                        dates: string[];
+                        /** @description Metric values per project */
+                        series: {
+                            /** @description Project ID */
+                            project_id: number;
+                            /** @description Project UUID */
+                            project_uuid: string;
+                            /** @description Project name */
+                            project_name: string;
+                            /** @description Daily metric values for each date in range */
+                            data: number[];
+                        }[];
+                        totals: {
+                            /** @description Total for current period */
+                            current: number;
+                            /** @description Total for previous period */
+                            previous: number;
+                            /** @description Percentage change from previous period */
+                            trend_percent: number;
+                            /**
+                             * @description Direction of the trend
+                             * @enum {string}
+                             */
+                            trend_direction: "up" | "down" | "flat";
+                        };
                     };
                 };
-                page_views: {
-                    /** @description ISO formatted dates for x-axis */
-                    dates: string[];
-                    /** @description Metric values per project */
-                    series: {
-                        /** @description Project ID */
-                        project_id: number;
-                        /** @description Project UUID */
-                        project_uuid: string;
-                        /** @description Project name */
-                        project_name: string;
-                        /** @description Daily metric values for each date in range */
-                        data: number[];
-                    }[];
-                    totals: {
-                        /** @description Total for current period */
-                        current: number;
-                        /** @description Total for previous period */
-                        previous: number;
-                        /** @description Percentage change from previous period */
-                        trend_percent: number;
-                        /**
-                         * @description Direction of the trend
-                         * @enum {string}
-                         */
-                        trend_direction: "up" | "down" | "flat";
+                90: {
+                    leads: {
+                        /** @description ISO formatted dates for x-axis */
+                        dates: string[];
+                        /** @description Metric values per project */
+                        series: {
+                            /** @description Project ID */
+                            project_id: number;
+                            /** @description Project UUID */
+                            project_uuid: string;
+                            /** @description Project name */
+                            project_name: string;
+                            /** @description Daily metric values for each date in range */
+                            data: number[];
+                        }[];
+                        totals: {
+                            /** @description Total for current period */
+                            current: number;
+                            /** @description Total for previous period */
+                            previous: number;
+                            /** @description Percentage change from previous period */
+                            trend_percent: number;
+                            /**
+                             * @description Direction of the trend
+                             * @enum {string}
+                             */
+                            trend_direction: "up" | "down" | "flat";
+                        };
                     };
-                };
-                ctr: {
-                    /** @description ISO formatted dates for x-axis */
-                    dates: string[];
-                    /** @description Metric values per project */
-                    series: {
-                        /** @description Project ID */
-                        project_id: number;
-                        /** @description Project UUID */
-                        project_uuid: string;
-                        /** @description Project name */
-                        project_name: string;
-                        /** @description Daily metric values for each date in range */
-                        data: number[];
-                    }[];
-                    totals: {
-                        /** @description Total for current period */
-                        current: number;
-                        /** @description Total for previous period */
-                        previous: number;
-                        /** @description Percentage change from previous period */
-                        trend_percent: number;
-                        /**
-                         * @description Direction of the trend
-                         * @enum {string}
-                         */
-                        trend_direction: "up" | "down" | "flat";
+                    unique_visitors: {
+                        /** @description ISO formatted dates for x-axis */
+                        dates: string[];
+                        /** @description Metric values per project */
+                        series: {
+                            /** @description Project ID */
+                            project_id: number;
+                            /** @description Project UUID */
+                            project_uuid: string;
+                            /** @description Project name */
+                            project_name: string;
+                            /** @description Daily metric values for each date in range */
+                            data: number[];
+                        }[];
+                        totals: {
+                            /** @description Total for current period */
+                            current: number;
+                            /** @description Total for previous period */
+                            previous: number;
+                            /** @description Percentage change from previous period */
+                            trend_percent: number;
+                            /**
+                             * @description Direction of the trend
+                             * @enum {string}
+                             */
+                            trend_direction: "up" | "down" | "flat";
+                        };
                     };
-                };
-                cpl: {
-                    /** @description ISO formatted dates for x-axis */
-                    dates: string[];
-                    /** @description Metric values per project */
-                    series: {
-                        /** @description Project ID */
-                        project_id: number;
-                        /** @description Project UUID */
-                        project_uuid: string;
-                        /** @description Project name */
-                        project_name: string;
-                        /** @description Daily metric values for each date in range */
-                        data: number[];
-                    }[];
-                    totals: {
-                        /** @description Total for current period */
-                        current: number;
-                        /** @description Total for previous period */
-                        previous: number;
-                        /** @description Percentage change from previous period */
-                        trend_percent: number;
-                        /**
-                         * @description Direction of the trend
-                         * @enum {string}
-                         */
-                        trend_direction: "up" | "down" | "flat";
+                    page_views: {
+                        /** @description ISO formatted dates for x-axis */
+                        dates: string[];
+                        /** @description Metric values per project */
+                        series: {
+                            /** @description Project ID */
+                            project_id: number;
+                            /** @description Project UUID */
+                            project_uuid: string;
+                            /** @description Project name */
+                            project_name: string;
+                            /** @description Daily metric values for each date in range */
+                            data: number[];
+                        }[];
+                        totals: {
+                            /** @description Total for current period */
+                            current: number;
+                            /** @description Total for previous period */
+                            previous: number;
+                            /** @description Percentage change from previous period */
+                            trend_percent: number;
+                            /**
+                             * @description Direction of the trend
+                             * @enum {string}
+                             */
+                            trend_direction: "up" | "down" | "flat";
+                        };
+                    };
+                    ctr: {
+                        /** @description ISO formatted dates for x-axis */
+                        dates: string[];
+                        /** @description Metric values per project */
+                        series: {
+                            /** @description Project ID */
+                            project_id: number;
+                            /** @description Project UUID */
+                            project_uuid: string;
+                            /** @description Project name */
+                            project_name: string;
+                            /** @description Daily metric values for each date in range */
+                            data: number[];
+                        }[];
+                        totals: {
+                            /** @description Total for current period */
+                            current: number;
+                            /** @description Total for previous period */
+                            previous: number;
+                            /** @description Percentage change from previous period */
+                            trend_percent: number;
+                            /**
+                             * @description Direction of the trend
+                             * @enum {string}
+                             */
+                            trend_direction: "up" | "down" | "flat";
+                        };
+                    };
+                    cpl: {
+                        /** @description ISO formatted dates for x-axis */
+                        dates: string[];
+                        /** @description Metric values per project */
+                        series: {
+                            /** @description Project ID */
+                            project_id: number;
+                            /** @description Project UUID */
+                            project_uuid: string;
+                            /** @description Project name */
+                            project_name: string;
+                            /** @description Daily metric values for each date in range */
+                            data: number[];
+                        }[];
+                        totals: {
+                            /** @description Total for current period */
+                            current: number;
+                            /** @description Total for previous period */
+                            previous: number;
+                            /** @description Percentage change from previous period */
+                            trend_percent: number;
+                            /**
+                             * @description Direction of the trend
+                             * @enum {string}
+                             */
+                            trend_direction: "up" | "down" | "flat";
+                        };
                     };
                 };
             };
-            /** @description Project summaries with aggregated metrics */
-            projects: {
-                /** @description Project ID */
-                id: number;
-                /** @description Project UUID */
-                uuid: string;
-                /** @description Project name */
-                name: string;
-                /**
-                 * @description Project status derived from campaign states
-                 * @enum {string}
-                 */
-                status: "live" | "paused" | "draft";
-                /** @description Published site URL */
-                url?: string | null;
-                /** @description Preview thumbnail URL */
-                thumbnail_url?: string | null;
-                /** @description Total leads for period */
-                total_leads: number;
-                /** @description Total unique visitors */
-                total_unique_visitors: number;
-                /** @description Total page views */
-                total_page_views: number;
-                /** @description Total ad impressions */
-                total_impressions: number;
-                /** @description Total ad clicks */
-                total_clicks: number;
-                /** @description Click-through rate */
-                ctr?: number | null;
-                /** @description Total ad spend in dollars */
-                cost_dollars: number;
-                /** @description Cost per lead */
-                cpl?: number | null;
-            }[];
+            all_projects: {
+                /** @description Project summaries for 7-day range */
+                7: {
+                    /** @description Project ID */
+                    id: number;
+                    /** @description Project UUID */
+                    uuid: string;
+                    /** @description Project name */
+                    name: string;
+                    /**
+                     * @description Project status derived from campaign states
+                     * @enum {string}
+                     */
+                    status: "live" | "paused" | "draft";
+                    /** @description Published site URL */
+                    url?: string | null;
+                    /** @description Preview thumbnail URL */
+                    thumbnail_url?: string | null;
+                    /** @description Total leads for period */
+                    total_leads: number;
+                    /** @description Total unique visitors */
+                    total_unique_visitors: number;
+                    /** @description Total page views */
+                    total_page_views: number;
+                    /** @description Total ad impressions */
+                    total_impressions: number;
+                    /** @description Total ad clicks */
+                    total_clicks: number;
+                    /** @description Click-through rate */
+                    ctr?: number | null;
+                    /** @description Total ad spend in dollars */
+                    cost_dollars: number;
+                    /** @description Cost per lead */
+                    cpl?: number | null;
+                }[];
+                /** @description Project summaries for 30-day range */
+                30: {
+                    /** @description Project ID */
+                    id: number;
+                    /** @description Project UUID */
+                    uuid: string;
+                    /** @description Project name */
+                    name: string;
+                    /**
+                     * @description Project status derived from campaign states
+                     * @enum {string}
+                     */
+                    status: "live" | "paused" | "draft";
+                    /** @description Published site URL */
+                    url?: string | null;
+                    /** @description Preview thumbnail URL */
+                    thumbnail_url?: string | null;
+                    /** @description Total leads for period */
+                    total_leads: number;
+                    /** @description Total unique visitors */
+                    total_unique_visitors: number;
+                    /** @description Total page views */
+                    total_page_views: number;
+                    /** @description Total ad impressions */
+                    total_impressions: number;
+                    /** @description Total ad clicks */
+                    total_clicks: number;
+                    /** @description Click-through rate */
+                    ctr?: number | null;
+                    /** @description Total ad spend in dollars */
+                    cost_dollars: number;
+                    /** @description Cost per lead */
+                    cpl?: number | null;
+                }[];
+                /** @description Project summaries for 90-day range */
+                90: {
+                    /** @description Project ID */
+                    id: number;
+                    /** @description Project UUID */
+                    uuid: string;
+                    /** @description Project name */
+                    name: string;
+                    /**
+                     * @description Project status derived from campaign states
+                     * @enum {string}
+                     */
+                    status: "live" | "paused" | "draft";
+                    /** @description Published site URL */
+                    url?: string | null;
+                    /** @description Preview thumbnail URL */
+                    thumbnail_url?: string | null;
+                    /** @description Total leads for period */
+                    total_leads: number;
+                    /** @description Total unique visitors */
+                    total_unique_visitors: number;
+                    /** @description Total page views */
+                    total_page_views: number;
+                    /** @description Total ad impressions */
+                    total_impressions: number;
+                    /** @description Total ad clicks */
+                    total_clicks: number;
+                    /** @description Click-through rate */
+                    ctr?: number | null;
+                    /** @description Total ad spend in dollars */
+                    cost_dollars: number;
+                    /** @description Cost per lead */
+                    cpl?: number | null;
+                }[];
+            };
             status_counts: {
                 /** @description Total projects count */
                 all: number;
@@ -1418,12 +1774,6 @@ export interface components {
                 /** @description Draft projects count */
                 draft: number;
             };
-            /** @description Human readable date range label */
-            date_range: string;
-            /** @description Number of days in range */
-            days: number;
-            /** @description Current status filter */
-            status_filter: string;
             /** @description Available date range options */
             date_range_options: {
                 /** @description Display label */

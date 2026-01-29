@@ -30,6 +30,12 @@ export const InsightsAnnotation = Annotation.Root({
     reducer: (current, next) => next ?? current,
   }),
 
+  // Flag to skip generation when insights are fresh (< 24 hours old)
+  skipGeneration: Annotation<boolean>({
+    default: () => false,
+    reducer: (current, next) => next,
+  }),
+
   // Error during generation
   generationError: Annotation<string | undefined>({
     default: () => undefined,

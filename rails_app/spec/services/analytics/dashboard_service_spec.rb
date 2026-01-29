@@ -7,7 +7,7 @@ RSpec.describe Analytics::DashboardService do
   let(:project) { create(:project, account: account) }
   let(:website) { create(:website, project: project) }
 
-  subject { described_class.new(account, days: 30, status_filter: "all") }
+  subject { described_class.new(account, days: 30) }
 
   around do |example|
     # Use memory store for cache tests
@@ -124,7 +124,7 @@ RSpec.describe Analytics::DashboardService do
       create(:analytics_daily_metric, account: account, project: project,
         date: 5.days.ago, leads_count: 10)
 
-      service = described_class.new(account, days: 30, status_filter: "all")
+      service = described_class.new(account, days: 30)
       result = service.projects_summary
 
       project_result = result.find { |p| p[:uuid] == project.uuid }
@@ -132,31 +132,45 @@ RSpec.describe Analytics::DashboardService do
     end
   end
 
-  describe "status_filter" do
-    let!(:active_project) { create(:project, account: account) }
+  describe "#status_counts" do
+    let!(:live_project) { create(:project, account: account) }
     let!(:paused_project) { create(:project, account: account) }
+    let!(:draft_project) { create(:project, account: account) }
 
     before do
-      create(:campaign, project: active_project, status: "active", account: account, website: create(:website, project: active_project))
+      create(:campaign, project: live_project, status: "active", account: account, website: create(:website, project: live_project))
       create(:campaign, project: paused_project, status: "paused", account: account, website: create(:website, project: paused_project))
+      # draft_project has no campaigns
     end
 
-    it "filters by active status" do
-      service = described_class.new(account, days: 30, status_filter: "active")
-      result = service.projects_summary
+    it "returns counts for all statuses" do
+      result = subject.status_counts
 
-      uuids = result.map { |p| p[:uuid] }
-      expect(uuids).to include(active_project.uuid)
-      expect(uuids).not_to include(paused_project.uuid)
+      expect(result[:all]).to eq(3) # live_project + paused_project + draft_project
+      expect(result[:live]).to eq(1)
+      expect(result[:paused]).to eq(1)
+      expect(result[:draft]).to eq(1)
+    end
+  end
+
+  describe "project status derivation" do
+    it "includes status in projects_summary" do
+      create(:campaign, project: project, status: "active", account: account, website: website)
+
+      result = subject.projects_summary
+      project_result = result.find { |p| p[:uuid] == project.uuid }
+
+      expect(project_result[:status]).to eq("live")
     end
 
-    it "filters by paused status" do
-      service = described_class.new(account, days: 30, status_filter: "paused")
-      result = service.projects_summary
+    it "returns draft status for projects with no campaigns" do
+      # Force project creation
+      project
 
-      uuids = result.map { |p| p[:uuid] }
-      expect(uuids).not_to include(active_project.uuid)
-      expect(uuids).to include(paused_project.uuid)
+      result = subject.projects_summary
+      project_result = result.find { |p| p[:uuid] == project.uuid }
+
+      expect(project_result[:status]).to eq("draft")
     end
   end
 end

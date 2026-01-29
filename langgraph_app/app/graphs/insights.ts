@@ -1,23 +1,23 @@
 import { StateGraph, START, END } from "@langchain/langgraph";
-import { InsightsAnnotation } from "@annotation";
+import { InsightsAnnotation, type InsightsGraphState } from "@annotation";
 import { generateInsightsNode, fetchMetricsNode, saveInsightsNode } from "@nodes";
 
 /**
  * Insights Graph
  *
  * A graph that generates analytics insights from metrics data.
- * 1. Fetches metrics from Rails (if not already provided)
- * 2. Generates exactly 3 actionable insights using an LLM
- * 3. Saves insights back to Rails
+ * Includes freshness checking to avoid regenerating fresh insights.
  *
  * Flow:
  * ┌───────────────────────────────────────────┐
  * │ START                                     │
  * │   │                                       │
  * │   ▼                                       │
- * │ fetchMetrics (from Rails API)             │
+ * │ fetchMetrics (check freshness + fetch)    │
  * │   │                                       │
- * │   ▼                                       │
+ * │   ├── [if fresh] ──────────────────────▶ END (return cached)
+ * │   │                                       │
+ * │   ▼ [if stale]                            │
  * │ generateInsights (LLM)                    │
  * │   │                                       │
  * │   ▼                                       │
@@ -30,11 +30,24 @@ import { generateInsightsNode, fetchMetricsNode, saveInsightsNode } from "@nodes
  * The graph can be invoked with metricsInput already set (for testing)
  * or it will fetch from Rails if not provided.
  */
+
+/**
+ * Routes after fetchMetrics based on freshness check
+ */
+function routeAfterFetchMetrics(state: InsightsGraphState): "generateInsights" | "__end__" {
+  // If skipGeneration is true, we have fresh cached insights - go straight to END
+  if (state.skipGeneration) {
+    return "__end__";
+  }
+  // Otherwise, generate new insights
+  return "generateInsights";
+}
+
 export const insightsGraph = new StateGraph(InsightsAnnotation)
   .addNode("fetchMetrics", fetchMetricsNode)
   .addNode("generateInsights", generateInsightsNode)
   .addNode("saveInsights", saveInsightsNode)
   .addEdge(START, "fetchMetrics")
-  .addEdge("fetchMetrics", "generateInsights")
+  .addConditionalEdges("fetchMetrics", routeAfterFetchMetrics)
   .addEdge("generateInsights", "saveInsights")
   .addEdge("saveInsights", END);

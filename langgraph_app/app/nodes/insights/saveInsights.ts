@@ -18,7 +18,7 @@ export const saveInsightsNode = NodeMiddleware.use(
       return {};
     }
 
-    const jwt = config?.configurable?.jwt as string | undefined;
+    const jwt = state.jwt;
     if (!jwt) {
       // No JWT means we can't save, but insights were generated successfully.
       // This is expected in test environments or when calling the API directly.
