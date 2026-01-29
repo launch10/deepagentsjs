@@ -2,6 +2,7 @@ import { useEffect, useEffectEvent, useRef, useMemo } from "react";
 import { usePage } from "@inertiajs/react";
 import { type ChatSnapshot, type UseLanggraphOptions, useLanggraph } from "langgraph-ai-sdk-react";
 import type { InertiaProps, InsightsBridgeType, InsightsGraphState } from "@shared";
+import { useInsightsStore, useStoredInsights, type InsightsStore } from "@stores/insightsStore";
 
 // Use the same types as the Dashboard page
 type DashboardProps =
@@ -70,6 +71,9 @@ export function useInsightsError() {
  *
  * Pattern: If Rails sent fresh insights, use them. Otherwise, trigger Langgraph.
  * Similar to useStageInit but simpler - just check if serverInsights exist.
+ *
+ * Uses insightsStore to survive browser back/forward navigation, since Inertia
+ * restores pages from history cache with stale pageProps.
  */
 export function useInsightsChat() {
   const { insights: serverInsights } = usePage<InsightsPageProps>().props;
@@ -79,10 +83,15 @@ export function useInsightsChat() {
   const status = useInsightsStatus();
   const error = useInsightsError();
 
+  // Store for surviving back/forward navigation
+  const storedInsights = useStoredInsights();
+  const setStoredInsights = useInsightsStore((s: InsightsStore) => s.setInsights);
+
   const isGenerating = useRef(false);
 
   // Check if we already have fresh insights from Rails
   const hasFreshServerInsights = serverInsights && serverInsights.length > 0;
+  const hasStoredInsights = storedInsights && storedInsights.length > 0;
 
   const maybeGenerateInsights = useEffectEvent(() => {
     // Already generating - don't duplicate
@@ -90,6 +99,9 @@ export function useInsightsChat() {
 
     // Rails sent fresh insights - no need to talk to Langgraph
     if (hasFreshServerInsights) return;
+
+    // We have stored insights from this session - no need to regenerate
+    if (hasStoredInsights) return;
 
     isGenerating.current = true;
 
@@ -101,18 +113,29 @@ export function useInsightsChat() {
 
   useEffect(() => {
     maybeGenerateInsights();
-  }, [hasFreshServerInsights]);
+  }, [hasFreshServerInsights, hasStoredInsights]);
+
+  // Store insights when Langgraph generates them
+  const hasLanggraphInsights = langgraphInsights && langgraphInsights.length > 0;
+  useEffect(() => {
+    if (hasLanggraphInsights) {
+      setStoredInsights(langgraphInsights);
+    }
+  }, [hasLanggraphInsights, langgraphInsights, setStoredInsights]);
 
   const isLoading = status === "streaming" || status === "submitted";
-  const hasLanggraphInsights = langgraphInsights && langgraphInsights.length > 0;
 
-  return {
-    // Use server insights if fresh, otherwise use Langgraph-generated ones
-    insights: hasFreshServerInsights
-      ? serverInsights
+  // Priority: server > stored > langgraph > null
+  const insights = hasFreshServerInsights
+    ? serverInsights
+    : hasStoredInsights
+      ? storedInsights
       : hasLanggraphInsights
         ? langgraphInsights
-        : null,
+        : null;
+
+  return {
+    insights,
     isGenerating: isLoading,
     error: error?.message ?? null,
   };

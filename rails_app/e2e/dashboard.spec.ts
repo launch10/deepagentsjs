@@ -293,8 +293,8 @@ test.describe("Dashboard", () => {
       // Should have 3 insights
       await expect(insightCards).toHaveCount(3);
 
-      // New accounts should get positive/encouraging insights
-      const hasPositiveCard = await insightsSection.locator('[class*="bg-green-50"]').count();
+      // New accounts should get positive/encouraging insights (uses bg-success-100)
+      const hasPositiveCard = await insightsSection.locator('[class*="bg-success-100"]').count();
       expect(hasPositiveCard).toBeGreaterThanOrEqual(1);
     });
   });
