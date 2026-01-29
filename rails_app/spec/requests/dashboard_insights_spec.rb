@@ -201,8 +201,10 @@ RSpec.describe "Dashboard Insights API", type: :request do
           expect(data["totals"]).to be_present
           expect(data["totals"]["leads"]).to be_present
           expect(data["totals"]["page_views"]).to be_present
+          expect(data["totals"]["unique_visitors"]).to be_present
           expect(data["projects"]).to be_an(Array)
           expect(data["trends"]).to be_present
+          expect(data["trends"]["unique_visitors_trend"]).to be_present
         end
       end
 

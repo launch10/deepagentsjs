@@ -31,7 +31,8 @@ FactoryBot.define do
     association :project
     date { Date.yesterday }
     leads_count { 10 }
-    page_views_count { 500 }
+    unique_visitors_count { 100 }  # Ahoy::Visit count (sessions)
+    page_views_count { 500 }       # Ahoy::Event page_view count
     impressions { 1000 }
     clicks { 50 }
     cost_micros { 25_000_000 } # $25

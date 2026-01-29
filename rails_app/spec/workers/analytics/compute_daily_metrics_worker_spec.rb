@@ -3,103 +3,126 @@
 require "rails_helper"
 
 RSpec.describe Analytics::ComputeDailyMetricsWorker do
-  let(:account) { create(:account) }
-  let(:project) { create(:project, account: account) }
-  let(:website) { create(:website, project: project) }
+  # Freeze to 12:01am EST to test timezone handling
+  # At this time: EST thinks it's Jan 29, UTC thinks it's Jan 29 (5:01am UTC)
+  around do |example|
+    Timecop.freeze(Time.new(2026, 1, 29, 0, 1, 0, "-05:00")) do
+      example.run
+    end
+  end
+
   let(:target_date) { Date.yesterday }
 
+  describe ".projects_with_live_deploys" do
+    let(:subscribed_account) { create(:account) }
+    let(:subscribed_project) { create(:project, account: subscribed_account) }
+    let!(:live_deploy) { create(:deploy, :live, project: subscribed_project) }
+
+    before do
+      ensure_plans_exist
+      subscribe_account(subscribed_account, plan_name: "growth_monthly")
+    end
+
+    it "returns projects with live deploys and active subscriptions" do
+      expect(described_class.projects_with_live_deploys).to include(subscribed_project)
+    end
+
+    it "excludes projects without subscriptions" do
+      unsubscribed_account = create(:account)
+      unsubscribed_project = create(:project, account: unsubscribed_account)
+      create(:deploy, :live, project: unsubscribed_project)
+
+      expect(described_class.projects_with_live_deploys).not_to include(unsubscribed_project)
+    end
+
+    it "excludes projects without live deploys" do
+      live_deploy.update!(is_live: false)
+      expect(described_class.projects_with_live_deploys).not_to include(subscribed_project)
+    end
+
+    it "excludes projects with canceled subscriptions" do
+      unsubscribe_account(subscribed_account)
+      expect(described_class.projects_with_live_deploys).not_to include(subscribed_project)
+    end
+  end
+
   describe "#perform" do
-    context "with date argument" do
-      let(:lead) { create(:lead, account: account, email: "test@example.com") }
+    context "with eligible projects" do
+      let(:account) { create(:account) }
+      let(:project) { create(:project, account: account) }
+      let!(:deploy) { create(:deploy, :live, project: project) }
 
       before do
-        # Create source data
-        create(:website_lead, website: website, lead: lead, created_at: target_date.to_time)
-        # Create Ahoy visits for page views (L10.track)
-        create(:ahoy_visit, website: website, started_at: target_date.to_time)
-        create(:ahoy_visit, website: website, started_at: target_date.to_time + 1.hour)
-        create(:ahoy_visit, website: website, started_at: target_date.to_time + 2.hours)
+        ensure_plans_exist
+        subscribe_account(account, plan_name: "growth_monthly")
       end
 
-      it "creates analytics_daily_metric record" do
-        expect {
-          subject.perform(target_date.iso8601)
-        }.to change(AnalyticsDailyMetric, :count).by(1)
-      end
+      it "enqueues a job for projects with live deploys and active subscriptions" do
+        expect(Analytics::ComputeMetricsForProjectWorker).to receive(:perform_async)
+          .with(project.id, target_date.iso8601)
 
-      it "aggregates leads correctly" do
         subject.perform(target_date.iso8601)
-        metric = AnalyticsDailyMetric.last
-        expect(metric.leads_count).to eq(1)
-      end
-
-      it "aggregates page views from Ahoy visits correctly" do
-        subject.perform(target_date.iso8601)
-        metric = AnalyticsDailyMetric.last
-        expect(metric.page_views_count).to eq(3)
-      end
-
-      it "upserts on conflict (idempotent)" do
-        subject.perform(target_date.iso8601)
-        lead2 = create(:lead, account: account, email: "test2@example.com")
-        create(:website_lead, website: website, lead: lead2, created_at: target_date.to_time)
-
-        expect {
-          subject.perform(target_date.iso8601)
-        }.not_to change(AnalyticsDailyMetric, :count)
-
-        metric = AnalyticsDailyMetric.last
-        expect(metric.leads_count).to eq(2)
-      end
-
-      it "sets correct account and project IDs" do
-        subject.perform(target_date.iso8601)
-        metric = AnalyticsDailyMetric.last
-
-        expect(metric.account_id).to eq(account.id)
-        expect(metric.project_id).to eq(project.id)
-        expect(metric.date).to eq(target_date)
       end
     end
 
-    context "without date argument (defaults to yesterday)" do
-      it "processes yesterday's data" do
-        expect(subject).to receive(:compute_for_account).with(account, Date.yesterday)
-        allow(Account).to receive(:find_each).and_yield(account)
+    context "filtering" do
+      let(:subscribed_account) { create(:account) }
+      let(:subscribed_project) { create(:project, account: subscribed_account) }
+      let!(:live_deploy) { create(:deploy, :live, project: subscribed_project) }
+
+      let(:unsubscribed_account) { create(:account) }
+      let(:unsubscribed_project) { create(:project, account: unsubscribed_account) }
+      let!(:unsubscribed_live_deploy) { create(:deploy, :live, project: unsubscribed_project) }
+
+      before do
+        ensure_plans_exist
+        subscribe_account(subscribed_account, plan_name: "growth_monthly")
+        # unsubscribed_account is intentionally not subscribed
+      end
+
+      it "only processes projects with active subscriptions" do
+        expect(Analytics::ComputeMetricsForProjectWorker).to receive(:perform_async)
+          .with(subscribed_project.id, target_date.iso8601)
+        expect(Analytics::ComputeMetricsForProjectWorker).not_to receive(:perform_async)
+          .with(unsubscribed_project.id, target_date.iso8601)
+
+        subject.perform(target_date.iso8601)
+      end
+
+      context "with non-live deploy" do
+        before { live_deploy.update!(is_live: false) }
+
+        it "skips projects without live deploys" do
+          expect(Analytics::ComputeMetricsForProjectWorker).not_to receive(:perform_async)
+          subject.perform(target_date.iso8601)
+        end
+      end
+
+      context "with canceled subscription" do
+        before { unsubscribe_account(subscribed_account) }
+
+        it "skips projects with canceled subscriptions" do
+          expect(Analytics::ComputeMetricsForProjectWorker).not_to receive(:perform_async)
+          subject.perform(target_date.iso8601)
+        end
+      end
+    end
+
+    context "without date argument" do
+      let(:account) { create(:account) }
+      let(:project) { create(:project, account: account) }
+      let!(:deploy) { create(:deploy, :live, project: project) }
+
+      before do
+        ensure_plans_exist
+        subscribe_account(account, plan_name: "growth_monthly")
+      end
+
+      it "defaults to yesterday" do
+        expect(Analytics::ComputeMetricsForProjectWorker).to receive(:perform_async)
+          .with(project.id, Date.yesterday.iso8601)
+
         subject.perform
-      end
-    end
-
-    context "with ads performance data" do
-      let(:campaign) { create(:campaign, project: project, account: account, website: website) }
-
-      before do
-        create(:ad_performance_daily, campaign: campaign, date: target_date,
-          impressions: 1000, clicks: 50, cost_micros: 25_000_000)
-      end
-
-      it "aggregates ads metrics correctly" do
-        subject.perform(target_date.iso8601)
-        metric = AnalyticsDailyMetric.last
-
-        expect(metric.impressions).to eq(1000)
-        expect(metric.clicks).to eq(50)
-        expect(metric.cost_micros).to eq(25_000_000)
-      end
-    end
-
-    context "error handling" do
-      let(:account1) { create(:account) }
-      let(:account2) { create(:account) }
-      let!(:project1) { create(:project, account: account1) }
-      let!(:project2) { create(:project, account: account2) }
-
-      it "continues processing other accounts on individual failure" do
-        allow(Account).to receive(:find_each).and_yield(account1).and_yield(account2)
-        allow(subject).to receive(:compute_for_account).with(account1, anything).and_raise(StandardError.new("test error"))
-        allow(subject).to receive(:compute_for_account).with(account2, anything).and_call_original
-
-        expect { subject.perform(target_date.iso8601) }.not_to raise_error
       end
     end
   end

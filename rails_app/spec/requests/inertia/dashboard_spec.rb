@@ -29,6 +29,7 @@ RSpec.describe "Dashboard Inertia Page", type: :request, inertia: true do
 
       expect(inertia.props[:performance]).to have_key(:leads)
       expect(inertia.props[:performance]).to have_key(:page_views)
+      expect(inertia.props[:performance]).to have_key(:unique_visitors)
       expect(inertia.props[:performance]).to have_key(:ctr)
       expect(inertia.props[:performance]).to have_key(:cpl)
     end

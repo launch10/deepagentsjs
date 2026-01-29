@@ -36,6 +36,13 @@ RSpec.describe Analytics::DashboardService do
       expect(result[:page_views]).to have_key(:series)
     end
 
+    it "returns unique_visitors time series" do
+      result = subject.performance_overview
+      expect(result[:unique_visitors]).to have_key(:dates)
+      expect(result[:unique_visitors]).to have_key(:series)
+      expect(result[:unique_visitors]).to have_key(:totals)
+    end
+
     it "returns ctr with available flag" do
       result = subject.performance_overview
       expect(result[:ctr]).to have_key(:available)
@@ -79,6 +86,16 @@ RSpec.describe Analytics::DashboardService do
       project_result = result.find { |p| p[:uuid] == new_project.uuid }
       expect(project_result[:total_leads]).to eq(0)
       expect(project_result[:total_page_views]).to eq(0)
+      expect(project_result[:total_unique_visitors]).to eq(0)
+    end
+
+    it "includes total_unique_visitors in project stats" do
+      create(:analytics_daily_metric, account: account, project: project,
+        date: 5.days.ago, unique_visitors_count: 250)
+
+      result = subject.projects_summary
+      project_result = result.find { |p| p[:uuid] == project.uuid }
+      expect(project_result[:total_unique_visitors]).to eq(250)
     end
 
     it "calculates CPL correctly" do

@@ -21,6 +21,7 @@ RSpec.describe Analytics::InsightsMetricsService do
       result = subject.summary
       expect(result[:totals]).to have_key(:leads)
       expect(result[:totals]).to have_key(:page_views)
+      expect(result[:totals]).to have_key(:unique_visitors)
       expect(result[:totals]).to have_key(:ctr)
       expect(result[:totals]).to have_key(:cpl)
     end
@@ -63,6 +64,7 @@ RSpec.describe Analytics::InsightsMetricsService do
       result = subject.summary
       expect(result[:trends]).to have_key(:leads_trend)
       expect(result[:trends]).to have_key(:page_views_trend)
+      expect(result[:trends]).to have_key(:unique_visitors_trend)
     end
 
     it "includes flags for insight detection" do
