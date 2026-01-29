@@ -7,6 +7,7 @@ module Analytics
   # - Google Ads (via SyncPerformanceWorker)
   #
   # Uses a 7-day rolling window to capture late-arriving conversions.
+  # Includes today's partial data for near-real-time dashboard updates.
   #
   class SyncService
     ROLLING_WINDOW_DAYS = 7
@@ -17,13 +18,16 @@ module Analytics
 
     # Sync Google Ads performance data for the rolling window.
     #
+    # Includes today's data (partial) through yesterday plus 6 prior days.
+    # Note: Google Ads reporting has ~2-4 hour lag, so "today" is approximate.
+    #
     # @return [Integer] Number of records upserted
     #
     def sync_google_ads
       return 0 unless @ads_account.google_customer_id.present?
 
       start_date = ROLLING_WINDOW_DAYS.days.ago.to_date
-      end_date = Date.yesterday
+      end_date = Date.current
 
       performance_data = fetch_google_ads_data(start_date, end_date)
       return 0 if performance_data.empty?

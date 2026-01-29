@@ -50,14 +50,15 @@ Zhong.schedule do
   end
 
   category "Analytics" do
-    # Sync Google Ads performance data with 7-day rolling window
-    # Runs early to capture late-arriving conversions before daily metrics computation
-    every(1.day, "sync google ads performance", at: "04:00") do
+    # Sync Google Ads performance data hourly for near-real-time dashboard
+    # Uses 7-day rolling window to capture late-arriving conversions
+    # Note: Google Ads API has ~2-4 hour reporting lag
+    every(1.hour, "sync google ads performance") do
       GoogleAds::SyncPerformanceWorker.perform_async
     end
 
     # Compute daily analytics metrics from source tables
-    # Runs after Google Ads sync to include fresh ad performance data
+    # Runs daily to aggregate historical data; today's data uses live queries
     every(1.day, "compute daily metrics", at: "05:00") do
       Analytics::ComputeDailyMetricsWorker.perform_async
     end

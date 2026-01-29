@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { Link, usePage } from "@inertiajs/react";
 import {
+  HomeIcon,
   RocketLaunchIcon,
-  MegaphoneIcon,
-  UserPlusIcon,
-  ChartBarIcon,
   Cog8ToothIcon,
   ArrowRightStartOnRectangleIcon,
 } from "@heroicons/react/24/outline";
@@ -18,10 +16,8 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { label: "Projects", href: "/", icon: RocketLaunchIcon },
-  { label: "Campaigns", href: "/campaigns", icon: MegaphoneIcon },
-  { label: "Leads", href: "/leads", icon: UserPlusIcon },
-  { label: "Analytics", href: "/analytics", icon: ChartBarIcon },
+  { label: "Dashboard", href: "/dashboard", icon: HomeIcon },
+  { label: "Projects", href: "/projects/new", icon: RocketLaunchIcon },
 ];
 
 export default function AppSidebar() {
@@ -29,15 +25,22 @@ export default function AppSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(() => url !== "/");
 
   const isActive = (href: string) => {
-    if (href === "/") {
-      return url === "/" || url.startsWith("/projects");
+    if (href === "/dashboard") {
+      return url === "/dashboard";
+    }
+    if (href === "/projects/new") {
+      return url === "/projects/new" || url.startsWith("/projects/");
     }
     return url.startsWith(href);
   };
 
   return (
     <aside
-      style={{ backgroundColor: "#12183d", width: isCollapsed ? 72 : 220, minWidth: isCollapsed ? 72 : 220 }}
+      style={{
+        backgroundColor: "#12183d",
+        width: isCollapsed ? 72 : 220,
+        minWidth: isCollapsed ? 72 : 220,
+      }}
       className="h-screen flex flex-col transition-all duration-300 sticky top-0 shrink-0"
     >
       {/* Collapse button */}

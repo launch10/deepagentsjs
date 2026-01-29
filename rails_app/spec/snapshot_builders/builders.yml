@@ -85,3 +85,8 @@ website_deployed:
   class: WebsiteDeployed
   base_snapshot: deploy_step
   description: "Fully deployed website with 25 leads for testing (pagination: 20 per page)"
+
+campaign_with_metrics:
+  class: CampaignWithMetrics
+  base_snapshot: website_deployed
+  description: "Analytics dashboard with 4 projects, 30 days metrics, ad performance, and insights"

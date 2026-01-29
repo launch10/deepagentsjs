@@ -45,7 +45,7 @@ RSpec.describe Analytics::SyncService do
           .with(ads_account)
           .and_return(mock_performance)
         allow(mock_performance).to receive(:fetch_daily_metrics)
-          .with(start_date: 7.days.ago.to_date, end_date: Date.yesterday)
+          .with(start_date: 7.days.ago.to_date, end_date: Date.current)
           .and_return(performance_data)
       end
 
