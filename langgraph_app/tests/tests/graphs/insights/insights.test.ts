@@ -306,12 +306,13 @@ describe("Insights Generation", () => {
         await DatabaseSnapshotter.restoreSnapshot("analytics/healthy_account");
       }, 30000);
 
-      it("generates exactly 3 insights from healthy metrics", async () => {
+      // Since we're not passing metrics, the graph will fetch them from Rails
+      // This test verifies the graph can handle the data correctly
+      it("fetches metrics from rails and generates insights", async () => {
         const result = await testGraph<InsightsGraphState>()
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
-            metrics: HEALTHY_ACCOUNT_METRICS,
           })
           .execute();
 

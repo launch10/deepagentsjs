@@ -24,67 +24,53 @@ RSpec.describe "Dashboard Inertia Page", type: :request, inertia: true do
       expect(inertia.component).to eq("Dashboard")
     end
 
-    it "includes performance data in props" do
+    it "includes all_performance data pre-fetched for all date ranges" do
       get dashboard_path
 
-      expect(inertia.props[:performance]).to have_key(:leads)
-      expect(inertia.props[:performance]).to have_key(:page_views)
-      expect(inertia.props[:performance]).to have_key(:unique_visitors)
-      expect(inertia.props[:performance]).to have_key(:ctr)
-      expect(inertia.props[:performance]).to have_key(:cpl)
+      expect(inertia.props[:all_performance]).to be_a(Hash)
+      expect(inertia.props[:all_performance].keys).to contain_exactly(7, 30, 90)
+
+      # Check structure for each date range
+      [7, 30, 90].each do |days|
+        performance = inertia.props[:all_performance][days]
+        expect(performance).to have_key(:leads)
+        expect(performance).to have_key(:page_views)
+        expect(performance).to have_key(:unique_visitors)
+        expect(performance).to have_key(:ctr)
+        expect(performance).to have_key(:cpl)
+      end
     end
 
-    it "includes projects summary in props" do
+    it "includes all_projects data pre-fetched for all date ranges" do
       project # ensure project is created
       get dashboard_path
 
-      expect(inertia.props[:projects]).to be_an(Array)
-    end
+      expect(inertia.props[:all_projects]).to be_a(Hash)
+      expect(inertia.props[:all_projects].keys).to contain_exactly(7, 30, 90)
 
-    context "date range filtering" do
-      it "defaults to 30 days" do
-        get dashboard_path
-
-        expect(inertia.props[:date_range]).to eq("Last 30 Days")
-        expect(inertia.props[:days]).to eq(30)
-      end
-
-      it "accepts days parameter" do
-        get dashboard_path, params: { days: 7 }
-
-        expect(inertia.props[:date_range]).to eq("Last 7 Days")
-        expect(inertia.props[:days]).to eq(7)
-      end
-
-      it "rejects invalid days parameter and defaults to 30" do
-        get dashboard_path, params: { days: 45 }
-
-        expect(inertia.props[:days]).to eq(30)
-      end
-
-      it "includes date_range_options" do
-        get dashboard_path
-
-        expect(inertia.props[:date_range_options]).to include(
-          { label: "Last 7 Days", days: 7 },
-          { label: "Last 30 Days", days: 30 },
-          { label: "Last 90 Days", days: 90 }
-        )
+      # Each date range should have an array of projects
+      [7, 30, 90].each do |days|
+        expect(inertia.props[:all_projects][days]).to be_an(Array)
       end
     end
 
-    context "status filtering" do
-      it "defaults to 'all'" do
-        get dashboard_path
+    it "includes status_counts" do
+      get dashboard_path
 
-        expect(inertia.props[:status_filter]).to eq("all")
-      end
+      expect(inertia.props[:status_counts]).to have_key(:all)
+      expect(inertia.props[:status_counts]).to have_key(:live)
+      expect(inertia.props[:status_counts]).to have_key(:paused)
+      expect(inertia.props[:status_counts]).to have_key(:draft)
+    end
 
-      it "accepts status parameter" do
-        get dashboard_path, params: { status: "live" }
+    it "includes date_range_options" do
+      get dashboard_path
 
-        expect(inertia.props[:status_filter]).to eq("live")
-      end
+      expect(inertia.props[:date_range_options]).to include(
+        { label: "Last 7 Days", days: 7 },
+        { label: "Last 30 Days", days: 30 },
+        { label: "Last 90 Days", days: 90 }
+      )
     end
 
     context "insights props" do

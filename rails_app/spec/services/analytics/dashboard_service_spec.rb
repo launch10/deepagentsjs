@@ -10,11 +10,14 @@ RSpec.describe Analytics::DashboardService do
   subject { described_class.new(account, days: 30) }
 
   around do |example|
-    # Use memory store for cache tests
+    # Use memory store for cache tests and ensure caching is enabled
     original_store = Rails.cache
+    original_cache_mode = ENV["CACHE_MODE"]
     Rails.cache = ActiveSupport::Cache::MemoryStore.new
+    ENV["CACHE_MODE"] = "true"
     example.run
     Rails.cache = original_store
+    ENV["CACHE_MODE"] = original_cache_mode
   end
 
   describe "#performance_overview" do
