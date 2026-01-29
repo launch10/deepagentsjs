@@ -7,9 +7,10 @@ import { z } from "zod";
 
 /**
  * Wrapper schema for structured output - Anthropic requires object at root level
+ * Uses intent schema so LLM outputs action_type + project_index, not full URLs
  */
-const insightsOutputSchema = z.object({
-  insights: Insights.insightsArraySchema,
+const insightsIntentOutputSchema = z.object({
+  insights: Insights.insightIntentsArraySchema,
 });
 
 /**
@@ -120,14 +121,33 @@ When multiple insights compete, rank by:
 5. Descriptions: 1-2 sentences with concrete numbers
 6. End with actionable hope, not doom - motivate action
 
-## ACTIONS AVAILABLE (use project UUID in URLs)
+## AVAILABLE ACTIONS
 
-- Review ad copy: /projects/[uuid]/campaigns/content
-- Review landing page: /projects/[uuid]/website
-- Adjust targeting: /projects/[uuid]/campaigns/targeting
-- Adjust budget: /projects/[uuid]/campaigns/budget
-- View project: /projects/[uuid]
-- View analytics: /projects/[uuid]/analytics
+| action_type | When to Use |
+|-------------|-------------|
+| review_ad_copy | CTR low, ads not resonating, ad fatigue |
+| review_keywords | Targeting off, impressions low, wrong audience |
+| adjust_budget | ROAS high (scale up) or wasteful spend (scale down) |
+| pause_campaign | Spending with no leads, bleeding money |
+| review_landing_page | Good traffic, no conversions |
+| view_leads | Celebrating lead milestones, first leads |
+
+## OUTPUT FORMAT
+
+For each insight, specify:
+- **project_index**: The number of the project (e.g., 1, 2, 3) or null for account-wide
+- **action_type**: One of the action types above
+
+Example - if project [1] has stalled:
+{
+  "title": "Lead Generation Stalled",
+  "description": "Budget Travel Guides hasn't generated leads in 16 days...",
+  "sentiment": "negative",
+  "project_index": 1,
+  "action_type": "review_keywords"
+}
+
+DO NOT generate URLs. Just use the project number from the list and an action_type.
 
 ## SENTIMENT
 
@@ -143,116 +163,103 @@ Remember: Your goal is to help them succeed. Even bad news should be delivered c
 function formatMetricsForPrompt(metrics: Insights.MetricsInput): string {
   const lines: string[] = [];
 
-  lines.push(`## Period: ${metrics.period || "Last 30 Days"}`);
-  lines.push("");
+  const add = (line: string) => lines.push(line);
+  const addMetric = (label: string, value: unknown, suffix = "", condition = true) => {
+    if (condition && value != null) {
+      add(`- ${label}: ${value}${suffix}`);
+    }
+  };
+  const formatTrend = (trend?: { direction: string; percent: number } | null) =>
+    trend ? `${trend.direction} ${trend.percent}%` : null;
 
-  // Totals
-  lines.push("## Account Totals");
-  lines.push(`- Leads: ${metrics.totals.leads}`);
-  lines.push(`- Page Views: ${metrics.totals.page_views}`);
-  if (metrics.totals.ctr_available && metrics.totals.ctr !== null) {
-    lines.push(`- CTR: ${metrics.totals.ctr}%`);
-  }
-  if (metrics.totals.cpl_available && metrics.totals.cpl !== null) {
-    lines.push(`- Cost Per Lead: $${metrics.totals.cpl.toFixed(2)}`);
-  }
-  if (metrics.totals.roas_available && metrics.totals.roas !== null) {
-    lines.push(`- ROAS: ${metrics.totals.roas}x`);
-  }
-  if (
-    metrics.totals.total_spend_dollars !== null &&
-    metrics.totals.total_spend_dollars !== undefined
-  ) {
-    lines.push(`- Total Spend: $${metrics.totals.total_spend_dollars.toFixed(2)}`);
-  }
-  lines.push("");
+  add(`## Period: ${metrics.period || "Last 30 Days"}`);
+  add("");
 
-  // Trends
-  lines.push("## Trends");
-  if (metrics.trends.leads_trend) {
-    lines.push(
-      `- Leads: ${metrics.trends.leads_trend.direction} ${metrics.trends.leads_trend.percent}%`
-    );
-  }
-  if (metrics.trends.page_views_trend) {
-    lines.push(
-      `- Page Views: ${metrics.trends.page_views_trend.direction} ${metrics.trends.page_views_trend.percent}%`
-    );
-  }
-  if (metrics.trends.ctr_trend) {
-    lines.push(`- CTR: ${metrics.trends.ctr_trend.direction} ${metrics.trends.ctr_trend.percent}%`);
-  }
-  if (metrics.trends.cpl_trend) {
-    // For CPL, down is good!
-    const cplDirection = metrics.trends.cpl_trend.direction;
-    const cplNote =
-      cplDirection === "down" ? " (improving)" : cplDirection === "up" ? " (worsening)" : "";
-    lines.push(`- CPL: ${cplDirection} ${metrics.trends.cpl_trend.percent}%${cplNote}`);
-  }
-  lines.push("");
+  add("## Account Totals");
+  const t = metrics.totals;
+  addMetric("Leads", t.leads);
+  addMetric("Page Views", t.page_views);
+  addMetric("CTR", t.ctr, "%", t.ctr_available && t.ctr !== null);
+  addMetric("Cost Per Lead", t.cpl != null ? `$${t.cpl.toFixed(2)}` : null, "", t.cpl_available);
+  addMetric("ROAS", t.roas, "x", t.roas_available && t.roas !== null);
+  addMetric(
+    "Total Spend",
+    t.total_spend_dollars != null ? `$${t.total_spend_dollars.toFixed(2)}` : null
+  );
+  add("");
 
-  // Projects
+  add("## Trends");
+  const tr = metrics.trends;
+  addMetric("Leads", formatTrend(tr.leads_trend));
+  addMetric("Page Views", formatTrend(tr.page_views_trend));
+  addMetric("CTR", formatTrend(tr.ctr_trend));
+  if (tr.cpl_trend) {
+    const note =
+      tr.cpl_trend.direction === "down"
+        ? " (improving)"
+        : tr.cpl_trend.direction === "up"
+          ? " (worsening)"
+          : "";
+    add(`- CPL: ${tr.cpl_trend.direction} ${tr.cpl_trend.percent}%${note}`);
+  }
+  add("");
+
   if (metrics.projects.length > 0) {
-    lines.push("## Projects");
-    for (const project of metrics.projects) {
-      lines.push(`### ${project.name} (UUID: ${project.uuid})`);
-      lines.push(`- Leads: ${project.total_leads}`);
-      lines.push(`- Page Views: ${project.total_page_views}`);
-      if (project.ctr !== null) {
-        lines.push(`- CTR: ${project.ctr}%`);
+    add("## Projects");
+    metrics.projects.forEach((p, index) => {
+      add(`[${index + 1}] ${p.name}`);
+      addMetric("Leads", p.total_leads);
+      addMetric("Page Views", p.total_page_views);
+      addMetric("CTR", p.ctr, "%");
+      addMetric("CPL", p.cpl != null ? `$${p.cpl.toFixed(2)}` : null);
+      addMetric("ROAS", p.roas, "x");
+      addMetric("Spend", p.spend_dollars != null ? `$${p.spend_dollars.toFixed(2)}` : null);
+      addMetric("Days Since Last Lead", p.days_since_last_lead);
+      if (p.days_since_last_lead != null && p.days_since_last_lead >= 7) {
+        add(`  ⚠️ STALLED - No leads in ${p.days_since_last_lead} days!`);
       }
-      if (project.cpl !== null) {
-        lines.push(`- CPL: $${project.cpl.toFixed(2)}`);
-      }
-      if (project.roas !== null) {
-        lines.push(`- ROAS: ${project.roas}x`);
-      }
-      if (project.spend_dollars !== null && project.spend_dollars !== undefined) {
-        lines.push(`- Spend: $${project.spend_dollars.toFixed(2)}`);
-      }
-      if (project.days_since_last_lead !== null && project.days_since_last_lead !== undefined) {
-        lines.push(`- Days Since Last Lead: ${project.days_since_last_lead}`);
-        if (project.days_since_last_lead >= 7) {
-          lines.push(`  ⚠️ STALLED - No leads in ${project.days_since_last_lead} days!`);
-        }
-      }
-      lines.push("");
-    }
+      add("");
+    });
   }
 
-  // Flags
   if (metrics.flags) {
-    lines.push("## Flags");
-    if (metrics.flags.has_stalled_project) {
-      lines.push("- ⚠️ Has stalled project(s)");
-    }
-    if (metrics.flags.has_high_performer) {
-      lines.push("- ✅ Has high performer(s)");
-    }
-    if (metrics.flags.has_new_first_lead) {
-      lines.push("- 🎉 Has new first lead!");
-    }
+    add("## Flags");
+    if (metrics.flags.has_stalled_project) add("- ⚠️ Has stalled project(s)");
+    if (metrics.flags.has_high_performer) add("- ✅ Has high performer(s)");
+    if (metrics.flags.has_new_first_lead) add("- 🎉 Has new first lead!");
   }
 
   return lines.join("\n");
 }
 
 /**
- * Validates that the insights array meets our requirements:
+ * Validates that the insight intents meet our requirements:
  * - Exactly 3 insights
  * - At least 1 positive when there's something positive to say
+ * - Valid project indices
  */
-function validateInsights(
-  insights: Insights.Insight[],
+function validateInsightIntents(
+  intents: Insights.InsightIntent[],
   metrics: Insights.MetricsInput
-): Insights.Insight[] {
+): void {
   // Ensure we have exactly 3
-  if (insights.length !== 3) {
-    throw new Error(`Expected exactly 3 insights, got ${insights.length}`);
+  if (intents.length !== 3) {
+    throw new Error(`Expected exactly 3 insights, got ${intents.length}`);
+  }
+
+  // Validate project indices
+  for (const intent of intents) {
+    if (intent.project_index !== null) {
+      if (intent.project_index < 1 || intent.project_index > metrics.projects.length) {
+        throw new Error(
+          `Invalid project_index ${intent.project_index}. Valid range: 1-${metrics.projects.length}`
+        );
+      }
+    }
   }
 
   // Check for at least one positive when warranted
-  const hasPositive = insights.some((i) => i.sentiment === "positive");
+  const hasPositive = intents.some((i) => i.sentiment === "positive");
   const hasGoodMetrics =
     metrics.totals.leads > 0 ||
     metrics.trends.leads_trend?.direction === "up" ||
@@ -263,8 +270,16 @@ function validateInsights(
     // The LLM failed to include a positive - we'll log this but not fail
     console.warn("Insights validation: Expected at least one positive insight given the metrics");
   }
+}
 
-  return insights;
+/**
+ * Resolves insight intents to full insights with URLs
+ */
+function resolveInsights(
+  intents: Insights.InsightIntent[],
+  projects: Array<{ uuid: string; name: string }>
+): Insights.Insight[] {
+  return intents.map((intent) => Insights.resolveInsightIntent(intent, projects));
 }
 
 /**
@@ -292,13 +307,14 @@ export const generateInsightsNode = NodeMiddleware.use(
 
       // Get LLM with structured output
       // Note: Anthropic requires an object at the root level, so we wrap the array
+      // LLM outputs intent (action_type + project_index), we resolve to full URLs
       const llm = await getLLM({ skill: "writing", speed: "fast" });
-      const structuredLlm = llm.withStructuredOutput(insightsOutputSchema, {
+      const structuredLlm = llm.withStructuredOutput(insightsIntentOutputSchema, {
         name: "insights",
       });
 
-      // Generate insights
-      const userPrompt = `Here are the metrics to analyze:\n\n${metricsText}\n\nGenerate exactly 3 actionable insights.`;
+      // Generate insight intents
+      const userPrompt = `Here are the metrics to analyze:\n\n${metricsText}\n\nGenerate exactly 3 actionable insights. Use project numbers [1], [2], etc. and action_type values from the available actions.`;
 
       const result = await structuredLlm.invoke(
         [
@@ -308,9 +324,12 @@ export const generateInsightsNode = NodeMiddleware.use(
         config
       );
 
-      // Extract insights from wrapper and validate
-      const insightsResult = result as z.infer<typeof insightsOutputSchema>;
-      const insights = validateInsights(insightsResult.insights, validatedInput);
+      // Extract intents from wrapper and validate
+      const intentsResult = result as z.infer<typeof insightsIntentOutputSchema>;
+      validateInsightIntents(intentsResult.insights, validatedInput);
+
+      // Resolve intents to full insights with URLs
+      const insights = resolveInsights(intentsResult.insights, validatedInput.projects);
 
       return {
         insights,

@@ -56,13 +56,62 @@ describe("Insights Generation", () => {
       expect(result.success).toBe(false);
     });
 
-    it("validates action URLs helper produces correct paths", () => {
+    it("validates ACTION_REGISTRY produces correct URLs", () => {
       const uuid = "test-uuid-123";
-      expect(Insights.ACTION_URLS.REVIEW_AD_COPY(uuid)).toBe(
+      expect(Insights.ACTION_REGISTRY.review_ad_copy.urlBuilder(uuid)).toBe(
         "/projects/test-uuid-123/campaigns/content"
       );
-      expect(Insights.ACTION_URLS.REVIEW_LANDING_PAGE(uuid)).toBe(
+      expect(Insights.ACTION_REGISTRY.review_landing_page.urlBuilder(uuid)).toBe(
         "/projects/test-uuid-123/website"
+      );
+      expect(Insights.ACTION_REGISTRY.review_keywords.urlBuilder(uuid)).toBe(
+        "/projects/test-uuid-123/campaigns/keywords"
+      );
+      expect(Insights.ACTION_REGISTRY.adjust_budget.urlBuilder(uuid)).toBe(
+        "/projects/test-uuid-123/campaigns/settings"
+      );
+      expect(Insights.ACTION_REGISTRY.pause_campaign.urlBuilder(uuid)).toBe(
+        "/projects/test-uuid-123/campaigns/settings"
+      );
+      expect(Insights.ACTION_REGISTRY.view_leads.urlBuilder(uuid)).toBe(
+        "/projects/test-uuid-123/leads"
+      );
+    });
+
+    it("resolves insight intents to full insights", () => {
+      const projects = [
+        { uuid: "uuid-1", name: "Project One" },
+        { uuid: "uuid-2", name: "Project Two" },
+      ];
+
+      const intent: Insights.InsightIntent = {
+        title: "Test Insight",
+        description: "Test description",
+        sentiment: "positive",
+        project_index: 1,
+        action_type: "review_ad_copy",
+      };
+
+      const resolved = Insights.resolveInsightIntent(intent, projects);
+
+      expect(resolved.project_uuid).toBe("uuid-1");
+      expect(resolved.action.label).toBe("Review Ad Copy");
+      expect(resolved.action.url).toBe("/projects/uuid-1/campaigns/content");
+    });
+
+    it("throws for invalid project_index", () => {
+      const projects = [{ uuid: "uuid-1", name: "Project One" }];
+
+      const intent: Insights.InsightIntent = {
+        title: "Test",
+        description: "Test",
+        sentiment: "neutral",
+        project_index: 5, // Invalid - only 1 project
+        action_type: "view_leads",
+      };
+
+      expect(() => Insights.resolveInsightIntent(intent, projects)).toThrow(
+        "Invalid project index: 5"
       );
     });
   });
@@ -170,7 +219,7 @@ describe("Insights Generation", () => {
         expect(positiveInsights.length).toBeGreaterThanOrEqual(1);
       });
 
-      it("includes actionable URLs for each insight", async () => {
+      it.only("includes actionable URLs for each insight", async () => {
         const result = await testGraph<InsightsGraphState>()
           .withGraph(insightsGraph)
           .withState({

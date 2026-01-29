@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { usePage } from "@inertiajs/react";
+import { usePage, Link } from "@inertiajs/react";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import type { InertiaProps } from "@shared";
 import {
@@ -487,7 +487,10 @@ function ProjectCard({ project }: { project: ProjectSummary }) {
   const badge = statusBadge[project.status];
 
   return (
-    <div className="rounded-lg border border-neutral-300 bg-white p-4">
+    <Link
+      href={`/projects/${project.uuid}/website`}
+      className="block rounded-lg border border-neutral-300 bg-white p-4 hover:border-neutral-400 hover:shadow-sm transition-all cursor-pointer"
+    >
       <div className="flex items-center gap-4">
         {/* Thumbnail */}
         <div className="w-[140px] h-[90px] flex-shrink-0 rounded-md bg-neutral-100 overflow-hidden">
@@ -540,6 +543,7 @@ function ProjectCard({ project }: { project: ProjectSummary }) {
               href={project.url}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
               className="text-sm text-base-500 hover:text-base-700 hover:underline inline-flex items-center gap-1"
             >
               {project.url.replace("https://", "")}
@@ -587,7 +591,7 @@ function ProjectCard({ project }: { project: ProjectSummary }) {
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 

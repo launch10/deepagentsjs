@@ -13,6 +13,7 @@ module Analytics
     #
     def initialize(dashboard_service)
       @dashboard_service = dashboard_service
+      preload_data
     end
 
     # Generate a summary of all metrics for AI insights.
@@ -132,45 +133,69 @@ module Analytics
       end
     end
 
+    # Batch-load all data upfront to avoid N+1 queries
+    def preload_data
+      @projects_by_uuid = dashboard_service.account.projects
+        .includes(website: :website_leads)
+        .index_by(&:uuid)
+
+      preload_last_lead_dates
+      preload_project_spends
+    end
+
+    # Single query to get the last lead date for all projects
+    def preload_last_lead_dates
+      website_ids = @projects_by_uuid.values.filter_map { |p| p.website&.id }
+      return @last_lead_by_website_id = {} if website_ids.empty?
+
+      # Get the max created_at per website_id in a single query
+      @last_lead_by_website_id = WebsiteLead
+        .where(website_id: website_ids)
+        .group(:website_id)
+        .maximum(:created_at)
+    end
+
+    # Single query to get spend per project
+    def preload_project_spends
+      start_date = dashboard_service.days.days.ago.to_date
+      project_ids = @projects_by_uuid.values.map(&:id)
+
+      spends = AnalyticsDailyMetric
+        .where(project_id: project_ids)
+        .where(date: start_date..Date.current)
+        .group(:project_id)
+        .sum(:cost_micros)
+
+      @spend_by_project_id = spends.transform_values do |cost_micros|
+        cost_micros.zero? ? nil : (cost_micros / 1_000_000.0).round(2)
+      end
+
+      # Also calculate total spend in same query result
+      total_micros = spends.values.sum
+      @total_spend = total_micros.zero? ? nil : (total_micros / 1_000_000.0).round(2)
+    end
+
     def find_project(uuid)
-      @projects_cache ||= {}
-      @projects_cache[uuid] ||= dashboard_service.account.projects.find_by(uuid: uuid)
+      @projects_by_uuid[uuid]
     end
 
     def calculate_days_since_last_lead(project)
       return nil unless project&.website
 
-      last_lead = project.website.website_leads.order(created_at: :desc).first
-      return nil unless last_lead
+      last_lead_at = @last_lead_by_website_id[project.website.id]
+      return nil unless last_lead_at
 
-      (Date.current - last_lead.created_at.to_date).to_i
+      (Date.current - last_lead_at.to_date).to_i
     end
 
     def calculate_project_spend(project)
       return nil unless project
 
-      # Sum cost_micros from analytics_daily_metrics and convert to dollars
-      start_date = dashboard_service.days.days.ago.to_date
-      cost_micros = AnalyticsDailyMetric
-        .where(project: project)
-        .where(date: start_date..Date.current)
-        .sum(:cost_micros)
-
-      return nil if cost_micros.zero?
-
-      (cost_micros / 1_000_000.0).round(2)
+      @spend_by_project_id[project.id]
     end
 
     def calculate_total_spend
-      start_date = dashboard_service.days.days.ago.to_date
-      cost_micros = AnalyticsDailyMetric
-        .for_account(dashboard_service.account)
-        .where(date: start_date..Date.current)
-        .sum(:cost_micros)
-
-      return nil if cost_micros.zero?
-
-      (cost_micros / 1_000_000.0).round(2)
+      @total_spend
     end
   end
 end

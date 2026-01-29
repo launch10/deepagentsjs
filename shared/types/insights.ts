@@ -105,6 +105,58 @@ export const sentimentSchema = z.enum(["positive", "negative", "neutral"]);
 export type Sentiment = z.infer<typeof sentimentSchema>;
 
 /**
+ * Action types that map to specific destinations in the app.
+ * Each type has a deterministic URL builder and label.
+ */
+export const insightActionTypeSchema = z.enum([
+  "review_ad_copy",
+  "review_keywords",
+  "adjust_budget",
+  "pause_campaign",
+  "review_landing_page",
+  "view_leads",
+]);
+
+export type InsightActionType = z.infer<typeof insightActionTypeSchema>;
+
+/**
+ * Registry of action configurations.
+ * Maps action types to labels and URL builders.
+ */
+export const ACTION_REGISTRY: Record<
+  InsightActionType,
+  {
+    label: string;
+    urlBuilder: (uuid: string) => string;
+  }
+> = {
+  review_ad_copy: {
+    label: "Review Ad Copy",
+    urlBuilder: (uuid) => `/projects/${uuid}/campaigns/content`,
+  },
+  review_keywords: {
+    label: "Review Keywords",
+    urlBuilder: (uuid) => `/projects/${uuid}/campaigns/keywords`,
+  },
+  adjust_budget: {
+    label: "Adjust Budget",
+    urlBuilder: (uuid) => `/projects/${uuid}/campaigns/settings`,
+  },
+  pause_campaign: {
+    label: "Pause Campaign",
+    urlBuilder: (uuid) => `/projects/${uuid}/campaigns/settings`,
+  },
+  review_landing_page: {
+    label: "Review Landing Page",
+    urlBuilder: (uuid) => `/projects/${uuid}/website`,
+  },
+  view_leads: {
+    label: "View Leads",
+    urlBuilder: (uuid) => `/projects/${uuid}/leads`,
+  },
+};
+
+/**
  * Action associated with an insight
  */
 export const insightActionSchema = z.object({
@@ -113,6 +165,30 @@ export const insightActionSchema = z.object({
 });
 
 export type InsightAction = z.infer<typeof insightActionSchema>;
+
+/**
+ * LLM output schema for insight generation (intent-based).
+ * Uses project_index instead of UUID for reliable identification.
+ */
+export const insightIntentSchema = z.object({
+  title: z.string().max(50).describe("Short title (5 words max)"),
+  description: z.string().describe("2-3 sentence explanation with specific numbers"),
+  sentiment: sentimentSchema,
+  project_index: z
+    .number()
+    .int()
+    .positive()
+    .nullable()
+    .describe("1-indexed project number from the list, or null for account-wide"),
+  action_type: insightActionTypeSchema.describe("The type of action to recommend"),
+});
+
+export type InsightIntent = z.infer<typeof insightIntentSchema>;
+
+/**
+ * Array of exactly 3 insight intents (LLM output)
+ */
+export const insightIntentsArraySchema = z.array(insightIntentSchema).length(3);
 
 /**
  * A single generated insight
@@ -149,16 +225,67 @@ export type InsightsOutput = z.infer<typeof insightsOutputSchema>;
 // ============================================================================
 
 /**
- * Available action URLs for insights
+ * Resolves a project index (1-indexed) to a UUID.
+ *
+ * @param index - 1-indexed project number, or null for account-wide
+ * @param projects - Array of projects with uuid and name
+ * @returns The project UUID, or null if index is null
+ * @throws Error if index is out of range
  */
-export const ACTION_URLS = {
-  REVIEW_AD_COPY: (uuid: string) => `/projects/${uuid}/campaigns/content`,
-  REVIEW_LANDING_PAGE: (uuid: string) => `/projects/${uuid}/website`,
-  ADJUST_TARGETING: (uuid: string) => `/projects/${uuid}/campaigns/targeting`,
-  ADJUST_BUDGET: (uuid: string) => `/projects/${uuid}/campaigns/budget`,
-  VIEW_PROJECT: (uuid: string) => `/projects/${uuid}`,
-  VIEW_ANALYTICS: (uuid: string) => `/projects/${uuid}/analytics`,
-} as const;
+export function resolveProjectIndex(
+  index: number | null,
+  projects: Array<{ uuid: string; name: string }>
+): string | null {
+  if (index === null) return null;
+  const project = projects[index - 1]; // Convert 1-indexed to 0-indexed
+  if (!project) {
+    throw new Error(`Invalid project index: ${index}. Valid range: 1-${projects.length}`);
+  }
+  return project.uuid;
+}
+
+/**
+ * Resolves an action type to a full action with label and URL.
+ *
+ * @param actionType - The type of action
+ * @param projectUuid - The project UUID to build the URL with
+ * @returns InsightAction with label and URL
+ * @throws Error if projectUuid is null (all current actions require a project)
+ */
+export function resolveInsightAction(
+  actionType: InsightActionType,
+  projectUuid: string | null
+): InsightAction {
+  const config = ACTION_REGISTRY[actionType];
+  if (!projectUuid) {
+    throw new Error(`Action ${actionType} requires a project UUID`);
+  }
+  return {
+    label: config.label,
+    url: config.urlBuilder(projectUuid),
+  };
+}
+
+/**
+ * Resolves an InsightIntent (LLM output) to a full Insight.
+ *
+ * @param intent - The intent from LLM output
+ * @param projects - Array of projects with uuid and name
+ * @returns A fully resolved Insight with action URL
+ */
+export function resolveInsightIntent(
+  intent: InsightIntent,
+  projects: Array<{ uuid: string; name: string }>
+): Insight {
+  const projectUuid = resolveProjectIndex(intent.project_index, projects);
+  return {
+    title: intent.title,
+    description: intent.description,
+    sentiment: intent.sentiment,
+    project_uuid: projectUuid,
+    action: resolveInsightAction(intent.action_type, projectUuid),
+  };
+}
 
 /**
  * Creates a validated insight object

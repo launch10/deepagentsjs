@@ -7892,6 +7892,13 @@ CREATE INDEX index_ahoy_visits_on_website_id ON public.ahoy_visits USING btree (
 
 
 --
+-- Name: index_ahoy_visits_on_website_id_and_started_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ahoy_visits_on_website_id_and_started_at ON public.ahoy_visits USING btree (website_id, started_at);
+
+
+--
 -- Name: index_api_tokens_on_token; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11237,6 +11244,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260129182538'),
 ('20260129120000'),
 ('20260128183648'),
 ('20260128103702'),

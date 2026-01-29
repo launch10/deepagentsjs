@@ -35,6 +35,12 @@ module GoogleAds
             end
           end
         rescue Google::Ads::GoogleAds::Errors::GoogleAdsError => e
+          # Re-raise rate limit errors so Sidekiq can retry with backoff
+          if rate_limit_error?(e)
+            Rails.logger.warn("[CampaignPerformance] Rate limited, will retry: #{e.message}")
+            raise
+          end
+
           Rails.logger.error("[CampaignPerformance] Failed to fetch metrics: #{e.message}")
           Rollbar.error(e, ads_account_id: ads_account.id)
           return []
@@ -82,6 +88,15 @@ module GoogleAds
 
       def customer_id
         ads_account.google_customer_id&.gsub("-", "")
+      end
+
+      def rate_limit_error?(error)
+        # Google Ads API rate limit error codes
+        # https://developers.google.com/google-ads/api/docs/best-practices/quotas
+        rate_limit_codes = %w[RESOURCE_EXHAUSTED RATE_EXCEEDED QUOTA_EXCEEDED]
+        error_message = error.message.to_s.upcase
+
+        rate_limit_codes.any? { |code| error_message.include?(code) }
       end
     end
   end
