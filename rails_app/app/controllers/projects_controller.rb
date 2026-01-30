@@ -3,7 +3,7 @@ class ProjectsController < SubscribedController
 
   def index
     projects = current_account.projects
-      .includes({ website: :domains }, :deploys, :campaigns)
+      .includes(website: :domains)
       .order(updated_at: :desc)
     render inertia: "Projects",
       props: {
