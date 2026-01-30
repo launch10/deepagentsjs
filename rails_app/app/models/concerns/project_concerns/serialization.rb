@@ -16,6 +16,8 @@ module ProjectConcerns
       }
     end
 
+    # TODO: Add a `status` column to the projects table so this can be read
+    # directly instead of derived from deploys/campaigns associations.
     def derived_status
       if deploys.loaded? ? deploys.any?(&:is_live) : deploys.live.exists?
         "live"
