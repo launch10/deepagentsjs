@@ -4,6 +4,7 @@
 #
 #  id                 :bigint           not null, primary key
 #  current_step       :string
+#  deleted_at         :datetime
 #  is_live            :boolean          default(FALSE)
 #  stacktrace         :text
 #  status             :string           default("pending"), not null
@@ -17,6 +18,7 @@
 # Indexes
 #
 #  index_deploys_on_campaign_deploy_id      (campaign_deploy_id)
+#  index_deploys_on_deleted_at              (deleted_at)
 #  index_deploys_on_is_live                 (is_live)
 #  index_deploys_on_project_id              (project_id)
 #  index_deploys_on_project_id_and_is_live  (project_id,is_live)

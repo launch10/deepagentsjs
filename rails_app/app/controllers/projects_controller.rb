@@ -81,6 +81,12 @@ class ProjectsController < SubscribedController
       layout: "layouts/webcontainer"
   end
 
+  def destroy
+    @project.destroy
+
+    redirect_to projects_path, notice: "Project deleted successfully"
+  end
+
   def performance
     render inertia: "ProjectPerformance", props: {
       project: @project.to_mini_json,

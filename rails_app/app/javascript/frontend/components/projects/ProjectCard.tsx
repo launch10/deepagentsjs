@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "@inertiajs/react";
+import { Link, router } from "@inertiajs/react";
 import {
   PhotoIcon,
   ClockIcon,
@@ -52,6 +52,19 @@ interface ProjectCardProps {
 export function ProjectCard({ project }: ProjectCardProps) {
   const isLive = project.status === "live";
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = () => {
+    setIsDeleting(true);
+    router.delete(`/projects/${project.uuid}`, {
+      onSuccess: () => {
+        setDeleteOpen(false);
+      },
+      onError: () => {
+        setIsDeleting(false);
+      },
+    });
+  };
 
   return (
     <>
@@ -229,17 +242,16 @@ export function ProjectCard({ project }: ProjectCardProps) {
         {/* Footer buttons */}
         <div className="flex items-center justify-end gap-3 mt-4">
           <button
-            onClick={() => {
-              // TODO: Implement delete project (frontend + backend + toast)
-              console.log("Delete project:", project.uuid);
-            }}
-            className="font-sans text-sm font-semibold text-error-500 px-4 py-2 hover:underline"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="font-sans text-sm font-semibold text-error-500 px-4 py-2 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Delete Project
+            {isDeleting ? "Deleting..." : "Delete Project"}
           </button>
           <button
             onClick={() => setDeleteOpen(false)}
-            className="font-sans text-sm font-semibold text-white bg-base-600 rounded-lg px-5 py-2.5 hover:bg-base-500 transition-colors"
+            disabled={isDeleting}
+            className="font-sans text-sm font-semibold text-white bg-base-600 rounded-lg px-5 py-2.5 hover:bg-base-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Keep Project
           </button>

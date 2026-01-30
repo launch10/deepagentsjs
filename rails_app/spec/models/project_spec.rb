@@ -15,7 +15,7 @@
 #
 #  index_projects_on_account_id                 (account_id)
 #  index_projects_on_account_id_and_created_at  (account_id,created_at)
-#  index_projects_on_account_id_and_name        (account_id,name) UNIQUE
+#  index_projects_on_account_id_and_name        (account_id,name) UNIQUE WHERE (deleted_at IS NULL)
 #  index_projects_on_account_id_and_status      (account_id,status)
 #  index_projects_on_account_id_and_updated_at  (account_id,updated_at)
 #  index_projects_on_created_at                 (created_at)

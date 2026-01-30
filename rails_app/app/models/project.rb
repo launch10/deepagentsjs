@@ -15,7 +15,7 @@
 #
 #  index_projects_on_account_id                 (account_id)
 #  index_projects_on_account_id_and_created_at  (account_id,created_at)
-#  index_projects_on_account_id_and_name        (account_id,name) UNIQUE
+#  index_projects_on_account_id_and_name        (account_id,name) UNIQUE WHERE (deleted_at IS NULL)
 #  index_projects_on_account_id_and_status      (account_id,status)
 #  index_projects_on_account_id_and_updated_at  (account_id,updated_at)
 #  index_projects_on_created_at                 (created_at)
@@ -42,19 +42,19 @@ class Project < ApplicationRecord
   before_validation :set_uuid, on: :create
   before_destroy :log_deletion
 
-  has_one :website
+  has_one :website, dependent: :destroy
   has_one :ads_account, through: :account
   has_one :brainstorm, through: :website
   # Leads are now account-scoped via website_leads join table
   # Access via: project.website.leads
   has_many :workflows, class_name: "ProjectWorkflow", dependent: :destroy
   has_one :launch_workflow, -> { where(workflow_type: "launch") }, class_name: "ProjectWorkflow"
-  has_many :chats
+  has_many :chats, dependent: :destroy
   has_many :social_links, dependent: :destroy
   has_many :uploads, through: :website
 
   # Ads relations
-  has_many :campaigns
+  has_many :campaigns, dependent: :destroy
   has_many :ad_groups, through: :campaigns
   has_many :ads, through: :ad_groups
   has_many :ad_schedules, through: :campaigns

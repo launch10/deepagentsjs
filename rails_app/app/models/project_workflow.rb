@@ -4,6 +4,7 @@
 #
 #  id            :bigint           not null, primary key
 #  data          :jsonb
+#  deleted_at    :datetime
 #  status        :string           default("active"), not null
 #  step          :string           not null
 #  substep       :string
@@ -16,6 +17,7 @@
 #
 #  idx_on_project_id_workflow_type_status_a7aa4433b7        (project_id,workflow_type,status)
 #  index_project_workflows_on_created_at                    (created_at)
+#  index_project_workflows_on_deleted_at                    (deleted_at)
 #  index_project_workflows_on_project_id                    (project_id)
 #  index_project_workflows_on_project_id_and_workflow_type  (project_id,workflow_type)
 #  index_project_workflows_on_status                        (status)
@@ -24,6 +26,8 @@
 #  index_project_workflows_on_workflow_type                 (workflow_type)
 #
 class ProjectWorkflow < ApplicationRecord
+  acts_as_paranoid
+
   belongs_to :project
 
   validates :workflow_type, presence: true

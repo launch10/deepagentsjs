@@ -3,6 +3,7 @@
 # Table name: website_leads
 #
 #  id            :bigint           not null, primary key
+#  deleted_at    :datetime
 #  gclid         :string
 #  utm_campaign  :string
 #  utm_content   :string
@@ -18,6 +19,7 @@
 #
 # Indexes
 #
+#  index_website_leads_on_deleted_at                      (deleted_at)
 #  index_website_leads_on_gclid                           (gclid)
 #  index_website_leads_on_lead_id                         (lead_id)
 #  index_website_leads_on_lead_id_and_website_id          (lead_id,website_id) UNIQUE
@@ -28,6 +30,8 @@
 #
 
 class WebsiteLead < ApplicationRecord
+  acts_as_paranoid
+
   belongs_to :lead
   belongs_to :website
   belongs_to :visit, class_name: "Ahoy::Visit", optional: true

@@ -43,7 +43,7 @@ class Account < ApplicationRecord
   has_many :account_invitations, dependent: :destroy
   has_many :ads_account_invitations, through: :ads_account, class_name: "AdsAccountInvitation", dependent: :destroy, source: :invitations
   has_many :account_users, dependent: :destroy
-  has_many :campaigns, dependent: :destroy
+  has_many :campaigns
   has_many :notification_mentions, as: :record, dependent: :destroy, class_name: "Noticed::Event"
   has_many :account_notifications, dependent: :destroy, class_name: "Noticed::Event"
   has_many :users, through: :account_users

@@ -3,6 +3,7 @@
 # Table name: website_deploys
 #
 #  id                 :bigint           not null, primary key
+#  deleted_at         :datetime
 #  environment        :string           default("production"), not null
 #  is_live            :boolean          default(FALSE)
 #  is_preview         :boolean          default(FALSE), not null
@@ -22,6 +23,7 @@
 #
 #  idx_on_website_id_environment_is_preview_bab671a888  (website_id,environment,is_preview)
 #  index_website_deploys_on_created_at                  (created_at)
+#  index_website_deploys_on_deleted_at                  (deleted_at)
 #  index_website_deploys_on_environment                 (environment)
 #  index_website_deploys_on_is_live                     (is_live)
 #  index_website_deploys_on_is_preview                  (is_preview)
@@ -36,6 +38,8 @@
 #
 
 class WebsiteDeploy < ApplicationRecord
+  acts_as_paranoid
+
   include WebsiteDeployConcerns::Buildable
   include WebsiteDeployConcerns::Deployable
 
