@@ -1,15 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { usePage, Link } from "@inertiajs/react";
-import {
-  Bar,
-  BarChart,
-  Line,
-  LineChart,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-} from "recharts";
+import { Bar, BarChart, Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
   ChartContainer,
   ChartTooltip,
@@ -141,13 +132,15 @@ export default function ProjectPerformance() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <SummaryCard
               title="Ad Spend"
-              value={`$${metrics.summary.ad_spend.toFixed(2)}`}
-              subtitle={dateRangeLabel}
+              description="Total cost for date range"
+              value={`$${(metrics.summary.ad_spend ?? 0).toFixed(2)}`}
+              icon="spend"
             />
             <SummaryCard
               title="Leads"
-              value={metrics.summary.leads.toString()}
-              subtitle={dateRangeLabel}
+              description="Form submissions not attributed to ads"
+              value={(metrics.summary.leads ?? 0).toString()}
+              icon="leads"
               link={{
                 href: `/projects/${project.uuid}/leads`,
                 label: "View Leads",
@@ -155,13 +148,15 @@ export default function ProjectPerformance() {
             />
             <SummaryCard
               title="Avg Cost per Lead"
+              description="Spend required to generate a lead"
               value={metrics.summary.cpl != null ? `$${metrics.summary.cpl.toFixed(2)}` : "-"}
-              subtitle={dateRangeLabel}
+              icon="cpl"
             />
             <SummaryCard
               title="Return on Ad Spend"
+              description="Revenue earned from ad spend"
               value={metrics.summary.roas != null ? `${metrics.summary.roas.toFixed(2)}x` : "-"}
-              subtitle={dateRangeLabel}
+              icon="roas"
             />
           </div>
         </section>
@@ -191,31 +186,65 @@ export default function ProjectPerformance() {
 
 function SummaryCard({
   title,
+  description,
   value,
-  subtitle,
+  icon,
   link,
 }: {
   title: string;
+  description: string;
   value: string;
-  subtitle: string;
+  icon: "spend" | "leads" | "cpl" | "roas";
   link?: { href: string; label: string };
 }) {
   return (
-    <div className="rounded-lg border border-neutral-300 bg-white p-4">
-      <h3 className="text-sm font-medium text-base-500 mb-1">{title}</h3>
-      <p className="text-2xl font-semibold text-[#2E3238] mb-1">{value}</p>
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-base-400">{subtitle}</span>
-        {link && (
-          <Link
-            href={link.href}
-            className="text-xs font-medium text-primary-600 hover:text-primary-700 hover:underline"
-          >
-            {link.label} &rarr;
-          </Link>
-        )}
+    <div className="rounded-lg border border-neutral-300 bg-white p-4 relative">
+      {/* Trend icon in top right */}
+      <div className="absolute top-4 right-4">
+        <div className="w-8 h-8 rounded-full bg-secondary-100 flex items-center justify-center">
+          <TrendIcon type={icon} />
+        </div>
       </div>
+
+      <div className="pr-10">
+        <h3 className="text-sm font-semibold text-[#2E3238]">{title}</h3>
+        <p className="text-xs text-base-400 mb-2">{description}</p>
+      </div>
+
+      <p className="text-2xl font-semibold text-[#2E3238] mb-1">{value}</p>
+
+      {link && (
+        <Link
+          href={link.href}
+          className="text-xs font-medium text-base-600 hover:text-base-700 inline-flex items-center gap-1"
+        >
+          {link.label}
+          <span aria-hidden="true">&rarr;</span>
+        </Link>
+      )}
     </div>
+  );
+}
+
+function TrendIcon({ type }: { type: "spend" | "leads" | "cpl" | "roas" }) {
+  // Coral/orange arrow icon matching Figma
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className="text-secondary-500"
+    >
+      <path
+        d="M4 12L12 4M12 4H6M12 4V10"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -291,11 +320,10 @@ function BarChartCard({
 
           {trendDirection !== "flat" && (
             <p
-              className={`text-xs mt-2 ${trendDirection === "up" ? "text-green-600" : "text-red-600"}`}
+              className={`text-xs mt-2 flex items-center gap-1 ${trendDirection === "up" ? "text-green-600" : "text-red-600"}`}
             >
-              {trendDirection === "up" ? "\u2197" : "\u2198"}{" "}
-              {trendDirection === "up" ? "Increased" : "Decreased"} by {trendPercent.toFixed(1)}% vs
-              previous period
+              Trending {trendDirection} by {trendPercent.toFixed(1)}% this week
+              <span aria-hidden="true">{trendDirection === "up" ? "\u2197" : "\u2198"}</span>
             </p>
           )}
         </>
@@ -396,11 +424,10 @@ function LineChartCard({
 
           {trendDirection !== "flat" && (
             <p
-              className={`text-xs mt-2 ${trendDirection === "up" ? "text-green-600" : "text-red-600"}`}
+              className={`text-xs mt-2 flex items-center gap-1 ${trendDirection === "up" ? "text-green-600" : "text-red-600"}`}
             >
-              {trendDirection === "up" ? "\u2197" : "\u2198"}{" "}
-              {trendDirection === "up" ? "Improved" : "Declined"} by {trendPercent.toFixed(1)}% vs
-              previous period
+              Trending {trendDirection} by {trendPercent.toFixed(1)}% this week
+              <span aria-hidden="true">{trendDirection === "up" ? "\u2197" : "\u2198"}</span>
             </p>
           )}
         </>

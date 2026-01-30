@@ -86,7 +86,7 @@ class ProjectsController < SubscribedController
 
   def all_metrics_for_date_ranges
     [7, 30, 90, 0].each_with_object({}) do |days, hash|
-      effective_days = days == 0 ? days_since_first_data : days
+      effective_days = (days == 0) ? days_since_first_data : days
       service = Analytics::ProjectPerformanceService.new(@project, days: effective_days)
       hash[days.to_s] = service.metrics
     end

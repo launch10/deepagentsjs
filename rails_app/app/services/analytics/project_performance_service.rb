@@ -48,14 +48,14 @@ module Analytics
       leads = totals&.total_leads || 0
       conversion_value_dollars = (totals&.total_conversion_value_cents || 0) / 100.0
 
-      roas = cost_dollars > 0 ? (conversion_value_dollars / cost_dollars).round(2) : nil
-      cpl = leads > 0 ? (cost_dollars / leads).round(2) : nil
+      roas = (cost_dollars > 0) ? (conversion_value_dollars / cost_dollars).round(2) : nil
+      cpl = (leads > 0) ? (cost_dollars / leads).round(2) : nil
 
       {
-        ad_spend: cost_dollars.round(2),
-        leads: leads,
-        cpl: cpl,
-        roas: roas
+        ad_spend: cost_dollars.round(2).to_f,
+        leads: leads.to_i,
+        cpl: cpl&.to_f,
+        roas: roas&.to_f
       }
     end
 
@@ -122,7 +122,11 @@ module Analytics
         current: current,
         previous: previous_half,
         trend_percent: trend_percent.abs,
-        trend_direction: trend_percent > 0 ? "up" : (trend_percent < 0 ? "down" : "flat")
+        trend_direction: if trend_percent > 0
+                           "up"
+                         else
+                           ((trend_percent < 0) ? "down" : "flat")
+                         end
       }
     end
 
@@ -165,7 +169,11 @@ module Analytics
         current: current_ctr,
         previous: previous_ctr,
         trend_percent: trend_percent.abs,
-        trend_direction: trend_percent > 0 ? "up" : (trend_percent < 0 ? "down" : "flat")
+        trend_direction: if trend_percent > 0
+                           "up"
+                         else
+                           ((trend_percent < 0) ? "down" : "flat")
+                         end
       }
     end
   end
