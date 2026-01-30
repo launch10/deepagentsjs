@@ -29,6 +29,7 @@ module Analytics
           leads_count: count_leads,
           unique_visitors_count: count_unique_visitors,
           page_views_count: count_page_views,
+          conversion_value_cents: aggregate_conversion_value,
           **aggregate_ads_metrics,
           created_at: Time.current,
           updated_at: Time.current
@@ -66,6 +67,23 @@ module Analytics
         .where(name: "page_view")
         .where(time: @date.all_day)
         .count
+    end
+
+    def aggregate_conversion_value
+      return 0 unless @project.website
+
+      # Get conversion events for this website's visits on this date
+      conversion_events = Ahoy::Event
+        .joins(:visit)
+        .where(ahoy_visits: { website_id: @project.website.id })
+        .where(name: "conversion")
+        .where(time: @date.all_day)
+
+      return 0 if conversion_events.empty?
+
+      # Value is stored in dollars in properties['value'], convert to cents
+      total_dollars = conversion_events.sum { |e| e.properties["value"].to_f }
+      (total_dollars * 100).to_i
     end
 
     def aggregate_ads_metrics
