@@ -1609,6 +1609,502 @@ paths:
           description: cannot access website owned by another account
         '401':
           description: unauthorized - missing token
+  "/api/v1/dashboard_insights":
+    get:
+      summary: Retrieves current dashboard insights
+      tags:
+      - Dashboard Insights
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: returns stale insights with fresh=false
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    oneOf:
+                    - type: integer
+                      description: Unique identifier
+                    - type: 'null'
+                    description: Insight record ID (null if none exists)
+                  insights:
+                    oneOf:
+                    - type: array
+                      items:
+                        type: object
+                        properties:
+                          title:
+                            type: string
+                            description: Short title (5 words max)
+                          description:
+                            type: string
+                            description: 2-3 sentence explanation with specific numbers
+                          sentiment:
+                            type: string
+                            enum:
+                            - positive
+                            - negative
+                            - neutral
+                            description: Sentiment of the insight
+                          project_uuid:
+                            type: string
+                            nullable: true
+                            description: Project UUID if project-specific, null if
+                              account-wide
+                          action:
+                            type: object
+                            properties:
+                              label:
+                                type: string
+                                description: Button text
+                              url:
+                                type: string
+                                description: Action URL path
+                            required:
+                            - label
+                            - url
+                        required:
+                        - title
+                        - description
+                        - sentiment
+                        - action
+                    - type: 'null'
+                    description: Array of 3 insights (null if none exists)
+                  generated_at:
+                    oneOf:
+                    - type: string
+                      format: date-time
+                      description: Timestamp
+                    - type: 'null'
+                    description: When insights were generated (null if none exists)
+                  fresh:
+                    type: boolean
+                    description: Whether insights are still fresh (< 24 hours old)
+                  metrics_summary:
+                    oneOf:
+                    - type: object
+                      additionalProperties: true
+                    - type: 'null'
+                    description: The metrics used to generate insights
+                required:
+                - id
+                - insights
+                - generated_at
+                - fresh
+        '401':
+          description: unauthorized without token
+    post:
+      summary: Creates or updates dashboard insights
+      tags:
+      - Dashboard Insights
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '201':
+          description: creates new insights
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  insights:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        title:
+                          type: string
+                          description: Short title (5 words max)
+                        description:
+                          type: string
+                          description: 2-3 sentence explanation with specific numbers
+                        sentiment:
+                          type: string
+                          enum:
+                          - positive
+                          - negative
+                          - neutral
+                          description: Sentiment of the insight
+                        project_uuid:
+                          type: string
+                          nullable: true
+                          description: Project UUID if project-specific, null if account-wide
+                        action:
+                          type: object
+                          properties:
+                            label:
+                              type: string
+                              description: Button text
+                            url:
+                              type: string
+                              description: Action URL path
+                          required:
+                          - label
+                          - url
+                      required:
+                      - title
+                      - description
+                      - sentiment
+                      - action
+                    minItems: 3
+                    maxItems: 3
+                    description: Array of exactly 3 insights
+                  generated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  fresh:
+                    type: boolean
+                    description: Whether insights are still fresh (always true after
+                      creation)
+                  metrics_summary:
+                    type: object
+                    additionalProperties: true
+                    description: The metrics used to generate insights
+                required:
+                - id
+                - insights
+                - generated_at
+                - fresh
+        '200':
+          description: updates existing insights
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  insights:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        title:
+                          type: string
+                          description: Short title (5 words max)
+                        description:
+                          type: string
+                          description: 2-3 sentence explanation with specific numbers
+                        sentiment:
+                          type: string
+                          enum:
+                          - positive
+                          - negative
+                          - neutral
+                          description: Sentiment of the insight
+                        project_uuid:
+                          type: string
+                          nullable: true
+                          description: Project UUID if project-specific, null if account-wide
+                        action:
+                          type: object
+                          properties:
+                            label:
+                              type: string
+                              description: Button text
+                            url:
+                              type: string
+                              description: Action URL path
+                          required:
+                          - label
+                          - url
+                      required:
+                      - title
+                      - description
+                      - sentiment
+                      - action
+                    minItems: 3
+                    maxItems: 3
+                    description: Array of exactly 3 insights
+                  generated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  fresh:
+                    type: boolean
+                    description: Whether insights are still fresh (always true after
+                      creation)
+                  metrics_summary:
+                    type: object
+                    additionalProperties: true
+                    description: The metrics used to generate insights
+                required:
+                - id
+                - insights
+                - generated_at
+                - fresh
+        '422':
+          description: fails with invalid insights
+        '401':
+          description: unauthorized without token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dashboard_insight:
+                  type: object
+                  properties:
+                    insights:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          title:
+                            type: string
+                            description: Short title (5 words max)
+                          description:
+                            type: string
+                            description: 2-3 sentence explanation with specific numbers
+                          sentiment:
+                            type: string
+                            enum:
+                            - positive
+                            - negative
+                            - neutral
+                            description: Sentiment of the insight
+                          project_uuid:
+                            type: string
+                            nullable: true
+                            description: Project UUID if project-specific, null if
+                              account-wide
+                          action:
+                            type: object
+                            properties:
+                              label:
+                                type: string
+                                description: Button text
+                              url:
+                                type: string
+                                description: Action URL path
+                            required:
+                            - label
+                            - url
+                        required:
+                        - title
+                        - description
+                        - sentiment
+                        - action
+                      minItems: 3
+                      maxItems: 3
+                      description: Array of exactly 3 insights to save
+                    metrics_summary:
+                      type: object
+                      additionalProperties: true
+                      description: Optional metrics summary used for generation
+                  required:
+                  - insights
+              required:
+              - dashboard_insight
+  "/api/v1/dashboard_insights/metrics_summary":
+    get:
+      summary: Retrieves metrics summary for insight generation
+      tags:
+      - Dashboard Insights
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: returns metrics summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period:
+                    type: string
+                    description: Time period for metrics
+                  totals:
+                    type: object
+                    properties:
+                      leads:
+                        type: integer
+                      page_views:
+                        type: integer
+                      ctr:
+                        type: number
+                        nullable: true
+                      cpl:
+                        type: number
+                        nullable: true
+                      ctr_available:
+                        type: boolean
+                      cpl_available:
+                        type: boolean
+                      total_spend_dollars:
+                        type: number
+                        nullable: true
+                    required:
+                    - leads
+                    - page_views
+                    - ctr_available
+                    - cpl_available
+                  projects:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        uuid:
+                          type: string
+                        name:
+                          type: string
+                        total_leads:
+                          type: integer
+                        total_page_views:
+                          type: integer
+                        ctr:
+                          type: number
+                          nullable: true
+                        cpl:
+                          type: number
+                          nullable: true
+                        days_since_last_lead:
+                          type: integer
+                          nullable: true
+                        spend_dollars:
+                          type: number
+                          nullable: true
+                      required:
+                      - uuid
+                      - name
+                      - total_leads
+                      - total_page_views
+                  trends:
+                    type: object
+                    properties:
+                      leads_trend:
+                        type: object
+                        properties:
+                          direction:
+                            type: string
+                            enum:
+                            - up
+                            - down
+                            - flat
+                          percent:
+                            type: number
+                        required:
+                        - direction
+                        - percent
+                      page_views_trend:
+                        type: object
+                        properties:
+                          direction:
+                            type: string
+                            enum:
+                            - up
+                            - down
+                            - flat
+                          percent:
+                            type: number
+                        required:
+                        - direction
+                        - percent
+                      ctr_trend:
+                        oneOf:
+                        - type: object
+                          properties:
+                            direction:
+                              type: string
+                              enum:
+                              - up
+                              - down
+                              - flat
+                            percent:
+                              type: number
+                          required:
+                          - direction
+                          - percent
+                        - type: 'null'
+                      cpl_trend:
+                        oneOf:
+                        - type: object
+                          properties:
+                            direction:
+                              type: string
+                              enum:
+                              - up
+                              - down
+                              - flat
+                            percent:
+                              type: number
+                          required:
+                          - direction
+                          - percent
+                        - type: 'null'
+                  flags:
+                    type: object
+                    properties:
+                      has_stalled_project:
+                        type: boolean
+                      has_high_performer:
+                        type: boolean
+                      has_new_first_lead:
+                        type: boolean
+                required:
+                - period
+                - totals
+                - projects
+                - trends
+        '401':
+          description: unauthorized without token
   "/api/v1/deploys":
     post:
       summary: Creates a deploy
@@ -3471,108 +3967,6 @@ paths:
                   - name
               required:
               - snapshot
-  "/test/database/set_credits":
-    post:
-      summary: Sets credits for a user account
-      tags:
-      - Test Database
-      description: Sets plan and pack credits for the account owned by the given
-        user email. Uses AllocationService for proper credit adjustment. Only available
-        in development/test environments.
-      parameters: []
-      responses:
-        '200':
-          description: credits set successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: ok
-                  message:
-                    type: string
-                    example: Credits updated
-                  account:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      plan_millicredits:
-                        type: integer
-                      pack_millicredits:
-                        type: integer
-                      total_millicredits:
-                        type: integer
-                    required:
-                    - id
-                    - plan_millicredits
-                    - pack_millicredits
-                    - total_millicredits
-                required:
-                - status
-                - message
-                - account
-        '404':
-          description: user or account not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - status
-                - errors
-        '422':
-          description: failed to set credits
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                required:
-                - status
-                - errors
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                credits:
-                  type: object
-                  properties:
-                    email:
-                      type: string
-                      description: Email of the user whose account credits should
-                        be set
-                    plan_millicredits:
-                      type: integer
-                      description: Plan credits in millicredits
-                      default: 0
-                    pack_millicredits:
-                      type: integer
-                      description: Pack credits in millicredits
-                      default: 0
-                  required:
-                  - email
-              required:
-              - credits
   "/api/v1/themes":
     get:
       summary: Lists official themes + themes in account
