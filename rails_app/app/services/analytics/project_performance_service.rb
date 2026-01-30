@@ -19,14 +19,26 @@ module Analytics
 
     # Get all metrics for the project.
     #
-    # @return [Hash] Performance data with :summary, :impressions, :clicks, :ctr
+    # @return [Hash] Performance data with :summary, :impressions, :clicks, :ctr, :has_data
     #
     def metrics
+      summary = build_summary
+      impressions = build_time_series(:impressions)
+      clicks = build_time_series(:clicks)
+      ctr = build_ctr_time_series
+
+      # Determine if there's any meaningful data
+      has_data = summary[:ad_spend] > 0 ||
+                 summary[:leads] > 0 ||
+                 impressions[:totals][:current] > 0 ||
+                 clicks[:totals][:current] > 0
+
       {
-        summary: build_summary,
-        impressions: build_time_series(:impressions),
-        clicks: build_time_series(:clicks),
-        ctr: build_ctr_time_series
+        summary: summary,
+        impressions: impressions,
+        clicks: clicks,
+        ctr: ctr,
+        has_data: has_data
       }
     end
 

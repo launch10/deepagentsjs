@@ -10,6 +10,7 @@ import { PerformancePage } from "./pages/performance.page";
  * - Engagement charts (Impressions, Clicks, CTR)
  * - Date range switching
  * - Navigation (back to projects, view leads)
+ * - Empty state when no analytics data exists
  *
  * Uses analytics snapshots to set up different data scenarios.
  */
@@ -44,6 +45,9 @@ test.describe("Project Performance Page", () => {
 
     test("displays summary card values with metrics", async () => {
       await performancePage.goto(projectUuid);
+
+      // Should NOT show empty state
+      await performancePage.expectHasData();
 
       // Ad spend should be a dollar amount
       const adSpend = await performancePage.getAdSpendValue();
@@ -188,7 +192,7 @@ test.describe("Project Performance Page", () => {
     });
   });
 
-  test.describe("With Empty Account (no projects)", () => {
+  test.describe("Empty State (no analytics data)", () => {
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("website_step");
       const project = await DatabaseSnapshotter.getFirstProject();
@@ -197,21 +201,88 @@ test.describe("Project Performance Page", () => {
       performancePage = new PerformancePage(page);
     });
 
-    test("displays page structure even with no analytics data", async () => {
+    test("displays info banner when no data exists", async () => {
       await performancePage.goto(projectUuid);
 
-      await expect(performancePage.pageTitle).toHaveText("Performance");
-      await performancePage.expectSummaryCardsVisible();
+      // Should show the "Not enough data yet" banner
+      await expect(performancePage.noDataBanner).toBeVisible();
+      await expect(performancePage.noDataBanner.getByText("Not enough data yet")).toBeVisible();
+      await expect(
+        performancePage.noDataBanner.getByText(/Check back in 24–48 hours/)
+      ).toBeVisible();
     });
 
-    test("shows zero values when no data exists", async () => {
+    test("displays empty state in all summary cards", async ({ page }) => {
       await performancePage.goto(projectUuid);
 
-      const adSpend = await performancePage.getAdSpendValue();
-      expect(adSpend).toBe("$0.00");
+      // All summary cards should be visible
+      await performancePage.expectSummaryCardsVisible();
 
-      const leads = await performancePage.getLeadsValue();
-      expect(leads).toBe("0");
+      // Each summary card should show "No data available yet"
+      const adSpendEmpty = performancePage.adSpendCard.getByText("No data available yet");
+      const leadsEmpty = performancePage.leadsCard.getByText("No data available yet");
+      const cplEmpty = performancePage.cplCard.getByText("No data available yet");
+      const roasEmpty = performancePage.roasCard.getByText("No data available yet");
+
+      await expect(adSpendEmpty).toBeVisible();
+      await expect(leadsEmpty).toBeVisible();
+      await expect(cplEmpty).toBeVisible();
+      await expect(roasEmpty).toBeVisible();
+    });
+
+    test("displays empty state in all charts", async () => {
+      await performancePage.goto(projectUuid);
+
+      // All chart cards should be visible
+      await performancePage.expectChartsVisible();
+
+      // Each chart should show "No data available yet"
+      const impressionsEmpty = performancePage.impressionsChart.getByText("No data available yet");
+      const clicksEmpty = performancePage.clicksChart.getByText("No data available yet");
+      const ctrEmpty = performancePage.ctrChart.getByText("No data available yet");
+
+      await expect(impressionsEmpty).toBeVisible();
+      await expect(clicksEmpty).toBeVisible();
+      await expect(ctrEmpty).toBeVisible();
+    });
+
+    test("hides View Leads link in empty state", async () => {
+      await performancePage.goto(projectUuid);
+
+      // View Leads link should not be visible when there's no data
+      await expect(performancePage.viewLeadsLink).not.toBeVisible();
+    });
+
+    test("full empty state validation", async () => {
+      await performancePage.goto(projectUuid);
+
+      // Use the comprehensive empty state check
+      await performancePage.expectEmptyState();
+    });
+
+    test("page title and navigation still work in empty state", async ({ page }) => {
+      await performancePage.goto(projectUuid);
+
+      // Title should still show
+      await expect(performancePage.pageTitle).toHaveText("Performance");
+
+      // Back link should still work
+      await performancePage.clickBackToProjects();
+      await expect(page).toHaveURL(/\/dashboard/);
+    });
+
+    test("date range filter still works in empty state", async () => {
+      await performancePage.goto(projectUuid);
+
+      // Should default to 30 days
+      await expect(performancePage.dateRangeFilter).toHaveValue("30");
+
+      // Should be able to change date range
+      await performancePage.selectDateRange(7);
+      await expect(performancePage.dateRangeFilter).toHaveValue("7");
+
+      // Empty state should still be shown (no data in any range)
+      await expect(performancePage.noDataBanner).toBeVisible();
     });
   });
 

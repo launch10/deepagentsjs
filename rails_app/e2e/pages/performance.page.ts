@@ -13,6 +13,9 @@ export class PerformancePage {
   readonly projectName: Locator;
   readonly dateRangeFilter: Locator;
 
+  // No data banner
+  readonly noDataBanner: Locator;
+
   // Summary cards
   readonly adSpendCard: Locator;
   readonly leadsCard: Locator;
@@ -35,18 +38,21 @@ export class PerformancePage {
     this.projectName = page.locator("h1 + p");
     this.dateRangeFilter = page.locator("select").first();
 
-    // Summary cards - locate by title text within the card
-    this.adSpendCard = page.locator('div:has(h3:text("Ad Spend"))');
-    this.leadsCard = page.locator('div:has(h3:text("Leads"))');
-    this.cplCard = page.locator('div:has(h3:text("Avg Cost per Lead"))');
-    this.roasCard = page.locator('div:has(h3:text("Return on Ad Spend"))');
+    // No data banner
+    this.noDataBanner = page.getByTestId("no-data-banner");
+
+    // Summary cards - locate by title text within the card (use .first() for nested matches)
+    this.adSpendCard = page.locator('div.rounded-2xl:has(h3:text("Ad Spend"))').first();
+    this.leadsCard = page.locator('div.rounded-2xl:has(h3:text("Leads"))').first();
+    this.cplCard = page.locator('div.rounded-2xl:has(h3:text("Avg Cost per Lead"))').first();
+    this.roasCard = page.locator('div.rounded-2xl:has(h3:text("Return on Ad Spend"))').first();
     this.viewLeadsLink = page.locator('a:has-text("View Leads")');
 
     // Charts section
     this.chartsSection = page.locator("section").filter({ hasText: "Engagement Metrics" });
-    this.impressionsChart = page.locator('div:has(h3:text("Impressions"))');
-    this.clicksChart = page.locator('div:has(h3:text("Ad Clicks"))');
-    this.ctrChart = page.locator('div:has(h3:text("Click-Through Rate"))');
+    this.impressionsChart = page.locator('div.rounded-2xl:has(h3:text("Impressions"))').first();
+    this.clicksChart = page.locator('div.rounded-2xl:has(h3:text("Ad Clicks"))').first();
+    this.ctrChart = page.locator('div.rounded-2xl:has(h3:text("Click-Through Rate"))').first();
   }
 
   /**
@@ -123,12 +129,39 @@ export class PerformancePage {
   }
 
   /**
-   * Check if the page displays correctly with no data
+   * Check if the page displays the empty state (no data banner visible)
+   */
+  async expectEmptyState(): Promise<void> {
+    // Banner should be visible
+    await expect(this.noDataBanner).toBeVisible();
+    await expect(this.noDataBanner.getByText("Not enough data yet")).toBeVisible();
+    await expect(this.noDataBanner.getByText(/Check back in 24–48 hours/)).toBeVisible();
+
+    // Summary cards should show "No data available yet"
+    const noDataTexts = this.page.getByText("No data available yet");
+    // Should have 7 instances: 4 summary cards + 3 charts
+    await expect(noDataTexts).toHaveCount(7);
+
+    // View Leads link should not be visible in empty state
+    await expect(this.viewLeadsLink).not.toBeVisible();
+  }
+
+  /**
+   * Check if the page displays correctly with no data (legacy - use expectEmptyState instead)
    */
   async expectEmptyStateCharts(): Promise<void> {
     // Charts should show "No data available yet" when empty
     const emptyStates = this.chartsSection.getByText("No data available yet");
     await expect(emptyStates.first()).toBeVisible();
+  }
+
+  /**
+   * Check that the page has data (no empty state banner)
+   */
+  async expectHasData(): Promise<void> {
+    await expect(this.noDataBanner).not.toBeVisible();
+    // Should have actual values, not empty state text in summary cards
+    await expect(this.adSpendCard.locator("p.text-2xl")).toBeVisible();
   }
 
   /**

@@ -143,12 +143,12 @@ export default function Dashboard() {
                 ))}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-base-500 w-25">Filter by:</span>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="text-sm text-base-500 whitespace-nowrap">Filter by:</span>
               <select
                 value={selectedDays}
                 onChange={(e) => handleDateRangeChange(Number(e.target.value))}
-                className="text-sm border border-neutral-300 rounded-md px-3 py-1.5 bg-white"
+                className="text-sm border border-neutral-300 rounded-md px-3 py-1.5 bg-white min-w-[120px]"
               >
                 {date_range_options.map((option: DateRangeOption) => (
                   <option key={option.days} value={option.days}>
