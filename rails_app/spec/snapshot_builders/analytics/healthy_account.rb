@@ -33,9 +33,10 @@ module SnapshotBuilders
 
         ensure_ads_account(account)
 
-        # Rename existing project
+        # Rename existing project and ensure it's live
         primary_project.update!(name: "Premium Pet Portraits")
         ensure_campaign(primary_project)
+        ensure_live_deploy(primary_project)
 
         # Create additional projects
         project2 = create_analytics_project(account, "Budget Travel Guides", campaign_status: "active")

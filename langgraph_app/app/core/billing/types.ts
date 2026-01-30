@@ -46,6 +46,10 @@ export interface UsageContext {
   // Internal deduplication state
   _seenMessageIds: Set<string>;
 
+  // Model card tracking - maps langchainRunId to metadata from handleChatModelStart
+  // This is needed because LangChain passes metadata to handleChatModelStart but not handleLLMEnd
+  _runIdToMetadata: Map<string, Record<string, unknown>>;
+
   // Credit tracking for predictive exhaustion detection
   accountId?: number;
   preRunCreditsRemaining?: number;

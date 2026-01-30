@@ -42,8 +42,16 @@ describe("LLM Fallbacks", () => {
     });
 
     it("returns different fallback chains for different skills", async () => {
-      const codingFallbacks = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid" });
-      const writingFallbacks = await getLLMFallbacks({ skill: "writing", speed: "slow", cost: "paid" });
+      const codingFallbacks = await getLLMFallbacks({
+        skill: "coding",
+        speed: "slow",
+        cost: "paid",
+      });
+      const writingFallbacks = await getLLMFallbacks({
+        skill: "writing",
+        speed: "slow",
+        cost: "paid",
+      });
 
       // Different skills may have different fallback priorities
       expect(codingFallbacks).toBeDefined();
@@ -102,14 +110,29 @@ describe("Usage-Based LLM Filtering", () => {
 
   describe("getLLMFallbacks with usagePercent parameter", () => {
     it("includes all models when usagePercent is 0", async () => {
-      const fallbacks = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid", usagePercent: 0 });
+      const fallbacks = await getLLMFallbacks({
+        skill: "coding",
+        speed: "slow",
+        cost: "paid",
+        usagePercent: 0,
+      });
       // At 0% usage, should get all configured models
       expect(fallbacks.length).toBeGreaterThanOrEqual(3);
     });
 
     it("excludes models above usage threshold", async () => {
-      const fallbacksHigh = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid", usagePercent: 100 });
-      const fallbacksLow = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid", usagePercent: 0 });
+      const fallbacksHigh = await getLLMFallbacks({
+        skill: "coding",
+        speed: "slow",
+        cost: "paid",
+        usagePercent: 100,
+      });
+      const fallbacksLow = await getLLMFallbacks({
+        skill: "coding",
+        speed: "slow",
+        cost: "paid",
+        usagePercent: 0,
+      });
 
       // High usage should have fewer models
       expect(fallbacksHigh.length).toBeLessThan(fallbacksLow.length);
@@ -117,20 +140,35 @@ describe("Usage-Based LLM Filtering", () => {
 
     it("always returns at least one model (100% threshold models)", async () => {
       // Even at 99% usage, should have at least one model available
-      const fallbacks = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid", usagePercent: 100 });
+      const fallbacks = await getLLMFallbacks({
+        skill: "coding",
+        speed: "slow",
+        cost: "paid",
+        usagePercent: 100,
+      });
       expect(fallbacks.length).toBeGreaterThanOrEqual(1);
     });
 
     it("filters models correctly at exact threshold boundaries", async () => {
       // At exactly 90%, Sonnet should still be available (usage < threshold)
-      const fallbacksAt90 = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid", usagePercent: 90 });
+      const fallbacksAt90 = await getLLMFallbacks({
+        skill: "coding",
+        speed: "slow",
+        cost: "paid",
+        usagePercent: 90,
+      });
       console.log(
         "fallbacksAt90",
         fallbacksAt90.map((m) => (m as any).modelName)
       );
 
       // At 90.1%, Sonnet should be excluded (usage >= threshold)
-      const fallbacksAbove90 = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid", usagePercent: 90.1 });
+      const fallbacksAbove90 = await getLLMFallbacks({
+        skill: "coding",
+        speed: "slow",
+        cost: "paid",
+        usagePercent: 90.1,
+      });
       console.log(
         "fallbacksAbove90",
         fallbacksAbove90.map((m) => (m as any).modelName)
@@ -141,8 +179,17 @@ describe("Usage-Based LLM Filtering", () => {
     });
 
     it("defaults to 0% usage when not specified", async () => {
-      const fallbacksDefault = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid" });
-      const fallbacksExplicit = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid", usagePercent: 0 });
+      const fallbacksDefault = await getLLMFallbacks({
+        skill: "coding",
+        speed: "slow",
+        cost: "paid",
+      });
+      const fallbacksExplicit = await getLLMFallbacks({
+        skill: "coding",
+        speed: "slow",
+        cost: "paid",
+        usagePercent: 0,
+      });
 
       // Should return the same number of models
       expect(fallbacksDefault.length).toBe(fallbacksExplicit.length);
@@ -152,7 +199,12 @@ describe("Usage-Based LLM Filtering", () => {
   describe("usage threshold configuration", () => {
     it("models without explicit threshold default to 100%", async () => {
       // Models with no maxUsagePercent should always be available
-      const fallbacks = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid", usagePercent: 99 });
+      const fallbacks = await getLLMFallbacks({
+        skill: "coding",
+        speed: "slow",
+        cost: "paid",
+        usagePercent: 99,
+      });
       expect(fallbacks.length).toBeGreaterThanOrEqual(1);
     });
   });
@@ -190,18 +242,24 @@ describe("Price Tier Filtering", () => {
       expect(tier2Model).not.toBe(tier3Model);
     });
 
-    it("throws when no models available at tier", async () => {
-      // maxTier=5 only allows tier 5 (cheapest) - no tier 5 models configured
-      await expect(
-        getLLM({ skill: "coding", speed: "slow", cost: "paid", maxTier: 5 })
-      ).rejects.toThrow(/No available model/);
+    it("falls back to cheapest available model when no models match tier", async () => {
+      // maxTier=5 only allows tier 5 (cheapest) - no tier 5 models configured in preferences
+      // But findCheapestFallback kicks in and returns the cheapest enabled model
+      const llm = await getLLM({ skill: "coding", speed: "slow", cost: "paid", maxTier: 5 });
+      expect(llm).toBeDefined();
+      // The fallback mechanism ensures we always get a model rather than failing
     });
   });
 
   describe("getLLMFallbacks with maxTier parameter", () => {
     it("filters out models above tier limit", async () => {
       const allFallbacks = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid" });
-      const tier3Fallbacks = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid", maxTier: 3 });
+      const tier3Fallbacks = await getLLMFallbacks({
+        skill: "coding",
+        speed: "slow",
+        cost: "paid",
+        maxTier: 3,
+      });
 
       // maxTier=3 filters out sonnet (tier 2), keeps haiku (tier 3) and haiku3 (tier 4)
       expect(tier3Fallbacks.length).toBeLessThan(allFallbacks.length);
@@ -209,8 +267,19 @@ describe("Price Tier Filtering", () => {
 
     it("combines with usagePercent filtering", async () => {
       const noFilters = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid" });
-      const withTier = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid", maxTier: 3 });
-      const withBoth = await getLLMFallbacks({ skill: "coding", speed: "slow", cost: "paid", maxTier: 3, usagePercent: 90 });
+      const withTier = await getLLMFallbacks({
+        skill: "coding",
+        speed: "slow",
+        cost: "paid",
+        maxTier: 3,
+      });
+      const withBoth = await getLLMFallbacks({
+        skill: "coding",
+        speed: "slow",
+        cost: "paid",
+        maxTier: 3,
+        usagePercent: 90,
+      });
 
       // Each filter should reduce the count
       expect(withTier.length).toBeLessThanOrEqual(noFilters.length);

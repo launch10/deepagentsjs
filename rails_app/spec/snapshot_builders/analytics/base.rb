@@ -217,6 +217,21 @@ module SnapshotBuilders
         AdPerformanceDaily.where(campaign_id: campaign_ids).delete_all if campaign_ids.any?
       end
 
+      # Ensure the project has a live deploy.
+      #
+      # Either marks an existing deploy as live, or creates one.
+      #
+      # @param project [Project]
+      #
+      def ensure_live_deploy(project)
+        if project.deploys.exists?
+          project.deploys.order(created_at: :desc).first.update!(status: "completed", is_live: true)
+        else
+          project.deploys.create!(status: "completed", is_live: true)
+        end
+        project.refresh_status!
+      end
+
       # Ensure the account has an ads account for Google Ads data.
       #
       def ensure_ads_account(account)

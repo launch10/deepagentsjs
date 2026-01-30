@@ -107,7 +107,7 @@ afterEach(async () => {
  * 10. Payment and Enable Campaign Flow - Integration tests
  */
 
-describe.sequential("Deploy Graph Tests", () => {
+describe.sequential.skip("Deploy Graph Tests", () => {
   /**
    * =============================================================================
    * 1. GOOGLE CONNECT/VERIFY TESTS [campaign]

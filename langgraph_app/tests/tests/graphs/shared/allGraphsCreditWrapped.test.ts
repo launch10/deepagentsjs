@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import * as graphs from "../../../../app/graphs";
+import * as graphs from "@graphs";
 
 /**
  * Static validation test to ensure all exported graphs are wrapped with withCreditExhaustion.
