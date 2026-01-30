@@ -13,6 +13,7 @@ authenticated :user do
     member do
       get :brainstorm
       get :website
+      get :performance
 
       scope :campaigns do
         WorkflowConfig.substeps_for("launch", "ad_campaign").each do |substep|

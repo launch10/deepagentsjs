@@ -1232,7 +1232,8 @@ CREATE TABLE public.analytics_daily_metrics (
     cost_micros bigint DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    page_views_count bigint DEFAULT 0 NOT NULL
+    page_views_count bigint DEFAULT 0 NOT NULL,
+    conversion_value_cents bigint DEFAULT 0 NOT NULL
 );
 
 
@@ -11251,6 +11252,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260130161923'),
 ('20260129225919'),
 ('20260129182538'),
 ('20260129120000'),

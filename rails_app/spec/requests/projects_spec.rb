@@ -181,4 +181,61 @@ RSpec.describe "Projects", type: :request, inertia: true do
       end
     end
   end
+
+  describe "GET /projects/:uuid/performance" do
+    it "renders the ProjectPerformance component" do
+      get performance_project_path(project.uuid)
+
+      expect(response).to have_http_status(:ok)
+      expect(inertia.component).to eq("ProjectPerformance")
+    end
+
+    it "returns project data" do
+      get performance_project_path(project.uuid)
+
+      expect(inertia.props[:project][:uuid]).to eq(project.uuid)
+      expect(inertia.props[:project][:name]).to eq(project.name)
+    end
+
+    it "returns metrics for all date ranges" do
+      get performance_project_path(project.uuid)
+
+      metrics = inertia.props[:metrics]
+      expect(metrics).to have_key("7")
+      expect(metrics).to have_key("30")
+      expect(metrics).to have_key("90")
+      expect(metrics).to have_key("0")
+    end
+
+    it "returns date range options" do
+      get performance_project_path(project.uuid)
+
+      options = inertia.props[:date_range_options]
+      expect(options.map { |o| o[:days] }).to include(7, 30, 90, 0)
+    end
+
+    context "with analytics data" do
+      before do
+        create(:analytics_daily_metric,
+          account: account,
+          project: project,
+          date: 1.day.ago.to_date,
+          impressions: 1000,
+          clicks: 100,
+          cost_micros: 10_000_000,
+          leads_count: 5,
+          conversion_value_cents: 5000)
+      end
+
+      it "includes summary metrics" do
+        get performance_project_path(project.uuid)
+
+        summary = inertia.props[:metrics]["30"][:summary]
+        expect(summary[:ad_spend]).to eq(10.0)
+        expect(summary[:leads]).to eq(5)
+        expect(summary[:cpl]).to eq(2.0)
+        expect(summary[:roas]).to eq(5.0)
+      end
+    end
+  end
 end

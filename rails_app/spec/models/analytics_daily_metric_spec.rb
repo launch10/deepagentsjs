@@ -2,18 +2,19 @@
 #
 # Table name: analytics_daily_metrics
 #
-#  id                    :bigint           not null, primary key
-#  clicks                :bigint           default(0), not null
-#  cost_micros           :bigint           default(0), not null
-#  date                  :date             not null
-#  impressions           :bigint           default(0), not null
-#  leads_count           :integer          default(0), not null
-#  page_views_count      :bigint           default(0), not null
-#  unique_visitors_count :bigint           default(0), not null
-#  created_at            :datetime         not null
-#  updated_at            :datetime         not null
-#  account_id            :bigint           not null
-#  project_id            :bigint           not null
+#  id                     :bigint           not null, primary key
+#  clicks                 :bigint           default(0), not null
+#  conversion_value_cents :bigint           default(0), not null
+#  cost_micros            :bigint           default(0), not null
+#  date                   :date             not null
+#  impressions            :bigint           default(0), not null
+#  leads_count            :integer          default(0), not null
+#  page_views_count       :bigint           default(0), not null
+#  unique_visitors_count  :bigint           default(0), not null
+#  created_at             :datetime         not null
+#  updated_at             :datetime         not null
+#  account_id             :bigint           not null
+#  project_id             :bigint           not null
 #
 # Indexes
 #
@@ -129,6 +130,32 @@ RSpec.describe AnalyticsDailyMetric, type: :model do
     describe "#cost_dollars" do
       it "converts micros to dollars" do
         expect(metric.cost_dollars).to eq(50.0)
+      end
+    end
+
+    describe "#conversion_value_dollars" do
+      it "converts cents to dollars" do
+        metric.conversion_value_cents = 10_000 # $100
+        expect(metric.conversion_value_dollars).to eq(100.0)
+      end
+
+      it "returns 0 when no conversion value" do
+        metric.conversion_value_cents = 0
+        expect(metric.conversion_value_dollars).to eq(0.0)
+      end
+    end
+
+    describe "#roas" do
+      it "calculates return on ad spend" do
+        metric.cost_micros = 10_000_000 # $10
+        metric.conversion_value_cents = 5000 # $50
+        expect(metric.roas).to eq(5.0) # $50 / $10
+      end
+
+      it "returns nil when cost is zero" do
+        metric.cost_micros = 0
+        metric.conversion_value_cents = 5000
+        expect(metric.roas).to be_nil
       end
     end
   end

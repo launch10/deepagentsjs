@@ -20,6 +20,7 @@ namespace :inertia do
     require_relative "../../spec/support/schemas/inertia/leads_schema"
     require_relative "../../spec/support/schemas/inertia/settings_schema"
     require_relative "../../spec/support/schemas/inertia/dashboard_schema"
+    require_relative "../../spec/support/schemas/inertia/performance_schema"
 
     generator = InertiaOpenApiGenerator.new
 
@@ -33,6 +34,7 @@ namespace :inertia do
     generator.add_component("LeadsProps", InertiaSchemas::Leads)
     generator.add_component("SettingsProps", InertiaSchemas::Settings)
     generator.add_component("DashboardProps", InertiaSchemas::Dashboard)
+    generator.add_component("PerformanceProps", InertiaSchemas::Performance)
 
     generator.add_page("/users/sign_in", ref: "SignInProps", tag: "Auth Pages", params: [])
     generator.add_page("/users/sign_up", ref: "SignUpProps", tag: "Auth Pages", params: [])
@@ -72,6 +74,12 @@ namespace :inertia do
       ref: "DashboardProps",
       tag: "Inertia Pages",
       params: []
+    )
+    generator.add_page(
+      "/projects/{uuid}/performance",
+      ref: "PerformanceProps",
+      tag: "Inertia Pages",
+      params: [UUID_PARAM]
     )
 
     WorkflowConfig.substeps_for("launch", "ad_campaign").each do |substep|

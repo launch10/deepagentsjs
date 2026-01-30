@@ -64,13 +64,15 @@ module Analytics
       #
       # @param series [Array<Hash>] Series data per project
       # @param totals [Hash] Totals with :current, :previous, trend info
+      # @param data_delay [String] Data freshness indicator: "realtime" (15 min) or "ads" (2-4 hours)
       # @return [Hash] Standardized time series format
       #
-      def build_time_series_response(series:, totals:)
+      def build_time_series_response(series:, totals:, data_delay: "realtime")
         {
           dates: date_range_array,
           series: series,
-          totals: totals
+          totals: totals,
+          data_delay: data_delay
         }
       end
 

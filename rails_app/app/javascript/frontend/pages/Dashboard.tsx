@@ -143,12 +143,12 @@ export default function Dashboard() {
                 ))}
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-base-500 w-25">Filter by:</span>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="text-sm text-base-500 whitespace-nowrap">Filter by:</span>
               <select
                 value={selectedDays}
                 onChange={(e) => handleDateRangeChange(Number(e.target.value))}
-                className="text-sm border border-neutral-300 rounded-md px-3 py-1.5 bg-white"
+                className="text-sm border border-neutral-300 rounded-md px-3 py-1.5 bg-white min-w-[120px]"
               >
                 {date_range_options.map((option: DateRangeOption) => (
                   <option key={option.days} value={option.days}>
@@ -366,6 +366,7 @@ function MetricChart({
       <div className="mb-2">
         <h3 className="text-sm font-medium text-[#2E3238]">{title}</h3>
         <p className="text-xs text-base-400">{dateSubtitle}</p>
+        {data.data_delay && <DataDelayIndicator type={data.data_delay} />}
       </div>
 
       {data.series.length > 0 && chartData.length > 0 ? (
@@ -618,6 +619,14 @@ function ProjectCard({ project }: { project: ProjectSummary }) {
         </div>
       </div>
     </Link>
+  );
+}
+
+function DataDelayIndicator({ type }: { type: string }) {
+  const delayText = type === "ads" ? "Data may be 2-4 hours delayed" : "Data may be 15 minutes delayed";
+
+  return (
+    <p className="text-[10px] text-base-400 mt-1">{delayText}</p>
   );
 }
 
