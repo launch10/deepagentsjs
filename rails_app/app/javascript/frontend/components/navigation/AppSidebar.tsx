@@ -17,7 +17,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: HomeIcon },
-  { label: "Projects", href: "/projects/new", icon: RocketLaunchIcon },
+  { label: "Projects", href: "/projects", icon: RocketLaunchIcon },
 ];
 
 export default function AppSidebar() {
@@ -28,8 +28,8 @@ export default function AppSidebar() {
     if (href === "/dashboard") {
       return url === "/dashboard";
     }
-    if (href === "/projects/new") {
-      return url === "/projects/new" || url.startsWith("/projects/");
+    if (href === "/projects") {
+      return url.startsWith("/projects");
     }
     return url.startsWith(href);
   };

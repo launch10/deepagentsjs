@@ -9,18 +9,28 @@ module ProjectConcerns
         website_id: website&.id,
         account_id: account_id,
         name: name,
-        status: derived_status,
-        domain: website&.domain,
+        status: status,
+        domain: primary_url_string,
         created_at: created_at,
         updated_at: updated_at
       }
     end
 
-    # Returns the persisted status column.
-    # Status is updated via Project#refresh_status! which is called
-    # by Deploy and Campaign callbacks when relevant state changes.
-    def derived_status
-      status
+    # Returns the primary URL string for the project (domain + path)
+    # Returns nil if no website_url exists
+    def primary_url_string
+      url = website&.urls&.first
+      return nil unless url
+
+      domain_str = url.domain&.domain
+      return nil unless domain_str
+
+      path = url.path
+      if path.present? && path != "/"
+        "#{domain_str}#{path}"
+      else
+        domain_str
+      end
     end
 
     def serialize

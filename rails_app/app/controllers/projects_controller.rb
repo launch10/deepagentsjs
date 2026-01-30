@@ -9,7 +9,8 @@ class ProjectsController < SubscribedController
     render inertia: "Projects",
       props: {
         projects: projects.map(&:to_mini_json),
-        pagination: pagy_metadata(@pagy)
+        pagination: pagy_metadata(@pagy),
+        status_counts: status_counts
       },
       layout: "layouts/webcontainer"
   end

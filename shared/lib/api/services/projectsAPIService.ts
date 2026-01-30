@@ -2,47 +2,27 @@ import { RailsAPIBase, type paths } from "../index";
 import type { Simplify } from "type-fest";
 
 /**
- * Type definitions for project operations
+ * Type definitions derived from OpenAPI spec
  */
-export type GetProjectsRequest = {
-  page?: number;
-  status?: "draft" | "paused" | "live";
-};
 
-export type GetProjectsResponse = NonNullable<
+/** Full response type from GET /api/v1/projects */
+export type ProjectsListResponse = NonNullable<
   paths["/api/v1/projects"]["get"]["responses"][200]["content"]["application/json"]
 >;
 
 /** Project type matching the mini JSON response */
-export interface ProjectMini {
-  id: number;
-  uuid: string;
-  website_id: number | null;
-  account_id: number;
-  name: string;
-  status: "draft" | "paused" | "live";
-  domain: string | null;
-  created_at: string;
-  updated_at: string;
-}
+export type ProjectMini = ProjectsListResponse["projects"][number];
 
 /** Pagination metadata */
-export interface PaginationMeta {
-  current_page: number;
-  total_pages: number;
-  total_count: number;
-  prev_page: number | null;
-  next_page: number | null;
-  from: number | null;
-  to: number | null;
-  series: (number | string)[];
-}
+export type PaginationMeta = ProjectsListResponse["pagination"];
 
-/** Full response type with projects and pagination */
-export interface ProjectsListResponse {
-  projects: ProjectMini[];
-  pagination: PaginationMeta;
-}
+/** Status counts for filter badges */
+export type StatusCounts = ProjectsListResponse["status_counts"];
+
+/** Request parameters for GET /api/v1/projects */
+export type GetProjectsRequest = NonNullable<
+  paths["/api/v1/projects"]["get"]["parameters"]["query"]
+>;
 
 /**
  * Service for interacting with the Rails Projects API
@@ -80,6 +60,25 @@ export class ProjectsAPIService extends RailsAPIBase {
       throw new Error(`Failed to get projects: No data returned`);
     }
 
-    return response.data as ProjectsListResponse;
+    return response.data;
+  }
+
+  /**
+   * Delete a project by UUID
+   * @param uuid - The project UUID to delete
+   */
+  async delete(uuid: string): Promise<void> {
+    const client = await this.getClient();
+    const response = await client.DELETE("/api/v1/projects/{uuid}", {
+      params: {
+        path: { uuid },
+      },
+    });
+
+    if (response.response.status !== 204) {
+      throw new Error(
+        `Failed to delete project: ${response.response.status} ${response.response.statusText}`
+      );
+    }
   }
 }

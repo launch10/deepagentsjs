@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, router } from "@inertiajs/react";
+import { Link } from "@inertiajs/react";
 import {
   PhotoIcon,
   ClockIcon,
@@ -26,7 +26,9 @@ import {
   DialogDescription,
 } from "@components/ui/dialog";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { useDeleteProject } from "~/api";
 import type { InertiaProps } from "@shared";
+import { Insights } from "@shared";
 
 type ProjectsPageProps =
   InertiaProps.paths["/projects"]["get"]["responses"]["200"]["content"]["application/json"];
@@ -52,18 +54,15 @@ interface ProjectCardProps {
 export function ProjectCard({ project }: ProjectCardProps) {
   const isLive = project.status === "live";
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+
+  const { mutate: deleteProject, isPending: isDeleting } = useDeleteProject({
+    onSuccess: () => {
+      setDeleteOpen(false);
+    },
+  });
 
   const handleDelete = () => {
-    setIsDeleting(true);
-    router.delete(`/projects/${project.uuid}`, {
-      onSuccess: () => {
-        setDeleteOpen(false);
-      },
-      onError: () => {
-        setIsDeleting(false);
-      },
-    });
+    deleteProject(project.uuid);
   };
 
   return (
@@ -178,13 +177,15 @@ export function ProjectCard({ project }: ProjectCardProps) {
               align="end"
               className="w-[149px] p-2 rounded-lg border-neutral-100 shadow-sm"
             >
-              {/* TODO: Link to campaign edit page for this project */}
-              <DropdownMenuItem className="px-4 py-3 rounded-lg text-sm font-sans text-base-600 cursor-pointer">
-                Edit Campaign
+              <DropdownMenuItem asChild className="px-4 py-3 rounded-lg text-sm font-sans text-base-600 cursor-pointer">
+                <Link href={Insights.ACTION_REGISTRY.review_ad_copy.urlBuilder(project.uuid)}>
+                  Edit Campaign
+                </Link>
               </DropdownMenuItem>
-              {/* TODO: Link to website builder/editor for this project */}
-              <DropdownMenuItem className="px-4 py-3 rounded-lg text-sm font-sans text-base-600 cursor-pointer">
-                Edit Page
+              <DropdownMenuItem asChild className="px-4 py-3 rounded-lg text-sm font-sans text-base-600 cursor-pointer">
+                <Link href={Insights.ACTION_REGISTRY.review_landing_page.urlBuilder(project.uuid)}>
+                  Edit Page
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="px-4 py-3 rounded-lg text-sm font-sans text-error-500 cursor-pointer focus:text-error-500"

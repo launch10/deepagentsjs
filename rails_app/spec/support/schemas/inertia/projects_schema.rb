@@ -27,20 +27,32 @@ module InertiaSchemas
       }
     end
 
+    def self.status_counts_schema
+      {
+        type: :object,
+        properties: {
+          draft: InertiaSchemas.integer_field,
+          paused: InertiaSchemas.integer_field,
+          live: InertiaSchemas.integer_field
+        }
+      }
+    end
+
     def self.page_props
       {
         projects: {
           type: :array,
           items: InertiaSchemas.project_mini_schema
         },
-        pagination: pagination_schema
+        pagination: pagination_schema,
+        status_counts: status_counts_schema
       }
     end
 
     def self.props_schema
       InertiaSchemas.with_shared_props(
         page_props: page_props,
-        page_required: %w[projects pagination]
+        page_required: %w[projects pagination status_counts]
       )
     end
   end

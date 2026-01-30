@@ -28,4 +28,8 @@ module ProjectsPagination
       series: pagy.series
     }
   end
+
+  def status_counts
+    current_account.projects.group(:status).count
+  end
 end

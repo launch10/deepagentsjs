@@ -8,7 +8,7 @@ import { ProjectsPagination } from "@components/projects/ProjectsPagination";
 import { cn } from "@lib/utils";
 import { useProjects } from "~/api";
 import type { InertiaProps } from "@shared";
-import type { PaginationMeta, ProjectMini } from "@rails_api_base";
+import type { ProjectMini, StatusCounts, ProjectsListResponse } from "@rails_api_base";
 
 type ProjectsPageProps =
   InertiaProps.paths["/projects"]["get"]["responses"]["200"]["content"]["application/json"];
@@ -42,55 +42,48 @@ export default function Projects() {
   });
 
   const [activeFilter, setActiveFilter] = useState<FilterStatus>("all");
-
-  // Determine if we should use React Query (page > 1 or filter applied)
-  // For status filters, we need to use the API since Inertia only gives us the first page
   const statusFilter = activeFilter !== "all" ? activeFilter : undefined;
-  const shouldUseQuery = currentPage > 1 || statusFilter !== undefined;
 
-  // React Query for page 2+ or filtered results
-  const { data: queryData, isLoading, isFetching } = useProjects(
+  // Convert Inertia props to React Query format for initialData
+  const inertiaAsQueryData: ProjectsListResponse = useMemo(() => ({
+    projects: inertiaProps.projects as ProjectMini[],
+    pagination: inertiaProps.pagination as ProjectsListResponse["pagination"],
+    status_counts: (inertiaProps as ProjectsPageProps & { status_counts: StatusCounts }).status_counts ?? {},
+  }), [inertiaProps]);
+
+  // Always use React Query, seeded with Inertia data for page 1 with no filter
+  const isInitialPageWithNoFilter = currentPage === 1 && !statusFilter;
+
+  const { data, isFetching } = useProjects(
     { page: currentPage, status: statusFilter, prefetchAdjacent: true },
-    { enabled: shouldUseQuery }
+    {
+      // Seed with Inertia data for initial page load
+      initialData: isInitialPageWithNoFilter ? inertiaAsQueryData : undefined,
+      // Keep previous data while fetching to prevent flicker
+      placeholderData: (previousData) => previousData,
+    }
   );
 
-  // Use Inertia props for page 1 (unfiltered), React Query for page 2+ or filtered
-  const projects: ProjectMini[] = shouldUseQuery
-    ? (queryData?.projects ?? [])
-    : (inertiaProps.projects as ProjectMini[]);
-
-  const pagination: PaginationMeta = shouldUseQuery
-    ? (queryData?.pagination ?? {
-        current_page: 1,
-        total_pages: 1,
-        total_count: 0,
-        prev_page: null,
-        next_page: null,
-        from: null,
-        to: null,
-        series: ["1"],
-      })
-    : (inertiaProps.pagination as PaginationMeta);
+  // Extract data with fallback
+  const projects = data?.projects ?? [];
+  const pagination = data?.pagination ?? inertiaAsQueryData.pagination;
+  const apiStatusCounts = data?.status_counts ?? {};
 
   // Sort by status for display
   const sortedProjects = useMemo(() => {
     return [...projects].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
   }, [projects]);
 
-  // Status counts for filter badges
+  // Status counts for filter badges (derived from API response)
   const statusCounts = useMemo(() => {
     const counts: Record<FilterStatus, number> = {
-      all: pagination.total_count,
-      live: 0,
-      paused: 0,
-      draft: 0,
+      all: (apiStatusCounts.draft ?? 0) + (apiStatusCounts.paused ?? 0) + (apiStatusCounts.live ?? 0),
+      live: apiStatusCounts.live ?? 0,
+      paused: apiStatusCounts.paused ?? 0,
+      draft: apiStatusCounts.draft ?? 0,
     };
-    // Count from current page data (approximation for display)
-    for (const p of projects) {
-      counts[p.status]++;
-    }
     return counts;
-  }, [projects, pagination.total_count]);
+  }, [apiStatusCounts]);
 
   // Handle page change - update URL and state
   const handlePageChange = useCallback((page: number) => {
@@ -128,8 +121,8 @@ export default function Projects() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  // Show empty state only if no projects at all (page 1, no filter)
-  if (inertiaProps.projects.length === 0 && !shouldUseQuery) {
+  // Show empty state only if no projects at all (page 1, no filter, no data)
+  if (projects.length === 0 && isInitialPageWithNoFilter && !isFetching) {
     return (
       <div className="flex flex-col h-full px-8 pt-12">
         <div>
@@ -184,12 +177,9 @@ export default function Projects() {
               >
                 {label}
               </span>
-              {/* Only show count for "all" since other counts are page-specific */}
-              {value === "all" && (
-                <span className="font-sans text-xs leading-4 text-neutral-600">
-                  ({statusCounts[value]})
-                </span>
-              )}
+              <span className="font-sans text-xs leading-4 text-neutral-600">
+                ({statusCounts[value]})
+              </span>
             </button>
           ))}
         </div>
@@ -197,9 +187,7 @@ export default function Projects() {
 
       {/* Project list */}
       <div className={cn("flex flex-col gap-5 mt-6", isFetching && "opacity-60 transition-opacity")}>
-        {isLoading ? (
-          <div className="py-8 text-center text-base-400">Loading projects...</div>
-        ) : sortedProjects.length === 0 ? (
+        {sortedProjects.length === 0 ? (
           <div className="py-8 text-center text-base-400">No projects found</div>
         ) : (
           sortedProjects.map((project) => (
@@ -213,7 +201,7 @@ export default function Projects() {
         <ProjectsPagination
           pagination={pagination}
           onPageChange={handlePageChange}
-          disabled={isLoading}
+          disabled={isFetching}
         />
       )}
 

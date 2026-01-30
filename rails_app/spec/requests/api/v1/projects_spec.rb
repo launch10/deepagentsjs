@@ -228,4 +228,62 @@ RSpec.describe "Projects API", type: :request do
       end
     end
   end
+
+  path "/api/v1/projects/{uuid}" do
+    delete "Deletes a project" do
+      tags "Projects"
+      produces "application/json"
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: "X-Signature", in: :header, type: :string, required: false
+      parameter name: "X-Timestamp", in: :header, type: :string, required: false
+      parameter name: :uuid, in: :path, type: :string, required: true, description: "Project UUID"
+
+      response "204", "successfully deletes the project" do
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let!(:project) { create_project_with_website(account, name: "Project to Delete") }
+        let(:uuid) { project.uuid }
+
+        run_test! do
+          expect(Project.exists?(project.id)).to be false
+        end
+      end
+
+      response "404", "project not found" do
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let(:uuid) { "non-existent-uuid" }
+
+        run_test!
+      end
+
+      response "404", "cannot delete another account's project" do
+        let(:other_user) { create(:user, name: "Other User") }
+        let!(:other_project) { create_project_with_website(other_user.owned_account, name: "Other Project") }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let(:uuid) { other_project.uuid }
+
+        run_test! do
+          # Project should still exist (wasn't deleted)
+          expect(Project.exists?(other_project.id)).to be true
+        end
+      end
+
+      response "401", "unauthorized - missing token" do
+        let!(:project) { create_project_with_website(account, name: "Project") }
+        let(:uuid) { project.uuid }
+        let(:Authorization) { nil }
+
+        run_test!
+      end
+    end
+  end
 end

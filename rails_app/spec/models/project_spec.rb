@@ -161,4 +161,46 @@ RSpec.describe Project, type: :model do
       end
     end
   end
+
+  describe "#to_mini_json" do
+    describe "domain field" do
+      context "when website has no website_urls" do
+        it "returns nil for domain" do
+          # Project created via Brainstorm.create_brainstorm! has no website_urls by default
+          json = project.to_mini_json
+
+          expect(json[:domain]).to be_nil
+        end
+
+        it "does not fall back to project name" do
+          json = project.to_mini_json
+
+          # Should not use project name as domain - that's not a valid domain
+          expect(json[:domain]).not_to eq(project.name)
+        end
+      end
+
+      context "when website has a website_url" do
+        let!(:domain_record) { create(:domain, website: website, account: account, domain: "test-project.launch10.site") }
+        let!(:website_url) { create(:website_url, website: website, domain: domain_record, account: account, path: "/") }
+
+        it "returns the domain from website_url" do
+          json = project.to_mini_json
+
+          expect(json[:domain]).to eq("test-project.launch10.site")
+        end
+      end
+
+      context "when website has a website_url with non-root path" do
+        let!(:domain_record) { create(:domain, website: website, account: account, domain: "multi.launch10.site") }
+        let!(:website_url) { create(:website_url, website: website, domain: domain_record, account: account, path: "/campaign") }
+
+        it "returns the domain with path" do
+          json = project.to_mini_json
+
+          expect(json[:domain]).to eq("multi.launch10.site/campaign")
+        end
+      end
+    end
+  end
 end

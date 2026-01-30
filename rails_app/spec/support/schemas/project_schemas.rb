@@ -43,15 +43,28 @@ module APISchemas
       }
     end
 
+    # Status counts for filter badges
+    def self.status_counts_response
+      {
+        type: :object,
+        properties: {
+          draft: {type: :integer, description: "Number of draft projects"},
+          paused: {type: :integer, description: "Number of paused projects"},
+          live: {type: :integer, description: "Number of live projects"}
+        }
+      }
+    end
+
     # Paginated project list response
     def self.list_response
       {
         type: :object,
         properties: {
           projects: {type: :array, items: mini_response},
-          pagination: pagination_response
+          pagination: pagination_response,
+          status_counts: status_counts_response
         },
-        required: %w[projects pagination]
+        required: %w[projects pagination status_counts]
       }
     end
   end
