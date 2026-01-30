@@ -60,6 +60,18 @@ module Support
         properties[PROP_SOURCE_URL] = {url: support_request.submitted_from_url}
       end
 
+      if support_request.attachments.attached?
+        host = ENV.fetch("APP_URL", "http://localhost:3000")
+        files = support_request.attachments.map do |attachment|
+          {
+            name: attachment.filename.to_s,
+            type: "external",
+            external: {url: Rails.application.routes.url_helpers.rails_blob_url(attachment, host: host)}
+          }
+        end
+        properties[PROP_ATTACHMENTS] = {files: files}
+      end
+
       request.body = {
         parent: {database_id: database_id},
         properties: properties
