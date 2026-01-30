@@ -1,0 +1,149 @@
+# frozen_string_literal: true
+
+require "rails_helper"
+
+RSpec.describe "Support Inertia Page", type: :request, inertia: true do
+  include Devise::Test::IntegrationHelpers
+
+  let!(:user) { create(:user) }
+  let!(:account) { user.owned_account }
+
+  describe "GET /support" do
+    context "when user is subscribed" do
+      before do
+        ensure_plans_exist
+        subscribe_account(account, plan_name: "growth_monthly")
+        sign_in user
+      end
+
+      it "renders the Support component" do
+        get support_path
+
+        expect(response).to have_http_status(:ok)
+        expect(inertia.component).to eq("Support")
+      end
+    end
+
+    context "when user has no active subscription" do
+      before do
+        ensure_plans_exist
+        sign_in user
+      end
+
+      it "redirects to pricing page" do
+        get support_path
+
+        expect(response).to redirect_to(pricing_path)
+      end
+    end
+
+    context "when user is not authenticated" do
+      it "returns 404" do
+        get "/support"
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+  end
+
+  describe "POST /support" do
+    before do
+      ensure_plans_exist
+      subscribe_account(account, plan_name: "growth_monthly")
+      sign_in user
+    end
+
+    let(:valid_params) do
+      {
+        support_request: {
+          category: "Report a bug",
+          subject: "Something is broken",
+          description: "When I click the deploy button, nothing happens and the page just sits there loading.",
+          submitted_from_url: "http://localhost:3000/dashboard",
+          browser_info: "Mozilla/5.0"
+        }
+      }
+    end
+
+    it "creates a support request with valid params" do
+      expect {
+        post support_path, params: valid_params
+      }.to change(SupportRequest, :count).by(1)
+    end
+
+    it "redirects to support path on success" do
+      post support_path, params: valid_params
+
+      expect(response).to redirect_to(support_path)
+      expect(flash[:notice]).to include("Request submitted")
+    end
+
+    it "sets user and account on the support request" do
+      post support_path, params: valid_params
+
+      support_request = SupportRequest.last
+      expect(support_request.user).to eq(user)
+      expect(support_request.account).to eq(account)
+    end
+
+    it "auto-captures subscription tier and credits" do
+      post support_path, params: valid_params
+
+      support_request = SupportRequest.last
+      expect(support_request.subscription_tier).to be_present
+      expect(support_request.credits_remaining).to be_a(Numeric)
+    end
+
+    it "enqueues email delivery" do
+      expect {
+        post support_path, params: valid_params
+      }.to have_enqueued_mail(SupportMailer, :support_request)
+    end
+
+    it "enqueues Slack notification worker" do
+      expect(Support::SlackNotificationWorker).to receive(:perform_async).with(kind_of(Integer))
+
+      post support_path, params: valid_params
+    end
+
+    it "enqueues Notion creation worker" do
+      expect(Support::NotionCreationWorker).to receive(:perform_async).with(kind_of(Integer))
+
+      post support_path, params: valid_params
+    end
+
+    context "with invalid params" do
+      it "does not create a support request with short subject" do
+        expect {
+          post support_path, params: {
+            support_request: valid_params[:support_request].merge(subject: "Hi")
+          }
+        }.not_to change(SupportRequest, :count)
+      end
+
+      it "does not create a support request with short description" do
+        expect {
+          post support_path, params: {
+            support_request: valid_params[:support_request].merge(description: "Short")
+          }
+        }.not_to change(SupportRequest, :count)
+      end
+
+      it "does not create a support request with invalid category" do
+        expect {
+          post support_path, params: {
+            support_request: valid_params[:support_request].merge(category: "Invalid")
+          }
+        }.not_to change(SupportRequest, :count)
+      end
+
+      it "redirects with errors in session" do
+        post support_path, params: {
+          support_request: valid_params[:support_request].merge(subject: "Hi")
+        }
+
+        expect(response).to redirect_to(support_path)
+      end
+    end
+  end
+end

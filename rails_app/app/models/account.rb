@@ -66,6 +66,7 @@ class Account < ApplicationRecord
   has_many :credit_gifts, dependent: :destroy
   has_many :credit_usage_adjustments, dependent: :destroy
   has_many :analytics_daily_metrics, dependent: :destroy
+  has_many :support_requests, dependent: :destroy
   has_one :dashboard_insight, dependent: :destroy
   has_one :insights_chat, -> { where(chat_type: "insights") }, class_name: "Chat", dependent: :destroy
 

@@ -1,0 +1,21 @@
+New Support Request
+===================
+
+Reference: <%= @support_request.ticket_reference %>
+Category: <%= @support_request.category %>
+From: <%= @user.email %>
+Subscription: <%= @support_request.subscription_tier || "None" %>
+Credits: <%= @support_request.credits_remaining || "N/A" %>
+
+Subject: <%= @support_request.subject %>
+
+Description:
+<%= @support_request.description %>
+
+---
+User ID: <%= @user.id %>
+Submitted from: <%= @support_request.submitted_from_url || "N/A" %>
+Browser: <%= @support_request.browser_info || "N/A" %>
+<% if @support_request.attachments.attached? %>
+Attachments: <%= @support_request.attachments.count %> file(s) attached
+<% end %>

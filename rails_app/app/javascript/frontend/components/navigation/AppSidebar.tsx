@@ -5,6 +5,7 @@ import {
   RocketLaunchIcon,
   Cog8ToothIcon,
   ArrowRightStartOnRectangleIcon,
+  QuestionMarkCircleIcon,
 } from "@heroicons/react/24/outline";
 import { twMerge } from "tailwind-merge";
 import { NewProjectButton } from "./NewProjectButton";
@@ -30,6 +31,9 @@ export default function AppSidebar() {
     }
     if (href === "/projects/new") {
       return url === "/projects/new" || url.startsWith("/projects/");
+    }
+    if (href === "/support") {
+      return url === "/support";
     }
     return url.startsWith(href);
   };
@@ -92,6 +96,21 @@ export default function AppSidebar() {
           );
         })}
       </nav>
+
+      {/* Support */}
+      <div className={twMerge("px-1", isCollapsed && "flex justify-center")}>
+        <Link
+          href="/support"
+          className={twMerge(
+            "flex items-center gap-3 px-6 py-3 font-sans relative transition-colors",
+            isActive("/support") ? "text-secondary-500" : "text-white hover:bg-white/10",
+            isCollapsed && "justify-center px-0"
+          )}
+        >
+          <QuestionMarkCircleIcon className="w-6 h-6 shrink-0" strokeWidth={1.5} />
+          {!isCollapsed && <span className={isActive("/support") ? "font-semibold" : ""}>Support</span>}
+        </Link>
+      </div>
 
       {/* Divider above Settings */}
       <div
