@@ -217,8 +217,8 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
         before do
           # Force evaluation of all lets before deletion
           [project_id, website_id, brainstorm_id, workflow_id, chat_id,
-           social_link_id, domain_id, website_url_id, website_file_id,
-           deploy_id, website_deploy_id, analytics_id]
+            social_link_id, domain_id, website_url_id, website_file_id,
+            deploy_id, website_deploy_id, analytics_id]
 
           delete project_path(project_to_delete.uuid)
         end
@@ -276,8 +276,8 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
         before do
           # Force evaluation of all lets before deletion
           [project_id, website_id, brainstorm_id, workflow_id, chat_id,
-           social_link_id, domain_id, website_url_id, website_file_id,
-           deploy_id, website_deploy_id, analytics_id]
+            social_link_id, domain_id, website_url_id, website_file_id,
+            deploy_id, website_deploy_id, analytics_id]
 
           delete project_path(project_to_delete.uuid)
         end
@@ -365,8 +365,8 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
         before do
           # Force evaluation of all lets before deletion
           [project_id, website_id, brainstorm_id, workflow_id, chat_id,
-           social_link_id, domain_id, website_url_id, website_file_id,
-           deploy_id, website_deploy_id, analytics_id]
+            social_link_id, domain_id, website_url_id, website_file_id,
+            deploy_id, website_deploy_id, analytics_id]
 
           delete project_path(project_to_delete.uuid)
         end
@@ -509,8 +509,8 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
       it 'does not hard-delete any records' do
         # Force evaluation of all lets
         [project_id, website_id, brainstorm_id, workflow_id, chat_id,
-         social_link_id, domain_id, website_url_id, website_file_id,
-         deploy_id, website_deploy_id, analytics_id]
+          social_link_id, domain_id, website_url_id, website_file_id,
+          deploy_id, website_deploy_id, analytics_id]
 
         # Count records before deletion
         counts_before = {
@@ -582,8 +582,8 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     # Helper to soft-delete the project
     def soft_delete_project!
       [project_id, website_id, brainstorm_id, workflow_id, chat_id,
-       social_link_id, domain_id, website_url_id, website_file_id,
-       deploy_id, website_deploy_id, analytics_id]
+        social_link_id, domain_id, website_url_id, website_file_id,
+        deploy_id, website_deploy_id, analytics_id]
       project_to_restore.destroy
     end
 

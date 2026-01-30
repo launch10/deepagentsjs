@@ -552,7 +552,7 @@ RSpec.describe Campaign, type: :model do
         website = campaign1.website
 
         # Create a second paused campaign on the same project
-        campaign2 = Campaign.create!(
+        Campaign.create!(
           account: account,
           project: project,
           website: website,
