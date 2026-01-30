@@ -20,14 +20,22 @@ const FILTERS: { label: string; value: FilterStatus }[] = [
   { label: "Draft", value: "draft" },
 ];
 
+const STATUS_ORDER: Record<ProjectStatus, number> = {
+  live: 0,
+  paused: 1,
+  draft: 2,
+};
+
 export default function Projects() {
   const { projects, total_count } = usePage<ProjectsPageProps>().props;
   const [activeFilter, setActiveFilter] = useState<FilterStatus>("all");
 
-  const filteredProjects = useMemo(
-    () => (activeFilter === "all" ? projects : projects.filter((p) => p.status === activeFilter)),
-    [projects, activeFilter],
-  );
+  const filteredProjects = useMemo(() => {
+    const list = activeFilter === "all"
+      ? projects
+      : projects.filter((p) => p.status === activeFilter);
+    return [...list].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
+  }, [projects, activeFilter]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<FilterStatus, number> = {

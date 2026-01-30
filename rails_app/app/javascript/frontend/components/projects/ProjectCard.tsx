@@ -6,9 +6,16 @@ import {
   ArrowTopRightOnSquareIcon,
   UsersIcon,
   ChartBarIcon,
+  EllipsisVerticalIcon,
 } from "@heroicons/react/24/outline";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@components/ui/dropdown-menu";
 
 type ProjectStatus = "live" | "paused" | "draft";
 
@@ -133,6 +140,29 @@ export function ProjectCard({ project }: ProjectCardProps) {
               Performance
             </button>
           )}
+
+          {/* Three-dot menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="p-1 text-base-400 hover:text-base-600 transition-colors shrink-0">
+                <EllipsisVerticalIcon className="w-5 h-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-[149px] p-2 rounded-lg border-[#EDEDEC] shadow-[0px_4px_4px_-1px_rgba(12,12,13,0.1),0px_4px_4px_-1px_rgba(12,12,13,0.05)]"
+            >
+              <DropdownMenuItem className="px-4 py-3 rounded-lg text-sm font-sans text-base-600 cursor-pointer">
+                Edit Campaign
+              </DropdownMenuItem>
+              <DropdownMenuItem className="px-4 py-3 rounded-lg text-sm font-sans text-base-600 cursor-pointer">
+                Edit Page
+              </DropdownMenuItem>
+              <DropdownMenuItem className="px-4 py-3 rounded-lg text-sm font-sans text-[#D14F34] cursor-pointer focus:text-[#D14F34]">
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </div>
