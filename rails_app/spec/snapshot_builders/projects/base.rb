@@ -31,7 +31,7 @@ module SnapshotBuilders
         )
 
         # Create workflow
-        workflow_step = status == "draft" ? "brainstorm" : "deploy"
+        workflow_step = (status == "draft") ? "brainstorm" : "deploy"
         project.workflows.create!(
           workflow_type: "launch",
           step: workflow_step,

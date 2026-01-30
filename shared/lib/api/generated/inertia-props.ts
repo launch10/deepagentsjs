@@ -301,6 +301,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{uuid}/performance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Performance page props */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Project UUID */
+                    uuid: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Performance page props */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PerformanceProps"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{uuid}/campaigns/content": {
         parameters: {
             query?: never;
@@ -1807,6 +1846,126 @@ export interface components {
             } | null;
             /** @description Thread ID for Langgraph insights generation */
             thread_id: string;
+        };
+        PerformanceProps: {
+            /** @description Base URL of the application */
+            root_path: string;
+            /** @description URL of the Langgraph service */
+            langgraph_path: string;
+            /** @description JWT token for API authentication */
+            jwt: string;
+            /** @description Validation errors from session */
+            errors?: {
+                [key: string]: string[];
+            };
+            /** @description Flash messages */
+            flash?: {
+                /** @enum {string} */
+                type: "success" | "error" | "info";
+                message: string;
+            }[];
+            /** @description Currently authenticated user */
+            current_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Original admin user when impersonating */
+            true_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Whether admin is currently impersonating another user */
+            impersonating?: boolean;
+            /** @description Credit balance for the current account */
+            credits?: {
+                plan_credits: number;
+                pack_credits: number;
+                total_credits: number;
+                plan_credits_allocated: number;
+                period_ends_at?: string | null;
+            } | null;
+            project: {
+                /** @description Project ID */
+                id: number;
+                /** @description Project UUID */
+                uuid: string;
+                /** @description Project name */
+                name: string;
+                website_id?: number | null;
+                account_id?: number;
+                created_at?: string;
+                updated_at?: string;
+            };
+            metrics: {
+                [key: string]: {
+                    summary: {
+                        ad_spend: number;
+                        ad_spend_trend?: {
+                            /** @enum {string} */
+                            direction: "up" | "down" | "flat";
+                            percent: number;
+                        };
+                        leads: number;
+                        leads_trend?: {
+                            /** @enum {string} */
+                            direction: "up" | "down" | "flat";
+                            percent: number;
+                        };
+                        cpl?: number | null;
+                        cpl_trend?: {
+                            /** @enum {string} */
+                            direction: "up" | "down" | "flat";
+                            percent: number;
+                        };
+                        roas?: number | null;
+                        roas_trend?: {
+                            /** @enum {string} */
+                            direction: "up" | "down" | "flat";
+                            percent: number;
+                        };
+                    };
+                    impressions: {
+                        dates: string[];
+                        data: number[];
+                        totals: {
+                            current: number;
+                            previous: number;
+                            trend_percent: number;
+                            /** @enum {string} */
+                            trend_direction: "up" | "down" | "flat";
+                        };
+                    };
+                    clicks: {
+                        dates: string[];
+                        data: number[];
+                        totals: {
+                            current: number;
+                            previous: number;
+                            trend_percent: number;
+                            /** @enum {string} */
+                            trend_direction: "up" | "down" | "flat";
+                        };
+                    };
+                    ctr: {
+                        dates: string[];
+                        data: number[];
+                        totals: {
+                            current: number;
+                            previous: number;
+                            trend_percent: number;
+                            /** @enum {string} */
+                            trend_direction: "up" | "down" | "flat";
+                        };
+                    };
+                    has_data: boolean;
+                };
+            };
+            date_range_options: {
+                days: number;
+                label: string;
+            }[];
         };
     };
     responses: never;

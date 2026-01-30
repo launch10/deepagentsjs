@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { usePage, Link } from "@inertiajs/react";
 import { Bar, BarChart, Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { ArrowTrendingUpIcon, ArrowTrendingDownIcon, MinusIcon } from "@heroicons/react/16/solid";
+import type { InertiaProps } from "@shared";
 import {
   ChartContainer,
   ChartTooltip,
@@ -8,55 +10,15 @@ import {
   type ChartConfig,
 } from "@components/ui/chart";
 
-// Types
-interface Project {
-  id: number;
-  uuid: string;
-  name: string;
-  website_id: number | null;
-  account_id: number;
-  created_at: string;
-  updated_at: string;
-}
+// Use generated types from RSwag
+export type ProjectPerformanceProps =
+  InertiaProps.paths["/projects/{uuid}/performance"]["get"]["responses"]["200"]["content"]["application/json"];
 
-interface Summary {
-  ad_spend: number;
-  leads: number;
-  cpl: number | null;
-  roas: number | null;
-}
-
-interface Totals {
-  current: number;
-  previous: number;
-  trend_percent: number;
-  trend_direction: "up" | "down" | "flat";
-}
-
-interface TimeSeries {
-  dates: string[];
-  data: number[];
-  totals: Totals;
-}
-
-interface Metrics {
-  summary: Summary;
-  impressions: TimeSeries;
-  clicks: TimeSeries;
-  ctr: TimeSeries;
-  has_data: boolean;
-}
-
-interface DateRangeOption {
-  days: number;
-  label: string;
-}
-
-interface ProjectPerformanceProps {
-  project: Project;
-  metrics: Record<string, Metrics>;
-  date_range_options: DateRangeOption[];
-}
+// Derive nested types from generated type
+type Metrics = ProjectPerformanceProps["metrics"][string];
+type Summary = Metrics["summary"];
+type Trend = NonNullable<Summary["ad_spend_trend"]>;
+type TimeSeries = Metrics["impressions"];
 
 type DaysKey = "7" | "30" | "90" | "0";
 const DEFAULT_DAYS: DaysKey = "30";
@@ -139,11 +101,14 @@ export default function ProjectPerformance() {
               title="Ad Spend"
               description="Total cost for date range"
               value={hasData ? `$${Number(metrics.summary.ad_spend ?? 0).toFixed(2)}` : null}
+              trend={hasData ? metrics.summary.ad_spend_trend : undefined}
+              invertTrend={true}
             />
             <SummaryCard
               title="Leads"
               description="Form submissions not attributed to ads"
               value={hasData ? String(metrics.summary.leads ?? 0) : null}
+              trend={hasData ? metrics.summary.leads_trend : undefined}
               link={
                 hasData
                   ? {
@@ -161,6 +126,8 @@ export default function ProjectPerformance() {
                   ? `$${Number(metrics.summary.cpl).toFixed(2)}`
                   : null
               }
+              trend={hasData ? metrics.summary.cpl_trend : undefined}
+              invertTrend={true}
             />
             <SummaryCard
               title="Return on Ad Spend"
@@ -170,13 +137,13 @@ export default function ProjectPerformance() {
                   ? `${Number(metrics.summary.roas).toFixed(2)}x`
                   : null
               }
+              trend={hasData ? metrics.summary.roas_trend : undefined}
             />
           </div>
         </section>
 
         {/* Charts */}
         <section>
-          <h2 className="text-lg font-semibold text-[#2E3238] mb-4">Engagement Metrics</h2>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <BarChartCard
               title="Impressions"
@@ -244,17 +211,47 @@ function SummaryCard({
   description,
   value,
   link,
+  trend,
+  invertTrend = false,
 }: {
   title: string;
   description: string;
   value: string | null;
   link?: { href: string; label: string };
+  trend?: Trend;
+  invertTrend?: boolean;
 }) {
   const isEmpty = value === null;
 
+  // Determine if the trend is "good" based on direction and whether it's inverted
+  // invertTrend=true means down is good (e.g., Ad Spend, CPL)
+  const isGoodTrend =
+    trend?.direction === "flat"
+      ? null
+      : invertTrend
+        ? trend?.direction === "down"
+        : trend?.direction === "up";
+
+  // Determine background color based on trend
+  const getTrendBgColor = () => {
+    if (trend?.direction === "flat") return "bg-neutral-100";
+    return isGoodTrend ? "bg-success-100" : "bg-secondary-100";
+  };
+
   return (
-    <div className="rounded-2xl border border-neutral-300 bg-white p-4">
-      <div className="mb-2">
+    <div className="rounded-2xl border border-neutral-300 bg-white p-4 relative">
+      {/* Trend icon in top right */}
+      {trend && !isEmpty && (
+        <div className="absolute top-4 right-4">
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center ${getTrendBgColor()}`}
+          >
+            <TrendIcon direction={trend.direction} isGood={isGoodTrend ?? false} />
+          </div>
+        </div>
+      )}
+
+      <div className="mb-2 pr-10">
         <h3 className="text-sm font-medium text-[#2E3238]">{title}</h3>
         <p className="text-xs text-[#96989B]">{description}</p>
       </div>
@@ -282,6 +279,22 @@ function SummaryCard({
       )}
     </div>
   );
+}
+
+function TrendIcon({ direction, isGood }: { direction: "up" | "down" | "flat"; isGood: boolean }) {
+  const colorClass =
+    direction === "flat" ? "text-neutral-500" : isGood ? "text-success-700" : "text-secondary-700";
+
+  if (direction === "up") {
+    return <ArrowTrendingUpIcon className={`w-4 h-4 ${colorClass}`} />;
+  }
+
+  if (direction === "down") {
+    return <ArrowTrendingDownIcon className={`w-4 h-4 ${colorClass}`} />;
+  }
+
+  // Flat trend
+  return <MinusIcon className={`w-4 h-4 ${colorClass}`} />;
 }
 
 function BarChartCard({

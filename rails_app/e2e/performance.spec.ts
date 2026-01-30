@@ -309,21 +309,78 @@ test.describe("Project Performance Page", () => {
   });
 
   test.describe("Multi-tenant Isolation", () => {
+    // Admin user credentials (created by basic_account snapshot builder)
+    const adminUser = {
+      email: "brett@launch10.ai",
+      password: "Launch10TestPass!",
+    };
+
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("analytics/healthy_account");
-      await loginUser(page);
       const project = await DatabaseSnapshotter.getFirstProject();
       projectUuid = project.uuid;
       performancePage = new PerformancePage(page);
     });
 
-    test("returns 404 for non-existent project", async ({ page }) => {
+    test("returns 404 for non-existent project UUID", async ({ page }) => {
+      // Login and navigate directly to an invalid project URL
+      await page.goto("/users/sign_in");
+      await page.waitForLoadState("domcontentloaded");
+
+      const emailInput = page.getByPlaceholder("Email");
+      await emailInput.waitFor({ state: "visible", timeout: 10000 });
+      await emailInput.fill("test_user@launch10.ai");
+      await page.getByPlaceholder("Password").fill("Launch10TestPass!");
+      await page.getByRole("button", { name: "Sign In", exact: true }).click();
+
+      // Wait for sign in to complete (redirect away from sign_in)
+      await page.waitForURL((url) => !url.toString().includes("/users/sign_in"), {
+        timeout: 10000,
+      });
+
+      // Now navigate to a completely invalid UUID
       await page.goto(`/projects/non-existent-uuid/performance`);
 
-      // Should get 404
-      const response = await page.waitForResponse(
-        (resp) => resp.url().includes("/performance") && resp.status() === 404
-      );
+      // Should show 404 page content or redirect
+      // The route will return 404 because the project doesn't exist
+      await expect(page.locator("body")).toContainText(/not found|404/i, {
+        timeout: 10000,
+      });
+    });
+
+    test("user cannot access another user's project performance data", async ({ page }) => {
+      // First, login as test_user to verify the project exists and is accessible
+      await loginUser(page);
+      await performancePage.goto(projectUuid);
+      await expect(performancePage.pageTitle).toHaveText("Performance");
+      await performancePage.expectHasData();
+
+      // Logout test_user
+      await page.goto("/users/sign_out");
+      await page.waitForLoadState("domcontentloaded");
+
+      // Login as admin user (different account, different projects)
+      await loginUser(page, adminUser.email, adminUser.password);
+
+      // Try to access the test_user's project directly
+      // This should fail because the project belongs to a different account
+      await page.goto(`/projects/${projectUuid}/performance`);
+
+      // Should get 404 or redirect - the project exists but doesn't belong to admin
+      // Rails scopes projects to current account, so it won't find this UUID
+      await expect(page.locator("body")).toContainText(/not found|404/i, {
+        timeout: 10000,
+      });
+    });
+
+    test("API returns 404 when accessing another user's project analytics", async ({ page }) => {
+      // Login as admin user
+      await loginUser(page, adminUser.email, adminUser.password);
+
+      // Try to fetch the test_user's project performance data via API
+      const response = await page.request.get(`/api/v1/projects/${projectUuid}/performance`);
+
+      // Should return 404 - project not found for this user's account
       expect(response.status()).toBe(404);
     });
   });

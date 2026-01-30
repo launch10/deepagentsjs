@@ -127,6 +127,25 @@ paths:
             application/json:
               schema:
                 "$ref": "#/components/schemas/DashboardProps"
+  "/projects/{uuid}/performance":
+    get:
+      summary: Performance page props
+      tags:
+        - Inertia Pages
+      parameters:
+        - name: uuid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Project UUID
+      responses:
+        "200":
+          description: Performance page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PerformanceProps"
   "/projects/{uuid}/campaigns/content":
     get:
       summary: Content page props
@@ -3226,6 +3245,331 @@ components:
         - status_counts
         - date_range_options
         - thread_id
+    PerformanceProps:
+      type: object
+      additionalProperties: false
+      properties:
+        root_path:
+          type: string
+          description: Base URL of the application
+        langgraph_path:
+          type: string
+          description: URL of the Langgraph service
+        jwt:
+          type: string
+          description: JWT token for API authentication
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Validation errors from session
+        flash:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                  - success
+                  - error
+                  - info
+              message:
+                type: string
+            required:
+              - type
+              - message
+          description: Flash messages
+        current_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+            - id
+            - name
+            - email
+          nullable: true
+          description: Currently authenticated user
+        true_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+            - id
+            - name
+            - email
+          nullable: true
+          description: Original admin user when impersonating
+        impersonating:
+          type: boolean
+          description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+            - plan_credits
+            - pack_credits
+            - total_credits
+            - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
+        project:
+          type: object
+          required:
+            - id
+            - uuid
+            - name
+          properties:
+            id:
+              type: integer
+              description: Project ID
+            uuid:
+              type: string
+              description: Project UUID
+            name:
+              type: string
+              description: Project name
+            website_id:
+              type: integer
+              nullable: true
+            account_id:
+              type: integer
+            created_at:
+              type: string
+            updated_at:
+              type: string
+        metrics:
+          type: object
+          additionalProperties:
+            type: object
+            required:
+              - summary
+              - impressions
+              - clicks
+              - ctr
+              - has_data
+            properties:
+              summary:
+                type: object
+                required:
+                  - ad_spend
+                  - leads
+                properties:
+                  ad_spend:
+                    type: number
+                  ad_spend_trend:
+                    type: object
+                    required:
+                      - direction
+                      - percent
+                    properties:
+                      direction:
+                        type: string
+                        enum:
+                          - up
+                          - down
+                          - flat
+                      percent:
+                        type: number
+                  leads:
+                    type: integer
+                  leads_trend:
+                    type: object
+                    required:
+                      - direction
+                      - percent
+                    properties:
+                      direction:
+                        type: string
+                        enum:
+                          - up
+                          - down
+                          - flat
+                      percent:
+                        type: number
+                  cpl:
+                    type: number
+                    nullable: true
+                  cpl_trend:
+                    type: object
+                    required:
+                      - direction
+                      - percent
+                    properties:
+                      direction:
+                        type: string
+                        enum:
+                          - up
+                          - down
+                          - flat
+                      percent:
+                        type: number
+                  roas:
+                    type: number
+                    nullable: true
+                  roas_trend:
+                    type: object
+                    required:
+                      - direction
+                      - percent
+                    properties:
+                      direction:
+                        type: string
+                        enum:
+                          - up
+                          - down
+                          - flat
+                      percent:
+                        type: number
+              impressions:
+                type: object
+                required:
+                  - dates
+                  - data
+                  - totals
+                properties:
+                  dates:
+                    type: array
+                    items:
+                      type: string
+                  data:
+                    type: array
+                    items:
+                      type: number
+                  totals:
+                    type: object
+                    required:
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    properties:
+                      current:
+                        type: number
+                      previous:
+                        type: number
+                      trend_percent:
+                        type: number
+                      trend_direction:
+                        type: string
+                        enum:
+                          - up
+                          - down
+                          - flat
+              clicks:
+                type: object
+                required:
+                  - dates
+                  - data
+                  - totals
+                properties:
+                  dates:
+                    type: array
+                    items:
+                      type: string
+                  data:
+                    type: array
+                    items:
+                      type: number
+                  totals:
+                    type: object
+                    required:
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    properties:
+                      current:
+                        type: number
+                      previous:
+                        type: number
+                      trend_percent:
+                        type: number
+                      trend_direction:
+                        type: string
+                        enum:
+                          - up
+                          - down
+                          - flat
+              ctr:
+                type: object
+                required:
+                  - dates
+                  - data
+                  - totals
+                properties:
+                  dates:
+                    type: array
+                    items:
+                      type: string
+                  data:
+                    type: array
+                    items:
+                      type: number
+                  totals:
+                    type: object
+                    required:
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    properties:
+                      current:
+                        type: number
+                      previous:
+                        type: number
+                      trend_percent:
+                        type: number
+                      trend_direction:
+                        type: string
+                        enum:
+                          - up
+                          - down
+                          - flat
+              has_data:
+                type: boolean
+        date_range_options:
+          type: array
+          items:
+            type: object
+            required:
+              - days
+              - label
+            properties:
+              days:
+                type: integer
+              label:
+                type: string
+      required:
+        - root_path
+        - langgraph_path
+        - jwt
+        - project
+        - metrics
+        - date_range_options
 servers:
   - url: https://{defaultHost}
     variables:
