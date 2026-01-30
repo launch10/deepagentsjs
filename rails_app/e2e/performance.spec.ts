@@ -133,13 +133,13 @@ test.describe("Project Performance Page", () => {
       await expect(page).toHaveURL(new RegExp(`/projects/${projectUuid}/leads`));
     });
 
-    test("back link navigates to dashboard", async ({ page }) => {
+    test("back link navigates to projects list", async ({ page }) => {
       await performancePage.goto(projectUuid);
 
       await performancePage.clickBackToProjects();
 
-      // Should be on dashboard
-      await expect(page).toHaveURL(/\/dashboard/);
+      // Should be on projects list
+      await expect(page).toHaveURL(/\/projects/);
     });
 
     test("date range switching updates chart values", async () => {

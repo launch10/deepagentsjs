@@ -65,10 +65,22 @@ export async function calculateCreditStatusNode(
 
     return { creditStatus };
   } catch (error) {
-    // Log error but don't fail the graph - credit status is informational
+    // Log error with details about which models were used
     console.warn(
       "[calculateCreditStatusNode] Failed to calculate credit status:",
       error
+    );
+
+    // Log the usage records to help debug which LLM is causing issues
+    console.warn(
+      "[calculateCreditStatusNode] Usage records that caused the error:",
+      usageContext.records.map((r) => ({
+        model: r.model,
+        langchainRunId: r.langchainRunId,
+        tags: r.tags,
+        inputTokens: r.inputTokens,
+        outputTokens: r.outputTokens,
+      }))
     );
     return {};
   }

@@ -26,7 +26,8 @@ module Analytics
           available: true,
           dates: date_range_array,
           series: series,
-          totals: totals
+          totals: totals,
+          data_delay: "ads"
         }
       end
 
@@ -46,7 +47,8 @@ module Analytics
           available: true,
           dates: date_range_array,
           series: series,
-          totals: totals
+          totals: totals,
+          data_delay: "ads"
         }
       end
 
@@ -58,7 +60,8 @@ module Analytics
           message: message,
           dates: date_range_array,
           series: [],
-          totals: { current: nil, previous: nil, trend_percent: 0, trend_direction: "flat" }
+          totals: { current: nil, previous: nil, trend_percent: 0, trend_direction: "flat" },
+          data_delay: "ads"
         }
       end
 

@@ -251,7 +251,8 @@ module Analytics
       {
         dates: dates.map(&:iso8601),
         data: data,
-        totals: build_totals(current_total, previous_total)
+        totals: build_totals(current_total, previous_total),
+        data_delay: "ads"
       }
     end
 
@@ -306,7 +307,8 @@ module Analytics
       {
         dates: dates.map(&:iso8601),
         data: data,
-        totals: build_totals(current_ctr, previous_ctr)
+        totals: build_totals(current_ctr, previous_ctr),
+        data_delay: "ads"
       }
     end
 

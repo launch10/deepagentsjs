@@ -366,6 +366,7 @@ function MetricChart({
       <div className="mb-2">
         <h3 className="text-sm font-medium text-[#2E3238]">{title}</h3>
         <p className="text-xs text-base-400">{dateSubtitle}</p>
+        {data.data_delay && <DataDelayIndicator type={data.data_delay} />}
       </div>
 
       {data.series.length > 0 && chartData.length > 0 ? (
@@ -618,6 +619,14 @@ function ProjectCard({ project }: { project: ProjectSummary }) {
         </div>
       </div>
     </Link>
+  );
+}
+
+function DataDelayIndicator({ type }: { type: string }) {
+  const delayText = type === "ads" ? "Data may be 2-4 hours delayed" : "Data may be 15 minutes delayed";
+
+  return (
+    <p className="text-[10px] text-base-400 mt-1">{delayText}</p>
   );
 }
 

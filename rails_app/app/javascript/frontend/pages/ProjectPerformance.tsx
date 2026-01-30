@@ -375,6 +375,7 @@ function BarChartCard({
       <div className="mb-6">
         <h3 className="text-sm font-medium text-[#0F1113]">{title}</h3>
         <p className="text-xs text-[#96989B]">{dateSubtitle}</p>
+        {data.data_delay && <DataDelayIndicator type={data.data_delay} />}
       </div>
 
       {hasData ? (
@@ -472,6 +473,7 @@ function LineChartCard({
       <div className="mb-6">
         <h3 className="text-sm font-medium text-[#0F1113]">{title}</h3>
         <p className="text-xs text-[#96989B]">{dateSubtitle}</p>
+        {data.data_delay && <DataDelayIndicator type={data.data_delay} />}
       </div>
 
       {hasData ? (
@@ -540,6 +542,14 @@ function EmptyChartState() {
       </div>
       <span className="text-xs text-[#96989B]">No data available yet</span>
     </div>
+  );
+}
+
+function DataDelayIndicator({ type }: { type: string }) {
+  const delayText = type === "ads" ? "Data may be 2-4 hours delayed" : "Data may be 15 minutes delayed";
+
+  return (
+    <p className="text-[10px] text-base-200 mt-1">{delayText}</p>
   );
 }
 

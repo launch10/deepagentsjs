@@ -1300,6 +1300,11 @@ export interface components {
                              */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                     unique_visitors: {
                         /** @description ISO formatted dates for x-axis */
@@ -1328,6 +1333,11 @@ export interface components {
                              */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                     page_views: {
                         /** @description ISO formatted dates for x-axis */
@@ -1356,6 +1366,11 @@ export interface components {
                              */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                     ctr: {
                         /** @description ISO formatted dates for x-axis */
@@ -1384,6 +1399,11 @@ export interface components {
                              */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                     cpl: {
                         /** @description ISO formatted dates for x-axis */
@@ -1412,6 +1432,11 @@ export interface components {
                              */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                 };
                 30: {
@@ -1442,6 +1467,11 @@ export interface components {
                              */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                     unique_visitors: {
                         /** @description ISO formatted dates for x-axis */
@@ -1470,6 +1500,11 @@ export interface components {
                              */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                     page_views: {
                         /** @description ISO formatted dates for x-axis */
@@ -1498,6 +1533,11 @@ export interface components {
                              */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                     ctr: {
                         /** @description ISO formatted dates for x-axis */
@@ -1526,6 +1566,11 @@ export interface components {
                              */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                     cpl: {
                         /** @description ISO formatted dates for x-axis */
@@ -1554,6 +1599,11 @@ export interface components {
                              */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                 };
                 90: {
@@ -1584,6 +1634,11 @@ export interface components {
                              */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                     unique_visitors: {
                         /** @description ISO formatted dates for x-axis */
@@ -1612,6 +1667,11 @@ export interface components {
                              */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                     page_views: {
                         /** @description ISO formatted dates for x-axis */
@@ -1640,6 +1700,11 @@ export interface components {
                              */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                     ctr: {
                         /** @description ISO formatted dates for x-axis */
@@ -1668,6 +1733,11 @@ export interface components {
                              */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                     cpl: {
                         /** @description ISO formatted dates for x-axis */
@@ -1696,6 +1766,11 @@ export interface components {
                              */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                 };
             };
@@ -1936,6 +2011,11 @@ export interface components {
                             /** @enum {string} */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                     clicks: {
                         dates: string[];
@@ -1947,6 +2027,11 @@ export interface components {
                             /** @enum {string} */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                     ctr: {
                         dates: string[];
@@ -1958,6 +2043,11 @@ export interface components {
                             /** @enum {string} */
                             trend_direction: "up" | "down" | "flat";
                         };
+                        /**
+                         * @description Data freshness: realtime (15 min) or ads (2-4 hours)
+                         * @enum {string}
+                         */
+                        data_delay: "realtime" | "ads";
                     };
                     has_data: boolean;
                 };

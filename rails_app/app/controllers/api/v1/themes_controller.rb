@@ -1,11 +1,11 @@
 class API::V1::ThemesController < API::BaseController
   def index
-    @themes = policy_scope(Theme).order(id: :asc)
+    @themes = policy_scope(Theme).includes(:theme_labels).order(id: :asc)
     render json: @themes.as_json(only: [:id, :name, :colors], include: {theme_labels: {only: [:id, :name]}})
   end
 
   def show
-    @theme = policy_scope(Theme).find(params[:id])
+    @theme = policy_scope(Theme).includes(:theme_labels).find(params[:id])
     render json: @theme.as_json(
       only: [:id, :name, :colors, :theme, :pairings, :typography_recommendations],
       include: {theme_labels: {only: [:id, :name]}}

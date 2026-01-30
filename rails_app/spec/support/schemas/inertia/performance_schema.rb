@@ -94,11 +94,12 @@ module InertiaSchemas
     def time_series_schema
       {
         type: :object,
-        required: %w[dates data totals],
+        required: %w[dates data totals data_delay],
         properties: {
           dates: { type: :array, items: { type: :string } },
           data: { type: :array, items: { type: :number } },
-          totals: totals_schema
+          totals: totals_schema,
+          data_delay: { type: :string, enum: %w[realtime ads], description: "Data freshness: realtime (15 min) or ads (2-4 hours)" }
         }
       }
     end
