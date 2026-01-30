@@ -1,6 +1,7 @@
-import { describe, it, expect } from "vitest";
-import { AIMessage } from "@langchain/core/messages";
-import { usageTracker } from "@core/billing";
+import { describe, it, expect, beforeEach } from "vitest";
+import { AIMessage, HumanMessage } from "@langchain/core/messages";
+import { usageTracker, createUsageContext, getUsageContext, usageStorage } from "@core/billing";
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * MODEL IDENTIFICATION TESTS - BILLING CRITICAL
@@ -113,7 +114,7 @@ describe("Model Identification for Billing", () => {
       const model = extractModelFromTracker(
         {
           model_name: "gpt-5-mini",
-          model: "gpt-5-mini-2025" // Less specific
+          model: "gpt-5-mini-2025", // Less specific
         },
         undefined
       );
@@ -129,7 +130,7 @@ describe("Model Identification for Billing", () => {
         {
           // No model or model_name at top level
           headers: { "x-model": "some-model" },
-          meta: { modelId: "another-model" }
+          meta: { modelId: "another-model" },
         },
         { _modelCard: "claude-sonnet-4-5" }
       );
@@ -142,7 +143,7 @@ describe("Model Identification for Billing", () => {
       const model = extractModelFromTracker(
         {
           model: null,
-          model_name: undefined
+          model_name: undefined,
         },
         { _modelCard: "gpt-5-mini" }
       );
@@ -154,13 +155,157 @@ describe("Model Identification for Billing", () => {
       const model = extractModelFromTracker(
         {
           model: "",
-          model_name: ""
+          model_name: "",
         },
         { _modelCard: "claude-haiku-4-5" }
       );
 
       // Empty strings are falsy, so _modelCard wins
       expect(model).toBe("claude-haiku-4-5");
+    });
+  });
+
+  /**
+   * CALLBACK FLOW TESTS - THE ACTUAL BUG SCENARIO
+   *
+   * This tests the real-world scenario where:
+   * 1. LangChain's callback manager passes metadata to handleChatModelStart (7th param)
+   * 2. LangChain's callback manager does NOT pass metadata to handleLLMEnd (via extraParams)
+   * 3. Provider's response_metadata doesn't include model name (Anthropic with tool_use)
+   *
+   * Without the fix: model = "unknown" (revenue lost)
+   * With the fix: tracker stores metadata from handleChatModelStart in the usage context
+   */
+  describe("CRITICAL: handleChatModelStart -> handleLLMEnd callback flow", () => {
+    /**
+     * Helper to run a callback test within a usage context
+     */
+    async function withUsageContext<T>(fn: () => Promise<T>): Promise<T> {
+      const context = createUsageContext();
+      return usageStorage.run(context, fn);
+    }
+
+    it("captures _modelCard from handleChatModelStart metadata when handleLLMEnd extraParams has no metadata", async () => {
+      await withUsageContext(async () => {
+        // This is the exact scenario that was causing "unknown" model errors:
+        // - LangChain passes metadata (with _modelCard) to handleChatModelStart
+        // - LangChain does NOT pass metadata to handleLLMEnd's extraParams
+        // - Anthropic's response_metadata with tool_use doesn't include model name
+
+        const langchainRunId = "langchain-run-" + uuidv4();
+
+        // Step 1: handleChatModelStart receives metadata with _modelCard
+        await usageTracker.handleChatModelStart(
+          { name: "test-llm" } as any, // llm serialized
+          [[new HumanMessage("test input")]], // messages
+          langchainRunId, // runId - this is critical, it links start to end
+          undefined, // parentRunId
+          undefined, // extraParams
+          [], // tags
+          { _modelCard: "claude-sonnet-4-5" }, // metadata - THIS IS WHERE _modelCard COMES FROM
+          "test-run-name" // runName
+        );
+
+        // Step 2: handleLLMEnd receives NO metadata in extraParams
+        // This simulates Anthropic's behavior with tool_use/structured output
+        const aiMessage = new AIMessage({
+          content: "test response",
+          additional_kwargs: {},
+          // Anthropic response_metadata with tool_use - note: NO model field!
+          response_metadata: {
+            usage: {
+              cache_creation_input_tokens: 0,
+              cache_read_input_tokens: 0,
+              service_tier: "standard",
+            },
+          },
+        });
+        (aiMessage as any).usage_metadata = {
+          input_tokens: 100,
+          output_tokens: 50,
+        };
+
+        await usageTracker.handleLLMEnd(
+          {
+            generations: [[{ message: aiMessage }]] as any,
+            llmOutput: { tokenUsage: { promptTokens: 0, completionTokens: 50, totalTokens: 50 } },
+          },
+          langchainRunId, // Same runId as handleChatModelStart
+          undefined, // parentRunId
+          ["seq:step:1"], // tags
+          {} // extraParams - NO metadata here! This is what LangChain actually passes
+        );
+
+        // Verify the model was correctly identified from stored metadata
+        const context = getUsageContext()!;
+        expect(context).toBeDefined();
+        expect(context.records).toHaveLength(1);
+        expect(context.records[0]!.model).toBe("claude-sonnet-4-5");
+      });
+    });
+
+    it("cleans up stored metadata after handleLLMEnd to prevent memory leaks", async () => {
+      await withUsageContext(async () => {
+        const langchainRunId = "langchain-run-" + uuidv4();
+        const context = getUsageContext()!;
+
+        // Before: Map should not have this runId
+        expect(context._runIdToMetadata.has(langchainRunId)).toBe(false);
+
+        // handleChatModelStart stores metadata in the context
+        await usageTracker.handleChatModelStart(
+          { name: "test-llm" } as any,
+          [[new HumanMessage("test")]],
+          langchainRunId,
+          undefined,
+          undefined,
+          [],
+          { _modelCard: "claude-sonnet-4-5" }
+        );
+
+        // After handleChatModelStart: metadata should be stored in context
+        expect(context._runIdToMetadata.has(langchainRunId)).toBe(true);
+
+        // handleLLMEnd processes and cleans up
+        const aiMessage = new AIMessage({ content: "response" });
+        (aiMessage as any).usage_metadata = { input_tokens: 10, output_tokens: 5 };
+
+        await usageTracker.handleLLMEnd(
+          { generations: [[{ message: aiMessage }]] as any },
+          langchainRunId,
+          undefined,
+          [],
+          {}
+        );
+
+        // After handleLLMEnd: metadata should be cleaned up from context
+        expect(context._runIdToMetadata.has(langchainRunId)).toBe(false);
+      });
+    });
+
+    it("still uses extraParams.metadata if storedMetadata is not available", async () => {
+      await withUsageContext(async () => {
+        const langchainRunId = "langchain-run-" + uuidv4();
+
+        // Skip handleChatModelStart (simulating a scenario where it wasn't called or didn't have metadata)
+        // Go directly to handleLLMEnd with extraParams.metadata
+
+        const aiMessage = new AIMessage({ content: "response" });
+        (aiMessage as any).usage_metadata = { input_tokens: 10, output_tokens: 5 };
+
+        await usageTracker.handleLLMEnd(
+          { generations: [[{ message: aiMessage }]] as any },
+          langchainRunId,
+          undefined,
+          [],
+          { metadata: { _modelCard: "gpt-5-mini" } } // metadata in extraParams
+        );
+
+        const context = getUsageContext()!;
+        expect(context).toBeDefined();
+        expect(context.records).toHaveLength(1);
+        expect(context.records[0]!.model).toBe("gpt-5-mini");
+      });
     });
   });
 });

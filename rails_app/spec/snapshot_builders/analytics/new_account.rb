@@ -36,6 +36,7 @@ module SnapshotBuilders
 
         project.update!(name: "My New Business")
         ensure_campaign(project)
+        ensure_live_deploy(project)
 
         # Only 3 days of data (just launched)
         dates = date_range(3)

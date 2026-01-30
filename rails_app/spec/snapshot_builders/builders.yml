@@ -118,3 +118,17 @@ analytics/empty_account:
   class: SnapshotBuilders::Analytics::EmptyAccount
   base_snapshot: basic_account
   description: "Subscribed account with 0 projects - tests 'Deploy Your First Project' insights"
+
+# Projects page snapshots - for projects list e2e tests
+# Use these for pagination, filtering, and deletion tests
+# Note: Empty state uses analytics/empty_account, single project uses website_deployed
+
+projects/mixed_statuses:
+  class: SnapshotBuilders::Projects::MixedStatuses
+  base_snapshot: basic_account
+  description: "4 projects (2 live, 1 paused, 1 draft) - tests status filtering"
+
+projects/multiple_pages:
+  class: SnapshotBuilders::Projects::MultiplePages
+  base_snapshot: basic_account
+  description: "8 projects (4 live, 2 paused, 2 draft) - tests pagination (5 per page = 2 pages)"

@@ -68,7 +68,12 @@ RAILS_APP_DIR="${LAUNCH10_ROOT}/rails_app"
 LANGGRAPH_APP_DIR="${LAUNCH10_ROOT}/langgraph_app"
 
 # Overmind socket - environment-specific to allow parallel runs
-OVERMIND_SOCKET="${RAILS_APP_DIR}/.overmind-${LAUNCH10_ENV:-dev}.sock"
+# WSL: project dirs on Windows filesystem (NTFS) don't support Unix sockets, so use /tmp
+if grep -qi microsoft /proc/version 2>/dev/null; then
+  OVERMIND_SOCKET="/tmp/overmind-rails-app-${LAUNCH10_ENV:-dev}.sock"
+else
+  OVERMIND_SOCKET="${RAILS_APP_DIR}/.overmind-${LAUNCH10_ENV:-dev}.sock"
+fi
 
 set +a  # Stop auto-exporting
 

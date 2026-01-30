@@ -36,6 +36,7 @@ module SnapshotBuilders
         # Rename existing project - this will be the stalled one
         primary_project.update!(name: "Budget Travel Guides")
         ensure_campaign(primary_project)
+        ensure_live_deploy(primary_project)
 
         # Clear existing data from base snapshot for the stalled project
         clear_project_analytics_data(primary_project)

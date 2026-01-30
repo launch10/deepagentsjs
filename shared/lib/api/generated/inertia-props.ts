@@ -76,6 +76,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Projects page props */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Projects page props */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProjectsProps"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/new": {
         parameters: {
             query?: never;
@@ -1090,6 +1126,9 @@ export interface components {
                 website_id?: number | null;
                 account_id: number;
                 name: string;
+                /** @enum {string} */
+                status: "live" | "paused" | "draft";
+                domain?: string | null;
                 created_at?: unknown;
                 updated_at?: unknown;
             };
@@ -2056,6 +2095,73 @@ export interface components {
                 days: number;
                 label: string;
             }[];
+        };
+        ProjectsProps: {
+            /** @description Base URL of the application */
+            root_path: string;
+            /** @description URL of the Langgraph service */
+            langgraph_path: string;
+            /** @description JWT token for API authentication */
+            jwt: string;
+            /** @description Validation errors from session */
+            errors?: {
+                [key: string]: string[];
+            };
+            /** @description Flash messages */
+            flash?: {
+                /** @enum {string} */
+                type: "success" | "error" | "info";
+                message: string;
+            }[];
+            /** @description Currently authenticated user */
+            current_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Original admin user when impersonating */
+            true_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Whether admin is currently impersonating another user */
+            impersonating?: boolean;
+            /** @description Credit balance for the current account */
+            credits?: {
+                plan_credits: number;
+                pack_credits: number;
+                total_credits: number;
+                plan_credits_allocated: number;
+                period_ends_at?: string | null;
+            } | null;
+            projects: {
+                id: number;
+                uuid: string;
+                website_id?: number | null;
+                account_id: number;
+                name: string;
+                /** @enum {string} */
+                status: "live" | "paused" | "draft";
+                domain?: string | null;
+                created_at?: unknown;
+                updated_at?: unknown;
+            }[];
+            pagination: {
+                current_page: number;
+                total_pages: number;
+                total_count: number;
+                prev_page: number | null;
+                next_page: number | null;
+                from?: number | null;
+                to?: number | null;
+                series: (number | string)[];
+            };
+            status_counts: {
+                draft?: number;
+                paused?: number;
+                live?: number;
+            };
         };
     };
     responses: never;

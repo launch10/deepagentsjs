@@ -4,6 +4,7 @@
 #
 #  id                 :bigint           not null, primary key
 #  current_step       :string
+#  deleted_at         :datetime
 #  is_live            :boolean          default(FALSE)
 #  stacktrace         :text
 #  status             :string           default("pending"), not null
@@ -17,6 +18,7 @@
 # Indexes
 #
 #  index_deploys_on_campaign_deploy_id      (campaign_deploy_id)
+#  index_deploys_on_deleted_at              (deleted_at)
 #  index_deploys_on_is_live                 (is_live)
 #  index_deploys_on_project_id              (project_id)
 #  index_deploys_on_project_id_and_is_live  (project_id,is_live)
@@ -157,6 +159,35 @@ RSpec.describe Deploy, type: :model do
       create(:deploy, project: project, is_live: false)
 
       expect(project.live_deploy).to be_nil
+    end
+  end
+
+  describe "callbacks" do
+    describe "refresh_project_status on is_live change" do
+      it "refreshes project status when is_live changes to true" do
+        project.update_column(:status, "draft")
+        deploy = create(:deploy, project: project, is_live: false)
+
+        deploy.update!(is_live: true)
+
+        expect(project.reload.status).to eq("live")
+      end
+
+      it "refreshes project status when is_live changes to false" do
+        deploy = create(:deploy, project: project, is_live: true)
+        project.update_column(:status, "live")
+
+        deploy.update!(is_live: false)
+
+        expect(project.reload.status).to eq("draft")
+      end
+
+      it "does not refresh project status when is_live is unchanged" do
+        deploy = create(:deploy, project: project, is_live: false)
+        expect(project).not_to receive(:refresh_status!)
+
+        deploy.update!(status: "running")
+      end
     end
   end
 end

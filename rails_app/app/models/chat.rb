@@ -5,6 +5,7 @@
 #  id               :bigint           not null, primary key
 #  chat_type        :string           not null
 #  contextable_type :string
+#  deleted_at       :datetime
 #  name             :string
 #  created_at       :datetime         not null
 #  updated_at       :datetime         not null
@@ -17,13 +18,15 @@
 #
 #  index_chats_on_account_id                (account_id)
 #  index_chats_on_chat_type                 (chat_type)
-#  index_chats_on_chat_type_and_account_id  (chat_type,account_id) UNIQUE WHERE (project_id IS NULL)
-#  index_chats_on_chat_type_and_project_id  (chat_type,project_id) UNIQUE WHERE (project_id IS NOT NULL)
+#  index_chats_on_chat_type_and_account_id  (chat_type,account_id) UNIQUE WHERE ((project_id IS NULL) AND (deleted_at IS NULL))
+#  index_chats_on_chat_type_and_project_id  (chat_type,project_id) UNIQUE WHERE ((project_id IS NOT NULL) AND (deleted_at IS NULL))
+#  index_chats_on_deleted_at                (deleted_at)
 #  index_chats_on_project_id                (project_id)
 #  index_chats_on_thread_id                 (thread_id)
 #
 
 class Chat < ApplicationRecord
+  acts_as_paranoid
   acts_as_tenant :account
 
   belongs_to :project, optional: true

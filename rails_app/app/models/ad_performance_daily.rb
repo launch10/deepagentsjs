@@ -11,6 +11,7 @@
 #  conversions             :decimal(12, 2)   default(0.0), not null
 #  cost_micros             :bigint           default(0), not null
 #  date                    :date             not null
+#  deleted_at              :datetime
 #  impressions             :bigint           default(0), not null
 #  created_at              :datetime         not null
 #  updated_at              :datetime         not null
@@ -18,14 +19,17 @@
 #
 # Indexes
 #
-#  idx_ad_perf_daily_campaign_date     (campaign_id,date) UNIQUE
-#  index_ad_performance_daily_on_date  (date)
+#  idx_ad_perf_daily_campaign_date           (campaign_id,date) UNIQUE
+#  index_ad_performance_daily_on_date        (date)
+#  index_ad_performance_daily_on_deleted_at  (deleted_at)
 #
 # Foreign Keys
 #
 #  fk_rails_...  (campaign_id => campaigns.id)
 #
 class AdPerformanceDaily < ApplicationRecord
+  acts_as_paranoid
+
   self.table_name = "ad_performance_daily"
 
   belongs_to :campaign

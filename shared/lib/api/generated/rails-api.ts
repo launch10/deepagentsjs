@@ -60,6 +60,172 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists paginated projects */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Page number (default 1) */
+                    page?: number;
+                    /** @description Filter by status (draft, paused, live) */
+                    status?: string;
+                };
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns project mini JSON with expected fields */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            projects: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /**
+                                 * Format: uuid
+                                 * @description UUID identifier
+                                 */
+                                uuid: string;
+                                /** @description Associated website ID */
+                                website_id?: number | null;
+                                /** @description Unique identifier */
+                                account_id: number;
+                                /** @description Project name */
+                                name: string;
+                                /**
+                                 * @description Project status
+                                 * @enum {string}
+                                 */
+                                status: "draft" | "paused" | "live";
+                                /** @description Primary domain */
+                                domain?: string | null;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                created_at: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                updated_at: string;
+                            }[];
+                            pagination: {
+                                /** @description Current page number */
+                                current_page: number;
+                                /** @description Total number of pages */
+                                total_pages: number;
+                                /** @description Total number of items */
+                                total_count: number;
+                                /** @description Previous page number or null */
+                                prev_page?: number | null;
+                                /** @description Next page number or null */
+                                next_page?: number | null;
+                                /** @description First item index on current page */
+                                from?: number | null;
+                                /** @description Last item index on current page */
+                                to?: number | null;
+                                /** @description Page series for pagination controls */
+                                series?: (number | string)[];
+                            };
+                            status_counts: {
+                                /** @description Number of draft projects */
+                                draft?: number;
+                                /** @description Number of paused projects */
+                                paused?: number;
+                                /** @description Number of live projects */
+                                live?: number;
+                            };
+                        };
+                    };
+                };
+                /** @description unauthorized - expired token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{uuid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Deletes a project */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Project UUID */
+                    uuid: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description successfully deletes the project */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description cannot delete another account's project */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/brainstorms": {
         parameters: {
             query?: never;
@@ -1226,6 +1392,326 @@ export interface paths {
                 };
                 /** @description cannot access website owned by another account */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard_insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retrieves current dashboard insights */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns stale insights with fresh=false */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Insight record ID (null if none exists) */
+                            id: number | null;
+                            /** @description Array of 3 insights (null if none exists) */
+                            insights: {
+                                /** @description Short title (5 words max) */
+                                title: string;
+                                /** @description 2-3 sentence explanation with specific numbers */
+                                description: string;
+                                /**
+                                 * @description Sentiment of the insight
+                                 * @enum {string}
+                                 */
+                                sentiment: "positive" | "negative" | "neutral";
+                                /** @description Project UUID if project-specific, null if account-wide */
+                                project_uuid?: string | null;
+                                action: {
+                                    /** @description Button text */
+                                    label: string;
+                                    /** @description Action URL path */
+                                    url: string;
+                                };
+                            }[] | null;
+                            /** @description When insights were generated (null if none exists) */
+                            generated_at: string | null;
+                            /** @description Whether insights are still fresh (< 24 hours old) */
+                            fresh: boolean;
+                            /** @description The metrics used to generate insights */
+                            metrics_summary?: {
+                                [key: string]: unknown;
+                            } | null;
+                        };
+                    };
+                };
+                /** @description unauthorized without token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Creates or updates dashboard insights */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        dashboard_insight: {
+                            /** @description Array of exactly 3 insights to save */
+                            insights: {
+                                /** @description Short title (5 words max) */
+                                title: string;
+                                /** @description 2-3 sentence explanation with specific numbers */
+                                description: string;
+                                /**
+                                 * @description Sentiment of the insight
+                                 * @enum {string}
+                                 */
+                                sentiment: "positive" | "negative" | "neutral";
+                                /** @description Project UUID if project-specific, null if account-wide */
+                                project_uuid?: string | null;
+                                action: {
+                                    /** @description Button text */
+                                    label: string;
+                                    /** @description Action URL path */
+                                    url: string;
+                                };
+                            }[];
+                            /** @description Optional metrics summary used for generation */
+                            metrics_summary?: {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description updates existing insights */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Array of exactly 3 insights */
+                            insights: {
+                                /** @description Short title (5 words max) */
+                                title: string;
+                                /** @description 2-3 sentence explanation with specific numbers */
+                                description: string;
+                                /**
+                                 * @description Sentiment of the insight
+                                 * @enum {string}
+                                 */
+                                sentiment: "positive" | "negative" | "neutral";
+                                /** @description Project UUID if project-specific, null if account-wide */
+                                project_uuid?: string | null;
+                                action: {
+                                    /** @description Button text */
+                                    label: string;
+                                    /** @description Action URL path */
+                                    url: string;
+                                };
+                            }[];
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            generated_at: string;
+                            /** @description Whether insights are still fresh (always true after creation) */
+                            fresh: boolean;
+                            /** @description The metrics used to generate insights */
+                            metrics_summary?: {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description creates new insights */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Array of exactly 3 insights */
+                            insights: {
+                                /** @description Short title (5 words max) */
+                                title: string;
+                                /** @description 2-3 sentence explanation with specific numbers */
+                                description: string;
+                                /**
+                                 * @description Sentiment of the insight
+                                 * @enum {string}
+                                 */
+                                sentiment: "positive" | "negative" | "neutral";
+                                /** @description Project UUID if project-specific, null if account-wide */
+                                project_uuid?: string | null;
+                                action: {
+                                    /** @description Button text */
+                                    label: string;
+                                    /** @description Action URL path */
+                                    url: string;
+                                };
+                            }[];
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            generated_at: string;
+                            /** @description Whether insights are still fresh (always true after creation) */
+                            fresh: boolean;
+                            /** @description The metrics used to generate insights */
+                            metrics_summary?: {
+                                [key: string]: unknown;
+                            };
+                        };
+                    };
+                };
+                /** @description unauthorized without token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description fails with invalid insights */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dashboard_insights/metrics_summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Retrieves metrics summary for insight generation */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns metrics summary */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Time period for metrics */
+                            period: string;
+                            totals: {
+                                leads: number;
+                                page_views: number;
+                                ctr?: number | null;
+                                cpl?: number | null;
+                                ctr_available: boolean;
+                                cpl_available: boolean;
+                                total_spend_dollars?: number | null;
+                            };
+                            projects: {
+                                uuid: string;
+                                name: string;
+                                total_leads: number;
+                                total_page_views: number;
+                                ctr?: number | null;
+                                cpl?: number | null;
+                                days_since_last_lead?: number | null;
+                                spend_dollars?: number | null;
+                            }[];
+                            trends: {
+                                leads_trend?: {
+                                    /** @enum {string} */
+                                    direction: "up" | "down" | "flat";
+                                    percent: number;
+                                };
+                                page_views_trend?: {
+                                    /** @enum {string} */
+                                    direction: "up" | "down" | "flat";
+                                    percent: number;
+                                };
+                                ctr_trend?: {
+                                    /** @enum {string} */
+                                    direction: "up" | "down" | "flat";
+                                    percent: number;
+                                } | null;
+                                cpl_trend?: {
+                                    /** @enum {string} */
+                                    direction: "up" | "down" | "flat";
+                                    percent: number;
+                                } | null;
+                            };
+                            flags?: {
+                                has_stalled_project?: boolean;
+                                has_high_performer?: boolean;
+                                has_new_first_lead?: boolean;
+                            };
+                        };
+                    };
+                };
+                /** @description unauthorized without token */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3113,8 +3599,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Sets credits for a user account
-         * @description Sets plan and pack credits for the account owned by the given user email. Uses AllocationService for proper credit adjustment. Only available in development/test environments.
+         * Sets credits for an account
+         * @description Sets plan and pack millicredits for a user account. Only available in development/test environments.
          */
         post: {
             parameters: {
@@ -3127,15 +3613,15 @@ export interface paths {
                 content: {
                     "application/json": {
                         credits: {
-                            /** @description Email of the user whose account credits should be set */
+                            /** @description Email of the user whose account credits to set */
                             email: string;
                             /**
-                             * @description Plan credits in millicredits
+                             * @description Plan millicredits to set
                              * @default 0
                              */
                             plan_millicredits?: number;
                             /**
-                             * @description Pack credits in millicredits
+                             * @description Pack millicredits to set
                              * @default 0
                              */
                             pack_millicredits?: number;
@@ -3156,15 +3642,15 @@ export interface paths {
                             /** @example Credits updated */
                             message: string;
                             account: {
-                                id: number;
-                                plan_millicredits: number;
-                                pack_millicredits: number;
-                                total_millicredits: number;
+                                id?: number;
+                                plan_millicredits?: number;
+                                pack_millicredits?: number;
+                                total_millicredits?: number;
                             };
                         };
                     };
                 };
-                /** @description user or account not found */
+                /** @description user not found */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -3177,7 +3663,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description failed to set credits */
+                /** @description missing required parameters */
                 422: {
                     headers: {
                         [name: string]: unknown;

@@ -7,7 +7,7 @@ authenticated :user do
 
   get "dashboard", to: "dashboard#show"
 
-  resources :projects, only: [:new, :show], param: :uuid do
+  resources :projects, only: [:index, :new, :show, :destroy], param: :uuid do
     resources :workflows, only: [:show]
 
     member do
@@ -22,6 +22,7 @@ authenticated :user do
       end
 
       get :deploy
+      patch :restore
     end
 
     resources :leads, only: [:index], controller: "leads" do

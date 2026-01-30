@@ -58,6 +58,24 @@ module InertiaSchemas
     })
   end
 
+  def self.project_mini_schema
+    {
+      type: :object,
+      properties: {
+        id: integer_field,
+        uuid: string_field,
+        website_id: nullable(type: :integer),
+        account_id: integer_field,
+        name: string_field,
+        status: { type: :string, enum: %w[live paused draft] },
+        domain: nullable(type: :string),
+        created_at: {}, # Any type (Time object serializes as various formats)
+        updated_at: {}  # Any type (Time object serializes as various formats)
+      },
+      required: %w[id uuid account_id name status]
+    }
+  end
+
   def self.shared_props
     {
       root_path: { type: :string, description: 'Base URL of the application' },

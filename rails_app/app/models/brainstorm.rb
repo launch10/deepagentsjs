@@ -5,6 +5,7 @@
 #  id            :bigint           not null, primary key
 #  audience      :string
 #  completed_at  :datetime
+#  deleted_at    :datetime
 #  idea          :string
 #  look_and_feel :string
 #  social_proof  :string
@@ -17,10 +18,13 @@
 #
 #  index_brainstorms_on_completed_at  (completed_at)
 #  index_brainstorms_on_created_at    (created_at)
+#  index_brainstorms_on_deleted_at    (deleted_at)
 #  index_brainstorms_on_website_id    (website_id) UNIQUE
 #
 
 class Brainstorm < ApplicationRecord
+  acts_as_paranoid
+
   belongs_to :website
   has_one :project, through: :website
 

@@ -485,4 +485,115 @@ RSpec.describe Campaign, type: :model do
       end
     end
   end
+
+  describe "#is_paused?" do
+    it "returns true when status is paused" do
+      campaign, _, _ = create_campaign(account)
+      campaign.update_column(:status, "paused")
+
+      expect(campaign.is_paused?).to be true
+    end
+
+    it "returns false when status is not paused" do
+      campaign, _, _ = create_campaign(account)
+
+      %w[draft active completed].each do |status|
+        campaign.update_column(:status, status)
+        expect(campaign.is_paused?).to be false
+      end
+    end
+  end
+
+  describe "callbacks" do
+    describe "refresh_project_status on status change" do
+      it "refreshes project status when campaign status changes to paused" do
+        campaign, _, _ = create_campaign(account)
+        project = campaign.project
+        project.update_column(:status, "draft")
+
+        campaign.update!(status: "paused")
+
+        expect(project.reload.status).to eq("paused")
+      end
+
+      it "refreshes project status when campaign status changes from paused" do
+        campaign, _, _ = create_campaign(account)
+        project = campaign.project
+        campaign.update_column(:status, "paused")
+        project.update_column(:status, "paused")
+
+        campaign.update!(status: "active")
+
+        expect(project.reload.status).to eq("draft")
+      end
+
+      it "does not refresh project status when status is unchanged" do
+        campaign, _, _ = create_campaign(account)
+        project = campaign.project
+        expect(project).not_to receive(:refresh_status!)
+
+        campaign.update!(name: "Updated Name")
+      end
+
+      it "paused status takes priority over live deploy" do
+        campaign, _, _ = create_campaign(account)
+        project = campaign.project
+        create(:deploy, project: project, is_live: true)
+        project.update_column(:status, "live")
+
+        campaign.update!(status: "paused")
+
+        expect(project.reload.status).to eq("paused")
+      end
+
+      it "keeps project paused when one campaign is unpaused but another remains paused" do
+        campaign1, _, _ = create_campaign(account)
+        project = campaign1.project
+        website = campaign1.website
+
+        # Create a second paused campaign on the same project
+        Campaign.create!(
+          account: account,
+          project: project,
+          website: website,
+          name: "Second Campaign",
+          status: "paused"
+        )
+
+        # First campaign is also paused
+        campaign1.update_column(:status, "paused")
+        project.update_column(:status, "paused")
+
+        # Unpause first campaign
+        campaign1.update!(status: "active")
+
+        # Project should remain paused because campaign2 is still paused
+        expect(project.reload.status).to eq("paused")
+      end
+
+      it "sets project to draft when all paused campaigns are unpaused" do
+        campaign1, _, _ = create_campaign(account)
+        project = campaign1.project
+        website = campaign1.website
+
+        # Create a second campaign
+        campaign2 = Campaign.create!(
+          account: account,
+          project: project,
+          website: website,
+          name: "Second Campaign",
+          status: "paused"
+        )
+
+        campaign1.update_column(:status, "paused")
+        project.update_column(:status, "paused")
+
+        # Unpause both campaigns
+        campaign1.update!(status: "active")
+        campaign2.update!(status: "active")
+
+        expect(project.reload.status).to eq("draft")
+      end
+    end
+  end
 end

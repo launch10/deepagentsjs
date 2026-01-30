@@ -70,7 +70,7 @@ const assertMessageContent = async (result: { state: WebsiteGraphState }, websit
 
 // describe.sequential
 // temporarily skipping because caching is failing on CI - use this mainly for local testing and debugging speed
-describe("Website Builder", () => {
+describe.skip("Website Builder", () => {
   let websiteId: number;
   let website: DBTypes.WebsiteType;
   let themeColors: string[];
