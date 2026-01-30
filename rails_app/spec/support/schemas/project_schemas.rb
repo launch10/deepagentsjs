@@ -67,5 +67,16 @@ module APISchemas
         required: %w[projects pagination status_counts]
       }
     end
+
+    # Restore response (single project)
+    def self.restore_response
+      {
+        type: :object,
+        properties: {
+          project: mini_response
+        },
+        required: %w[project]
+      }
+    end
   end
 end

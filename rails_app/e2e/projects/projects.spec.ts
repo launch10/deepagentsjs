@@ -224,8 +224,7 @@ test.describe("Projects Page", () => {
 
         await projectsPage.confirmDelete();
         await projectsPage.waitForDeleteModalHidden();
-
-        await projectsPage.page.waitForTimeout(1000);
+        await projectsPage.waitForProjectCount(7);
 
         const totalAfter = await projectsPage.getTotalProjectsCount();
         expect(totalAfter).toBe(7);
@@ -368,8 +367,7 @@ test.describe("Projects Page", () => {
 
         await projectsPage.confirmDelete();
         await projectsPage.waitForDeleteModalHidden();
-
-        await projectsPage.page.waitForTimeout(1000);
+        await projectsPage.waitForProjectRemovedByName("Active Marketing Site");
 
         const finalCount = await projectsPage.getProjectCount();
         expect(finalCount).toBe(initialCount - 1);
@@ -384,8 +382,7 @@ test.describe("Projects Page", () => {
 
         await projectsPage.confirmDelete();
         await projectsPage.waitForDeleteModalHidden();
-
-        await projectsPage.page.waitForTimeout(1000);
+        await projectsPage.waitForProjectRemovedByName("Active Marketing Site");
 
         const names = await projectsPage.getProjectNames();
         expect(names).not.toContain("Active Marketing Site");
@@ -568,8 +565,7 @@ test.describe("Projects Page", () => {
 
       await projectsPage.confirmDelete();
       await projectsPage.waitForDeleteModalHidden();
-
-      await projectsPage.page.waitForTimeout(1000);
+      await projectsPage.waitForProjectRemovedByName("Test Project");
 
       await projectsPage.expectEmptyState();
     });
@@ -592,9 +588,7 @@ test.describe("Projects Page", () => {
       await projectsPage.goto();
 
       await expect(page.getByText("No projects yet")).toBeVisible();
-      await expect(
-        page.getByText(/Create your first landing page and ad campaign/i)
-      ).toBeVisible();
+      await expect(page.getByText(/Create your first landing page and ad campaign/i)).toBeVisible();
     });
 
     test("shows Create Your First Project button", async () => {

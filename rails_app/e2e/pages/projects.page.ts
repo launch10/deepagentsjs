@@ -48,24 +48,24 @@ export class ProjectsPage {
 
     // Header
     this.pageTitle = page.locator("h1");
-    this.totalProjectsText = page.locator('h1 + p');
+    this.totalProjectsText = page.locator("h1 + p");
     this.newProjectButton = page.locator('a:has-text("New Project")');
 
     // Filter tabs (in the segmented control)
-    this.filterTabs = page.locator('.bg-neutral-100.rounded-full');
+    this.filterTabs = page.locator(".bg-neutral-100.rounded-full");
     this.allFilter = page.locator('button:has-text("All")');
     this.liveFilter = page.locator('button:has-text("Live")');
     this.pausedFilter = page.locator('button:has-text("Paused")');
     this.draftFilter = page.locator('button:has-text("Draft")');
 
     // Project cards - each card is a div with rounded-2xl border
-    this.projectCards = page.locator('.bg-white.rounded-2xl.border');
-    this.projectList = page.locator('.flex.flex-col.gap-5');
+    this.projectCards = page.locator(".bg-white.rounded-2xl.border");
+    this.projectList = page.locator(".flex.flex-col.gap-5");
 
     // Empty state
-    this.emptyState = page.locator('text=No projects yet');
+    this.emptyState = page.locator("text=No projects yet");
     this.emptyStateButton = page.locator('a:has-text("Create Your First Project")');
-    this.noProjectsFoundMessage = page.locator('text=No projects found');
+    this.noProjectsFoundMessage = page.locator("text=No projects found");
 
     // Pagination
     this.pagination = page.getByTestId("projects-pagination");
@@ -77,10 +77,14 @@ export class ProjectsPage {
     // Delete modal
     this.deleteModal = page.locator('[role="dialog"]');
     this.deleteModalTitle = page.locator('[role="dialog"] h2:has-text("Delete this project?")');
-    this.deleteModalDescription = page.locator('[role="dialog"] p:has-text("This will permanently delete")');
+    this.deleteModalDescription = page.locator(
+      '[role="dialog"] p:has-text("This will permanently delete")'
+    );
     this.deleteButton = page.locator('[role="dialog"] button:has-text("Delete Project")');
     this.keepButton = page.locator('[role="dialog"] button:has-text("Keep Project")');
-    this.deleteModalCloseButton = page.locator('[role="dialog"] button:has(.sr-only:has-text("Close"))');
+    this.deleteModalCloseButton = page.locator(
+      '[role="dialog"] button:has(.sr-only:has-text("Close"))'
+    );
   }
 
   /**
@@ -137,7 +141,7 @@ export class ProjectsPage {
    * Get the three-dot menu button for a project card
    */
   getThreeDotsMenu(projectCard: Locator): Locator {
-    return projectCard.locator('button:has(svg.w-5.h-5)').last();
+    return projectCard.locator("button:has(svg.w-5.h-5)").last();
   }
 
   /**
@@ -240,8 +244,7 @@ export class ProjectsPage {
     // For "all" filter, no API call is made if we're already showing all
     if (filter === "all") {
       await filterMap[filter].click();
-      // Small delay for state update
-      await this.page.waitForTimeout(300);
+      await this.waitForLoadComplete();
       return;
     }
 
@@ -253,12 +256,7 @@ export class ProjectsPage {
 
     await filterMap[filter].click();
     await responsePromise;
-
-    // Wait for the loading state to clear (opacity returns to normal)
-    await this.page.waitForFunction(() => {
-      const list = document.querySelector('.flex.flex-col.gap-5');
-      return list && !list.classList.contains('opacity-60');
-    }, { timeout: 5000 });
+    await this.waitForLoadComplete();
   }
 
   /**
@@ -300,7 +298,7 @@ export class ProjectsPage {
     // Wait for URL to update
     if (pageNum === 1) {
       // Page 1 removes the param
-      await this.page.waitForFunction(() => !window.location.search.includes('page='));
+      await this.page.waitForFunction(() => !window.location.search.includes("page="));
     } else {
       await this.page.waitForFunction(
         (expectedPage) => window.location.search.includes(`page=${expectedPage}`),
@@ -310,21 +308,47 @@ export class ProjectsPage {
   }
 
   /**
-   * Click Previous button
+   * Click Previous button and wait for page to load
    */
   async clickPrevious(): Promise<void> {
+    const currentPage = await this.getCurrentPage();
+    const expectedPage = currentPage - 1;
+
+    const responsePromise = this.page.waitForResponse(
+      (response) => response.url().includes("/api/v1/projects") && response.status() === 200,
+      { timeout: 10000 }
+    );
+
     await this.prevButton.click();
-    // Wait for content to update
-    await this.page.waitForTimeout(500);
+    await responsePromise;
+    await this.waitForLoadComplete();
+
+    // Verify page changed
+    await expect(
+      this.pagination.locator(`[data-testid="pagination-page-${expectedPage}"]`)
+    ).toHaveClass(/bg-base-500/);
   }
 
   /**
-   * Click Next button
+   * Click Next button and wait for page to load
    */
   async clickNext(): Promise<void> {
+    const currentPage = await this.getCurrentPage();
+    const expectedPage = currentPage + 1;
+
+    const responsePromise = this.page.waitForResponse(
+      (response) => response.url().includes("/api/v1/projects") && response.status() === 200,
+      { timeout: 10000 }
+    );
+
     await this.nextButton.click();
-    // Wait for content to update
-    await this.page.waitForTimeout(500);
+    await responsePromise;
+    await this.waitForLoadComplete();
+
+    // Verify page changed
+    await expect(
+      this.pagination.locator(`[data-testid="pagination-page-${expectedPage}"]`)
+    ).toHaveClass(/bg-base-500/);
   }
 
   /**
@@ -424,8 +448,8 @@ export class ProjectsPage {
   async isCustomerLeadsEnabled(projectName: string): Promise<boolean> {
     const card = this.getProjectCard(projectName);
     const button = card.locator('button:has-text("Customer Leads"), a:has-text("Customer Leads")');
-    const tagName = await button.evaluate(el => el.tagName.toLowerCase());
-    return tagName === 'a'; // Link means enabled, button means disabled
+    const tagName = await button.evaluate((el) => el.tagName.toLowerCase());
+    return tagName === "a"; // Link means enabled, button means disabled
   }
 
   /**
@@ -434,7 +458,7 @@ export class ProjectsPage {
   async getProjectStatus(projectName: string): Promise<string> {
     const card = this.getProjectCard(projectName);
     // Status badge is a span with rounded-full px-3 py-1
-    const statusBadge = card.locator('.rounded-full.px-3.py-1');
+    const statusBadge = card.locator(".rounded-full.px-3.py-1");
     const text = await statusBadge.textContent();
     return text?.toLowerCase().trim() || "";
   }
@@ -461,14 +485,37 @@ export class ProjectsPage {
   }
 
   /**
-   * Wait for project list to finish loading (opacity returns to normal)
+   * Wait for project list to finish loading
    */
   async waitForLoadComplete(): Promise<void> {
-    // Wait for opacity class to be removed (loading state)
-    await this.page.waitForFunction(() => {
-      const list = document.querySelector('.flex.flex-col.gap-5');
-      return list && !list.classList.contains('opacity-60');
-    }, { timeout: 10000 });
+    const projectsList = this.page.getByTestId("projects-list");
+    await expect(projectsList).toHaveAttribute("data-loading", "false", { timeout: 10000 });
+  }
+
+  /**
+   * Wait for total project count to change to expected value
+   */
+  async waitForProjectCount(expectedCount: number): Promise<void> {
+    const countElement = this.page.getByTestId("projects-total-count");
+    await expect(countElement).toHaveAttribute("data-count", String(expectedCount), {
+      timeout: 10000,
+    });
+  }
+
+  /**
+   * Wait for a specific project card to be removed from the list
+   */
+  async waitForProjectRemoved(projectUuid: string): Promise<void> {
+    const card = this.page.getByTestId(`project-card-${projectUuid}`);
+    await expect(card).toBeHidden({ timeout: 10000 });
+  }
+
+  /**
+   * Wait for a project card with given name to be removed
+   */
+  async waitForProjectRemovedByName(projectName: string): Promise<void> {
+    const card = this.getProjectCard(projectName);
+    await expect(card).toBeHidden({ timeout: 10000 });
   }
 
   /**

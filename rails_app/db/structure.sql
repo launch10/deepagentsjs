@@ -1234,8 +1234,8 @@ CREATE TABLE public.analytics_daily_metrics (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     page_views_count bigint DEFAULT 0 NOT NULL,
-    deleted_at timestamp(6) without time zone,
-    conversion_value_cents bigint DEFAULT 0 NOT NULL
+    conversion_value_cents bigint DEFAULT 0 NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -1689,7 +1689,8 @@ CREATE TABLE public.website_file_histories (
     history_user_id integer,
     snapshot_id character varying,
     shasum character varying,
-    content_tsv tsvector
+    content_tsv tsvector,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -8156,14 +8157,14 @@ CREATE INDEX index_chats_on_chat_type ON public.chats USING btree (chat_type);
 -- Name: index_chats_on_chat_type_and_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_chats_on_chat_type_and_account_id ON public.chats USING btree (chat_type, account_id) WHERE (project_id IS NULL);
+CREATE UNIQUE INDEX index_chats_on_chat_type_and_account_id ON public.chats USING btree (chat_type, account_id) WHERE ((project_id IS NULL) AND (deleted_at IS NULL));
 
 
 --
 -- Name: index_chats_on_chat_type_and_project_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_chats_on_chat_type_and_project_id ON public.chats USING btree (chat_type, project_id) WHERE (project_id IS NOT NULL);
+CREATE UNIQUE INDEX index_chats_on_chat_type_and_project_id ON public.chats USING btree (chat_type, project_id) WHERE ((project_id IS NOT NULL) AND (deleted_at IS NULL));
 
 
 --
@@ -9518,6 +9519,13 @@ CREATE INDEX index_website_file_histories_on_created_at ON public.website_file_h
 
 
 --
+-- Name: index_website_file_histories_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_file_histories_on_deleted_at ON public.website_file_histories USING btree (deleted_at);
+
+
+--
 -- Name: index_website_file_histories_on_history_ended_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9627,6 +9635,13 @@ CREATE INDEX index_website_histories_on_account_id ON public.website_histories U
 --
 
 CREATE INDEX index_website_histories_on_created_at ON public.website_histories USING btree (created_at);
+
+
+--
+-- Name: index_website_histories_on_deleted_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_histories_on_deleted_at ON public.website_histories USING btree (deleted_at);
 
 
 --

@@ -45,11 +45,15 @@ export default function Projects() {
   const statusFilter = activeFilter !== "all" ? activeFilter : undefined;
 
   // Convert Inertia props to React Query format for initialData
-  const inertiaAsQueryData: ProjectsListResponse = useMemo(() => ({
-    projects: inertiaProps.projects as ProjectMini[],
-    pagination: inertiaProps.pagination as ProjectsListResponse["pagination"],
-    status_counts: (inertiaProps as ProjectsPageProps & { status_counts: StatusCounts }).status_counts ?? {},
-  }), [inertiaProps]);
+  const inertiaAsQueryData: ProjectsListResponse = useMemo(
+    () => ({
+      projects: inertiaProps.projects as ProjectMini[],
+      pagination: inertiaProps.pagination as ProjectsListResponse["pagination"],
+      status_counts:
+        (inertiaProps as ProjectsPageProps & { status_counts: StatusCounts }).status_counts ?? {},
+    }),
+    [inertiaProps]
+  );
 
   // Always use React Query, seeded with Inertia data for page 1 with no filter
   const isInitialPageWithNoFilter = currentPage === 1 && !statusFilter;
@@ -77,7 +81,8 @@ export default function Projects() {
   // Status counts for filter badges (derived from API response)
   const statusCounts = useMemo(() => {
     const counts: Record<FilterStatus, number> = {
-      all: (apiStatusCounts.draft ?? 0) + (apiStatusCounts.paused ?? 0) + (apiStatusCounts.live ?? 0),
+      all:
+        (apiStatusCounts.draft ?? 0) + (apiStatusCounts.paused ?? 0) + (apiStatusCounts.live ?? 0),
       live: apiStatusCounts.live ?? 0,
       paused: apiStatusCounts.paused ?? 0,
       draft: apiStatusCounts.draft ?? 0,
@@ -143,7 +148,11 @@ export default function Projects() {
           <h1 className="font-serif text-[28px] font-semibold leading-8 text-base-500">
             Your Projects
           </h1>
-          <p className="mt-2 font-sans text-lg leading-[22px] text-base-400/70">
+          <p
+            data-testid="projects-total-count"
+            data-count={pagination.total_count}
+            className="mt-2 font-sans text-lg leading-[22px] text-base-400/70"
+          >
             {pagination.total_count} total project{pagination.total_count !== 1 ? "s" : ""}
           </p>
         </div>
@@ -164,15 +173,13 @@ export default function Projects() {
               onClick={() => handleFilterChange(value)}
               className={cn(
                 "rounded-full px-2 py-0.5 flex items-center gap-1 transition-colors",
-                activeFilter === value
-                  ? "bg-white shadow-sm"
-                  : "hover:bg-neutral-200/50",
+                activeFilter === value ? "bg-white shadow-sm" : "hover:bg-neutral-200/50"
               )}
             >
               <span
                 className={cn(
                   "font-sans text-sm leading-[18px]",
-                  activeFilter === value ? "text-base-600" : "text-neutral-600",
+                  activeFilter === value ? "text-base-600" : "text-neutral-600"
                 )}
               >
                 {label}
@@ -186,13 +193,15 @@ export default function Projects() {
       </div>
 
       {/* Project list */}
-      <div className={cn("flex flex-col gap-5 mt-6", isFetching && "opacity-60 transition-opacity")}>
+      <div
+        data-testid="projects-list"
+        data-loading={isFetching}
+        className={cn("flex flex-col gap-5 mt-6", isFetching && "opacity-60 transition-opacity")}
+      >
         {sortedProjects.length === 0 ? (
           <div className="py-8 text-center text-base-400">No projects found</div>
         ) : (
-          sortedProjects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))
+          sortedProjects.map((project) => <ProjectCard key={project.id} project={project} />)
         )}
       </div>
 

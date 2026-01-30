@@ -286,4 +286,77 @@ RSpec.describe "Projects API", type: :request do
       end
     end
   end
+
+  path "/api/v1/projects/{uuid}/restore" do
+    patch "Restores a soft-deleted project" do
+      tags "Projects"
+      produces "application/json"
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: "X-Signature", in: :header, type: :string, required: false
+      parameter name: "X-Timestamp", in: :header, type: :string, required: false
+      parameter name: :uuid, in: :path, type: :string, required: true, description: "Project UUID"
+
+      response "200", "successfully restores the project" do
+        schema APISchemas::Project.restore_response
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let!(:project) { create_project_with_website(account, name: "Project to Restore") }
+        let(:uuid) { project.uuid }
+
+        before do
+          project.destroy # Soft delete
+        end
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["project"]["uuid"]).to eq(project.uuid)
+          expect(Project.exists?(project.id)).to be true
+        end
+      end
+
+      response "404", "project not found (not deleted or doesn't exist)" do
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let(:uuid) { "non-existent-uuid" }
+
+        run_test!
+      end
+
+      response "404", "cannot restore another account's project" do
+        let(:other_user) { create(:user, name: "Other User") }
+        let!(:other_project) { create_project_with_website(other_user.owned_account, name: "Other Project") }
+        let(:auth_headers) { auth_headers_for(user) }
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let(:uuid) { other_project.uuid }
+
+        before do
+          other_project.destroy # Soft delete
+        end
+
+        run_test! do
+          # Project should still be deleted (wasn't restored)
+          expect(Project.only_deleted.exists?(other_project.id)).to be true
+        end
+      end
+
+      response "401", "unauthorized - missing token" do
+        let!(:project) { create_project_with_website(account, name: "Project") }
+        let(:uuid) { project.uuid }
+        let(:Authorization) { nil }
+
+        before do
+          project.destroy
+        end
+
+        run_test!
+      end
+    end
+  end
 end

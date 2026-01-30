@@ -3,7 +3,7 @@
 class API::V1::ProjectsController < API::BaseController
   include ProjectsPagination
 
-  before_action :set_project, only: [:destroy]
+  before_action :set_project, only: [:destroy, :restore]
 
   # GET /api/v1/projects
   #
@@ -42,10 +42,27 @@ class API::V1::ProjectsController < API::BaseController
     head :no_content
   end
 
+  # PATCH /api/v1/projects/:uuid/restore
+  #
+  # Restores a soft-deleted project and all associated data.
+  #
+  # @return [200 OK] Successfully restored with project data
+  # @return [401 Unauthorized] When JWT is missing or invalid
+  # @return [404 Not Found] When project not found
+  #
+  def restore
+    @project.restore
+    render json: { project: @project.to_mini_json }
+  end
+
   private
 
   def set_project
-    @project = current_account.projects.find_by(uuid: params[:uuid])
+    @project = if action_name == "restore"
+      current_account.projects.only_deleted.find_by(uuid: params[:uuid])
+    else
+      current_account.projects.find_by(uuid: params[:uuid])
+    end
     render json: { error: "Project not found" }, status: :not_found unless @project
   end
 
