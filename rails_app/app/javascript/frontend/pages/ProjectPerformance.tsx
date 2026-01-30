@@ -53,8 +53,8 @@ export default function ProjectPerformance() {
         {/* Header */}
         <div className="mb-8">
           <Link
-            href="/dashboard"
-            className="text-sm text-base-500 hover:text-base-700 inline-flex items-center gap-1 mb-2"
+            href="/projects"
+            className="text-xs text-base-400 hover:text-base-700 inline-flex items-center gap-1 mb-2"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="opacity-60">
               <path
@@ -72,14 +72,14 @@ export default function ProjectPerformance() {
               <h1 className="font-['IBM_Plex_Serif'] text-[28px] font-semibold text-[#2E3238]">
                 Performance
               </h1>
-              <p className="text-base-500 text-sm mt-1">{project.name}</p>
+              <p className="text-base-400 text-sm mt-1">{project.name}</p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-sm text-base-500 whitespace-nowrap">Filter by:</span>
               <select
                 value={selectedDays}
                 onChange={(e) => handleDateRangeChange(Number(e.target.value))}
-                className="text-sm border border-neutral-300 rounded-md px-3 py-1.5 bg-white min-w-[120px]"
+                className="text-sm border border-neutral-300 rounded-md px-3 py-1.5 bg-white min-w-[145px]"
               >
                 {date_range_options.map((option) => (
                   <option key={option.days} value={option.days}>
@@ -103,6 +103,7 @@ export default function ProjectPerformance() {
               value={hasData ? `$${Number(metrics.summary.ad_spend ?? 0).toFixed(2)}` : null}
               trend={hasData ? metrics.summary.ad_spend_trend : undefined}
               invertTrend={true}
+              highlighted={true}
             />
             <SummaryCard
               title="Leads"
@@ -213,6 +214,7 @@ function SummaryCard({
   link,
   trend,
   invertTrend = false,
+  highlighted = false,
 }: {
   title: string;
   description: string;
@@ -220,6 +222,7 @@ function SummaryCard({
   link?: { href: string; label: string };
   trend?: Trend;
   invertTrend?: boolean;
+  highlighted?: boolean;
 }) {
   const isEmpty = value === null;
 
@@ -238,8 +241,10 @@ function SummaryCard({
     return isGoodTrend ? "bg-success-100" : "bg-secondary-100";
   };
 
+  const borderClass = highlighted ? "border-primary-500" : "border-neutral-300";
+
   return (
-    <div className="rounded-2xl border border-neutral-300 bg-white p-4 relative">
+    <div className={`rounded-2xl border ${borderClass} bg-white p-4 relative flex flex-col`}>
       {/* Trend icon in top right */}
       {trend && !isEmpty && (
         <div className="absolute top-4 right-4">
@@ -251,21 +256,21 @@ function SummaryCard({
         </div>
       )}
 
-      <div className="mb-2 pr-10">
-        <h3 className="text-sm font-medium text-[#2E3238]">{title}</h3>
+      <div className="pr-10">
+        <h3 className="font-sans text-sm font-medium text-[#2E3238]">{title}</h3>
         <p className="text-xs text-[#96989B]">{description}</p>
       </div>
 
       {isEmpty ? (
-        <div className="flex items-center gap-2 mt-4">
+        <div className="flex items-center gap-2 mt-auto pt-4">
           <div className="w-[33px] h-[33px] rounded-full bg-neutral-100 flex items-center justify-center">
             <ChartBarIcon size={13} />
           </div>
           <span className="text-xs text-[#96989B]">No data available yet</span>
         </div>
       ) : (
-        <>
-          <p className="text-2xl font-semibold text-[#2E3238] mb-1">{value}</p>
+        <div className="mt-auto pt-4 flex items-end justify-between">
+          <p className="text-lg font-semibold text-[#2E3238]">{value}</p>
           {link && (
             <Link
               href={link.href}
@@ -275,7 +280,7 @@ function SummaryCard({
               <span aria-hidden="true">&rarr;</span>
             </Link>
           )}
-        </>
+        </div>
       )}
     </div>
   );
@@ -329,26 +334,21 @@ function BarChartCard({
       ? `${formatDateShort(startDate)} - ${formatDateShort(endDate)}`
       : dateRange;
 
-  const total = data.totals.current;
   const trendPercent = data.totals.trend_percent;
   const trendDirection = data.totals.trend_direction;
 
   return (
-    <div className="rounded-2xl border border-neutral-300 bg-white p-4">
+    <div className="rounded-2xl border border-neutral-300 bg-white p-6 min-h-[359px] flex flex-col">
       <div className="mb-2">
         <h3 className="text-sm font-medium text-[#0F1113]">{title}</h3>
         <p className="text-xs text-[#96989B]">{dateSubtitle}</p>
       </div>
 
       {hasData ? (
-        <>
-          <div className="mb-2">
-            <span className="text-2xl font-semibold text-[#2E3238]">{total.toLocaleString()}</span>
-          </div>
-
+        <div className="flex-1 flex flex-col">
           {chartData.length > 0 && (
-            <>
-              <ChartContainer config={chartConfig} className="h-[120px] w-full">
+            <div className="flex-1 flex flex-col">
+              <ChartContainer config={chartConfig} className="flex-1 w-full min-h-0">
                 <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E5E5" />
                   <XAxis
@@ -376,16 +376,14 @@ function BarChartCard({
               </ChartContainer>
 
               {trendDirection !== "flat" && (
-                <p
-                  className={`text-xs mt-2 flex items-center gap-1 ${trendDirection === "up" ? "text-green-600" : "text-red-600"}`}
-                >
+                <p className="text-xs mt-auto pt-2 flex items-center gap-1 text-[#96989B]">
                   Trending {trendDirection} by {trendPercent.toFixed(1)}% this week
-                  <span aria-hidden="true">{trendDirection === "up" ? "\u2197" : "\u2198"}</span>
+                  <span aria-hidden="true">{trendDirection === "up" ? "↗" : "↘"}</span>
                 </p>
               )}
-            </>
+            </div>
           )}
-        </>
+        </div>
       ) : (
         <EmptyChartState />
       )}
@@ -427,28 +425,21 @@ function LineChartCard({
       ? `${formatDateShort(startDate)} - ${formatDateShort(endDate)}`
       : dateRange;
 
-  const currentValue = data.totals.current;
   const trendPercent = data.totals.trend_percent;
   const trendDirection = data.totals.trend_direction;
 
   return (
-    <div className="rounded-2xl border border-neutral-300 bg-white p-4">
+    <div className="rounded-2xl border border-neutral-300 bg-white p-4 min-h-[359px] flex flex-col">
       <div className="mb-2">
         <h3 className="text-sm font-medium text-[#0F1113]">{title}</h3>
         <p className="text-xs text-[#96989B]">{dateSubtitle}</p>
       </div>
 
       {hasData ? (
-        <>
-          <div className="mb-2">
-            <span className="text-2xl font-semibold text-[#2E3238]">
-              {valueFormatter(currentValue)}
-            </span>
-          </div>
-
+        <div className="flex-1 flex flex-col">
           {chartData.length > 0 && (
-            <>
-              <ChartContainer config={chartConfig} className="h-[120px] w-full">
+            <div className="flex-1 flex flex-col">
+              <ChartContainer config={chartConfig} className="flex-1 w-full min-h-0">
                 <LineChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E5E5" />
                   <XAxis
@@ -486,16 +477,14 @@ function LineChartCard({
               </ChartContainer>
 
               {trendDirection !== "flat" && (
-                <p
-                  className={`text-xs mt-2 flex items-center gap-1 ${trendDirection === "up" ? "text-green-600" : "text-red-600"}`}
-                >
+                <p className="text-xs mt-auto pt-2 flex items-center gap-1 text-[#96989B]">
                   Trending {trendDirection} by {trendPercent.toFixed(1)}% this week
-                  <span aria-hidden="true">{trendDirection === "up" ? "\u2197" : "\u2198"}</span>
+                  <span aria-hidden="true">{trendDirection === "up" ? "↗" : "↘"}</span>
                 </p>
               )}
-            </>
+            </div>
           )}
-        </>
+        </div>
       ) : (
         <EmptyChartState />
       )}

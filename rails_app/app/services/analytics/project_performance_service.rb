@@ -196,12 +196,12 @@ module Analytics
 
       percent = ((current - previous).to_f / previous * 100).round(1)
       direction = if percent > 0
-                    "up"
-                  elsif percent < 0
-                    "down"
-                  else
-                    "flat"
-                  end
+        "up"
+      elsif percent < 0
+        "down"
+      else
+        "flat"
+      end
 
       { percent: percent.abs.to_f, direction: direction }
     end
