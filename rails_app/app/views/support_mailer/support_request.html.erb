@@ -1,0 +1,54 @@
+<h2>New Support Request</h2>
+
+<table cellpadding="4" cellspacing="0" border="0" style="font-family: Arial, sans-serif; font-size: 14px;">
+  <tr>
+    <td style="color: #888;"><strong>Reference:</strong></td>
+    <td><%= @support_request.ticket_reference %></td>
+  </tr>
+  <tr>
+    <td style="color: #888;"><strong>Category:</strong></td>
+    <td><%= @support_request.category %></td>
+  </tr>
+  <tr>
+    <td style="color: #888;"><strong>From:</strong></td>
+    <td><%= @user.email %></td>
+  </tr>
+  <tr>
+    <td style="color: #888;"><strong>Subscription:</strong></td>
+    <td><%= @support_request.subscription_tier || "None" %></td>
+  </tr>
+  <tr>
+    <td style="color: #888;"><strong>Credits:</strong></td>
+    <td><%= @support_request.credits_remaining || "N/A" %></td>
+  </tr>
+</table>
+
+<hr style="border: none; border-top: 1px solid #ddd; margin: 16px 0;">
+
+<p><strong>Subject:</strong> <%= @support_request.subject %></p>
+
+<p><strong>Description:</strong></p>
+<div style="background: #f9f9f9; padding: 12px; border-radius: 4px; white-space: pre-wrap;"><%= @support_request.description %></div>
+
+<hr style="border: none; border-top: 1px solid #ddd; margin: 16px 0;">
+
+<table cellpadding="2" cellspacing="0" border="0" style="font-family: Arial, sans-serif; font-size: 12px; color: #888;">
+  <tr>
+    <td>User ID:</td>
+    <td><%= @user.id %></td>
+  </tr>
+  <tr>
+    <td>Submitted from:</td>
+    <td><%= @support_request.submitted_from_url || "N/A" %></td>
+  </tr>
+  <tr>
+    <td>Browser:</td>
+    <td><%= @support_request.browser_info || "N/A" %></td>
+  </tr>
+  <% if @support_request.attachments.attached? %>
+    <tr>
+      <td>Attachments:</td>
+      <td><%= @support_request.attachments.count %> file(s) attached</td>
+    </tr>
+  <% end %>
+</table>

@@ -1,3 +1,8 @@
+\restrict KOaZifUvHMRkBUMMMm9gHBeOfoRTNJhEPm6nm87R4IFzioDIbYU60YhyTwfafhU
+
+-- Dumped from database version 16.11 (Ubuntu 16.11-1.pgdg24.04+1)
+-- Dumped by pg_dump version 16.11 (Ubuntu 16.11-1.pgdg24.04+1)
+
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
@@ -924,8 +929,7 @@ CREATE TABLE public.ad_performance_daily (
     conversions numeric(12,2) DEFAULT 0.0 NOT NULL,
     conversion_value_micros bigint DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    deleted_at timestamp(6) without time zone
+    updated_at timestamp(6) without time zone NOT NULL
 );
 
 
@@ -1233,9 +1237,7 @@ CREATE TABLE public.analytics_daily_metrics (
     cost_micros bigint DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    page_views_count bigint DEFAULT 0 NOT NULL,
-    conversion_value_cents bigint DEFAULT 0 NOT NULL,
-    deleted_at timestamp(6) without time zone
+    page_views_count bigint DEFAULT 0 NOT NULL
 );
 
 
@@ -1389,8 +1391,7 @@ CREATE TABLE public.brainstorms (
     website_id bigint,
     completed_at timestamp without time zone,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    deleted_at timestamp(6) without time zone
+    updated_at timestamp(6) without time zone NOT NULL
 );
 
 
@@ -1425,8 +1426,7 @@ CREATE TABLE public.campaign_deploys (
     current_step character varying,
     stacktrace text,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    deleted_at timestamp(6) without time zone
+    updated_at timestamp(6) without time zone NOT NULL
 );
 
 
@@ -1506,8 +1506,7 @@ CREATE TABLE public.chats (
     contextable_type character varying,
     contextable_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    deleted_at timestamp(6) without time zone
+    updated_at timestamp(6) without time zone NOT NULL
 );
 
 
@@ -1689,8 +1688,7 @@ CREATE TABLE public.website_file_histories (
     history_user_id integer,
     snapshot_id character varying,
     shasum character varying,
-    content_tsv tsvector,
-    deleted_at timestamp(6) without time zone
+    content_tsv tsvector
 );
 
 
@@ -1795,8 +1793,7 @@ CREATE TABLE public.website_files (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     shasum character varying,
-    content_tsv tsvector,
-    deleted_at timestamp(6) without time zone
+    content_tsv tsvector
 );
 
 
@@ -1816,7 +1813,6 @@ CREATE VIEW public.code_files AS
             'WebsiteFile'::text AS source_type,
             wf.id AS source_id
            FROM public.website_files wf
-          WHERE (wf.deleted_at IS NULL)
         UNION ALL
          SELECT w.id AS website_id,
             tf.path,
@@ -1829,9 +1825,9 @@ CREATE VIEW public.code_files AS
             tf.id AS source_id
            FROM (public.template_files tf
              JOIN public.websites w ON ((w.template_id = tf.template_id)))
-          WHERE ((w.deleted_at IS NULL) AND (NOT (EXISTS ( SELECT 1
+          WHERE (NOT (EXISTS ( SELECT 1
                    FROM public.website_files wf2
-                  WHERE ((wf2.website_id = w.id) AND ((wf2.path)::text = (tf.path)::text) AND (wf2.deleted_at IS NULL))))))
+                  WHERE ((wf2.website_id = w.id) AND ((wf2.path)::text = (tf.path)::text)))))
         )
  SELECT website_id,
     path,
@@ -2154,8 +2150,7 @@ CREATE TABLE public.deploys (
     campaign_deploy_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    user_active_at timestamp(6) without time zone,
-    deleted_at timestamp(6) without time zone
+    user_active_at timestamp(6) without time zone
 );
 
 
@@ -2542,8 +2537,7 @@ CREATE TABLE public.domains (
     cloudflare_zone_id character varying,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    is_platform_subdomain boolean DEFAULT false NOT NULL,
-    deleted_at timestamp(6) without time zone
+    is_platform_subdomain boolean DEFAULT false NOT NULL
 );
 
 
@@ -3467,8 +3461,7 @@ CREATE TABLE public.project_workflows (
     status character varying DEFAULT 'active'::character varying NOT NULL,
     data jsonb DEFAULT '{}'::jsonb,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    deleted_at timestamp(6) without time zone
+    updated_at timestamp(6) without time zone NOT NULL
 );
 
 
@@ -3502,8 +3495,7 @@ CREATE TABLE public.projects (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     uuid uuid DEFAULT gen_random_uuid() NOT NULL,
-    deleted_at timestamp(6) without time zone,
-    status character varying DEFAULT 'draft'::character varying NOT NULL
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -3563,8 +3555,7 @@ CREATE TABLE public.social_links (
     url character varying NOT NULL,
     handle character varying,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    deleted_at timestamp(6) without time zone
+    updated_at timestamp(6) without time zone NOT NULL
 );
 
 
@@ -3608,6 +3599,47 @@ CREATE TABLE public.store (
 CREATE TABLE public.store_migrations (
     v integer NOT NULL
 );
+
+
+--
+-- Name: support_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.support_requests (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    category character varying NOT NULL,
+    subject character varying NOT NULL,
+    description text NOT NULL,
+    subscription_tier character varying,
+    credits_remaining integer,
+    submitted_from_url character varying,
+    browser_info text,
+    slack_notified boolean DEFAULT false,
+    notion_created boolean DEFAULT false,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: support_requests_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.support_requests_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: support_requests_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.support_requests_id_seq OWNED BY public.support_requests.id;
 
 
 --
@@ -4052,8 +4084,7 @@ CREATE TABLE public.website_deploys (
     version_path character varying,
     environment character varying DEFAULT 'production'::character varying NOT NULL,
     is_preview boolean DEFAULT false NOT NULL,
-    shasum character varying,
-    deleted_at timestamp(6) without time zone
+    shasum character varying
 );
 
 
@@ -4150,8 +4181,7 @@ CREATE TABLE public.website_leads (
     utm_medium character varying,
     utm_campaign character varying,
     utm_content character varying,
-    utm_term character varying,
-    deleted_at timestamp(6) without time zone
+    utm_term character varying
 );
 
 
@@ -4215,8 +4245,7 @@ CREATE TABLE public.website_urls (
     account_id bigint NOT NULL,
     path character varying DEFAULT '/'::character varying NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
-    updated_at timestamp(6) without time zone NOT NULL,
-    deleted_at timestamp(6) without time zone
+    updated_at timestamp(6) without time zone NOT NULL
 );
 
 
@@ -5047,6 +5076,13 @@ ALTER TABLE ONLY public.projects ALTER COLUMN id SET DEFAULT nextval('public.pro
 --
 
 ALTER TABLE ONLY public.social_links ALTER COLUMN id SET DEFAULT nextval('public.social_links_id_seq'::regclass);
+
+
+--
+-- Name: support_requests id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_requests ALTER COLUMN id SET DEFAULT nextval('public.support_requests_id_seq'::regclass);
 
 
 --
@@ -6133,6 +6169,14 @@ ALTER TABLE ONLY public.store_migrations
 
 ALTER TABLE ONLY public.store
     ADD CONSTRAINT store_pkey PRIMARY KEY (namespace_path, key);
+
+
+--
+-- Name: support_requests support_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_requests
+    ADD CONSTRAINT support_requests_pkey PRIMARY KEY (id);
 
 
 --
@@ -7657,13 +7701,6 @@ CREATE INDEX index_ad_performance_daily_on_date ON public.ad_performance_daily U
 
 
 --
--- Name: index_ad_performance_daily_on_deleted_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_ad_performance_daily_on_deleted_at ON public.ad_performance_daily USING btree (deleted_at);
-
-
---
 -- Name: index_ad_schedules_on_always_on; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7923,13 +7960,6 @@ CREATE INDEX index_ahoy_visits_on_website_id_and_started_at ON public.ahoy_visit
 
 
 --
--- Name: index_analytics_daily_metrics_on_deleted_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_analytics_daily_metrics_on_deleted_at ON public.analytics_daily_metrics USING btree (deleted_at);
-
-
---
 -- Name: index_api_tokens_on_token; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -7955,13 +7985,6 @@ CREATE INDEX index_brainstorms_on_completed_at ON public.brainstorms USING btree
 --
 
 CREATE INDEX index_brainstorms_on_created_at ON public.brainstorms USING btree (created_at);
-
-
---
--- Name: index_brainstorms_on_deleted_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_brainstorms_on_deleted_at ON public.brainstorms USING btree (deleted_at);
 
 
 --
@@ -8004,13 +8027,6 @@ CREATE INDEX index_campaign_deploys_on_created_at ON public.campaign_deploys USI
 --
 
 CREATE INDEX index_campaign_deploys_on_current_step ON public.campaign_deploys USING btree (current_step);
-
-
---
--- Name: index_campaign_deploys_on_deleted_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_campaign_deploys_on_deleted_at ON public.campaign_deploys USING btree (deleted_at);
 
 
 --
@@ -8157,21 +8173,14 @@ CREATE INDEX index_chats_on_chat_type ON public.chats USING btree (chat_type);
 -- Name: index_chats_on_chat_type_and_account_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_chats_on_chat_type_and_account_id ON public.chats USING btree (chat_type, account_id) WHERE ((project_id IS NULL) AND (deleted_at IS NULL));
+CREATE UNIQUE INDEX index_chats_on_chat_type_and_account_id ON public.chats USING btree (chat_type, account_id) WHERE (project_id IS NULL);
 
 
 --
 -- Name: index_chats_on_chat_type_and_project_id; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_chats_on_chat_type_and_project_id ON public.chats USING btree (chat_type, project_id) WHERE ((project_id IS NOT NULL) AND (deleted_at IS NULL));
-
-
---
--- Name: index_chats_on_deleted_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_chats_on_deleted_at ON public.chats USING btree (deleted_at);
+CREATE UNIQUE INDEX index_chats_on_chat_type_and_project_id ON public.chats USING btree (chat_type, project_id) WHERE (project_id IS NOT NULL);
 
 
 --
@@ -8448,13 +8457,6 @@ CREATE INDEX index_deploys_on_campaign_deploy_id ON public.deploys USING btree (
 
 
 --
--- Name: index_deploys_on_deleted_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_deleted_at ON public.deploys USING btree (deleted_at);
-
-
---
 -- Name: index_deploys_on_is_live; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8585,13 +8587,6 @@ CREATE INDEX index_domains_on_cloudflare_zone_id ON public.domains USING btree (
 --
 
 CREATE INDEX index_domains_on_created_at ON public.domains USING btree (created_at);
-
-
---
--- Name: index_domains_on_deleted_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_domains_on_deleted_at ON public.domains USING btree (deleted_at);
 
 
 --
@@ -8966,13 +8961,6 @@ CREATE INDEX index_project_workflows_on_created_at ON public.project_workflows U
 
 
 --
--- Name: index_project_workflows_on_deleted_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_project_workflows_on_deleted_at ON public.project_workflows USING btree (deleted_at);
-
-
---
 -- Name: index_project_workflows_on_project_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9032,14 +9020,7 @@ CREATE INDEX index_projects_on_account_id_and_created_at ON public.projects USIN
 -- Name: index_projects_on_account_id_and_name; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_projects_on_account_id_and_name ON public.projects USING btree (account_id, name) WHERE (deleted_at IS NULL);
-
-
---
--- Name: index_projects_on_account_id_and_status; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_projects_on_account_id_and_status ON public.projects USING btree (account_id, status);
+CREATE UNIQUE INDEX index_projects_on_account_id_and_name ON public.projects USING btree (account_id, name);
 
 
 --
@@ -9071,13 +9052,6 @@ CREATE INDEX index_projects_on_name ON public.projects USING btree (name);
 
 
 --
--- Name: index_projects_on_status; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_projects_on_status ON public.projects USING btree (status);
-
-
---
 -- Name: index_projects_on_updated_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9092,13 +9066,6 @@ CREATE UNIQUE INDEX index_projects_on_uuid ON public.projects USING btree (uuid)
 
 
 --
--- Name: index_social_links_on_deleted_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_social_links_on_deleted_at ON public.social_links USING btree (deleted_at);
-
-
---
 -- Name: index_social_links_on_project_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9109,7 +9076,21 @@ CREATE INDEX index_social_links_on_project_id ON public.social_links USING btree
 -- Name: index_social_links_on_project_id_and_platform; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_social_links_on_project_id_and_platform ON public.social_links USING btree (project_id, platform) WHERE (deleted_at IS NULL);
+CREATE UNIQUE INDEX index_social_links_on_project_id_and_platform ON public.social_links USING btree (project_id, platform);
+
+
+--
+-- Name: index_support_requests_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_requests_on_account_id ON public.support_requests USING btree (account_id);
+
+
+--
+-- Name: index_support_requests_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_requests_on_user_id ON public.support_requests USING btree (user_id);
 
 
 --
@@ -9428,13 +9409,6 @@ CREATE INDEX index_website_deploys_on_created_at ON public.website_deploys USING
 
 
 --
--- Name: index_website_deploys_on_deleted_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_website_deploys_on_deleted_at ON public.website_deploys USING btree (deleted_at);
-
-
---
 -- Name: index_website_deploys_on_environment; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9519,13 +9493,6 @@ CREATE INDEX index_website_file_histories_on_created_at ON public.website_file_h
 
 
 --
--- Name: index_website_file_histories_on_deleted_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_website_file_histories_on_deleted_at ON public.website_file_histories USING btree (deleted_at);
-
-
---
 -- Name: index_website_file_histories_on_history_ended_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9589,13 +9556,6 @@ CREATE INDEX index_website_files_on_created_at ON public.website_files USING btr
 
 
 --
--- Name: index_website_files_on_deleted_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_website_files_on_deleted_at ON public.website_files USING btree (deleted_at);
-
-
---
 -- Name: index_website_files_on_shasum; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9620,7 +9580,7 @@ CREATE INDEX index_website_files_on_website_id ON public.website_files USING btr
 -- Name: index_website_files_on_website_id_and_path_unique; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_website_files_on_website_id_and_path_unique ON public.website_files USING btree (website_id, path) WHERE (deleted_at IS NULL);
+CREATE UNIQUE INDEX index_website_files_on_website_id_and_path_unique ON public.website_files USING btree (website_id, path);
 
 
 --
@@ -9635,13 +9595,6 @@ CREATE INDEX index_website_histories_on_account_id ON public.website_histories U
 --
 
 CREATE INDEX index_website_histories_on_created_at ON public.website_histories USING btree (created_at);
-
-
---
--- Name: index_website_histories_on_deleted_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_website_histories_on_deleted_at ON public.website_histories USING btree (deleted_at);
 
 
 --
@@ -9715,13 +9668,6 @@ CREATE INDEX index_website_histories_on_website_id ON public.website_histories U
 
 
 --
--- Name: index_website_leads_on_deleted_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_website_leads_on_deleted_at ON public.website_leads USING btree (deleted_at);
-
-
---
 -- Name: index_website_leads_on_gclid; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9792,13 +9738,6 @@ CREATE INDEX index_website_urls_on_account_id ON public.website_urls USING btree
 
 
 --
--- Name: index_website_urls_on_deleted_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_website_urls_on_deleted_at ON public.website_urls USING btree (deleted_at);
-
-
---
 -- Name: index_website_urls_on_domain_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9809,7 +9748,7 @@ CREATE INDEX index_website_urls_on_domain_id ON public.website_urls USING btree 
 -- Name: index_website_urls_on_domain_id_and_path; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX index_website_urls_on_domain_id_and_path ON public.website_urls USING btree (domain_id, path) WHERE (deleted_at IS NULL);
+CREATE UNIQUE INDEX index_website_urls_on_domain_id_and_path ON public.website_urls USING btree (domain_id, path);
 
 
 --
@@ -11157,6 +11096,14 @@ CREATE TRIGGER update_store_updated_at BEFORE UPDATE ON public.store FOR EACH RO
 
 
 --
+-- Name: support_requests fk_rails_03ae9ca37e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_requests
+    ADD CONSTRAINT fk_rails_03ae9ca37e FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: account_invitations fk_rails_04a176d6ed; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11194,6 +11141,14 @@ ALTER TABLE ONLY public.dashboard_insights
 
 ALTER TABLE ONLY public.ads_account_invitations
     ADD CONSTRAINT fk_rails_1d7b1920c0 FOREIGN KEY (ads_account_id) REFERENCES public.ads_accounts(id);
+
+
+--
+-- Name: support_requests fk_rails_23b687fadb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_requests
+    ADD CONSTRAINT fk_rails_23b687fadb FOREIGN KEY (account_id) REFERENCES public.accounts(id);
 
 
 --
@@ -11384,14 +11339,13 @@ ALTER TABLE ONLY public.job_runs
 -- PostgreSQL database dump complete
 --
 
+\unrestrict KOaZifUvHMRkBUMMMm9gHBeOfoRTNJhEPm6nm87R4IFzioDIbYU60YhyTwfafhU
+
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
-('20260130161923'),
-('20260130143844'),
-('20260130100003'),
-('20260130100002'),
-('20260130100001'),
+('20260130210726'),
+('20260130204037'),
 ('20260129225919'),
 ('20260129182538'),
 ('20260129120000'),
