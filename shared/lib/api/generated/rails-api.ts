@@ -3589,6 +3589,101 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/test/database/set_credits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sets credits for an account
+         * @description Sets plan and pack millicredits for a user account. Only available in development/test environments.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        credits: {
+                            /** @description Email of the user whose account credits to set */
+                            email: string;
+                            /**
+                             * @description Plan millicredits to set
+                             * @default 0
+                             */
+                            plan_millicredits?: number;
+                            /**
+                             * @description Pack millicredits to set
+                             * @default 0
+                             */
+                            pack_millicredits?: number;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description credits set successfully */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example ok */
+                            status: string;
+                            /** @example Credits updated */
+                            message: string;
+                            account: {
+                                id?: number;
+                                plan_millicredits?: number;
+                                pack_millicredits?: number;
+                                total_millicredits?: number;
+                            };
+                        };
+                    };
+                };
+                /** @description user not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example error */
+                            status: string;
+                            errors: string[];
+                        };
+                    };
+                };
+                /** @description missing required parameters */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @example error */
+                            status: string;
+                            errors: string[];
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/themes": {
         parameters: {
             query?: never;
