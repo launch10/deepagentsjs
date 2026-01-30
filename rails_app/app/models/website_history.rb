@@ -36,6 +36,7 @@
 
 class WebsiteHistory < ApplicationRecord
   include Historiographer::History
+  acts_as_paranoid
 
   has_many :deploys, class_name: "WebsiteDeploy"
 

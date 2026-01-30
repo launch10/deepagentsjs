@@ -32,4 +32,5 @@
 
 class WebsiteFileHistory < ApplicationRecord
   include Historiographer::History
+  acts_as_paranoid
 end
