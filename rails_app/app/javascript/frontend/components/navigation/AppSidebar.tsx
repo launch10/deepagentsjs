@@ -97,6 +97,16 @@ export default function AppSidebar() {
         })}
       </nav>
 
+      {/* Divider above Settings & Support */}
+      <div
+        className="h-px"
+        style={{
+          backgroundColor: "rgba(255, 255, 255, 0.15)",
+          marginLeft: "1px",
+          marginRight: "1px",
+        }}
+      />
+
       {/* Support */}
       <div className={twMerge("px-1", isCollapsed && "flex justify-center")}>
         <Link
@@ -112,23 +122,14 @@ export default function AppSidebar() {
         </Link>
       </div>
 
-      {/* Divider above Settings */}
-      <div
-        className="h-px"
-        style={{
-          backgroundColor: "rgba(255, 255, 255, 0.15)",
-          marginLeft: "1px",
-          marginRight: "1px",
-        }}
-      />
-
       {/* Settings */}
-      <div className={twMerge("p-6", isCollapsed && "p-4 flex justify-center")}>
+      <div className={twMerge("px-1 pb-6", isCollapsed && "flex justify-center pb-4")}>
         <Link
           href="/settings"
           className={twMerge(
-            "flex items-center gap-3 text-white font-sans",
-            isCollapsed && "justify-center"
+            "flex items-center gap-3 px-6 py-3 font-sans relative transition-colors",
+            "text-white hover:bg-white/10",
+            isCollapsed && "justify-center px-0"
           )}
         >
           <Cog8ToothIcon className="w-6 h-6 shrink-0" strokeWidth={1.5} />

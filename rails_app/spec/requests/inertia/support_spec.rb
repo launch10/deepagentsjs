@@ -113,18 +113,18 @@ RSpec.describe "Support Inertia Page", type: :request, inertia: true do
     end
 
     context "with invalid params" do
-      it "does not create a support request with short subject" do
+      it "does not create a support request with blank subject" do
         expect {
           post support_path, params: {
-            support_request: valid_params[:support_request].merge(subject: "Hi")
+            support_request: valid_params[:support_request].merge(subject: "")
           }
         }.not_to change(SupportRequest, :count)
       end
 
-      it "does not create a support request with short description" do
+      it "does not create a support request with blank description" do
         expect {
           post support_path, params: {
-            support_request: valid_params[:support_request].merge(description: "Short")
+            support_request: valid_params[:support_request].merge(description: "")
           }
         }.not_to change(SupportRequest, :count)
       end
@@ -139,7 +139,7 @@ RSpec.describe "Support Inertia Page", type: :request, inertia: true do
 
       it "redirects with errors in session" do
         post support_path, params: {
-          support_request: valid_params[:support_request].merge(subject: "Hi")
+          support_request: valid_params[:support_request].merge(subject: "")
         }
 
         expect(response).to redirect_to(support_path)
