@@ -16,16 +16,11 @@ module ProjectConcerns
       }
     end
 
-    # TODO: Add a `status` column to the projects table so this can be read
-    # directly instead of derived from deploys/campaigns associations.
+    # Returns the persisted status column.
+    # Status is updated via Project#refresh_status! which is called
+    # by Deploy and Campaign callbacks when relevant state changes.
     def derived_status
-      if deploys.loaded? ? deploys.any?(&:is_live) : deploys.live.exists?
-        "live"
-      elsif campaigns.loaded? ? campaigns.any? { |c| c.status == "paused" } : campaigns.where(status: "paused").exists?
-        "paused"
-      else
-        "draft"
-      end
+      status
     end
 
     def serialize

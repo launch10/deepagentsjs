@@ -40,27 +40,9 @@ module InertiaSchemas
       }
     end
 
-    def self.project_mini_schema
-      {
-        type: :object,
-        properties: {
-          id: InertiaSchemas.integer_field,
-          uuid: InertiaSchemas.string_field,
-          website_id: InertiaSchemas.nullable(type: :integer),
-          account_id: InertiaSchemas.integer_field,
-          name: InertiaSchemas.string_field,
-          status: { type: :string, enum: %w[live paused draft] },
-          domain: InertiaSchemas.nullable(type: :string),
-          created_at: {}, # Any type (Time object serializes as various formats)
-          updated_at: {}  # Any type (Time object serializes as various formats)
-        },
-        required: %w[id uuid account_id name status]
-      }
-    end
-
     def self.page_props
       {
-        project: project_mini_schema,
+        project: InertiaSchemas.project_mini_schema,
         leads: {
           type: :array,
           items: lead_schema

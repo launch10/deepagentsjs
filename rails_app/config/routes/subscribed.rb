@@ -7,7 +7,7 @@ authenticated :user do
 
   get "dashboard", to: "dashboard#show"
 
-  resources :projects, only: [:new, :show], param: :uuid do
+  resources :projects, only: [:index, :new, :show], param: :uuid do
     resources :workflows, only: [:show]
 
     member do

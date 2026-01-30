@@ -43,6 +43,8 @@ class Deploy < ApplicationRecord
 
   validates :status, presence: true, inclusion: { in: STATUS }
 
+  after_save :refresh_project_status, if: :saved_change_to_is_live?
+
   scope :live, -> { where(is_live: true) }
   scope :in_progress, -> { where(status: %w[pending running]) }
   scope :user_recently_active, -> { where(user_active_at: 5.minutes.ago..) }
@@ -53,5 +55,11 @@ class Deploy < ApplicationRecord
 
   def touch_user_active!
     update_column(:user_active_at, Time.current)
+  end
+
+  private
+
+  def refresh_project_status
+    project.refresh_status!
   end
 end

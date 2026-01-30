@@ -26,13 +26,17 @@ import {
   DialogDescription,
 } from "@components/ui/dialog";
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import type { InertiaProps } from "@shared";
 
-type ProjectStatus = "live" | "paused" | "draft";
+type ProjectsPageProps =
+  InertiaProps.paths["/projects"]["get"]["responses"]["200"]["content"]["application/json"];
+type Project = ProjectsPageProps["projects"][number];
+type ProjectStatus = Project["status"];
 
 const STATUS_STYLES: Record<ProjectStatus, string> = {
-  live: "bg-[#D9F4E9] text-[#1F694C]",
-  paused: "bg-[#FAECDB] text-[#BF873F]",
-  draft: "bg-[#EDEDEC] text-base-600",
+  live: "bg-success-100 text-success-700",
+  paused: "bg-accent-yellow-100 text-accent-yellow-700",
+  draft: "bg-neutral-100 text-base-600",
 };
 
 const STATUS_LABELS: Record<ProjectStatus, string> = {
@@ -42,14 +46,7 @@ const STATUS_LABELS: Record<ProjectStatus, string> = {
 };
 
 interface ProjectCardProps {
-  project: {
-    uuid: string;
-    name: string;
-    status: ProjectStatus;
-    domain: string | null;
-    created_at: string;
-    updated_at: string;
-  };
+  project: Project;
 }
 
 export function ProjectCard({ project }: ProjectCardProps) {
@@ -60,7 +57,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
     <>
     <div className="bg-white rounded-2xl border border-neutral-300 flex">
       {/* Thumbnail placeholder */}
-      <div className="w-[180px] shrink-0 bg-[#F8F8F8] rounded-l-2xl flex items-center justify-center">
+      <div className="w-[180px] shrink-0 bg-neutral-50 rounded-l-2xl flex items-center justify-center">
         <PhotoIcon className="w-8 h-8 text-base-400" />
       </div>
 
@@ -89,11 +86,11 @@ export function ProjectCard({ project }: ProjectCardProps) {
                 href={`https://${project.domain}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-sans text-sm leading-[18px] text-[#3748B8] underline truncate"
+                className="font-sans text-sm leading-[18px] text-primary-500 underline truncate"
               >
                 https://{project.domain}
               </a>
-              <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5 text-[#3748B8] shrink-0" />
+              <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5 text-primary-500 shrink-0" />
             </div>
           ) : (
             <p className="font-sans text-sm leading-[18px] text-neutral-500">No site connected</p>
@@ -101,18 +98,22 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
           {/* Timestamps */}
           <div className="flex items-center gap-[18px]">
-            <div className="flex items-center gap-1">
-              <ClockIcon className="w-3.5 h-3.5 text-neutral-500" />
-              <span className="font-sans text-xs leading-4 text-neutral-500">
-                Edited {formatDistanceToNow(new Date(project.updated_at), { addSuffix: true })}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <CalendarIcon className="w-4 h-3.5 text-neutral-500" />
-              <span className="font-sans text-xs leading-4 text-neutral-500">
-                Created {formatDistanceToNow(new Date(project.created_at), { addSuffix: true })}
-              </span>
-            </div>
+            {project.updated_at != null && (
+              <div className="flex items-center gap-1">
+                <ClockIcon className="w-3.5 h-3.5 text-neutral-500" />
+                <span className="font-sans text-xs leading-4 text-neutral-500">
+                  Edited {formatDistanceToNow(new Date(project.updated_at as string), { addSuffix: true })}
+                </span>
+              </div>
+            )}
+            {project.created_at != null && (
+              <div className="flex items-center gap-1">
+                <CalendarIcon className="w-4 h-3.5 text-neutral-500" />
+                <span className="font-sans text-xs leading-4 text-neutral-500">
+                  Created {formatDistanceToNow(new Date(project.created_at as string), { addSuffix: true })}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -121,7 +122,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
           {isLive ? (
             <Link
               href={`/projects/${project.uuid}/leads`}
-              className="bg-[#FAFAF9] border border-neutral-300 rounded-lg px-3 py-2 text-sm leading-[18px] text-base-500 flex items-center gap-2 hover:bg-neutral-100 transition-colors"
+              className="bg-neutral-background border border-neutral-300 rounded-lg px-3 py-2 text-sm leading-[18px] text-base-500 flex items-center gap-2 hover:bg-neutral-100 transition-colors"
             >
               <UsersIcon className="w-4 h-4 text-base-600" />
               Customer Leads
@@ -129,7 +130,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
           ) : (
             <button
               disabled
-              className="bg-[#E2E1E0] border border-neutral-500 rounded-lg px-3 py-2 text-sm leading-[18px] text-neutral-500 flex items-center gap-2 cursor-not-allowed"
+              className="bg-neutral-200 border border-neutral-500 rounded-lg px-3 py-2 text-sm leading-[18px] text-neutral-500 flex items-center gap-2 cursor-not-allowed"
             >
               <UsersIcon className="w-4 h-4 text-neutral-500" />
               Customer Leads
@@ -138,7 +139,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
           {isLive ? (
             <button
               disabled
-              className="bg-[#FAFAF9] border border-neutral-300 rounded-lg px-3 py-2 text-sm leading-[18px] text-base-500 flex items-center gap-2 cursor-not-allowed"
+              className="bg-neutral-background border border-neutral-300 rounded-lg px-3 py-2 text-sm leading-[18px] text-base-500 flex items-center gap-2 cursor-not-allowed"
             >
               <ChartBarIcon className="w-4 h-4 text-base-600" />
               Performance
@@ -146,7 +147,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
           ) : (
             <button
               disabled
-              className="bg-[#E2E1E0] border border-neutral-500 rounded-lg px-3 py-2 text-sm leading-[18px] text-neutral-500 flex items-center gap-2 cursor-not-allowed"
+              className="bg-neutral-200 border border-neutral-500 rounded-lg px-3 py-2 text-sm leading-[18px] text-neutral-500 flex items-center gap-2 cursor-not-allowed"
             >
               <ChartBarIcon className="w-4 h-4 text-neutral-500" />
               Performance
@@ -162,7 +163,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-[149px] p-2 rounded-lg border-[#EDEDEC] shadow-[0px_4px_4px_-1px_rgba(12,12,13,0.1),0px_4px_4px_-1px_rgba(12,12,13,0.05)]"
+              className="w-[149px] p-2 rounded-lg border-neutral-100 shadow-sm"
             >
               {/* TODO: Link to campaign edit page for this project */}
               <DropdownMenuItem className="px-4 py-3 rounded-lg text-sm font-sans text-base-600 cursor-pointer">
@@ -173,7 +174,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
                 Edit Page
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="px-4 py-3 rounded-lg text-sm font-sans text-[#D14F34] cursor-pointer focus:text-[#D14F34]"
+                className="px-4 py-3 rounded-lg text-sm font-sans text-error-500 cursor-pointer focus:text-error-500"
                 onSelect={() => setDeleteOpen(true)}
               >
                 Delete
@@ -188,7 +189,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
     <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
       <DialogContent
         hideCloseButton
-        className="w-[600px] max-w-[600px] p-8 rounded-lg border-[#E2E1E0] shadow-[0px_4px_4px_-1px_rgba(12,12,13,0.1),0px_4px_4px_-1px_rgba(12,12,13,0.05)]"
+        className="w-[600px] max-w-[600px] p-8 rounded-lg border-neutral-200 shadow-sm"
       >
         <DialogClose className="absolute right-4 top-4 rounded-sm text-base-400 hover:text-base-600 transition-opacity focus:outline-none">
           <XMarkIcon className="h-5 w-5" />
@@ -206,7 +207,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
         {/* Project preview card */}
         <div className="border border-neutral-300 rounded-lg p-5 flex items-center gap-4 mt-2">
-          <div className="w-[100px] h-[72px] shrink-0 bg-[#F8F8F8] rounded-lg flex items-center justify-center">
+          <div className="w-[100px] h-[72px] shrink-0 bg-neutral-50 rounded-lg flex items-center justify-center">
             <PhotoIcon className="w-8 h-8 text-base-400" />
           </div>
           <div className="flex flex-col gap-1 min-w-0">
@@ -232,7 +233,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
               // TODO: Implement delete project (frontend + backend + toast)
               console.log("Delete project:", project.uuid);
             }}
-            className="font-sans text-sm font-semibold text-[#D14F34] px-4 py-2 hover:underline"
+            className="font-sans text-sm font-semibold text-error-500 px-4 py-2 hover:underline"
           >
             Delete Project
           </button>

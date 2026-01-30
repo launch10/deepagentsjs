@@ -5,6 +5,7 @@
 #  id         :bigint           not null, primary key
 #  deleted_at :datetime
 #  name       :string           not null
+#  status     :string           default("draft"), not null
 #  uuid       :uuid             not null
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
@@ -15,10 +16,12 @@
 #  index_projects_on_account_id                 (account_id)
 #  index_projects_on_account_id_and_created_at  (account_id,created_at)
 #  index_projects_on_account_id_and_name        (account_id,name) UNIQUE
+#  index_projects_on_account_id_and_status      (account_id,status)
 #  index_projects_on_account_id_and_updated_at  (account_id,updated_at)
 #  index_projects_on_created_at                 (created_at)
 #  index_projects_on_deleted_at                 (deleted_at)
 #  index_projects_on_name                       (name)
+#  index_projects_on_status                     (status)
 #  index_projects_on_updated_at                 (updated_at)
 #  index_projects_on_uuid                       (uuid) UNIQUE
 #
@@ -58,6 +61,104 @@ RSpec.describe Project, type: :model do
       workflow.next_step!
       expect(project.current_workflow.step).to eq "ad_campaign"
       expect(project.current_chat.chat_type).to eq "ad_campaign"
+    end
+  end
+
+  describe "status" do
+    describe "validations" do
+      it "validates status is present" do
+        project.status = nil
+        expect(project).not_to be_valid
+        expect(project.errors[:status]).to include("can't be blank")
+      end
+
+      it "validates status is in allowed values" do
+        project.status = "invalid"
+        expect(project).not_to be_valid
+        expect(project.errors[:status]).to include("is not included in the list")
+      end
+
+      it "allows valid statuses" do
+        %w[draft paused live].each do |status|
+          project.status = status
+          expect(project).to be_valid
+        end
+      end
+    end
+
+    describe "status predicates" do
+      it "#draft? returns true when status is draft" do
+        project.status = "draft"
+        expect(project.draft?).to be true
+        expect(project.paused?).to be false
+        expect(project.live?).to be false
+      end
+
+      it "#paused? returns true when status is paused" do
+        project.status = "paused"
+        expect(project.draft?).to be false
+        expect(project.paused?).to be true
+        expect(project.live?).to be false
+      end
+
+      it "#live? returns true when status is live" do
+        project.status = "live"
+        expect(project.draft?).to be false
+        expect(project.paused?).to be false
+        expect(project.live?).to be true
+      end
+    end
+
+    describe "#refresh_status!" do
+      context "when a deploy is live" do
+        it "sets status to live" do
+          project.update_column(:status, "draft")
+          create(:deploy, project: project, is_live: true)
+
+          project.refresh_status!
+
+          expect(project.status).to eq("live")
+        end
+
+        it "is overridden by paused campaigns" do
+          project.update_column(:status, "draft")
+          create(:deploy, project: project, is_live: true)
+          campaign.update_column(:status, "paused")
+
+          project.refresh_status!
+
+          expect(project.status).to eq("paused")
+        end
+      end
+
+      context "when no deploy is live but campaign is paused" do
+        it "sets status to paused" do
+          project.update_column(:status, "draft")
+          campaign.update_column(:status, "paused")
+
+          project.refresh_status!
+
+          expect(project.status).to eq("paused")
+        end
+      end
+
+      context "when no deploy is live and no campaign is paused" do
+        it "sets status to draft" do
+          project.update_column(:status, "live")
+          campaign.update_column(:status, "active")
+
+          project.refresh_status!
+
+          expect(project.status).to eq("draft")
+        end
+      end
+
+      it "does not save if status unchanged" do
+        project.update_column(:status, "draft")
+        expect(project).not_to receive(:update_column)
+
+        project.refresh_status!
+      end
     end
   end
 end

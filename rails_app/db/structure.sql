@@ -1232,8 +1232,7 @@ CREATE TABLE public.analytics_daily_metrics (
     cost_micros bigint DEFAULT 0 NOT NULL,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    page_views_count bigint DEFAULT 0 NOT NULL,
-    conversion_value_cents bigint DEFAULT 0 NOT NULL
+    page_views_count bigint DEFAULT 0 NOT NULL
 );
 
 
@@ -3491,7 +3490,8 @@ CREATE TABLE public.projects (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     uuid uuid DEFAULT gen_random_uuid() NOT NULL,
-    deleted_at timestamp(6) without time zone
+    deleted_at timestamp(6) without time zone,
+    status character varying DEFAULT 'draft'::character varying NOT NULL
 );
 
 
@@ -8964,6 +8964,13 @@ CREATE UNIQUE INDEX index_projects_on_account_id_and_name ON public.projects USI
 
 
 --
+-- Name: index_projects_on_account_id_and_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_projects_on_account_id_and_status ON public.projects USING btree (account_id, status);
+
+
+--
 -- Name: index_projects_on_account_id_and_updated_at; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8989,6 +8996,13 @@ CREATE INDEX index_projects_on_deleted_at ON public.projects USING btree (delete
 --
 
 CREATE INDEX index_projects_on_name ON public.projects USING btree (name);
+
+
+--
+-- Name: index_projects_on_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_projects_on_status ON public.projects USING btree (status);
 
 
 --
@@ -11252,7 +11266,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
-('20260130161923'),
+('20260130143844'),
 ('20260129225919'),
 ('20260129182538'),
 ('20260129120000'),

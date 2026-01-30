@@ -5,6 +5,7 @@
 #  id         :bigint           not null, primary key
 #  deleted_at :datetime
 #  name       :string           not null
+#  status     :string           default("draft"), not null
 #  uuid       :uuid             not null
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
@@ -15,10 +16,12 @@
 #  index_projects_on_account_id                 (account_id)
 #  index_projects_on_account_id_and_created_at  (account_id,created_at)
 #  index_projects_on_account_id_and_name        (account_id,name) UNIQUE
+#  index_projects_on_account_id_and_status      (account_id,status)
 #  index_projects_on_account_id_and_updated_at  (account_id,updated_at)
 #  index_projects_on_created_at                 (created_at)
 #  index_projects_on_deleted_at                 (deleted_at)
 #  index_projects_on_name                       (name)
+#  index_projects_on_status                     (status)
 #  index_projects_on_updated_at                 (updated_at)
 #  index_projects_on_uuid                       (uuid) UNIQUE
 #
@@ -30,9 +33,12 @@ class Project < ApplicationRecord
 
   acts_as_tenant :account
 
+  STATUSES = %w[draft paused live].freeze
+
   belongs_to :account
   validates :name, presence: true
   validates :account_id, presence: true
+  validates :status, presence: true, inclusion: { in: STATUSES }
   before_validation :set_uuid, on: :create
   before_destroy :log_deletion
 
@@ -124,7 +130,40 @@ class Project < ApplicationRecord
     signed_id(purpose: :lead_signup)
   end
 
+  # Recalculates and persists the project status based on deploys and campaigns.
+  # Status priority: live > paused > draft
+  #   - "live" if any deploy is live
+  #   - "paused" if any campaign is paused
+  #   - "draft" otherwise
+  def refresh_status!
+    new_status = compute_status
+    update_column(:status, new_status) if status != new_status
+    new_status
+  end
+
+  def live?
+    status == "live"
+  end
+
+  def paused?
+    status == "paused"
+  end
+
+  def draft?
+    status == "draft"
+  end
+
   private
+
+  def compute_status
+    if campaigns.where(status: "paused").exists?
+      "paused"
+    elsif deploys.live.exists?
+      "live"
+    else
+      "draft"
+    end
+  end
 
   def set_uuid
     return if uuid.present?

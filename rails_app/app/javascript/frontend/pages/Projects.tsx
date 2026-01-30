@@ -85,7 +85,7 @@ export default function Projects() {
 
       {/* Segmented filter control */}
       <div className="mt-8 flex items-center">
-        <div className="bg-[#EDEDEC] rounded-full p-1 flex items-center">
+        <div className="bg-neutral-100 rounded-full p-1 flex items-center">
           {FILTERS.map(({ label, value }) => (
             <button
               key={value}
@@ -100,12 +100,12 @@ export default function Projects() {
               <span
                 className={cn(
                   "font-sans text-sm leading-[18px]",
-                  activeFilter === value ? "text-base-600" : "text-[#8B8986]",
+                  activeFilter === value ? "text-base-600" : "text-neutral-600",
                 )}
               >
                 {label}
               </span>
-              <span className="font-sans text-xs leading-4 text-[#8B8986]">
+              <span className="font-sans text-xs leading-4 text-neutral-600">
                 ({statusCounts[value]})
               </span>
             </button>

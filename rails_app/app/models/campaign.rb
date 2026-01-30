@@ -98,12 +98,18 @@ class Campaign < ApplicationRecord
   validates :stage, presence: true, inclusion: { in: STAGES }
   validates :time_zone, inclusion: { in: ActiveSupport::TimeZone::MAPPING.values }, allow_nil: true
 
+  after_save :refresh_project_status, if: :saved_change_to_status?
+
   accepts_nested_attributes_for :ad_groups, allow_destroy: true
   accepts_nested_attributes_for :callouts, allow_destroy: true
   accepts_nested_attributes_for :structured_snippet, allow_destroy: true
 
   def enabled?
     google_status == "ENABLED"
+  end
+
+  def is_paused?
+    status == "paused"
   end
 
   def enable!(async: true)
@@ -158,5 +164,11 @@ class Campaign < ApplicationRecord
 
   def google_account_invitation
     account&.google_account_invitation
+  end
+
+  private
+
+  def refresh_project_status
+    project&.refresh_status!
   end
 end
