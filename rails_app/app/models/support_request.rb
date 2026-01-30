@@ -42,8 +42,8 @@ class SupportRequest < ApplicationRecord
   ].freeze
 
   validates :category, presence: true, inclusion: {in: CATEGORIES}
-  validates :subject, presence: true, length: {minimum: 5, maximum: 200}
-  validates :description, presence: true, length: {minimum: 20, maximum: 5000}
+  validates :subject, presence: true, length: {maximum: 200}
+  validates :description, presence: true, length: {maximum: 5000}
 
   validate :validate_attachments
 

@@ -5,13 +5,29 @@ module Support
     sidekiq_options queue: :default, retry: 3
 
     # Notion database property names — must match the Notion database schema exactly
-    PROP_TITLE = "Title"
-    PROP_CATEGORY = "Category"
-    PROP_EMAIL = "Email"
-    PROP_TICKET_REF = "Ticket Ref"
-    PROP_STATUS = "Status"
-    PROP_TIER = "Tier"
-    STATUS_NEW = "New"
+    PROP_REFERENCE   = "Reference"
+    PROP_SUBJECT     = "Subject"
+    PROP_DESCRIPTION = "Description"
+    PROP_CATEGORY    = "Category"
+    PROP_EMAIL       = "Email"
+    PROP_STATUS      = "Status"
+    PROP_SUBSCRIPTION = "Subscription"
+    PROP_CREDITS     = "Credits"
+    PROP_SUBMITTED   = "Submitted"
+    PROP_SOURCE_URL  = "Source URL"
+    PROP_USER_ID     = "User ID"
+    PROP_ATTACHMENTS = "Attachments"
+
+    STATUS_OPEN = "Open"
+
+    # Map form categories to Notion select values
+    CATEGORY_MAP = {
+      "Report a bug" => "Bug",
+      "Billing question" => "Billing",
+      "How do I...?" => "How-to",
+      "Feature request" => "Feature Request",
+      "Other" => "Other"
+    }.freeze
 
     def perform(support_request_id)
       support_request = SupportRequest.find(support_request_id)
@@ -24,25 +40,29 @@ module Support
       request["Content-Type"] = "application/json"
       request["Notion-Version"] = "2022-06-28"
 
+      tier = support_request.subscription_tier || "None"
+      notion_category = CATEGORY_MAP.fetch(support_request.category, "Other")
+
+      properties = {
+        PROP_REFERENCE => {title: [{text: {content: support_request.ticket_reference}}]},
+        PROP_SUBJECT => {rich_text: [{text: {content: support_request.subject}}]},
+        PROP_DESCRIPTION => {rich_text: [{text: {content: support_request.description.truncate(2000)}}]},
+        PROP_CATEGORY => {select: {name: notion_category}},
+        PROP_EMAIL => {email: support_request.user.email},
+        PROP_STATUS => {select: {name: STATUS_OPEN}},
+        PROP_SUBSCRIPTION => {select: {name: tier}},
+        PROP_CREDITS => {number: support_request.credits_remaining || 0},
+        PROP_SUBMITTED => {date: {start: support_request.created_at.iso8601}},
+        PROP_USER_ID => {rich_text: [{text: {content: support_request.user.id.to_s}}]}
+      }
+
+      if support_request.submitted_from_url.present?
+        properties[PROP_SOURCE_URL] = {url: support_request.submitted_from_url}
+      end
+
       request.body = {
         parent: {database_id: database_id},
-        properties: {
-          PROP_TITLE => {title: [{text: {content: support_request.subject}}]},
-          PROP_CATEGORY => {select: {name: support_request.category}},
-          PROP_EMAIL => {email: support_request.user.email},
-          PROP_TICKET_REF => {rich_text: [{text: {content: support_request.ticket_reference}}]},
-          PROP_STATUS => {select: {name: STATUS_NEW}},
-          PROP_TIER => {rich_text: [{text: {content: support_request.subscription_tier || "N/A"}}]}
-        },
-        children: [
-          {
-            object: "block",
-            type: "paragraph",
-            paragraph: {
-              rich_text: [{type: "text", text: {content: support_request.description.truncate(2000)}}]
-            }
-          }
-        ]
+        properties: properties
       }.to_json
 
       response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(request) }

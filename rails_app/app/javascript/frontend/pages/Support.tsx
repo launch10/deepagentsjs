@@ -174,17 +174,8 @@ export default function Support() {
         <h1 className="font-['IBM_Plex_Serif'] text-[28px] font-semibold text-[#2E3238] mb-2">
           Get Help
         </h1>
-        <p className="font-['Plus_Jakarta_Sans'] text-sm text-[#6B7280] mb-1">
-          We typically respond within 24 hours.
-        </p>
         <p className="font-['Plus_Jakarta_Sans'] text-sm text-[#6B7280] mb-6">
-          You can also email us directly at{" "}
-          <a
-            href="mailto:support@launch10.ai"
-            className="text-base-500 underline"
-          >
-            support@launch10.ai
-          </a>
+          We typically respond within 24 hours.
         </p>
 
         <div className="w-full lg:w-[640px]">
@@ -202,7 +193,7 @@ export default function Support() {
                       setData("support_request[category]", e.target.value)
                     }
                     required
-                    className="border-input h-9 w-full rounded-md border bg-transparent px-3 py-1 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm"
+                    className="border-input h-9 w-full rounded-md border bg-transparent px-3 py-1 text-base text-[#2E3238] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm"
                   >
                     <option value="" disabled>
                       Select a category
@@ -231,9 +222,9 @@ export default function Support() {
                       setData("support_request[subject]", e.target.value)
                     }
                     required
-                    minLength={5}
                     maxLength={200}
                     placeholder="Brief summary of your issue"
+                    className="text-[#2E3238]"
                   />
                   {errors?.["subject"] && (
                     <p className="text-xs text-red-500 mt-1">
@@ -253,10 +244,10 @@ export default function Support() {
                       setData("support_request[description]", e.target.value)
                     }
                     required
-                    minLength={20}
                     maxLength={5000}
                     rows={6}
                     placeholder="Please describe your issue in detail..."
+                    className="text-[#2E3238]"
                   />
                   <p className="text-xs text-[#9CA3AF] mt-1">
                     {data["support_request[description]"].length}/5000
@@ -341,12 +332,22 @@ export default function Support() {
                 {/* Submit */}
                 <div className="pt-2">
                   <Button type="submit" disabled={processing}>
-                    {processing ? "Submitting..." : "Submit request"}
+                    {processing ? "Submitting..." : "Submit Request"}
                   </Button>
                 </div>
               </form>
             </CardContent>
           </Card>
+
+          <p className="font-['Plus_Jakarta_Sans'] text-sm text-[#6B7280] mt-4">
+            You can also email us directly at{" "}
+            <a
+              href="mailto:support@launch10.ai"
+              className="text-base-500 underline"
+            >
+              support@launch10.ai
+            </a>
+          </p>
         </div>
       </div>
     </main>
