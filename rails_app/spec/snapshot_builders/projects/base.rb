@@ -31,7 +31,7 @@ module SnapshotBuilders
         )
 
         # Create workflow
-        workflow_step = (status == "draft") ? "brainstorm" : "deploy"
+        workflow_step = status == "draft" ? "brainstorm" : "deploy"
         project.workflows.create!(
           workflow_type: "launch",
           step: workflow_step,
@@ -47,7 +47,7 @@ module SnapshotBuilders
           template: Template.first || create(:template)
         )
 
-        # Create domain for non-draft projects
+        # Create domain and website URL for non-draft projects
         # Use custom domains to avoid platform subdomain limits
         if status != "draft"
           domain = Domain.new(
@@ -56,6 +56,14 @@ module SnapshotBuilders
             domain: "#{name.parameterize}-#{index}.test-domain.com"
           )
           domain.save!(validate: false) # Skip subdomain limit validation for test data
+
+          # Create WebsiteUrl to link website to domain (required for primary_url_string)
+          WebsiteUrl.create!(
+            website: website,
+            domain: domain,
+            account: account,
+            path: "/"
+          )
         end
 
         case status
