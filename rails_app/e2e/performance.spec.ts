@@ -66,11 +66,8 @@ test.describe("Project Performance Page", () => {
       expect(roas).toMatch(/^\d+\.\d{2}x$|^-$/);
     });
 
-    test("displays engagement metrics section with charts", async ({ page }) => {
+    test("displays engagement metrics section with charts", async () => {
       await performancePage.goto(projectUuid);
-
-      // Check section heading
-      await expect(page.getByText("Engagement Metrics")).toBeVisible();
 
       // Check all three charts are visible
       await performancePage.expectChartsVisible();

@@ -7,6 +7,43 @@ module Analytics
   # performance page, including ad spend, leads, CPL, ROAS, and
   # engagement metrics (impressions, clicks, CTR).
   #
+  # == Data Freshness Pattern (Historical + Live)
+  #
+  # This service intentionally uses a HYBRID data pattern to balance
+  # query performance with data freshness:
+  #
+  # - HISTORICAL (before today): Pre-computed from `analytics_daily_metrics`
+  #   - Computed daily at 5 AM by ComputeDailyMetricsWorker
+  #   - Fast queries on indexed, aggregated data
+  #
+  # - TODAY: Live queries from source tables
+  #   - Real-time for in-house data (leads, conversions)
+  #   - Near-real-time for Google Ads (synced hourly, 2-4hr API lag)
+  #
+  # == Data Freshness by Source
+  #
+  # | Source                | Raw Freshness        | With 15-min Cache |
+  # |-----------------------|----------------------|-------------------|
+  # | Leads (WebsiteLead)   | Real-time            | ≤15 min stale     |
+  # | Conversions (Ahoy)    | Real-time            | ≤15 min stale     |
+  # | Google Ads metrics    | 3-5 hrs (API lag +   | ≤5 hrs stale      |
+  # | (impressions, clicks, |  hourly sync)        |                   |
+  # |  cost_micros)         |                      |                   |
+  #
+  # == Date Boundary (NO DOUBLE COUNTING)
+  #
+  # The date boundary is INTENTIONALLY exclusive to prevent double-counting:
+  #
+  #   Historical: @start_date → Date.yesterday (EXCLUDES today)
+  #   Live:       Date.current only
+  #
+  # This means if analytics_daily_metrics accidentally has a record for
+  # today (e.g., from a mid-day job run), it will be IGNORED. Only live
+  # source tables are queried for today's data.
+  #
+  # See: spec/services/analytics/project_performance_service_spec.rb
+  #      "date boundary - no double counting" tests
+  #
   class ProjectPerformanceService
     attr_reader :project, :days
 
@@ -22,10 +59,14 @@ module Analytics
     # @return [Hash] Performance data with :summary, :impressions, :clicks, :ctr, :has_data
     #
     def metrics
-      # Cache the base query results to avoid repeated queries
-      @daily_metrics ||= fetch_daily_metrics
-      @previous_metrics ||= fetch_previous_period_metrics
+      CacheService.fetch(project.account_id, "project:#{project.id}:performance", days) do
+        compute_metrics
+      end
+    end
 
+    private
+
+    def compute_metrics
       summary = build_summary
       impressions = build_time_series(:impressions)
       clicks = build_time_series(:clicks)
@@ -46,19 +87,26 @@ module Analytics
       }
     end
 
-    private
+    # --- Data Fetching (Historical + Live) ---
+    #
+    # IMPORTANT: The date boundary between historical and live data is
+    # Date.yesterday / Date.current. This is INTENTIONAL to prevent
+    # double-counting. See class documentation for details.
 
-    def fetch_daily_metrics
-      AnalyticsDailyMetric
+    def historical_metrics
+      # EXCLUDES today - only pre-computed data up to yesterday
+      @historical_metrics ||= AnalyticsDailyMetric
         .for_project(project)
-        .for_date_range(@start_date, @end_date)
+        .for_date_range(@start_date, Date.yesterday)
     end
 
-    def fetch_previous_period_metrics
-      prev_start, prev_end = previous_period_dates
-      AnalyticsDailyMetric
-        .for_project(project)
-        .for_date_range(prev_start, prev_end)
+    def previous_period_metrics
+      @previous_period_metrics ||= begin
+        prev_start, prev_end = previous_period_dates
+        AnalyticsDailyMetric
+          .for_project(project)
+          .for_date_range(prev_start, prev_end)
+      end
     end
 
     def previous_period_dates
@@ -67,20 +115,87 @@ module Analytics
       [prev_start, prev_end]
     end
 
+    # --- Live Data for Today ---
+    #
+    # These methods query source tables directly for TODAY's data only.
+    # This provides real-time freshness for in-house data (leads, conversions)
+    # and near-real-time for Google Ads (~hourly sync, 2-4hr API lag).
+
+    def live_ads_metrics_today
+      # Google Ads data: ~3-5 hours stale (hourly sync + 2-4hr API lag)
+      @live_ads_metrics_today ||= begin
+        campaign_ids = project.campaigns.pluck(:id)
+        return { impressions: 0, clicks: 0, cost_micros: 0 } if campaign_ids.empty?
+
+        result = AdPerformanceDaily
+          .where(campaign_id: campaign_ids)
+          .where(date: Date.current)
+          .select(
+            "COALESCE(SUM(impressions), 0) as impressions",
+            "COALESCE(SUM(clicks), 0) as clicks",
+            "COALESCE(SUM(cost_micros), 0) as cost_micros"
+          )
+          .take
+
+        {
+          impressions: result&.impressions.to_i,
+          clicks: result&.clicks.to_i,
+          cost_micros: result&.cost_micros.to_i
+        }
+      end
+    end
+
+    def live_leads_count_today
+      # In-house data: real-time (only delayed by 15-min cache)
+      @live_leads_count_today ||= begin
+        return 0 unless project.website
+
+        WebsiteLead
+          .where(website: project.website)
+          .where(created_at: Date.current.all_day)
+          .count
+      end
+    end
+
+    def live_conversion_value_today
+      # In-house data: real-time (only delayed by 15-min cache)
+      @live_conversion_value_today ||= begin
+        return 0 unless project.website
+
+        conversion_events = Ahoy::Event
+          .joins(:visit)
+          .where(ahoy_visits: { website_id: project.website.id })
+          .where(name: "conversion")
+          .where(time: Date.current.all_day)
+
+        return 0 if conversion_events.empty?
+
+        total_dollars = conversion_events.sum { |e| e.properties["value"].to_f }
+        (total_dollars * 100).to_i
+      end
+    end
+
+    # --- Summary Building ---
+
     def build_summary
-      totals = @daily_metrics
+      # Historical totals (excluding today)
+      hist_totals = historical_metrics
         .select(
           "SUM(cost_micros) as total_cost_micros",
           "SUM(leads_count) as total_leads",
           "SUM(conversion_value_cents) as total_conversion_value_cents"
         ).take
 
-      cost_dollars = (totals&.total_cost_micros || 0) / 1_000_000.0
-      leads = totals&.total_leads || 0
-      conversion_value_dollars = (totals&.total_conversion_value_cents || 0) / 100.0
+      # Add today's live data
+      cost_micros = (hist_totals&.total_cost_micros || 0) + live_ads_metrics_today[:cost_micros]
+      leads = (hist_totals&.total_leads || 0) + live_leads_count_today
+      conversion_value_cents = (hist_totals&.total_conversion_value_cents || 0) + live_conversion_value_today
 
-      # Previous period values
-      prev_totals = @previous_metrics
+      cost_dollars = cost_micros / 1_000_000.0
+      conversion_value_dollars = conversion_value_cents / 100.0
+
+      # Previous period values (always from pre-computed)
+      prev_totals = previous_period_metrics
         .select(
           "SUM(cost_micros) as total_cost_micros",
           "SUM(leads_count) as total_leads",
@@ -108,12 +223,29 @@ module Analytics
       }
     end
 
+    # --- Time Series Building ---
+
     def build_time_series(column)
-      daily_data = @daily_metrics.group(:date).order(:date).sum(column)
-      previous_total = @previous_metrics.sum(column)
+      # Historical data by date (excluding today)
+      historical_data = historical_metrics.group(:date).order(:date).sum(column)
+
+      # Today's live value
+      today_value = case column
+      when :impressions then live_ads_metrics_today[:impressions]
+      when :clicks then live_ads_metrics_today[:clicks]
+      else 0
+      end
+
+      previous_total = previous_period_metrics.sum(column)
 
       dates = (@start_date..@end_date).to_a
-      data = dates.map { |d| daily_data[d] || 0 }
+      data = dates.map do |date|
+        if date == Date.current
+          today_value
+        else
+          historical_data[date] || 0
+        end
+      end
       current_total = data.sum
 
       {
@@ -124,34 +256,44 @@ module Analytics
     end
 
     def build_ctr_time_series
-      daily_data = @daily_metrics
+      # Historical data by date
+      historical_data = historical_metrics
         .group(:date)
         .order(:date)
         .select("date, SUM(impressions) as impressions, SUM(clicks) as clicks")
         .index_by(&:date)
 
+      # Today's live data
+      today_impressions = live_ads_metrics_today[:impressions]
+      today_clicks = live_ads_metrics_today[:clicks]
+      today_ctr = (today_impressions > 0) ? (today_clicks.to_f / today_impressions).round(4) : 0.0
+
       dates = (@start_date..@end_date).to_a
       data = dates.map do |date|
-        record = daily_data[date]
-        if record && record.impressions.to_i > 0
-          (record.clicks.to_f / record.impressions).round(4)
+        if date == Date.current
+          today_ctr
         else
-          0.0
+          record = historical_data[date]
+          if record && record.impressions.to_i > 0
+            (record.clicks.to_f / record.impressions).round(4)
+          else
+            0.0
+          end
         end
       end
 
-      # Calculate CTR totals
-      current = @daily_metrics
+      # Calculate CTR totals (historical + today)
+      hist_agg = historical_metrics
         .select("SUM(impressions) as impressions, SUM(clicks) as clicks")
         .take
 
-      current_ctr = if current&.impressions.to_i > 0
-        (current.clicks.to_f / current.impressions).round(4)
-      else
-        0.0
-      end
+      total_impressions = hist_agg&.impressions.to_i + today_impressions
+      total_clicks = hist_agg&.clicks.to_i + today_clicks
 
-      previous = @previous_metrics
+      current_ctr = (total_impressions > 0) ? (total_clicks.to_f / total_impressions).round(4) : 0.0
+
+      # Previous period CTR
+      previous = previous_period_metrics
         .select("SUM(impressions) as impressions, SUM(clicks) as clicks")
         .take
 
@@ -168,7 +310,8 @@ module Analytics
       }
     end
 
-    # Unified trend calculation - always compares to previous period
+    # --- Trend Calculations ---
+
     def build_totals(current_value, previous_value)
       trend = calculate_trend(current_value, previous_value)
 

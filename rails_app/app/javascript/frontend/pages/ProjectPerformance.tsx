@@ -26,6 +26,22 @@ const DEFAULT_DAYS: DaysKey = "30";
 // Colors matching Launch10 design system
 const PRIMARY_COLOR = "#0D9488"; // teal
 
+// Calculate a nice Y-axis max with headroom (roughly 1.25x data max, rounded to nice intervals)
+function getNiceYAxisMax(dataMax: number): number {
+  if (dataMax === 0) return 100;
+  const target = dataMax * 1.25;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(target)));
+  const normalized = target / magnitude;
+  // Round up to nearest 1, 2, 2.5, 5, or 10
+  let nice: number;
+  if (normalized <= 1) nice = 1;
+  else if (normalized <= 2) nice = 2;
+  else if (normalized <= 2.5) nice = 2.5;
+  else if (normalized <= 5) nice = 5;
+  else nice = 10;
+  return nice * magnitude;
+}
+
 export default function ProjectPerformance() {
   const {
     project,
@@ -55,6 +71,7 @@ export default function ProjectPerformance() {
           <Link
             href="/projects"
             className="text-xs text-base-400 hover:text-base-700 inline-flex items-center gap-1 mb-2"
+            data-testid="back-link"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="opacity-60">
               <path
@@ -80,6 +97,7 @@ export default function ProjectPerformance() {
                 value={selectedDays}
                 onChange={(e) => handleDateRangeChange(Number(e.target.value))}
                 className="text-sm border border-neutral-300 rounded-md px-3 py-1.5 bg-white min-w-[145px]"
+                data-testid="date-range-filter"
               >
                 {date_range_options.map((option) => (
                   <option key={option.days} value={option.days}>
@@ -104,6 +122,7 @@ export default function ProjectPerformance() {
               trend={hasData ? metrics.summary.ad_spend_trend : undefined}
               invertTrend={true}
               highlighted={true}
+              testId="ad-spend-card"
             />
             <SummaryCard
               title="Leads"
@@ -118,6 +137,7 @@ export default function ProjectPerformance() {
                     }
                   : undefined
               }
+              testId="leads-card"
             />
             <SummaryCard
               title="Avg Cost per Lead"
@@ -129,6 +149,7 @@ export default function ProjectPerformance() {
               }
               trend={hasData ? metrics.summary.cpl_trend : undefined}
               invertTrend={true}
+              testId="cpl-card"
             />
             <SummaryCard
               title="Return on Ad Spend"
@@ -139,6 +160,7 @@ export default function ProjectPerformance() {
                   : null
               }
               trend={hasData ? metrics.summary.roas_trend : undefined}
+              testId="roas-card"
             />
           </div>
         </section>
@@ -151,12 +173,14 @@ export default function ProjectPerformance() {
               data={metrics.impressions}
               dateRange={dateRangeLabel}
               hasData={hasData}
+              testId="impressions-chart"
             />
             <BarChartCard
               title="Ad Clicks"
               data={metrics.clicks}
               dateRange={dateRangeLabel}
               hasData={hasData}
+              testId="clicks-chart"
             />
             <LineChartCard
               title="Click-Through Rate"
@@ -164,6 +188,7 @@ export default function ProjectPerformance() {
               dateRange={dateRangeLabel}
               valueFormatter={(v) => `${(v * 100).toFixed(1)}%`}
               hasData={hasData}
+              testId="ctr-chart"
             />
           </div>
         </section>
@@ -215,6 +240,7 @@ function SummaryCard({
   trend,
   invertTrend = false,
   highlighted = false,
+  testId,
 }: {
   title: string;
   description: string;
@@ -223,6 +249,7 @@ function SummaryCard({
   trend?: Trend;
   invertTrend?: boolean;
   highlighted?: boolean;
+  testId?: string;
 }) {
   const isEmpty = value === null;
 
@@ -244,7 +271,7 @@ function SummaryCard({
   const borderClass = highlighted ? "border-primary-500" : "border-neutral-300";
 
   return (
-    <div className={`rounded-2xl border ${borderClass} bg-white p-4 relative flex flex-col`}>
+    <div className={`rounded-2xl border ${borderClass} bg-white p-4 relative flex flex-col`} data-testid={testId}>
       {/* Trend icon in top right */}
       {trend && !isEmpty && (
         <div className="absolute top-4 right-4">
@@ -270,11 +297,12 @@ function SummaryCard({
         </div>
       ) : (
         <div className="mt-auto pt-4 flex items-end justify-between">
-          <p className="text-lg font-semibold text-[#2E3238]">{value}</p>
+          <p className="text-lg font-semibold text-[#2E3238]" data-testid={testId ? `${testId}-value` : undefined}>{value}</p>
           {link && (
             <Link
               href={link.href}
               className="text-xs font-medium text-base-600 hover:text-base-700 inline-flex items-center gap-1"
+              data-testid="view-leads-link"
             >
               {link.label}
               <span aria-hidden="true">&rarr;</span>
@@ -307,17 +335,22 @@ function BarChartCard({
   data,
   dateRange,
   hasData,
+  testId,
 }: {
   title: string;
   data: TimeSeries;
   dateRange: string;
   hasData: boolean;
+  testId?: string;
 }) {
   const chartData = data.dates.map((date, index) => ({
     date,
     displayDate: formatDate(date),
     value: data.data[index] || 0,
   }));
+
+  const dataMax = Math.max(...chartData.map((d) => d.value));
+  const yAxisMax = getNiceYAxisMax(dataMax);
 
   const chartConfig: ChartConfig = {
     value: {
@@ -338,8 +371,8 @@ function BarChartCard({
   const trendDirection = data.totals.trend_direction;
 
   return (
-    <div className="rounded-2xl border border-neutral-300 bg-white p-6 min-h-[359px] flex flex-col">
-      <div className="mb-2">
+    <div className="rounded-2xl border border-neutral-300 bg-white p-6 min-h-[359px] flex flex-col" data-testid={testId}>
+      <div className="mb-6">
         <h3 className="text-sm font-medium text-[#0F1113]">{title}</h3>
         <p className="text-xs text-[#96989B]">{dateSubtitle}</p>
       </div>
@@ -364,6 +397,7 @@ function BarChartCard({
                     axisLine={false}
                     tick={{ fontSize: 9, fill: "#9CA3AF" }}
                     tickMargin={4}
+                    domain={[0, yAxisMax]}
                     tickFormatter={(value) =>
                       value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value
                     }
@@ -397,18 +431,23 @@ function LineChartCard({
   dateRange,
   valueFormatter,
   hasData,
+  testId,
 }: {
   title: string;
   data: TimeSeries;
   dateRange: string;
   valueFormatter: (value: number) => string;
   hasData: boolean;
+  testId?: string;
 }) {
   const chartData = data.dates.map((date, index) => ({
     date,
     displayDate: formatDate(date),
     value: data.data[index] || 0,
   }));
+
+  const dataMax = Math.max(...chartData.map((d) => d.value));
+  const yAxisMax = getNiceYAxisMax(dataMax);
 
   const chartConfig: ChartConfig = {
     value: {
@@ -429,8 +468,8 @@ function LineChartCard({
   const trendDirection = data.totals.trend_direction;
 
   return (
-    <div className="rounded-2xl border border-neutral-300 bg-white p-4 min-h-[359px] flex flex-col">
-      <div className="mb-2">
+    <div className="rounded-2xl border border-neutral-300 bg-white p-6 min-h-[359px] flex flex-col" data-testid={testId}>
+      <div className="mb-6">
         <h3 className="text-sm font-medium text-[#0F1113]">{title}</h3>
         <p className="text-xs text-[#96989B]">{dateSubtitle}</p>
       </div>
@@ -455,6 +494,7 @@ function LineChartCard({
                     axisLine={false}
                     tick={{ fontSize: 9, fill: "#9CA3AF" }}
                     tickMargin={4}
+                    domain={[0, yAxisMax]}
                     tickFormatter={(value) => valueFormatter(value)}
                   />
                   <ChartTooltip
