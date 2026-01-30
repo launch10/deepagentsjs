@@ -129,6 +129,7 @@ class LLMService {
    * @param cost - Cost tier (free or paid)
    * @param usagePercent - Current user's usage percentage (0-100)
    * @param maxTier - Maximum price tier allowed (1=premium only, 5=any tier). Models with higher tier numbers (cheaper) are allowed.
+   * @returns Object with model instance and model_card name for billing
    */
   async get(
     skill: LLMSkill,
@@ -136,7 +137,7 @@ class LLMService {
     cost: LLMCost,
     usagePercent: number = 0,
     maxTier?: number
-  ): Promise<BaseChatModel> {
+  ): Promise<{ model: BaseChatModel; modelCard: string }> {
     const models = await this.getModels(skill, speed, cost, usagePercent, maxTier);
     const modelWithConfig = models.at(0);
     if (!modelWithConfig) {
@@ -148,7 +149,10 @@ class LLMService {
     console.log(
       `Using model tier ${modelWithConfig.config.price_tier} model: ${modelWithConfig.config.model_card}`
     );
-    return modelWithConfig.model;
+    return {
+      model: modelWithConfig.model,
+      modelCard: modelWithConfig.config.model_card ?? "unknown",
+    };
   }
 
   /**

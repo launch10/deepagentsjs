@@ -95,7 +95,7 @@ export async function getLLM(options: LLMOptions = {}): Promise<BaseChatModel> {
   const maxTier = options.maxTier;
 
   const effectiveMaxTier = getEffectiveMaxTier(maxTier);
-  const model = await LLMManager.get(skill, speed, cost, usagePercent, effectiveMaxTier);
+  const { model, modelCard } = await LLMManager.get(skill, speed, cost, usagePercent, effectiveMaxTier);
 
   // Attach usage tracking callback using configFactories.
   // This ensures the callback is always included at invoke time, even when
@@ -103,6 +103,7 @@ export async function getLLM(options: LLMOptions = {}): Promise<BaseChatModel> {
   // Using configFactories (vs withConfig) survives through bindTools and other
   // RunnableBinding transformations that would otherwise replace callbacks.
   // Uses StructuredOutputRunnableBinding to properly forward withStructuredOutput calls.
+  // Also passes modelCard through metadata for billing identification fallback.
   return new StructuredOutputRunnableBinding({
     bound: model,
     config: {},
@@ -113,6 +114,10 @@ export async function getLLM(options: LLMOptions = {}): Promise<BaseChatModel> {
         return {
           ...config,
           callbacks: [...existingCallbacks, usageTracker],
+          metadata: {
+            ...config?.metadata,
+            _modelCard: modelCard,
+          },
         };
       },
     ],

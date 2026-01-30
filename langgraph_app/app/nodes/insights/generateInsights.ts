@@ -343,7 +343,7 @@ export const generateInsightsNode = NodeMiddleware.use(
       // Get LLM with structured output
       // Note: Anthropic requires an object at the root level, so we wrap the array
       // LLM outputs intent (action_type + project_index), we resolve to full URLs
-      const llm = await getLLM({ skill: "writing", speed: "fast" });
+      const llm = await getLLM({ skill: "writing", speed: "fast", cost: "paid" });
       const structuredLlm = llm.withStructuredOutput(insightsIntentOutputSchema, {
         name: "insights",
       });

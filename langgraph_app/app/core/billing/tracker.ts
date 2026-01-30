@@ -103,7 +103,15 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
     const usage = (message as any).usage_metadata;
     const responseMeta = (message as any).response_metadata || llmOutput || {};
 
-    const model = responseMeta.model_name || responseMeta.model || "unknown";
+    // Get model name for billing - prefer _modelCard since it's set at creation time
+    // and guaranteed to match our cost configuration. Response metadata is a fallback
+    // in case the config metadata isn't available (e.g., direct LLM usage without getLLM wrapper)
+    const configMetadata = extraParams?.metadata as Record<string, unknown> | undefined;
+    const model =
+      configMetadata?._modelCard ||
+      responseMeta.model_name ||
+      responseMeta.model ||
+      "unknown";
 
     // Warn early when model is unknown to help debug cost calculation errors
     if (model === "unknown") {
@@ -112,6 +120,8 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
         JSON.stringify(responseMeta, null, 2),
         "llmOutput:",
         JSON.stringify(llmOutput, null, 2),
+        "configMetadata:",
+        JSON.stringify(configMetadata, null, 2),
         "langchainRunId:",
         langchainRunId,
         "tags:",
