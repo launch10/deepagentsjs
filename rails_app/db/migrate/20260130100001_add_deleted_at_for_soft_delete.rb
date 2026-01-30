@@ -7,6 +7,7 @@ class AddDeletedAtForSoftDelete < ActiveRecord::Migration[8.0]
       website_files domains website_urls deploys
       website_deploys website_leads analytics_daily_metrics
       campaign_deploys ad_performance_daily
+      website_file_histories website_histories
     ]
 
     tables.each do |table|

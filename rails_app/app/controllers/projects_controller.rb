@@ -1,14 +1,15 @@
 class ProjectsController < SubscribedController
+  include ProjectsPagination
+
   before_action :set_project, except: [:index, :new]
 
   def index
-    projects = current_account.projects
-      .includes(website: :domains)
-      .order(updated_at: :desc)
+    @pagy, projects = paginated_projects
+
     render inertia: "Projects",
       props: {
         projects: projects.map(&:to_mini_json),
-        total_count: projects.count
+        pagination: pagy_metadata(@pagy)
       },
       layout: "layouts/webcontainer"
   end
@@ -87,6 +88,12 @@ class ProjectsController < SubscribedController
     redirect_to projects_path, notice: "Project deleted successfully"
   end
 
+  def restore
+    @project.restore(recursive: true)
+
+    redirect_to project_path(@project.uuid), notice: "Project restored successfully"
+  end
+
   def performance
     render inertia: "ProjectPerformance", props: {
       project: @project.to_mini_json,
@@ -117,7 +124,12 @@ class ProjectsController < SubscribedController
   end
 
   def set_project
-    @project = current_account.projects.find_by(uuid: params[:uuid])
+    @project = if action_name == "restore"
+      # For restore, only find soft-deleted projects
+      current_account.projects.only_deleted.find_by(uuid: params[:uuid])
+    else
+      current_account.projects.find_by(uuid: params[:uuid])
+    end
     render json: { error: "Project not found" }, status: :not_found unless @project
   end
 end

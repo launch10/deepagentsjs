@@ -60,6 +60,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists paginated projects */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Page number (default 1) */
+                    page?: number;
+                    /** @description Filter by status (draft, paused, live) */
+                    status?: string;
+                };
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns project mini JSON with expected fields */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            projects: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /**
+                                 * Format: uuid
+                                 * @description UUID identifier
+                                 */
+                                uuid: string;
+                                /** @description Associated website ID */
+                                website_id?: number | null;
+                                /** @description Unique identifier */
+                                account_id: number;
+                                /** @description Project name */
+                                name: string;
+                                /**
+                                 * @description Project status
+                                 * @enum {string}
+                                 */
+                                status: "draft" | "paused" | "live";
+                                /** @description Primary domain */
+                                domain?: string | null;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                created_at: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                updated_at: string;
+                            }[];
+                            pagination: {
+                                /** @description Current page number */
+                                current_page: number;
+                                /** @description Total number of pages */
+                                total_pages: number;
+                                /** @description Total number of items */
+                                total_count: number;
+                                /** @description Previous page number or null */
+                                prev_page?: number | null;
+                                /** @description Next page number or null */
+                                next_page?: number | null;
+                                /** @description First item index on current page */
+                                from?: number | null;
+                                /** @description Last item index on current page */
+                                to?: number | null;
+                                /** @description Page series for pagination controls */
+                                series?: (number | string)[];
+                            };
+                        };
+                    };
+                };
+                /** @description unauthorized - expired token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/brainstorms": {
         parameters: {
             query?: never;

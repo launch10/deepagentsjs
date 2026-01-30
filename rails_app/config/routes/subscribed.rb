@@ -22,6 +22,7 @@ authenticated :user do
       end
 
       get :deploy
+      patch :restore
     end
 
     resources :leads, only: [:index], controller: "leads" do

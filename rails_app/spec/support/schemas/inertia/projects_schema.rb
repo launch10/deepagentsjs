@@ -2,20 +2,45 @@
 
 module InertiaSchemas
   module Projects
+    def self.pagination_schema
+      {
+        type: :object,
+        properties: {
+          current_page: InertiaSchemas.integer_field,
+          total_pages: InertiaSchemas.integer_field,
+          total_count: InertiaSchemas.integer_field,
+          prev_page: InertiaSchemas.nullable(type: :integer),
+          next_page: InertiaSchemas.nullable(type: :integer),
+          from: InertiaSchemas.nullable(type: :integer),
+          to: InertiaSchemas.nullable(type: :integer),
+          series: {
+            type: :array,
+            items: {
+              oneOf: [
+                {type: :integer},
+                {type: :string}
+              ]
+            }
+          }
+        },
+        required: %w[current_page total_pages total_count prev_page next_page series]
+      }
+    end
+
     def self.page_props
       {
         projects: {
           type: :array,
           items: InertiaSchemas.project_mini_schema
         },
-        total_count: InertiaSchemas.integer_field
+        pagination: pagination_schema
       }
     end
 
     def self.props_schema
       InertiaSchemas.with_shared_props(
         page_props: page_props,
-        page_required: %w[projects total_count]
+        page_required: %w[projects pagination]
       )
     end
   end

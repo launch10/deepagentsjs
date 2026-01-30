@@ -26,6 +26,7 @@ namespace :api, defaults: {format: :json} do
       end
     end
     resources :uploads, only: [:create, :index, :show, :destroy]
+    resources :projects, only: [:index]
 
     resources :websites, only: [] do
       resource :context, only: [:show], controller: "context"
