@@ -15,6 +15,9 @@ export default function FaqSection({ faqs }: FaqSectionProps) {
 
   const debouncedQuery = useDebounce(searchQuery, 300);
 
+  const isSearching = debouncedQuery.trim().length > 0;
+  const isFiltering = selectedCategory !== "all";
+
   // Get unique categories that have FAQs
   const categories = useMemo(() => {
     const cats = new Set(faqs.map((f) => f.category));
@@ -25,11 +28,11 @@ export default function FaqSection({ faqs }: FaqSectionProps) {
   const filteredFaqs = useMemo(() => {
     let results = faqs;
 
-    if (selectedCategory !== "all") {
+    if (isFiltering) {
       results = results.filter((f) => f.category === selectedCategory);
     }
 
-    if (debouncedQuery.trim()) {
+    if (isSearching) {
       const query = debouncedQuery.toLowerCase();
       results = results.filter(
         (f) =>
@@ -39,7 +42,10 @@ export default function FaqSection({ faqs }: FaqSectionProps) {
     }
 
     return results;
-  }, [faqs, selectedCategory, debouncedQuery]);
+  }, [faqs, selectedCategory, debouncedQuery, isFiltering, isSearching]);
+
+  // Show grouped view when viewing "All" with no search query
+  const showGrouped = !isSearching && !isFiltering;
 
   return (
     <div className="space-y-4">
@@ -49,7 +55,7 @@ export default function FaqSection({ faqs }: FaqSectionProps) {
         selected={selectedCategory}
         onChange={setSelectedCategory}
       />
-      <FaqAccordion faqs={filteredFaqs} />
+      <FaqAccordion faqs={filteredFaqs} groupByCategory={showGrouped} />
     </div>
   );
 }

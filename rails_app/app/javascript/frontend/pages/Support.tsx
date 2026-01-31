@@ -4,7 +4,7 @@ import FaqSection from "@components/support/FaqSection";
 import SupportChat from "@components/support/SupportChat";
 import ContactForm from "@components/support/ContactForm";
 import { Button } from "@components/ui/button";
-import { ArrowDownIcon } from "@heroicons/react/24/outline";
+import { ArrowDownIcon, ChatBubbleLeftEllipsisIcon } from "@heroicons/react/24/outline";
 import type { FaqItem } from "~/types/faq";
 
 interface SupportPageProps {
@@ -20,6 +20,10 @@ export default function Support() {
 
   const scrollToContactForm = () => {
     contactFormRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleChatToggle = () => {
+    setChatOpen(!chatOpen);
   };
 
   return (
@@ -43,23 +47,31 @@ export default function Support() {
           )}
 
           {/* CTA Section */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 py-4">
-            <p className="font-sans text-sm text-neutral-600">
-              Can't find what you're looking for?
-            </p>
-            <div className="flex gap-2">
-              <SupportChat
-                isOpen={chatOpen}
-                onToggle={() => setChatOpen(!chatOpen)}
-              />
-              {!chatOpen && (
-                <Button variant="outline" onClick={scrollToContactForm}>
-                  <ArrowDownIcon className="w-4 h-4" />
+          {!chatOpen && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 py-4">
+              <p className="font-sans text-sm text-neutral-600">
+                Can't find what you're looking for?
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleChatToggle}>
+                  <ChatBubbleLeftEllipsisIcon className="w-3.5 h-3.5" />
+                  Chat with AI
+                </Button>
+                <Button variant="outline" size="sm" onClick={scrollToContactForm}>
+                  <ArrowDownIcon className="w-3.5 h-3.5" />
                   Contact Support
                 </Button>
-              )}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* AI Chat */}
+          {chatOpen && (
+            <SupportChat
+              isOpen={chatOpen}
+              onToggle={handleChatToggle}
+            />
+          )}
 
           {/* Contact Form */}
           <div ref={contactFormRef}>
