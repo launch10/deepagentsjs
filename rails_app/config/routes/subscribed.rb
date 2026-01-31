@@ -12,8 +12,16 @@ authenticated :user do
 
     member do
       get :brainstorm
-      get :website
       get :performance
+
+      # Website substeps (build, domain, deploy)
+      scope :website do
+        WorkflowConfig.substeps_for("launch", "website").each do |substep|
+          get substep, to: "projects#website_#{substep}", as: "website_#{substep}"
+        end
+      end
+      # Backwards compatibility: redirect /website to /website/build
+      get :website, to: redirect { |params, _req| "/projects/#{params[:uuid]}/website/build" }
 
       scope :campaigns do
         WorkflowConfig.substeps_for("launch", "ad_campaign").each do |substep|

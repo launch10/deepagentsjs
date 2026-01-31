@@ -46,5 +46,15 @@ namespace :madmin, path: :admin do
   # Credits management
   resources :credit_packs
 
+  # Documents / FAQs
+  resources :documents, only: [:index, :show] do
+    collection do
+      post :sync, to: "documents#sync"
+    end
+    member do
+      post :resync, to: "documents#resync"
+    end
+  end
+
   root to: "dashboard#show"
 end
