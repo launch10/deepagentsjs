@@ -7,6 +7,7 @@ import {
   BuildingOfficeIcon,
   CreditCardIcon,
   DocumentTextIcon,
+  ChatBubbleLeftRightIcon,
   ArrowRightStartOnRectangleIcon,
   ArrowLeftStartOnRectangleIcon,
 } from "@heroicons/react/24/outline";
@@ -45,8 +46,9 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    label: "Resources",
+    label: "Content",
     items: [
+      { label: "Documents", href: "/admin/documents", icon: ChatBubbleLeftRightIcon },
       { label: "Announcements", href: "/admin/announcements", icon: DocumentTextIcon },
     ],
   },
