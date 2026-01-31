@@ -25,7 +25,8 @@ class WebsiteStepFinished < BaseBuilder
       website.website_files.find_or_initialize_by(path: file.relative_path).update!(content: file.content)
     end
 
-    domain = website.domains.first || create(:domain, website: website, account: account, domain: "example.launch10.site")
+    # Use a .com domain to avoid hitting platform subdomain limits (we already have 2 platform subdomains from website_step)
+    domain = website.domains.first || create(:domain, website: website, account: account, domain: "example-site.com")
     website_url = website.website_urls.first || create(:website_url, website: website, domain: domain, account: account, path: "/bingo?cloudEnv=staging")
 
     project.current_workflow.update!(step: "ad_campaign", substep: "content")

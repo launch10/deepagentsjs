@@ -1,7 +1,7 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 import type { PrimaryKeyType } from "@types";
-import { Brainstorm, Website, Core, type ConsoleError } from "@types";
+import { Brainstorm, Website, Core } from "@types";
 import { createAppBridge } from "@api/middleware";
 
 export const WebsiteAnnotation = Annotation.Root({
@@ -57,6 +57,14 @@ export const WebsiteAnnotation = Annotation.Root({
   files: Annotation<Website.FileMap>({
     default: () => ({}),
     reducer: (current, next) => ({ ...current, ...next }),
+  }),
+
+  // Domain recommendations (computed idempotently by domainRecommendations node)
+  domainRecommendations: Annotation<
+    Website.DomainRecommendations.DomainRecommendations | undefined
+  >({
+    default: () => undefined,
+    reducer: (current, next) => next ?? current, // Don't overwrite if already set
   }),
 });
 

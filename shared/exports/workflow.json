@@ -9,7 +9,24 @@
       {
         "name": "website",
         "label": "Landing Page",
-        "order": 2
+        "order": 2,
+        "steps": [
+          {
+            "name": "build",
+            "label": "Build",
+            "order": 1
+          },
+          {
+            "name": "domain",
+            "label": "Website Setup",
+            "order": 2
+          },
+          {
+            "name": "deploy",
+            "label": "Deploy",
+            "order": 3
+          }
+        ]
       },
       {
         "name": "ad_campaign",

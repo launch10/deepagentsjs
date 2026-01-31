@@ -54,6 +54,304 @@ paths:
                   - pack_millicredits
         "401":
           description: unauthorized - expired token
+  "/api/v1/websites/{website_id}/domain_context":
+    get:
+      summary: Returns domain context for subdomain picker
+      tags:
+        - Websites
+        - Domains
+      security:
+        - bearer_auth: []
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: X-Signature
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Timestamp
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: website_id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: scopes domains to user's account only
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  existing_domains:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        domain:
+                          type: string
+                          description: Domain name
+                        is_platform_subdomain:
+                          type: boolean
+                          description: Whether this is a platform subdomain
+                        website_id:
+                          type: integer
+                          nullable: true
+                          description: Associated website ID
+                        website_name:
+                          type: string
+                          nullable: true
+                          description: Associated website name
+                        website_urls:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              id:
+                                type: integer
+                                description: Unique identifier
+                              path:
+                                type: string
+                                description: URL path
+                              website_id:
+                                type: integer
+                                description: Website ID
+                            required:
+                              - id
+                              - path
+                              - website_id
+                          description: URLs associated with this domain
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Creation timestamp
+                      required:
+                        - id
+                        - domain
+                        - is_platform_subdomain
+                        - created_at
+                    description: All domains belonging to the account
+                  platform_subdomain_credits:
+                    type: object
+                    properties:
+                      limit:
+                        type: integer
+                        description: Maximum platform subdomains allowed
+                      used:
+                        type: integer
+                        description: Number of platform subdomains used
+                      remaining:
+                        type: integer
+                        description: Remaining platform subdomains
+                    required:
+                      - limit
+                      - used
+                      - remaining
+                  brainstorm_context:
+                    type: object
+                    nullable: true
+                    properties:
+                      id:
+                        type: integer
+                        description: Unique identifier
+                      idea:
+                        type: string
+                        nullable: true
+                        description: The core idea for the landing page
+                      audience:
+                        type: string
+                        nullable: true
+                        description: Target audience for the landing page
+                      solution:
+                        type: string
+                        nullable: true
+                        description: The solution being offered
+                      social_proof:
+                        type: string
+                        nullable: true
+                        description: Social proof elements
+                    required:
+                      - id
+                required:
+                  - existing_domains
+                  - platform_subdomain_credits
+        "404":
+          description: returns not found when website belongs to different account
+        "401":
+          description: unauthorized - invalid token
+  "/api/v1/domains/{id}":
+    patch:
+      summary: Reassigns a domain to a different website
+      tags:
+        - Domains
+      security:
+        - bearer_auth: []
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: X-Signature
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Timestamp
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: removes domain from website when website_id is nil
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  domain:
+                    type: string
+                    description: Domain name
+                  account_id:
+                    type: integer
+                    description: Unique identifier
+                  website_id:
+                    type: integer
+                    nullable: true
+                    description: Associated website ID
+                  is_platform_subdomain:
+                    type: boolean
+                    description: Whether this is a platform subdomain
+                  cloudflare_zone_id:
+                    type: string
+                    nullable: true
+                    description: Cloudflare zone ID
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                  - id
+                  - domain
+                  - account_id
+                  - is_platform_subdomain
+                  - created_at
+                  - updated_at
+        "404":
+          description: returns not found for non-existent domain
+        "422":
+          description: cannot reassign to website belonging to another account
+        "401":
+          description: unauthorized - missing token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                domain:
+                  type: object
+                  properties:
+                    website_id:
+                      type: integer
+    parameters:
+      - name: id
+        in: path
+        description: Domain ID
+        required: true
+        schema:
+          type: integer
+    get:
+      summary: Retrieves a domain
+      tags:
+        - Domains
+      security:
+        - bearer_auth: []
+      parameters:
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Signature
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Timestamp
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: domain found in team account after switching
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  domain:
+                    type: string
+                    description: Domain name
+                  account_id:
+                    type: integer
+                    description: Unique identifier
+                  website_id:
+                    type: integer
+                    nullable: true
+                    description: Associated website ID
+                  is_platform_subdomain:
+                    type: boolean
+                    description: Whether this is a platform subdomain
+                  cloudflare_zone_id:
+                    type: string
+                    nullable: true
+                    description: Cloudflare zone ID
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                  - id
+                  - domain
+                  - account_id
+                  - is_platform_subdomain
+                  - created_at
+                  - updated_at
+        "404":
+          description: cannot access other user domain
   "/api/v1/projects":
     get:
       summary: Lists paginated projects
@@ -243,6 +541,98 @@ paths:
           description: successfully deletes the project
         "404":
           description: cannot delete another account's project
+        "401":
+          description: unauthorized - missing token
+  "/api/v1/projects/{uuid}/restore":
+    patch:
+      summary: Restores a soft-deleted project
+      tags:
+        - Projects
+      security:
+        - bearer_auth: []
+      parameters:
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Signature
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Timestamp
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: uuid
+          in: path
+          required: true
+          description: Project UUID
+          schema:
+            type: string
+      responses:
+        "200":
+          description: successfully restores the project
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        description: Unique identifier
+                      uuid:
+                        type: string
+                        format: uuid
+                        description: UUID identifier
+                      website_id:
+                        type:
+                          - integer
+                          - "null"
+                        description: Associated website ID
+                      account_id:
+                        type: integer
+                        description: Unique identifier
+                      name:
+                        type: string
+                        description: Project name
+                      status:
+                        type: string
+                        enum:
+                          - draft
+                          - paused
+                          - live
+                        description: Project status
+                      domain:
+                        type:
+                          - string
+                          - "null"
+                        description: Primary domain
+                      created_at:
+                        type: string
+                        format: date-time
+                        description: Timestamp
+                      updated_at:
+                        type: string
+                        format: date-time
+                        description: Timestamp
+                    required:
+                      - id
+                      - uuid
+                      - account_id
+                      - name
+                      - status
+                      - created_at
+                      - updated_at
+                required:
+                  - project
+        "404":
+          description: cannot restore another account's project
         "401":
           description: unauthorized - missing token
   "/api/v1/brainstorms":
@@ -2704,81 +3094,6 @@ paths:
                   description: Array of domain names to check availability (max 10)
               required:
                 - candidates
-  "/api/v1/domains/{id}":
-    parameters:
-      - name: id
-        in: path
-        description: Domain ID
-        required: true
-        schema:
-          type: integer
-    get:
-      summary: Retrieves a domain
-      tags:
-        - Domains
-      security:
-        - bearer_auth: []
-      parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
-      responses:
-        "200":
-          description: domain found in team account after switching
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                    description: Unique identifier
-                  domain:
-                    type: string
-                    description: Domain name
-                  account_id:
-                    type: integer
-                    description: Unique identifier
-                  website_id:
-                    type: integer
-                    nullable: true
-                    description: Associated website ID
-                  is_platform_subdomain:
-                    type: boolean
-                    description: Whether this is a platform subdomain
-                  cloudflare_zone_id:
-                    type: string
-                    nullable: true
-                    description: Cloudflare zone ID
-                  created_at:
-                    type: string
-                    format: date-time
-                    description: Timestamp
-                  updated_at:
-                    type: string
-                    format: date-time
-                    description: Timestamp
-                required:
-                  - id
-                  - domain
-                  - account_id
-                  - is_platform_subdomain
-                  - created_at
-                  - updated_at
-        "404":
-          description: cannot access other user domain
   "/api/v1/geo_target_constants":
     get:
       summary: Search geo target constants
@@ -4160,15 +4475,15 @@ paths:
                 - snapshot
   "/test/database/set_credits":
     post:
-      summary: Sets credits for an account
+      summary: Sets credits for an account by user email
       tags:
         - Test Database
-      description: Sets plan and pack millicredits for a user account. Only available
-        in development/test environments.
+      description: Sets the plan and pack credits for the account owned by the specified
+        user. Only available in development/test environments.
       parameters: []
       responses:
         "200":
-          description: credits set successfully
+          description: credits updated successfully
           content:
             application/json:
               schema:
@@ -4191,6 +4506,11 @@ paths:
                         type: integer
                       total_millicredits:
                         type: integer
+                    required:
+                      - id
+                      - plan_millicredits
+                      - pack_millicredits
+                      - total_millicredits
                 required:
                   - status
                   - message
@@ -4242,15 +4562,14 @@ paths:
                   properties:
                     email:
                       type: string
-                      description: Email of the user whose account credits to set
+                      description: Email of the user whose account credits should
+                        be set
                     plan_millicredits:
                       type: integer
-                      description: Plan millicredits to set
-                      default: 0
+                      description: Plan credits in millicredits
                     pack_millicredits:
                       type: integer
-                      description: Pack millicredits to set
-                      default: 0
+                      description: Pack credits in millicredits
                   required:
                     - email
               required:

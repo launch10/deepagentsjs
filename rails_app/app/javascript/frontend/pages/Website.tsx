@@ -1,11 +1,12 @@
 import WebsiteLoader from "@components/website/WebsiteLoader";
 import WebsiteSidebar from "@components/website/sidebar/WebsiteSidebar";
 import { WebsitePreview } from "@components/website/preview";
+import { DomainPicker } from "@components/website/domain-picker";
 import { Chat } from "@components/shared/chat/Chat";
 import { Button } from "@components/ui/button";
 import { twMerge } from "tailwind-merge";
-import { useEffect, useEffectEvent, useRef } from "react";
-import { usePage } from "@inertiajs/react";
+import { useEffect, useEffectEvent, useRef, useCallback } from "react";
+import { usePage, router } from "@inertiajs/react";
 import {
   useWebsiteChat,
   useWebsiteChatState,
@@ -13,10 +14,14 @@ import {
   useWebsiteChatActions,
   useWebsiteChatIsStreaming,
 } from "@hooks/website";
+import type { Workflow } from "@shared";
+import type { DomainSelection } from "@components/website/domain-picker";
 
 interface WebsitePageProps {
   website?: { id?: number };
-  project?: { id?: number };
+  project?: { id?: number; uuid?: string };
+  substep?: Workflow.WebsiteSubstepName;
+  [key: string]: unknown;
 }
 
 const websiteLoaderSteps = [{ id: "1", label: "Setting up branding & colors" }];
@@ -104,7 +109,10 @@ function useWebsiteInit() {
   }, [websiteId, projectId]);
 }
 
-export default function Website() {
+/**
+ * Website Build step - generates the website content
+ */
+function WebsiteBuild() {
   const chat = useWebsiteChat();
   const isLoadingHistory = useWebsiteChatIsLoadingHistory();
   const isStreaming = useWebsiteChatIsStreaming();
@@ -145,4 +153,89 @@ export default function Website() {
       </div>
     </Chat.Root>
   );
+}
+
+/**
+ * Website Domain step - pick domain and path for deployment
+ */
+function WebsiteDomainStep() {
+  const { project } = usePage<WebsitePageProps>().props;
+  const chat = useWebsiteChat();
+
+  // Handle domain selection completion - navigate to deploy step
+  const handleComplete = useCallback(
+    (_selection: DomainSelection) => {
+      // TODO: Save selection to state/backend before navigating
+      // Navigate to deploy step
+      if (project?.uuid) {
+        router.visit(`/projects/${project.uuid}/website/deploy`);
+      }
+    },
+    [project?.uuid]
+  );
+
+  // Handle back navigation
+  const handleBack = useCallback(() => {
+    if (project?.uuid) {
+      router.visit(`/projects/${project.uuid}/website/build`);
+    }
+  }, [project?.uuid]);
+
+  return (
+    <Chat.Root chat={chat}>
+      <div className="h-full flex flex-col">
+        {/* Main content area */}
+        <main className="flex-1 min-h-0 flex items-start justify-center px-[2.5%] pt-[5%]">
+          <div className="w-full max-w-3xl">
+            <DomainPicker onComplete={handleComplete} onBack={handleBack} />
+          </div>
+        </main>
+
+        {/* Footer with navigation */}
+        <div className="shrink-0 relative z-10 bg-background">
+          <div className="h-px bg-neutral-200 shadow-[0px_-16px_26px_0px_rgba(15,17,19,0.06)]" />
+          <div className="flex items-center justify-between px-[2.5%] py-4">
+            <Button variant="link" onClick={handleBack}>
+              Previous Step
+            </Button>
+            <div className="flex gap-3">
+              <Button variant="outline" disabled>
+                Preview
+              </Button>
+              <Button onClick={() => handleComplete({} as DomainSelection)}>Continue</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Chat.Root>
+  );
+}
+
+/**
+ * Website Deploy step - deploy the website
+ */
+function WebsiteDeployStep() {
+  // TODO: Implement deploy UI component
+  return (
+    <div className="h-full flex flex-col items-center justify-center">
+      <h1 className="text-2xl font-semibold mb-4">Deploy Website</h1>
+      <p className="text-gray-500">Deploy UI coming soon...</p>
+    </div>
+  );
+}
+
+export default function Website() {
+  const { substep = "build" } = usePage<WebsitePageProps>().props;
+
+  // Render the appropriate substep view
+  switch (substep) {
+    case "build":
+      return <WebsiteBuild />;
+    case "domain":
+      return <WebsiteDomainStep />;
+    case "deploy":
+      return <WebsiteDeployStep />;
+    default:
+      return <WebsiteBuild />;
+  }
 }
