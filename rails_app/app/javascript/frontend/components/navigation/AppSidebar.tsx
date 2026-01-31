@@ -5,7 +5,7 @@ import {
   RocketLaunchIcon,
   Cog8ToothIcon,
   ArrowRightStartOnRectangleIcon,
-  QuestionMarkCircleIcon,
+  BookOpenIcon,
 } from "@heroicons/react/24/outline";
 import { twMerge } from "tailwind-merge";
 import { NewProjectButton } from "./NewProjectButton";
@@ -107,7 +107,7 @@ export default function AppSidebar() {
         }}
       />
 
-      {/* Support */}
+      {/* Help Center */}
       <div className={twMerge("px-1", isCollapsed && "flex justify-center")}>
         <Link
           href="/support"
@@ -117,8 +117,8 @@ export default function AppSidebar() {
             isCollapsed && "justify-center px-0"
           )}
         >
-          <QuestionMarkCircleIcon className="w-6 h-6 shrink-0" strokeWidth={1.5} />
-          {!isCollapsed && <span className={isActive("/support") ? "font-semibold" : ""}>Support</span>}
+          <BookOpenIcon className="w-6 h-6 shrink-0" strokeWidth={1.5} />
+          {!isCollapsed && <span className={isActive("/support") ? "font-semibold" : ""}>Help Center</span>}
         </Link>
       </div>
 

@@ -2,7 +2,13 @@ class SupportController < SubscribedController
   MAX_REQUESTS_PER_HOUR = 5
 
   def show
-    render inertia: "Support", props: {}
+    faqs = FAQ.published.ordered.select(:id, :question, :answer, :category, :subcategory, :slug)
+    support_chat = current_account.chats.find_by(chat_type: "support")
+
+    render inertia: "Support", props: {
+      faqs: faqs.as_json(only: %i[id question answer category subcategory slug]),
+      thread_id: support_chat&.thread_id
+    }
   end
 
   def create

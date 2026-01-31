@@ -22,6 +22,26 @@ RSpec.describe "Support Inertia Page", type: :request, inertia: true do
         expect(response).to have_http_status(:ok)
         expect(inertia.component).to eq("Support")
       end
+
+      it "passes FAQ props" do
+        create(:faq, published: true)
+        create(:faq, published: false)
+
+        get support_path
+
+        faqs = inertia.props[:faqs]
+        expect(faqs).to be_an(Array)
+        expect(faqs.length).to eq(1)
+        expect(faqs.first).to have_key("question")
+        expect(faqs.first).to have_key("answer")
+        expect(faqs.first).to have_key("category")
+      end
+
+      it "passes thread_id as nil when no support chat exists" do
+        get support_path
+
+        expect(inertia.props[:thread_id]).to be_nil
+      end
     end
 
     context "when user has no active subscription" do
