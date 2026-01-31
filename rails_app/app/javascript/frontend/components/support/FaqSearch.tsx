@@ -9,12 +9,15 @@ interface FaqSearchProps {
 export default function FaqSearch({ value, onChange }: FaqSearchProps) {
   return (
     <div className="relative">
-      <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#9CA3AF]" />
+      <MagnifyingGlassIcon
+        aria-hidden="true"
+        className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500"
+      />
       <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Search FAQs..."
-        className="pl-9 text-[#2E3238]"
+        className="pl-9 text-base-500"
       />
     </div>
   );

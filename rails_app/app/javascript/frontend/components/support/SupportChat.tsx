@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Card, CardContent } from "@components/ui/card";
 import { Button } from "@components/ui/button";
 import { Chat } from "@components/shared/chat/Chat";
@@ -23,8 +22,8 @@ function SupportChatPanel() {
               {/* Initial greeting when no messages */}
               {messages.length === 0 && !isStreaming && (
                 <div className="flex gap-3">
-                  <div className="bg-[#F3F4F6] rounded-lg px-4 py-3 max-w-[85%]">
-                    <p className="font-['Plus_Jakarta_Sans'] text-sm text-[#2E3238]">
+                  <div className="bg-neutral-100 rounded-lg px-4 py-3 max-w-[85%]">
+                    <p className="font-sans text-sm text-base-500">
                       Hi! I can help answer questions about Launch10. What
                       would you like to know?
                     </p>
@@ -33,7 +32,7 @@ function SupportChatPanel() {
               )}
               <Chat.Messages.List />
             </div>
-            <div className="border-t border-[#E5E7EB] p-3">
+            <div className="border-t border-neutral-200 p-3">
               <Chat.Input.CreditGate>
                 <div className="flex gap-2">
                   <Chat.Input.Textarea
@@ -69,13 +68,13 @@ export default function SupportChat({ isOpen, onToggle }: SupportChatProps) {
       {isOpen && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="font-['Plus_Jakarta_Sans'] text-sm font-medium text-[#2E3238]">
+            <h3 className="font-sans text-sm font-medium text-base-500">
               AI Assistant
             </h3>
             <button
               type="button"
               onClick={onToggle}
-              className="text-[#9CA3AF] hover:text-[#6B7280] transition-colors"
+              className="text-neutral-500 hover:text-neutral-600 transition-colors"
             >
               <XMarkIcon className="w-5 h-5" />
             </button>

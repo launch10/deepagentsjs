@@ -3,15 +3,7 @@ import FaqSearch from "./FaqSearch";
 import FaqCategoryFilter from "./FaqCategoryFilter";
 import FaqAccordion from "./FaqAccordion";
 import { useDebounce } from "@hooks/useDebounce";
-
-interface FaqItem {
-  id: number;
-  question: string;
-  answer: string;
-  category: string;
-  subcategory: string | null;
-  slug: string;
-}
+import type { FaqItem } from "~/types/faq";
 
 interface FaqSectionProps {
   faqs: FaqItem[];

@@ -42,6 +42,19 @@ RSpec.describe "Support Inertia Page", type: :request, inertia: true do
 
         expect(inertia.props[:thread_id]).to be_nil
       end
+
+      it "passes thread_id when support chat exists" do
+        chat = Chat.create!(
+          account: account,
+          chat_type: "support",
+          thread_id: "support-thread-123",
+          name: "Support Chat"
+        )
+
+        get support_path
+
+        expect(inertia.props[:thread_id]).to eq("support-thread-123")
+      end
     end
 
     context "when user has no active subscription" do
@@ -130,6 +143,44 @@ RSpec.describe "Support Inertia Page", type: :request, inertia: true do
       expect(Support::NotionCreationWorker).to receive(:perform_async).with(kind_of(Integer))
 
       post support_path, params: valid_params
+    end
+
+    context "when rate limited" do
+      it "allows up to MAX_REQUESTS_PER_HOUR requests" do
+        4.times { post support_path, params: valid_params }
+
+        expect {
+          post support_path, params: valid_params
+        }.to change(SupportRequest, :count).by(1)
+      end
+
+      it "rejects requests beyond the rate limit" do
+        5.times { post support_path, params: valid_params }
+
+        expect {
+          post support_path, params: valid_params
+        }.not_to change(SupportRequest, :count)
+      end
+
+      it "redirects with alert when rate limited" do
+        5.times { post support_path, params: valid_params }
+
+        post support_path, params: valid_params
+
+        expect(response).to redirect_to(support_path)
+        expect(flash[:alert]).to include("too many requests")
+      end
+
+      it "does not count requests older than one hour" do
+        5.times do
+          sr = create(:support_request, user: user, account: account)
+          sr.update_column(:created_at, 61.minutes.ago)
+        end
+
+        expect {
+          post support_path, params: valid_params
+        }.to change(SupportRequest, :count).by(1)
+      end
     end
 
     context "with invalid params" do

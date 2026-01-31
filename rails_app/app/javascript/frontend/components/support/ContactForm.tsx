@@ -139,11 +139,11 @@ export default function ContactForm() {
     return (
       <Card>
         <CardContent className="flex flex-col items-center text-center py-12">
-          <CheckCircleIcon className="w-16 h-16 text-[#2E9E72] mb-4" />
-          <h2 className="font-['Plus_Jakarta_Sans'] text-xl font-semibold text-[#2E3238] mb-2">
+          <CheckCircleIcon className="w-16 h-16 text-success-500 mb-4" />
+          <h2 className="font-sans text-xl font-semibold text-base-500 mb-2">
             Request submitted
           </h2>
-          <p className="font-['Plus_Jakarta_Sans'] text-sm text-[#6B7280] mb-6 max-w-md">
+          <p className="font-sans text-sm text-neutral-600 mb-6 max-w-md">
             {ticketInfo ||
               `Thanks for reaching out. We'll get back to you within 24 hours at ${current_user?.email}.`}
           </p>
@@ -166,7 +166,7 @@ export default function ContactForm() {
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Category */}
           <div>
-            <label className="font-['Plus_Jakarta_Sans'] text-sm font-medium text-[#2E3238] block mb-1.5">
+            <label className="font-sans text-sm font-medium text-base-500 block mb-1.5">
               Category <span className="text-red-500">*</span>
             </label>
             <select
@@ -175,7 +175,7 @@ export default function ContactForm() {
                 setData("support_request[category]", e.target.value)
               }
               required
-              className="border-input h-9 w-full rounded-md border bg-transparent px-3 py-1 text-base text-[#2E3238] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm"
+              className="border-input h-9 w-full rounded-md border bg-transparent px-3 py-1 text-base text-base-500 shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm"
             >
               <option value="" disabled>
                 Select a category
@@ -195,7 +195,7 @@ export default function ContactForm() {
 
           {/* Subject */}
           <div>
-            <label className="font-['Plus_Jakarta_Sans'] text-sm font-medium text-[#2E3238] block mb-1.5">
+            <label className="font-sans text-sm font-medium text-base-500 block mb-1.5">
               Subject <span className="text-red-500">*</span>
             </label>
             <Input
@@ -206,7 +206,7 @@ export default function ContactForm() {
               required
               maxLength={200}
               placeholder="Brief summary of your issue"
-              className="text-[#2E3238]"
+              className="text-base-500"
             />
             {errors?.["subject"] && (
               <p className="text-xs text-red-500 mt-1">
@@ -217,7 +217,7 @@ export default function ContactForm() {
 
           {/* Description */}
           <div>
-            <label className="font-['Plus_Jakarta_Sans'] text-sm font-medium text-[#2E3238] block mb-1.5">
+            <label className="font-sans text-sm font-medium text-base-500 block mb-1.5">
               Description <span className="text-red-500">*</span>
             </label>
             <Textarea
@@ -229,9 +229,9 @@ export default function ContactForm() {
               maxLength={5000}
               rows={6}
               placeholder="Please describe your issue in detail..."
-              className="text-[#2E3238]"
+              className="text-base-500"
             />
-            <p className="text-xs text-[#9CA3AF] mt-1">
+            <p className="text-xs text-neutral-500 mt-1">
               {data["support_request[description]"].length}/5000
             </p>
             {errors?.["description"] && (
@@ -243,9 +243,9 @@ export default function ContactForm() {
 
           {/* Attachments */}
           <div>
-            <label className="font-['Plus_Jakarta_Sans'] text-sm font-medium text-[#2E3238] block mb-1.5">
+            <label className="font-sans text-sm font-medium text-base-500 block mb-1.5">
               Attachments{" "}
-              <span className="font-normal text-[#9CA3AF]">
+              <span className="font-normal text-neutral-500">
                 (optional, max 3 files)
               </span>
             </label>
@@ -255,19 +255,19 @@ export default function ContactForm() {
                 {files.map((file, i) => (
                   <div
                     key={`${file.name}-${i}`}
-                    className="flex items-center gap-2 rounded-md border border-[#E5E7EB] bg-white px-3 py-2 text-sm"
+                    className="flex items-center gap-2 rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm"
                   >
-                    <PaperClipIcon className="w-4 h-4 text-[#9CA3AF] shrink-0" />
-                    <span className="truncate flex-1 text-[#2E3238]">
+                    <PaperClipIcon className="w-4 h-4 text-neutral-500 shrink-0" />
+                    <span className="truncate flex-1 text-base-500">
                       {file.name}
                     </span>
-                    <span className="text-[#9CA3AF] shrink-0">
+                    <span className="text-neutral-500 shrink-0">
                       {(file.size / 1024 / 1024).toFixed(1)}MB
                     </span>
                     <button
                       type="button"
                       onClick={() => removeFile(i)}
-                      className="text-[#9CA3AF] hover:text-red-500 transition-colors"
+                      className="text-neutral-500 hover:text-red-500 transition-colors"
                     >
                       <XMarkIcon className="w-4 h-4" />
                     </button>
@@ -306,7 +306,7 @@ export default function ContactForm() {
                 {errors["attachments"][0]}
               </p>
             )}
-            <p className="text-xs text-[#9CA3AF] mt-1">
+            <p className="text-xs text-neutral-500 mt-1">
               Images (PNG, JPEG, GIF, WebP) and PDFs up to 10MB each
             </p>
           </div>
