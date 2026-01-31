@@ -1,0 +1,237 @@
+import type { WebsiteGraphState } from "@annotation";
+import { NodeMiddleware } from "@middleware";
+import { DomainContextAPIService, type DomainWithWebsite } from "@rails_api";
+import { getLLM } from "@core";
+import type { Website } from "@types";
+import {
+  buildDomainRecommendationsPrompt,
+  domainRecommendationsOutputSchema,
+  type BrainstormContext,
+  type DomainRecommendationsOutput,
+} from "@prompts";
+import { createSearchDomainsTool, createSearchPathsTool } from "@tools";
+import { createReactAgent } from "@langchain/langgraph/prebuilt";
+
+const SCORE_THRESHOLD = 80;
+const PLATFORM_DOMAIN_SUFFIX = ".launch10.site";
+
+/**
+ * Domain recommendations node for the website graph.
+ * Runs in parallel with websiteBuilder after buildContext.
+ * Idempotent: skips if domainRecommendations already exists in state.
+ *
+ * Uses a simple agent loop with a domain search tool to:
+ * 1. Evaluate existing domains (if any)
+ * 2. Search for available new subdomains (if user has credits)
+ * 3. Return top 3 recommendations
+ */
+export const domainRecommendationsNode = NodeMiddleware.use(
+  {},
+  async (state: WebsiteGraphState): Promise<Partial<WebsiteGraphState>> => {
+    // Idempotent: skip if already computed
+    if (state.domainRecommendations) {
+      console.log("[domainRecommendations] Skipping - already computed");
+      return {};
+    }
+
+    if (!state.websiteId) {
+      console.log("[domainRecommendations] Skipping - no websiteId");
+      return {};
+    }
+
+    if (!state.jwt) {
+      console.log("[domainRecommendations] Skipping - no jwt");
+      return {};
+    }
+
+    // Need brainstorm context to generate recommendations
+    const brainstorm = state.brainstorm;
+    if (!brainstorm?.idea) {
+      console.log("[domainRecommendations] Skipping - no brainstorm context");
+      return {};
+    }
+
+    try {
+      console.log("[domainRecommendations] Starting domain recommendations");
+
+      // Fetch domain context from Rails (existing domains, credits)
+      const contextAPI = new DomainContextAPIService({ jwt: state.jwt });
+      const domainContext = await contextAPI.get(state.websiteId);
+
+      const brainstormContext: BrainstormContext = {
+        idea: brainstorm.idea ?? "",
+        audience: brainstorm.audience ?? "",
+        solution: brainstorm.solution ?? "",
+      };
+
+      // Build the system prompt with all context
+      const systemPrompt = buildDomainRecommendationsPrompt({
+        brainstorm: brainstormContext,
+        existingDomains: domainContext.existing_domains,
+        credits: domainContext.platform_subdomain_credits,
+      });
+
+      // Get LLM and set up tools
+      const llm = await getLLM({ skill: "writing", speed: "fast" });
+      const hasCredits = domainContext.platform_subdomain_credits.remaining > 0;
+      const hasExistingDomains = domainContext.existing_domains.length > 0;
+
+      // Build tools array based on context:
+      // - search_domains: for checking new subdomain availability (requires credits)
+      // - search_paths: for checking path availability on existing domains
+      const tools = [];
+      if (hasCredits) {
+        tools.push(createSearchDomainsTool(state.jwt));
+      }
+      if (hasExistingDomains) {
+        tools.push(createSearchPathsTool(state.jwt));
+      }
+
+      // Create and run the agent
+      const agent = createReactAgent({
+        llm,
+        tools,
+        prompt: systemPrompt,
+        responseFormat: domainRecommendationsOutputSchema,
+      });
+
+      const result = await agent.invoke({ messages: [] });
+      const agentOutput = result.structuredResponse as DomainRecommendationsOutput;
+
+      // Convert agent output to domain recommendations format
+      const recommendations = convertToRecommendations(
+        agentOutput,
+        domainContext.existing_domains,
+        hasCredits
+      );
+
+      console.log("[domainRecommendations] Completed - state:", recommendations.state);
+      return { domainRecommendations: recommendations };
+    } catch (error) {
+      console.error("[domainRecommendations] Error:", error);
+      // On error, return fallback recommendations
+      const fallback = getFallbackRecommendations(brainstorm.idea ?? "my-site", []);
+      return { domainRecommendations: fallback };
+    }
+  }
+);
+
+/**
+ * Convert agent output to the DomainRecommendations format expected by the UI.
+ */
+function convertToRecommendations(
+  output: DomainRecommendationsOutput,
+  existingDomains: DomainWithWebsite[],
+  hasCreditsRemaining: boolean
+): Website.DomainRecommendations.DomainRecommendations {
+  const recommendations: Website.DomainRecommendations.DomainRecommendation[] =
+    output.recommendations.map((rec) => {
+      const domain = rec.subdomain.includes(".")
+        ? rec.subdomain
+        : `${rec.subdomain}${PLATFORM_DOMAIN_SUFFIX}`;
+
+      // Normalize path - ensure it starts with /
+      const path = rec.path?.startsWith("/") ? rec.path : `/${rec.path || ""}`;
+      const normalizedPath = path === "/" ? "" : path;
+
+      return {
+        domain,
+        subdomain: rec.subdomain.replace(PLATFORM_DOMAIN_SUFFIX, ""),
+        path: path || "/",
+        fullUrl: `${domain}${normalizedPath}`,
+        score: rec.score,
+        reasoning: rec.reasoning,
+        source: rec.source,
+        existingDomainId: rec.existingDomainId,
+        availability: rec.source === "existing" ? ("existing" as const) : ("available" as const),
+      };
+    });
+
+  // Determine UI state and top recommendation
+  return determineState(recommendations, existingDomains.length > 0, hasCreditsRemaining);
+}
+
+function determineState(
+  recommendations: Website.DomainRecommendations.DomainRecommendation[],
+  hasExistingDomains: boolean,
+  hasCreditsRemaining: boolean
+): Website.DomainRecommendations.DomainRecommendations {
+  const existingRecs = recommendations.filter((r) => r.source === "existing");
+  const generatedRecs = recommendations.filter((r) => r.source === "generated");
+
+  const highestExisting = existingRecs.sort((a, b) => b.score - a.score)[0];
+  const highestGenerated = generatedRecs.sort((a, b) => b.score - a.score)[0];
+
+  const hasGoodExistingMatch = highestExisting && highestExisting.score >= SCORE_THRESHOLD;
+
+  let state: Website.DomainRecommendations.UIState;
+  let topRecommendation: Website.DomainRecommendations.DomainRecommendation | null;
+
+  if (!hasExistingDomains) {
+    state = "no_existing_sites";
+    topRecommendation = highestGenerated ?? null;
+  } else if (hasGoodExistingMatch) {
+    // Good existing match takes priority - even if out of credits
+    state = "existing_recommended";
+    topRecommendation = highestExisting ?? null;
+  } else if (!hasCreditsRemaining) {
+    // No good existing match AND out of credits
+    state = "out_of_credits_no_match";
+    topRecommendation = highestExisting ?? null;
+  } else {
+    // No good existing match but has credits for new domains
+    state = "new_recommended";
+    topRecommendation = highestGenerated ?? highestExisting ?? null;
+  }
+
+  return {
+    state,
+    recommendations,
+    topRecommendation,
+  };
+}
+
+function getFallbackRecommendations(
+  idea: string,
+  existingDomains: DomainWithWebsite[]
+): Website.DomainRecommendations.DomainRecommendations {
+  const slug = idea
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .substring(0, 30);
+
+  const domain = `${slug}${PLATFORM_DOMAIN_SUFFIX}`;
+  const recommendations: Website.DomainRecommendations.DomainRecommendation[] = [
+    {
+      domain,
+      subdomain: slug,
+      path: "/",
+      fullUrl: domain,
+      score: 50,
+      source: "generated",
+      availability: "unknown",
+      reasoning: "Generated from your business idea",
+    },
+  ];
+
+  for (const existingDomain of existingDomains) {
+    recommendations.push({
+      domain: existingDomain.domain,
+      subdomain: existingDomain.domain.replace(PLATFORM_DOMAIN_SUFFIX, ""),
+      path: "/landing",
+      fullUrl: `${existingDomain.domain}/landing`,
+      score: 50,
+      source: "existing",
+      existingDomainId: existingDomain.id, // Domain ID is in the `id` field
+      availability: "existing",
+      reasoning: "Your existing domain",
+    });
+  }
+
+  return {
+    state: existingDomains.length === 0 ? "no_existing_sites" : "new_recommended",
+    recommendations,
+    topRecommendation: recommendations[0] ?? null,
+  };
+}

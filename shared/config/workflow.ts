@@ -4,7 +4,8 @@ export type WorkflowType = typeof WorkflowTypes[number];
 export const StepNames = [
   "brainstorm", "website", "ad_campaign", "deploy",
   "create", "content", "highlights", "plan", "keywords", "settings",
-  "review", "launch"
+  "review", "launch",
+  "build", "domain"  // Website substeps
 ] as const;
 export type StepName = typeof StepNames[number];
 export interface Step {
@@ -26,15 +27,25 @@ export type AdCampaignStepName = typeof AdCampaignStepNames[number];
 export const AdCampaignSubstepNames = ["content", "highlights", "keywords", "settings", "launch", "review"] as const;
 export type AdCampaignSubstepName = typeof AdCampaignSubstepNames[number];
 
-// Deploy page has no substeps - it's a single step
-export const SubstepNames = [...AdCampaignSubstepNames] as const;
+// Website substeps (mirrors ad_campaign pattern)
+export const WebsiteSubstepNames = ["build", "domain", "deploy"] as const;
+export type WebsiteSubstepName = typeof WebsiteSubstepNames[number];
+
+// All substeps across all pages
+export const SubstepNames = [...AdCampaignSubstepNames, ...WebsiteSubstepNames] as const;
 export type SubstepName = typeof SubstepNames[number];
 
 export const workflows = {
   launch: {
     steps: [
       { name: "brainstorm", label: "Brainstorm", order: 1 },
-      { name: "website", label: "Landing Page", order: 2 },
+      { name: "website", label: "Landing Page", order: 2,
+        steps: [
+          { name: "build", label: "Build", order: 1 },
+          { name: "domain", label: "Website Setup", order: 2 },
+          { name: "deploy", label: "Deploy", order: 3 }
+        ]
+      },
       { name: "ad_campaign", label: "Ad Campaign", order: 3,
         steps: [
           {

@@ -64,10 +64,36 @@ class API::V1::DomainsController < API::BaseController
     end
   end
 
+  def update
+    domain = current_account.domains.find_by(id: params[:id])
+
+    unless domain
+      render json: {errors: ["Not found"]}, status: :not_found and return
+    end
+
+    # Validate website_id belongs to current account if present
+    if params[:domain][:website_id].present?
+      website = current_account.websites.find_by(id: params[:domain][:website_id])
+      unless website
+        render json: {errors: ["Website not found"]}, status: :unprocessable_entity and return
+      end
+    end
+
+    if domain.update(update_params)
+      render json: domain.to_api_json
+    else
+      render json: {errors: domain.errors.full_messages}, status: :unprocessable_entity
+    end
+  end
+
   private
 
   def domain_params
     params.require(:domain).permit(:domain, :website_id, :is_platform_subdomain)
+  end
+
+  def update_params
+    params.require(:domain).permit(:website_id)
   end
 
   def normalize_domain(domain_string)

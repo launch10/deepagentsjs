@@ -8,6 +8,7 @@ import {
   cacheModeNode,
   isCacheModeEnabled,
   improveCopyNode,
+  domainRecommendationsNode,
 } from "@nodes";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { withCreditExhaustion } from "./shared";
@@ -35,6 +36,7 @@ export const websiteGraph = withCreditExhaustion(
   new StateGraph(WebsiteAnnotation)
     .addNode("buildContext", buildContext)
     .addNode("websiteBuilder", websiteBuilderNode)
+    .addNode("recommendDomains", domainRecommendationsNode)
     .addNode("cleanupFilesystem", cleanupFilesystemNode)
     .addNode("syncFiles", syncFilesNode)
     .addNode("cacheMode", cacheModeNode)
@@ -53,8 +55,12 @@ export const websiteGraph = withCreditExhaustion(
       improveCopy: "improveCopy",
     })
     .addEdge("cacheMode", "cleanupState")
+    // buildContext fans out to websiteBuilder and recommendDomains in parallel
     .addEdge("buildContext", "websiteBuilder")
+    .addEdge("buildContext", "recommendDomains")
+    // Both converge at cleanupFilesystem
     .addEdge("websiteBuilder", "cleanupFilesystem")
+    .addEdge("recommendDomains", "cleanupFilesystem")
     .addEdge("improveCopy", "cleanupFilesystem")
     .addEdge("cleanupFilesystem", "syncFiles")
     .addEdge("syncFiles", "cleanupState")

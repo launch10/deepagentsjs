@@ -64,8 +64,69 @@ class WebsiteStep < BaseBuilder
 
     project.current_workflow.update!(step: "website") # Ready to do website builder
 
+    # Create domains with website_urls for testing domain picker
+    create_domains_with_urls(account, website)
+
     puts "Created website with brainstorm: #{brainstorm.id}"
     puts "Website ID: #{website.id}, Theme ID: #{website.theme_id}"
     puts "Total uploads for website: #{website.uploads.count}"
+  end
+
+  private
+
+  def create_domains_with_urls(account, main_website)
+    # 1. Platform subdomain - unassigned (no website yet)
+    # Useful for testing "assign existing domain to current website"
+    domain1 = create(:domain, :platform_subdomain,
+      account: account,
+      website: nil,
+      domain: "scheduling-tool.launch10.site"
+    )
+    puts "Created unassigned platform subdomain: #{domain1.domain} (ID: #{domain1.id})"
+
+    # 2. Platform subdomain assigned to a DIFFERENT website with multiple paths
+    # Useful for testing path conflicts and domain with existing urls
+    # Use Brainstorm.create_brainstorm! which creates project + website + brainstorm together
+    other_data = Brainstorm.create_brainstorm!(account, name: "Meeting Tool Project", thread_id: SecureRandom.uuid)
+    other_project = other_data[:project]
+    other_website = other_data[:website]
+    other_website.update!(name: "Meeting Tool")
+    other_data[:brainstorm].update!(
+      idea: "Team meeting scheduler",
+      audience: "Remote teams",
+      solution: "Easy meeting scheduling"
+    )
+
+    domain2 = create(:domain, :platform_subdomain,
+      account: account,
+      website: other_website,
+      domain: "meeting-tool.launch10.site"
+    )
+
+    # Add website_urls to domain2 (multiple paths)
+    create(:website_url,
+      domain: domain2,
+      website: other_website,
+      account: account,
+      path: "/"
+    )
+    create(:website_url,
+      domain: domain2,
+      website: other_website,
+      account: account,
+      path: "/landing"
+    )
+    puts "Created platform subdomain with website: #{domain2.domain} (ID: #{domain2.id})"
+    puts "  - website: #{other_website.name} (ID: #{other_website.id})"
+    puts "  - paths: /, /landing"
+
+    # 3. Custom domain (not platform subdomain) - unassigned
+    # Useful for testing custom domain scenarios
+    domain3 = create(:domain, :custom_domain,
+      account: account,
+      website: nil,
+      domain: "my-custom-site.com"
+    )
+    puts "Created custom domain: #{domain3.domain} (ID: #{domain3.id})"
   end
 end

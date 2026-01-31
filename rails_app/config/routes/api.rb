@@ -32,6 +32,7 @@ namespace :api, defaults: {format: :json} do
 
     resources :websites, only: [] do
       resource :context, only: [:show], controller: "context"
+      get :domain_context, controller: "context", action: :domain_context
     end
     patch "projects/:project_uuid/workflows/:id", to: "project_workflows#update"
     patch "projects/:project_uuid/workflows/:id/next", to: "project_workflows#next"
@@ -44,7 +45,7 @@ namespace :api, defaults: {format: :json} do
     resources :geo_target_constants, only: [:index]
     # Unified model configuration API (models + preferences in one call)
     get "model_configuration", to: "model_configuration#index"
-    resources :domains, only: [:index, :show, :create] do
+    resources :domains, only: [:index, :show, :create, :update] do
       collection do
         post :search
       end

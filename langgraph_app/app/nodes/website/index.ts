@@ -3,3 +3,4 @@ export * from "./buildContext";
 export * from "./syncFiles";
 export * from "./cacheMode";
 export * from "./improveCopy";
+export * from "./recommendDomains";

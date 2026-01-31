@@ -33,7 +33,9 @@ class ProjectsController < SubscribedController
     when "brainstorm"
       redirect_to action: "brainstorm"
     when "website"
-      redirect_to action: "website"
+      # Redirect to website substep (default to build)
+      substep = @project.substep.presence || "build"
+      redirect_to action: "website_#{substep}"
     when "ad_campaign"
       redirect_to action: "campaigns_#{@project.substep}"
     when "deploy"
@@ -45,10 +47,16 @@ class ProjectsController < SubscribedController
     render inertia: "Brainstorm", props: @project.to_brainstorm_json, layout: "layouts/webcontainer"
   end
 
-  def website
-    # Advance workflow step when navigating to website
-    @project.current_workflow.update!(step: "website") if @project.current_workflow.step != "website"
-    render inertia: "Website", props: @project.to_website_json, layout: "layouts/webcontainer"
+  # Dynamic website substep actions (build, domain, deploy)
+  WorkflowConfig.substeps_for("launch", "website").each do |substep|
+    define_method("website_#{substep}") do
+      # Advance workflow step/substep
+      @project.current_workflow.update!(step: "website", substep: substep)
+
+      render inertia: "Website",
+        props: @project.to_website_json.merge(substep: substep),
+        layout: "layouts/webcontainer"
+    end
   end
 
   WorkflowConfig.substeps_for("launch", "ad_campaign").each do |substep|

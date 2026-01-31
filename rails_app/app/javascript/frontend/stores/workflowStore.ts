@@ -34,10 +34,17 @@ export function parseUrl(): {
     return { projectUUID: brainstormMatch[1], page: "brainstorm", substep: null };
   }
 
-  // Match /projects/{uuid}/website
+  // Match /projects/{uuid}/website/{substep} (build, domain, deploy)
+  const websiteSubstepMatch = path.match(/^\/projects\/([^/]+)\/website\/(build|domain|deploy)$/);
+  if (websiteSubstepMatch) {
+    const substep = websiteSubstepMatch[2] as Workflow.WebsiteSubstepName;
+    return { projectUUID: websiteSubstepMatch[1], page: "website", substep };
+  }
+
+  // Match /projects/{uuid}/website (backwards compatibility - treat as build)
   const websiteMatch = path.match(/^\/projects\/([^/]+)\/website$/);
   if (websiteMatch) {
-    return { projectUUID: websiteMatch[1], page: "website", substep: null };
+    return { projectUUID: websiteMatch[1], page: "website", substep: "build" };
   }
 
   // Match /projects/{uuid}/campaigns/{substep}
@@ -70,7 +77,8 @@ function buildUrl(
     case "brainstorm":
       return `/projects/${projectUUID}/brainstorm`;
     case "website":
-      return `/projects/${projectUUID}/website`;
+      // Website always includes substep (default to build)
+      return `/projects/${projectUUID}/website/${substep ?? "build"}`;
     case "ad_campaign":
       return `/projects/${projectUUID}/campaigns/${substep}`;
     case "deploy":

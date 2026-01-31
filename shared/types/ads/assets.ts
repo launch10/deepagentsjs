@@ -11,8 +11,9 @@ export const AssetKinds = [
 ] as const;
 export type AssetKind = (typeof AssetKinds)[number];
 
-export const StageNames = Workflow.SubstepNames;
-export type StageName = (typeof StageNames)[number];
+// Ads only uses ad campaign substeps, not website substeps
+export const StageNames = Workflow.AdCampaignSubstepNames;
+export type StageName = Workflow.AdCampaignSubstepName;
 
 export const ContentStages = ["content", "highlights", "keywords"] as const;
 export type ContentStage = (typeof ContentStages)[number];
