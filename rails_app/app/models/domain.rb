@@ -2,15 +2,18 @@
 #
 # Table name: domains
 #
-#  id                    :bigint           not null, primary key
-#  deleted_at            :datetime
-#  domain                :string
-#  is_platform_subdomain :boolean          default(FALSE), not null
-#  created_at            :datetime         not null
-#  updated_at            :datetime         not null
-#  account_id            :bigint
-#  cloudflare_zone_id    :string
-#  website_id            :bigint
+#  id                      :bigint           not null, primary key
+#  deleted_at              :datetime
+#  dns_error_message       :string
+#  dns_last_checked_at     :datetime
+#  dns_verification_status :string
+#  domain                  :string
+#  is_platform_subdomain   :boolean          default(FALSE), not null
+#  created_at              :datetime         not null
+#  updated_at              :datetime         not null
+#  account_id              :bigint
+#  cloudflare_zone_id      :string
+#  website_id              :bigint
 #
 # Indexes
 #
@@ -19,6 +22,8 @@
 #  index_domains_on_cloudflare_zone_id                 (cloudflare_zone_id)
 #  index_domains_on_created_at                         (created_at)
 #  index_domains_on_deleted_at                         (deleted_at)
+#  index_domains_on_dns_last_checked_at                (dns_last_checked_at)
+#  index_domains_on_dns_verification_status            (dns_verification_status)
 #  index_domains_on_domain                             (domain)
 #  index_domains_on_website_id                         (website_id)
 #
@@ -32,6 +37,8 @@ class Domain < ApplicationRecord
     "staging",
     "www"
   ].map { |d| "#{d}.launch10.ai" }.freeze
+
+  VERIFICATION_STATUSES = %w[pending verified failed].freeze
 
   include Atlas::Domain
   include Cloudflare::Monitorable
@@ -48,6 +55,7 @@ class Domain < ApplicationRecord
 
   validates :domain, presence: true, uniqueness: true
   validates :account_id, presence: true
+  validates :dns_verification_status, inclusion: {in: VERIFICATION_STATUSES}, allow_nil: true
 
   before_validation :set_default_domain, on: :create
   before_validation :set_normalized_domain, on: :create
@@ -56,8 +64,20 @@ class Domain < ApplicationRecord
   validate :within_subdomain_limit, on: :create
 
   scope :platform_subdomains, -> { where(is_platform_subdomain: true) }
+  scope :unverified_custom_domains, -> {
+    where(is_platform_subdomain: false)
+      .where(dns_verification_status: [nil, "pending", "failed"])
+  }
 
   alias_attribute :platform_subdomain?, :is_platform_subdomain
+
+  def requires_dns_verification?
+    !is_platform_subdomain && dns_verification_status != "verified"
+  end
+
+  def dns_verified?
+    dns_verification_status == "verified"
+  end
 
   def blocked?
     firewall_rule&.blocked? || false

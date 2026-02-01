@@ -2,15 +2,18 @@
 #
 # Table name: domains
 #
-#  id                    :bigint           not null, primary key
-#  deleted_at            :datetime
-#  domain                :string
-#  is_platform_subdomain :boolean          default(FALSE), not null
-#  created_at            :datetime         not null
-#  updated_at            :datetime         not null
-#  account_id            :bigint
-#  cloudflare_zone_id    :string
-#  website_id            :bigint
+#  id                      :bigint           not null, primary key
+#  deleted_at              :datetime
+#  dns_error_message       :string
+#  dns_last_checked_at     :datetime
+#  dns_verification_status :string
+#  domain                  :string
+#  is_platform_subdomain   :boolean          default(FALSE), not null
+#  created_at              :datetime         not null
+#  updated_at              :datetime         not null
+#  account_id              :bigint
+#  cloudflare_zone_id      :string
+#  website_id              :bigint
 #
 # Indexes
 #
@@ -19,6 +22,8 @@
 #  index_domains_on_cloudflare_zone_id                 (cloudflare_zone_id)
 #  index_domains_on_created_at                         (created_at)
 #  index_domains_on_deleted_at                         (deleted_at)
+#  index_domains_on_dns_last_checked_at                (dns_last_checked_at)
+#  index_domains_on_dns_verification_status            (dns_verification_status)
 #  index_domains_on_domain                             (domain)
 #  index_domains_on_website_id                         (website_id)
 #
@@ -329,6 +334,113 @@ RSpec.describe Domain, type: :model do
       website = create(:website, name: '@#$%', project: project, account: account)
       domain = Domain.create(website: website, account: account)
       expect(domain.domain).to eq('.test-deploy.com')
+    end
+  end
+
+  describe 'dns_verification_status' do
+    let(:account) { create(:account) }
+
+    describe 'validations' do
+      it 'allows nil status' do
+        domain = build(:domain, domain: 'test.launch10.site', account: account, dns_verification_status: nil)
+        expect(domain).to be_valid
+      end
+
+      it 'allows pending status' do
+        domain = build(:domain, domain: 'test.launch10.site', account: account, dns_verification_status: 'pending')
+        expect(domain).to be_valid
+      end
+
+      it 'allows verified status' do
+        domain = build(:domain, domain: 'test.launch10.site', account: account, dns_verification_status: 'verified')
+        expect(domain).to be_valid
+      end
+
+      it 'allows failed status' do
+        domain = build(:domain, domain: 'test.launch10.site', account: account, dns_verification_status: 'failed')
+        expect(domain).to be_valid
+      end
+
+      it 'rejects invalid status values' do
+        domain = build(:domain, domain: 'test.launch10.site', account: account, dns_verification_status: 'invalid')
+        expect(domain).not_to be_valid
+        expect(domain.errors[:dns_verification_status]).to include('is not included in the list')
+      end
+    end
+
+    describe '#requires_dns_verification?' do
+      it 'returns false for platform subdomains' do
+        domain = build(:domain, domain: 'test.launch10.site', account: account, is_platform_subdomain: true, dns_verification_status: nil)
+        expect(domain.requires_dns_verification?).to eq(false)
+      end
+
+      it 'returns true for custom domains without verification' do
+        domain = build(:domain, domain: 'custom.com', account: account, is_platform_subdomain: false, dns_verification_status: nil)
+        expect(domain.requires_dns_verification?).to eq(true)
+      end
+
+      it 'returns true for custom domains with pending status' do
+        domain = build(:domain, domain: 'custom.com', account: account, is_platform_subdomain: false, dns_verification_status: 'pending')
+        expect(domain.requires_dns_verification?).to eq(true)
+      end
+
+      it 'returns false for custom domains that are verified' do
+        domain = build(:domain, domain: 'custom.com', account: account, is_platform_subdomain: false, dns_verification_status: 'verified')
+        expect(domain.requires_dns_verification?).to eq(false)
+      end
+    end
+
+    describe '#dns_verified?' do
+      it 'returns false when status is nil' do
+        domain = build(:domain, account: account, dns_verification_status: nil)
+        expect(domain.dns_verified?).to eq(false)
+      end
+
+      it 'returns false when status is pending' do
+        domain = build(:domain, account: account, dns_verification_status: 'pending')
+        expect(domain.dns_verified?).to eq(false)
+      end
+
+      it 'returns true when status is verified' do
+        domain = build(:domain, account: account, dns_verification_status: 'verified')
+        expect(domain.dns_verified?).to eq(true)
+      end
+
+      it 'returns false when status is failed' do
+        domain = build(:domain, account: account, dns_verification_status: 'failed')
+        expect(domain.dns_verified?).to eq(false)
+      end
+    end
+  end
+
+  describe '.unverified_custom_domains' do
+    let(:account) { create(:account) }
+
+    before do
+      # Platform subdomains (should NOT be included)
+      create(:domain, domain: 'site1.launch10.site', account: account, is_platform_subdomain: true)
+
+      # Custom domains with various verification states
+      # Note: Domain model normalizes custom domains by adding www. prefix
+      create(:domain, domain: 'www.verified.com', account: account, is_platform_subdomain: false, dns_verification_status: 'verified')
+      create(:domain, domain: 'www.pending.com', account: account, is_platform_subdomain: false, dns_verification_status: 'pending')
+      create(:domain, domain: 'www.failed.com', account: account, is_platform_subdomain: false, dns_verification_status: 'failed')
+      create(:domain, domain: 'www.unset.com', account: account, is_platform_subdomain: false, dns_verification_status: nil)
+    end
+
+    it 'returns only custom domains that are not verified' do
+      unverified = account.domains.unverified_custom_domains
+      expect(unverified.pluck(:domain)).to contain_exactly('www.pending.com', 'www.failed.com', 'www.unset.com')
+    end
+
+    it 'excludes platform subdomains' do
+      unverified = account.domains.unverified_custom_domains
+      expect(unverified.pluck(:domain)).not_to include('site1.launch10.site')
+    end
+
+    it 'excludes verified custom domains' do
+      unverified = account.domains.unverified_custom_domains
+      expect(unverified.pluck(:domain)).not_to include('www.verified.com')
     end
   end
 end
