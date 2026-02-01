@@ -51,6 +51,13 @@ export class DomainPickerPage {
   readonly previousStepButton: Locator;
   readonly previewButton: Locator;
   readonly continueButton: Locator;
+  readonly connectSiteButton: Locator;
+
+  // Claim Subdomain Modal
+  readonly claimSubdomainModal: Locator;
+  readonly creditsRemaining: Locator;
+  readonly confirmClaimButton: Locator;
+  readonly cancelClaimButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -61,11 +68,14 @@ export class DomainPickerPage {
       .or(page.locator('text="Website Setup"').locator("..").locator(".."));
     this.loadingSkeleton = page.getByTestId("domain-picker-loading");
 
-    // Header
-    this.header = page.locator('text="Website Setup"');
+    // Header - use h2 heading specifically to avoid matching sidebar text
+    // Can be "Website Setup" or "Connect your own site" depending on mode
+    this.header = page
+      .getByRole("heading", { name: "Website Setup" })
+      .or(page.getByRole("heading", { name: "Connect your own site" }));
     this.description = page
       .locator('text="Choose how you want your website to be accessed"')
-      .or(page.locator('text="Connect your own domain to your landing page"'));
+      .or(page.locator('text="Use a site you already own, like mybusiness.com"'));
 
     // Launch10 Site Picker components
     this.siteNameDropdown = page
@@ -92,19 +102,24 @@ export class DomainPickerPage {
     // Custom Domain Picker
     this.customDomainInput = page.getByTestId("custom-domain-input");
     this.cnameInstructions = page.locator('text="CNAME"').locator("..");
-    this.switchToLaunch10Button = page.locator('text="Use a free Launch10 Site instead"');
+    this.switchToLaunch10Button = page.locator('text="Use a Launch10 Site"');
     this.dnsVerificationStatus = page.getByTestId("dns-verification-status");
 
-    // Full URL Preview
-    this.fullUrlPreview = page
-      .locator('[data-testid="full-url-preview"]')
-      .or(page.locator('text="Your URL will be"').locator(".."));
-    this.urlPreviewText = page.locator('[data-testid="url-preview-text"]');
+    // Full URL Preview - use the url display element (unique data-testid)
+    this.fullUrlPreview = page.getByTestId("full-url-display");
+    this.urlPreviewText = page.getByTestId("full-url-display");
 
     // Navigation buttons
     this.previousStepButton = page.locator('button:has-text("Previous Step")');
     this.previewButton = page.locator('button:has-text("Preview")');
     this.continueButton = page.locator('button:has-text("Continue")');
+    this.connectSiteButton = page.locator('button:has-text("Connect Site")');
+
+    // Claim Subdomain Modal
+    this.claimSubdomainModal = page.getByTestId("claim-subdomain-modal");
+    this.creditsRemaining = page.getByTestId("credits-remaining");
+    this.confirmClaimButton = page.getByTestId("confirm-claim-button");
+    this.cancelClaimButton = page.getByTestId("cancel-claim-button");
   }
 
   /**
@@ -263,5 +278,48 @@ export class DomainPickerPage {
    */
   async expectCnameInstructionsVisible(): Promise<void> {
     await expect(this.cnameInstructions).toBeVisible({ timeout: 5000 });
+  }
+
+  /**
+   * Click Connect Site button to trigger claim flow
+   */
+  async clickConnectSite(): Promise<void> {
+    await this.connectSiteButton.click();
+  }
+
+  /**
+   * Wait for the claim subdomain modal to be visible
+   */
+  async waitForClaimModal(): Promise<void> {
+    await this.claimSubdomainModal.waitFor({ state: "visible", timeout: 10000 });
+  }
+
+  /**
+   * Get the credits remaining text from the claim modal
+   */
+  async getCreditsRemaining(): Promise<string> {
+    return (await this.creditsRemaining.textContent()) ?? "";
+  }
+
+  /**
+   * Confirm the subdomain claim in the modal
+   */
+  async confirmClaim(): Promise<void> {
+    await this.confirmClaimButton.click();
+  }
+
+  /**
+   * Cancel the subdomain claim modal
+   */
+  async cancelClaim(): Promise<void> {
+    await this.cancelClaimButton.click();
+  }
+
+  /**
+   * Assert that the claim modal shows expected credits
+   */
+  async expectCreditsRemaining(expected: number): Promise<void> {
+    const text = await this.getCreditsRemaining();
+    expect(text).toContain(`${expected} remaining`);
   }
 }

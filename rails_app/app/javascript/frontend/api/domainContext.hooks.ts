@@ -116,7 +116,7 @@ type CreateDomainMutationOptions = Omit<
 
 /**
  * Hook for creating a new domain and assigning it to a website.
- * Invalidates domain context cache on success.
+ * Updates domain context cache with new credits on success to prevent stale data exploits.
  */
 export function useCreateDomain(options?: CreateDomainMutationOptions) {
   const service = useDomainsService();
@@ -129,12 +129,25 @@ export function useCreateDomain(options?: CreateDomainMutationOptions) {
         website_id: websiteId,
         path: path ?? "/",
         is_platform_subdomain: isPlatformSubdomain ?? domain.endsWith(".launch10.site"),
-      });
+      } as Parameters<typeof service.create>[0]);
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: domainContextKeys.context(variables.websiteId),
+    onSuccess: (data, variables) => {
+      const queryKey = domainContextKeys.context(variables.websiteId);
+
+      // Update cache immediately with new credits from response
+      // This prevents stale credit counts that could allow UI exploits
+      queryClient.setQueryData<GetDomainContextResponse>(queryKey, (oldData) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          // Cast to ensure type compatibility - the response structure matches
+          platform_subdomain_credits:
+            data.platform_subdomain_credits as GetDomainContextResponse["platform_subdomain_credits"],
+        };
       });
+
+      // Also invalidate to ensure full refresh on next access
+      queryClient.invalidateQueries({ queryKey });
     },
     ...options,
   });

@@ -36,8 +36,19 @@ export interface BrainstormContext {
 
 export type PlanTier = "starter" | "growth" | "pro";
 
+export interface AssignedWebsiteUrl {
+  id: number;
+  path: string;
+  domain_id: number;
+  domain: string;
+  is_platform_subdomain: boolean;
+  dns_verification_status: DnsVerificationStatus;
+  full_url: string;
+}
+
 export interface GetDomainContextResponse {
   existing_domains: DomainWithWebsite[];
+  assigned_url: AssignedWebsiteUrl | null;
   platform_subdomain_credits: PlatformSubdomainCredits;
   brainstorm_context: BrainstormContext | null;
   plan_tier: PlanTier | null;

@@ -24,8 +24,12 @@ class API::V1::ContextController < API::BaseController
 
     domains = current_account.domains.includes(:website, :website_urls)
 
+    # Get the website's assigned URL (source of truth)
+    assigned_url = website.website_urls.includes(:domain).first
+
     render json: {
       existing_domains: domains.map { |domain| serialize_domain(domain) },
+      assigned_url: assigned_url ? serialize_website_url(assigned_url) : nil,
       platform_subdomain_credits: platform_subdomain_credits,
       brainstorm_context: serialize_brainstorm(website.brainstorm),
       plan_tier: current_account.plan&.plan_tier&.name
@@ -73,6 +77,19 @@ class API::V1::ContextController < API::BaseController
       audience: brainstorm.audience,
       solution: brainstorm.solution,
       social_proof: brainstorm.social_proof
+    }
+  end
+
+  def serialize_website_url(website_url)
+    domain = website_url.domain
+    {
+      id: website_url.id,
+      path: website_url.path,
+      domain_id: domain.id,
+      domain: domain.domain,
+      is_platform_subdomain: domain.is_platform_subdomain,
+      dns_verification_status: domain.dns_verification_status,
+      full_url: website_url.full_url
     }
   end
 end

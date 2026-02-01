@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { ChevronDownIcon, LockClosedIcon } from "@heroicons/react/24/solid";
 import { StarIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
+import { router } from "@inertiajs/react";
 import { cn } from "~/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { Input } from "@components/ui/input";
@@ -243,13 +244,17 @@ export function SiteNameDropdown({
           <div className="px-4 py-3 flex flex-col gap-2">
             {/* Upgrade link - shown when out of credits */}
             {isOutOfCredits && (
-              <a
-                href="/settings"
-                className="flex items-center gap-2 px-3 py-2 text-sm text-base-500 hover:text-base-600 transition-colors"
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  router.visit("/settings");
+                }}
+                className="flex items-center gap-2 px-3 py-2 text-sm text-base-500 hover:text-base-600 transition-colors cursor-pointer"
               >
                 <LockClosedIcon className="size-4" />
                 <span>Upgrade to launch more sites</span>
-              </a>
+              </button>
             )}
 
             {/* Connect your own site - shown for Growth/Pro users */}
@@ -276,15 +281,19 @@ export function SiteNameDropdown({
 
             {/* Upgrade badge - shown for Starter users with purple-to-teal gradient */}
             {!canConnectCustomDomain && (
-              <a
-                href="/settings"
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm text-white border border-[#5867C4] transition-all hover:opacity-90"
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  router.visit("/settings");
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm text-white border border-[#5867C4] transition-all hover:opacity-90 cursor-pointer"
                 style={{ background: "linear-gradient(91deg, #5867C4 16.2%, #74BEA1 92.6%)" }}
                 data-testid="upgrade-badge"
               >
                 <img src="/images/icons/rocket.svg" alt="" className="size-4" />
                 <span>Available on Growth & Pro Plan</span>
-              </a>
+              </button>
             )}
           </div>
         </div>

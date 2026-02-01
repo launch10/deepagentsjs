@@ -490,6 +490,86 @@ RSpec.describe "Domains API", type: :request do
 
         run_test!
       end
+
+      response "201", "user switches from platform subdomain to custom domain" do
+        schema APISchemas::Domain.create_response
+
+        # User already has a platform subdomain with a path
+        let!(:website) { create(:website, account: account, project: project) }
+        let!(:existing_domain) { create(:domain, domain: "xyz.launch10.site", account: account, website: website) }
+        let!(:existing_url) { create(:website_url, domain: existing_domain, website: website, account: account, path: "/pets") }
+
+        # Now user wants to use a custom domain instead (pets.launch10.ai already has subdomain, no www added)
+        let(:body) { {domain: {domain: "pets.launch10.ai", website_id: website.id, is_platform_subdomain: false}} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+
+          # Custom domain should be created (subdomain domains don't get www prefix)
+          expect(json["domain"]["domain"]).to eq("pets.launch10.ai")
+          expect(json["domain"]["is_platform_subdomain"]).to eq(false)
+          expect(json["domain"]["website_id"]).to eq(website.id)
+
+          # WebsiteUrl should be created for the new domain
+          expect(json["website_url"]["path"]).to eq("/")
+          expect(json["website_url"]["website_id"]).to eq(website.id)
+
+          # Only the new domain should be linked to website
+          expect(website.domains.count).to eq(1)
+          expect(website.domains.first.domain).to eq("pets.launch10.ai")
+
+          # Website should have exactly one website_url (the new one)
+          expect(website.website_urls.count).to eq(1)
+          expect(website.website_urls.first.domain.domain).to eq("pets.launch10.ai")
+
+          # Old domain should be KEPT but unlinked (website_id=nil)
+          old_domain = Domain.find_by(domain: "xyz.launch10.site")
+          expect(old_domain).to be_present
+          expect(old_domain.website_id).to be_nil
+          expect(old_domain.account_id).to eq(account.id)
+
+          # Old website_url should be deleted
+          expect(WebsiteUrl.find_by(id: existing_url.id)).to be_nil
+        end
+      end
+
+      response "201", "unlinks old domain when creating new one for same website" do
+        schema APISchemas::Domain.create_response
+
+        let!(:website) { create(:website, account: account, project: project) }
+        let!(:existing_domain) { create(:domain, domain: "existing.launch10.site", account: account, website: website) }
+        let!(:existing_url) { create(:website_url, domain: existing_domain, website: website, account: account, path: "/") }
+
+        # Create a completely different custom domain
+        let(:body) { {domain: {domain: "newcustom.com", website_id: website.id}} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+
+          expect(json["domain"]["domain"]).to eq("www.newcustom.com")
+          expect(json["domain"]["is_platform_subdomain"]).to eq(false)
+          expect(json["website_url"]["website_id"]).to eq(website.id)
+
+          # New domain should exist and be linked to website
+          new_domain = Domain.find_by(domain: "www.newcustom.com")
+          expect(new_domain).to be_present
+          expect(new_domain.website_id).to eq(website.id)
+
+          # Old domain should be KEPT but unlinked (website_id=nil)
+          old_domain = Domain.find_by(domain: "existing.launch10.site")
+          expect(old_domain).to be_present
+          expect(old_domain.website_id).to be_nil
+          expect(old_domain.account_id).to eq(account.id)
+
+          # Old website_url should be deleted
+          expect(WebsiteUrl.find_by(id: existing_url.id)).to be_nil
+
+          # Website should have only one domain and one website_url
+          expect(website.domains.count).to eq(1)
+          expect(website.website_urls.count).to eq(1)
+          expect(website.website_urls.first.domain.domain).to eq("www.newcustom.com")
+        end
+      end
     end
   end
 end

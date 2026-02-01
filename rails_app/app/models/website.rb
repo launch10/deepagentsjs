@@ -109,7 +109,7 @@ class Website < ApplicationRecord
     deploys.revertible.where("id < ?", current_live.id).order(id: :desc).limit(1).first
   end
 
-  # Get the primary domain for this website
+  # Get the domain for this website (there can only be one)
   def domain
     domains.first&.domain || name
   end
