@@ -116,7 +116,8 @@ type CreateDomainMutationOptions = Omit<
 
 /**
  * Hook for creating a new domain and assigning it to a website.
- * Updates domain context cache with new credits on success to prevent stale data exploits.
+ * Updates domain context cache with new credits and assigned_url on success.
+ * The optimistic assigned_url update ensures back button navigation shows the new assignment.
  */
 export function useCreateDomain(options?: CreateDomainMutationOptions) {
   const service = useDomainsService();
@@ -134,15 +135,32 @@ export function useCreateDomain(options?: CreateDomainMutationOptions) {
     onSuccess: (data, variables) => {
       const queryKey = domainContextKeys.context(variables.websiteId);
 
-      // Update cache immediately with new credits from response
-      // This prevents stale credit counts that could allow UI exploits
+      // Update cache immediately with new credits and assigned URL from response
+      // This prevents stale credit counts and ensures back button shows new assignment
       queryClient.setQueryData<GetDomainContextResponse>(queryKey, (oldData) => {
         if (!oldData) return oldData;
+
+        const isPlatformSubdomain = variables.isPlatformSubdomain ?? variables.domain.endsWith(".launch10.site");
+        const path = data.website_url?.path ?? variables.path ?? "/";
+        const normalizedPath = path === "/" ? "" : path;
+        const fullUrl = `${data.domain}${normalizedPath}`;
+
         return {
           ...oldData,
-          // Cast to ensure type compatibility - the response structure matches
+          // Update credits (prevents stale credit count exploits)
           platform_subdomain_credits:
             data.platform_subdomain_credits as GetDomainContextResponse["platform_subdomain_credits"],
+          // Update assigned URL (optimistic update for back button navigation - Requirement 8)
+          // Use data from the response - website_url.id is the assigned_url id
+          assigned_url: {
+            id: data.website_url?.id ?? 0,
+            domain_id: data.id,
+            domain: data.domain,
+            path,
+            is_platform_subdomain: isPlatformSubdomain,
+            dns_verification_status: isPlatformSubdomain ? "verified" : "pending",
+            full_url: fullUrl,
+          },
         };
       });
 

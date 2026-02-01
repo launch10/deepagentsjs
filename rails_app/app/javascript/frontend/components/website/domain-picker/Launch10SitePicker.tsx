@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   InformationCircleIcon,
   ExclamationCircleIcon,
@@ -18,7 +18,7 @@ import type { BaseDomainPickerProps } from "./DomainPicker";
 // Types
 // ============================================================================
 
-type AvailabilityStatus = "checking" | "available" | "unavailable" | "deployed" | null;
+type AvailabilityStatus = "checking" | "available" | "assigned" | "unavailable" | "deployed" | null;
 
 export interface Launch10SitePickerProps extends BaseDomainPickerProps {
   // All props inherited from BaseDomainPickerProps
@@ -37,26 +37,12 @@ export function Launch10SitePicker({
 }: Launch10SitePickerProps) {
   const websiteId = useWebsiteId();
 
-  // Track which domain is selected in dropdown (may differ from final selection with path)
-  const [selectedDomain, setSelectedDomain] = useState<string | null>(
-    selection?.domain ?? recommendations?.topRecommendation?.domain ?? null
-  );
-  const [customPath, setCustomPath] = useState(selection?.path ?? "/");
+  // FULLY CONTROLLED: Derive display values from selection prop, no local state to sync
+  const selectedDomain = selection?.domain ?? null;
+  const customPath = selection?.path ?? "/";
 
   // Track URL availability status
   const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus>(null);
-
-  // Sync local state with selection from parent (e.g., when assigned domain is auto-selected)
-  useEffect(() => {
-    if (selection?.domain && selection.domain !== selectedDomain) {
-      console.log("[Launch10SitePicker] Syncing selectedDomain from parent selection:", selection.domain);
-      setSelectedDomain(selection.domain);
-    }
-    if (selection?.path && selection.path !== customPath) {
-      console.log("[Launch10SitePicker] Syncing customPath from parent selection:", selection.path);
-      setCustomPath(selection.path);
-    }
-  }, [selection?.domain, selection?.path]);
 
   // Determine if out of credits
   const isOutOfCredits = useMemo(() => {
@@ -70,13 +56,6 @@ export function Launch10SitePicker({
     return recommendations.recommendations.find((r) => r.domain === selectedDomain);
   }, [selectedDomain, recommendations]);
 
-  // Update path when domain selection changes
-  useEffect(() => {
-    if (selectedRec?.path && selectedRec.path !== customPath) {
-      setCustomPath(selectedRec.path);
-    }
-  }, [selectedRec]);
-
   // Check availability when selection changes
   useEffect(() => {
     if (!selection?.domain || !selection?.path) {
@@ -84,22 +63,25 @@ export function Launch10SitePicker({
       return;
     }
 
-    // Check if this is an existing deployed URL
+    // Check if this is an existing domain assigned to this website
     const existingDomain = context?.existing_domains?.find((d) => d.domain === selection.domain);
     if (existingDomain) {
       const existingUrl = existingDomain.website_urls.find((u) => u.path === selection.path);
-      // If this URL exists and has a website_id, it might be deployed
+      // If this URL exists and belongs to the current website, mark as assigned
+      if (existingUrl && existingUrl.website_id === websiteId) {
+        setAvailabilityStatus("assigned");
+        return;
+      }
+      // If it belongs to a different website, it's unavailable
       if (existingUrl && existingUrl.website_id) {
-        // For now, mark as available since we need is_deployed flag from backend
-        // TODO: Add is_deployed flag to website_urls response
-        setAvailabilityStatus("available");
+        setAvailabilityStatus("unavailable");
         return;
       }
     }
 
     // For new domains/paths, mark as available (already verified by AI or search)
     setAvailabilityStatus("available");
-  }, [selection, context]);
+  }, [selection, context, websiteId]);
 
   // Handle domain selection from dropdown
   const handleDomainSelect = (
@@ -109,12 +91,10 @@ export function Launch10SitePicker({
     existingDomainId?: number
   ) => {
     console.log("[Launch10SitePicker] handleDomainSelect called:", { domain, subdomain, source, existingDomainId });
-    setSelectedDomain(domain);
 
     // Find the recommendation to get the suggested path
     const rec = recommendations?.recommendations?.find((r) => r.domain === domain);
     const path = rec?.path ?? "/";
-    setCustomPath(path);
 
     // Build full URL
     const normalizedPath = path === "/" ? "" : path;
@@ -134,16 +114,14 @@ export function Launch10SitePicker({
   };
 
   // Handle path change
-  const handlePathChange = (path: string) => {
-    setCustomPath(path);
-
+  const handlePathChange = (newPath: string) => {
     if (selectedDomain && selection) {
-      const normalizedPath = path === "/" ? "" : path;
+      const normalizedPath = newPath === "/" ? "" : newPath;
       const fullUrl = `${selectedDomain}${normalizedPath}`;
 
       onSelect({
         ...selection,
-        path,
+        path: newPath,
         fullUrl,
       });
     }
@@ -221,24 +199,24 @@ export function Launch10SitePicker({
         </div>
       </div>
 
-      {/* Availability Status */}
-      {selection && availabilityStatus && (
+      {/* Availability Status - only show when assigned or has issues */}
+      {selection && availabilityStatus && availabilityStatus !== "available" && (
         <div className="mt-2" data-testid="availability-status">
-          {availabilityStatus === "available" && (
-            <div className="flex items-center gap-1.5 text-sm text-success-500">
-              <CheckCircleIcon className="size-4" />
-              <span>Available: {selection.fullUrl}</span>
+          {availabilityStatus === "assigned" && (
+            <div className="flex items-center gap-1 text-xs text-success-500">
+              <CheckCircleIcon className="size-3.5" />
+              <span>{selection.fullUrl} is assigned to this website</span>
             </div>
           )}
           {availabilityStatus === "unavailable" && (
-            <div className="flex items-center gap-1.5 text-sm text-destructive">
-              <XCircleIcon className="size-4" />
-              <span>Selected website is currently unavailable</span>
+            <div className="flex items-center gap-1 text-xs text-destructive">
+              <XCircleIcon className="size-3.5" />
+              <span>This URL is already taken by another website</span>
             </div>
           )}
           {availabilityStatus === "deployed" && (
-            <div className="flex items-center gap-1.5 text-sm text-destructive">
-              <ExclamationCircleIcon className="size-4" />
+            <div className="flex items-center gap-1 text-xs text-destructive">
+              <ExclamationCircleIcon className="size-3.5" />
               <span>
                 This site is currently launched. Please choose a different site that isn't already
                 taken.

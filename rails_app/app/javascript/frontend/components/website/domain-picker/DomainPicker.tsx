@@ -72,8 +72,7 @@ export function DomainPicker({
 }: DomainPickerProps) {
   const websiteId = useWebsiteId();
   const [showCustomDomain, setShowCustomDomain] = useState(false);
-  const [hasInitializedView, setHasInitializedView] = useState(false);
-  const [hasInitializedSelection, setHasInitializedSelection] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
   const [internalSelection, setInternalSelection] = useState<DomainSelection | null>(null);
 
   // Support both controlled and uncontrolled modes
@@ -90,17 +89,6 @@ export function DomainPicker({
   // The assigned URL is the source of truth - comes directly from website.website_urls
   const assignedUrl = context?.assigned_url ?? null;
 
-  // Auto-switch to custom domain view if website has a custom domain assigned
-  useEffect(() => {
-    if (!hasInitializedView && context && !isContextLoading) {
-      if (assignedUrl && !assignedUrl.is_platform_subdomain) {
-        console.log("[DomainPicker] Website has custom domain assigned, switching to custom view:", assignedUrl.domain);
-        setShowCustomDomain(true);
-      }
-      setHasInitializedView(true);
-    }
-  }, [hasInitializedView, context, isContextLoading, assignedUrl]);
-
   // Get AI recommendations from website graph state
   const domainRecommendations = useWebsiteChatState("domainRecommendations") as
     | Website.DomainRecommendations.DomainRecommendations
@@ -115,22 +103,19 @@ export function DomainPicker({
     (newSelection: DomainSelection) => {
       console.log("[DomainPicker] handleSelect called:", { newSelection, isControlled });
       if (isControlled) {
-        console.log("[DomainPicker] calling onSelectionChange");
         onSelectionChange?.(newSelection);
       } else {
-        console.log("[DomainPicker] calling setInternalSelection");
         setInternalSelection(newSelection);
       }
     },
     [isControlled, onSelectionChange]
   );
 
-  // Auto-select on initial load only: assigned URL first, then top recommendation as fallback
+  // Single initialization effect: sets both view mode AND initial selection atomically
   useEffect(() => {
-    // Only run initial selection once
-    if (hasInitializedSelection) return;
+    if (hasInitialized || isContextLoading) return;
 
-    // Priority 1: If website has an assigned URL, use it for initial selection
+    // Priority 1: If website has an assigned URL, use it
     if (assignedUrl) {
       const path = assignedUrl.path ?? "/";
       const normalizedPath = path === "/" ? "" : path;
@@ -150,18 +135,27 @@ export function DomainPicker({
         isNew: false,
         existingDomainId: assignedUrl.domain_id,
       };
-      console.log("[DomainPicker] Initial selection from assigned URL:", newSelection);
+
+      console.log("[DomainPicker] Initializing from assigned URL:", newSelection);
+
+      // Set view mode based on domain type
+      if (!assignedUrl.is_platform_subdomain) {
+        setShowCustomDomain(true);
+      }
+
+      // Set selection
       if (isControlled) {
         onSelectionChange?.(newSelection);
       } else {
         setInternalSelection(newSelection);
       }
-      setHasInitializedSelection(true);
+
+      setHasInitialized(true);
       return;
     }
 
-    // Priority 2: Select top AI recommendation (only if no assigned URL)
-    if (domainRecommendations?.topRecommendation) {
+    // Priority 2: Use AI recommendation (only when context loaded but no assigned URL)
+    if (context && domainRecommendations?.topRecommendation) {
       const top = domainRecommendations.topRecommendation;
       const newSelection: DomainSelection = {
         domain: top.domain,
@@ -172,15 +166,18 @@ export function DomainPicker({
         isNew: top.source === "generated",
         existingDomainId: top.existingDomainId,
       };
-      console.log("[DomainPicker] Initial selection from AI recommendation:", newSelection);
+
+      console.log("[DomainPicker] Initializing from AI recommendation:", newSelection);
+
       if (isControlled) {
         onSelectionChange?.(newSelection);
       } else {
         setInternalSelection(newSelection);
       }
-      setHasInitializedSelection(true);
+
+      setHasInitialized(true);
     }
-  }, [hasInitializedSelection, assignedUrl, domainRecommendations, isControlled, onSelectionChange]);
+  }, [hasInitialized, isContextLoading, assignedUrl, context, domainRecommendations, isControlled, onSelectionChange]);
 
   if (isLoading) {
     return (

@@ -72,6 +72,12 @@ export function SiteNameDropdown({
     return recommendations.recommendations.filter((r) => r.source === "generated");
   }, [recommendations]);
 
+  // Existing custom domains from context (Requirement 7: show in BOTH picker views)
+  const existingCustomDomains = useMemo(() => {
+    if (!context?.existing_domains) return [];
+    return context.existing_domains.filter((d) => !d.is_platform_subdomain);
+  }, [context]);
+
   // Check if a domain is the top recommendation
   const isTopRecommendation = useCallback(
     (domain: string) => {
@@ -159,6 +165,20 @@ export function SiteNameDropdown({
             {customInput && customValidation.error && (
               <p className="text-xs text-destructive mt-1">{customValidation.error}</p>
             )}
+            {/* Upgrade link - shown right under the locked input when out of credits */}
+            {isOutOfCredits && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  router.visit("/settings");
+                }}
+                className="flex items-center gap-2 mt-2 text-sm text-base-500 hover:text-base-600 transition-colors cursor-pointer"
+              >
+                <LockClosedIcon className="size-4" />
+                <span>Upgrade to create more launch10 sites</span>
+              </button>
+            )}
           </div>
 
           {/* Existing Sites Section */}
@@ -239,24 +259,42 @@ export function SiteNameDropdown({
             </>
           )}
 
+          {/* Existing Custom Domains Section (Requirement 7) */}
+          {existingCustomDomains.length > 0 && (
+            <>
+              <div className="border-t border-neutral-100" />
+              <div className="px-4 py-3">
+                <div className="text-sm font-medium text-base-400 mb-2">Your Custom Domains</div>
+                <div className="flex flex-col gap-0.5">
+                  {existingCustomDomains.map((domain) => (
+                    <button
+                      key={domain.id}
+                      type="button"
+                      onClick={() => {
+                        // Custom domains don't have a subdomain in the same sense
+                        onSelect(domain.domain, domain.domain.split(".")[0], "existing", domain.id);
+                        setIsOpen(false);
+                      }}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left",
+                        "transition-colors",
+                        selectedDomain === domain.domain
+                          ? "bg-neutral-100"
+                          : "hover:bg-neutral-50"
+                      )}
+                    >
+                      <span className="size-5 shrink-0" />
+                      <span className="flex-1 text-base-600 truncate">{domain.domain}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Bottom section - Connect own site and upgrade options */}
           <div className="border-t border-neutral-100" />
           <div className="px-4 py-3 flex flex-col gap-2">
-            {/* Upgrade link - shown when out of credits */}
-            {isOutOfCredits && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  router.visit("/settings");
-                }}
-                className="flex items-center gap-2 px-3 py-2 text-sm text-base-500 hover:text-base-600 transition-colors cursor-pointer"
-              >
-                <LockClosedIcon className="size-4" />
-                <span>Upgrade to launch more sites</span>
-              </button>
-            )}
-
             {/* Connect your own site - shown for Growth/Pro users */}
             {canConnectCustomDomain ? (
               <button

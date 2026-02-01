@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { router } from "@inertiajs/react";
 import AwsLogo from "@assets/aws-logo.png";
 import CloudflareLogo from "@assets/cloudflare-logo.png";
@@ -17,12 +17,10 @@ import {
 import {
   XCircleIcon,
   CheckCircleIcon,
-  ClockIcon,
 } from "@heroicons/react/24/outline";
+import { Spinner } from "@components/ui/spinner";
 import { PageNameInput } from "./PageNameInput";
-import { useCreateDomain } from "~/api/domainContext.hooks";
 import { useDnsVerification } from "~/hooks/useDnsVerification";
-import { useWebsiteId } from "~/stores/projectStore";
 import type { BaseDomainPickerProps } from "./DomainPicker";
 
 // ============================================================================
@@ -89,68 +87,59 @@ export function CustomDomainPicker({
   onSelect,
   onSwitchToLaunch10,
 }: CustomDomainPickerProps) {
-  const websiteId = useWebsiteId();
-  // Initialize domain from selection if it's a custom domain (not a platform subdomain)
-  // Works with both source "custom" and "existing" (for pre-assigned custom domains)
+  // FULLY CONTROLLED: Derive display values from selection prop
+  // For custom domains, we use the selection; for platform subdomains (when switching views), show empty
   const isCustomDomainSelection = selection && !selection.domain.endsWith(".launch10.site");
-  const [domain, setDomain] = useState(
-    isCustomDomainSelection ? selection.domain : ""
-  );
-  const [path, setPath] = useState(selection?.path ?? "/");
+  const domain = isCustomDomainSelection ? selection.domain : "";
+  const path = selection?.path ?? "/";
   // If selection has an existing domain ID (pre-assigned custom domain), use it
-  const [savedDomainId, setSavedDomainId] = useState<number | null>(
-    isCustomDomainSelection ? (selection.existingDomainId ?? null) : null
-  );
+  const savedDomainId = isCustomDomainSelection ? (selection.existingDomainId ?? null) : null;
 
-  // Sync local state with selection from parent (e.g., when assigned domain is auto-selected)
-  useEffect(() => {
-    if (selection && !selection.domain.endsWith(".launch10.site")) {
-      if (selection.domain !== domain) {
-        console.log("[CustomDomainPicker] Syncing domain from parent selection:", selection.domain);
-        setDomain(selection.domain);
-      }
-      if (selection.path !== path) {
-        console.log("[CustomDomainPicker] Syncing path from parent selection:", selection.path);
-        setPath(selection.path);
-      }
-      if (selection.existingDomainId !== savedDomainId) {
-        console.log("[CustomDomainPicker] Syncing savedDomainId from parent selection:", selection.existingDomainId);
-        setSavedDomainId(selection.existingDomainId ?? null);
-      }
-    }
-  }, [selection?.domain, selection?.path, selection?.existingDomainId]);
-
-  // Domain creation mutation
-  const createDomain = useCreateDomain();
-
-  // DNS verification with auto-polling
+  // DNS verification with auto-polling (polls every 10s until verified)
   const {
     isVerified: isDnsVerified,
     isPending: isDnsPending,
     isFailed: isDnsFailed,
+    isFetching: isDnsFetching,
     error: dnsError,
-    manualCheck,
   } = useDnsVerification(savedDomainId);
+
+  // Show "checking" state with minimum 3 second duration for better UX
+  const [isShowingCheck, setIsShowingCheck] = useState(false);
+  const checkStartTimeRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (isDnsFetching && !isShowingCheck) {
+      // Start showing check state
+      setIsShowingCheck(true);
+      checkStartTimeRef.current = Date.now();
+    } else if (!isDnsFetching && isShowingCheck && checkStartTimeRef.current) {
+      // Fetching done - ensure minimum 3 second display
+      const elapsed = Date.now() - checkStartTimeRef.current;
+      const remaining = Math.max(0, 3000 - elapsed);
+
+      const timer = setTimeout(() => {
+        setIsShowingCheck(false);
+        checkStartTimeRef.current = null;
+      }, remaining);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isDnsFetching, isShowingCheck]);
 
   // Validation
   const domainValidation = useMemo(() => validateDomain(domain), [domain]);
 
-  // Handle domain change
+  // Handle domain change - always update selection to keep parent in sync
   const handleDomainChange = (value: string) => {
     const sanitized = value.toLowerCase().trim();
-    setDomain(sanitized);
-
-    if (validateDomain(sanitized).valid) {
-      updateSelection(sanitized, path);
-    }
+    // Always update selection so parent has current value (even if invalid)
+    updateSelection(sanitized, path);
   };
 
-  // Handle path change
+  // Handle path change - always update selection to keep parent in sync
   const handlePathChange = (newPath: string) => {
-    setPath(newPath);
-    if (domainValidation.valid) {
-      updateSelection(domain, newPath);
-    }
+    updateSelection(domain, newPath);
   };
 
   // Update selection
@@ -164,22 +153,6 @@ export function CustomDomainPicker({
       source: "custom",
       isNew: true,
     });
-  };
-
-  // Save domain and start DNS verification
-  const handleSaveDomain = async () => {
-    if (!domainValidation.valid || !websiteId) return;
-
-    try {
-      const result = await createDomain.mutateAsync({
-        domain,
-        websiteId,
-        isPlatformSubdomain: false,
-      });
-      setSavedDomainId(result.id);
-    } catch (error) {
-      console.error("Failed to create domain:", error);
-    }
   };
 
   return (
@@ -206,47 +179,37 @@ export function CustomDomainPicker({
               </div>
             )}
             {domain && domainValidation.valid && !savedDomainId && (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1 text-xs text-success-500">
-                  <CheckCircleIcon className="size-3.5" />
-                  <span>Valid domain format</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleSaveDomain}
-                  disabled={createDomain.isPending}
-                  className="text-xs text-primary-500 hover:text-primary-600 disabled:opacity-50"
-                >
-                  {createDomain.isPending ? "Saving..." : "Save & verify DNS"}
-                </button>
+              <div className="flex items-center gap-1 text-xs text-success-500">
+                <CheckCircleIcon className="size-3.5" />
+                <span>Valid domain format</span>
               </div>
             )}
-            {/* DNS Verification Status */}
+            {/* DNS Verification Status - bops between checking and result */}
             {savedDomainId && (
               <div className="mt-2" data-testid="dns-verification-status">
-                {isDnsVerified ? (
+                {isShowingCheck ? (
+                  // Checking state (shown for minimum 3 seconds)
+                  <div className="flex items-center gap-2 text-amber-600">
+                    <Spinner className="size-4" />
+                    <span className="text-sm">Checking if your site is directing users to launch10.ai...</span>
+                  </div>
+                ) : isDnsVerified ? (
+                  // Verified - show success
                   <div className="flex items-center gap-2 text-success-500">
                     <CheckCircleIcon className="size-5" />
-                    <span className="text-sm font-medium">DNS verified! Your domain is ready.</span>
-                  </div>
-                ) : isDnsPending ? (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-amber-500">
-                      <ClockIcon className="size-5 animate-pulse" />
-                      <span className="text-sm">Waiting for DNS propagation...</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={manualCheck}
-                      className="text-xs text-primary-500 hover:text-primary-600"
-                    >
-                      Check now
-                    </button>
+                    <span className="text-sm font-medium">Your domain is setup!</span>
                   </div>
                 ) : isDnsFailed ? (
+                  // Failed - show error
                   <div className="flex items-center gap-2 text-destructive">
                     <XCircleIcon className="size-5" />
                     <span className="text-sm">DNS verification failed: {dnsError}</span>
+                  </div>
+                ) : isDnsPending ? (
+                  // Pending (not yet configured) - show X until next check
+                  <div className="flex items-center gap-2 text-red-400">
+                    <XCircleIcon className="size-5" />
+                    <span className="text-sm">Not ready yet. We'll keep checking for you.</span>
                   </div>
                 ) : null}
               </div>
