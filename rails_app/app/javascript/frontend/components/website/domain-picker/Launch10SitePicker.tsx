@@ -92,6 +92,7 @@ export function Launch10SitePicker({
     source: "existing" | "generated" | "custom",
     existingDomainId?: number
   ) => {
+    console.log("[Launch10SitePicker] handleDomainSelect called:", { domain, subdomain, source, existingDomainId });
     setSelectedDomain(domain);
 
     // Find the recommendation to get the suggested path
@@ -103,7 +104,7 @@ export function Launch10SitePicker({
     const normalizedPath = path === "/" ? "" : path;
     const fullUrl = `${domain}${normalizedPath}`;
 
-    onSelect({
+    const newSelection = {
       domain,
       subdomain,
       path,
@@ -111,7 +112,9 @@ export function Launch10SitePicker({
       source,
       isNew: source === "generated" || source === "custom",
       existingDomainId,
-    });
+    };
+    console.log("[Launch10SitePicker] calling onSelect with:", newSelection);
+    onSelect(newSelection);
   };
 
   // Handle path change

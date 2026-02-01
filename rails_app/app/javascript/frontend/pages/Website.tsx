@@ -2,10 +2,11 @@ import WebsiteLoader from "@components/website/WebsiteLoader";
 import WebsiteSidebar from "@components/website/sidebar/WebsiteSidebar";
 import { WebsitePreview } from "@components/website/preview";
 import { DomainPicker } from "@components/website/domain-picker";
+import { ClaimSubdomainModal } from "@components/website/domain-picker/ClaimSubdomainModal";
 import { Chat } from "@components/shared/chat/Chat";
 import { Button } from "@components/ui/button";
 import { twMerge } from "tailwind-merge";
-import { useEffect, useEffectEvent, useRef, useCallback } from "react";
+import { useEffect, useEffectEvent, useRef, useCallback, useState } from "react";
 import { usePage, router } from "@inertiajs/react";
 import {
   useWebsiteChat,
@@ -14,6 +15,7 @@ import {
   useWebsiteChatActions,
   useWebsiteChatIsStreaming,
 } from "@hooks/website";
+import { useDomainContext, useCreateDomain } from "~/api/domainContext.hooks";
 import type { Workflow } from "@shared";
 import type { DomainSelection } from "@components/website/domain-picker";
 
@@ -176,20 +178,67 @@ function WebsiteBuild() {
  * Uses the same layout as WebsiteBuild with sidebar + main content
  */
 function WebsiteDomainStep() {
-  const { project } = usePage<WebsitePageProps>().props;
+  const { project, website } = usePage<WebsitePageProps>().props;
   const chat = useWebsiteChat();
+  const [selection, setSelection] = useState<DomainSelection | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  // Handle domain selection completion - navigate to deploy step
-  const handleComplete = useCallback(
-    (_selection: DomainSelection) => {
-      // TODO: Save selection to state/backend before navigating
-      // Navigate to deploy step
+  // Fetch domain context for credits info
+  const { data: domainContext } = useDomainContext(website?.id);
+  const creditsRemaining = domainContext?.platform_subdomain_credits?.remaining ?? 0;
+
+  // Domain creation mutation
+  const createDomain = useCreateDomain({
+    onSuccess: () => {
+      // Navigate to deploy step after successful domain creation
       if (project?.uuid) {
         router.visit(`/projects/${project.uuid}/website/deploy`);
       }
     },
-    [project?.uuid]
-  );
+    onError: (error) => {
+      console.error("Failed to create domain:", error);
+      setShowConfirmModal(false);
+    },
+  });
+
+  // Debug: log selection changes
+  const handleSelectionChange = useCallback((newSelection: DomainSelection | null) => {
+    console.log("[Website.tsx] handleSelectionChange called:", newSelection);
+    setSelection(newSelection);
+  }, []);
+
+  // Handle confirmation of subdomain claim
+  const handleConfirmClaim = useCallback(() => {
+    if (!selection || !website?.id) {
+      console.warn("Missing selection or website ID");
+      return;
+    }
+
+    createDomain.mutate({
+      domain: selection.domain,
+      websiteId: website.id,
+      isPlatformSubdomain: selection.domain.endsWith(".launch10.site"),
+    });
+  }, [selection, website?.id, createDomain]);
+
+  // Handle Connect Site button click - show confirmation modal for platform subdomains
+  const handleConnectSiteClick = useCallback(() => {
+    if (!selection) {
+      console.warn("No domain selection to save");
+      return;
+    }
+
+    // Check if this is a platform subdomain (launch10.site)
+    const isPlatformSubdomain = selection.domain.endsWith(".launch10.site");
+
+    if (isPlatformSubdomain && selection.isNew) {
+      // Show confirmation modal for new platform subdomains
+      setShowConfirmModal(true);
+    } else {
+      // For existing domains or custom domains, proceed directly
+      handleConfirmClaim();
+    }
+  }, [selection, handleConfirmClaim]);
 
   // Handle back navigation
   const handleBack = useCallback(() => {
@@ -210,7 +259,11 @@ function WebsiteDomainStep() {
 
           {/* Main content - domain picker form */}
           <div className="min-h-0 -mb-20 overflow-hidden">
-            <DomainPicker onComplete={handleComplete} onBack={handleBack} />
+            <DomainPicker
+              selection={selection}
+              onSelectionChange={handleSelectionChange}
+              onBack={handleBack}
+            />
           </div>
         </main>
 
@@ -236,12 +289,26 @@ function WebsiteDomainStep() {
                 Previous Step
               </Button>
               <div className="flex gap-3">
-                <Button onClick={() => handleComplete({} as DomainSelection)}>Connect Site</Button>
+                <Button onClick={handleConnectSiteClick} disabled={!selection}>
+                  Connect Site
+                </Button>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Confirmation modal for claiming platform subdomain */}
+      {selection && (
+        <ClaimSubdomainModal
+          isOpen={showConfirmModal}
+          onClose={() => setShowConfirmModal(false)}
+          onConfirm={handleConfirmClaim}
+          domain={selection.fullUrl}
+          creditsRemaining={creditsRemaining}
+          isLoading={createDomain.isPending}
+        />
+      )}
     </Chat.Root>
   );
 }
