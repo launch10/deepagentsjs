@@ -139,6 +139,7 @@ function createExistingDomain(id: number, domain: string, websiteName: string): 
     website_id: id + 100,
     website_name: websiteName,
     website_urls: [],
+    dns_verification_status: null,
     created_at: "2026-01-01T00:00:00Z",
   };
 }

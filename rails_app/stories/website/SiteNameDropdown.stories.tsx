@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { SiteNameDropdown } from "@components/website/domain-picker/SiteNameDropdown";
-import type { Website } from "@shared";
+import type { Website, DomainWithWebsite } from "@shared";
 
 const meta = {
   title: "Landing Page Builder/Domain Picker/SiteNameDropdown",
@@ -56,6 +56,21 @@ const createSuggestedSite = (
   score: 0.7,
   reasoning,
   source: "generated",
+});
+
+const createDomainWithWebsite = (
+  subdomain: string,
+  websiteName: string,
+  id: number
+): DomainWithWebsite => ({
+  id,
+  domain: `${subdomain}.launch10.site`,
+  is_platform_subdomain: true,
+  website_id: id,
+  website_name: websiteName,
+  website_urls: [{ id: id, path: "/", website_id: id }],
+  dns_verification_status: null,
+  created_at: new Date().toISOString(),
 });
 
 // ============================================================================
@@ -117,7 +132,7 @@ export const SingleExistingSiteRecommended: Story = {
   args: {
     recommendations: singleExistingSiteRecommendations,
     context: {
-      existing_domains: [{ domain: "pawportraits.launch10.site", website_name: "Paw Portraits" }],
+      existing_domains: [createDomainWithWebsite("pawportraits", "Paw Portraits", 1)],
       platform_subdomain_credits: { limit: 1, used: 0, remaining: 1 },
       brainstorm_context: null,
       plan_tier: "starter",
@@ -151,9 +166,9 @@ export const MultipleExistingSitesOneRecommended: Story = {
     recommendations: multipleExistingSitesRecommendations,
     context: {
       existing_domains: [
-        { domain: "pawportraits.launch10.site", website_name: "Paw Portraits" },
-        { domain: "family-portraits.launch10.site", website_name: "Family Portraits" },
-        { domain: "wedding-photos.launch10.site", website_name: "Wedding Photos" },
+        createDomainWithWebsite("pawportraits", "Paw Portraits", 1),
+        createDomainWithWebsite("family-portraits", "Family Portraits", 2),
+        createDomainWithWebsite("wedding-photos", "Wedding Photos", 3),
       ],
       platform_subdomain_credits: { limit: 2, used: 0, remaining: 2 },
       brainstorm_context: null,
@@ -190,8 +205,8 @@ export const NewSiteRecommended: Story = {
     recommendations: newSiteRecommendedWithExisting,
     context: {
       existing_domains: [
-        { domain: "family-portraits.launch10.site", website_name: "Family Portraits" },
-        { domain: "wedding-photos.launch10.site", website_name: "Wedding Photos" },
+        createDomainWithWebsite("family-portraits", "Family Portraits", 2),
+        createDomainWithWebsite("wedding-photos", "Wedding Photos", 3),
       ],
       platform_subdomain_credits: { limit: 1, used: 0, remaining: 1 },
       brainstorm_context: null,
@@ -217,7 +232,7 @@ export const OutOfCreditsWithMatch: Story = {
   args: {
     recommendations: singleExistingSiteRecommendations,
     context: {
-      existing_domains: [{ domain: "pawportraits.launch10.site", website_name: "Paw Portraits" }],
+      existing_domains: [createDomainWithWebsite("pawportraits", "Paw Portraits", 1)],
       platform_subdomain_credits: { limit: 1, used: 1, remaining: 0 },
       brainstorm_context: null,
       plan_tier: "starter",
@@ -256,8 +271,8 @@ export const OutOfCreditsNoMatch: Story = {
     recommendations: outOfCreditsNoMatchRecommendations,
     context: {
       existing_domains: [
-        { domain: "family-portraits.launch10.site", website_name: "Family Portraits" },
-        { domain: "wedding-photos.launch10.site", website_name: "Wedding Photos" },
+        createDomainWithWebsite("family-portraits", "Family Portraits", 2),
+        createDomainWithWebsite("wedding-photos", "Wedding Photos", 3),
       ],
       platform_subdomain_credits: { limit: 1, used: 1, remaining: 0 },
       brainstorm_context: null,
@@ -281,9 +296,9 @@ export const Default: Story = {
     recommendations: multipleExistingSitesRecommendations,
     context: {
       existing_domains: [
-        { domain: "pawportraits.launch10.site", website_name: "Paw Portraits" },
-        { domain: "family-portraits.launch10.site", website_name: "Family Portraits" },
-        { domain: "wedding-photos.launch10.site", website_name: "Wedding Photos" },
+        createDomainWithWebsite("pawportraits", "Paw Portraits", 1),
+        createDomainWithWebsite("family-portraits", "Family Portraits", 2),
+        createDomainWithWebsite("wedding-photos", "Wedding Photos", 3),
       ],
       platform_subdomain_credits: { limit: 1, used: 0, remaining: 1 },
       brainstorm_context: null,
@@ -302,9 +317,9 @@ export const NoSelection: Story = {
     recommendations: multipleExistingSitesRecommendations,
     context: {
       existing_domains: [
-        { domain: "pawportraits.launch10.site", website_name: "Paw Portraits" },
-        { domain: "family-portraits.launch10.site", website_name: "Family Portraits" },
-        { domain: "wedding-photos.launch10.site", website_name: "Wedding Photos" },
+        createDomainWithWebsite("pawportraits", "Paw Portraits", 1),
+        createDomainWithWebsite("family-portraits", "Family Portraits", 2),
+        createDomainWithWebsite("wedding-photos", "Wedding Photos", 3),
       ],
       platform_subdomain_credits: { limit: 1, used: 0, remaining: 1 },
       brainstorm_context: null,
@@ -323,9 +338,9 @@ export const LowCredits: Story = {
     recommendations: multipleExistingSitesRecommendations,
     context: {
       existing_domains: [
-        { domain: "pawportraits.launch10.site", website_name: "Paw Portraits" },
-        { domain: "family-portraits.launch10.site", website_name: "Family Portraits" },
-        { domain: "wedding-photos.launch10.site", website_name: "Wedding Photos" },
+        createDomainWithWebsite("pawportraits", "Paw Portraits", 1),
+        createDomainWithWebsite("family-portraits", "Family Portraits", 2),
+        createDomainWithWebsite("wedding-photos", "Wedding Photos", 3),
       ],
       platform_subdomain_credits: { limit: 2, used: 1, remaining: 1 },
       brainstorm_context: null,
@@ -350,8 +365,8 @@ export const GrowthPlanUser: Story = {
     recommendations: multipleExistingSitesRecommendations,
     context: {
       existing_domains: [
-        { domain: "pawportraits.launch10.site", website_name: "Paw Portraits" },
-        { domain: "family-portraits.launch10.site", website_name: "Family Portraits" },
+        createDomainWithWebsite("pawportraits", "Paw Portraits", 1),
+        createDomainWithWebsite("family-portraits", "Family Portraits", 2),
       ],
       platform_subdomain_credits: { limit: 2, used: 0, remaining: 2 },
       brainstorm_context: null,
@@ -372,9 +387,9 @@ export const ProPlanUser: Story = {
     recommendations: multipleExistingSitesRecommendations,
     context: {
       existing_domains: [
-        { domain: "pawportraits.launch10.site", website_name: "Paw Portraits" },
-        { domain: "family-portraits.launch10.site", website_name: "Family Portraits" },
-        { domain: "wedding-photos.launch10.site", website_name: "Wedding Photos" },
+        createDomainWithWebsite("pawportraits", "Paw Portraits", 1),
+        createDomainWithWebsite("family-portraits", "Family Portraits", 2),
+        createDomainWithWebsite("wedding-photos", "Wedding Photos", 3),
       ],
       platform_subdomain_credits: { limit: 3, used: 0, remaining: 3 },
       brainstorm_context: null,
@@ -393,7 +408,7 @@ export const StarterPlanUser: Story = {
   args: {
     recommendations: singleExistingSiteRecommendations,
     context: {
-      existing_domains: [{ domain: "pawportraits.launch10.site", website_name: "Paw Portraits" }],
+      existing_domains: [createDomainWithWebsite("pawportraits", "Paw Portraits", 1)],
       platform_subdomain_credits: { limit: 1, used: 0, remaining: 1 },
       brainstorm_context: null,
       plan_tier: "starter",
