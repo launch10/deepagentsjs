@@ -139,6 +139,6 @@ class ProjectsController < SubscribedController
     else
       current_account.projects.find_by(uuid: params[:uuid])
     end
-    render json: { error: "Project not found" }, status: :not_found unless @project
+    redirect_to root_path unless @project
   end
 end
