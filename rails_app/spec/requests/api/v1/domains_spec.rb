@@ -194,4 +194,100 @@ RSpec.describe "Domains API", type: :request do
       end
     end
   end
+
+  path "/api/v1/domains/{id}/verify_dns" do
+    post "Verifies DNS configuration for a custom domain" do
+      tags "Domains"
+      produces "application/json"
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: true
+      parameter name: "X-Signature", in: :header, type: :string, required: false
+      parameter name: "X-Timestamp", in: :header, type: :string, required: false
+      parameter name: :id, in: :path, type: :integer, required: true
+
+      response "200", "returns verified status for platform subdomains" do
+        schema APISchemas::Domain.verify_dns_response
+
+        let!(:domain) { create(:domain, :platform_subdomain, account: account, website: nil) }
+        let(:id) { domain.id }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["domain_id"]).to eq(domain.id)
+          expect(json["domain"]).to eq(domain.domain)
+          expect(json["verification_status"]).to eq("verified")
+          expect(json["expected_cname"]).to be_nil
+          expect(json["actual_cname"]).to be_nil
+        end
+      end
+
+      response "200", "verifies DNS for custom domain" do
+        schema APISchemas::Domain.verify_dns_response
+
+        let!(:domain) { create(:domain, :custom_domain, account: account, website: nil) }
+        let(:id) { domain.id }
+
+        before do
+          allow_any_instance_of(Domains::DnsVerificationService).to receive(:lookup_cname)
+            .and_return("cname.launch10.ai")
+        end
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["domain_id"]).to eq(domain.id)
+          expect(json["verification_status"]).to eq("verified")
+          expect(json["expected_cname"]).to eq("cname.launch10.ai")
+          expect(json["actual_cname"]).to eq("cname.launch10.ai")
+          expect(json["last_checked_at"]).to be_present
+        end
+      end
+
+      response "200", "returns pending status when CNAME not configured" do
+        schema APISchemas::Domain.verify_dns_response
+
+        let!(:domain) { create(:domain, :custom_domain, account: account, website: nil) }
+        let(:id) { domain.id }
+
+        before do
+          allow_any_instance_of(Domains::DnsVerificationService).to receive(:lookup_cname)
+            .and_return(nil)
+        end
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["verification_status"]).to eq("pending")
+          expect(json["error_message"]).to include("Expected cname.launch10.ai")
+        end
+      end
+
+      response "404", "returns not found for non-existent domain" do
+        let(:id) { 999999 }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["errors"]).to include("Domain not found")
+        end
+      end
+
+      response "404", "returns not found for domain belonging to another account" do
+        let!(:other_user) { create(:user) }
+        let!(:other_account) { other_user.owned_account }
+        let!(:other_domain) { create(:domain, :custom_domain, account: other_account, website: nil) }
+        let(:id) { other_domain.id }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["errors"]).to include("Domain not found")
+        end
+      end
+
+      response "401", "unauthorized - missing token" do
+        let!(:domain) { create(:domain, :custom_domain, account: account, website: nil) }
+        let(:id) { domain.id }
+        let(:Authorization) { nil }
+
+        run_test!
+      end
+    end
+  end
 end

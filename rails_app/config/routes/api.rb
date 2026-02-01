@@ -49,6 +49,9 @@ namespace :api, defaults: {format: :json} do
       collection do
         post :search
       end
+      member do
+        post :verify_dns
+      end
     end
     resources :website_urls, only: [:index, :show, :create, :update] do
       collection do
