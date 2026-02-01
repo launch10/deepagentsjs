@@ -443,4 +443,39 @@ RSpec.describe Domain, type: :model do
       expect(unverified.pluck(:domain)).not_to include('www.verified.com')
     end
   end
+
+  describe '#to_api_json' do
+    let(:account) { create(:account) }
+    let(:domain) { create(:domain, domain: 'test.launch10.site', account: account, is_platform_subdomain: true) }
+
+    it 'includes dns_verification_status field' do
+      domain.update!(dns_verification_status: 'verified')
+      json = domain.to_api_json
+
+      expect(json).to have_key(:dns_verification_status)
+      expect(json[:dns_verification_status]).to eq('verified')
+    end
+
+    it 'includes dns_last_checked_at field as ISO8601' do
+      checked_time = Time.current
+      domain.update!(dns_last_checked_at: checked_time)
+      json = domain.to_api_json
+
+      expect(json).to have_key(:dns_last_checked_at)
+      expect(json[:dns_last_checked_at]).to eq(checked_time.iso8601)
+    end
+
+    it 'includes dns_error_message field' do
+      domain.update!(dns_error_message: 'CNAME not configured')
+      json = domain.to_api_json
+
+      expect(json).to have_key(:dns_error_message)
+      expect(json[:dns_error_message]).to eq('CNAME not configured')
+    end
+
+    it 'handles nil dns_last_checked_at' do
+      json = domain.to_api_json
+      expect(json[:dns_last_checked_at]).to be_nil
+    end
+  end
 end

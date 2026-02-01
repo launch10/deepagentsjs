@@ -71,6 +71,12 @@ module APISchemas
             },
             description: 'URLs associated with this domain'
           },
+          dns_verification_status: {
+            type: :string,
+            nullable: true,
+            enum: ['pending', 'verified', 'failed', nil],
+            description: 'DNS verification status for custom domains'
+          },
           created_at: {type: :string, format: 'date-time', description: 'Creation timestamp'}
         },
         required: ['id', 'domain', 'is_platform_subdomain', 'created_at']
