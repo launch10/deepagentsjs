@@ -92,6 +92,40 @@ class API::V1::DomainsController < API::BaseController
     end
   end
 
+  def verify_dns
+    domain = current_account.domains.find_by(id: params[:id])
+
+    unless domain
+      render json: {errors: ["Domain not found"]}, status: :not_found
+      return
+    end
+
+    if domain.is_platform_subdomain
+      render json: {
+        domain_id: domain.id,
+        domain: domain.domain,
+        verification_status: "verified",
+        expected_cname: nil,
+        actual_cname: nil,
+        last_checked_at: nil,
+        error_message: nil
+      }
+      return
+    end
+
+    result = Domains::DnsVerificationService.new(domain).verify
+
+    render json: {
+      domain_id: domain.id,
+      domain: domain.domain,
+      verification_status: result[:status],
+      expected_cname: Domains::DnsVerificationService::EXPECTED_CNAME,
+      actual_cname: result[:actual_cname],
+      last_checked_at: domain.reload.dns_last_checked_at&.iso8601,
+      error_message: result[:error]
+    }
+  end
+
   private
 
   def domain_params

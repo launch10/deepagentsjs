@@ -132,5 +132,25 @@ module APISchemas
         required: ['results', 'platform_subdomain_credits']
       }
     end
+
+    def self.verify_dns_response
+      {
+        type: :object,
+        properties: {
+          domain_id: APISchemas.id_field,
+          domain: {type: :string, description: 'Domain name'},
+          verification_status: {
+            type: :string,
+            enum: ['pending', 'verified', 'failed'],
+            description: 'DNS verification status'
+          },
+          expected_cname: {type: :string, nullable: true, description: 'Expected CNAME target'},
+          actual_cname: {type: :string, nullable: true, description: 'Actual CNAME found'},
+          last_checked_at: {type: :string, format: 'date-time', nullable: true, description: 'Last DNS check timestamp'},
+          error_message: {type: :string, nullable: true, description: 'Error message if verification failed'}
+        },
+        required: ['domain_id', 'domain', 'verification_status']
+      }
+    end
   end
 end

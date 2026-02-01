@@ -39,12 +39,10 @@ module Domains
         domains_to_try.unshift("www.#{domain}") unless domain.start_with?("www.")
 
         domains_to_try.each do |d|
-          begin
-            resource = dns.getresource(d, Resolv::DNS::Resource::IN::CNAME)
-            return resource.name.to_s
-          rescue Resolv::ResolvError
-            # Try next domain
-          end
+          resource = dns.getresource(d, Resolv::DNS::Resource::IN::CNAME)
+          return resource.name.to_s
+        rescue Resolv::ResolvError
+          # Try next domain
         end
 
         # No CNAME found
