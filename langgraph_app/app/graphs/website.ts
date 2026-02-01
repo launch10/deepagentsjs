@@ -26,6 +26,16 @@ const routeFromStart = (state: WebsiteGraphState): string => {
   return "buildContext";
 };
 
+// Route from recommendDomains based on mode
+// In CACHE_MODE: skip cleanupFilesystem/syncFiles (files already provided by cacheMode)
+// In normal mode: converge with websiteBuilder at cleanupFilesystem
+const routeFromRecommendDomains = (): string => {
+  if (isCacheModeEnabled()) {
+    return "cleanupState";
+  }
+  return "cleanupFilesystem";
+};
+
 /**
  * Website graph for building and updating landing pages.
  *
@@ -54,13 +64,20 @@ export const websiteGraph = withCreditExhaustion(
       buildContext: "buildContext",
       improveCopy: "improveCopy",
     })
-    .addEdge("cacheMode", "cleanupState")
+    // In CACHE_MODE: skip expensive websiteBuilder but still run recommendDomains
+    .addEdge("cacheMode", "recommendDomains")
     // buildContext fans out to websiteBuilder and recommendDomains in parallel
     .addEdge("buildContext", "websiteBuilder")
     .addEdge("buildContext", "recommendDomains")
-    // Both converge at cleanupFilesystem
+    // websiteBuilder always goes to cleanupFilesystem
     .addEdge("websiteBuilder", "cleanupFilesystem")
-    .addEdge("recommendDomains", "cleanupFilesystem")
+    // recommendDomains routes based on mode:
+    // - CACHE_MODE: directly to cleanupState (files already provided)
+    // - Normal: converge with websiteBuilder at cleanupFilesystem
+    .addConditionalEdges("recommendDomains", routeFromRecommendDomains, {
+      cleanupState: "cleanupState",
+      cleanupFilesystem: "cleanupFilesystem",
+    })
     .addEdge("improveCopy", "cleanupFilesystem")
     .addEdge("cleanupFilesystem", "syncFiles")
     .addEdge("syncFiles", "cleanupState")

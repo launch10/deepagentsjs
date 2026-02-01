@@ -1,7 +1,7 @@
 import { Card } from "@components/ui/card";
 import { Separator } from "@components/ui/separator";
 import QuickActions from "./quick-actions/QuickActions";
-import { WebsiteWorkflowBuddy } from "./workflow-buddy";
+import WorkflowBuddy from "@components/ads/workflow-panel/WorkflowBuddy";
 import WebsiteChat from "./WebsiteChat";
 import WebsiteSidebarLoading from "./loading/WebsiteSidebarLoading";
 import type { Workflow } from "@shared";
@@ -29,7 +29,7 @@ export function WebsiteSidebarView({
         <WebsiteSidebarLoading currentStep={currentStep} />
       ) : (
         <>
-          {showWorkflowBuddy ? <WebsiteWorkflowBuddy substep={substep} /> : <QuickActions />}
+          {showWorkflowBuddy ? <WorkflowBuddy workflowStep="website" /> : <QuickActions />}
           <Separator className="bg-neutral-300" />
           <WebsiteChat locked={chatLocked} />
         </>

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { tool } from "@langchain/core/tools";
-import { createRailsApiClient } from "@rails_api";
+import { WebsiteUrlsAPIService, type SearchWebsiteUrlsResponse } from "@rails_api";
 
 const searchPathsSchema = z.object({
   domainId: z.number().describe("The domain ID to check paths on"),
@@ -11,64 +11,58 @@ const searchPathsSchema = z.object({
     .describe("List of paths to check availability for (e.g., '/landing', '/promo')"),
 });
 
-interface PathSearchResult {
-  path: string;
-  status: "available" | "existing";
-  existing_id?: number;
-  existing_website_id?: number;
-}
-
-interface PathSearchResponse {
-  domain_id: number;
+export type SearchPathsResult = {
+  domainId: number;
   domain: string;
-  results: PathSearchResult[];
-}
+  results: Array<{
+    path: string;
+    available: boolean;
+    status: SearchWebsiteUrlsResponse["results"][number]["status"];
+    existingId?: number | null;
+    existingWebsiteId?: number | null;
+  }>;
+  error?: string;
+};
 
 /**
  * Tool for searching path availability on a specific domain.
- * Calls Rails API to check if paths are available on the given domain.
+ * Uses WebsiteUrlsAPIService to check if paths are available on the given domain.
  */
 export const createSearchPathsTool = (jwt: string) =>
   tool(
-    async (input) => {
+    async (input): Promise<string> => {
       const { domainId, candidates } = input;
 
       try {
-        const client = await createRailsApiClient({ jwt });
-        const response = await client.POST("/api/v1/website_urls/search", {
-          body: { domain_id: domainId, candidates },
-        });
+        const service = new WebsiteUrlsAPIService({ jwt });
+        const response = await service.search(domainId, candidates);
 
-        if (response.error || !response.data) {
-          return JSON.stringify({
-            error: "Failed to check path availability",
-            results: candidates.map((path) => ({
-              path: path.startsWith("/") ? path : `/${path}`,
-              status: "unknown",
-            })),
-          });
-        }
-
-        const data = response.data as PathSearchResponse;
-        return JSON.stringify({
-          domainId: data.domain_id,
-          domain: data.domain,
-          results: data.results.map((result) => ({
-            path: result.path,
-            available: result.status === "available",
-            status: result.status,
-            existingId: result.existing_id,
-            existingWebsiteId: result.existing_website_id,
+        const result: SearchPathsResult = {
+          domainId: response.domain_id,
+          domain: response.domain,
+          results: response.results.map((r) => ({
+            path: r.path,
+            available: r.status === "available",
+            status: r.status,
+            existingId: r.existing_id,
+            existingWebsiteId: r.existing_website_id,
           })),
-        });
+        };
+
+        return JSON.stringify(result);
       } catch (error) {
-        return JSON.stringify({
+        const result: SearchPathsResult = {
+          domainId,
+          domain: "",
           error: `API call failed: ${error instanceof Error ? error.message : "Unknown error"}`,
           results: candidates.map((path) => ({
             path: path.startsWith("/") ? path : `/${path}`,
-            status: "unknown",
+            available: false,
+            status: "unavailable" as const,
           })),
-        });
+        };
+
+        return JSON.stringify(result);
       }
     },
     {

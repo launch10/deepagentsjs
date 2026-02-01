@@ -11,6 +11,7 @@ export * from "./jobRunAPIService";
 export * from "./contextAPIService";
 export * from "./domainContextAPIService";
 export * from "./domainsAPIService";
+export * from "./websiteUrlsAPIService";
 export * from "./deployAPIService";
 export * from "./chatsAPIService";
 export * from "./creditsAPIService";

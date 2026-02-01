@@ -127,7 +127,8 @@ module APISchemas
               social_proof: {type: :string, nullable: true, description: 'Social proof elements'}
             },
             required: ['id']
-          }
+          },
+          plan_tier: {type: :string, nullable: true, description: 'User plan tier (starter, growth, pro)'}
         },
         required: ['existing_domains', 'platform_subdomain_credits']
       }

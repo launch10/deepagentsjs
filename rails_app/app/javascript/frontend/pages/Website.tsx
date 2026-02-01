@@ -34,7 +34,13 @@ const websiteLoaderSteps = [{ id: "1", label: "Setting up branding & colors" }];
  * Note: This is a standalone component that doesn't use the shared
  * PaginationFooterView because that component has Ads-specific hooks.
  */
-function WebsitePaginationFooter({ isLoading }: { isLoading: boolean }) {
+function WebsitePaginationFooter({
+  isLoading,
+  onContinue,
+}: {
+  isLoading: boolean;
+  onContinue?: () => void;
+}) {
   return (
     <div
       className={twMerge(
@@ -63,8 +69,10 @@ function WebsitePaginationFooter({ isLoading }: { isLoading: boolean }) {
             Previous Step
           </Button>
           <div className="flex gap-3">
-            <Button disabled>Preview</Button>
-            <Button disabled>Continue</Button>
+            <Button disabled={isLoading}>Preview</Button>
+            <Button disabled={isLoading} onClick={onContinue}>
+              Continue
+            </Button>
           </div>
         </div>
       </div>
@@ -113,6 +121,7 @@ function useWebsiteInit() {
  * Website Build step - generates the website content
  */
 function WebsiteBuild() {
+  const { project } = usePage<WebsitePageProps>().props;
   const chat = useWebsiteChat();
   const isLoadingHistory = useWebsiteChatIsLoadingHistory();
   const isStreaming = useWebsiteChatIsStreaming();
@@ -124,6 +133,13 @@ function WebsiteBuild() {
   // 1. Loading chat history from server
   // 2. Sending message
   const isLoading = isLoadingHistory || isStreaming;
+
+  // Navigate to domain step
+  const handleContinue = useCallback(() => {
+    if (project?.uuid) {
+      router.visit(`/projects/${project.uuid}/website/domain`);
+    }
+  }, [project?.uuid]);
 
   // Credit integration is automatic via ChatProvider - no manual wiring needed
   return (
@@ -149,7 +165,7 @@ function WebsiteBuild() {
         </main>
 
         {/* Footer - full width background, content aligned with preview */}
-        <WebsitePaginationFooter isLoading={isLoading} />
+        <WebsitePaginationFooter isLoading={isLoading} onContinue={handleContinue} />
       </div>
     </Chat.Root>
   );
@@ -157,6 +173,7 @@ function WebsiteBuild() {
 
 /**
  * Website Domain step - pick domain and path for deployment
+ * Uses the same layout as WebsiteBuild with sidebar + main content
  */
 function WebsiteDomainStep() {
   const { project } = usePage<WebsitePageProps>().props;
@@ -184,25 +201,43 @@ function WebsiteDomainStep() {
   return (
     <Chat.Root chat={chat}>
       <div className="h-full flex flex-col">
-        {/* Main content area */}
-        <main className="flex-1 min-h-0 flex items-start justify-center px-[2.5%] pt-[5%]">
-          <div className="w-full max-w-3xl">
+        {/* Main content area - same grid layout as WebsiteBuild */}
+        <main className="flex-1 min-h-0 grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%] pt-[2.5%]">
+          {/* Left sidebar with workflow steps + locked chat */}
+          <div>
+            <WebsiteSidebar substep="domain" chatLocked />
+          </div>
+
+          {/* Main content - domain picker form */}
+          <div className="min-h-0 -mb-20 overflow-hidden">
             <DomainPicker onComplete={handleComplete} onBack={handleBack} />
           </div>
         </main>
 
-        {/* Footer with navigation */}
+        {/* Footer - same style as WebsiteBuild */}
         <div className="shrink-0 relative z-10 bg-background">
-          <div className="h-px bg-neutral-200 shadow-[0px_-16px_26px_0px_rgba(15,17,19,0.06)]" />
-          <div className="flex items-center justify-between px-[2.5%] py-4">
-            <Button variant="link" onClick={handleBack}>
-              Previous Step
-            </Button>
-            <div className="flex gap-3">
-              <Button variant="outline" disabled>
-                Preview
+          {/* Border line - fades on left, extends to right edge of screen */}
+          <div className="grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%]">
+            <div />
+            <div
+              className="h-px bg-neutral-200 -ml-8 -mr-[2.5vw] shadow-[0px_-16px_26px_0px_rgba(15,17,19,0.06)]"
+              style={{
+                maskImage: "linear-gradient(to right, transparent, black 32px)",
+                WebkitMaskImage: "linear-gradient(to right, transparent, black 32px)",
+              }}
+            />
+          </div>
+
+          {/* Button content */}
+          <div className="grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%] py-4">
+            <div />
+            <div className="flex items-center justify-between pr-[2.5%]">
+              <Button variant="link" onClick={handleBack}>
+                Previous Step
               </Button>
-              <Button onClick={() => handleComplete({} as DomainSelection)}>Continue</Button>
+              <div className="flex gap-3">
+                <Button onClick={() => handleComplete({} as DomainSelection)}>Connect Site</Button>
+              </div>
             </div>
           </div>
         </div>
