@@ -61,16 +61,25 @@ export function SiteNameDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const [customInput, setCustomInput] = useState("");
 
-  // Parse recommendations into existing and generated
-  const existingSites = useMemo(() => {
-    if (!recommendations?.recommendations) return [];
-    return recommendations.recommendations.filter((r) => r.source === "existing");
-  }, [recommendations]);
+  // Get existing platform subdomains from Rails (source of truth)
+  const existingPlatformSubdomains = useMemo(() => {
+    if (!context?.existing_domains) return [];
+    return context.existing_domains.filter((d) => d.is_platform_subdomain);
+  }, [context]);
 
+  // Set of existing domain names for quick lookup
+  const existingDomainNames = useMemo(() => {
+    if (!context?.existing_domains) return new Set<string>();
+    return new Set(context.existing_domains.map((d) => d.domain));
+  }, [context]);
+
+  // AI-suggested sites, filtered to exclude domains that now exist in Rails
   const suggestedSites = useMemo(() => {
     if (!recommendations?.recommendations) return [];
-    return recommendations.recommendations.filter((r) => r.source === "generated");
-  }, [recommendations]);
+    return recommendations.recommendations
+      .filter((r) => r.source === "generated")
+      .filter((r) => !existingDomainNames.has(r.domain)); // Filter out claimed domains
+  }, [recommendations, existingDomainNames]);
 
   // Existing custom domains from context (Requirement 7: show in BOTH picker views)
   const existingCustomDomains = useMemo(() => {
@@ -181,39 +190,46 @@ export function SiteNameDropdown({
             )}
           </div>
 
-          {/* Existing Sites Section */}
-          {existingSites.length > 0 && (
+          {/* Existing Platform Subdomains Section (from Rails - source of truth) */}
+          {existingPlatformSubdomains.length > 0 && (
             <>
               <div className="border-t border-neutral-100" />
               <div className="px-4 py-3">
                 <div className="text-sm font-medium text-base-400 mb-2">Your Existing Sites</div>
                 <div className="flex flex-col gap-0.5">
-                  {existingSites.map((site) => (
-                    <button
-                      key={site.domain}
-                      type="button"
-                      onClick={() =>
-                        handleSelect(site.domain, site.subdomain, "existing", site.existingDomainId)
-                      }
-                      className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left",
-                        "transition-colors",
-                        selectedDomain === site.domain
-                          ? "bg-neutral-100"
-                          : "hover:bg-neutral-50"
-                      )}
-                    >
-                      {/* Star icon on the left for recommended */}
-                      {isTopRecommendation(site.domain) ? (
-                        <StarIcon className="size-5 text-base-400 shrink-0" />
-                      ) : (
-                        <span className="size-5 shrink-0" />
-                      )}
+                  {existingPlatformSubdomains.map((domain) => {
+                    const subdomain = domain.domain.replace(".launch10.site", "");
+                    // Show the domain with its first URL path if any
+                    const firstUrl = domain.website_urls[0];
+                    const displayUrl = firstUrl?.path && firstUrl.path !== "/"
+                      ? `${domain.domain}${firstUrl.path}`
+                      : domain.domain;
 
-                      {/* Full URL - no wrapping */}
-                      <span className="flex-1 text-base-600 truncate">{site.fullUrl}</span>
-                    </button>
-                  ))}
+                    return (
+                      <button
+                        key={domain.id}
+                        type="button"
+                        onClick={() => handleSelect(domain.domain, subdomain, "existing", domain.id)}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left",
+                          "transition-colors",
+                          selectedDomain === domain.domain
+                            ? "bg-neutral-100"
+                            : "hover:bg-neutral-50"
+                        )}
+                      >
+                        {/* Star icon on the left for recommended */}
+                        {isTopRecommendation(domain.domain) ? (
+                          <StarIcon className="size-5 text-base-400 shrink-0" />
+                        ) : (
+                          <span className="size-5 shrink-0" />
+                        )}
+
+                        {/* Full URL - no wrapping */}
+                        <span className="flex-1 text-base-600 truncate">{displayUrl}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </>

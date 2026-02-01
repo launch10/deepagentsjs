@@ -1,9 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+import { useMemo } from "react";
 import {
   InformationCircleIcon,
   ExclamationCircleIcon,
-  CheckCircleIcon,
-  XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { router } from "@inertiajs/react";
 import { Label } from "@components/ui/label";
@@ -11,14 +9,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
 import { SiteNameDropdown } from "./SiteNameDropdown";
 import { PageNameInput } from "./PageNameInput";
 import { useWebsiteId } from "~/stores/projectStore";
-import type { Website } from "@shared";
 import type { BaseDomainPickerProps } from "./DomainPicker";
 
 // ============================================================================
 // Types
 // ============================================================================
-
-type AvailabilityStatus = "checking" | "available" | "assigned" | "unavailable" | "deployed" | null;
 
 export interface Launch10SitePickerProps extends BaseDomainPickerProps {
   // All props inherited from BaseDomainPickerProps
@@ -41,9 +36,6 @@ export function Launch10SitePicker({
   const selectedDomain = selection?.domain ?? null;
   const customPath = selection?.path ?? "/";
 
-  // Track URL availability status
-  const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus>(null);
-
   // Determine if out of credits
   const isOutOfCredits = useMemo(() => {
     if (!context?.platform_subdomain_credits) return false;
@@ -55,33 +47,6 @@ export function Launch10SitePicker({
     if (!selectedDomain || !recommendations?.recommendations) return null;
     return recommendations.recommendations.find((r) => r.domain === selectedDomain);
   }, [selectedDomain, recommendations]);
-
-  // Check availability when selection changes
-  useEffect(() => {
-    if (!selection?.domain || !selection?.path) {
-      setAvailabilityStatus(null);
-      return;
-    }
-
-    // Check if this is an existing domain assigned to this website
-    const existingDomain = context?.existing_domains?.find((d) => d.domain === selection.domain);
-    if (existingDomain) {
-      const existingUrl = existingDomain.website_urls.find((u) => u.path === selection.path);
-      // If this URL exists and belongs to the current website, mark as assigned
-      if (existingUrl && existingUrl.website_id === websiteId) {
-        setAvailabilityStatus("assigned");
-        return;
-      }
-      // If it belongs to a different website, it's unavailable
-      if (existingUrl && existingUrl.website_id) {
-        setAvailabilityStatus("unavailable");
-        return;
-      }
-    }
-
-    // For new domains/paths, mark as available (already verified by AI or search)
-    setAvailabilityStatus("available");
-  }, [selection, context, websiteId]);
 
   // Handle domain selection from dropdown
   const handleDomainSelect = (
@@ -198,33 +163,6 @@ export function Launch10SitePicker({
           />
         </div>
       </div>
-
-      {/* Availability Status - only show when assigned or has issues */}
-      {selection && availabilityStatus && availabilityStatus !== "available" && (
-        <div className="mt-2" data-testid="availability-status">
-          {availabilityStatus === "assigned" && (
-            <div className="flex items-center gap-1 text-xs text-success-500">
-              <CheckCircleIcon className="size-3.5" />
-              <span>{selection.fullUrl} is assigned to this website</span>
-            </div>
-          )}
-          {availabilityStatus === "unavailable" && (
-            <div className="flex items-center gap-1 text-xs text-destructive">
-              <XCircleIcon className="size-3.5" />
-              <span>This URL is already taken by another website</span>
-            </div>
-          )}
-          {availabilityStatus === "deployed" && (
-            <div className="flex items-center gap-1 text-xs text-destructive">
-              <ExclamationCircleIcon className="size-3.5" />
-              <span>
-                This site is currently launched. Please choose a different site that isn't already
-                taken.
-              </span>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

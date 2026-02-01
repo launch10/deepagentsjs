@@ -2,7 +2,8 @@ import { useState, useCallback, useEffect, useMemo } from "react";
 import { Launch10SitePicker } from "./Launch10SitePicker";
 import { CustomDomainPicker } from "./CustomDomainPicker";
 import { FullUrlPreview } from "./FullUrlPreview";
-import { useDomainContext } from "~/api/domainContext.hooks";
+import { ClaimSubdomainModal } from "./ClaimSubdomainModal";
+import { useDomainContext, useCreateDomain } from "~/api/domainContext.hooks";
 import { useWebsiteChatState, useWebsiteChatIsLoading } from "~/hooks/website/useWebsiteChat";
 import { useWebsiteId } from "~/stores/projectStore";
 import type { Website } from "@shared";
@@ -75,6 +76,13 @@ export function DomainPicker({
   const [hasInitialized, setHasInitialized] = useState(false);
   const [internalSelection, setInternalSelection] = useState<DomainSelection | null>(null);
 
+  // Claim subdomain modal state
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  const [pendingClaim, setPendingClaim] = useState<DomainSelection | null>(null);
+
+  // Domain creation mutation for claiming new subdomains
+  const createDomain = useCreateDomain();
+
   // Support both controlled and uncontrolled modes
   const isControlled = controlledSelection !== undefined;
   const selection = isControlled ? controlledSelection : internalSelection;
@@ -98,10 +106,24 @@ export function DomainPicker({
   // Show loading state (context loading or chat still generating recommendations)
   const isLoading = isContextLoading || (isChatLoading && !domainRecommendations);
 
-  // Handle selection from either picker mode
-  const handleSelect = useCallback(
+  // Get credits remaining for the modal
+  const creditsRemaining = context?.platform_subdomain_credits?.remaining ?? 0;
+
+  // Check if a selection requires claiming a new platform subdomain
+  const requiresClaimModal = useCallback(
+    (newSelection: DomainSelection): boolean => {
+      // Only show modal for NEW platform subdomains (uses a credit)
+      const isPlatformSubdomain = newSelection.domain.endsWith(".launch10.site");
+      const isNewSubdomain = newSelection.isNew && (newSelection.source === "generated" || newSelection.source === "custom");
+      return isPlatformSubdomain && isNewSubdomain;
+    },
+    []
+  );
+
+  // Actually commit the selection (after modal confirmation if needed)
+  const commitSelection = useCallback(
     (newSelection: DomainSelection) => {
-      console.log("[DomainPicker] handleSelect called:", { newSelection, isControlled });
+      console.log("[DomainPicker] commitSelection:", newSelection);
       if (isControlled) {
         onSelectionChange?.(newSelection);
       } else {
@@ -110,6 +132,57 @@ export function DomainPicker({
     },
     [isControlled, onSelectionChange]
   );
+
+  // Handle selection from either picker mode
+  const handleSelect = useCallback(
+    (newSelection: DomainSelection) => {
+      console.log("[DomainPicker] handleSelect called:", { newSelection, isControlled });
+
+      // Check if we need to show the claim modal
+      if (requiresClaimModal(newSelection)) {
+        setPendingClaim(newSelection);
+        setShowClaimModal(true);
+        return;
+      }
+
+      // Otherwise commit immediately
+      commitSelection(newSelection);
+    },
+    [isControlled, requiresClaimModal, commitSelection]
+  );
+
+  // Handle claim confirmation from modal
+  const handleClaimConfirm = useCallback(async () => {
+    if (!pendingClaim || !websiteId) return;
+
+    try {
+      const result = await createDomain.mutateAsync({
+        domain: pendingClaim.domain,
+        websiteId,
+        path: pendingClaim.path,
+        isPlatformSubdomain: true,
+      });
+
+      // Update the selection with the new domain ID
+      const claimedSelection: DomainSelection = {
+        ...pendingClaim,
+        isNew: false, // No longer new once claimed
+        existingDomainId: result.id,
+      };
+
+      commitSelection(claimedSelection);
+      setShowClaimModal(false);
+      setPendingClaim(null);
+    } catch (error) {
+      console.error("Failed to claim subdomain:", error);
+    }
+  }, [pendingClaim, websiteId, createDomain, commitSelection]);
+
+  // Handle claim modal close
+  const handleClaimClose = useCallback(() => {
+    setShowClaimModal(false);
+    setPendingClaim(null);
+  }, []);
 
   // Single initialization effect: sets both view mode AND initial selection atomically
   useEffect(() => {
@@ -252,13 +325,19 @@ export function DomainPicker({
       {/* Full URL Preview */}
       {selection && (
         <div className="pt-4 border-t border-neutral-200">
-          <FullUrlPreview
-            fullUrl={selection.fullUrl}
-            isNew={selection.isNew}
-            source={selection.source}
-          />
+          <FullUrlPreview fullUrl={selection.fullUrl} />
         </div>
       )}
+
+      {/* Claim Subdomain Modal */}
+      <ClaimSubdomainModal
+        isOpen={showClaimModal}
+        onClose={handleClaimClose}
+        onConfirm={handleClaimConfirm}
+        domain={pendingClaim?.domain ?? ""}
+        creditsRemaining={creditsRemaining}
+        isLoading={createDomain.isPending}
+      />
     </div>
   );
 }

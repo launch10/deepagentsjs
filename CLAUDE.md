@@ -22,6 +22,7 @@ The Rails app manages users, authentication, and project metadata. The Langgraph
 ## Design System
 
 Figma files (accessible via Figma MCP):
+
 - **Launch10 Design System** - Component library, design tokens, states/variants
 - **Launch10 Phase 2 Designs** - Screen designs and mockups
 
@@ -31,17 +32,18 @@ When implementing UI: check Design System for existing components first, then re
 
 ClickUp board: **Launch10**
 
-| Tag | Meaning |
-|-----|---------|
-| `mvp` | **Most important** - Must finish for v1 release |
-| `derisk` | Could sink the business - needs due diligence first |
-| `v1.5` | Before public release (ok during family & friends) |
-| `engineering-future` | Velocity unlocks - do after MVP |
-| `v2` / `v3` | Future work, mild prioritization between them |
+| Tag                  | Meaning                                             |
+| -------------------- | --------------------------------------------------- |
+| `mvp`                | **Most important** - Must finish for v1 release     |
+| `derisk`             | Could sink the business - needs due diligence first |
+| `v1.5`               | Before public release (ok during family & friends)  |
+| `engineering-future` | Velocity unlocks - do after MVP                     |
+| `v2` / `v3`          | Future work, mild prioritization between them       |
 
 ### Team Visibility
 
 When starting or completing **meaningful features** (not one-off fixes), post to `#claude-activity`:
+
 - **Starting**: `🚀 Starting: [feature name] - [brief description]`
 - **Completed**: `✅ Completed: [feature name] - [what was done]`
 
@@ -219,6 +221,7 @@ Restart Claude Code after adding MCP servers.
 ## Key Models & Concepts
 
 ### Core (Multi-tenancy)
+
 - **Account**: Team/organization (multi-tenant root)
 - **User**: Authenticated users (Devise + JWT)
 - **Project**: Container for a single business idea test
@@ -228,10 +231,12 @@ Restart Claude Code after adding MCP servers.
   - Has `thread_id` that links to Langgraph
 
 ### A. Brainstorm Agent
+
 - **Brainstorm**: Captures idea, audience, solution, social proof
   - `belongs_to :website`, `has_one :chat`
 
 ### B. Landing Page Generator
+
 - **Website**: The landing page being built
   - `belongs_to :project`
   - `has_many :code_files` (the actual source files)
@@ -242,6 +247,7 @@ Restart Claude Code after adding MCP servers.
 - **Domain**: Custom domain configuration
 
 ### C. Ads Platform
+
 - **Campaign**: Ad campaign (Google Ads, Meta)
   - `has_many :ad_groups`, `location_targets`, `languages`, `schedules`
 - **AdGroup**: Contains ads and keywords
@@ -249,9 +255,11 @@ Restart Claude Code after adding MCP servers.
 - **AdKeyword**, **AdLocationTarget**, **AdSchedule**, **AdBudget**
 
 ### D. Analytics
+
 - **AccountRequestCount** / **DomainRequestCount**: Traffic metrics per account/domain
 
 ### Langgraph Concepts
+
 - **Graphs**: AI agent workflows (router, brainstorm, website, ads)
 - **Threads**: Conversation contexts linked to Chat records
 - **Checkpoints**: State snapshots for each conversation
@@ -363,6 +371,7 @@ Multiple Claude Code agents (or developers) can work simultaneously by running t
 ### How It Works
 
 `config/services.sh` detects the directory name at startup:
+
 - `launch10/` (the primary repo) uses default ports (3000/4000/3036), database prefix `launch10`, Redis DB 0
 - `launch1/`-`launch4/` use offset ports, separate databases, and separate Redis DBs
 
@@ -381,6 +390,7 @@ bin/setup-clone
 ```
 
 `bin/setup-clone` does the following:
+
 1. Detects the instance from the directory name
 2. Copies `.env` files from `launch10/` and substitutes all instance-specific values (ports, DATABASE_URL, REDIS_URL, ALLOWED_HOSTS)
 3. Creates Postgres databases (`launch3_development`, `launch3_test`)
@@ -399,7 +409,7 @@ bin/setup-clone --db     # Only create databases and run migrations
 ### Instance Isolation
 
 | Resource   | launch10 (primary)       | launch2 (clone)          |
-|------------|--------------------------|--------------------------|
+| ---------- | ------------------------ | ------------------------ |
 | Rails port | 3000                     | 3200                     |
 | LG port    | 4000                     | 4200                     |
 | Vite port  | 3036                     | 3236                     |
@@ -454,6 +464,7 @@ end
 ```
 
 **Benefits:**
+
 - Individual items retry independently
 - Failed items don't block successful ones
 - Better observability (see which specific items failed)
@@ -485,6 +496,7 @@ end
 ```
 
 **Benefits:**
+
 - Services are easily testable without Sidekiq
 - Logic can be reused (console, rake tasks, other workers)
 - Workers remain simple to understand
@@ -514,12 +526,32 @@ end
 ```
 
 **Why this matters:**
+
 - When Ruby sees `CostCalculator` inside `Credits::ChargeRunWorker`, it first looks for `Credits::ChargeRunWorker::CostCalculator`
 - Zeitwerk tries to autoload from that path, which doesn't exist
 - The error only surfaces when the sibling class hasn't been loaded yet (test isolation, load order)
 - Using qualified names (`Credits::CostCalculator`) makes the lookup explicit and reliable
 
 **The test suite verifies this:** `rails_helper.rb` calls `Rails.application.eager_load!` before tests to catch these issues early.
+
+### Inertia Navigation Pattern
+
+**Always use `router.visit()` for navigation** instead of `<a href="...">` tags. This ensures proper SPA behavior with browser back/forward button support.
+
+```typescript
+// BAD: Regular anchor tag breaks SPA navigation
+<a href="/settings">Go to Settings</a>
+
+// GOOD: Inertia router with proper back button support
+import { router } from "@inertiajs/react";
+
+<button
+  onClick={() => router.visit("/settings")}
+  className="..."
+>
+  Go to Settings
+</button>
+```
 
 ## Tips
 
