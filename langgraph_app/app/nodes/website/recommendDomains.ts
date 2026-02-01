@@ -78,12 +78,10 @@ export const domainRecommendationsNode = NodeMiddleware.use(
       const hasExistingDomains = domainContext.existing_domains.length > 0;
 
       // Build tools array based on context:
-      // - search_domains: for checking new subdomain availability (requires credits)
+      // - search_domains: always provided so AI can suggest available subdomains
+      //   (even when out of credits - UI will show them as disabled)
       // - search_paths: for checking path availability on existing domains
-      const tools = [];
-      if (hasCredits) {
-        tools.push(createSearchDomainsTool(state.jwt));
-      }
+      const tools = [createSearchDomainsTool(state.jwt)];
       if (hasExistingDomains) {
         tools.push(createSearchPathsTool(state.jwt));
       }

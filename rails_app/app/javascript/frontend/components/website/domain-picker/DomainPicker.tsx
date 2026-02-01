@@ -61,6 +61,10 @@ export function DomainPicker({ onComplete, onBack }: DomainPickerProps) {
     | undefined;
   const isChatLoading = useWebsiteChatIsLoading();
 
+  if (domainRecommendations) {
+    debugger;
+  }
+
   // Show loading state (context loading or chat still generating recommendations)
   const isLoading = isContextLoading || (isChatLoading && !domainRecommendations);
 
