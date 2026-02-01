@@ -36,20 +36,22 @@ test.describe("Domain Picker", () => {
 
       // Should show the "Website Setup" header
       await expect(page.locator('text="Website Setup"')).toBeVisible();
-      await expect(page.locator('text="Choose where your landing page will live"')).toBeVisible();
+      await expect(
+        page.locator('text="Choose how you want your website to be accessed"')
+      ).toBeVisible();
     });
 
-    test("shows tab switcher with Launch10 Site and Custom Domain options", async ({ page }) => {
+    test("shows dropdown-based domain picker (not tabs)", async ({ page }) => {
       await domainPickerPage.goto(projectUuid);
       await domainPickerPage.waitForLoaded();
 
-      // Should show both tabs
-      await expect(domainPickerPage.launch10Tab).toBeVisible();
-      await expect(domainPickerPage.customDomainTab).toBeVisible();
+      // Should show site name dropdown (not tabs)
+      await expect(page.locator('text="Your site name"')).toBeVisible();
+      await expect(domainPickerPage.siteNameDropdown).toBeVisible();
 
-      // Launch10 Site should be active by default
-      const activeTab = await domainPickerPage.getActiveTab();
-      expect(activeTab).toBe("launch10");
+      // Launch10 Site picker should be active by default
+      const isCustomMode = await domainPickerPage.isInCustomDomainMode();
+      expect(isCustomMode).toBe(false);
     });
 
     test("shows loading skeleton while fetching data", async ({ page }) => {
@@ -107,17 +109,15 @@ test.describe("Domain Picker", () => {
   });
 
   test.describe("Custom Domain Mode", () => {
-    test("switches to custom domain tab when clicked", async ({ page }) => {
+    test("switches to custom domain via dropdown option", async ({ page }) => {
       await domainPickerPage.goto(projectUuid);
       await domainPickerPage.waitForLoaded();
 
-      // Click Custom Domain tab
-      await domainPickerPage.selectCustomDomainTab();
+      // Click dropdown and then "Connect your own site"
+      await domainPickerPage.switchToCustomDomain();
 
       // Should show custom domain input
-      await expect(
-        page.locator('[placeholder*="yourdomain.com"]').or(page.locator('text="Your site name"'))
-      ).toBeVisible({ timeout: 5000 });
+      await expect(domainPickerPage.customDomainInput).toBeVisible({ timeout: 5000 });
     });
 
     test("shows CNAME instructions in custom domain mode", async ({ page }) => {
@@ -125,11 +125,11 @@ test.describe("Domain Picker", () => {
       await domainPickerPage.waitForLoaded();
 
       // Switch to custom domain mode
-      await domainPickerPage.selectCustomDomainTab();
+      await domainPickerPage.switchToCustomDomain();
 
       // Should show CNAME instructions
       await expect(page.locator('text="CNAME"')).toBeVisible({ timeout: 5000 });
-      await expect(page.locator('text="launch10"').first()).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('text="cname.launch10.ai"')).toBeVisible({ timeout: 5000 });
     });
 
     test("shows link to switch back to Launch10 Site", async ({ page }) => {
@@ -137,12 +137,10 @@ test.describe("Domain Picker", () => {
       await domainPickerPage.waitForLoaded();
 
       // Switch to custom domain mode
-      await domainPickerPage.selectCustomDomainTab();
+      await domainPickerPage.switchToCustomDomain();
 
       // Should show link to switch back
-      await expect(
-        page.locator('text="Use a Launch10 Site"').or(page.locator('text="Launch10 Site"'))
-      ).toBeVisible();
+      await expect(domainPickerPage.switchToLaunch10Button).toBeVisible();
     });
   });
 
