@@ -3,6 +3,10 @@ import { type Page, type Locator, expect } from "@playwright/test";
 /**
  * Page Object Model for the Domain Picker page.
  * Encapsulates all interactions with the domain picker interface.
+ *
+ * The Domain Picker uses a dropdown-first design (not tabs):
+ * - Launch10 Site picker is shown by default
+ * - "Connect your own site" in the dropdown opens Custom Domain Picker
  */
 export class DomainPickerPage {
   readonly page: Page;
@@ -15,20 +19,20 @@ export class DomainPickerPage {
   readonly header: Locator;
   readonly description: Locator;
 
-  // Tab switcher
-  readonly tabsList: Locator;
-  readonly launch10Tab: Locator;
-  readonly customDomainTab: Locator;
-
   // Launch10 Site Picker
   readonly siteNameDropdown: Locator;
   readonly pageNameInput: Locator;
   readonly existingSitesSection: Locator;
   readonly createNewSiteSection: Locator;
+  readonly connectOwnSiteButton: Locator;
+  readonly outOfCreditsBanner: Locator;
+  readonly availabilityStatus: Locator;
 
   // Custom Domain Picker
   readonly customDomainInput: Locator;
   readonly cnameInstructions: Locator;
+  readonly switchToLaunch10Button: Locator;
+  readonly dnsVerificationStatus: Locator;
 
   // Full URL Preview
   readonly fullUrlPreview: Locator;
@@ -50,28 +54,28 @@ export class DomainPickerPage {
 
     // Header
     this.header = page.locator('text="Website Setup"');
-    this.description = page.locator('text="Choose where your landing page will live"');
-
-    // Tab switcher
-    this.tabsList = page.locator('[role="tablist"]');
-    this.launch10Tab = page.locator('button:has-text("Launch10 Site")');
-    this.customDomainTab = page.locator('button:has-text("Custom Domain")');
+    this.description = page
+      .locator('text="Choose how you want your website to be accessed"')
+      .or(page.locator('text="Connect your own domain to your landing page"'));
 
     // Launch10 Site Picker components
     this.siteNameDropdown = page
       .locator('[data-testid="site-name-dropdown"]')
-      .or(page.locator('text="Your site name"').locator("..").locator("input, select, button"));
+      .or(page.locator('text="Your site name"').locator("..").locator("button").first());
     this.pageNameInput = page
       .locator('[data-testid="page-name-input"]')
       .or(page.locator('text="Page name"').locator("..").locator("input"));
     this.existingSitesSection = page.locator('text="Your Existing Sites"');
     this.createNewSiteSection = page.locator('text="Create New Site"');
+    this.connectOwnSiteButton = page.getByTestId("connect-own-site-button");
+    this.outOfCreditsBanner = page.getByTestId("out-of-credits-banner");
+    this.availabilityStatus = page.getByTestId("availability-status");
 
     // Custom Domain Picker
-    this.customDomainInput = page
-      .locator('[data-testid="custom-domain-input"]')
-      .or(page.locator('[placeholder*="yourdomain.com"]'));
+    this.customDomainInput = page.getByTestId("custom-domain-input");
     this.cnameInstructions = page.locator('text="CNAME"').locator("..");
+    this.switchToLaunch10Button = page.locator('text="Use a free Launch10 Site instead"');
+    this.dnsVerificationStatus = page.getByTestId("dns-verification-status");
 
     // Full URL Preview
     this.fullUrlPreview = page
@@ -112,25 +116,47 @@ export class DomainPickerPage {
   }
 
   /**
-   * Switch to Launch10 Site tab
+   * Check if we're in Custom Domain mode
    */
-  async selectLaunch10Tab(): Promise<void> {
-    await this.launch10Tab.click();
+  async isInCustomDomainMode(): Promise<boolean> {
+    return this.customDomainInput.isVisible();
   }
 
   /**
-   * Switch to Custom Domain tab
+   * Switch to Custom Domain mode via dropdown
+   */
+  async switchToCustomDomain(): Promise<void> {
+    await this.siteNameDropdown.click();
+    await this.connectOwnSiteButton.click();
+  }
+
+  /**
+   * Switch back to Launch10 Site mode
+   */
+  async switchToLaunch10Site(): Promise<void> {
+    await this.switchToLaunch10Button.click();
+  }
+
+  /**
+   * @deprecated Use switchToCustomDomain instead - tabs have been removed
    */
   async selectCustomDomainTab(): Promise<void> {
-    await this.customDomainTab.click();
+    await this.switchToCustomDomain();
   }
 
   /**
-   * Get the currently active tab
+   * @deprecated Use switchToLaunch10Site instead - tabs have been removed
+   */
+  async selectLaunch10Tab(): Promise<void> {
+    await this.switchToLaunch10Site();
+  }
+
+  /**
+   * @deprecated Tabs have been removed - returns based on which picker is visible
    */
   async getActiveTab(): Promise<"launch10" | "custom"> {
-    const launch10Active = await this.launch10Tab.getAttribute("data-state");
-    return launch10Active === "active" ? "launch10" : "custom";
+    const isCustom = await this.isInCustomDomainMode();
+    return isCustom ? "custom" : "launch10";
   }
 
   /**

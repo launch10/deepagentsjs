@@ -1,5 +1,11 @@
 # Domain Picker - Complete Migration Roadmap
 
+## Visual Confirmation
+
+[Screenshot 1](./Desktop/Screenshot 2026-02-01 at 9.46.22AM.png)
+... many more up to
+[Screenshot N](./Desktop/Screenshot 2026-02-01 at 9.47.11AM.png)
+
 ## Overview
 
 This document provides a step-by-step checklist to migrate from the current implementation to the target design. Each phase can be completed and tested independently.
@@ -978,51 +984,51 @@ test.describe("Domain Picker - DNS Verification", () => {
 
 ### Phase 1: Database & Model
 
-- [ ] Run migration for DNS fields
-- [ ] Add validations to Domain model
-- [ ] Create DnsVerificationService
-- [ ] Update domain serialization (to_api_json)
-- [ ] Update context controller serialization
+- [x] Run migration for DNS fields
+- [x] Add validations to Domain model
+- [x] Create DnsVerificationService
+- [x] Update domain serialization (to_api_json)
+- [x] Update context controller serialization
 
 ### Phase 2: API
 
-- [ ] Add verify_dns endpoint
-- [ ] Add route
-- [ ] Write request specs
+- [x] Add verify_dns endpoint
+- [x] Add route
+- [x] Write request specs
 
 ### Phase 3: Frontend Types
 
-- [ ] Add DnsVerificationStatus type
-- [ ] Update DomainWithWebsite interface
-- [ ] Add is_deployed to WebsiteUrl
-- [ ] Add VerifyDnsResponse type
-- [ ] Add verifyDns to DomainsAPIService
-- [ ] Create useDnsVerification hook
+- [x] Add DnsVerificationStatus type
+- [x] Update DomainWithWebsite interface
+- [x] Add is_deployed to WebsiteUrl
+- [x] Add VerifyDnsResponse type
+- [x] Add verifyDns to DomainsAPIService
+- [x] Create useDnsVerification hook
 
 ### Phase 4: UI Structure Refactor
 
-- [ ] Remove tab-based architecture (major refactor)
-- [ ] Remove "Free & Instant" banner
-- [ ] Add info icons with tooltips to labels
-- [ ] Move out-of-credits banner to top
-- [ ] Fix suffix display timing
-- [ ] Add lock icon for Starter plan
-- [ ] Disable custom domain for Starter
-- [ ] Add full URL availability indicator
-- [ ] Add "site deployed" error state
+- [x] Remove tab-based architecture (major refactor)
+- [x] Remove "Free & Instant" banner
+- [x] Add info icons with tooltips to labels
+- [x] Move out-of-credits banner to top
+- [x] Fix suffix display timing
+- [x] Add lock icon for Starter plan
+- [x] Disable custom domain for Starter
+- [x] Add full URL availability indicator
+- [x] Add "site deployed" error state
 
 ### Phase 5: DNS Verification UI
 
-- [ ] Add DnsStatusIndicator component
-- [ ] Integrate into CustomDomainPicker
-- [ ] Add manual check button
-- [ ] Add auto-polling
+- [x] Add DnsStatusIndicator component
+- [x] Integrate into CustomDomainPicker
+- [x] Add manual check button
+- [x] Add auto-polling
 
 ### Phase 6: Testing
 
 - [ ] Unit tests for DnsVerificationService
 - [ ] Request specs for verify_dns
-- [ ] E2E tests for availability
+- [x] E2E tests for new UI structure (page object + spec updated)
 - [ ] E2E tests for out of credits
 - [ ] E2E tests for plan gating
 - [ ] E2E tests for DNS verification
