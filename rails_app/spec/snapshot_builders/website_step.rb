@@ -89,42 +89,42 @@ class WebsiteStep < BaseBuilder
     domain1.save!(validate: false)
     puts "Created unassigned platform subdomain: #{domain1.domain} (ID: #{domain1.id})"
 
-    # 2. Platform subdomain assigned to a DIFFERENT website with multiple paths
-    # Useful for testing path conflicts and domain with existing urls
-    # Use Brainstorm.create_brainstorm! which creates project + website + brainstorm together
-    other_data = Brainstorm.create_brainstorm!(account, name: "Meeting Tool Project", thread_id: SecureRandom.uuid)
-    other_website = other_data[:website]
-    other_website.update!(name: "Meeting Tool")
-    other_data[:brainstorm].update!(
-      idea: "Team meeting scheduler",
-      audience: "Remote teams",
-      solution: "Easy meeting scheduling"
-    )
+    # # 2. Platform subdomain assigned to a DIFFERENT website with multiple paths
+    # # Useful for testing path conflicts and domain with existing urls
+    # # Use Brainstorm.create_brainstorm! which creates project + website + brainstorm together
+    # other_data = Brainstorm.create_brainstorm!(account, name: "Meeting Tool Project", thread_id: SecureRandom.uuid)
+    # other_website = other_data[:website]
+    # other_website.update!(name: "Meeting Tool")
+    # other_data[:brainstorm].update!(
+    #   idea: "Team meeting scheduler",
+    #   audience: "Remote teams",
+    #   solution: "Easy meeting scheduling"
+    # )
 
-    domain2 = Domain.new(
-      account: account,
-      website: other_website,
-      domain: "meeting-tool.launch10.site",
-      is_platform_subdomain: true
-    )
-    domain2.save!(validate: false)
+    # domain2 = Domain.new(
+    #   account: account,
+    #   website: other_website,
+    #   domain: "meeting-tool.launch10.site",
+    #   is_platform_subdomain: true
+    # )
+    # domain2.save!(validate: false)
 
-    # Add website_urls to domain2 (multiple paths)
-    WebsiteUrl.create!(domain: domain2, website: other_website, account: account, path: "/")
-    WebsiteUrl.create!(domain: domain2, website: other_website, account: account, path: "/landing")
-    puts "Created platform subdomain with website: #{domain2.domain} (ID: #{domain2.id})"
-    puts "  - website: #{other_website.name} (ID: #{other_website.id})"
-    puts "  - paths: /, /landing"
+    # # Add website_urls to domain2 (multiple paths)
+    # WebsiteUrl.create!(domain: domain2, website: other_website, account: account, path: "/")
+    # WebsiteUrl.create!(domain: domain2, website: other_website, account: account, path: "/landing")
+    # puts "Created platform subdomain with website: #{domain2.domain} (ID: #{domain2.id})"
+    # puts "  - website: #{other_website.name} (ID: #{other_website.id})"
+    # puts "  - paths: /, /landing"
 
-    # 3. Custom domain (not platform subdomain) - unassigned
-    # Useful for testing custom domain scenarios
-    domain3 = Domain.new(
-      account: account,
-      website: nil,
-      domain: "my-custom-site.com",
-      is_platform_subdomain: false
-    )
-    domain3.save!(validate: false)
-    puts "Created custom domain: #{domain3.domain} (ID: #{domain3.id})"
+    # # 3. Custom domain (not platform subdomain) - unassigned
+    # # Useful for testing custom domain scenarios
+    # domain3 = Domain.new(
+    #   account: account,
+    #   website: nil,
+    #   domain: "my-custom-site.com",
+    #   is_platform_subdomain: false
+    # )
+    # domain3.save!(validate: false)
+    # puts "Created custom domain: #{domain3.domain} (ID: #{domain3.id})"
   end
 end

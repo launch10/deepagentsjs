@@ -19,15 +19,14 @@ import { PageNameInput } from "./PageNameInput";
 import { useCreateDomain } from "~/api/domainContext.hooks";
 import { useDnsVerification } from "~/hooks/useDnsVerification";
 import { useWebsiteId } from "~/stores/projectStore";
-import type { DomainSelection } from "./DomainPicker";
+import type { BaseDomainPickerProps } from "./DomainPicker";
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export interface CustomDomainPickerProps {
-  selection: DomainSelection | null;
-  onSelect: (selection: DomainSelection) => void;
+export interface CustomDomainPickerProps extends BaseDomainPickerProps {
+  // onSwitchToLaunch10 is required for this component (inherited as optional, enforced here)
   onSwitchToLaunch10: () => void;
 }
 
