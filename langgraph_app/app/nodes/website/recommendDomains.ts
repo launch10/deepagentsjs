@@ -1,4 +1,4 @@
-import type { WebsiteGraphState } from "@annotation";
+import { BrainstormBridge, WebsiteBridge, type WebsiteGraphState } from "@annotation";
 import { NodeMiddleware } from "@middleware";
 import { DomainContextAPIService, type DomainWithWebsite } from "@rails_api";
 import { getLLM } from "@core";
@@ -10,7 +10,9 @@ import {
   type DomainRecommendationsOutput,
 } from "@prompts";
 import { createSearchDomainsTool, createSearchPathsTool } from "@tools";
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
+import { HumanMessage } from "@langchain/core/messages";
+import { lastAIMessage } from "@types";
+import { createAgent } from "langchain";
 
 const SCORE_THRESHOLD = 80;
 const PLATFORM_DOMAIN_SUFFIX = ".launch10.site";
@@ -43,7 +45,6 @@ export const domainRecommendationsNode = NodeMiddleware.use(
       console.log("[domainRecommendations] Skipping - no jwt");
       return {};
     }
-
     // Need brainstorm context to generate recommendations
     const brainstorm = state.brainstorm;
     if (!brainstorm?.idea) {
@@ -72,7 +73,7 @@ export const domainRecommendationsNode = NodeMiddleware.use(
       });
 
       // Get LLM and set up tools
-      const llm = await getLLM({ skill: "writing", speed: "fast" });
+      const llm = await getLLM({ skill: "writing", speed: "slow" });
       const hasCredits = domainContext.platform_subdomain_credits.remaining > 0;
       const hasExistingDomains = domainContext.existing_domains.length > 0;
 
@@ -88,19 +89,21 @@ export const domainRecommendationsNode = NodeMiddleware.use(
       }
 
       // Create and run the agent
-      const agent = createReactAgent({
-        llm,
+      const agent = createAgent({
+        model: llm,
         tools,
-        prompt: systemPrompt,
+        systemPrompt,
         responseFormat: domainRecommendationsOutputSchema,
       });
 
-      const result = await agent.invoke({ messages: [] });
-      const agentOutput = result.structuredResponse as DomainRecommendationsOutput;
+      const result = await agent.invoke({
+        messages: [new HumanMessage({ content: "Please generate recommendations for me." })],
+      });
+      const structuredResponse = result.structuredResponse;
 
       // Convert agent output to domain recommendations format
       const recommendations = convertToRecommendations(
-        agentOutput,
+        structuredResponse,
         domainContext.existing_domains,
         hasCredits
       );
