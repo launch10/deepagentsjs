@@ -126,9 +126,10 @@ export const websiteBuilderNode = NodeMiddleware.use(
       });
 
       const [aiMessage] = await toStructuredMessage(rawMessage);
+      const messages = ((state.messages || []).length === 0) ? [aiMessage] : state.messages; 
 
       return {
-        messages: [...(state.messages || []), aiMessage],
+        messages,
         files,
         status: "completed",
       };

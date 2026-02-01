@@ -32,6 +32,7 @@ export const createSearchDomainsTool = (jwt: string) =>
   tool(
     async (input): Promise<string> => {
       const { subdomains } = input;
+      console.log("[search_domains] Called with subdomains:", subdomains);
 
       // Convert subdomains to full domain names
       const candidates = subdomains.map((s) => `${s}${PLATFORM_DOMAIN_SUFFIX}`);
@@ -51,6 +52,7 @@ export const createSearchDomainsTool = (jwt: string) =>
           credits: response.platform_subdomain_credits,
         };
 
+        console.log("[search_domains] Results:", JSON.stringify(result, null, 2));
         return JSON.stringify(result);
       } catch (error) {
         const result: SearchDomainsResult = {
