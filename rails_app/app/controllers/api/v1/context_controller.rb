@@ -27,7 +27,8 @@ class API::V1::ContextController < API::BaseController
     render json: {
       existing_domains: domains.map { |domain| serialize_domain(domain) },
       platform_subdomain_credits: platform_subdomain_credits,
-      brainstorm_context: serialize_brainstorm(website.brainstorm)
+      brainstorm_context: serialize_brainstorm(website.brainstorm),
+      plan_tier: current_account.plan&.plan_tier&.name
     }
   end
 

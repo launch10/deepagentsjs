@@ -15,6 +15,52 @@ import { env } from "@core";
 export const CACHE_MODE = env.CACHE_MODE === true;
 
 /**
+ * Cached domain recommendations for testing.
+ * Simulates what the LLM would return.
+ */
+function getCachedDomainRecommendations(): Website.DomainRecommendations.DomainRecommendations {
+  const recommendations: Website.DomainRecommendations.DomainRecommendation[] = [
+    {
+      domain: "scheduling-tool.launch10.site",
+      subdomain: "scheduling-tool",
+      path: "/",
+      fullUrl: "scheduling-tool.launch10.site",
+      score: 95,
+      reasoning:
+        "Perfect match for your scheduling tool idea - clear, memorable, and professional.",
+      source: "generated",
+      availability: "available",
+    },
+    {
+      domain: "meetingsync.launch10.site",
+      subdomain: "meetingsync",
+      path: "/",
+      fullUrl: "meetingsync.launch10.site",
+      score: 88,
+      reasoning: "Combines 'meeting' and 'sync' to convey the core value proposition.",
+      source: "generated",
+      availability: "available",
+    },
+    {
+      domain: "teamcalendar.launch10.site",
+      subdomain: "teamcalendar",
+      path: "/",
+      fullUrl: "teamcalendar.launch10.site",
+      score: 82,
+      reasoning: "Emphasizes the team collaboration aspect of your scheduling solution.",
+      source: "generated",
+      availability: "available",
+    },
+  ];
+
+  return {
+    state: "no_existing_sites",
+    recommendations,
+    topRecommendation: recommendations[0] ?? null,
+  };
+}
+
+/**
  * Get files and message for improve_copy command based on style.
  */
 function getImproveCopyResponse(style: Website.ImproveCopyStyle | undefined): {
@@ -98,6 +144,9 @@ export const cacheModeNode = async (
     messages: [...(state.messages || []), aiMessage],
     files,
     status: "completed",
+    // Note: domainRecommendations are NOT cached here - the actual recommendDomains
+    // node runs even in CACHE_MODE. The getCachedDomainRecommendations() function
+    // is kept for potential Storybook/visual testing scenarios.
   };
 };
 

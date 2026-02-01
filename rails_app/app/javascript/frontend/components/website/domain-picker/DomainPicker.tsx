@@ -30,10 +30,6 @@ export interface DomainPickerProps {
 
 type PickerMode = "launch10" | "custom";
 
-// ============================================================================
-// Loading Skeleton
-// ============================================================================
-
 function LoadingSkeleton() {
   return (
     <div data-testid="domain-picker-loading" className="flex flex-col gap-6 animate-pulse">
@@ -50,10 +46,6 @@ function LoadingSkeleton() {
     </div>
   );
 }
-
-// ============================================================================
-// Main Component
-// ============================================================================
 
 export function DomainPicker({ onComplete, onBack }: DomainPickerProps) {
   const websiteId = useWebsiteId();
@@ -142,6 +134,7 @@ export function DomainPicker({ onComplete, onBack }: DomainPickerProps) {
             context={context}
             selection={selection}
             onSelect={handleSelect}
+            onConnectOwnSite={() => setMode("custom")}
           />
         </TabsContent>
 

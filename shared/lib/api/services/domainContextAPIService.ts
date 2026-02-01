@@ -30,10 +30,13 @@ export interface BrainstormContext {
   social_proof: string | null;
 }
 
+export type PlanTier = "starter" | "growth" | "pro";
+
 export interface GetDomainContextResponse {
   existing_domains: DomainWithWebsite[];
   platform_subdomain_credits: PlatformSubdomainCredits;
   brainstorm_context: BrainstormContext | null;
+  plan_tier: PlanTier | null;
 }
 
 /**

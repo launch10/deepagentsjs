@@ -17,6 +17,7 @@ export interface Launch10SitePickerProps {
   context?: GetDomainContextResponse | null;
   selection: DomainSelection | null;
   onSelect: (selection: DomainSelection) => void;
+  onConnectOwnSite?: () => void;
 }
 
 // ============================================================================
@@ -28,6 +29,7 @@ export function Launch10SitePicker({
   context,
   selection,
   onSelect,
+  onConnectOwnSite,
 }: Launch10SitePickerProps) {
   // Track which domain is selected in dropdown (may differ from final selection with path)
   const [selectedDomain, setSelectedDomain] = useState<string | null>(
@@ -128,6 +130,7 @@ export function Launch10SitePicker({
             selectedDomain={selectedDomain}
             isOutOfCredits={isOutOfCredits}
             onSelect={handleDomainSelect}
+            onConnectOwnSite={onConnectOwnSite}
           />
         </div>
 

@@ -126,6 +126,7 @@ function createMockDomainContext(
       solution: "10-minute workouts",
       social_proof: null,
     },
+    plan_tier: null,
     ...overrides,
   };
 }

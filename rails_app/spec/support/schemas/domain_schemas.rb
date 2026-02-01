@@ -10,8 +10,23 @@ module APISchemas
           domain: {type: :string, description: 'Domain name'},
           account_id: APISchemas.id_field,
           website_id: {type: :integer, nullable: true, description: 'Associated website ID'},
+          website_name: {type: :string, nullable: true, description: 'Associated website name'},
           is_platform_subdomain: {type: :boolean, description: 'Whether this is a platform subdomain'},
           cloudflare_zone_id: {type: :string, nullable: true, description: 'Cloudflare zone ID'},
+          website_urls: {
+            type: :array,
+            nullable: true,
+            items: {
+              type: :object,
+              properties: {
+                id: APISchemas.id_field,
+                path: {type: :string, description: 'URL path'},
+                website_id: {type: :integer, description: 'Website ID'}
+              },
+              required: ['id', 'path', 'website_id']
+            },
+            description: 'URLs associated with this domain (only included when include_website_urls=true)'
+          },
           **APISchemas.timestamps
         },
         required: [
@@ -32,9 +47,19 @@ module APISchemas
           domains: {
             type: :array,
             items: response
-          }
+          },
+          platform_subdomain_credits: {
+            type: :object,
+            properties: {
+              limit: {type: :integer, description: 'Maximum platform subdomains allowed'},
+              used: {type: :integer, description: 'Number of platform subdomains used'},
+              remaining: {type: :integer, description: 'Remaining platform subdomains'}
+            },
+            required: ['limit', 'used', 'remaining']
+          },
+          plan_tier: {type: :string, nullable: true, description: 'User plan tier (starter, growth, pro)'}
         },
-        required: ['domains']
+        required: ['domains', 'platform_subdomain_credits']
       }
     end
 

@@ -24,7 +24,7 @@ module GoogleDocs
 
     def sync_all(force: false)
       files = client.list_files_in_folder(FOLDER_PATHS["FAQs"])
-      Rails.logger.info("[GoogleDocs::SyncService] Found #{files.count} documents in FAQs#{force ? ' (force mode)' : ''}")
+      Rails.logger.info("[GoogleDocs::SyncService] Found #{files.count} documents in FAQs#{force ? " (force mode)" : ""}")
 
       results = { queued: [], skipped: [], failed: [] }
 

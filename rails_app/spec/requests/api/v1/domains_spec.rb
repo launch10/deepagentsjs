@@ -16,6 +16,77 @@ RSpec.describe "Domains API", type: :request do
     subscribe_account(account, plan_name: "growth_monthly")
   end
 
+  path "/api/v1/domains" do
+    get "Lists all domains for the current account" do
+      tags "Domains"
+      produces "application/json"
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: true
+      parameter name: "X-Signature", in: :header, type: :string, required: false
+      parameter name: "X-Timestamp", in: :header, type: :string, required: false
+      parameter name: :website_id, in: :query, type: :integer, required: false,
+        description: "Filter domains by website ID"
+      parameter name: :include_website_urls, in: :query, type: :boolean, required: false,
+        description: "Include website_urls for each domain"
+
+      response "200", "returns list of domains" do
+        schema APISchemas::Domain.list_response
+
+        let!(:website) { create(:website, account: account, project: project) }
+        let!(:domain) { create(:domain, :platform_subdomain, account: account, website: website) }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["domains"]).to be_an(Array)
+          expect(json["domains"].length).to eq(1)
+          expect(json["domains"][0]["id"]).to eq(domain.id)
+          expect(json["platform_subdomain_credits"]).to be_present
+          expect(json["platform_subdomain_credits"]["limit"]).to eq(2) # growth plan
+          expect(json["plan_tier"]).to eq("growth")
+        end
+      end
+
+      response "200", "returns domains with website_urls when requested" do
+        schema APISchemas::Domain.list_response
+
+        let!(:website) { create(:website, account: account, project: project) }
+        let!(:domain) { create(:domain, :platform_subdomain, account: account, website: website) }
+        let!(:website_url) { create(:website_url, account: account, domain: domain, website: website, path: "/landing") }
+        let(:include_website_urls) { true }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["domains"][0]["website_urls"]).to be_an(Array)
+          expect(json["domains"][0]["website_urls"].length).to eq(1)
+          expect(json["domains"][0]["website_urls"][0]["path"]).to eq("/landing")
+        end
+      end
+
+      response "200", "filters domains by website_id" do
+        schema APISchemas::Domain.list_response
+
+        let!(:website1) { create(:website, account: account, project: project) }
+        let!(:other_project) { create(:project, account: account) }
+        let!(:website2) { create(:website, account: account, project: other_project) }
+        let!(:domain1) { create(:domain, :platform_subdomain, account: account, website: website1) }
+        let!(:domain2) { create(:domain, :platform_subdomain, account: account, website: website2) }
+        let(:website_id) { website1.id }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["domains"].length).to eq(1)
+          expect(json["domains"][0]["id"]).to eq(domain1.id)
+        end
+      end
+
+      response "401", "unauthorized - missing token" do
+        let(:Authorization) { nil }
+
+        run_test!
+      end
+    end
+  end
+
   path "/api/v1/domains/{id}" do
     patch "Reassigns a domain to a different website" do
       tags "Domains"

@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { fn } from "storybook/test";
 import WebsiteChatInput from "@components/website/sidebar/chat/WebsiteChatInput";
 
 const meta = {
@@ -9,9 +8,7 @@ const meta = {
   parameters: {
     layout: "centered",
   },
-  args: {
-    onSubmit: fn(),
-  },
+  args: {},
   decorators: [
     (Story) => (
       <div style={{ width: "280px" }}>
@@ -25,12 +22,6 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
-
-export const CustomPlaceholder: Story = {
-  args: {
-    placeholder: "What would you like to change?",
-  },
-};
 
 export const Disabled: Story = {
   args: {

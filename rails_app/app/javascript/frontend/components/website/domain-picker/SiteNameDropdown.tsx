@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { ChevronDownIcon, StarIcon, CheckIcon, PlusIcon } from "@heroicons/react/24/solid";
+import { ChevronDownIcon, StarIcon, CheckIcon, LinkIcon } from "@heroicons/react/24/solid";
 import { cn } from "~/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { Input } from "@components/ui/input";
@@ -21,6 +21,7 @@ export interface SiteNameDropdownProps {
     source: "existing" | "generated" | "custom",
     existingDomainId?: number
   ) => void;
+  onConnectOwnSite?: () => void;
 }
 
 const PLATFORM_SUFFIX = ".launch10.site";
@@ -53,10 +54,10 @@ export function SiteNameDropdown({
   selectedDomain,
   isOutOfCredits,
   onSelect,
+  onConnectOwnSite,
 }: SiteNameDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [customInput, setCustomInput] = useState("");
-  const [showCustomInput, setShowCustomInput] = useState(false);
 
   // Parse recommendations into existing and generated
   const existingSites = useMemo(() => {
@@ -92,7 +93,6 @@ export function SiteNameDropdown({
   ) => {
     onSelect(domain, subdomain, source, existingDomainId);
     setIsOpen(false);
-    setShowCustomInput(false);
   };
 
   // Handle custom subdomain submission
@@ -104,11 +104,13 @@ export function SiteNameDropdown({
     const domain = `${subdomain}${PLATFORM_SUFFIX}`;
     onSelect(domain, subdomain, "custom");
     setIsOpen(false);
-    setShowCustomInput(false);
     setCustomInput("");
   };
 
   const customValidation = validateSubdomain(customInput.toLowerCase().trim());
+
+  // Check if user can connect custom domains (Growth or Pro plan)
+  const canConnectCustomDomain = context?.plan_tier === "growth" || context?.plan_tier === "pro";
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -134,28 +136,102 @@ export function SiteNameDropdown({
 
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
         <div className="max-h-80 overflow-y-auto">
+          {/* Create New Site Section - Always at top */}
+          <div className="p-2">
+            <div className="px-2 py-1.5 text-xs font-medium text-base-400">Create New Site</div>
+            <Input
+              type="text"
+              value={customInput}
+              onChange={(e) => setCustomInput(e.target.value.toLowerCase())}
+              placeholder="Type to create your own"
+              className="text-sm"
+              disabled={isOutOfCredits}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && customValidation.valid) {
+                  handleCustomSubmit();
+                }
+              }}
+            />
+            {customInput && customValidation.error && (
+              <p className="text-xs text-destructive mt-1 px-1">{customValidation.error}</p>
+            )}
+          </div>
+
           {/* Existing Sites Section */}
           {existingSites.length > 0 && (
-            <div className="p-1">
-              <div className="px-2 py-1.5 text-xs font-semibold text-base-400 uppercase tracking-wide">
-                Your Existing Sites
-              </div>
-              {existingSites.map((site) => {
-                const websiteName = context?.existing_domains?.find(
-                  (d) => d.domain === site.domain
-                )?.website_name;
+            <>
+              <div className="border-t border-neutral-200" />
+              <div className="p-1">
+                <div className="px-2 py-1.5 text-xs font-medium text-base-400">
+                  Your Existing Sites
+                </div>
+                {existingSites.map((site) => {
+                  const websiteName = context?.existing_domains?.find(
+                    (d) => d.domain === site.domain
+                  )?.website_name;
 
-                return (
+                  return (
+                    <button
+                      key={site.domain}
+                      type="button"
+                      onClick={() =>
+                        handleSelect(site.domain, site.subdomain, "existing", site.existingDomainId)
+                      }
+                      className={cn(
+                        "w-full flex items-center gap-2 px-2 py-2 rounded text-sm text-left",
+                        "hover:bg-neutral-100 transition-colors",
+                        selectedDomain === site.domain && "bg-primary-50"
+                      )}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-base-600">
+                            {site.subdomain}
+                            <span className="text-base-400">{PLATFORM_SUFFIX}</span>
+                          </span>
+                          {isTopRecommendation(site.domain) && (
+                            <span
+                              data-testid={`recommendation-star-${site.domain}`}
+                              className="inline-flex items-center gap-0.5 text-xs text-amber-600"
+                            >
+                              <StarIcon className="size-3 fill-amber-400" />
+                              <span>Recommended</span>
+                            </span>
+                          )}
+                        </div>
+                        {websiteName && (
+                          <span className="text-xs text-base-400">From: {websiteName}</span>
+                        )}
+                      </div>
+                      {selectedDomain === site.domain && (
+                        <CheckIcon className="size-4 text-primary-500" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* Suggested Sites Section */}
+          {suggestedSites.length > 0 && (
+            <>
+              <div className="border-t border-neutral-200" />
+              <div className="p-1">
+                <div className="px-2 py-1.5 text-xs font-medium text-base-400">
+                  Create New Site (Suggestions)
+                </div>
+                {suggestedSites.map((site) => (
                   <button
                     key={site.domain}
                     type="button"
-                    onClick={() =>
-                      handleSelect(site.domain, site.subdomain, "existing", site.existingDomainId)
-                    }
+                    disabled={isOutOfCredits}
+                    onClick={() => handleSelect(site.domain, site.subdomain, "generated")}
                     className={cn(
                       "w-full flex items-center gap-2 px-2 py-2 rounded text-sm text-left",
                       "hover:bg-neutral-100 transition-colors",
-                      selectedDomain === site.domain && "bg-primary-50"
+                      selectedDomain === site.domain && "bg-primary-50",
+                      isOutOfCredits && "opacity-50 cursor-not-allowed"
                     )}
                   >
                     <div className="flex-1">
@@ -174,127 +250,42 @@ export function SiteNameDropdown({
                           </span>
                         )}
                       </div>
-                      {websiteName && (
-                        <span className="text-xs text-base-400">From: {websiteName}</span>
+                      {site.reasoning && (
+                        <span className="text-xs text-base-400">{site.reasoning}</span>
                       )}
                     </div>
                     {selectedDomain === site.domain && (
                       <CheckIcon className="size-4 text-primary-500" />
                     )}
                   </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Divider */}
-          {existingSites.length > 0 && suggestedSites.length > 0 && (
-            <div className="border-t border-neutral-200 my-1" />
-          )}
-
-          {/* Suggested Sites Section */}
-          {suggestedSites.length > 0 && (
-            <div className="p-1">
-              <div className="px-2 py-1.5 text-xs font-semibold text-base-400 uppercase tracking-wide">
-                Suggestions
+                ))}
               </div>
-              {suggestedSites.map((site) => (
-                <button
-                  key={site.domain}
-                  type="button"
-                  disabled={isOutOfCredits}
-                  onClick={() => handleSelect(site.domain, site.subdomain, "generated")}
-                  className={cn(
-                    "w-full flex items-center gap-2 px-2 py-2 rounded text-sm text-left",
-                    "hover:bg-neutral-100 transition-colors",
-                    selectedDomain === site.domain && "bg-primary-50",
-                    isOutOfCredits && "opacity-50 cursor-not-allowed"
-                  )}
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-base-600">
-                        {site.subdomain}
-                        <span className="text-base-400">{PLATFORM_SUFFIX}</span>
-                      </span>
-                      {isTopRecommendation(site.domain) && !existingSites.length && (
-                        <span
-                          data-testid={`recommendation-star-${site.domain}`}
-                          className="inline-flex items-center gap-0.5 text-xs text-amber-600"
-                        >
-                          <StarIcon className="size-3 fill-amber-400" />
-                          <span>Recommended</span>
-                        </span>
-                      )}
-                    </div>
-                    {site.reasoning && (
-                      <span className="text-xs text-base-400">{site.reasoning}</span>
-                    )}
-                  </div>
-                  {selectedDomain === site.domain && (
-                    <CheckIcon className="size-4 text-primary-500" />
-                  )}
-                </button>
-              ))}
-            </div>
+            </>
           )}
 
-          {/* Divider */}
-          {(existingSites.length > 0 || suggestedSites.length > 0) && (
-            <div className="border-t border-neutral-200 my-1" />
-          )}
-
-          {/* Custom Input Section */}
-          <div className="p-1">
-            {showCustomInput ? (
-              <div className="px-2 py-2">
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="text"
-                    value={customInput}
-                    onChange={(e) => setCustomInput(e.target.value.toLowerCase())}
-                    placeholder="Type your subdomain"
-                    className="flex-1 text-sm"
-                    autoFocus
-                    disabled={isOutOfCredits}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && customValidation.valid) {
-                        handleCustomSubmit();
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCustomSubmit}
-                    disabled={!customValidation.valid || isOutOfCredits}
-                    className={cn(
-                      "px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                      customValidation.valid && !isOutOfCredits
-                        ? "bg-primary-500 text-white hover:bg-primary-600"
-                        : "bg-neutral-200 text-neutral-400 cursor-not-allowed"
-                    )}
-                  >
-                    Use
-                  </button>
-                </div>
-                {customInput && customValidation.error && (
-                  <p className="text-xs text-destructive mt-1">{customValidation.error}</p>
-                )}
+          {/* Connect your own site link */}
+          <div className="border-t border-neutral-200" />
+          <div className="p-2">
+            <button
+              type="button"
+              data-testid="connect-own-site-button"
+              className="w-full flex items-center gap-2 px-2 py-2 rounded text-sm text-left hover:bg-neutral-100 transition-colors"
+              onClick={() => {
+                setIsOpen(false);
+                onConnectOwnSite?.();
+              }}
+            >
+              <LinkIcon className="size-4 text-base-400" />
+              <span className="text-base-500">Connect your own site</span>
+            </button>
+            {/* Show upgrade badge only for Starter plan users */}
+            {!canConnectCustomDomain && (
+              <div className="flex justify-center mt-1" data-testid="upgrade-badge">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-amber-400 to-orange-400 text-white">
+                  <span>✨</span>
+                  <span>Available on Growth & Pro Plan</span>
+                </span>
               </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowCustomInput(true)}
-                disabled={isOutOfCredits}
-                className={cn(
-                  "w-full flex items-center gap-2 px-2 py-2 rounded text-sm text-left",
-                  "hover:bg-neutral-100 transition-colors",
-                  isOutOfCredits && "opacity-50 cursor-not-allowed"
-                )}
-              >
-                <PlusIcon className="size-4 text-primary-500" />
-                <span className="text-primary-500">Create your own</span>
-              </button>
             )}
           </div>
         </div>

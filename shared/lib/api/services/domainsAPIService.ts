@@ -30,6 +30,14 @@ export type UpdateDomainResponse = NonNullable<
   paths["/api/v1/domains/{id}"]["patch"]["responses"][200]["content"]["application/json"]
 >;
 
+export type SearchDomainsRequest = NonNullable<
+  paths["/api/v1/domains/search"]["post"]["requestBody"]
+>["content"]["application/json"];
+
+export type SearchDomainsResponse = NonNullable<
+  paths["/api/v1/domains/search"]["post"]["responses"][200]["content"]["application/json"]
+>;
+
 // ============================================================================
 // Service Class
 // ============================================================================
@@ -136,5 +144,26 @@ export class DomainsAPIService extends RailsAPIBase {
     }
 
     return response.data satisfies UpdateDomainResponse;
+  }
+
+  /**
+   * Search for domain availability
+   * Checks if the given domain candidates are available across all users
+   */
+  async search(candidates: string[]): Promise<SearchDomainsResponse> {
+    const client = await this.getClient();
+    const response = await client.POST("/api/v1/domains/search", {
+      body: { candidates },
+    });
+
+    if (response.error) {
+      throw new Error(`Failed to search domains: ${JSON.stringify(response.error)}`);
+    }
+
+    if (!response.data) {
+      throw new Error("Failed to search domains: No data returned");
+    }
+
+    return response.data satisfies SearchDomainsResponse;
   }
 }

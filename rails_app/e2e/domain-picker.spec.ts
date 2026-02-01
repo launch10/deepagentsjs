@@ -80,7 +80,7 @@ test.describe("Domain Picker", () => {
       });
     });
 
-    test.skip("shows existing domains section when user has existing domains", async ({ page }) => {
+    test("shows existing domains section when user has existing domains", async ({ page }) => {
       // This test requires domain recommendations to load
       await domainPickerPage.goto(projectUuid);
       await domainPickerPage.waitForLoaded();
@@ -92,7 +92,7 @@ test.describe("Domain Picker", () => {
       await domainPickerPage.expectExistingDomainsVisible();
     });
 
-    test.skip("displays AI-generated domain suggestions", async ({ page }) => {
+    test("displays AI-generated domain suggestions", async ({ page }) => {
       await domainPickerPage.goto(projectUuid);
       await domainPickerPage.waitForLoaded();
 

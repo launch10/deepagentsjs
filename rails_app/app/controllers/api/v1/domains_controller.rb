@@ -38,10 +38,16 @@ class API::V1::DomainsController < API::BaseController
   end
 
   def index
-    domains = current_account.domains
+    domains = current_account.domains.includes(:website, :website_urls)
     domains = domains.where(website_id: params[:website_id]) if params[:website_id].present?
 
-    render json: {domains: domains.map(&:to_api_json)}
+    include_urls = ActiveModel::Type::Boolean.new.cast(params[:include_website_urls])
+
+    render json: {
+      domains: domains.map { |d| d.to_api_json(include_website_urls: include_urls) },
+      platform_subdomain_credits: platform_subdomain_credits,
+      plan_tier: current_account.plan&.plan_tier&.name
+    }
   end
 
   def show
