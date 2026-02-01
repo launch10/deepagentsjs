@@ -9,8 +9,10 @@ import { useMemo } from "react";
 import {
   DomainContextAPIService,
   DomainsAPIService,
+  WebsiteUrlsAPIService,
   type GetDomainContextResponse,
   type CreateDomainResponse,
+  type SearchWebsiteUrlsResponse,
 } from "@rails_api_base";
 import { useWebsiteId } from "~/stores/projectStore";
 import { useJwt, useRootPath } from "~/stores/sessionStore";
@@ -22,6 +24,12 @@ import { useJwt, useRootPath } from "~/stores/sessionStore";
 export const domainContextKeys = {
   all: ["domainContext"] as const,
   context: (websiteId: number) => [...domainContextKeys.all, "context", websiteId] as const,
+};
+
+export const websiteUrlsKeys = {
+  all: ["websiteUrls"] as const,
+  search: (domainId: number, paths: string[]) =>
+    [...websiteUrlsKeys.all, "search", domainId, paths.join(",")] as const,
 };
 
 // ============================================================================
@@ -42,6 +50,15 @@ export function useDomainsService() {
   const rootPath = useRootPath();
   return useMemo(
     () => new DomainsAPIService({ jwt: jwt ?? "", baseUrl: rootPath ?? "" }),
+    [jwt, rootPath]
+  );
+}
+
+export function useWebsiteUrlsService() {
+  const jwt = useJwt();
+  const rootPath = useRootPath();
+  return useMemo(
+    () => new WebsiteUrlsAPIService({ jwt: jwt ?? "", baseUrl: rootPath ?? "" }),
     [jwt, rootPath]
   );
 }
@@ -83,6 +100,7 @@ export function useDomainContext(websiteId?: number, options?: DomainContextQuer
 export interface CreateDomainVariables {
   domain: string;
   websiteId: number;
+  path?: string;
   isPlatformSubdomain?: boolean;
 }
 
@@ -105,10 +123,11 @@ export function useCreateDomain(options?: CreateDomainMutationOptions) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ domain, websiteId, isPlatformSubdomain }: CreateDomainVariables) => {
+    mutationFn: async ({ domain, websiteId, path, isPlatformSubdomain }: CreateDomainVariables) => {
       return service.create({
         domain,
         website_id: websiteId,
+        path: path ?? "/",
         is_platform_subdomain: isPlatformSubdomain ?? domain.endsWith(".launch10.site"),
       });
     },
@@ -145,6 +164,35 @@ export function useUpdateDomain(options?: UpdateDomainMutationOptions) {
         queryKey: domainContextKeys.context(variables.websiteId),
       });
     },
+    ...options,
+  });
+}
+
+// ============================================================================
+// Website URL Hooks
+// ============================================================================
+
+type SearchWebsiteUrlsQueryOptions = Omit<
+  UseQueryOptions<SearchWebsiteUrlsResponse, Error>,
+  "queryKey" | "queryFn"
+>;
+
+/**
+ * Hook for checking path availability on a domain.
+ * Returns availability status for each candidate path.
+ */
+export function useSearchWebsiteUrls(
+  domainId: number | undefined,
+  paths: string[],
+  options?: SearchWebsiteUrlsQueryOptions
+) {
+  const service = useWebsiteUrlsService();
+
+  return useQuery({
+    queryKey: websiteUrlsKeys.search(domainId ?? 0, paths),
+    queryFn: () => service.search(domainId!, paths),
+    enabled: !!domainId && paths.length > 0,
+    staleTime: 30 * 1000, // 30 seconds
     ...options,
   });
 }

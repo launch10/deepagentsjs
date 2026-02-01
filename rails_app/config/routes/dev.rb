@@ -16,6 +16,7 @@ namespace :test do
   get "database/first_project", to: "database#first_project"
   post "database/set_credits", to: "database#set_credits"
   post "database/set_credit_pack_stripe_price", to: "database#set_credit_pack_stripe_price"
+  post "database/fill_subdomain_limit", to: "database#fill_subdomain_limit"
   get "database/first_website", to: "database#first_website"
 
   get "tracking/stats", to: "tracking#stats"

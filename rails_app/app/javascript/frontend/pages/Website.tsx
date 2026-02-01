@@ -217,6 +217,7 @@ function WebsiteDomainStep() {
     createDomain.mutate({
       domain: selection.domain,
       websiteId: website.id,
+      path: selection.path,
       isPlatformSubdomain: selection.domain.endsWith(".launch10.site"),
     });
   }, [selection, website?.id, createDomain]);

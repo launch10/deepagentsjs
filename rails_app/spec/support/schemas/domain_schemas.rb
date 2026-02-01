@@ -152,5 +152,26 @@ module APISchemas
         required: ['domain_id', 'domain', 'verification_status']
       }
     end
+
+    # Response for POST /api/v1/domains - creates domain + website_url
+    def self.create_response
+      {
+        type: :object,
+        properties: {
+          domain: response,
+          website_url: APISchemas::WebsiteUrl.response,
+          platform_subdomain_credits: {
+            type: :object,
+            properties: {
+              limit: {type: :integer, description: 'Maximum platform subdomains allowed'},
+              used: {type: :integer, description: 'Number of platform subdomains used'},
+              remaining: {type: :integer, description: 'Remaining platform subdomains'}
+            },
+            required: ['limit', 'used', 'remaining']
+          }
+        },
+        required: ['domain', 'website_url', 'platform_subdomain_credits']
+      }
+    end
   end
 end
