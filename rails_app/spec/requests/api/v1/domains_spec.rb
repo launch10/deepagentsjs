@@ -290,4 +290,206 @@ RSpec.describe "Domains API", type: :request do
       end
     end
   end
+
+  path "/api/v1/domains" do
+    post "Creates a domain and website URL" do
+      tags "Domains"
+      consumes "application/json"
+      produces "application/json"
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: true
+      parameter name: "X-Signature", in: :header, type: :string, required: false
+      parameter name: "X-Timestamp", in: :header, type: :string, required: false
+      parameter name: :body, in: :body, schema: {
+        type: :object,
+        properties: {
+          domain: {
+            type: :object,
+            properties: {
+              domain: {type: :string},
+              website_id: {type: :integer},
+              path: {type: :string},
+              is_platform_subdomain: {type: :boolean}
+            },
+            required: [:domain, :website_id]
+          }
+        }
+      }
+
+      response "201", "successfully creates a platform subdomain when under limit" do
+        schema APISchemas::Domain.create_response
+
+        let!(:website) { create(:website, account: account, project: project) }
+        let(:body) { {domain: {domain: "mysite.launch10.site", website_id: website.id}} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["domain"]["domain"]).to eq("mysite.launch10.site")
+          expect(json["domain"]["is_platform_subdomain"]).to eq(true)
+          expect(json["website_url"]["path"]).to eq("/")
+          expect(json["website_url"]["website_id"]).to eq(website.id)
+          expect(json["platform_subdomain_credits"]).to be_present
+        end
+      end
+
+      response "201", "successfully creates a custom domain" do
+        schema APISchemas::Domain.create_response
+
+        let!(:website) { create(:website, account: account, project: project) }
+        let(:body) { {domain: {domain: "mycustom.com", website_id: website.id}} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["domain"]["domain"]).to eq("www.mycustom.com") # normalized
+          expect(json["domain"]["is_platform_subdomain"]).to eq(false)
+          expect(json["website_url"]["path"]).to eq("/")
+        end
+      end
+
+      response "201", "creates website_url for existing domain owned by account" do
+        schema APISchemas::Domain.create_response
+
+        let!(:website) { create(:website, account: account, project: project) }
+        let!(:existing_domain) { create(:domain, domain: "mysite.launch10.site", account: account) }
+        let(:body) { {domain: {domain: "mysite.launch10.site", website_id: website.id, path: "/landing"}} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["domain"]["id"]).to eq(existing_domain.id)
+          expect(json["domain"]["domain"]).to eq("mysite.launch10.site")
+          expect(json["website_url"]["path"]).to eq("/landing")
+          expect(json["website_url"]["domain_id"]).to eq(existing_domain.id)
+        end
+      end
+
+      response "422", "rejects platform subdomain when at limit" do
+        # Use starter plan which has limit of 1
+        before do
+          # Re-subscribe to starter plan (limit of 1 subdomain)
+          subscribe_account(account, plan_name: "starter_monthly")
+          # Create one domain to hit the limit
+          create(:domain, :platform_subdomain, account: account)
+        end
+
+        let!(:website) { create(:website, account: account, project: project) }
+        let(:body) { {domain: {domain: "another.launch10.site", website_id: website.id}} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["errors"]).to include("You have reached the maximum number of platform subdomains for your plan")
+        end
+      end
+
+      response "201", "still allows custom domain when at platform subdomain limit" do
+        schema APISchemas::Domain.create_response
+
+        before do
+          # Re-subscribe to starter plan (limit of 1 subdomain)
+          subscribe_account(account, plan_name: "starter_monthly")
+          # Create one domain to hit the limit
+          create(:domain, :platform_subdomain, account: account)
+        end
+
+        let!(:website) { create(:website, account: account, project: project) }
+        let(:body) { {domain: {domain: "mycustom.com", website_id: website.id}} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["domain"]["domain"]).to eq("www.mycustom.com")
+          expect(json["domain"]["is_platform_subdomain"]).to eq(false)
+        end
+      end
+
+      response "422", "rejects domain owned by another account" do
+        let!(:other_user) { create(:user) }
+        let!(:other_account) { other_user.owned_account }
+        let!(:website) { create(:website, account: account, project: project) }
+        let!(:other_domain) { create(:domain, domain: "taken.launch10.site", account: other_account) }
+        let(:body) { {domain: {domain: "taken.launch10.site", website_id: website.id}} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["errors"]).to include("This domain is not available")
+        end
+      end
+
+      response "422", "rejects when website not found" do
+        let(:body) { {domain: {domain: "mysite.launch10.site", website_id: 999999}} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["errors"]).to include("Website not found")
+        end
+      end
+
+      response "422", "rejects restricted domains" do
+        let!(:website) { create(:website, account: account, project: project) }
+        let(:body) { {domain: {domain: "uploads.launch10.ai", website_id: website.id}} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["errors"]).to include("Domain is restricted")
+        end
+      end
+
+      response "201", "creates with custom path" do
+        schema APISchemas::Domain.create_response
+
+        let!(:website) { create(:website, account: account, project: project) }
+        let(:body) { {domain: {domain: "mysite.launch10.site", website_id: website.id, path: "/pricing"}} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["website_url"]["path"]).to eq("/pricing")
+        end
+      end
+
+      response "201", "is idempotent for existing domain+path combination" do
+        schema APISchemas::Domain.create_response
+
+        let!(:website) { create(:website, account: account, project: project) }
+        let!(:existing_domain) { create(:domain, domain: "mysite.launch10.site", account: account) }
+        let!(:existing_url) { create(:website_url, domain: existing_domain, website: website, account: account, path: "/landing") }
+        let(:body) { {domain: {domain: "mysite.launch10.site", website_id: website.id, path: "/landing"}} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          # Idempotent - returns the existing domain and URL
+          expect(json["domain"]["id"]).to eq(existing_domain.id)
+          expect(json["website_url"]["id"]).to eq(existing_url.id)
+          expect(json["website_url"]["path"]).to eq("/landing")
+        end
+      end
+
+      response "201", "allows adding path to existing domain even at subdomain limit" do
+        schema APISchemas::Domain.create_response
+
+        before do
+          # Re-subscribe to starter plan (limit of 1 subdomain)
+          subscribe_account(account, plan_name: "starter_monthly")
+        end
+
+        # Create the domain that fills the limit
+        let!(:existing_domain) { create(:domain, :platform_subdomain, account: account) }
+        let!(:website) { create(:website, account: account, project: project) }
+        # Adding a new path to existing domain should NOT count against the limit
+        let(:body) { {domain: {domain: existing_domain.domain, website_id: website.id, path: "/new-page"}} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["domain"]["id"]).to eq(existing_domain.id)
+          expect(json["website_url"]["path"]).to eq("/new-page")
+          # Verify we're still at 1 used (not 2)
+          expect(json["platform_subdomain_credits"]["used"]).to eq(1)
+        end
+      end
+
+      response "401", "unauthorized - missing token" do
+        let(:body) { {domain: {domain: "test.launch10.site"}} }
+        let(:Authorization) { nil }
+
+        run_test!
+      end
+    end
+  end
 end

@@ -207,12 +207,66 @@ class Test::DatabaseController < Test::TestController
     params.require(:credit_pack).permit(:id, :stripe_price_id)
   end
 
+  def subdomain_limit_params
+    params.require(:subdomains).permit(:email)
+  end
+
   def ensure_snapshots_directory_exists
     SNAPSHOT_DIR.mkpath unless SNAPSHOT_DIR.exist?
   end
 
   def actually_truncate
     Database::Snapshotter.new.truncate
+  end
+
+  # Creates platform subdomains to fill up the account's subdomain limit
+  # Expects: { subdomains: { email: string } }
+  # Returns: { subdomains_created: number, limit: number, used: number }
+  def fill_subdomain_limit
+    params_obj = subdomain_limit_params
+    user = User.find_by(email: params_obj[:email])
+
+    unless user
+      render json: {
+        status: "error",
+        errors: ["User not found: #{params_obj[:email]}"]
+      }, status: :not_found and return
+    end
+
+    account = user.owned_account
+    unless account
+      render json: {
+        status: "error",
+        errors: ["Account not found for user: #{params_obj[:email]}"]
+      }, status: :not_found and return
+    end
+
+    limit = account.plan&.limit_for("platform_subdomains") || 0
+    current_count = account.domains.platform_subdomains.count
+    domains_to_create = limit - current_count
+
+    created = 0
+    domains_to_create.times do |i|
+      domain_name = "test-subdomain-#{SecureRandom.hex(4)}.launch10.site"
+      domain = account.domains.create!(
+        domain: domain_name,
+        is_platform_subdomain: true
+      )
+      created += 1 if domain.persisted?
+    end
+
+    render json: {
+      status: "ok",
+      message: "Subdomain limit filled",
+      subdomains_created: created,
+      limit: limit,
+      used: account.domains.platform_subdomains.count
+    }, status: :ok
+  rescue => e
+    render json: {
+      status: "error",
+      errors: ["Failed to fill subdomain limit: #{e.message}"]
+    }, status: :unprocessable_content
   end
 
   # Find or create a test admin user for credit adjustments

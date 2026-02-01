@@ -194,4 +194,32 @@ export const DatabaseSnapshotter = {
     const data = await response.json();
     return data.account;
   },
+
+  /**
+   * Creates platform subdomains to fill up the account's subdomain limit.
+   * Useful for testing "out of credits" scenarios in domain picker.
+   *
+   * @param email - The user's email address
+   */
+  async fillSubdomainLimit(email: string): Promise<{
+    subdomains_created: number;
+    limit: number;
+    used: number;
+  }> {
+    const response = await fetch(`${BASE_URL}/test/database/fill_subdomain_limit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subdomains: { email },
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to fill subdomain limit: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    return data;
+  },
 };

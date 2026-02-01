@@ -60,13 +60,63 @@ class API::V1::DomainsController < API::BaseController
     render json: domain.to_api_json
   end
 
+  # Unified endpoint for claiming a domain + path for a website.
+  # Handles all cases:
+  # 1. New domain (creates Domain + WebsiteUrl)
+  # 2. Existing domain owned by account (finds Domain, creates WebsiteUrl)
+  # 3. Existing domain owned by another account (returns error)
+  # 4. Out of credits for new platform subdomain (returns error)
   def create
-    domain = current_account.domains.build(domain_params)
+    website_id = domain_params[:website_id]
 
-    if domain.save
-      render json: domain.to_api_json, status: :created
+    # Validate website belongs to current account
+    website = current_account.websites.find_by(id: website_id)
+    unless website
+      render json: {errors: ["Website not found"]}, status: :unprocessable_entity and return
+    end
+    domain_string = domain_params[:domain]
+    path = domain_params[:path] || "/"
+
+    # Check if domain already exists (globally)
+    existing_domain = Domain.unscoped.find_by(domain: domain_string)
+
+    if existing_domain
+      if existing_domain.account_id == current_account.id
+        # User already owns this domain - just create the WebsiteUrl
+        domain = existing_domain
+      else
+        # Domain belongs to another account
+        render json: {errors: ["This domain is not available"]}, status: :unprocessable_entity and return
+      end
     else
-      render json: {errors: domain.errors.full_messages}, status: :unprocessable_entity
+      # Create new domain
+      domain = current_account.domains.build(
+        domain: domain_string,
+        website_id: website_id,
+        is_platform_subdomain: domain_params[:is_platform_subdomain]
+      )
+
+      unless domain.save
+        render json: {errors: domain.errors.full_messages}, status: :unprocessable_entity and return
+      end
+    end
+
+    # Create WebsiteUrl (domain + path + website combination)
+    website_url = WebsiteUrl.find_or_initialize_by(
+      domain_id: domain.id,
+      path: path,
+      account_id: current_account.id
+    )
+    website_url.website_id = website_id
+
+    if website_url.save
+      render json: {
+        domain: domain.to_api_json,
+        website_url: website_url.to_api_json,
+        platform_subdomain_credits: platform_subdomain_credits
+      }, status: :created
+    else
+      render json: {errors: website_url.errors.full_messages}, status: :unprocessable_entity
     end
   end
 
@@ -129,7 +179,7 @@ class API::V1::DomainsController < API::BaseController
   private
 
   def domain_params
-    params.require(:domain).permit(:domain, :website_id, :is_platform_subdomain)
+    params.require(:domain).permit(:domain, :website_id, :is_platform_subdomain, :path)
   end
 
   def update_params

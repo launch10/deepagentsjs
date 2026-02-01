@@ -68,6 +68,10 @@ class Domain < ApplicationRecord
     where(is_platform_subdomain: false)
       .where(dns_verification_status: [nil, "pending", "failed"])
   }
+  scope :stale_unverified, ->(grace_period_days: 7) {
+    unverified_custom_domains
+      .where("created_at < ?", grace_period_days.days.ago)
+  }
 
   alias_attribute :platform_subdomain?, :is_platform_subdomain
 
@@ -81,6 +85,19 @@ class Domain < ApplicationRecord
 
   def blocked?
     firewall_rule&.blocked? || false
+  end
+
+  # Permanently releases this domain, making it available for anyone to claim again.
+  #
+  # This method:
+  # - Hard deletes the domain and associated website_urls from the database
+  # - Triggers Atlas sync to remove from Cloudflare (via before_destroy callbacks)
+  # - Frees up the subdomain slot for platform subdomains (count-based limit check)
+  #
+  # Use this for cleaning up stale/unverified domains or when a user explicitly
+  # wants to release a domain.
+  def release!
+    really_destroy!
   end
 
   private

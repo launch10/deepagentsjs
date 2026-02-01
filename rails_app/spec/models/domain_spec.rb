@@ -478,4 +478,120 @@ RSpec.describe Domain, type: :model do
       expect(json[:dns_last_checked_at]).to be_nil
     end
   end
+
+  describe '#release!' do
+    let(:account) { create(:account) }
+
+    describe 'for platform subdomains' do
+      let!(:domain) { create(:domain, domain: 'mysite.launch10.site', account: account, is_platform_subdomain: true) }
+
+      it 'hard deletes the domain from the database' do
+        domain_id = domain.id
+
+        domain.release!
+
+        # Should not exist even with paranoid queries
+        expect(Domain.with_deleted.find_by(id: domain_id)).to be_nil
+      end
+
+      it 'frees up the subdomain slot for the account' do
+        # Start with 1 platform subdomain
+        expect(account.domains.platform_subdomains.count).to eq(1)
+
+        domain.release!
+
+        # Count should decrease
+        expect(account.domains.platform_subdomains.count).to eq(0)
+      end
+
+      it 'allows the same domain to be claimed again by another account' do
+        domain_name = domain.domain
+        other_account = create(:account)
+
+        domain.release!
+
+        new_domain = Domain.new(domain: domain_name, account: other_account)
+        expect(new_domain).to be_valid
+        expect { new_domain.save! }.not_to raise_error
+      end
+    end
+
+    describe 'for custom domains' do
+      let!(:domain) { create(:domain, domain: 'www.mycustom.com', account: account, is_platform_subdomain: false) }
+
+      it 'hard deletes the domain from the database' do
+        domain_id = domain.id
+
+        domain.release!
+
+        expect(Domain.with_deleted.find_by(id: domain_id)).to be_nil
+      end
+    end
+
+    describe 'with associated records' do
+      let(:project) { create(:project, account: account) }
+      let(:website) { create(:website, project: project, account: account) }
+      let!(:domain) { create(:domain, domain: 'mysite.launch10.site', account: account, website: website) }
+      let!(:website_url) { create(:website_url, domain: domain, website: website, account: account, path: '/landing') }
+
+      it 'destroys associated website_urls' do
+        url_id = website_url.id
+
+        domain.release!
+
+        expect(WebsiteUrl.find_by(id: url_id)).to be_nil
+      end
+    end
+  end
+
+  describe '.stale_unverified' do
+    include ActiveSupport::Testing::TimeHelpers
+
+    let(:account) { create(:account) }
+
+    it 'returns custom domains created more than 7 days ago with pending/failed/nil DNS status' do
+      # Old unverified custom domain (should be included)
+      old_pending = travel_to(8.days.ago) do
+        create(:domain, domain: 'www.old-pending.com', account: account, is_platform_subdomain: false, dns_verification_status: 'pending')
+      end
+
+      old_failed = travel_to(10.days.ago) do
+        create(:domain, domain: 'www.old-failed.com', account: account, is_platform_subdomain: false, dns_verification_status: 'failed')
+      end
+
+      old_nil = travel_to(14.days.ago) do
+        create(:domain, domain: 'www.old-nil.com', account: account, is_platform_subdomain: false, dns_verification_status: nil)
+      end
+
+      # Old verified custom domain (should NOT be included)
+      old_verified = travel_to(8.days.ago) do
+        create(:domain, domain: 'www.old-verified.com', account: account, is_platform_subdomain: false, dns_verification_status: 'verified')
+      end
+
+      # Recent unverified custom domain (should NOT be included - within grace period)
+      recent_pending = create(:domain, domain: 'www.recent-pending.com', account: account, is_platform_subdomain: false, dns_verification_status: 'pending')
+
+      # Old platform subdomain (should NOT be included - platform subdomains don't need DNS verification)
+      old_platform = travel_to(8.days.ago) do
+        create(:domain, domain: 'old.launch10.site', account: account, is_platform_subdomain: true)
+      end
+
+      stale = Domain.stale_unverified
+
+      expect(stale).to include(old_pending, old_failed, old_nil)
+      expect(stale).not_to include(old_verified, recent_pending, old_platform)
+    end
+
+    it 'uses configurable grace period' do
+      old_domain = travel_to(4.days.ago) do
+        create(:domain, domain: 'www.four-days.com', account: account, is_platform_subdomain: false, dns_verification_status: 'pending')
+      end
+
+      # With default 7 days, should not be included
+      expect(Domain.stale_unverified).not_to include(old_domain)
+
+      # With 3 day grace period, should be included
+      expect(Domain.stale_unverified(grace_period_days: 3)).to include(old_domain)
+    end
+  end
 end

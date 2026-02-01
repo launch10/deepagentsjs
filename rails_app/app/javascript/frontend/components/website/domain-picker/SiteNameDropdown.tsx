@@ -139,19 +139,22 @@ export function SiteNameDropdown({
           {/* Create New Site Section */}
           <div className="px-4 py-3">
             <div className="text-sm font-medium text-base-400 mb-2">Create New Site</div>
-            <Input
-              type="text"
-              value={customInput}
-              onChange={(e) => setCustomInput(e.target.value.toLowerCase())}
-              placeholder="Type to create your own"
-              className="text-sm bg-neutral-50 border-neutral-200 rounded-lg"
-              disabled={isOutOfCredits}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && customValidation.valid) {
-                  handleCustomSubmit();
-                }
-              }}
-            />
+            <div className="flex items-center rounded-lg border border-neutral-200 bg-neutral-50 focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500">
+              <Input
+                type="text"
+                value={customInput}
+                onChange={(e) => setCustomInput(e.target.value.toLowerCase())}
+                placeholder="Type to create your own"
+                className="text-sm bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                disabled={isOutOfCredits}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && customValidation.valid) {
+                    handleCustomSubmit();
+                  }
+                }}
+              />
+              <span className="pr-3 text-sm text-base-400 whitespace-nowrap">{PLATFORM_SUFFIX}</span>
+            </div>
             {customInput && customValidation.error && (
               <p className="text-xs text-destructive mt-1">{customValidation.error}</p>
             )}
@@ -241,7 +244,7 @@ export function SiteNameDropdown({
             {/* Upgrade link - shown when out of credits */}
             {isOutOfCredits && (
               <a
-                href="/subscriptions"
+                href="/settings"
                 className="flex items-center gap-2 px-3 py-2 text-sm text-base-500 hover:text-base-600 transition-colors"
               >
                 <LockClosedIcon className="size-4" />
@@ -274,7 +277,7 @@ export function SiteNameDropdown({
             {/* Upgrade badge - shown for Starter users with purple-to-teal gradient */}
             {!canConnectCustomDomain && (
               <a
-                href="/subscriptions"
+                href="/settings"
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm text-white border border-[#5867C4] transition-all hover:opacity-90"
                 style={{ background: "linear-gradient(91deg, #5867C4 16.2%, #74BEA1 92.6%)" }}
                 data-testid="upgrade-badge"

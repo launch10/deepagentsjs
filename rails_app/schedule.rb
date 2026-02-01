@@ -23,6 +23,14 @@ Zhong.schedule do
     end
   end
 
+  category "Domains" do
+    # Release custom domains that have failed DNS verification for 7+ days
+    # Prevents domain squatting and frees up domains for legitimate owners
+    every(1.day, "release stale unverified domains", at: "04:00") do
+      Domains::ReleaseStaleDomainsWorker.perform_async
+    end
+  end
+
   category "FAQs" do
     every(30.minutes, "sync google docs") do
       GoogleDocs::IngestWorker.enqueue_with_tracking

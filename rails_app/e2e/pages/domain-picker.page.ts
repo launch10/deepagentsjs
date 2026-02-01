@@ -28,6 +28,15 @@ export class DomainPickerPage {
   readonly outOfCreditsBanner: Locator;
   readonly availabilityStatus: Locator;
 
+  // Page Name Availability Indicators
+  readonly pathCheckingIndicator: Locator;
+  readonly pathCheckingMessage: Locator;
+  readonly pathAvailableIndicator: Locator;
+  readonly pathAssignedIndicator: Locator;
+  readonly pathUnavailableIndicator: Locator;
+  readonly pathExistingIndicator: Locator;
+  readonly pathValidationError: Locator;
+
   // Custom Domain Picker
   readonly customDomainInput: Locator;
   readonly cnameInstructions: Locator;
@@ -70,6 +79,15 @@ export class DomainPickerPage {
     this.connectOwnSiteButton = page.getByTestId("connect-own-site-button");
     this.outOfCreditsBanner = page.getByTestId("out-of-credits-banner");
     this.availabilityStatus = page.getByTestId("availability-status");
+
+    // Page Name Availability Indicators
+    this.pathCheckingIndicator = page.getByTestId("path-checking-indicator");
+    this.pathCheckingMessage = page.getByTestId("path-checking-message");
+    this.pathAvailableIndicator = page.getByTestId("path-available-indicator");
+    this.pathAssignedIndicator = page.getByTestId("path-assigned-indicator");
+    this.pathUnavailableIndicator = page.getByTestId("path-unavailable-indicator");
+    this.pathExistingIndicator = page.getByTestId("path-existing-indicator");
+    this.pathValidationError = page.getByTestId("path-validation-error");
 
     // Custom Domain Picker
     this.customDomainInput = page.getByTestId("custom-domain-input");

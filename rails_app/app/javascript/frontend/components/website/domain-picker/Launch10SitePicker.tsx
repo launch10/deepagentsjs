@@ -9,6 +9,7 @@ import { Label } from "@components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip";
 import { SiteNameDropdown } from "./SiteNameDropdown";
 import { PageNameInput } from "./PageNameInput";
+import { useWebsiteId } from "~/stores/projectStore";
 import type { Website } from "@shared";
 import type { BaseDomainPickerProps } from "./DomainPicker";
 
@@ -33,6 +34,8 @@ export function Launch10SitePicker({
   onSelect,
   onConnectOwnSite,
 }: Launch10SitePickerProps) {
+  const websiteId = useWebsiteId();
+
   // Track which domain is selected in dropdown (may differ from final selection with path)
   const [selectedDomain, setSelectedDomain] = useState<string | null>(
     selection?.domain ?? recommendations?.topRecommendation?.domain ?? null
@@ -146,7 +149,7 @@ export function Launch10SitePicker({
             You've hit the limit of {context?.platform_subdomain_credits?.limit} subdomains allowed
             on your current subscription plan.{" "}
             <a
-              href="/subscriptions"
+              href="/settings"
               className="font-medium text-amber-700 hover:text-amber-800 underline"
             >
               Upgrade to add more.
@@ -197,7 +200,8 @@ export function Launch10SitePicker({
           <PageNameInput
             value={customPath}
             onChange={handlePathChange}
-            existingDomainId={selectedRec?.existingDomainId}
+            domainId={selectedRec?.existingDomainId}
+            websiteId={websiteId ?? undefined}
             recommendedPath={selectedRec?.path}
           />
         </div>

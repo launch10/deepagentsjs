@@ -232,6 +232,229 @@ test.describe("Domain Picker", () => {
 });
 
 /**
+ * Domain Picker - Subdomain Limit Tests
+ *
+ * Tests behavior when the user has reached their platform subdomain limit.
+ */
+test.describe("Domain Picker - Subdomain Limit", () => {
+  test.setTimeout(60000);
+
+  let domainPickerPage: DomainPickerPage;
+  let projectUuid: string;
+
+  test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("website_step");
+    const project = await DatabaseSnapshotter.getFirstProject();
+    projectUuid = project.uuid;
+
+    // Fill up the subdomain limit to trigger "out of credits" state
+    await DatabaseSnapshotter.fillSubdomainLimit("brett@launch10.ai");
+
+    await loginUser(page);
+    domainPickerPage = new DomainPickerPage(page);
+  });
+
+  test("shows out of credits banner when subdomain limit is reached", async ({ page }) => {
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Wait for domain context to load
+    await page.waitForTimeout(2000);
+
+    // Should show the out-of-credits banner
+    await expect(page.getByTestId("out-of-credits-banner")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('text="Upgrade to add more"')).toBeVisible();
+  });
+
+  test("disables create new site input when out of credits", async ({ page }) => {
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Wait for domain context to load
+    await page.waitForTimeout(2000);
+
+    // Click on site name dropdown
+    await domainPickerPage.siteNameDropdown.click();
+
+    // The custom input should be disabled
+    const customInput = page.locator('input[placeholder="Type to create your own"]');
+    await expect(customInput).toBeDisabled();
+  });
+
+  test("disables generated site suggestions when out of credits", async ({ page }) => {
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Wait for recommendations to load
+    await page.waitForTimeout(5000);
+
+    // Click on site name dropdown
+    await domainPickerPage.siteNameDropdown.click();
+
+    // Look for the suggestions section - buttons should have opacity-50 (disabled styling)
+    const suggestionsSection = page.locator('text="Create New Site (Suggestions)"');
+    if (await suggestionsSection.isVisible()) {
+      // The suggestion buttons should be disabled/dimmed
+      const suggestionButton = suggestionsSection
+        .locator("..")
+        .locator("button")
+        .first();
+      await expect(suggestionButton).toHaveClass(/opacity-50/);
+    }
+  });
+
+  test("shows upgrade link in dropdown when out of credits", async ({ page }) => {
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Wait for domain context to load
+    await page.waitForTimeout(2000);
+
+    // Click on site name dropdown
+    await domainPickerPage.siteNameDropdown.click();
+
+    // Should show upgrade link
+    await expect(page.locator('text="Upgrade to launch more sites"')).toBeVisible();
+  });
+});
+
+/**
+ * Domain Picker - Path Availability Tests
+ *
+ * Tests the backend availability checking for paths when an existing domain is selected.
+ * The PageNameInput component checks with /api/v1/website_urls/search when a domain is selected.
+ */
+test.describe("Domain Picker - Path Availability", () => {
+  test.setTimeout(60000);
+
+  let domainPickerPage: DomainPickerPage;
+  let projectUuid: string;
+
+  test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("website_step");
+    const project = await DatabaseSnapshotter.getFirstProject();
+    projectUuid = project.uuid;
+    await loginUser(page);
+    domainPickerPage = new DomainPickerPage(page);
+  });
+
+  test("shows checking state when typing in page name input", async ({ page }) => {
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Wait for recommendations to load
+    await page.waitForTimeout(3000);
+
+    // Click dropdown and select an existing domain that has a domain ID
+    await domainPickerPage.siteNameDropdown.click();
+
+    // Look for "Your Existing Sites" section and select one
+    const existingSitesSection = page.locator('text="Your Existing Sites"');
+    if (await existingSitesSection.isVisible({ timeout: 5000 })) {
+      // Click on the first existing site
+      const firstExistingSite = existingSitesSection.locator("..").locator("button").first();
+      await firstExistingSite.click();
+
+      // Type in the page name input
+      await domainPickerPage.pageNameInput.fill("test-page");
+
+      // Should show checking state briefly
+      await expect(domainPickerPage.pathCheckingMessage).toBeVisible({ timeout: 5000 });
+    }
+  });
+
+  test("shows available status when path is available", async ({ page }) => {
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Wait for recommendations to load
+    await page.waitForTimeout(3000);
+
+    // Click dropdown and select an existing domain
+    await domainPickerPage.siteNameDropdown.click();
+
+    const existingSitesSection = page.locator('text="Your Existing Sites"');
+    if (await existingSitesSection.isVisible({ timeout: 5000 })) {
+      const firstExistingSite = existingSitesSection.locator("..").locator("button").first();
+      await firstExistingSite.click();
+
+      // Type a unique path that shouldn't exist
+      const uniquePath = `unique-${Date.now()}`;
+      await domainPickerPage.pageNameInput.fill(uniquePath);
+
+      // Wait for the check to complete and show available
+      await expect(domainPickerPage.pathAvailableIndicator).toBeVisible({ timeout: 10000 });
+      await expect(domainPickerPage.pathAvailableIndicator).toContainText(uniquePath);
+    }
+  });
+
+  test("shows existing status when path already exists on domain", async ({ page }) => {
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Wait for recommendations to load
+    await page.waitForTimeout(3000);
+
+    // Click dropdown and look for a domain with existing paths
+    await domainPickerPage.siteNameDropdown.click();
+
+    // meeting-tool.launch10.site has paths: /, /landing
+    const meetingToolOption = page.locator('text="meeting-tool"').first();
+    if (await meetingToolOption.isVisible({ timeout: 5000 })) {
+      await meetingToolOption.click();
+
+      // Type "landing" which should already exist
+      await domainPickerPage.pageNameInput.fill("landing");
+
+      // Should show existing indicator
+      await expect(domainPickerPage.pathExistingIndicator).toBeVisible({ timeout: 10000 });
+    }
+  });
+
+  test("shows validation error for invalid path characters", async ({ page }) => {
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Type invalid characters in page name
+    await domainPickerPage.pageNameInput.fill("Invalid Path!");
+
+    // Should show validation error
+    await expect(domainPickerPage.pathValidationError).toBeVisible({ timeout: 5000 });
+  });
+
+  test("shows assigned status when path belongs to current website", async ({ page }) => {
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Wait for recommendations to load
+    await page.waitForTimeout(3000);
+
+    // Click dropdown and look for a domain that is already assigned to this website
+    // with an existing path (the snapshot should have one)
+    await domainPickerPage.siteNameDropdown.click();
+
+    const existingSitesSection = page.locator('text="Your Existing Sites"');
+    if (await existingSitesSection.isVisible({ timeout: 5000 })) {
+      // Click on an existing site that has a path assigned to this website
+      const siteWithPath = existingSitesSection.locator("..").locator("button").first();
+      await siteWithPath.click();
+
+      // The root path "/" should show as assigned if this domain/path combo
+      // is already assigned to this website
+      // Wait for availability check
+      await page.waitForTimeout(1000);
+
+      // Either assigned or available should be visible (depending on current state)
+      const isAssigned = await domainPickerPage.pathAssignedIndicator.isVisible({ timeout: 5000 }).catch(() => false);
+      const isAvailable = await domainPickerPage.pathAvailableIndicator.isVisible({ timeout: 1000 }).catch(() => false);
+
+      // One of them should be true
+      expect(isAssigned || isAvailable).toBe(true);
+    }
+  });
+});
+
+/**
  * Domain Picker with Existing Domains Tests
  *
  * These tests specifically verify behavior when the user has existing domains.

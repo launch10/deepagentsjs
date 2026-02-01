@@ -1,3 +1,4 @@
+import { ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ interface ClaimSubdomainModalProps {
 /**
  * Confirmation modal for claiming a launch10.site subdomain.
  * Shows the domain being claimed and remaining credits.
+ * When no credits remain, shows an upgrade prompt instead.
  */
 export function ClaimSubdomainModal({
   isOpen,
@@ -29,6 +31,51 @@ export function ClaimSubdomainModal({
   creditsRemaining,
   isLoading = false,
 }: ClaimSubdomainModalProps) {
+  // Show upgrade prompt when out of credits
+  if (creditsRemaining === 0) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center size-10 rounded-full bg-amber-100">
+                <ExclamationTriangleIcon className="size-5 text-amber-600" />
+              </div>
+              <div>
+                <DialogTitle>Subdomain limit reached</DialogTitle>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="py-4">
+            <p className="text-sm text-base-500 mb-4">
+              You've used all the Launch10 subdomains included in your current plan. Upgrade to get
+              more subdomains and unlock additional features.
+            </p>
+
+            <div className="rounded-lg bg-gradient-to-r from-primary-50 to-primary-100 border border-primary-200 px-4 py-3">
+              <p className="text-sm font-medium text-primary-700">
+                Growth plan includes 2 subdomains
+              </p>
+              <p className="text-xs text-primary-600 mt-0.5">
+                Pro plan includes 3 subdomains + priority support
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={onClose}>
+              Maybe later
+            </Button>
+            <Button asChild>
+              <a href="/settings">View plans</a>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[480px]">
@@ -46,11 +93,9 @@ export function ClaimSubdomainModal({
               {creditsRemaining === 1 ? "1 remaining" : `${creditsRemaining} remaining`}
             </span>
           </div>
-          {creditsRemaining <= 1 && (
+          {creditsRemaining === 1 && (
             <p className="text-xs text-amber-600 mt-2">
-              {creditsRemaining === 1
-                ? "This is your last available subdomain on your current plan."
-                : "You have no subdomains remaining. Upgrade your plan to claim more."}
+              This is your last available subdomain on your current plan.
             </p>
           )}
         </div>
@@ -59,7 +104,7 @@ export function ClaimSubdomainModal({
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={onConfirm} disabled={isLoading || creditsRemaining === 0}>
+          <Button onClick={onConfirm} disabled={isLoading}>
             {isLoading ? "Claiming..." : "Claim subdomain"}
           </Button>
         </DialogFooter>
