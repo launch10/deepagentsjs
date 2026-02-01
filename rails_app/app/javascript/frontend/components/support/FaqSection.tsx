@@ -47,6 +47,10 @@ export default function FaqSection({ faqs }: FaqSectionProps) {
   // Show grouped view when viewing "All" with no search query
   const showGrouped = !isSearching && !isFiltering;
 
+  // Show subcategory grouping when filtering by a single category (not searching)
+  const showSubcategories =
+    isFiltering && !isSearching && filteredFaqs.some((f) => f.subcategory);
+
   return (
     <div className="space-y-4">
       <FaqSearch value={searchQuery} onChange={setSearchQuery} />
@@ -55,7 +59,12 @@ export default function FaqSection({ faqs }: FaqSectionProps) {
         selected={selectedCategory}
         onChange={setSelectedCategory}
       />
-      <FaqAccordion faqs={filteredFaqs} groupByCategory={showGrouped} />
+      <FaqAccordion
+        key={selectedCategory}
+        faqs={filteredFaqs}
+        groupByCategory={showGrouped}
+        groupBySubcategory={showSubcategories}
+      />
     </div>
   );
 }
