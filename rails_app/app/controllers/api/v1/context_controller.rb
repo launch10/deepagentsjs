@@ -48,6 +48,7 @@ class API::V1::ContextController < API::BaseController
           website_id: url.website_id
         }
       end,
+      dns_verification_status: domain.dns_verification_status,
       created_at: domain.created_at.iso8601
     }
   end

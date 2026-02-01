@@ -11,6 +11,9 @@ module DomainConcerns
         website_name: website&.name,
         is_platform_subdomain: is_platform_subdomain,
         cloudflare_zone_id: cloudflare_zone_id,
+        dns_verification_status: dns_verification_status,
+        dns_last_checked_at: dns_last_checked_at&.iso8601,
+        dns_error_message: dns_error_message,
         created_at: created_at.iso8601,
         updated_at: updated_at.iso8601
       }

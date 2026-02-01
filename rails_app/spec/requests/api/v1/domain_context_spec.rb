@@ -64,6 +64,22 @@ RSpec.describe "Domain Context API", type: :request do
         end
       end
 
+      response "200", "returns dns_verification_status for custom domains" do
+        schema APISchemas::Context.domain_context_response
+
+        let!(:website) { create(:website, account: account, project: project) }
+        let(:website_id) { website.id }
+        let!(:custom_domain) { create(:domain, :custom_domain, account: account, website: nil, dns_verification_status: "pending") }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+
+          domain_data = json["existing_domains"].find { |d| d["id"] == custom_domain.id }
+          expect(domain_data).to be_present
+          expect(domain_data["dns_verification_status"]).to eq("pending")
+        end
+      end
+
       response "200", "returns website associations with domains" do
         schema APISchemas::Context.domain_context_response
 
