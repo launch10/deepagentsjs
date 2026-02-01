@@ -1,6 +1,9 @@
 import { RailsAPIBase } from "../index";
 import type { Simplify } from "type-fest";
 
+// DNS verification status type
+export type DnsVerificationStatus = "pending" | "verified" | "failed" | null;
+
 // Types for domain context response
 export interface DomainWithWebsite {
   id: number;
@@ -13,6 +16,7 @@ export interface DomainWithWebsite {
     path: string;
     website_id: number;
   }>;
+  dns_verification_status: DnsVerificationStatus;
   created_at: string;
 }
 

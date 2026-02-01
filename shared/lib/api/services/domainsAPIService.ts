@@ -1,6 +1,7 @@
 import { RailsAPIBase, type paths } from "../index";
 import type { Options } from "../railsApiBase";
 import type { Simplify } from "type-fest";
+import type { DnsVerificationStatus } from "./domainContextAPIService";
 
 // ============================================================================
 // Type Definitions
@@ -37,6 +38,16 @@ export type SearchDomainsRequest = NonNullable<
 export type SearchDomainsResponse = NonNullable<
   paths["/api/v1/domains/search"]["post"]["responses"][200]["content"]["application/json"]
 >;
+
+export interface VerifyDnsResponse {
+  domain_id: number;
+  domain: string;
+  verification_status: DnsVerificationStatus;
+  expected_cname: string | null;
+  actual_cname: string | null;
+  last_checked_at: string | null;
+  error_message: string | null;
+}
 
 // ============================================================================
 // Service Class
@@ -165,5 +176,28 @@ export class DomainsAPIService extends RailsAPIBase {
     }
 
     return response.data satisfies SearchDomainsResponse;
+  }
+
+  /**
+   * Verify DNS configuration for a custom domain
+   * Triggers a DNS lookup to check if CNAME is correctly configured
+   */
+  async verifyDns(domainId: number): Promise<VerifyDnsResponse> {
+    const client = await this.getClient();
+    const response = await client.POST("/api/v1/domains/{id}/verify_dns" as any, {
+      params: {
+        path: { id: domainId },
+      },
+    });
+
+    if (response.error) {
+      throw new Error(`Failed to verify DNS: ${JSON.stringify(response.error)}`);
+    }
+
+    if (!response.data) {
+      throw new Error("Failed to verify DNS: No data returned");
+    }
+
+    return response.data as VerifyDnsResponse;
   }
 }
