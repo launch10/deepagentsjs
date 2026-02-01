@@ -4,3 +4,4 @@ export { CustomDomainPicker } from "./CustomDomainPicker";
 export { SiteNameDropdown } from "./SiteNameDropdown";
 export { PageNameInput } from "./PageNameInput";
 export { FullUrlPreview } from "./FullUrlPreview";
+export { ClaimSubdomainModal } from "./ClaimSubdomainModal";

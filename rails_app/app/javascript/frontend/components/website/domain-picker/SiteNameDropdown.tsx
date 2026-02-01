@@ -93,6 +93,7 @@ export function SiteNameDropdown({
     source: "existing" | "generated",
     existingDomainId?: number
   ) => {
+    console.log("[SiteNameDropdown] handleSelect called:", { domain, subdomain, source, existingDomainId });
     onSelect(domain, subdomain, source, existingDomainId);
     setIsOpen(false);
   };

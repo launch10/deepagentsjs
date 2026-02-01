@@ -121,7 +121,7 @@ export function PageNameInput({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholder={recommendedPath?.replace(/^\//, "") || "landing"}
-          className="flex-1 px-1 py-2 text-sm bg-transparent outline-none"
+          className="flex-1 px-1 py-2 text-sm bg-transparent border-0 outline-none focus:ring-0"
           data-testid="page-name-input"
         />
       </div>

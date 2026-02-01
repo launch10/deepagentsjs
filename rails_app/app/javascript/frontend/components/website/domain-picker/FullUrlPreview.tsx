@@ -1,4 +1,5 @@
-import { CheckCircleIcon, GlobeAltIcon, PlusCircleIcon } from "@heroicons/react/24/outline";
+import { useState } from "react";
+import { CheckCircleIcon, CheckIcon, GlobeAltIcon, PlusCircleIcon } from "@heroicons/react/24/outline";
 import { copyToClipboard } from "@helpers/copyToClipboard";
 import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip";
@@ -19,9 +20,13 @@ export interface FullUrlPreviewProps {
 // ============================================================================
 
 export function FullUrlPreview({ fullUrl, isNew, source }: FullUrlPreviewProps) {
+  const [copied, setCopied] = useState(false);
+
   const handleCopy = async () => {
     const url = fullUrl.startsWith("http") ? fullUrl : `https://${fullUrl}`;
     await copyToClipboard(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   // Determine status label
@@ -60,13 +65,22 @@ export function FullUrlPreview({ fullUrl, isNew, source }: FullUrlPreviewProps) 
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-base-500 hover:text-base-600 hover:bg-neutral-100 rounded-md transition-colors"
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors",
+              copied
+                ? "text-success-600"
+                : "text-base-500 hover:text-base-600 hover:bg-neutral-100"
+            )}
           >
-            <DocumentDuplicateIcon className="size-4" />
-            <span>Copy URL</span>
+            {copied ? (
+              <CheckIcon className="size-4" />
+            ) : (
+              <DocumentDuplicateIcon className="size-4" />
+            )}
+            <span>{copied ? "Copied!" : "Copy URL"}</span>
           </button>
         </TooltipTrigger>
-        <TooltipContent>Copy to clipboard</TooltipContent>
+        <TooltipContent>{copied ? "Copied!" : "Copy to clipboard"}</TooltipContent>
       </Tooltip>
     </div>
   );

@@ -37,6 +37,11 @@ export interface BaseDomainPickerProps {
 }
 
 export interface DomainPickerProps {
+  /** Current selection (controlled) - if provided, component is controlled */
+  selection?: DomainSelection | null;
+  /** Called when selection changes */
+  onSelectionChange?: (selection: DomainSelection | null) => void;
+  /** @deprecated Use selection + onSelectionChange instead */
   onComplete?: (selection: DomainSelection) => void;
   onBack?: () => void;
 }
@@ -58,10 +63,19 @@ function LoadingSkeleton() {
   );
 }
 
-export function DomainPicker({ onComplete, onBack }: DomainPickerProps) {
+export function DomainPicker({
+  selection: controlledSelection,
+  onSelectionChange,
+  onComplete,
+  onBack,
+}: DomainPickerProps) {
   const websiteId = useWebsiteId();
   const [showCustomDomain, setShowCustomDomain] = useState(false);
-  const [selection, setSelection] = useState<DomainSelection | null>(null);
+  const [internalSelection, setInternalSelection] = useState<DomainSelection | null>(null);
+
+  // Support both controlled and uncontrolled modes
+  const isControlled = controlledSelection !== undefined;
+  const selection = isControlled ? controlledSelection : internalSelection;
 
   // Fetch domain context from Rails (existing domains, credits)
   const {
@@ -80,15 +94,25 @@ export function DomainPicker({ onComplete, onBack }: DomainPickerProps) {
   const isLoading = isContextLoading || (isChatLoading && !domainRecommendations);
 
   // Handle selection from either picker mode
-  const handleSelect = useCallback((newSelection: DomainSelection) => {
-    setSelection(newSelection);
-  }, []);
+  const handleSelect = useCallback(
+    (newSelection: DomainSelection) => {
+      console.log("[DomainPicker] handleSelect called:", { newSelection, isControlled });
+      if (isControlled) {
+        console.log("[DomainPicker] calling onSelectionChange");
+        onSelectionChange?.(newSelection);
+      } else {
+        console.log("[DomainPicker] calling setInternalSelection");
+        setInternalSelection(newSelection);
+      }
+    },
+    [isControlled, onSelectionChange]
+  );
 
   // Auto-select top recommendation when it becomes available
   useEffect(() => {
     if (!selection && domainRecommendations?.topRecommendation) {
       const top = domainRecommendations.topRecommendation;
-      setSelection({
+      const newSelection: DomainSelection = {
         domain: top.domain,
         subdomain: top.subdomain,
         path: top.path,
@@ -96,9 +120,14 @@ export function DomainPicker({ onComplete, onBack }: DomainPickerProps) {
         source: top.source,
         isNew: top.source === "generated",
         existingDomainId: top.existingDomainId,
-      });
+      };
+      if (isControlled) {
+        onSelectionChange?.(newSelection);
+      } else {
+        setInternalSelection(newSelection);
+      }
     }
-  }, [selection, domainRecommendations]);
+  }, [selection, domainRecommendations, isControlled, onSelectionChange]);
 
   if (isLoading) {
     return (

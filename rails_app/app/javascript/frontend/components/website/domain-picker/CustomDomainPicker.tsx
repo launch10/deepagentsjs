@@ -4,11 +4,14 @@ import CloudflareLogo from "@assets/cloudflare-logo.png";
 import GoDaddyLogo from "@assets/godaddy-logo.png";
 import NamecheapLogo from "@assets/namecheap-logo.svg";
 import { Input } from "@components/ui/input";
-import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@components/ui/item";
 import { Label } from "@components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip";
 import { copyToClipboard } from "@helpers/copyToClipboard";
-import { ArrowTopRightOnSquareIcon, LinkIcon } from "@heroicons/react/16/solid";
+import {
+  ArrowTopRightOnSquareIcon,
+  ArrowRightIcon,
+  InformationCircleIcon,
+} from "@heroicons/react/16/solid";
 import {
   DocumentDuplicateIcon,
   XCircleIcon,
@@ -162,173 +165,169 @@ export function CustomDomainPicker({
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Info Banner */}
-      <Item variant="outline" className="max-w-xl border-accent-yellow-300 bg-accent-yellow-100">
-        <ItemMedia className="my-auto">
-          <LinkIcon className="size-4 shrink-0 text-accent-yellow-700" />
-        </ItemMedia>
-        <ItemContent>
-          <ItemTitle>Custom Domain</ItemTitle>
-          <ItemDescription className="text-base-600">
-            Use your own domain name. You'll need to update DNS settings with your provider.
-          </ItemDescription>
-        </ItemContent>
-      </Item>
-
       {/* Domain + Path Input Row */}
-      <div className="flex gap-4">
-        {/* Domain Input */}
-        <div className="flex-1 flex flex-col gap-2">
-          <Label className="text-sm font-semibold leading-[18px] text-base-500">Your domain</Label>
-          <Input
-            type="text"
-            value={domain}
-            onChange={(e) => handleDomainChange(e.target.value)}
-            placeholder="example.com"
-            data-testid="custom-domain-input"
-          />
-          {domain && domainValidation.error && (
-            <div className="flex items-center gap-1 text-xs text-destructive">
-              <XCircleIcon className="size-3.5" />
-              <span>{domainValidation.error}</span>
-            </div>
-          )}
-          {domain && domainValidation.valid && !savedDomainId && (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1 text-xs text-success-500">
-                <CheckCircleIcon className="size-3.5" />
-                <span>Valid domain format</span>
+      <div className="flex flex-col gap-1">
+        <div className="flex gap-4">
+          {/* Domain Input */}
+          <div className="flex-1 flex flex-col gap-2">
+            <Label className="text-sm font-semibold leading-[18px] text-base-500">
+              Your site name
+            </Label>
+            <Input
+              type="text"
+              value={domain}
+              onChange={(e) => handleDomainChange(e.target.value)}
+              placeholder="example.com"
+              data-testid="custom-domain-input"
+            />
+            {domain && domainValidation.error && (
+              <div className="flex items-center gap-1 text-xs text-destructive">
+                <XCircleIcon className="size-3.5" />
+                <span>{domainValidation.error}</span>
               </div>
-              <button
-                type="button"
-                onClick={handleSaveDomain}
-                disabled={createDomain.isPending}
-                className="text-xs text-primary-500 hover:text-primary-600 disabled:opacity-50"
-              >
-                {createDomain.isPending ? "Saving..." : "Save & verify DNS"}
-              </button>
-            </div>
-          )}
-          {/* DNS Verification Status */}
-          {savedDomainId && (
-            <div className="mt-2" data-testid="dns-verification-status">
-              {isDnsVerified ? (
-                <div className="flex items-center gap-2 text-success-500">
-                  <CheckCircleIcon className="size-5" />
-                  <span className="text-sm font-medium">DNS verified! Your domain is ready.</span>
+            )}
+            {domain && domainValidation.valid && !savedDomainId && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1 text-xs text-success-500">
+                  <CheckCircleIcon className="size-3.5" />
+                  <span>Valid domain format</span>
                 </div>
-              ) : isDnsPending ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-amber-500">
-                    <ClockIcon className="size-5 animate-pulse" />
-                    <span className="text-sm">Waiting for DNS propagation...</span>
+                <button
+                  type="button"
+                  onClick={handleSaveDomain}
+                  disabled={createDomain.isPending}
+                  className="text-xs text-primary-500 hover:text-primary-600 disabled:opacity-50"
+                >
+                  {createDomain.isPending ? "Saving..." : "Save & verify DNS"}
+                </button>
+              </div>
+            )}
+            {/* DNS Verification Status */}
+            {savedDomainId && (
+              <div className="mt-2" data-testid="dns-verification-status">
+                {isDnsVerified ? (
+                  <div className="flex items-center gap-2 text-success-500">
+                    <CheckCircleIcon className="size-5" />
+                    <span className="text-sm font-medium">DNS verified! Your domain is ready.</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={manualCheck}
-                    className="text-xs text-primary-500 hover:text-primary-600"
-                  >
-                    Check now
-                  </button>
-                </div>
-              ) : isDnsFailed ? (
-                <div className="flex items-center gap-2 text-destructive">
-                  <XCircleIcon className="size-5" />
-                  <span className="text-sm">DNS verification failed: {dnsError}</span>
-                </div>
-              ) : null}
-            </div>
-          )}
+                ) : isDnsPending ? (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-amber-500">
+                      <ClockIcon className="size-5 animate-pulse" />
+                      <span className="text-sm">Waiting for DNS propagation...</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={manualCheck}
+                      className="text-xs text-primary-500 hover:text-primary-600"
+                    >
+                      Check now
+                    </button>
+                  </div>
+                ) : isDnsFailed ? (
+                  <div className="flex items-center gap-2 text-destructive">
+                    <XCircleIcon className="size-5" />
+                    <span className="text-sm">DNS verification failed: {dnsError}</span>
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </div>
+
+          {/* Path Input */}
+          <div className="flex-1 flex flex-col gap-2">
+            <Label className="text-sm font-semibold leading-[18px] text-base-500 flex items-center gap-1">
+              Page Name
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <InformationCircleIcon className="size-4 text-base-400 cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  Optional - helps you group several pages within a single site. Example: /services
+                  or /pricing
+                </TooltipContent>
+              </Tooltip>
+            </Label>
+            <PageNameInput value={path} onChange={handlePathChange} />
+          </div>
         </div>
 
-        {/* Path Input */}
-        <div className="flex-1 flex flex-col gap-2">
-          <Label className="text-sm font-semibold leading-[18px] text-base-500">Page name</Label>
-          <PageNameInput value={path} onChange={handlePathChange} />
+        {/* Switch to Launch10 Site */}
+        <button
+          type="button"
+          onClick={onSwitchToLaunch10}
+          className="flex items-center gap-2 text-sm text-base-500 hover:text-base-600 self-start p-2 underline"
+        >
+          <span>Use a Launch10 Site</span>
+          <ArrowRightIcon className="size-4" />
+        </button>
+      </div>
+
+      {/* What you need - CNAME Instructions */}
+      <div className="bg-neutral-50 rounded-lg px-4 py-5">
+        <p className="text-xs font-semibold leading-4 text-base-500 mb-2">What you need</p>
+        <div className="flex items-center gap-6">
+          <div className="flex flex-col gap-1 w-20">
+            <p className="text-xs font-medium leading-4 text-base-400">Record Name</p>
+            <p className="text-sm leading-[18px] text-base-500">CNAME</p>
+          </div>
+          <div className="flex flex-col gap-1 w-20">
+            <p className="text-xs font-medium leading-4 text-base-400">Host</p>
+            <p className="text-sm leading-[18px] text-base-500">www</p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="text-xs font-medium leading-4 text-base-400">Points to</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm leading-[18px] text-base-500">cname.launch10.ai</p>
+              <Tooltip delayDuration={500}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={handleCopyPointsTo}
+                    className="text-base-400 hover:text-base-500"
+                  >
+                    <DocumentDuplicateIcon className="size-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Copy to clipboard</TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Switch to Launch10 Site */}
-      <button
-        type="button"
-        onClick={onSwitchToLaunch10}
-        className="text-sm text-primary-500 hover:text-primary-600 self-start"
-      >
-        Use a free Launch10 Site instead
-      </button>
-
-      {/* CNAME Instructions */}
-      <Item variant="muted" className="max-w-xl">
-        <ItemContent className="gap-2">
-          <ItemTitle>DNS Configuration</ItemTitle>
-          <ItemDescription>
-            <p className="text-sm text-base-500 mb-3">
-              Add a CNAME record in your DNS provider to point your domain to Launch10:
-            </p>
-            <div className="flex items-center gap-6">
-              <div className="flex flex-col gap-1">
-                <p className="text-xs font-medium leading-4 text-base-400">Record Type</p>
-                <p className="text-sm leading-[18px] text-base-500 font-mono">CNAME</p>
-              </div>
-              <div className="flex flex-col gap-1">
-                <p className="text-xs font-medium leading-4 text-base-400">Host</p>
-                <p className="text-sm leading-[18px] text-base-500 font-mono">www</p>
-              </div>
-              <div className="flex flex-col gap-1">
-                <p className="text-xs font-medium leading-4 text-base-400">Points to</p>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm leading-[18px] text-base-500 font-mono">
-                    cname.launch10.ai
-                  </p>
-                  <Tooltip delayDuration={500}>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onClick={handleCopyPointsTo}
-                        className="text-base-500 hover:text-base-600"
-                      >
-                        <DocumentDuplicateIcon className="size-3.5" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>Copy to clipboard</TooltipContent>
-                  </Tooltip>
-                </div>
-              </div>
-            </div>
-          </ItemDescription>
-        </ItemContent>
-      </Item>
-
       {/* DNS Provider Guides */}
-      <Item variant="outline" className="max-w-xl">
-        <ItemContent className="gap-1">
-          <ItemTitle>Guides for common providers</ItemTitle>
-          <ItemDescription className="flex flex-col gap-2">
-            <span>We've prepared guides for popular DNS providers</span>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {DNS_PROVIDERS.map((provider) => (
-                <div key={provider.name} className="flex flex-col gap-1">
-                  <div className="flex items-center gap-1">
-                    {provider.logo}
-                    <span className="text-sm font-semibold leading-[18px] text-base-600">
-                      {provider.name}
-                    </span>
-                  </div>
-                  <a
-                    href={provider.guideUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs leading-4 text-primary-500 hover:text-primary-600"
-                  >
-                    <span>View official guide</span>
-                    <ArrowTopRightOnSquareIcon className="size-3" />
-                  </a>
-                </div>
-              ))}
+      <div className="border border-neutral-300 rounded-lg px-4 py-5">
+        <div className="flex flex-col gap-1 mb-4">
+          <p className="text-sm font-medium leading-[18px] text-base-600">
+            Guides for common providers
+          </p>
+          <p className="text-xs leading-4 text-base-400">
+            We've prepared guides for popular DNS providers
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-x-7 gap-y-4">
+          {DNS_PROVIDERS.map((provider) => (
+            <div key={provider.name} className="flex flex-col gap-0 w-32">
+              <div className="flex items-center gap-1">
+                {provider.logo}
+                <span className="text-sm font-semibold leading-[18px] text-base-600">
+                  {provider.name}
+                </span>
+              </div>
+              <a
+                href={provider.guideUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs leading-4 text-primary-500 hover:text-primary-600"
+              >
+                <span>View official guide</span>
+                <ArrowTopRightOnSquareIcon className="size-4" />
+              </a>
             </div>
-          </ItemDescription>
-        </ItemContent>
-      </Item>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
