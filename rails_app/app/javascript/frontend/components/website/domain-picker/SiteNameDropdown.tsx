@@ -1,5 +1,12 @@
 import { useState, useMemo, useCallback } from "react";
-import { ChevronDownIcon, StarIcon, CheckIcon, LinkIcon } from "@heroicons/react/24/solid";
+import {
+  ChevronDownIcon,
+  StarIcon,
+  CheckIcon,
+  LinkIcon,
+  LockClosedIcon,
+} from "@heroicons/react/24/solid";
+import { ArrowRightIcon } from "@heroicons/react/24/outline";
 import { cn } from "~/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { Input } from "@components/ui/input";
@@ -128,7 +135,8 @@ export function SiteNameDropdown({
             <span className={selectedDomain ? "text-base-600" : "text-base-400"}>
               {selectedDisplayName}
             </span>
-            <span className="text-base-400">{PLATFORM_SUFFIX}</span>
+            {/* Only show suffix when a domain is selected */}
+            {selectedDomain && <span className="text-base-400">{PLATFORM_SUFFIX}</span>}
           </span>
           <ChevronDownIcon className="size-4 text-base-400" />
         </button>
@@ -139,19 +147,27 @@ export function SiteNameDropdown({
           {/* Create New Site Section - Always at top */}
           <div className="p-2">
             <div className="px-2 py-1.5 text-xs font-medium text-base-400">Create New Site</div>
-            <Input
-              type="text"
-              value={customInput}
-              onChange={(e) => setCustomInput(e.target.value.toLowerCase())}
-              placeholder="Type to create your own"
-              className="text-sm"
-              disabled={isOutOfCredits}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && customValidation.valid) {
-                  handleCustomSubmit();
-                }
-              }}
-            />
+            <div className="relative">
+              <Input
+                type="text"
+                value={customInput}
+                onChange={(e) => setCustomInput(e.target.value.toLowerCase())}
+                placeholder="Type to create your own"
+                className={cn("text-sm", customInput && "pr-28")}
+                disabled={isOutOfCredits}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && customValidation.valid) {
+                    handleCustomSubmit();
+                  }
+                }}
+              />
+              {/* Show suffix only when input has value */}
+              {customInput && (
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-base-400 pointer-events-none">
+                  {PLATFORM_SUFFIX}
+                </span>
+              )}
+            </div>
             {customInput && customValidation.error && (
               <p className="text-xs text-destructive mt-1 px-1">{customValidation.error}</p>
             )}
@@ -269,14 +285,24 @@ export function SiteNameDropdown({
             <button
               type="button"
               data-testid="connect-own-site-button"
-              className="w-full flex items-center gap-2 px-2 py-2 rounded text-sm text-left hover:bg-neutral-100 transition-colors"
+              disabled={!canConnectCustomDomain}
+              className={cn(
+                "w-full flex items-center gap-2 px-2 py-2 rounded text-sm text-left transition-colors",
+                canConnectCustomDomain ? "hover:bg-neutral-100" : "opacity-60 cursor-not-allowed"
+              )}
               onClick={() => {
+                if (!canConnectCustomDomain) return;
                 setIsOpen(false);
                 onConnectOwnSite?.();
               }}
             >
-              <LinkIcon className="size-4 text-base-400" />
-              <span className="text-base-500">Connect your own site</span>
+              {canConnectCustomDomain ? (
+                <LinkIcon className="size-4 text-base-400" />
+              ) : (
+                <LockClosedIcon className="size-4 text-base-400" />
+              )}
+              <span className="text-base-500 flex-1">Connect your own site</span>
+              {canConnectCustomDomain && <ArrowRightIcon className="size-4 text-base-400" />}
             </button>
             {/* Show upgrade badge only for Starter plan users */}
             {!canConnectCustomDomain && (

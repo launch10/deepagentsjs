@@ -9,8 +9,16 @@ import { Label } from "@components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip";
 import { copyToClipboard } from "@helpers/copyToClipboard";
 import { ArrowTopRightOnSquareIcon, LinkIcon } from "@heroicons/react/16/solid";
-import { DocumentDuplicateIcon, XCircleIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
+import {
+  DocumentDuplicateIcon,
+  XCircleIcon,
+  CheckCircleIcon,
+  ClockIcon,
+} from "@heroicons/react/24/outline";
 import { PageNameInput } from "./PageNameInput";
+import { useCreateDomain } from "~/api/domainContext.hooks";
+import { useDnsVerification } from "~/hooks/useDnsVerification";
+import { useWebsiteId } from "~/stores/projectStore";
 import type { DomainSelection } from "./DomainPicker";
 
 // ============================================================================
@@ -78,12 +86,26 @@ export function CustomDomainPicker({
   onSelect,
   onSwitchToLaunch10,
 }: CustomDomainPickerProps) {
+  const websiteId = useWebsiteId();
   const [domain, setDomain] = useState(
     selection?.source === "custom" && !selection.domain.endsWith(".launch10.site")
       ? selection.domain
       : ""
   );
   const [path, setPath] = useState(selection?.path ?? "/");
+  const [savedDomainId, setSavedDomainId] = useState<number | null>(null);
+
+  // Domain creation mutation
+  const createDomain = useCreateDomain();
+
+  // DNS verification with auto-polling
+  const {
+    isVerified: isDnsVerified,
+    isPending: isDnsPending,
+    isFailed: isDnsFailed,
+    error: dnsError,
+    manualCheck,
+  } = useDnsVerification(savedDomainId);
 
   // Validation
   const domainValidation = useMemo(() => validateDomain(domain), [domain]);
@@ -123,6 +145,22 @@ export function CustomDomainPicker({
     await copyToClipboard("cname.launch10.ai");
   };
 
+  // Save domain and start DNS verification
+  const handleSaveDomain = async () => {
+    if (!domainValidation.valid || !websiteId) return;
+
+    try {
+      const result = await createDomain.mutateAsync({
+        domain,
+        websiteId,
+        isPlatformSubdomain: false,
+      });
+      setSavedDomainId(result.id);
+    } catch (error) {
+      console.error("Failed to create domain:", error);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-5">
       {/* Info Banner */}
@@ -156,10 +194,50 @@ export function CustomDomainPicker({
               <span>{domainValidation.error}</span>
             </div>
           )}
-          {domain && domainValidation.valid && (
-            <div className="flex items-center gap-1 text-xs text-success-500">
-              <CheckCircleIcon className="size-3.5" />
-              <span>Valid domain format</span>
+          {domain && domainValidation.valid && !savedDomainId && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1 text-xs text-success-500">
+                <CheckCircleIcon className="size-3.5" />
+                <span>Valid domain format</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleSaveDomain}
+                disabled={createDomain.isPending}
+                className="text-xs text-primary-500 hover:text-primary-600 disabled:opacity-50"
+              >
+                {createDomain.isPending ? "Saving..." : "Save & verify DNS"}
+              </button>
+            </div>
+          )}
+          {/* DNS Verification Status */}
+          {savedDomainId && (
+            <div className="mt-2" data-testid="dns-verification-status">
+              {isDnsVerified ? (
+                <div className="flex items-center gap-2 text-success-500">
+                  <CheckCircleIcon className="size-5" />
+                  <span className="text-sm font-medium">DNS verified! Your domain is ready.</span>
+                </div>
+              ) : isDnsPending ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-amber-500">
+                    <ClockIcon className="size-5 animate-pulse" />
+                    <span className="text-sm">Waiting for DNS propagation...</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={manualCheck}
+                    className="text-xs text-primary-500 hover:text-primary-600"
+                  >
+                    Check now
+                  </button>
+                </div>
+              ) : isDnsFailed ? (
+                <div className="flex items-center gap-2 text-destructive">
+                  <XCircleIcon className="size-5" />
+                  <span className="text-sm">DNS verification failed: {dnsError}</span>
+                </div>
+              ) : null}
             </div>
           )}
         </div>
