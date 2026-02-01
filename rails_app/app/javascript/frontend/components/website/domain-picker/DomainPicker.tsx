@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Launch10SitePicker } from "./Launch10SitePicker";
 import { CustomDomainPicker } from "./CustomDomainPicker";
 import { FullUrlPreview } from "./FullUrlPreview";
@@ -6,6 +6,7 @@ import { useDomainContext } from "~/api/domainContext.hooks";
 import { useWebsiteChatState, useWebsiteChatIsLoading } from "~/hooks/website/useWebsiteChat";
 import { useWebsiteId } from "~/stores/projectStore";
 import type { Website } from "@shared";
+import type { GetDomainContextResponse } from "@rails_api_base";
 
 // ============================================================================
 // Types
@@ -71,18 +72,34 @@ export function DomainPicker({
 }: DomainPickerProps) {
   const websiteId = useWebsiteId();
   const [showCustomDomain, setShowCustomDomain] = useState(false);
+  const [hasInitializedView, setHasInitializedView] = useState(false);
+  const [hasInitializedSelection, setHasInitializedSelection] = useState(false);
   const [internalSelection, setInternalSelection] = useState<DomainSelection | null>(null);
 
   // Support both controlled and uncontrolled modes
   const isControlled = controlledSelection !== undefined;
   const selection = isControlled ? controlledSelection : internalSelection;
 
-  // Fetch domain context from Rails (existing domains, credits)
+  // Fetch domain context from Rails (existing domains, credits, assigned URL)
   const {
     data: context,
     isLoading: isContextLoading,
     error: contextError,
   } = useDomainContext(websiteId ?? undefined);
+
+  // The assigned URL is the source of truth - comes directly from website.website_urls
+  const assignedUrl = context?.assigned_url ?? null;
+
+  // Auto-switch to custom domain view if website has a custom domain assigned
+  useEffect(() => {
+    if (!hasInitializedView && context && !isContextLoading) {
+      if (assignedUrl && !assignedUrl.is_platform_subdomain) {
+        console.log("[DomainPicker] Website has custom domain assigned, switching to custom view:", assignedUrl.domain);
+        setShowCustomDomain(true);
+      }
+      setHasInitializedView(true);
+    }
+  }, [hasInitializedView, context, isContextLoading, assignedUrl]);
 
   // Get AI recommendations from website graph state
   const domainRecommendations = useWebsiteChatState("domainRecommendations") as
@@ -108,9 +125,43 @@ export function DomainPicker({
     [isControlled, onSelectionChange]
   );
 
-  // Auto-select top recommendation when it becomes available
+  // Auto-select on initial load only: assigned URL first, then top recommendation as fallback
   useEffect(() => {
-    if (!selection && domainRecommendations?.topRecommendation) {
+    // Only run initial selection once
+    if (hasInitializedSelection) return;
+
+    // Priority 1: If website has an assigned URL, use it for initial selection
+    if (assignedUrl) {
+      const path = assignedUrl.path ?? "/";
+      const normalizedPath = path === "/" ? "" : path;
+
+      // Extract subdomain for platform subdomains
+      let subdomain = "";
+      if (assignedUrl.is_platform_subdomain && assignedUrl.domain.endsWith(".launch10.site")) {
+        subdomain = assignedUrl.domain.replace(".launch10.site", "");
+      }
+
+      const newSelection: DomainSelection = {
+        domain: assignedUrl.domain,
+        subdomain,
+        path,
+        fullUrl: `${assignedUrl.domain}${normalizedPath}`,
+        source: "existing",
+        isNew: false,
+        existingDomainId: assignedUrl.domain_id,
+      };
+      console.log("[DomainPicker] Initial selection from assigned URL:", newSelection);
+      if (isControlled) {
+        onSelectionChange?.(newSelection);
+      } else {
+        setInternalSelection(newSelection);
+      }
+      setHasInitializedSelection(true);
+      return;
+    }
+
+    // Priority 2: Select top AI recommendation (only if no assigned URL)
+    if (domainRecommendations?.topRecommendation) {
       const top = domainRecommendations.topRecommendation;
       const newSelection: DomainSelection = {
         domain: top.domain,
@@ -121,13 +172,15 @@ export function DomainPicker({
         isNew: top.source === "generated",
         existingDomainId: top.existingDomainId,
       };
+      console.log("[DomainPicker] Initial selection from AI recommendation:", newSelection);
       if (isControlled) {
         onSelectionChange?.(newSelection);
       } else {
         setInternalSelection(newSelection);
       }
+      setHasInitializedSelection(true);
     }
-  }, [selection, domainRecommendations, isControlled, onSelectionChange]);
+  }, [hasInitializedSelection, assignedUrl, domainRecommendations, isControlled, onSelectionChange]);
 
   if (isLoading) {
     return (

@@ -5,6 +5,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
 } from "@heroicons/react/24/outline";
+import { router } from "@inertiajs/react";
 import { Label } from "@components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip";
 import { SiteNameDropdown } from "./SiteNameDropdown";
@@ -44,6 +45,18 @@ export function Launch10SitePicker({
 
   // Track URL availability status
   const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus>(null);
+
+  // Sync local state with selection from parent (e.g., when assigned domain is auto-selected)
+  useEffect(() => {
+    if (selection?.domain && selection.domain !== selectedDomain) {
+      console.log("[Launch10SitePicker] Syncing selectedDomain from parent selection:", selection.domain);
+      setSelectedDomain(selection.domain);
+    }
+    if (selection?.path && selection.path !== customPath) {
+      console.log("[Launch10SitePicker] Syncing customPath from parent selection:", selection.path);
+      setCustomPath(selection.path);
+    }
+  }, [selection?.domain, selection?.path]);
 
   // Determine if out of credits
   const isOutOfCredits = useMemo(() => {
@@ -148,12 +161,13 @@ export function Launch10SitePicker({
           <p className="text-sm text-amber-800 flex-1">
             You've hit the limit of {context?.platform_subdomain_credits?.limit} subdomains allowed
             on your current subscription plan.{" "}
-            <a
-              href="/settings"
-              className="font-medium text-amber-700 hover:text-amber-800 underline"
+            <button
+              type="button"
+              onClick={() => router.visit("/settings")}
+              className="font-medium text-amber-700 hover:text-amber-800 underline cursor-pointer"
             >
               Upgrade to add more.
-            </a>
+            </button>
           </p>
         </div>
       )}

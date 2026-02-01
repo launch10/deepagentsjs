@@ -78,7 +78,7 @@ export function ClaimSubdomainModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[480px]" data-testid="claim-subdomain-modal">
         <DialogHeader>
           <DialogTitle>Claim subdomain?</DialogTitle>
           <DialogDescription className="pt-2">
@@ -89,7 +89,7 @@ export function ClaimSubdomainModal({
         <div className="py-4">
           <div className="flex items-center justify-between rounded-lg bg-neutral-50 border border-neutral-200 px-4 py-3">
             <span className="text-sm text-base-500">Launch10 subdomains remaining</span>
-            <span className="text-sm font-semibold text-base-600">
+            <span className="text-sm font-semibold text-base-600" data-testid="credits-remaining">
               {creditsRemaining === 1 ? "1 remaining" : `${creditsRemaining} remaining`}
             </span>
           </div>
@@ -101,10 +101,10 @@ export function ClaimSubdomainModal({
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+          <Button variant="outline" onClick={onClose} disabled={isLoading} data-testid="cancel-claim-button">
             Cancel
           </Button>
-          <Button onClick={onConfirm} disabled={isLoading}>
+          <Button onClick={onConfirm} disabled={isLoading} data-testid="confirm-claim-button">
             {isLoading ? "Claiming..." : "Claim subdomain"}
           </Button>
         </DialogFooter>

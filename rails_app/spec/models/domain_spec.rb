@@ -482,6 +482,17 @@ RSpec.describe Domain, type: :model do
   describe '#release!' do
     let(:account) { create(:account) }
 
+    describe 'callbacks' do
+      let!(:domain) { create(:domain, domain: 'mysite.launch10.site', account: account) }
+
+      it 'triggers before_destroy callbacks for Atlas sync' do
+        # Verify that really_destroy! triggers the Atlas sync callback
+        expect(domain).to receive(:enqueue_sync_to_atlas_on_destroy)
+
+        domain.release!
+      end
+    end
+
     describe 'for platform subdomains' do
       let!(:domain) { create(:domain, domain: 'mysite.launch10.site', account: account, is_platform_subdomain: true) }
 

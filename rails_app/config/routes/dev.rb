@@ -18,6 +18,8 @@ namespace :test do
   post "database/set_credit_pack_stripe_price", to: "database#set_credit_pack_stripe_price"
   post "database/fill_subdomain_limit", to: "database#fill_subdomain_limit"
   get "database/first_website", to: "database#first_website"
+  post "database/assign_custom_domain", to: "database#assign_custom_domain"
+  post "database/assign_platform_subdomain", to: "database#assign_platform_subdomain"
 
   get "tracking/stats", to: "tracking#stats"
   get "tracking/leads", to: "tracking#leads"

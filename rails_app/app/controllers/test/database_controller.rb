@@ -193,32 +193,6 @@ class Test::DatabaseController < Test::TestController
     }, status: :unprocessable_content
   end
 
-  private
-
-  def snapshot_params
-    params.require(:snapshot).permit(:name, :truncate_first)
-  end
-
-  def credits_params
-    params.require(:credits).permit(:email, :plan_millicredits, :pack_millicredits)
-  end
-
-  def credit_pack_params
-    params.require(:credit_pack).permit(:id, :stripe_price_id)
-  end
-
-  def subdomain_limit_params
-    params.require(:subdomains).permit(:email)
-  end
-
-  def ensure_snapshots_directory_exists
-    SNAPSHOT_DIR.mkpath unless SNAPSHOT_DIR.exist?
-  end
-
-  def actually_truncate
-    Database::Snapshotter.new.truncate
-  end
-
   # Creates platform subdomains to fill up the account's subdomain limit
   # Expects: { subdomains: { email: string } }
   # Returns: { subdomains_created: number, limit: number, used: number }
@@ -267,6 +241,168 @@ class Test::DatabaseController < Test::TestController
       status: "error",
       errors: ["Failed to fill subdomain limit: #{e.message}"]
     }, status: :unprocessable_content
+  end
+
+  # Assigns a custom domain to a website for e2e testing
+  # Expects: { domain: { website_id: number, domain_name: string, path?: string } }
+  # Note: email param is ignored - account is derived from the website
+  # Returns: { domain: Domain, website_url: WebsiteUrl }
+  def assign_custom_domain
+    params_obj = custom_domain_params
+
+    website = Website.find_by(id: params_obj[:website_id])
+    unless website
+      render json: {
+        status: "error",
+        errors: ["Website not found: #{params_obj[:website_id]}"]
+      }, status: :not_found and return
+    end
+
+    # Derive account from website to ensure consistency
+    account = website.account
+    unless account
+      render json: {
+        status: "error",
+        errors: ["Account not found for website: #{params_obj[:website_id]}"]
+      }, status: :not_found and return
+    end
+
+    domain_name = params_obj[:domain_name] || "test-custom-#{SecureRandom.hex(4)}.example.com"
+    path = params_obj[:path] || "/"
+
+    # Create custom domain (not a platform subdomain)
+    domain = account.domains.create!(
+      domain: domain_name,
+      is_platform_subdomain: false,
+      dns_verification_status: "verified" # Mark as verified for testing
+    )
+
+    # Create website_url linking domain to website
+    website_url = WebsiteUrl.create!(
+      domain: domain,
+      website: website,
+      account: account,
+      path: path
+    )
+
+    render json: {
+      status: "ok",
+      message: "Custom domain assigned to website",
+      domain: {
+        id: domain.id,
+        domain: domain.domain,
+        is_platform_subdomain: domain.is_platform_subdomain,
+        dns_verification_status: domain.dns_verification_status
+      },
+      website_url: {
+        id: website_url.id,
+        domain_id: website_url.domain_id,
+        website_id: website_url.website_id,
+        path: website_url.path
+      }
+    }, status: :created
+  rescue => e
+    render json: {
+      status: "error",
+      errors: ["Failed to assign custom domain: #{e.message}"]
+    }, status: :unprocessable_content
+  end
+
+  # Assigns a platform subdomain to a website for e2e testing
+  # Expects: { subdomain: { website_id: number, subdomain: string, path?: string } }
+  # Returns: { domain: Domain, website_url: WebsiteUrl }
+  def assign_platform_subdomain
+    params_obj = platform_subdomain_params
+
+    website = Website.find_by(id: params_obj[:website_id])
+    unless website
+      render json: {
+        status: "error",
+        errors: ["Website not found: #{params_obj[:website_id]}"]
+      }, status: :not_found and return
+    end
+
+    account = website.account
+    unless account
+      render json: {
+        status: "error",
+        errors: ["Account not found for website: #{params_obj[:website_id]}"]
+      }, status: :not_found and return
+    end
+
+    subdomain = params_obj[:subdomain] || "test-site-#{SecureRandom.hex(4)}"
+    domain_name = "#{subdomain}.launch10.site"
+    path = params_obj[:path] || "/"
+
+    # Create platform subdomain
+    domain = account.domains.create!(
+      domain: domain_name,
+      is_platform_subdomain: true
+    )
+
+    # Create website_url linking domain to website
+    website_url = WebsiteUrl.create!(
+      domain: domain,
+      website: website,
+      account: account,
+      path: path
+    )
+
+    render json: {
+      status: "ok",
+      message: "Platform subdomain assigned to website",
+      domain: {
+        id: domain.id,
+        domain: domain.domain,
+        subdomain: subdomain,
+        is_platform_subdomain: domain.is_platform_subdomain
+      },
+      website_url: {
+        id: website_url.id,
+        domain_id: website_url.domain_id,
+        website_id: website_url.website_id,
+        path: website_url.path
+      }
+    }, status: :created
+  rescue => e
+    render json: {
+      status: "error",
+      errors: ["Failed to assign platform subdomain: #{e.message}"]
+    }, status: :unprocessable_content
+  end
+
+  private
+
+  def snapshot_params
+    params.require(:snapshot).permit(:name, :truncate_first)
+  end
+
+  def credits_params
+    params.require(:credits).permit(:email, :plan_millicredits, :pack_millicredits)
+  end
+
+  def credit_pack_params
+    params.require(:credit_pack).permit(:id, :stripe_price_id)
+  end
+
+  def subdomain_limit_params
+    params.require(:subdomains).permit(:email)
+  end
+
+  def custom_domain_params
+    params.require(:domain).permit(:email, :website_id, :domain_name, :path)
+  end
+
+  def platform_subdomain_params
+    params.require(:subdomain).permit(:website_id, :subdomain, :path)
+  end
+
+  def ensure_snapshots_directory_exists
+    SNAPSHOT_DIR.mkpath unless SNAPSHOT_DIR.exist?
+  end
+
+  def actually_truncate
+    Database::Snapshotter.new.truncate
   end
 
   # Find or create a test admin user for credit adjustments

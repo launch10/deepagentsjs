@@ -1,8 +1,6 @@
-import { useState } from "react";
 import { CheckCircleIcon, CheckIcon, GlobeAltIcon, PlusCircleIcon } from "@heroicons/react/24/outline";
-import { copyToClipboard } from "@helpers/copyToClipboard";
 import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip";
+import { Copyable } from "@components/ui/copyable";
 import { cn } from "~/lib/utils";
 
 // ============================================================================
@@ -20,18 +18,10 @@ export interface FullUrlPreviewProps {
 // ============================================================================
 
 export function FullUrlPreview({ fullUrl, isNew, source }: FullUrlPreviewProps) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    const url = fullUrl.startsWith("http") ? fullUrl : `https://${fullUrl}`;
-    await copyToClipboard(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   // Determine status label
   const statusLabel = isNew ? "New page" : "Existing domain";
   const StatusIcon = isNew ? PlusCircleIcon : CheckCircleIcon;
+  const copyUrl = fullUrl.startsWith("http") ? fullUrl : `https://${fullUrl}`;
 
   return (
     <div className="flex items-center justify-between gap-4">
@@ -60,28 +50,25 @@ export function FullUrlPreview({ fullUrl, isNew, source }: FullUrlPreviewProps) 
       </div>
 
       {/* Copy Button */}
-      <Tooltip delayDuration={500}>
-        <TooltipTrigger asChild>
-          <button
-            type="button"
-            onClick={handleCopy}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors",
-              copied
-                ? "text-success-600"
-                : "text-base-500 hover:text-base-600 hover:bg-neutral-100"
-            )}
-          >
-            {copied ? (
-              <CheckIcon className="size-4" />
-            ) : (
-              <DocumentDuplicateIcon className="size-4" />
-            )}
-            <span>{copied ? "Copied!" : "Copy URL"}</span>
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>{copied ? "Copied!" : "Copy to clipboard"}</TooltipContent>
-      </Tooltip>
+      <Copyable text={copyUrl}>
+        <Copyable.Trigger
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors",
+            "text-base-500 hover:text-base-600 hover:bg-neutral-100"
+          )}
+        >
+          {({ copied }) => (
+            <>
+              {copied ? (
+                <CheckIcon className="size-4" />
+              ) : (
+                <DocumentDuplicateIcon className="size-4" />
+              )}
+              <span>{copied ? "Copied!" : "Copy URL"}</span>
+            </>
+          )}
+        </Copyable.Trigger>
+      </Copyable>
     </div>
   );
 }

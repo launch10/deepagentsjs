@@ -58,19 +58,6 @@ RSpec.describe WebsiteUrl, type: :model do
       expect(duplicate.errors[:base]).to include("A website URL with this domain and path already exists")
     end
 
-    it 'allows same domain with different paths' do
-      create(:website_url, website: website, domain: domain, account: account, path: "/")
-      different_path = build(:website_url, website: website, domain: domain, account: account, path: "/campaign")
-      expect(different_path).to be_valid
-    end
-
-    it 'allows same path with different domains' do
-      other_domain = create(:domain, website: website, account: account)
-      create(:website_url, website: website, domain: domain, account: account, path: "/campaign")
-      different_domain = build(:website_url, website: website, domain: other_domain, account: account, path: "/campaign")
-      expect(different_domain).to be_valid
-    end
-
     it 'validates domain belongs to account' do
       other_account = create(:account)
       other_project = create(:project, account: other_account)
@@ -90,6 +77,14 @@ RSpec.describe WebsiteUrl, type: :model do
       website_url = build(:website_url, website: other_website, domain: domain, account: account)
       expect(website_url).not_to be_valid
       expect(website_url.errors[:website]).to include("must belong to the account")
+    end
+
+    it 'validates only one website_url per website' do
+      create(:website_url, website: website, domain: domain, account: account, path: "/")
+      other_domain = create(:domain, account: account)
+      duplicate = build(:website_url, website: website, domain: other_domain, account: account, path: "/other")
+      expect(duplicate).not_to be_valid
+      expect(duplicate.errors[:website]).to include("already has a URL assigned")
     end
   end
 

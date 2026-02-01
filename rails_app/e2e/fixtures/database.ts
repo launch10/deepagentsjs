@@ -222,4 +222,101 @@ export const DatabaseSnapshotter = {
     const data = await response.json();
     return data;
   },
+
+  /**
+   * Assigns a platform subdomain to a website for testing pre-population behavior.
+   * Creates both a Domain and WebsiteUrl record.
+   *
+   * @param websiteId - The website ID to assign the subdomain to
+   * @param subdomain - Optional subdomain name (defaults to random)
+   * @param path - Optional path (defaults to "/")
+   */
+  async assignPlatformSubdomain(
+    websiteId: number,
+    subdomain?: string,
+    path?: string
+  ): Promise<{
+    domain: {
+      id: number;
+      domain: string;
+      subdomain: string;
+      is_platform_subdomain: boolean;
+    };
+    website_url: {
+      id: number;
+      domain_id: number;
+      website_id: number;
+      path: string;
+    };
+  }> {
+    const response = await fetch(`${BASE_URL}/test/database/assign_platform_subdomain`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subdomain: {
+          website_id: websiteId,
+          subdomain,
+          path,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to assign platform subdomain: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    return data;
+  },
+
+  /**
+   * Assigns a custom domain to a website for testing auto-switch behavior.
+   * Creates both a Domain and WebsiteUrl record.
+   *
+   * @param email - The user's email address
+   * @param websiteId - The website ID to assign the domain to
+   * @param domainName - Optional custom domain name (defaults to random .example.com)
+   * @param path - Optional path (defaults to "/")
+   */
+  async assignCustomDomain(
+    email: string,
+    websiteId: number,
+    domainName?: string,
+    path?: string
+  ): Promise<{
+    domain: {
+      id: number;
+      domain: string;
+      is_platform_subdomain: boolean;
+      dns_verification_status: string;
+    };
+    website_url: {
+      id: number;
+      domain_id: number;
+      website_id: number;
+      path: string;
+    };
+  }> {
+    const response = await fetch(`${BASE_URL}/test/database/assign_custom_domain`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        domain: {
+          email,
+          website_id: websiteId,
+          domain_name: domainName,
+          path,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to assign custom domain: ${response.status} - ${error}`);
+    }
+
+    const data = await response.json();
+    return data;
+  },
 };

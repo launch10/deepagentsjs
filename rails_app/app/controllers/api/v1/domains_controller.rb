@@ -66,6 +66,10 @@ class API::V1::DomainsController < API::BaseController
   # 2. Existing domain owned by account (finds Domain, creates WebsiteUrl)
   # 3. Existing domain owned by another account (returns error)
   # 4. Out of credits for new platform subdomain (returns error)
+  #
+  # IMPORTANT: A website can only have ONE domain at a time. When assigning a new
+  # domain, any existing domains for that website are unlinked (website_id set to nil)
+  # but kept in the account for potential reassignment.
   def create
     website_id = domain_params[:website_id]
 
@@ -100,6 +104,15 @@ class API::V1::DomainsController < API::BaseController
         render json: {errors: domain.errors.full_messages}, status: :unprocessable_entity and return
       end
     end
+
+    # Unassign old domains from this website (but keep them in the account)
+    # 1. Clear website_id on old domains (so they don't appear in website.domains)
+    # 2. Delete old website_urls (triggers Atlas sync to remove old URLs)
+    old_domains = website.domains.where.not(id: domain.id)
+    old_domains.find_each do |old_domain|
+      old_domain.update!(website_id: nil)  # Unlink from website, keep domain
+    end
+    website.website_urls.where.not(domain_id: domain.id).destroy_all  # Delete old URLs
 
     # Create WebsiteUrl (domain + path + website combination)
     website_url = WebsiteUrl.find_or_initialize_by(

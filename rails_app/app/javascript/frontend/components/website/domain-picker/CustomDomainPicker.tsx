@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { router } from "@inertiajs/react";
 import AwsLogo from "@assets/aws-logo.png";
 import CloudflareLogo from "@assets/cloudflare-logo.png";
 import GoDaddyLogo from "@assets/godaddy-logo.png";
@@ -6,14 +7,14 @@ import NamecheapLogo from "@assets/namecheap-logo.svg";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip";
-import { copyToClipboard } from "@helpers/copyToClipboard";
+import { Copyable } from "@components/ui/copyable";
 import {
   ArrowTopRightOnSquareIcon,
   ArrowRightIcon,
   InformationCircleIcon,
+  QuestionMarkCircleIcon,
 } from "@heroicons/react/16/solid";
 import {
-  DocumentDuplicateIcon,
   XCircleIcon,
   CheckCircleIcon,
   ClockIcon,
@@ -89,13 +90,35 @@ export function CustomDomainPicker({
   onSwitchToLaunch10,
 }: CustomDomainPickerProps) {
   const websiteId = useWebsiteId();
+  // Initialize domain from selection if it's a custom domain (not a platform subdomain)
+  // Works with both source "custom" and "existing" (for pre-assigned custom domains)
+  const isCustomDomainSelection = selection && !selection.domain.endsWith(".launch10.site");
   const [domain, setDomain] = useState(
-    selection?.source === "custom" && !selection.domain.endsWith(".launch10.site")
-      ? selection.domain
-      : ""
+    isCustomDomainSelection ? selection.domain : ""
   );
   const [path, setPath] = useState(selection?.path ?? "/");
-  const [savedDomainId, setSavedDomainId] = useState<number | null>(null);
+  // If selection has an existing domain ID (pre-assigned custom domain), use it
+  const [savedDomainId, setSavedDomainId] = useState<number | null>(
+    isCustomDomainSelection ? (selection.existingDomainId ?? null) : null
+  );
+
+  // Sync local state with selection from parent (e.g., when assigned domain is auto-selected)
+  useEffect(() => {
+    if (selection && !selection.domain.endsWith(".launch10.site")) {
+      if (selection.domain !== domain) {
+        console.log("[CustomDomainPicker] Syncing domain from parent selection:", selection.domain);
+        setDomain(selection.domain);
+      }
+      if (selection.path !== path) {
+        console.log("[CustomDomainPicker] Syncing path from parent selection:", selection.path);
+        setPath(selection.path);
+      }
+      if (selection.existingDomainId !== savedDomainId) {
+        console.log("[CustomDomainPicker] Syncing savedDomainId from parent selection:", selection.existingDomainId);
+        setSavedDomainId(selection.existingDomainId ?? null);
+      }
+    }
+  }, [selection?.domain, selection?.path, selection?.existingDomainId]);
 
   // Domain creation mutation
   const createDomain = useCreateDomain();
@@ -141,10 +164,6 @@ export function CustomDomainPicker({
       source: "custom",
       isNew: true,
     });
-  };
-
-  const handleCopyPointsTo = async () => {
-    await copyToClipboard("cname.launch10.ai");
   };
 
   // Save domain and start DNS verification
@@ -277,21 +296,10 @@ export function CustomDomainPicker({
           </div>
           <div className="flex flex-col gap-1">
             <p className="text-xs font-medium leading-4 text-base-400">Points to</p>
-            <div className="flex items-center gap-2">
-              <p className="text-sm leading-[18px] text-base-500">cname.launch10.ai</p>
-              <Tooltip delayDuration={500}>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={handleCopyPointsTo}
-                    className="text-base-400 hover:text-base-500"
-                  >
-                    <DocumentDuplicateIcon className="size-3.5" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Copy to clipboard</TooltipContent>
-              </Tooltip>
-            </div>
+            <Copyable text="cname.launch10.ai">
+              <Copyable.Text className="text-sm leading-[18px] text-base-500" />
+              <Copyable.Trigger className="size-3.5" />
+            </Copyable>
           </div>
         </div>
       </div>
@@ -326,6 +334,22 @@ export function CustomDomainPicker({
               </a>
             </div>
           ))}
+          <div className="flex flex-col gap-0 w-32">
+            <div className="flex items-center gap-1">
+              <QuestionMarkCircleIcon className="size-4 text-base-400" />
+              <span className="text-sm font-semibold leading-[18px] text-base-600">
+                Other
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.visit("/support")}
+              className="flex items-center gap-1 text-xs leading-4 text-primary-500 hover:text-primary-600 text-left"
+            >
+              <span>Get help</span>
+              <ArrowRightIcon className="size-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
