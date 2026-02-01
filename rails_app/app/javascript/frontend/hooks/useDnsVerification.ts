@@ -5,7 +5,7 @@ import type { VerifyDnsResponse } from "@shared";
 interface UseDnsVerificationOptions {
   /** Whether the hook should poll for DNS verification status */
   enabled?: boolean;
-  /** Polling interval in milliseconds (default: 30000 = 30 seconds) */
+  /** Polling interval in milliseconds (default: 10000 = 10 seconds) */
   pollInterval?: number;
 }
 
@@ -23,7 +23,7 @@ export function useDnsVerification(
   domainId: number | null,
   options: UseDnsVerificationOptions = {}
 ) {
-  const { enabled = true, pollInterval = 30000 } = options;
+  const { enabled = true, pollInterval = 10000 } = options;
   const domainsService = useDomainsService();
   const queryClient = useQueryClient();
 
@@ -59,6 +59,8 @@ export function useDnsVerification(
     data: query.data,
     /** Whether the initial query is loading */
     isLoading: query.isLoading,
+    /** Whether actively fetching (including refetches) */
+    isFetching: query.isFetching,
     /** Whether the domain DNS is verified */
     isVerified: query.data?.verification_status === "verified",
     /** Whether verification is pending */
