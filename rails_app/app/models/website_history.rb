@@ -22,6 +22,7 @@
 #
 #  index_website_histories_on_account_id          (account_id)
 #  index_website_histories_on_created_at          (created_at)
+#  index_website_histories_on_deleted_at          (deleted_at)
 #  index_website_histories_on_history_ended_at    (history_ended_at)
 #  index_website_histories_on_history_started_at  (history_started_at)
 #  index_website_histories_on_history_user_id     (history_user_id)

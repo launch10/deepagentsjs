@@ -2543,7 +2543,10 @@ CREATE TABLE public.domains (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     is_platform_subdomain boolean DEFAULT false NOT NULL,
-    deleted_at timestamp(6) without time zone
+    deleted_at timestamp(6) without time zone,
+    dns_verification_status character varying,
+    dns_last_checked_at timestamp(6) without time zone,
+    dns_error_message character varying
 );
 
 
@@ -8595,6 +8598,20 @@ CREATE INDEX index_domains_on_deleted_at ON public.domains USING btree (deleted_
 
 
 --
+-- Name: index_domains_on_dns_last_checked_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_domains_on_dns_last_checked_at ON public.domains USING btree (dns_last_checked_at);
+
+
+--
+-- Name: index_domains_on_dns_verification_status; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_domains_on_dns_verification_status ON public.domains USING btree (dns_verification_status);
+
+
+--
 -- Name: index_domains_on_domain; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11387,6 +11404,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260201153847'),
 ('20260130161923'),
 ('20260130143844'),
 ('20260130100003'),
