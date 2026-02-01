@@ -21,6 +21,21 @@ export interface DomainSelection {
   existingDomainId?: number;
 }
 
+/**
+ * Base props shared by Launch10SitePicker and CustomDomainPicker.
+ * Allows switching between pickers with the same prop object.
+ */
+export interface BaseDomainPickerProps {
+  selection: DomainSelection | null;
+  onSelect: (selection: DomainSelection) => void;
+  // Navigation between picker modes
+  onConnectOwnSite?: () => void;
+  onSwitchToLaunch10?: () => void;
+  // Context (used by Launch10SitePicker, ignored by CustomDomainPicker)
+  recommendations?: Website.DomainRecommendations.DomainRecommendations | null;
+  context?: import("@rails_api_base").GetDomainContextResponse | null;
+}
+
 export interface DomainPickerProps {
   onComplete?: (selection: DomainSelection) => void;
   onBack?: () => void;
@@ -60,10 +75,6 @@ export function DomainPicker({ onComplete, onBack }: DomainPickerProps) {
     | Website.DomainRecommendations.DomainRecommendations
     | undefined;
   const isChatLoading = useWebsiteChatIsLoading();
-
-  if (domainRecommendations) {
-    debugger;
-  }
 
   // Show loading state (context loading or chat still generating recommendations)
   const isLoading = isContextLoading || (isChatLoading && !domainRecommendations);
@@ -107,55 +118,56 @@ export function DomainPicker({ onComplete, onBack }: DomainPickerProps) {
     );
   }
 
-  // Show custom domain picker when triggered from dropdown
-  if (showCustomDomain) {
-    return (
-      <div className="flex flex-col gap-5 rounded-2xl border border-neutral-300 bg-white px-10 py-7">
-        {/* Header */}
-        <div className="flex flex-col gap-0.5">
-          <h2 className="text-lg font-semibold leading-[22px] text-base-500">Website Setup</h2>
-          <p className="text-xs leading-4 text-base-300">
-            Connect your own domain to your landing page
-          </p>
-        </div>
+  // // Show custom domain picker when triggered from dropdown
+  // if (showCustomDomain) {
+  //   return (
+  //     <div className="flex flex-col gap-5 rounded-2xl border border-neutral-300 bg-white px-10 py-7">
+  //       {/* Header */}
+  //       <div className="flex flex-col gap-0.5">
+  //         <h2 className="text-lg font-semibold leading-[22px] text-base-500">Website Setup</h2>
+  //         <p className="text-xs leading-4 text-base-300">
+  //           Connect your own domain to your landing page
+  //         </p>
+  //       </div>
 
-        <CustomDomainPicker
-          selection={selection}
-          onSelect={handleSelect}
-          onSwitchToLaunch10={() => setShowCustomDomain(false)}
-        />
+  //       <CustomDomainPicker
+  //         selection={selection}
+  //         onSelect={handleSelect}
+  //         onSwitchToLaunch10={() => setShowCustomDomain(false)}
+  //       />
 
-        {/* Full URL Preview */}
-        {selection && (
-          <div className="pt-4 border-t border-neutral-200">
-            <FullUrlPreview
-              fullUrl={selection.fullUrl}
-              isNew={selection.isNew}
-              source={selection.source}
-            />
-          </div>
-        )}
-      </div>
-    );
-  }
+  //       {/* Full URL Preview */}
+  //       {selection && (
+  //         <div className="pt-4 border-t border-neutral-200">
+  //           <FullUrlPreview
+  //             fullUrl={selection.fullUrl}
+  //             isNew={selection.isNew}
+  //             source={selection.source}
+  //           />
+  //         </div>
+  //       )}
+  //     </div>
+  //   );
+  // }
+  const title = showCustomDomain ? "Connect your own site" : "Website Setup";
+  const subtitle = showCustomDomain ? "Use a site you already own, like mybusiness.com" : "Choose how you want your website to be accessed";
+  const DomainPickerComponent = showCustomDomain ? CustomDomainPicker : Launch10SitePicker;
 
   return (
     <div className="flex flex-col gap-5 rounded-2xl border border-neutral-300 bg-white px-10 py-7">
       {/* Header */}
       <div className="flex flex-col gap-0.5">
-        <h2 className="text-lg font-semibold leading-[22px] text-base-500">Website Setup</h2>
-        <p className="text-xs leading-4 text-base-300">
-          Choose how you want your website to be accessed
-        </p>
+        <h2 className="text-lg font-semibold leading-[22px] text-base-500">{title}</h2>
+        <p className="text-xs leading-4 text-base-300">{subtitle}</p>
       </div>
 
-      {/* Launch10 Site Picker */}
-      <Launch10SitePicker
+      <DomainPickerComponent
         recommendations={domainRecommendations}
         context={context}
         selection={selection}
         onSelect={handleSelect}
         onConnectOwnSite={() => setShowCustomDomain(true)}
+        onSwitchToLaunch10={() => setShowCustomDomain(false)}
       />
 
       {/* Full URL Preview */}

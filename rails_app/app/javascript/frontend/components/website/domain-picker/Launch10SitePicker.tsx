@@ -10,8 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip"
 import { SiteNameDropdown } from "./SiteNameDropdown";
 import { PageNameInput } from "./PageNameInput";
 import type { Website } from "@shared";
-import type { GetDomainContextResponse } from "@rails_api_base";
-import type { DomainSelection } from "./DomainPicker";
+import type { BaseDomainPickerProps } from "./DomainPicker";
 
 // ============================================================================
 // Types
@@ -19,12 +18,8 @@ import type { DomainSelection } from "./DomainPicker";
 
 type AvailabilityStatus = "checking" | "available" | "unavailable" | "deployed" | null;
 
-export interface Launch10SitePickerProps {
-  recommendations?: Website.DomainRecommendations.DomainRecommendations | null;
-  context?: GetDomainContextResponse | null;
-  selection: DomainSelection | null;
-  onSelect: (selection: DomainSelection) => void;
-  onConnectOwnSite?: () => void;
+export interface Launch10SitePickerProps extends BaseDomainPickerProps {
+  // All props inherited from BaseDomainPickerProps
 }
 
 // ============================================================================
