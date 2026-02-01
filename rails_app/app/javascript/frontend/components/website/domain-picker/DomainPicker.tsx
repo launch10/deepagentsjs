@@ -1,6 +1,4 @@
 import { useState, useCallback, useEffect } from "react";
-import { BoltIcon, LinkIcon } from "@heroicons/react/16/solid";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
 import { Launch10SitePicker } from "./Launch10SitePicker";
 import { CustomDomainPicker } from "./CustomDomainPicker";
 import { FullUrlPreview } from "./FullUrlPreview";
@@ -28,8 +26,6 @@ export interface DomainPickerProps {
   onBack?: () => void;
 }
 
-type PickerMode = "launch10" | "custom";
-
 function LoadingSkeleton() {
   return (
     <div data-testid="domain-picker-loading" className="flex flex-col gap-6 animate-pulse">
@@ -49,7 +45,7 @@ function LoadingSkeleton() {
 
 export function DomainPicker({ onComplete, onBack }: DomainPickerProps) {
   const websiteId = useWebsiteId();
-  const [mode, setMode] = useState<PickerMode>("launch10");
+  const [showCustomDomain, setShowCustomDomain] = useState(false);
   const [selection, setSelection] = useState<DomainSelection | null>(null);
 
   // Fetch domain context from Rails (existing domains, credits)
@@ -107,45 +103,56 @@ export function DomainPicker({ onComplete, onBack }: DomainPickerProps) {
     );
   }
 
+  // Show custom domain picker when triggered from dropdown
+  if (showCustomDomain) {
+    return (
+      <div className="flex flex-col gap-5 rounded-2xl border border-neutral-300 bg-white px-10 py-7">
+        {/* Header */}
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-lg font-semibold leading-[22px] text-base-500">Website Setup</h2>
+          <p className="text-xs leading-4 text-base-300">
+            Connect your own domain to your landing page
+          </p>
+        </div>
+
+        <CustomDomainPicker
+          selection={selection}
+          onSelect={handleSelect}
+          onSwitchToLaunch10={() => setShowCustomDomain(false)}
+        />
+
+        {/* Full URL Preview */}
+        {selection && (
+          <div className="pt-4 border-t border-neutral-200">
+            <FullUrlPreview
+              fullUrl={selection.fullUrl}
+              isNew={selection.isNew}
+              source={selection.source}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5 rounded-2xl border border-neutral-300 bg-white px-10 py-7">
       {/* Header */}
       <div className="flex flex-col gap-0.5">
         <h2 className="text-lg font-semibold leading-[22px] text-base-500">Website Setup</h2>
-        <p className="text-xs leading-4 text-base-300">Choose where your landing page will live</p>
+        <p className="text-xs leading-4 text-base-300">
+          Choose how you want your website to be accessed
+        </p>
       </div>
 
-      {/* Tab Switcher */}
-      <Tabs value={mode} onValueChange={(v) => setMode(v as PickerMode)}>
-        <TabsList className="w-fit rounded-full">
-          <TabsTrigger value="launch10" className="data-[state=active]:bg-white rounded-full">
-            <BoltIcon className="size-4" />
-            <span className="text-sm">Launch10 Site</span>
-          </TabsTrigger>
-          <TabsTrigger value="custom" className="data-[state=active]:bg-white rounded-full">
-            <LinkIcon className="size-4" />
-            <span className="text-sm">Custom Domain</span>
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="launch10" className="mt-4">
-          <Launch10SitePicker
-            recommendations={domainRecommendations}
-            context={context}
-            selection={selection}
-            onSelect={handleSelect}
-            onConnectOwnSite={() => setMode("custom")}
-          />
-        </TabsContent>
-
-        <TabsContent value="custom" className="mt-4">
-          <CustomDomainPicker
-            selection={selection}
-            onSelect={handleSelect}
-            onSwitchToLaunch10={() => setMode("launch10")}
-          />
-        </TabsContent>
-      </Tabs>
+      {/* Launch10 Site Picker */}
+      <Launch10SitePicker
+        recommendations={domainRecommendations}
+        context={context}
+        selection={selection}
+        onSelect={handleSelect}
+        onConnectOwnSite={() => setShowCustomDomain(true)}
+      />
 
       {/* Full URL Preview */}
       {selection && (

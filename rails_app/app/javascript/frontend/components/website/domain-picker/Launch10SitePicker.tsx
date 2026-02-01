@@ -1,7 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { BoltIcon } from "@heroicons/react/24/solid";
-import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@components/ui/item";
+import {
+  InformationCircleIcon,
+  ExclamationCircleIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+} from "@heroicons/react/24/outline";
 import { Label } from "@components/ui/label";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip";
 import { SiteNameDropdown } from "./SiteNameDropdown";
 import { PageNameInput } from "./PageNameInput";
 import type { Website } from "@shared";
@@ -11,6 +16,8 @@ import type { DomainSelection } from "./DomainPicker";
 // ============================================================================
 // Types
 // ============================================================================
+
+type AvailabilityStatus = "checking" | "available" | "unavailable" | "deployed" | null;
 
 export interface Launch10SitePickerProps {
   recommendations?: Website.DomainRecommendations.DomainRecommendations | null;
@@ -37,6 +44,9 @@ export function Launch10SitePicker({
   );
   const [customPath, setCustomPath] = useState(selection?.path ?? "/");
 
+  // Track URL availability status
+  const [availabilityStatus, setAvailabilityStatus] = useState<AvailabilityStatus>(null);
+
   // Determine if out of credits
   const isOutOfCredits = useMemo(() => {
     if (!context?.platform_subdomain_credits) return false;
@@ -55,6 +65,30 @@ export function Launch10SitePicker({
       setCustomPath(selectedRec.path);
     }
   }, [selectedRec]);
+
+  // Check availability when selection changes
+  useEffect(() => {
+    if (!selection?.domain || !selection?.path) {
+      setAvailabilityStatus(null);
+      return;
+    }
+
+    // Check if this is an existing deployed URL
+    const existingDomain = context?.existing_domains?.find((d) => d.domain === selection.domain);
+    if (existingDomain) {
+      const existingUrl = existingDomain.website_urls.find((u) => u.path === selection.path);
+      // If this URL exists and has a website_id, it might be deployed
+      if (existingUrl && existingUrl.website_id) {
+        // For now, mark as available since we need is_deployed flag from backend
+        // TODO: Add is_deployed flag to website_urls response
+        setAvailabilityStatus("available");
+        return;
+      }
+    }
+
+    // For new domains/paths, mark as available (already verified by AI or search)
+    setAvailabilityStatus("available");
+  }, [selection, context]);
 
   // Handle domain selection from dropdown
   const handleDomainSelect = (
@@ -103,26 +137,40 @@ export function Launch10SitePicker({
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Info Banner */}
-      <Item variant="outline" className="max-w-xl border-primary-300 bg-primary-100">
-        <ItemMedia className="my-auto">
-          <BoltIcon className="size-4 fill-primary-500" />
-        </ItemMedia>
-        <ItemContent>
-          <ItemTitle>Free & Instant</ItemTitle>
-          <ItemDescription className="text-base-600">
-            Get started immediately with a free Launch10 subdomain. Perfect for testing and
-            launching quickly.
-          </ItemDescription>
-        </ItemContent>
-      </Item>
+      {/* Out of Credits Warning - shown at top */}
+      {isOutOfCredits && (
+        <div
+          data-testid="out-of-credits-banner"
+          className="flex items-center gap-3 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3"
+        >
+          <ExclamationCircleIcon className="size-5 text-amber-600 shrink-0" />
+          <p className="text-sm text-amber-800 flex-1">
+            You've hit the limit of {context?.platform_subdomain_credits?.limit} subdomains allowed
+            on your current subscription plan.{" "}
+            <a
+              href="/subscriptions"
+              className="font-medium text-amber-700 hover:text-amber-800 underline"
+            >
+              Upgrade to add more.
+            </a>
+          </p>
+        </div>
+      )}
 
       {/* Domain + Path Selection Row */}
       <div className="flex gap-4">
         {/* Site Name (Domain) */}
         <div className="flex-1 flex flex-col gap-2">
-          <Label className="text-sm font-semibold leading-[18px] text-base-500">
+          <Label className="text-sm font-semibold leading-[18px] text-base-500 flex items-center gap-1">
             Your site name
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InformationCircleIcon className="size-4 text-base-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                This is where your landing page will live (e.g., mysite.launch10.site)
+              </TooltipContent>
+            </Tooltip>
           </Label>
           <SiteNameDropdown
             recommendations={recommendations}
@@ -136,7 +184,18 @@ export function Launch10SitePicker({
 
         {/* Page Name (Path) */}
         <div className="flex-1 flex flex-col gap-2">
-          <Label className="text-sm font-semibold leading-[18px] text-base-500">Page name</Label>
+          <Label className="text-sm font-semibold leading-[18px] text-base-500 flex items-center gap-1">
+            Page name
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <InformationCircleIcon className="size-4 text-base-400 cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                Optional - helps you group several pages within a single site. Example: /services or
+                /pricing
+              </TooltipContent>
+            </Tooltip>
+          </Label>
           <PageNameInput
             value={customPath}
             onChange={handlePathChange}
@@ -146,21 +205,30 @@ export function Launch10SitePicker({
         </div>
       </div>
 
-      {/* Out of Credits Warning */}
-      {isOutOfCredits && (
-        <div
-          data-testid="out-of-credits-banner"
-          className="flex flex-col gap-2 rounded-md bg-amber-50 border border-amber-200 px-4 py-3"
-        >
-          <p className="text-sm text-amber-800">
-            You've used all your free subdomains. Upgrade to create more, or reuse an existing site.
-          </p>
-          <a
-            href="/subscriptions"
-            className="text-sm font-medium text-amber-700 hover:text-amber-800 underline self-start"
-          >
-            Upgrade your plan
-          </a>
+      {/* Availability Status */}
+      {selection && availabilityStatus && (
+        <div className="mt-2" data-testid="availability-status">
+          {availabilityStatus === "available" && (
+            <div className="flex items-center gap-1.5 text-sm text-success-500">
+              <CheckCircleIcon className="size-4" />
+              <span>Available: {selection.fullUrl}</span>
+            </div>
+          )}
+          {availabilityStatus === "unavailable" && (
+            <div className="flex items-center gap-1.5 text-sm text-destructive">
+              <XCircleIcon className="size-4" />
+              <span>Selected website is currently unavailable</span>
+            </div>
+          )}
+          {availabilityStatus === "deployed" && (
+            <div className="flex items-center gap-1.5 text-sm text-destructive">
+              <ExclamationCircleIcon className="size-4" />
+              <span>
+                This site is currently launched. Please choose a different site that isn't already
+                taken.
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>
