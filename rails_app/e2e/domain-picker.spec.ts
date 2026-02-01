@@ -220,7 +220,7 @@ test.describe("Domain Picker", () => {
       await page.context().setOffline(true);
 
       // Try to interact with the page
-      await domainPickerPage.selectCustomDomainTab();
+      await domainPickerPage.switchToCustomDomain();
 
       // Restore network
       await page.context().setOffline(false);
