@@ -16,6 +16,11 @@ const meta = {
       </div>
     ),
   ],
+  args: {
+    // Provide default handlers that will be overridden by argTypes actions
+    onSelect: () => {},
+    onConnectOwnSite: () => {},
+  },
   argTypes: {
     onSelect: { action: "select" },
     onConnectOwnSite: { action: "connect own site" },

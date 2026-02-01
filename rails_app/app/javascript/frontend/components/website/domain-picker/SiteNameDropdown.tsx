@@ -1,12 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
-import {
-  ChevronDownIcon,
-  StarIcon,
-  CheckIcon,
-  LinkIcon,
-  LockClosedIcon,
-} from "@heroicons/react/24/solid";
-import { ArrowRightIcon } from "@heroicons/react/24/outline";
+import { ChevronDownIcon, LockClosedIcon } from "@heroicons/react/24/solid";
+import { StarIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
 import { cn } from "~/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { Input } from "@components/ui/input";
@@ -88,7 +82,8 @@ export function SiteNameDropdown({
   // Get display name for selected domain
   const selectedDisplayName = useMemo(() => {
     if (!selectedDomain) return "Select a domain...";
-    return selectedDomain.replace(PLATFORM_SUFFIX, "");
+    // Show full URL (including suffix) in the trigger
+    return selectedDomain;
   }, [selectedDomain]);
 
   // Handle selecting a domain from the dropdown
@@ -126,67 +121,49 @@ export function SiteNameDropdown({
           type="button"
           className={cn(
             "flex w-full items-center justify-between gap-2",
-            "rounded-md border border-neutral-300 bg-white px-3 py-2",
+            "rounded-lg border border-neutral-300 bg-white px-3 py-2.5",
             "text-sm text-left transition-colors",
             "hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           )}
         >
-          <span className="flex items-center gap-2">
-            <span className={selectedDomain ? "text-base-600" : "text-base-400"}>
-              {selectedDisplayName}
-            </span>
-            {/* Only show suffix when a domain is selected */}
-            {selectedDomain && <span className="text-base-400">{PLATFORM_SUFFIX}</span>}
+          <span className={cn("truncate", selectedDomain ? "text-base-600" : "text-base-400")}>
+            {selectedDisplayName}
           </span>
-          <ChevronDownIcon className="size-4 text-base-400" />
+          <ChevronDownIcon className="size-4 text-base-400 shrink-0" />
         </button>
       </PopoverTrigger>
 
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-        <div className="max-h-80 overflow-y-auto">
-          {/* Create New Site Section - Always at top */}
-          <div className="p-2">
-            <div className="px-2 py-1.5 text-xs font-medium text-base-400">Create New Site</div>
-            <div className="relative">
-              <Input
-                type="text"
-                value={customInput}
-                onChange={(e) => setCustomInput(e.target.value.toLowerCase())}
-                placeholder="Type to create your own"
-                className={cn("text-sm", customInput && "pr-28")}
-                disabled={isOutOfCredits}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && customValidation.valid) {
-                    handleCustomSubmit();
-                  }
-                }}
-              />
-              {/* Show suffix only when input has value */}
-              {customInput && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-base-400 pointer-events-none">
-                  {PLATFORM_SUFFIX}
-                </span>
-              )}
-            </div>
+        <div className="max-h-96 overflow-y-auto">
+          {/* Create New Site Section */}
+          <div className="px-4 py-3">
+            <div className="text-sm font-medium text-base-400 mb-2">Create New Site</div>
+            <Input
+              type="text"
+              value={customInput}
+              onChange={(e) => setCustomInput(e.target.value.toLowerCase())}
+              placeholder="Type to create your own"
+              className="text-sm bg-neutral-50 border-neutral-200 rounded-lg"
+              disabled={isOutOfCredits}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && customValidation.valid) {
+                  handleCustomSubmit();
+                }
+              }}
+            />
             {customInput && customValidation.error && (
-              <p className="text-xs text-destructive mt-1 px-1">{customValidation.error}</p>
+              <p className="text-xs text-destructive mt-1">{customValidation.error}</p>
             )}
           </div>
 
           {/* Existing Sites Section */}
           {existingSites.length > 0 && (
             <>
-              <div className="border-t border-neutral-200" />
-              <div className="p-1">
-                <div className="px-2 py-1.5 text-xs font-medium text-base-400">
-                  Your Existing Sites
-                </div>
-                {existingSites.map((site) => {
-                  const websiteName = context?.existing_domains?.find(
-                    (d) => d.domain === site.domain
-                  )?.website_name;
-
-                  return (
+              <div className="border-t border-neutral-100" />
+              <div className="px-4 py-3">
+                <div className="text-sm font-medium text-base-400 mb-2">Your Existing Sites</div>
+                <div className="flex flex-col gap-0.5">
+                  {existingSites.map((site) => (
                     <button
                       key={site.domain}
                       type="button"
@@ -194,37 +171,25 @@ export function SiteNameDropdown({
                         handleSelect(site.domain, site.subdomain, "existing", site.existingDomainId)
                       }
                       className={cn(
-                        "w-full flex items-center gap-2 px-2 py-2 rounded text-sm text-left",
-                        "hover:bg-neutral-100 transition-colors",
-                        selectedDomain === site.domain && "bg-primary-50"
+                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left",
+                        "transition-colors",
+                        selectedDomain === site.domain
+                          ? "bg-neutral-100"
+                          : "hover:bg-neutral-50"
                       )}
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-base-600">
-                            {site.subdomain}
-                            <span className="text-base-400">{PLATFORM_SUFFIX}</span>
-                          </span>
-                          {isTopRecommendation(site.domain) && (
-                            <span
-                              data-testid={`recommendation-star-${site.domain}`}
-                              className="inline-flex items-center gap-0.5 text-xs text-amber-600"
-                            >
-                              <StarIcon className="size-3 fill-amber-400" />
-                              <span>Recommended</span>
-                            </span>
-                          )}
-                        </div>
-                        {websiteName && (
-                          <span className="text-xs text-base-400">From: {websiteName}</span>
-                        )}
-                      </div>
-                      {selectedDomain === site.domain && (
-                        <CheckIcon className="size-4 text-primary-500" />
+                      {/* Star icon on the left for recommended */}
+                      {isTopRecommendation(site.domain) ? (
+                        <StarIcon className="size-5 text-base-400 shrink-0" />
+                      ) : (
+                        <span className="size-5 shrink-0" />
                       )}
+
+                      {/* Full URL - no wrapping */}
+                      <span className="flex-1 text-base-600 truncate">{site.fullUrl}</span>
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
             </>
           )}
@@ -232,86 +197,90 @@ export function SiteNameDropdown({
           {/* Suggested Sites Section */}
           {suggestedSites.length > 0 && (
             <>
-              <div className="border-t border-neutral-200" />
-              <div className="p-1">
-                <div className="px-2 py-1.5 text-xs font-medium text-base-400">
+              <div className="border-t border-neutral-100" />
+              <div className="px-4 py-3">
+                <div className="text-sm font-medium text-base-400 mb-2">
                   Create New Site (Suggestions)
                 </div>
-                {suggestedSites.map((site) => (
-                  <button
-                    key={site.domain}
-                    type="button"
-                    disabled={isOutOfCredits}
-                    onClick={() => handleSelect(site.domain, site.subdomain, "generated")}
-                    className={cn(
-                      "w-full flex items-center gap-2 px-2 py-2 rounded text-sm text-left",
-                      "hover:bg-neutral-100 transition-colors",
-                      selectedDomain === site.domain && "bg-primary-50",
-                      isOutOfCredits && "opacity-50 cursor-not-allowed"
-                    )}
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-base-600">
-                          {site.subdomain}
-                          <span className="text-base-400">{PLATFORM_SUFFIX}</span>
-                        </span>
-                        {isTopRecommendation(site.domain) && (
-                          <span
-                            data-testid={`recommendation-star-${site.domain}`}
-                            className="inline-flex items-center gap-0.5 text-xs text-amber-600"
-                          >
-                            <StarIcon className="size-3 fill-amber-400" />
-                            <span>Recommended</span>
-                          </span>
-                        )}
-                      </div>
-                      {site.reasoning && (
-                        <span className="text-xs text-base-400">{site.reasoning}</span>
+                <div className="flex flex-col gap-0.5">
+                  {suggestedSites.map((site) => (
+                    <button
+                      key={site.domain}
+                      type="button"
+                      disabled={isOutOfCredits}
+                      onClick={() => handleSelect(site.domain, site.subdomain, "generated")}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left",
+                        "transition-colors",
+                        selectedDomain === site.domain
+                          ? "bg-neutral-100"
+                          : "hover:bg-neutral-50",
+                        isOutOfCredits && "opacity-50 cursor-not-allowed"
                       )}
-                    </div>
-                    {selectedDomain === site.domain && (
-                      <CheckIcon className="size-4 text-primary-500" />
-                    )}
-                  </button>
-                ))}
+                    >
+                      {/* Star icon on the left for recommended */}
+                      {isTopRecommendation(site.domain) ? (
+                        <StarIcon className="size-5 text-base-400 shrink-0" />
+                      ) : (
+                        <span className="size-5 shrink-0" />
+                      )}
+
+                      {/* Full URL - no wrapping */}
+                      <span className="flex-1 text-base-600 truncate">{site.fullUrl}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </>
           )}
 
-          {/* Connect your own site link */}
-          <div className="border-t border-neutral-200" />
-          <div className="p-2">
-            <button
-              type="button"
-              data-testid="connect-own-site-button"
-              disabled={!canConnectCustomDomain}
-              className={cn(
-                "w-full flex items-center gap-2 px-2 py-2 rounded text-sm text-left transition-colors",
-                canConnectCustomDomain ? "hover:bg-neutral-100" : "opacity-60 cursor-not-allowed"
-              )}
-              onClick={() => {
-                if (!canConnectCustomDomain) return;
-                setIsOpen(false);
-                onConnectOwnSite?.();
-              }}
-            >
-              {canConnectCustomDomain ? (
-                <LinkIcon className="size-4 text-base-400" />
-              ) : (
-                <LockClosedIcon className="size-4 text-base-400" />
-              )}
-              <span className="text-base-500 flex-1">Connect your own site</span>
-              {canConnectCustomDomain && <ArrowRightIcon className="size-4 text-base-400" />}
-            </button>
-            {/* Show upgrade badge only for Starter plan users */}
-            {!canConnectCustomDomain && (
-              <div className="flex justify-center mt-1" data-testid="upgrade-badge">
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-amber-400 to-orange-400 text-white">
-                  <span>✨</span>
-                  <span>Available on Growth & Pro Plan</span>
-                </span>
+          {/* Bottom section - Connect own site and upgrade options */}
+          <div className="border-t border-neutral-100" />
+          <div className="px-4 py-3 flex flex-col gap-2">
+            {/* Upgrade link - shown when out of credits */}
+            {isOutOfCredits && (
+              <a
+                href="/subscriptions"
+                className="flex items-center gap-2 px-3 py-2 text-sm text-base-500 hover:text-base-600 transition-colors"
+              >
+                <LockClosedIcon className="size-4" />
+                <span>Upgrade to launch more sites</span>
+              </a>
+            )}
+
+            {/* Connect your own site - shown for Growth/Pro users */}
+            {canConnectCustomDomain ? (
+              <button
+                type="button"
+                data-testid="connect-own-site-button"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm border border-neutral-200 hover:bg-neutral-50 transition-colors"
+                onClick={() => {
+                  setIsOpen(false);
+                  onConnectOwnSite?.();
+                }}
+              >
+                <span className="text-base-600">Connect your own site</span>
+                <ArrowRightIcon className="size-4 text-base-400" />
+              </button>
+            ) : (
+              /* Starter users - show upgrade to launch more sites */
+              <div className="w-full flex items-center gap-2 px-3 py-2 text-sm text-base-400">
+                <LockClosedIcon className="size-4" />
+                <span className="flex-1">Upgrade to launch more sites</span>
               </div>
+            )}
+
+            {/* Upgrade badge - shown for Starter users with purple-to-teal gradient */}
+            {!canConnectCustomDomain && (
+              <a
+                href="/subscriptions"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm text-white border border-[#5867C4] transition-all hover:opacity-90"
+                style={{ background: "linear-gradient(91deg, #5867C4 16.2%, #74BEA1 92.6%)" }}
+                data-testid="upgrade-badge"
+              >
+                <img src="/images/icons/rocket.svg" alt="" className="size-4" />
+                <span>Available on Growth & Pro Plan</span>
+              </a>
             )}
           </div>
         </div>

@@ -92,9 +92,10 @@ They can create new subdomains if needed.
   } else {
     creditsSection = `
 ## Credits Exhausted
-The user has used all ${credits.limit} subdomain credits and cannot create new subdomains.
-You MUST recommend from their existing domains only.
-${!hasExistingDomains ? "CRITICAL: User has no existing domains and no credits - recommend upgrading their plan." : ""}
+The user has used all ${credits.limit} subdomain credits.
+However, you MUST still generate new subdomain suggestions so they can see what's available if they upgrade.
+Mark these as source: "generated" - the UI will show them as disabled/greyed out.
+${!hasExistingDomains ? "NOTE: User has no existing domains - new subdomain suggestions are their only option (requires upgrade)." : ""}
 `;
   }
 
@@ -109,10 +110,12 @@ ${existingDomainsSection}
 ${creditsSection}
 
 ## Your Task
-${hasCredits ? "1. Use the search_domains tool to check availability of subdomain candidates" : ""}
-${hasCredits ? "2. Generate creative, brandable subdomains that capture the essence of the business" : ""}
-${hasExistingDomains ? `${hasCredits ? "3" : "1"}. Score any existing domains for relevance to the current business` : ""}
-${hasCredits || hasExistingDomains ? `${hasCredits && hasExistingDomains ? "4" : hasCredits ? "3" : "2"}. Return your final recommendations` : ""}
+1. Identify if any existing domains is a good fit for the current business
+2. Generate 3-5 creative, brandable subdomains which would be a good fit for the current business
+3. Use the search_domains tool to check availability of the subdomain candidates you generated
+4. For each domain, recommend what URL path would be used (e.g. paw-portraits.launch10.site/dogs)
+5. Use the search_paths tool to find available paths for each domain (paths that do not already have a website launched there)
+6. Return your final recommendations, including both existing and new, generated subdomain suggestions, with recommended paths
 
 ## Domain Requirements
 - Lowercase letters, numbers, and hyphens only
@@ -134,18 +137,12 @@ ${hasCredits || hasExistingDomains ? `${hasCredits && hasExistingDomains ? "4" :
 - **50-69**: Decent match - could work but not ideal
 - **0-49**: Poor match - domain doesn't fit the business
 
-${
-  hasCredits
-    ? `
 ## Search Strategy
 1. Start with 5-7 creative subdomain ideas based on the business
 2. Check their availability using search_domains
 3. If most are taken, generate more variations and search again
 4. Aim to find at least 3 available options
 5. For NEW domains, recommend path "/" (root)
-`
-    : ""
-}
 
 ${
   hasExistingDomains
@@ -162,5 +159,5 @@ When recommending an existing domain:
 
 Return exactly 3 recommendations, ranked by quality (best first).
 Each recommendation MUST include both a domain AND a path.
-${hasExistingDomains && hasCredits ? "Mix existing and new domains if appropriate." : ""}`;
+${hasExistingDomains ? "Mix existing and new domains - include at least one generated suggestion." : ""}`;
 }
