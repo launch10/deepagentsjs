@@ -32,6 +32,7 @@ export const createSearchPathsTool = (jwt: string) =>
   tool(
     async (input): Promise<string> => {
       const { domainId, candidates } = input;
+      console.log("[search_paths] Called with domainId:", domainId, "candidates:", candidates);
 
       try {
         const service = new WebsiteUrlsAPIService({ jwt });
@@ -49,6 +50,7 @@ export const createSearchPathsTool = (jwt: string) =>
           })),
         };
 
+        console.log("[search_paths] Results:", JSON.stringify(result, null, 2));
         return JSON.stringify(result);
       } catch (error) {
         const result: SearchPathsResult = {

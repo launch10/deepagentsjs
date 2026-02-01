@@ -8,25 +8,14 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-// Hoist the mock values so they're available before any imports
-const mockCacheMode = vi.hoisted(() => ({
-  isCacheModeEnabled: vi.fn(() => true),
+// Mock cache mode to skip the expensive websiteBuilder LLM calls
+vi.mock("../../../../app/nodes/website/cacheMode", () => ({
+  isCacheModeEnabled: () => true,
   CACHE_MODE: true,
 }));
-
-// Mock the cacheMode module - must use relative path to the actual module
-// The path is relative from this test file to app/nodes/website/cacheMode.ts
-vi.mock("../../../../app/nodes/website/cacheMode", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../../../../app/nodes/website/cacheMode")>();
-  return {
-    ...actual,
-    ...mockCacheMode,
-  };
-});
-
 import { testGraph } from "@support";
 import { DatabaseSnapshotter } from "@services";
-import { db, websites, chats, brainstorms, eq, and } from "@db";
+import { db, domains as domainsTable, websites, chats, brainstorms, eq, and } from "@db";
 import { type ThreadIDType } from "@types";
 import { websiteGraph as uncompiledGraph } from "@graphs";
 import { graphParams } from "@core";
@@ -87,6 +76,17 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
 
   describe("Domain Recommendations Generation", () => {
     it("generates domain recommendations when running the website graph", async () => {
+      // Create a domain owned by another user so "timesync" is unavailable
+      const now = new Date().toISOString();
+      await db.insert(domainsTable).values({
+        domain: "timesync.launch10.site",
+        accountId: 2,
+        isPlatformSubdomain: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+
       const result = await testGraph<WebsiteGraphState>()
         .withGraph(websiteGraph)
         .withState({
@@ -115,7 +115,33 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
 
       // Top recommendation should be set
       expect(recommendations?.topRecommendation).toBeDefined();
-    }, 120000);
+      const existingRecommendations = recommendations?.recommendations.filter((rec) => rec.source === "existing");
+      const newRecommendations = recommendations?.recommendations.filter((rec) => rec.source === "generated");
+
+      expect(existingRecommendations?.length).toBeGreaterThan(0);
+      expect(newRecommendations?.length).toBeGreaterThan(0);
+
+      // Core invariants for all recommendations
+      recommendations?.recommendations.forEach((rec) => {
+        expect(rec.score).toBeGreaterThanOrEqual(0);
+        expect(rec.score).toBeLessThanOrEqual(100);
+        expect(rec.domain).toMatch(/\.launch10\.site$/);
+        expect(rec.path).toBeDefined();
+      });
+
+      // Generated recommendations must only include available domains
+      // (timesync.launch10.site was inserted as owned by another user)
+      newRecommendations?.forEach((rec) => {
+        expect(rec.availability).toBe("available");
+        expect(rec.subdomain).not.toBe("timesync"); // We blocked this one
+      });
+
+      // Existing recommendations should reference the user's own domains
+      existingRecommendations?.forEach((rec) => {
+        expect(rec.availability).toBe("existing");
+        expect(rec.existingDomainId).toBeDefined();
+      });
+    });
 
     it("includes proper domain format with .launch10.site suffix", async () => {
       const result = await testGraph<WebsiteGraphState>()
@@ -145,7 +171,7 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
         expect(rec.score).toBeLessThanOrEqual(100);
         expect(rec.source).toMatch(/existing|generated/);
       }
-    }, 120000);
+    });
 
     it("top recommendation has all required fields", async () => {
       const result = await testGraph<WebsiteGraphState>()
@@ -171,7 +197,7 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
         expect(topRec.path).toBeDefined();
         expect(topRec.source).toMatch(/existing|generated/);
       }
-    }, 120000);
+    });
   });
 
   describe("Idempotency", () => {
@@ -219,7 +245,7 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
 
       // Should keep the existing recommendations, not overwrite them
       expect(result.state.domainRecommendations).toEqual(existingRecommendations);
-    }, 120000);
+    });
   });
 
   describe("Cache Mode Integration", () => {
@@ -242,6 +268,6 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
       // In cache mode, files should be populated from cache
       expect(result.state.files).toBeDefined();
       expect(Object.keys(result.state.files || {}).length).toBeGreaterThan(0);
-    }, 120000);
+    });
   });
 });
