@@ -15,11 +15,13 @@
 #  created_at         :datetime         not null
 #  updated_at         :datetime         not null
 #  account_id         :bigint           not null
+#  ticket_id          :string           not null
 #  user_id            :bigint           not null
 #
 # Indexes
 #
 #  index_support_requests_on_account_id  (account_id)
+#  index_support_requests_on_ticket_id   (ticket_id) UNIQUE
 #  index_support_requests_on_user_id     (user_id)
 #
 # Foreign Keys
@@ -45,13 +47,40 @@ class SupportRequest < ApplicationRecord
   validates :subject, presence: true, length: {maximum: 200}
   validates :description, presence: true, length: {maximum: 5000}
 
+  MAX_REQUESTS_PER_HOUR = 5
+
   validate :validate_attachments
+  validate :validate_rate_limit, on: :create
+
+  before_create :generate_ticket_id
+  after_create :fire_support_workers
 
   def ticket_reference
-    "SR-#{id.to_s.rjust(6, "0")}"
+    "SR-#{ticket_id}"
   end
 
   private
+
+  def generate_ticket_id
+    loop do
+      self.ticket_id = SecureRandom.alphanumeric(8).upcase
+      break unless SupportRequest.exists?(ticket_id: ticket_id)
+    end
+  end
+
+  def validate_rate_limit
+    return unless user
+
+    if user.support_requests.where("created_at > ?", 1.hour.ago).count >= MAX_REQUESTS_PER_HOUR
+      errors.add(:base, "You've submitted too many requests recently. Please try again later.")
+    end
+  end
+
+  def fire_support_workers
+    SupportMailer.support_request(self).deliver_later
+    Support::SlackNotificationWorker.perform_async(id)
+    Support::NotionCreationWorker.perform_async(id)
+  end
 
   def validate_attachments
     return unless attachments.attached?

@@ -10,14 +10,6 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 
-const CATEGORIES = [
-  "Report a bug",
-  "Billing question",
-  "How do I...?",
-  "Feature request",
-  "Other",
-] as const;
-
 const MAX_FILES = 3;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = [
@@ -28,11 +20,14 @@ const ALLOWED_TYPES = [
   "application/pdf",
 ];
 
+interface SupportPageProps {
+  categories: string[];
+  errors: Record<string, string[]>;
+  current_user: { email: string } | null;
+}
+
 export default function Support() {
-  const { errors, current_user } = usePage<{
-    errors: Record<string, string[]>;
-    current_user: { email: string } | null;
-  }>().props;
+  const { errors, current_user, categories } = usePage<SupportPageProps>().props;
 
   const [submitted, setSubmitted] = useState(false);
   const [ticketInfo, setTicketInfo] = useState("");
@@ -198,7 +193,7 @@ export default function Support() {
                     <option value="" disabled>
                       Select a category
                     </option>
-                    {CATEGORIES.map((cat) => (
+                    {categories.map((cat) => (
                       <option key={cat} value={cat}>
                         {cat}
                       </option>

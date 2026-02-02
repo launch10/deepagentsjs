@@ -17,11 +17,13 @@
 #  created_at         :datetime         not null
 #  updated_at         :datetime         not null
 #  account_id         :bigint           not null
+#  ticket_id          :string           not null
 #  user_id            :bigint           not null
 #
 # Indexes
 #
 #  index_support_requests_on_account_id  (account_id)
+#  index_support_requests_on_ticket_id   (ticket_id) UNIQUE
 #  index_support_requests_on_user_id     (user_id)
 #
 # Foreign Keys
@@ -59,15 +61,27 @@ RSpec.describe SupportRequest, type: :model do
   end
 
   describe "#ticket_reference" do
-    it "returns a formatted ticket reference" do
+    it "returns a formatted ticket reference with alphanumeric ticket_id" do
       support_request = create(:support_request)
-      expect(support_request.ticket_reference).to match(/\ASR-\d{6}\z/)
+      expect(support_request.ticket_reference).to match(/\ASR-[A-Z0-9]{8}\z/)
     end
 
-    it "zero-pads the ID" do
+    it "uses the ticket_id column" do
       support_request = create(:support_request)
-      expected = "SR-#{support_request.id.to_s.rjust(6, "0")}"
-      expect(support_request.ticket_reference).to eq(expected)
+      expect(support_request.ticket_reference).to eq("SR-#{support_request.ticket_id}")
+    end
+  end
+
+  describe "#generate_ticket_id" do
+    it "auto-generates a unique ticket_id on create" do
+      support_request = create(:support_request)
+      expect(support_request.ticket_id).to be_present
+      expect(support_request.ticket_id).to match(/\A[A-Z0-9]{8}\z/)
+    end
+
+    it "generates unique ticket_ids" do
+      ids = 5.times.map { create(:support_request).ticket_id }
+      expect(ids.uniq.length).to eq(5)
     end
   end
 

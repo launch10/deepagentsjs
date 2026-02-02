@@ -15,11 +15,13 @@
 #  created_at         :datetime         not null
 #  updated_at         :datetime         not null
 #  account_id         :bigint           not null
+#  ticket_id          :string           not null
 #  user_id            :bigint           not null
 #
 # Indexes
 #
 #  index_support_requests_on_account_id  (account_id)
+#  index_support_requests_on_ticket_id   (ticket_id) UNIQUE
 #  index_support_requests_on_user_id     (user_id)
 #
 # Foreign Keys
