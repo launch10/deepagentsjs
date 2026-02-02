@@ -11,7 +11,7 @@ module ProjectsPagination
 
   def paginated_projects(scope = current_account.projects)
     pagy(
-      scope.includes(website: :domains).order(updated_at: :desc),
+      scope.includes(website: :website_url).order(updated_at: :desc),
       limit: PROJECTS_PER_PAGE
     )
   end

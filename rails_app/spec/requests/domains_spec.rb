@@ -44,7 +44,7 @@ RSpec.describe "Domains API", type: :request do
       end
 
       response '201', 'domain created successfully' do
-        schema APISchemas::Domain.response
+        schema APISchemas::Domain.create_response
         let(:auth_headers) { auth_headers_for(user1) }
         let(:Authorization) { auth_headers['Authorization'] }
         let(:"X-Signature") { auth_headers['X-Signature'] }
@@ -61,15 +61,15 @@ RSpec.describe "Domains API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data['domain']).to eq('mysite.launch10.site')
-          expect(data['account_id']).to eq(user1_owned_account.id)
-          expect(data['website_id']).to eq(website1_owned.id)
-          expect(data['is_platform_subdomain']).to eq(true)
+          expect(data['domain']['domain']).to eq('mysite.launch10.site')
+          expect(data['domain']['account_id']).to eq(user1_owned_account.id)
+          expect(data['domain']['is_platform_subdomain']).to eq(true)
+          expect(data['website_url']['website_id']).to eq(website1_owned.id)
         end
       end
 
       response '201', 'domain created in team account after switching' do
-        schema APISchemas::Domain.response
+        schema APISchemas::Domain.create_response
         let(:auth_headers) { auth_headers_for(user1) }
         let(:Authorization) { auth_headers['Authorization'] }
         let(:"X-Signature") { auth_headers['X-Signature'] }
@@ -90,8 +90,8 @@ RSpec.describe "Domains API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data['domain']).to eq('team-site.launch10.site')
-          expect(data['account_id']).to eq(user1_team_account.id)
+          expect(data['domain']['domain']).to eq('team-site.launch10.site')
+          expect(data['domain']['account_id']).to eq(user1_team_account.id)
         end
       end
 
@@ -119,6 +119,7 @@ RSpec.describe "Domains API", type: :request do
           {
             domain: {
               domain: 'site4.launch10.site',
+              website_id: website1_owned.id,
               is_platform_subdomain: true
             }
           }
@@ -144,7 +145,6 @@ RSpec.describe "Domains API", type: :request do
       parameter name: :Authorization, in: :header, type: :string, required: false
       parameter name: 'X-Signature', in: :header, type: :string, required: false
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
-      parameter name: :website_id, in: :query, type: :integer, required: false, description: 'Filter by website ID'
 
       let!(:domain1_owned) { create(:domain, domain: 'site1.launch10.site', account: user1_owned_account) }
       let!(:domain2_owned) { create(:domain, domain: 'site2.launch10.site', account: user1_owned_account) }
@@ -186,23 +186,6 @@ RSpec.describe "Domains API", type: :request do
           data = JSON.parse(response.body)
           expect(data['domains'].length).to eq(1)
           expect(data['domains'].first['domain']).to eq('team1.launch10.site')
-        end
-      end
-
-      response '200', 'filters domains by website_id' do
-        schema APISchemas::Domain.list_response
-        let(:auth_headers) { auth_headers_for(user1) }
-        let(:Authorization) { auth_headers['Authorization'] }
-        let(:"X-Signature") { auth_headers['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-        let(:website_id) { website1_owned.id }
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data['domains'].length).to eq(2)
-          data['domains'].each do |domain|
-            expect(domain['website_id']).to eq(website1_owned.id)
-          end
         end
       end
 

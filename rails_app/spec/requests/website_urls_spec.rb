@@ -19,9 +19,9 @@ RSpec.describe "WebsiteUrls API", type: :request do
   let!(:website1_team) { create(:website, account: user1_team_account, project: project1_team, name: "Team Website") }
   let!(:website2_owned) { create(:website, account: user2_owned_account, project: project2_owned, name: "User 2 Website") }
 
-  let!(:domain1_owned) { create(:domain, domain: 'site1.launch10.site', account: user1_owned_account, website: website1_owned) }
-  let!(:domain1_team) { create(:domain, domain: 'team1.launch10.site', account: user1_team_account, website: website1_team) }
-  let!(:domain2_owned) { create(:domain, domain: 'other.launch10.site', account: user2_owned_account, website: website2_owned) }
+  let!(:domain1_owned) { create(:domain, domain: 'site1.launch10.site', account: user1_owned_account) }
+  let!(:domain1_team) { create(:domain, domain: 'team1.launch10.site', account: user1_team_account) }
+  let!(:domain2_owned) { create(:domain, domain: 'other.launch10.site', account: user2_owned_account) }
 
   before do
     ensure_plans_exist
@@ -173,10 +173,9 @@ RSpec.describe "WebsiteUrls API", type: :request do
       parameter name: :website_id, in: :query, type: :integer, required: false, description: 'Filter by website ID'
       parameter name: :domain_id, in: :query, type: :integer, required: false, description: 'Filter by domain ID'
 
-      let!(:url1_owned) { create(:website_url, path: '/page1', account: user1_owned_account, website: website1_owned, domain: domain1_owned) }
-      let!(:url2_owned) { create(:website_url, path: '/page2', account: user1_owned_account, website: website1_owned, domain: domain1_owned) }
-      let!(:url1_team) { create(:website_url, path: '/team-page', account: user1_team_account, website: website1_team, domain: domain1_team) }
-      let!(:url2_other) { create(:website_url, path: '/other-page', account: user2_owned_account, website: website2_owned, domain: domain2_owned) }
+      let!(:url1_owned) { create(:website_url, path: '/', account: user1_owned_account, website: website1_owned, domain: domain1_owned) }
+      let!(:url1_team) { create(:website_url, path: '/', account: user1_team_account, website: website1_team, domain: domain1_team) }
+      let!(:url2_other) { create(:website_url, path: '/', account: user2_owned_account, website: website2_owned, domain: domain2_owned) }
 
       before do
         switch_account_to(user1_owned_account)
@@ -191,10 +190,8 @@ RSpec.describe "WebsiteUrls API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data['website_urls'].length).to eq(2)
-          paths = data['website_urls'].map { |u| u['path'] }
-          expect(paths).to include('/page1', '/page2')
-          expect(paths).not_to include('/team-page', '/other-page')
+          expect(data['website_urls'].length).to eq(1)
+          expect(data['website_urls'].first['website_id']).to eq(website1_owned.id)
         end
       end
 
@@ -212,7 +209,7 @@ RSpec.describe "WebsiteUrls API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['website_urls'].length).to eq(1)
-          expect(data['website_urls'].first['path']).to eq('/team-page')
+          expect(data['website_urls'].first['website_id']).to eq(website1_team.id)
         end
       end
 
@@ -226,10 +223,8 @@ RSpec.describe "WebsiteUrls API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data['website_urls'].length).to eq(2)
-          data['website_urls'].each do |url|
-            expect(url['website_id']).to eq(website1_owned.id)
-          end
+          expect(data['website_urls'].length).to eq(1)
+          expect(data['website_urls'].first['website_id']).to eq(website1_owned.id)
         end
       end
 
@@ -243,10 +238,8 @@ RSpec.describe "WebsiteUrls API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data['website_urls'].length).to eq(2)
-          data['website_urls'].each do |url|
-            expect(url['domain_id']).to eq(domain1_owned.id)
-          end
+          expect(data['website_urls'].length).to eq(1)
+          expect(data['website_urls'].first['domain_id']).to eq(domain1_owned.id)
         end
       end
 
@@ -602,32 +595,6 @@ RSpec.describe "WebsiteUrls API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['errors']).to include('Not found')
-        end
-      end
-
-      response '422', 'duplicate domain and path on update' do
-        let(:auth_headers) { auth_headers_for(user1) }
-        let(:Authorization) { auth_headers['Authorization'] }
-        let(:"X-Signature") { auth_headers['X-Signature'] }
-        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-        let(:id) { url1_owned.id }
-        let(:website_url_params) do
-          {
-            website_url: {
-              domain_id: domain1_owned.id,
-              website_id: website1_owned.id,
-              path: '/existing-path'
-            }
-          }
-        end
-
-        before do
-          create(:website_url, domain: domain1_owned, website: website1_owned, account: user1_owned_account, path: '/existing-path')
-        end
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-          expect(data['errors']).to include('A website URL with this domain and path already exists')
         end
       end
 
