@@ -9,17 +9,16 @@ authenticated :user do
 end
 
 namespace :test do
+  # Database snapshot operations (true database concerns)
   post "database/truncate", to: "database#truncate"
   post "database/snapshots", to: "database#create_snapshot"
   post "database/restore_snapshot", to: "database#restore_snapshot"
   get "database/snapshots", to: "database#index"
-  get "database/first_project", to: "database#first_project"
-  post "database/set_credits", to: "database#set_credits"
-  post "database/set_credit_pack_stripe_price", to: "database#set_credit_pack_stripe_price"
-  post "database/fill_subdomain_limit", to: "database#fill_subdomain_limit"
-  get "database/first_website", to: "database#first_website"
-  post "database/assign_custom_domain", to: "database#assign_custom_domain"
-  post "database/assign_platform_subdomain", to: "database#assign_platform_subdomain"
+
+  # Test data scenarios and queries are handled by cypress-on-rails middleware
+  # POST /__e2e__/command with { name: "scenarios/fill_subdomain_limit", options: { email: "..." } }
+  # POST /__e2e__/command with { name: "queries/first_project" }
+  # See e2e/app_commands/ for available commands
 
   get "tracking/stats", to: "tracking#stats"
   get "tracking/leads", to: "tracking#leads"

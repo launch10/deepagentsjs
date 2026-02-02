@@ -1,5 +1,6 @@
 import { test, expect, loginUser, testUser } from "../fixtures/auth";
 import { DatabaseSnapshotter } from "../fixtures/database";
+import { appScenario } from "../support/on-rails";
 import { SettingsPage } from "../pages/settings.page";
 
 /**
@@ -20,7 +21,7 @@ test.describe("Credit Pack Purchase", () => {
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("basic_account");
       // Set credits high enough to avoid the low credit warning modal
-      await DatabaseSnapshotter.setCredits(testUser.email, 4000000, 0); // 4000 credits
+      await appScenario("set_credits", { email: testUser.email, plan_millicredits: 4000000, pack_millicredits: 0 }); // 4000 credits
       settingsPage = new SettingsPage(page);
     });
 
@@ -128,13 +129,13 @@ test.describe("Credit Pack Purchase", () => {
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("basic_account");
       // Set credits high enough to avoid the low credit warning modal
-      await DatabaseSnapshotter.setCredits(testUser.email, 4000000, 0); // 4000 credits
+      await appScenario("set_credits", { email: testUser.email, plan_millicredits: 4000000, pack_millicredits: 0 }); // 4000 credits
       settingsPage = new SettingsPage(page);
     });
 
     test("shows error when credit pack has no stripe_price_id", async ({ page }) => {
       // Clear the stripe_price_id to test the error case
-      await DatabaseSnapshotter.setCreditPackStripePrice(1, "");
+      await appScenario("set_stripe_price", { credit_pack_id: 1, stripe_price_id: "" });
 
       await loginUser(page);
       await settingsPage.goto();
@@ -179,7 +180,7 @@ test.describe("Credit Pack Purchase", () => {
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("basic_account");
       // Set credits high enough to avoid the low credit warning modal
-      await DatabaseSnapshotter.setCredits(testUser.email, 4000000, 0); // 4000 credits
+      await appScenario("set_credits", { email: testUser.email, plan_millicredits: 4000000, pack_millicredits: 0 }); // 4000 credits
       settingsPage = new SettingsPage(page);
     });
 
