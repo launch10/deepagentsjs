@@ -13,6 +13,9 @@ async function loadBackendModules() {
   }
 }
 
+/** Default timeout for Rails API requests (10 seconds) */
+const DEFAULT_TIMEOUT_MS = 10_000;
+
 export interface RailsApiClientOptions {
   jwt?: string;
   baseUrl?: string;
@@ -22,6 +25,11 @@ export interface RailsApiClientOptions {
    * `skip_before_action :require_api_authentication` and use `verify_internal_api_request`.
    */
   internalServiceCall?: boolean;
+  /**
+   * Request timeout in milliseconds. Defaults to 10 seconds.
+   * Set to 0 to disable timeout.
+   */
+  timeoutMs?: number;
 }
 
 function generateSignature(timestamp: number): string {
@@ -91,6 +99,35 @@ const headers = (jwtToken?: string, internalServiceCall?: boolean) => {
 }
 
 /**
+ * Creates a fetch wrapper with timeout support
+ */
+function createFetchWithTimeout(timeoutMs: number): typeof fetch {
+  if (timeoutMs <= 0) {
+    return fetch;
+  }
+
+  return async (input, init) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(input, {
+        ...init,
+        signal: controller.signal,
+      });
+      return response;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(`Request timed out after ${timeoutMs}ms`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+}
+
+/**
  * Creates a typed client for the Rails API
  * @param options - Configuration options for the client
  * @returns A typed openapi-fetch client
@@ -100,6 +137,7 @@ export async function createRailsApiClient(options: RailsApiClientOptions = {}) 
     jwt: jwtToken,
     baseUrl = env.RAILS_API_URL || env.VITE_RAILS_API_URL || "http://localhost:3000",
     internalServiceCall = false,
+    timeoutMs = DEFAULT_TIMEOUT_MS,
   } = options;
 
   if (isBackend()) {
@@ -111,6 +149,8 @@ export async function createRailsApiClient(options: RailsApiClientOptions = {}) 
     headers: headers(jwtToken, internalServiceCall),
     // Include credentials (cookies) for frontend requests to enable session auth
     ...(isFrontend() && { credentials: 'include' }),
+    // Add timeout support via custom fetch
+    fetch: createFetchWithTimeout(timeoutMs),
   });
 
   return client;
