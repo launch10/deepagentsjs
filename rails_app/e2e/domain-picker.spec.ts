@@ -1124,3 +1124,282 @@ test.describe("Domain Picker - Existing Domains", () => {
     await domainPickerPage.expectUrlPreview("my-custom-site.com");
   });
 });
+
+/**
+ * Domain Picker - Autosave Tests
+ *
+ * Tests the autosave functionality that persists domain and website_url changes.
+ * Autosave is triggered via useLatestMutation on blur with a 750ms debounce.
+ *
+ * The autosave flow:
+ * 1. User makes a selection (domain, path)
+ * 2. User blurs (clicks outside, tabs away)
+ * 3. After 750ms debounce, mutateDebounced fires
+ * 4. API creates/updates Domain and WebsiteUrl records
+ *
+ * Tests verify persistence by:
+ * - Making changes and triggering blur
+ * - Waiting for debounce + API call to complete
+ * - Reloading the page
+ * - Asserting the changes persisted
+ */
+test.describe("Domain Picker - Autosave", () => {
+  test.setTimeout(90000);
+
+  let domainPickerPage: DomainPickerPage;
+  let projectUuid: string;
+
+  test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("website_step");
+    const project = await DatabaseSnapshotter.getFirstProject();
+    projectUuid = project.uuid;
+    await loginUser(page);
+    domainPickerPage = new DomainPickerPage(page);
+  });
+
+  /**
+   * Helper to trigger blur and wait for autosave to complete.
+   * Clicks outside the inputs to trigger blur, then waits for
+   * the debounce (750ms) plus API response time.
+   */
+  async function triggerBlurAndWaitForAutosave(page: import("@playwright/test").Page) {
+    // Click on the header to blur the inputs
+    await page.getByRole("heading", { name: /Website Setup|Connect your own site/ }).click();
+
+    // Wait for debounce (750ms) + API call buffer
+    await page.waitForTimeout(1500);
+  }
+
+  test("autosaves when selecting an existing platform subdomain", async ({ page }) => {
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Select an existing platform subdomain
+    await domainPickerPage.siteNameDropdown.click();
+    await page.waitForTimeout(500);
+    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    await popover.locator('text="meeting-tool.launch10.site"').click();
+
+    // Verify selection is shown before save
+    await domainPickerPage.expectUrlPreview("meeting-tool.launch10.site");
+
+    // Trigger blur to initiate autosave
+    await triggerBlurAndWaitForAutosave(page);
+
+    // Reload the page to verify persistence
+    await page.reload();
+    await domainPickerPage.waitForLoaded();
+
+    // The domain should persist after reload
+    const dropdownText = await domainPickerPage.siteNameDropdown.textContent();
+    expect(dropdownText).toContain("meeting-tool.launch10.site");
+
+    // URL preview should also show the persisted domain
+    await expect(domainPickerPage.fullUrlPreview).toBeVisible();
+    await expect(domainPickerPage.fullUrlPreview).toContainText("meeting-tool.launch10.site");
+  });
+
+  test("autosaves when changing the path on an existing domain", async ({ page }) => {
+    // First, assign a domain so we can test changing the path
+    const website = await DatabaseSnapshotter.getFirstWebsite();
+    await DatabaseSnapshotter.assignPlatformSubdomain(website.id, "autosave-test", "/original");
+
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Verify the initial path is set
+    const initialPath = await domainPickerPage.pageNameInput.inputValue();
+    expect(initialPath).toBe("original");
+
+    // Change the path
+    const newPath = `updated-${Date.now() % 10000}`;
+    await domainPickerPage.pageNameInput.clear();
+    await domainPickerPage.pageNameInput.fill(newPath);
+
+    // Trigger blur to initiate autosave
+    await triggerBlurAndWaitForAutosave(page);
+
+    // Reload the page to verify persistence
+    await page.reload();
+    await domainPickerPage.waitForLoaded();
+
+    // The domain should still be selected
+    const dropdownText = await domainPickerPage.siteNameDropdown.textContent();
+    expect(dropdownText).toContain("autosave-test.launch10.site");
+
+    // The new path should persist after reload
+    const persistedPath = await domainPickerPage.pageNameInput.inputValue();
+    expect(persistedPath).toBe(newPath);
+
+    // URL preview should show the updated path
+    await expect(domainPickerPage.fullUrlPreview).toContainText(`autosave-test.launch10.site/${newPath}`);
+  });
+
+  test("autosaves when selecting a custom domain from dropdown", async ({ page }) => {
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Select the existing custom domain from dropdown
+    await domainPickerPage.siteNameDropdown.click();
+    await page.waitForTimeout(500);
+    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    await popover.locator('text="my-custom-site.com"').click();
+
+    // Verify selection is shown (DNS help indicates custom domain mode)
+    await expect(domainPickerPage.dnsVerificationStatus).toBeVisible({ timeout: 5000 });
+
+    // Trigger blur to initiate autosave
+    await triggerBlurAndWaitForAutosave(page);
+
+    // Reload the page to verify persistence
+    await page.reload();
+    await domainPickerPage.waitForLoaded();
+
+    // The custom domain should persist after reload
+    const dropdownText = await domainPickerPage.siteNameDropdown.textContent();
+    expect(dropdownText).toContain("my-custom-site.com");
+
+    // Should still show DNS verification (custom domain mode)
+    await expect(domainPickerPage.dnsVerificationStatus).toBeVisible({ timeout: 5000 });
+  });
+
+  test("autosaves when switching from platform subdomain to custom domain", async ({ page }) => {
+    // Start with a platform subdomain assigned
+    const website = await DatabaseSnapshotter.getFirstWebsite();
+    await DatabaseSnapshotter.assignPlatformSubdomain(website.id, "switch-from-me", "/");
+
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Verify the platform subdomain is initially selected
+    let dropdownText = await domainPickerPage.siteNameDropdown.textContent();
+    expect(dropdownText).toContain("switch-from-me.launch10.site");
+
+    // Switch to the custom domain
+    await domainPickerPage.siteNameDropdown.click();
+    await page.waitForTimeout(500);
+    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    await popover.locator('text="my-custom-site.com"').click();
+
+    // Trigger blur to initiate autosave
+    await triggerBlurAndWaitForAutosave(page);
+
+    // Reload the page to verify persistence
+    await page.reload();
+    await domainPickerPage.waitForLoaded();
+
+    // The custom domain should now be selected after reload
+    dropdownText = await domainPickerPage.siteNameDropdown.textContent();
+    expect(dropdownText).toContain("my-custom-site.com");
+
+    // Should show DNS verification (custom domain mode)
+    await expect(domainPickerPage.dnsVerificationStatus).toBeVisible({ timeout: 5000 });
+  });
+
+  test("autosaves path changes with custom domain", async ({ page }) => {
+    // Start with a custom domain assigned
+    const website = await DatabaseSnapshotter.getFirstWebsite();
+    await DatabaseSnapshotter.assignCustomDomain("", website.id, "autosave-custom.example.com", "/initial");
+
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Verify the initial setup
+    const dropdownText = await domainPickerPage.siteNameDropdown.textContent();
+    expect(dropdownText).toContain("autosave-custom.example.com");
+
+    const initialPath = await domainPickerPage.pageNameInput.inputValue();
+    expect(initialPath).toBe("initial");
+
+    // Change the path
+    const newPath = `custom-path-${Date.now() % 10000}`;
+    await domainPickerPage.pageNameInput.clear();
+    await domainPickerPage.pageNameInput.fill(newPath);
+
+    // Trigger blur to initiate autosave
+    await triggerBlurAndWaitForAutosave(page);
+
+    // Reload the page to verify persistence
+    await page.reload();
+    await domainPickerPage.waitForLoaded();
+
+    // Domain should persist
+    const persistedDropdown = await domainPickerPage.siteNameDropdown.textContent();
+    expect(persistedDropdown).toContain("autosave-custom.example.com");
+
+    // Path should persist
+    const persistedPath = await domainPickerPage.pageNameInput.inputValue();
+    expect(persistedPath).toBe(newPath);
+  });
+
+  test("multiple rapid path changes only save the final value", async ({ page }) => {
+    // Assign a domain first
+    const website = await DatabaseSnapshotter.getFirstWebsite();
+    await DatabaseSnapshotter.assignPlatformSubdomain(website.id, "rapid-changes", "/start");
+
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Make several rapid path changes (faster than debounce)
+    await domainPickerPage.pageNameInput.clear();
+    await domainPickerPage.pageNameInput.fill("change1");
+    await page.waitForTimeout(100);
+
+    await domainPickerPage.pageNameInput.clear();
+    await domainPickerPage.pageNameInput.fill("change2");
+    await page.waitForTimeout(100);
+
+    await domainPickerPage.pageNameInput.clear();
+    await domainPickerPage.pageNameInput.fill("change3");
+    await page.waitForTimeout(100);
+
+    const finalPath = `final-${Date.now() % 10000}`;
+    await domainPickerPage.pageNameInput.clear();
+    await domainPickerPage.pageNameInput.fill(finalPath);
+
+    // Trigger blur to initiate autosave (only final value should be saved)
+    await triggerBlurAndWaitForAutosave(page);
+
+    // Reload the page to verify only final value persisted
+    await page.reload();
+    await domainPickerPage.waitForLoaded();
+
+    // Only the final path should persist
+    const persistedPath = await domainPickerPage.pageNameInput.inputValue();
+    expect(persistedPath).toBe(finalPath);
+  });
+
+  test("website_url record is created/updated on autosave", async ({ page }) => {
+    // Start with no domain assigned
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Select an existing domain (this creates a website_url linking domain to website)
+    await domainPickerPage.siteNameDropdown.click();
+    await page.waitForTimeout(500);
+    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    await popover.locator('text="meeting-tool.launch10.site"').click();
+
+    // Set a specific path
+    const testPath = `url-test-${Date.now() % 10000}`;
+    await domainPickerPage.pageNameInput.clear();
+    await domainPickerPage.pageNameInput.fill(testPath);
+
+    // Trigger blur to initiate autosave
+    await triggerBlurAndWaitForAutosave(page);
+
+    // Reload the page
+    await page.reload();
+    await domainPickerPage.waitForLoaded();
+
+    // Verify both domain and path persisted (proves website_url was created)
+    const dropdownText = await domainPickerPage.siteNameDropdown.textContent();
+    expect(dropdownText).toContain("meeting-tool.launch10.site");
+
+    const persistedPath = await domainPickerPage.pageNameInput.inputValue();
+    expect(persistedPath).toBe(testPath);
+
+    // URL preview should show the full URL
+    await expect(domainPickerPage.fullUrlPreview).toContainText(`meeting-tool.launch10.site/${testPath}`);
+  });
+});

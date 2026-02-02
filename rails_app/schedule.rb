@@ -24,6 +24,13 @@ Zhong.schedule do
   end
 
   category "Domains" do
+    # Verify DNS for custom domains that haven't been verified yet
+    # Runs hourly to catch DNS changes without overloading the system
+    # Scoped to domains created within 7 days that haven't been checked in the last hour
+    every(1.hour, "verify custom domain dns") do
+      Domains::DnsVerificationBatchWorker.perform_async
+    end
+
     # Release custom domains that have failed DNS verification for 7+ days
     # Prevents domain squatting and frees up domains for legitimate owners
     every(1.day, "release stale unverified domains", at: "04:00") do

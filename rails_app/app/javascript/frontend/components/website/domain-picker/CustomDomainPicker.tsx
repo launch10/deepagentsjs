@@ -19,6 +19,7 @@ import {
   CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 import { Spinner } from "@components/ui/spinner";
+import { validateDomain } from "~/lib/validation/domain";
 import { PageNameInput } from "./PageNameInput";
 import { useDnsVerification } from "~/hooks/useDnsVerification";
 import type { BaseDomainPickerProps } from "./DomainPicker";
@@ -62,21 +63,6 @@ const DNS_PROVIDERS: DnsProvider[] = [
       "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resource-record-sets-creating.html",
   },
 ];
-
-// ============================================================================
-// Validation
-// ============================================================================
-
-const DOMAIN_REGEX = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/;
-
-function validateDomain(value: string): { valid: boolean; error?: string } {
-  if (!value) return { valid: false };
-  if (value.length > 253) return { valid: false, error: "Domain too long" };
-  if (!DOMAIN_REGEX.test(value.toLowerCase())) {
-    return { valid: false, error: "Enter a valid domain (e.g., example.com)" };
-  }
-  return { valid: true };
-}
 
 // ============================================================================
 // Component
