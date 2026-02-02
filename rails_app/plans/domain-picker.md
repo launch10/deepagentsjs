@@ -592,3 +592,49 @@ cd ../langgraph_app && pnpm test -- recommendDomains
 ```
 
 Every scenario in this document should have a corresponding automated test.
+
+---
+
+## Implementation Status (Updated 2026-02-01)
+
+### Completed
+
+1. **Created `bin/dev-test` script** - Was missing, required for e2e tests to run.
+
+2. **Fixed `website_step.rb` snapshot builder**:
+   - Removed deprecated `website:` parameter from Domain creation (column was removed from schema)
+   - Reduced platform subdomains from 2 to 1 (Growth plan has 2-credit limit, leaving 1 credit for tests)
+   - Fixed WebsiteUrl creation to respect 1:1 website-to-URL constraint
+   - Enabled custom domain creation for testing custom domain scenarios
+
+3. **Rebuilt `website_step` snapshot** with corrected schema (no `website_id` on domains table).
+
+4. **Fixed test locator** in `domain-picker.spec.ts`:
+   - Changed `text="Website Setup"` to `getByRole("heading", ...)` to avoid matching multiple elements
+
+### Blocking Issues
+
+1. **Database deadlock during snapshot restore**:
+   - `PG::TRDeadlockDetected` errors when restoring snapshots between tests
+   - Likely caused by Rails server holding connections while truncate/restore runs
+   - Need to investigate connection pooling and transaction handling
+
+2. **Test locators don't match actual UI**:
+   - `"Your Existing Sites"` - Not found in current dropdown implementation
+   - `"Create New Site"` / `"Suggestions"` - Not present in current UI
+   - `"Continue"` button - Actually named `"Connect Site"`
+   - Tests appear written for expected behavior, not actual implementation
+
+3. **Dependent snapshots need rebuilding**:
+   - All snapshots depending on `website_step` are now stale
+   - Run `RAILS_ENV=test rake db:snapshot:build_all` to rebuild all
+
+### Next Steps
+
+1. **Fix deadlock issue** - Consider adding connection termination before snapshot restore in `Database::Snapshotter`
+
+2. **Update test locators** - Align e2e tests with actual DomainPicker component UI elements
+
+3. **Rebuild dependent snapshots** - Run full snapshot rebuild after fixing deadlock
+
+4. **Run API tests** - `bundle exec rspec spec/requests/api/v1/domains_spec.rb` to verify backend behavior

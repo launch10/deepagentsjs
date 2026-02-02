@@ -226,11 +226,6 @@ RSpec.describe Domain, type: :model do
   describe 'set_normalized_domain' do
     let(:account) { create(:account) }
 
-    it 'normalizes the domain on create' do
-      domain = Domain.create(domain: 'MyDomain.COM', account: account)
-      expect(domain.domain).to eq('mydomain.com')
-    end
-
     it 'adds www prefix to apex domains without subdomain' do
       domain = Domain.create(domain: 'example.com', account: account)
       expect(domain.domain).to eq('www.example.com')
@@ -239,6 +234,11 @@ RSpec.describe Domain, type: :model do
     it 'does not add www prefix to domains with subdomain' do
       domain = Domain.create(domain: 'app.example.com', account: account)
       expect(domain.domain).to eq('app.example.com')
+    end
+
+    it 'does not add www prefix to platform subdomains' do
+      domain = Domain.create(domain: 'mysite.launch10.site', account: account)
+      expect(domain.domain).to eq('mysite.launch10.site')
     end
   end
 

@@ -51,7 +51,7 @@ RSpec.describe "Domains API", type: :request do
 
         let!(:website) { create(:website, account: account, project: project) }
         let!(:domain) { create(:domain, :platform_subdomain, account: account) }
-        let!(:website_url) { create(:website_url, account: account, domain: domain, path: "/landing") }
+        let!(:website_url) { create(:website_url, account: account, website: website, domain: domain, path: "/landing") }
         let(:include_website_urls) { true }
 
         run_test! do |response|
@@ -78,6 +78,121 @@ RSpec.describe "Domains API", type: :request do
       end
 
       response "401", "unauthorized - missing token" do
+        let(:Authorization) { nil }
+
+        run_test!
+      end
+    end
+  end
+
+  path "/api/v1/domains/search" do
+    post "Searches for domain availability" do
+      tags "Domains"
+      consumes "application/json"
+      produces "application/json"
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: true
+      parameter name: "X-Signature", in: :header, type: :string, required: false
+      parameter name: "X-Timestamp", in: :header, type: :string, required: false
+      parameter name: :body, in: :body, schema: {
+        type: :object,
+        properties: {
+          candidates: {type: :array, items: {type: :string}}
+        },
+        required: [:candidates]
+      }
+
+      response "200", "returns available for unclaimed subdomains" do
+        let(:body) { {candidates: ["brand-new.launch10.site", "another-new.launch10.site"]} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["results"]).to be_an(Array)
+          expect(json["results"].length).to eq(2)
+          expect(json["results"][0]["domain"]).to eq("brand-new.launch10.site")
+          expect(json["results"][0]["status"]).to eq("available")
+          expect(json["results"][0]["existing_id"]).to be_nil
+          expect(json["results"][1]["status"]).to eq("available")
+          expect(json["platform_subdomain_credits"]).to be_present
+        end
+      end
+
+      response "200", "returns existing for account-owned subdomains" do
+        let!(:owned_domain) { create(:domain, domain: "my-owned.launch10.site", account: account) }
+        let(:body) { {candidates: ["my-owned.launch10.site"]} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["results"].length).to eq(1)
+          expect(json["results"][0]["domain"]).to eq("my-owned.launch10.site")
+          expect(json["results"][0]["status"]).to eq("existing")
+          expect(json["results"][0]["existing_id"]).to eq(owned_domain.id)
+        end
+      end
+
+      response "200", "returns unavailable for other-account subdomains" do
+        let!(:other_user) { create(:user) }
+        let!(:other_account) { other_user.owned_account }
+        let!(:other_domain) { create(:domain, domain: "taken-by-other.launch10.site", account: other_account) }
+        let(:body) { {candidates: ["taken-by-other.launch10.site"]} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["results"].length).to eq(1)
+          expect(json["results"][0]["domain"]).to eq("taken-by-other.launch10.site")
+          expect(json["results"][0]["status"]).to eq("unavailable")
+          expect(json["results"][0]["existing_id"]).to be_nil
+        end
+      end
+
+      response "200", "returns mixed statuses for batch of candidates" do
+        let!(:owned_domain) { create(:domain, domain: "my-owned.launch10.site", account: account) }
+        let!(:other_user) { create(:user) }
+        let!(:other_account) { other_user.owned_account }
+        let!(:other_domain) { create(:domain, domain: "taken-by-other.launch10.site", account: other_account) }
+        let(:body) { {candidates: ["brand-new.launch10.site", "my-owned.launch10.site", "taken-by-other.launch10.site"]} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["results"].length).to eq(3)
+
+          # Available
+          available = json["results"].find { |r| r["domain"] == "brand-new.launch10.site" }
+          expect(available["status"]).to eq("available")
+          expect(available["existing_id"]).to be_nil
+
+          # Existing (owned by current account)
+          existing = json["results"].find { |r| r["domain"] == "my-owned.launch10.site" }
+          expect(existing["status"]).to eq("existing")
+          expect(existing["existing_id"]).to eq(owned_domain.id)
+
+          # Unavailable (owned by another account)
+          unavailable = json["results"].find { |r| r["domain"] == "taken-by-other.launch10.site" }
+          expect(unavailable["status"]).to eq("unavailable")
+          expect(unavailable["existing_id"]).to be_nil
+        end
+      end
+
+      response "422", "rejects empty candidates array" do
+        let(:body) { {candidates: []} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["errors"]).to include("candidates parameter is required and must be an array")
+        end
+      end
+
+      response "422", "rejects too many candidates" do
+        let(:body) { {candidates: (1..15).map { |i| "test-#{i}.launch10.site" }} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["errors"]).to include("Maximum 10 candidates allowed")
+        end
+      end
+
+      response "401", "unauthorized - missing token" do
+        let(:body) { {candidates: ["test.launch10.site"]} }
         let(:Authorization) { nil }
 
         run_test!
@@ -410,15 +525,54 @@ RSpec.describe "Domains API", type: :request do
 
         let!(:website) { create(:website, account: account, project: project) }
         let!(:existing_domain) { create(:domain, domain: "mysite.launch10.site", account: account) }
-        let!(:existing_url) { create(:website_url, domain: existing_domain, account: account, path: "/landing") }
+        let!(:existing_url) { create(:website_url, domain: existing_domain, website: website, account: account, path: "/landing") }
         let(:body) { {domain: {domain: "mysite.launch10.site", website_id: website.id, path: "/landing"}} }
 
         run_test! do |response|
           json = JSON.parse(response.body)
-          # Idempotent - returns the existing domain and URL
+          # Idempotent - returns the existing domain and URL with same ID (update-in-place)
           expect(json["domain"]["id"]).to eq(existing_domain.id)
           expect(json["website_url"]["id"]).to eq(existing_url.id)
           expect(json["website_url"]["path"]).to eq("/landing")
+        end
+      end
+
+      response "201", "reuses existing WebsiteUrl when changing path (update-in-place)" do
+        schema APISchemas::Domain.create_response
+
+        let!(:website) { create(:website, account: account, project: project) }
+        let!(:existing_domain) { create(:domain, domain: "mysite.launch10.site", account: account) }
+        let!(:existing_url) { create(:website_url, domain: existing_domain, website: website, account: account, path: "/") }
+        # Same domain, different path - should update existing WebsiteUrl
+        let(:body) { {domain: {domain: "mysite.launch10.site", website_id: website.id, path: "/pricing"}} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          # Same WebsiteUrl ID - no churn!
+          expect(json["website_url"]["id"]).to eq(existing_url.id)
+          expect(json["website_url"]["path"]).to eq("/pricing")
+          expect(website.reload.website_url.id).to eq(existing_url.id)
+          # Verify no additional WebsiteUrl records were created
+          expect(WebsiteUrl.where(website: website).count).to eq(1)
+        end
+      end
+
+      response "201", "reuses existing WebsiteUrl when assigning different domain (update-in-place)" do
+        schema APISchemas::Domain.create_response
+
+        let!(:website) { create(:website, account: account, project: project) }
+        let!(:domain1) { create(:domain, domain: "first.launch10.site", account: account) }
+        let!(:existing_url) { create(:website_url, domain: domain1, website: website, account: account, path: "/") }
+        # Different domain - should update existing WebsiteUrl, not create new
+        let(:body) { {domain: {domain: "second.launch10.site", website_id: website.id, path: "/"}} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          # Same WebsiteUrl ID - no churn!
+          expect(json["website_url"]["id"]).to eq(existing_url.id)
+          expect(website.reload.website_url.id).to eq(existing_url.id)
+          # Verify no additional WebsiteUrl records were created
+          expect(WebsiteUrl.where(website: website).count).to eq(1)
         end
       end
 
@@ -450,6 +604,72 @@ RSpec.describe "Domains API", type: :request do
         let(:Authorization) { nil }
 
         run_test!
+      end
+
+      response "201", "assigning EXISTING domain does not decrement credits" do
+        schema APISchemas::Domain.create_response
+
+        let!(:website) { create(:website, account: account, project: project) }
+        # Already owned domain - assigning this should NOT use a credit
+        let!(:existing_domain) { create(:domain, domain: "already-owned.launch10.site", account: account) }
+        let(:body) { {domain: {domain: "already-owned.launch10.site", website_id: website.id}} }
+
+        before do
+          # Subscribe to starter plan with limit of 1
+          subscribe_account(account, plan_name: "starter_monthly")
+        end
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["domain"]["id"]).to eq(existing_domain.id)
+          # Used count should remain 1 (the existing domain), not 2
+          expect(json["platform_subdomain_credits"]["used"]).to eq(1)
+          expect(json["platform_subdomain_credits"]["remaining"]).to eq(0)
+          # Verify only 1 platform subdomain exists
+          expect(account.domains.platform_subdomains.count).to eq(1)
+        end
+      end
+
+      response "201", "allows same domain with different paths on different websites" do
+        schema APISchemas::Domain.create_response
+
+        let!(:website1) { create(:website, account: account, project: project) }
+        let!(:other_project) { create(:project, account: account) }
+        let!(:website2) { create(:website, account: account, project: other_project) }
+        let!(:shared_domain) { create(:domain, domain: "shared.launch10.site", account: account) }
+        # Website1 already has /landing
+        let!(:url1) { create(:website_url, domain: shared_domain, website: website1, account: account, path: "/landing") }
+        # Assign /promo to website2 - should succeed
+        let(:body) { {domain: {domain: "shared.launch10.site", website_id: website2.id, path: "/promo"}} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["domain"]["id"]).to eq(shared_domain.id)
+          expect(json["website_url"]["path"]).to eq("/promo")
+          expect(json["website_url"]["website_id"]).to eq(website2.id)
+
+          # Both paths should exist
+          expect(WebsiteUrl.where(domain: shared_domain).count).to eq(2)
+          expect(website1.reload.website_url.path).to eq("/landing")
+          expect(website2.reload.website_url.path).to eq("/promo")
+        end
+      end
+
+      response "422", "rejects duplicate domain+path combination on different website" do
+        let!(:website1) { create(:website, account: account, project: project) }
+        let!(:other_project) { create(:project, account: account) }
+        let!(:website2) { create(:website, account: account, project: other_project) }
+        let!(:shared_domain) { create(:domain, domain: "shared.launch10.site", account: account) }
+        # Website1 already has /landing
+        let!(:url1) { create(:website_url, domain: shared_domain, website: website1, account: account, path: "/landing") }
+        # Try to assign /landing to website2 - should fail (duplicate domain+path)
+        let(:body) { {domain: {domain: "shared.launch10.site", website_id: website2.id, path: "/landing"}} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["errors"]).to be_present
+          expect(json["errors"].first).to include("path")
+        end
       end
 
       response "201", "user switches from platform subdomain to custom domain" do

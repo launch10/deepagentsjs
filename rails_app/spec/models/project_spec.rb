@@ -164,9 +164,9 @@ RSpec.describe Project, type: :model do
 
   describe "#to_mini_json" do
     describe "domain field" do
-      context "when website has no website_urls" do
+      context "when website has no website_url" do
         it "returns nil for domain" do
-          # Project created via Brainstorm.create_brainstorm! has no website_urls by default
+          # Project created via Brainstorm.create_brainstorm! has no website_url by default
           json = project.to_mini_json
 
           expect(json[:domain]).to be_nil

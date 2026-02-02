@@ -17,12 +17,13 @@ module Atlas
       get(path)
     end
 
-    def create(id:, domain:, website_id:, **attributes)
+    def create(id:, domain:, website_id: nil, **attributes)
       params = {
         id: id,
-        domain: domain,
-        websiteId: website_id
-      }.merge(format_params(attributes))
+        domain: domain
+      }
+      params[:websiteId] = website_id if website_id
+      params.merge!(format_params(attributes))
 
       post(BASE_PATH, body: params)
     end
