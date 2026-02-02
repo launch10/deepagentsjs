@@ -49,7 +49,7 @@ module Analytics
       end
 
       def projects_with_data
-        account.projects.includes(website: :domains)
+        account.projects.includes(website: :website_url)
       end
 
       def daily_counts_for_project(project)

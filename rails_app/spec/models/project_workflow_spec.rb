@@ -59,7 +59,9 @@ RSpec.describe ProjectWorkflow, type: :model do
       workflow.next_step!
 
       expect(workflow.reload.step).to eq("website")
-      expect(workflow.reload.substep).to be_nil
+      expect(workflow.reload.substep).to eq("build")
+      workflow.next_step! # domain
+      workflow.next_step! # deploy
 
       workflow.next_step!
       expect(workflow.reload.step).to eq("ad_campaign")
@@ -102,7 +104,7 @@ RSpec.describe ProjectWorkflow, type: :model do
 
         expect(result).to be true
         expect(workflow.reload.step).to eq(expected_step)
-        expect(workflow.substep).to be_nil
+        expect(workflow.substep).to eq("build")
       end
 
       it "advances to a valid step with substep" do

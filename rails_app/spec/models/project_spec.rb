@@ -55,10 +55,17 @@ RSpec.describe Project, type: :model do
 
       workflow.next_step!
 
-      # TODO: Update this once we build the website_building phase! This should break!
       expect(project.current_chat).to eq(project.website.chat)
-
+      expect(project.current_workflow.step).to eq "website"
+      expect(project.current_workflow.substep).to eq "build"
       workflow.next_step!
+      expect(project.current_workflow.step).to eq "website"
+      expect(project.current_workflow.substep).to eq "domain"
+      workflow.next_step!
+      expect(project.current_workflow.step).to eq "website"
+      expect(project.current_workflow.substep).to eq "deploy"
+      workflow.next_step!
+
       expect(project.current_workflow.step).to eq "ad_campaign"
       expect(project.current_chat.chat_type).to eq "ad_campaign"
     end
