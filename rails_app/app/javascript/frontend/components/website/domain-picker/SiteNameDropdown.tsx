@@ -7,6 +7,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { router } from "@inertiajs/react";
 import { cn } from "~/lib/utils";
+import { validateSubdomain, validateDomain } from "~/lib/validation/domain";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { Input } from "@components/ui/input";
 import type { Website } from "@shared";
@@ -31,37 +32,6 @@ export interface SiteNameDropdownProps {
 }
 
 const PLATFORM_SUFFIX = ".launch10.site";
-
-// ============================================================================
-// Validation
-// ============================================================================
-
-const SUBDOMAIN_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
-const DOMAIN_REGEX = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/;
-
-function validateSubdomain(value: string): { valid: boolean; error?: string } {
-  if (!value) return { valid: false };
-  if (value.length > 63) return { valid: false, error: "Max 63 characters" };
-  if (!SUBDOMAIN_REGEX.test(value)) {
-    return { valid: false, error: "Only lowercase letters, numbers, and hyphens" };
-  }
-  if (value.startsWith("-") || value.endsWith("-")) {
-    return { valid: false, error: "Cannot start or end with hyphen" };
-  }
-  return { valid: true };
-}
-
-function validateDomain(value: string): { valid: boolean; error?: string } {
-  if (!value) return { valid: false };
-  if (value.length > 253) return { valid: false, error: "Domain too long" };
-  if (value.endsWith(".launch10.site")) {
-    return { valid: false, error: "Use 'Create New Site' for launch10.site domains" };
-  }
-  if (!DOMAIN_REGEX.test(value.toLowerCase())) {
-    return { valid: false, error: "Enter a valid domain (e.g., example.com)" };
-  }
-  return { valid: true };
-}
 
 // ============================================================================
 // Component

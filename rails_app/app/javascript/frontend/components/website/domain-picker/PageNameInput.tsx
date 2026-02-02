@@ -5,6 +5,7 @@ import {
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "~/lib/utils";
+import { validatePath } from "~/lib/validation/domain";
 import { useSearchWebsiteUrls } from "~/api/domainContext.hooks";
 import { useDebounce } from "~/hooks/useDebounce";
 import { Spinner } from "@components/ui/spinner";
@@ -23,42 +24,6 @@ export interface PageNameInputProps {
   recommendedPath?: string;
   /** Callback when availability status changes */
   onAvailabilityChange?: (status: "checking" | "available" | "unavailable" | "existing" | "assigned" | null) => void;
-}
-
-// ============================================================================
-// Validation
-// ============================================================================
-
-const PATH_REGEX = /^\/[a-z0-9-]*$/;
-
-function validatePath(value: string): { valid: boolean; error?: string; warning?: string } {
-  // Root path is always valid
-  if (value === "/") {
-    return { valid: true };
-  }
-
-  // Must start with /
-  if (!value.startsWith("/")) {
-    return { valid: false, error: "Path must start with /" };
-  }
-
-  // Single-level only (no nested paths)
-  const pathPart = value.slice(1);
-  if (pathPart.includes("/")) {
-    return { valid: false, error: "Only single-level paths allowed (e.g., /landing)" };
-  }
-
-  // Check characters
-  if (!PATH_REGEX.test(value)) {
-    return { valid: false, error: "Only lowercase letters, numbers, and hyphens" };
-  }
-
-  // Max length
-  if (pathPart.length > 50) {
-    return { valid: false, error: "Max 50 characters" };
-  }
-
-  return { valid: true };
 }
 
 // ============================================================================
