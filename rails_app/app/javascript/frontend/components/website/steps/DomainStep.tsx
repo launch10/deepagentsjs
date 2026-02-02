@@ -12,7 +12,8 @@ import {
   useWebsiteChatIsStreaming,
 } from "@hooks/website";
 import { useDomainContext, useCreateDomain } from "~/api/domainContext.hooks";
-import type { DomainSelection } from "@components/website/domain-picker";
+import { isPlatformDomain, getFullUrl } from "~/lib/domain";
+import type { WebsiteUrl } from "@components/website/domain-picker";
 
 interface WebsitePageProps {
   website?: { id?: number };
@@ -83,7 +84,7 @@ function useDomainPageInit() {
 export default function DomainStep() {
   const { project, website } = usePage<WebsitePageProps>().props;
   const chat = useWebsiteChat();
-  const [selection, setSelection] = useState<DomainSelection | null>(null);
+  const [selection, setSelection] = useState<WebsiteUrl | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Auto-init the website graph if it hasn't run yet
@@ -108,7 +109,7 @@ export default function DomainStep() {
     },
   });
 
-  const handleSelectionChange = useCallback((newSelection: DomainSelection | null) => {
+  const handleSelectionChange = useCallback((newSelection: WebsiteUrl | null) => {
     setSelection(newSelection);
   }, []);
 
@@ -123,7 +124,7 @@ export default function DomainStep() {
       domain: selection.domain,
       websiteId: website.id,
       path: selection.path,
-      isPlatformSubdomain: selection.domain.endsWith(".launch10.site"),
+      isPlatformSubdomain: isPlatformDomain(selection.domain),
     });
   }, [selection, website?.id, createDomain]);
 
@@ -134,11 +135,10 @@ export default function DomainStep() {
       return;
     }
 
-    // Check if this is a platform subdomain (launch10.site)
-    const isPlatformSubdomain = selection.domain.endsWith(".launch10.site");
+    // Show confirmation modal for NEW platform subdomains (uses a credit)
+    const isNewPlatformSubdomain = !selection.existingDomainId && isPlatformDomain(selection.domain);
 
-    if (isPlatformSubdomain && selection.isNew) {
-      // Show confirmation modal for new platform subdomains
+    if (isNewPlatformSubdomain) {
       setShowConfirmModal(true);
     } else {
       // For existing domains or custom domains, proceed directly
@@ -196,7 +196,7 @@ export default function DomainStep() {
           isOpen={showConfirmModal}
           onClose={() => setShowConfirmModal(false)}
           onConfirm={handleConfirmClaim}
-          domain={selection.fullUrl}
+          domain={getFullUrl(selection.domain, selection.path)}
           creditsRemaining={creditsRemaining}
           isLoading={createDomain.isPending}
         />

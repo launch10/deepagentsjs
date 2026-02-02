@@ -33,8 +33,8 @@ export const domainRecommendationsOutputSchema = z.object({
         .string()
         .describe("Brief explanation of why this domain and path are a good fit"),
       source: z
-        .enum(["existing", "generated"])
-        .describe("Whether this is an existing or newly generated domain"),
+        .enum(["existing", "suggestion"])
+        .describe("Whether this is an existing domain or a new AI suggestion"),
       existingDomainId: z
         .number()
         .optional()
@@ -45,7 +45,7 @@ export const domainRecommendationsOutputSchema = z.object({
     .object({
       subdomain: z.string(),
       path: z.string(),
-      source: z.enum(["existing", "generated"]),
+      source: z.enum(["existing", "suggestion"]),
     })
     .describe("The single best domain + path recommendation"),
 });
@@ -94,7 +94,7 @@ They can create new subdomains if needed.
 ## Credits Exhausted
 The user has used all ${credits.limit} subdomain credits.
 However, you MUST still generate new subdomain suggestions so they can see what's available if they upgrade.
-Mark these as source: "generated" - the UI will show them as disabled/greyed out.
+Mark these as source: "suggestion" - the UI will show them as disabled/greyed out.
 ${!hasExistingDomains ? "NOTE: User has no existing domains - new subdomain suggestions are their only option (requires upgrade)." : ""}
 `;
   }

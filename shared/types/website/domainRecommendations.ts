@@ -18,7 +18,7 @@ export interface DomainRecommendation {
   fullUrl: string; // e.g., "mysite.launch10.site/landing"
   score: number;
   reasoning: string;
-  source: "existing" | "generated";
+  source: "existing" | "suggestion";
   existingDomainId?: number; // Domain ID for existing domains - used with search_paths
   availability?: AvailabilityStatus;
 }
