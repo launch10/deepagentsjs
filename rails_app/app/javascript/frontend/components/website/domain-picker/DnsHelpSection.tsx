@@ -5,78 +5,19 @@ import {
   ArrowRightIcon,
   QuestionMarkCircleIcon,
 } from "@heroicons/react/16/solid";
-import {
-  XCircleIcon,
-  CheckCircleIcon,
-} from "@heroicons/react/24/outline";
-import { Spinner } from "@components/ui/spinner";
-import { useDnsVerification } from "~/hooks/useDnsVerification";
-import { useMinimumDuration } from "~/hooks/useMinimumDuration";
 import { DNS_PROVIDERS, CNAME_TARGET } from "~/lib/constants/dnsProviders";
-
-// ============================================================================
-// Types
-// ============================================================================
-
-export interface DnsHelpSectionProps {
-  /** Domain ID for DNS verification polling. If null, only shows instructions. */
-  domainId: number | null;
-}
 
 // ============================================================================
 // Component
 // ============================================================================
 
 /**
- * DNS Help Section - Shows DNS verification status, CNAME instructions,
- * and provider guides for custom domains.
+ * DNS Help Section - Shows CNAME instructions and provider guides for custom domains.
+ * DNS verification status is shown inline under the domain dropdown in DomainPicker.
  */
-export function DnsHelpSection({ domainId }: DnsHelpSectionProps) {
-  // DNS verification with auto-polling (polls every 10s until verified)
-  const {
-    isVerified: isDnsVerified,
-    isPending: isDnsPending,
-    isFailed: isDnsFailed,
-    isFetching: isDnsFetching,
-    error: dnsError,
-  } = useDnsVerification(domainId);
-
-  // Show "checking" state with minimum 3 second duration for better UX
-  const isShowingCheck = useMinimumDuration(isDnsFetching, 3000);
-
+export function DnsHelpSection() {
   return (
     <div className="flex flex-col gap-4 mt-4">
-      {/* DNS Verification Status - only show if we have a saved domain */}
-      {domainId && (
-        <div data-testid="dns-verification-status">
-          {isShowingCheck ? (
-            // Checking state (shown for minimum 3 seconds)
-            <div className="flex items-center gap-2 text-amber-600">
-              <Spinner className="size-4" />
-              <span className="text-sm">Checking if your site is directing users to launch10.ai...</span>
-            </div>
-          ) : isDnsVerified ? (
-            // Verified - show success
-            <div className="flex items-center gap-2 text-success-500">
-              <CheckCircleIcon className="size-5" />
-              <span className="text-sm font-medium">Your domain is setup!</span>
-            </div>
-          ) : isDnsFailed ? (
-            // Failed - show error
-            <div className="flex items-center gap-2 text-destructive">
-              <XCircleIcon className="size-5" />
-              <span className="text-sm">DNS verification failed: {dnsError}</span>
-            </div>
-          ) : isDnsPending ? (
-            // Pending (not yet configured) - show X until next check
-            <div className="flex items-center gap-2 text-red-400">
-              <XCircleIcon className="size-5" />
-              <span className="text-sm">Not ready yet. We'll keep checking for you.</span>
-            </div>
-          ) : null}
-        </div>
-      )}
-
       {/* What you need - CNAME Instructions */}
       <div className="bg-neutral-50 rounded-lg px-4 py-5">
         <p className="text-xs font-semibold leading-4 text-base-500 mb-2">What you need</p>
@@ -132,9 +73,7 @@ export function DnsHelpSection({ domainId }: DnsHelpSectionProps) {
           <div className="flex flex-col gap-0 w-32">
             <div className="flex items-center gap-1">
               <QuestionMarkCircleIcon className="size-4 text-base-400" />
-              <span className="text-sm font-semibold leading-[18px] text-base-600">
-                Other
-              </span>
+              <span className="text-sm font-semibold leading-[18px] text-base-600">Other</span>
             </div>
             <button
               type="button"

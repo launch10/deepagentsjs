@@ -127,15 +127,29 @@ test.describe("Domain Picker", () => {
   });
 
   test.describe("Custom Domain in Unified Dropdown", () => {
-    test("shows custom domain input in dropdown", async ({ page }) => {
+    test("shows Connect your own site button and switches input mode", async ({ page }) => {
       await domainPickerPage.goto(projectUuid);
       await domainPickerPage.waitForLoaded();
 
       // Click dropdown to open it
       await domainPickerPage.siteNameDropdown.click();
 
-      // Should show custom domain input section in the dropdown
-      await expect(page.locator('text="Add Custom Domain"')).toBeVisible({ timeout: 5000 });
+      // Should show "Connect your own site" button at the bottom
+      await expect(domainPickerPage.connectOwnSiteButton).toBeVisible({ timeout: 5000 });
+
+      // Should show platform input with .launch10.site suffix
+      await expect(page.locator('text=".launch10.site"')).toBeVisible({ timeout: 5000 });
+
+      // Click to switch to custom domain mode
+      await domainPickerPage.connectOwnSiteButton.click();
+
+      // Header should change to "Connect Your Own Domain"
+      await expect(page.locator('text="Connect Your Own Domain"')).toBeVisible({ timeout: 5000 });
+
+      // Suffix should be hidden now
+      await expect(page.locator('text=".launch10.site"')).not.toBeVisible();
+
+      // Custom domain input should be visible (same input, different test id)
       await expect(domainPickerPage.customDomainInput).toBeVisible({ timeout: 5000 });
     });
 
@@ -146,7 +160,7 @@ test.describe("Domain Picker", () => {
       // Select existing custom domain from dropdown
       await domainPickerPage.siteNameDropdown.click();
       await page.waitForTimeout(1000);
-      const popover = page.locator('[data-radix-popper-content-wrapper]');
+      const popover = page.locator("[data-radix-popper-content-wrapper]");
       await popover.locator('text="my-custom-site.com"').click();
 
       // Should show CNAME instructions when custom domain is selected
@@ -161,7 +175,7 @@ test.describe("Domain Picker", () => {
       // Select existing custom domain from dropdown
       await domainPickerPage.siteNameDropdown.click();
       await page.waitForTimeout(1000);
-      const popover = page.locator('[data-radix-popper-content-wrapper]');
+      const popover = page.locator("[data-radix-popper-content-wrapper]");
       await popover.locator('text="my-custom-site.com"').click();
 
       // Should show DNS verification status
@@ -179,7 +193,7 @@ test.describe("Domain Picker", () => {
       // Wait for dropdown to show existing domains
       await page.waitForTimeout(1000);
       // Select the first existing domain (meeting-tool.launch10.site) - use popover-specific locator
-      const popover = page.locator('[data-radix-popper-content-wrapper]');
+      const popover = page.locator("[data-radix-popper-content-wrapper]");
       await popover.locator('text="meeting-tool.launch10.site"').click();
       // Should show URL preview section (only visible when a domain is selected)
       await expect(domainPickerPage.fullUrlPreview).toBeVisible({ timeout: 10000 });
@@ -214,7 +228,7 @@ test.describe("Domain Picker", () => {
       // Manually select an existing domain (use popover-specific locator)
       await domainPickerPage.siteNameDropdown.click();
       await page.waitForTimeout(1000);
-      const popover = page.locator('[data-radix-popper-content-wrapper]');
+      const popover = page.locator("[data-radix-popper-content-wrapper]");
       await popover.locator('text="meeting-tool.launch10.site"').click();
       await expect(domainPickerPage.connectSiteButton).toBeEnabled({ timeout: 5000 });
     });
@@ -336,10 +350,7 @@ test.describe("Domain Picker - Subdomain Limit", () => {
     const suggestionsSection = page.locator('text="Create New Site (Suggestions)"');
     if (await suggestionsSection.isVisible()) {
       // The suggestion buttons should be disabled/dimmed
-      const suggestionButton = suggestionsSection
-        .locator("..")
-        .locator("button")
-        .first();
+      const suggestionButton = suggestionsSection.locator("..").locator("button").first();
       await expect(suggestionButton).toHaveClass(/opacity-50/);
     }
   });
@@ -393,7 +404,7 @@ test.describe("Domain Picker - Path Availability", () => {
     await domainPickerPage.waitForLoaded();
 
     await domainPickerPage.siteNameDropdown.click();
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
     await popover.locator('text="meeting-tool.launch10.site"').click();
     await domainPickerPage.pageNameInput.fill("test-page");
     await expect(domainPickerPage.pathCheckingMessage).toBeVisible({ timeout: 5000 });
@@ -405,7 +416,7 @@ test.describe("Domain Picker - Path Availability", () => {
 
     await domainPickerPage.siteNameDropdown.click();
     await page.waitForTimeout(500);
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
     await popover.locator('text="meeting-tool.launch10.site"').click();
 
     await expect(domainPickerPage.fullUrlPreview).toBeVisible({ timeout: 5000 });
@@ -423,7 +434,7 @@ test.describe("Domain Picker - Path Availability", () => {
 
     await domainPickerPage.siteNameDropdown.click();
     await page.waitForTimeout(500);
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
     await popover.locator('text="meeting-tool.launch10.site"').click();
 
     await expect(domainPickerPage.fullUrlPreview).toBeVisible({ timeout: 5000 });
@@ -443,8 +454,14 @@ test.describe("Domain Picker - Path Availability", () => {
   });
 
   test("shows assigned status when path belongs to current website", async ({ page }) => {
-    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
-    await appScenario("assign_platform_subdomain", { website_id: website.id, subdomain: "my-assigned-site", path: "/mypath" });
+    const website = await appQuery<{ id: number; name: string; project_id: number }>(
+      "first_website"
+    );
+    await appScenario("assign_platform_subdomain", {
+      website_id: website.id,
+      subdomain: "my-assigned-site",
+      path: "/mypath",
+    });
 
     await domainPickerPage.goto(projectUuid);
     await domainPickerPage.waitForLoaded();
@@ -493,7 +510,7 @@ test.describe("Domain Picker - Credit Updates", () => {
     // Select an existing domain (no credit needed for existing domains) - use popover-specific locator
     await domainPickerPage.siteNameDropdown.click();
     await page.waitForTimeout(500);
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
     await popover.locator('text="meeting-tool.launch10.site"').click();
 
     // Connect Site should now be enabled for existing domains
@@ -544,7 +561,9 @@ test.describe("Domain Picker - Credit Updates", () => {
     await page.waitForTimeout(300);
 
     // Should show validation error (the regex error, since that check runs first)
-    await expect(page.locator('text="Only lowercase letters, numbers, and hyphens"')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('text="Only lowercase letters, numbers, and hyphens"')).toBeVisible({
+      timeout: 5000,
+    });
   });
 });
 
@@ -568,9 +587,13 @@ test.describe("Domain Picker - Custom Domain Auto-Switch", () => {
     domainPickerPage = new DomainPickerPage(page);
   });
 
-  test("shows custom domain header and DNS help when custom domain is assigned", async ({ page }) => {
+  test("shows custom domain header and DNS help when custom domain is assigned", async ({
+    page,
+  }) => {
     // Get the website ID first
-    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
+    const website = await appQuery<{ id: number; name: string; project_id: number }>(
+      "first_website"
+    );
 
     // Assign a custom domain to this website
     const customDomain = `my-business-${Date.now()}.example.com`;
@@ -613,7 +636,9 @@ test.describe("Domain Picker - Custom Domain Auto-Switch", () => {
 
   test("can switch to platform subdomain after custom domain is assigned", async ({ page }) => {
     // Get the website ID and assign a custom domain
-    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
+    const website = await appQuery<{ id: number; name: string; project_id: number }>(
+      "first_website"
+    );
     const customDomain = `switch-test-${Date.now()}.example.com`;
     await appScenario("assign_custom_domain", {
       website_id: website.id,
@@ -631,7 +656,7 @@ test.describe("Domain Picker - Custom Domain Auto-Switch", () => {
     // Open dropdown and select a platform subdomain instead
     await domainPickerPage.siteNameDropdown.click();
     await page.waitForTimeout(500);
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
     await popover.locator('text="meeting-tool.launch10.site"').click();
 
     // DNS help should no longer be visible (platform subdomain selected)
@@ -640,7 +665,9 @@ test.describe("Domain Picker - Custom Domain Auto-Switch", () => {
 
   test("auto-selects the assigned custom domain as initial selection", async ({ page }) => {
     // Get the website ID and assign a custom domain
-    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
+    const website = await appQuery<{ id: number; name: string; project_id: number }>(
+      "first_website"
+    );
     const customDomain = `auto-select-${Date.now()}.example.com`;
     await appScenario("assign_custom_domain", {
       website_id: website.id,
@@ -703,7 +730,9 @@ test.describe("Domain Picker - Pre-Population", () => {
 
   test("pre-selects assigned platform subdomain in dropdown", async ({ page }) => {
     // Assign a platform subdomain to this website
-    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
+    const website = await appQuery<{ id: number; name: string; project_id: number }>(
+      "first_website"
+    );
     await appScenario("assign_platform_subdomain", {
       website_id: website.id,
       subdomain: "my-awesome-site",
@@ -725,7 +754,9 @@ test.describe("Domain Picker - Pre-Population", () => {
 
   test("pre-selects assigned platform subdomain with custom path", async ({ page }) => {
     // Assign a platform subdomain with a custom path
-    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
+    const website = await appQuery<{ id: number; name: string; project_id: number }>(
+      "first_website"
+    );
     await appScenario("assign_platform_subdomain", {
       website_id: website.id,
       subdomain: "landing-pages",
@@ -747,7 +778,9 @@ test.describe("Domain Picker - Pre-Population", () => {
 
   test("pre-selects custom domain in dropdown when assigned", async ({ page }) => {
     // Assign a custom domain to this website
-    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
+    const website = await appQuery<{ id: number; name: string; project_id: number }>(
+      "first_website"
+    );
     const customDomain = "mybusiness.example.com";
     await appScenario("assign_custom_domain", {
       website_id: website.id,
@@ -770,7 +803,9 @@ test.describe("Domain Picker - Pre-Population", () => {
 
   test("pre-selects custom domain with custom path in dropdown", async ({ page }) => {
     // Assign a custom domain with a custom path
-    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
+    const website = await appQuery<{ id: number; name: string; project_id: number }>(
+      "first_website"
+    );
     const customDomain = "mystore.example.com";
     await appScenario("assign_custom_domain", {
       website_id: website.id,
@@ -816,7 +851,9 @@ test.describe("Domain Picker - Pre-Population", () => {
 
   test("full URL preview shows assigned domain", async ({ page }) => {
     // Assign a platform subdomain
-    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
+    const website = await appQuery<{ id: number; name: string; project_id: number }>(
+      "first_website"
+    );
     await appScenario("assign_platform_subdomain", {
       website_id: website.id,
       subdomain: "preview-test",
@@ -829,7 +866,9 @@ test.describe("Domain Picker - Pre-Population", () => {
 
     // Should show URL preview with the assigned domain
     await expect(domainPickerPage.fullUrlPreview).toBeVisible();
-    await expect(domainPickerPage.fullUrlPreview).toContainText("preview-test.launch10.site/landing");
+    await expect(domainPickerPage.fullUrlPreview).toContainText(
+      "preview-test.launch10.site/landing"
+    );
   });
 });
 
@@ -869,7 +908,10 @@ test.describe("Domain Picker - Claim Subdomain Modal", () => {
    * Uses focus + keyboard.type (instead of fill) + Enter for better reliability.
    * The key insight is to use page.keyboard for typing to avoid focus issues.
    */
-  async function enterCustomSubdomainAndSubmit(page: import("@playwright/test").Page, subdomain: string) {
+  async function enterCustomSubdomainAndSubmit(
+    page: import("@playwright/test").Page,
+    subdomain: string
+  ) {
     const customInput = page.locator('input[placeholder="Type to create your own"]');
     await expect(customInput).toBeVisible({ timeout: 5000 });
     await expect(customInput).toBeEnabled();
@@ -890,7 +932,7 @@ test.describe("Domain Picker - Claim Subdomain Modal", () => {
     // Verify the input has the correct value before submitting
     const inputValue = await customInput.inputValue();
     if (inputValue !== subdomain) {
-      console.log(`Input value mismatch: expected "${subdomain}", got "${inputValue}"`);
+      console.warn(`Input value mismatch: expected "${subdomain}", got "${inputValue}"`);
     }
 
     // Press Enter to submit
@@ -995,7 +1037,7 @@ test.describe("Domain Picker - Claim Subdomain Modal", () => {
     await page.waitForTimeout(500);
 
     // Use a more specific locator - the one in the popover content (not the trigger)
-    const popoverContent = page.locator('[data-radix-popper-content-wrapper]');
+    const popoverContent = page.locator("[data-radix-popper-content-wrapper]");
     await popoverContent.locator('text="meeting-tool.launch10.site"').click();
 
     // Wait a moment to ensure modal doesn't appear
@@ -1027,7 +1069,9 @@ test.describe("Domain Picker - Claim Subdomain Modal", () => {
     await domainPickerPage.expectCreditsRemaining(1);
 
     // Should show last credit warning (full text: "This is your last available subdomain on your current plan.")
-    await expect(page.locator('text="This is your last available subdomain on your current plan."')).toBeVisible();
+    await expect(
+      page.locator('text="This is your last available subdomain on your current plan."')
+    ).toBeVisible();
   });
 });
 
@@ -1070,10 +1114,10 @@ test.describe("Domain Picker - Existing Domains", () => {
     // Should show "Your Existing Sites" section with both platform and custom domains
     await expect(page.locator('text="Your Existing Sites"')).toBeVisible({ timeout: 5000 });
     // Use popover-specific locator to avoid matching the dropdown trigger text
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
-    await expect(
-      popover.locator('text="meeting-tool.launch10.site"')
-    ).toBeVisible({ timeout: 5000 });
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    await expect(popover.locator('text="meeting-tool.launch10.site"')).toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test("can select an existing domain from another website", async ({ page }) => {
@@ -1083,7 +1127,7 @@ test.describe("Domain Picker - Existing Domains", () => {
     // Click dropdown and select the existing domain (use popover-specific locator)
     await domainPickerPage.siteNameDropdown.click();
     await page.waitForTimeout(1000);
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
     await popover.locator('text="meeting-tool.launch10.site"').click();
 
     // URL preview should show the selected domain
@@ -1100,10 +1144,8 @@ test.describe("Domain Picker - Existing Domains", () => {
 
     // Custom domains are now merged into "Your Existing Sites" section
     await expect(page.locator('text="Your Existing Sites"')).toBeVisible({ timeout: 5000 });
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
-    await expect(
-      popover.locator('text="my-custom-site.com"')
-    ).toBeVisible({ timeout: 5000 });
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
+    await expect(popover.locator('text="my-custom-site.com"')).toBeVisible({ timeout: 5000 });
   });
 
   test("can select a custom domain from dropdown", async ({ page }) => {
@@ -1113,7 +1155,7 @@ test.describe("Domain Picker - Existing Domains", () => {
     // Click dropdown and select the custom domain (use popover-specific locator)
     await domainPickerPage.siteNameDropdown.click();
     await page.waitForTimeout(1000);
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
     await popover.locator('text="my-custom-site.com"').click();
 
     // URL preview should show the selected domain
@@ -1173,7 +1215,7 @@ test.describe("Domain Picker - Autosave", () => {
     // Select an existing platform subdomain
     await domainPickerPage.siteNameDropdown.click();
     await page.waitForTimeout(500);
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
     await popover.locator('text="meeting-tool.launch10.site"').click();
 
     // Verify selection is shown before save
@@ -1197,8 +1239,14 @@ test.describe("Domain Picker - Autosave", () => {
 
   test("autosaves when changing the path on an existing domain", async ({ page }) => {
     // First, assign a domain so we can test changing the path
-    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
-    await appScenario("assign_platform_subdomain", { website_id: website.id, subdomain: "autosave-test", path: "/original" });
+    const website = await appQuery<{ id: number; name: string; project_id: number }>(
+      "first_website"
+    );
+    await appScenario("assign_platform_subdomain", {
+      website_id: website.id,
+      subdomain: "autosave-test",
+      path: "/original",
+    });
 
     await domainPickerPage.goto(projectUuid);
     await domainPickerPage.waitForLoaded();
@@ -1228,7 +1276,9 @@ test.describe("Domain Picker - Autosave", () => {
     expect(persistedPath).toBe(newPath);
 
     // URL preview should show the updated path
-    await expect(domainPickerPage.fullUrlPreview).toContainText(`autosave-test.launch10.site/${newPath}`);
+    await expect(domainPickerPage.fullUrlPreview).toContainText(
+      `autosave-test.launch10.site/${newPath}`
+    );
   });
 
   test("autosaves when selecting a custom domain from dropdown", async ({ page }) => {
@@ -1238,7 +1288,7 @@ test.describe("Domain Picker - Autosave", () => {
     // Select the existing custom domain from dropdown
     await domainPickerPage.siteNameDropdown.click();
     await page.waitForTimeout(500);
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
     await popover.locator('text="my-custom-site.com"').click();
 
     // Verify selection is shown (DNS help indicates custom domain mode)
@@ -1261,8 +1311,14 @@ test.describe("Domain Picker - Autosave", () => {
 
   test("autosaves when switching from platform subdomain to custom domain", async ({ page }) => {
     // Start with a platform subdomain assigned
-    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
-    await appScenario("assign_platform_subdomain", { website_id: website.id, subdomain: "switch-from-me", path: "/" });
+    const website = await appQuery<{ id: number; name: string; project_id: number }>(
+      "first_website"
+    );
+    await appScenario("assign_platform_subdomain", {
+      website_id: website.id,
+      subdomain: "switch-from-me",
+      path: "/",
+    });
 
     await domainPickerPage.goto(projectUuid);
     await domainPickerPage.waitForLoaded();
@@ -1274,7 +1330,7 @@ test.describe("Domain Picker - Autosave", () => {
     // Switch to the custom domain
     await domainPickerPage.siteNameDropdown.click();
     await page.waitForTimeout(500);
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
     await popover.locator('text="my-custom-site.com"').click();
 
     // Trigger blur to initiate autosave
@@ -1294,8 +1350,14 @@ test.describe("Domain Picker - Autosave", () => {
 
   test("autosaves path changes with custom domain", async ({ page }) => {
     // Start with a custom domain assigned
-    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
-    await appScenario("assign_custom_domain", { website_id: website.id, domain_name: "autosave-custom.example.com", path: "/initial" });
+    const website = await appQuery<{ id: number; name: string; project_id: number }>(
+      "first_website"
+    );
+    await appScenario("assign_custom_domain", {
+      website_id: website.id,
+      domain_name: "autosave-custom.example.com",
+      path: "/initial",
+    });
 
     await domainPickerPage.goto(projectUuid);
     await domainPickerPage.waitForLoaded();
@@ -1330,8 +1392,14 @@ test.describe("Domain Picker - Autosave", () => {
 
   test("multiple rapid path changes only save the final value", async ({ page }) => {
     // Assign a domain first
-    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
-    await appScenario("assign_platform_subdomain", { website_id: website.id, subdomain: "rapid-changes", path: "/start" });
+    const website = await appQuery<{ id: number; name: string; project_id: number }>(
+      "first_website"
+    );
+    await appScenario("assign_platform_subdomain", {
+      website_id: website.id,
+      subdomain: "rapid-changes",
+      path: "/start",
+    });
 
     await domainPickerPage.goto(projectUuid);
     await domainPickerPage.waitForLoaded();
@@ -1373,7 +1441,7 @@ test.describe("Domain Picker - Autosave", () => {
     // Select an existing domain (this creates a website_url linking domain to website)
     await domainPickerPage.siteNameDropdown.click();
     await page.waitForTimeout(500);
-    const popover = page.locator('[data-radix-popper-content-wrapper]');
+    const popover = page.locator("[data-radix-popper-content-wrapper]");
     await popover.locator('text="meeting-tool.launch10.site"').click();
 
     // Set a specific path
@@ -1396,6 +1464,80 @@ test.describe("Domain Picker - Autosave", () => {
     expect(persistedPath).toBe(testPath);
 
     // URL preview should show the full URL
-    await expect(domainPickerPage.fullUrlPreview).toContainText(`meeting-tool.launch10.site/${testPath}`);
+    await expect(domainPickerPage.fullUrlPreview).toContainText(
+      `meeting-tool.launch10.site/${testPath}`
+    );
+  });
+
+  test("autosaves when entering a NEW custom domain via user input", async ({ page }) => {
+    // This test covers the bug where custom domains entered by user weren't auto-saved
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Open dropdown and switch to custom domain mode
+    await domainPickerPage.siteNameDropdown.click();
+    await page.waitForTimeout(500);
+
+    // Click "Connect your own site" to switch to custom domain input
+    await domainPickerPage.connectOwnSiteButton.click();
+    await page.waitForTimeout(300);
+
+    // Enter a new custom domain
+    const customDomain = `autosave-new-${Date.now()}.example.com`;
+    const customInput = page.getByTestId("custom-domain-input");
+    await customInput.fill(customDomain);
+
+    // Press Enter to submit (should auto-save)
+    await page.keyboard.press("Enter");
+
+    // Wait for the dropdown to close and debounce to complete
+    await page.waitForTimeout(1500);
+
+    // Reload the page to verify persistence
+    await page.reload();
+    await domainPickerPage.waitForLoaded();
+
+    // The custom domain should persist after reload
+    const dropdownText = await domainPickerPage.siteNameDropdown.textContent();
+    expect(dropdownText).toContain(customDomain);
+
+    // Should show DNS verification (custom domain mode)
+    await expect(domainPickerPage.dnsVerificationStatus).toBeVisible({ timeout: 10000 });
+  });
+
+  test("autosaves path changes while typing (debounced, without blur)", async ({ page }) => {
+    // This test covers debounced autosave on path change without requiring blur
+    // First, assign a domain so we have something to test path changes on
+    const website = await appQuery<{ id: number; name: string; project_id: number }>(
+      "first_website"
+    );
+    await appScenario("assign_platform_subdomain", {
+      website_id: website.id,
+      subdomain: "debounce-test",
+      path: "/original",
+    });
+
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Verify the initial path is set
+    const initialPath = await domainPickerPage.pageNameInput.inputValue();
+    expect(initialPath).toBe("original");
+
+    // Change the path (typing triggers debounced save)
+    const newPath = `debounced-${Date.now() % 10000}`;
+    await domainPickerPage.pageNameInput.clear();
+    await domainPickerPage.pageNameInput.fill(newPath);
+
+    // Wait for debounce (750ms) + API call buffer - WITHOUT triggering blur
+    await page.waitForTimeout(2000);
+
+    // Reload the page to verify persistence (no blur was triggered!)
+    await page.reload();
+    await domainPickerPage.waitForLoaded();
+
+    // The new path should persist after reload
+    const persistedPath = await domainPickerPage.pageNameInput.inputValue();
+    expect(persistedPath).toBe(newPath);
   });
 });

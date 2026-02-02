@@ -4,6 +4,8 @@ import {
   StarIcon,
   CheckCircleIcon,
   ClockIcon,
+  ArrowRightIcon,
+  ArrowLeftIcon,
 } from "@heroicons/react/24/outline";
 import { router } from "@inertiajs/react";
 import { cn } from "~/lib/utils";
@@ -24,11 +26,7 @@ export interface SiteNameDropdownProps {
   context?: GetDomainContextResponse | null;
   selectedDomain: string | null;
   isOutOfCredits: boolean;
-  onSelect: (
-    domain: string,
-    origin: DomainOrigin,
-    existingDomainId?: number
-  ) => void;
+  onSelect: (domain: string, origin: DomainOrigin, existingDomainId?: number) => void;
 }
 
 // ============================================================================
@@ -43,8 +41,9 @@ export function SiteNameDropdown({
   onSelect,
 }: SiteNameDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [platformInput, setPlatformInput] = useState("");
-  const [customDomainInput, setCustomDomainInput] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  // Toggle between platform (.launch10.site suffix) and custom (full domain) mode
+  const [inputMode, setInputMode] = useState<"platform" | "custom">("platform");
 
   const existingDomains = context?.existing_domains ?? [];
   const existingDomainNames = new Set(existingDomains.map((d) => d.domain));
@@ -61,44 +60,44 @@ export function SiteNameDropdown({
     recommendations?.topRecommendation?.domain === domain;
 
   // Handle selecting a domain from the dropdown
-  const handleSelect = (
-    domain: string,
-    origin: DomainOrigin,
-    existingDomainId?: number
-  ) => {
+  const handleSelect = (domain: string, origin: DomainOrigin, existingDomainId?: number) => {
     onSelect(domain, origin, existingDomainId);
     setIsOpen(false);
   };
 
-  // Handle new platform subdomain submission (e.g., "mysite" → "mysite.launch10.site")
-  const handlePlatformSubmit = () => {
-    const subdomain = platformInput.toLowerCase().trim();
-    const validation = validateSubdomain(subdomain);
-    if (!validation.valid) return;
+  // Validation based on current mode
+  const inputValidation =
+    inputMode === "platform"
+      ? validateSubdomain(inputValue.toLowerCase().trim())
+      : validateDomain(inputValue.toLowerCase().trim());
 
-    const domain = `${subdomain}${PLATFORM_SUFFIX}`;
+  // Handle input submission (works for both platform and custom)
+  const handleInputSubmit = () => {
+    const value = inputValue.toLowerCase().trim();
+    if (!inputValidation.valid) return;
+
+    const domain = inputMode === "platform" ? `${value}${PLATFORM_SUFFIX}` : value;
     handleSelect(domain, "user-input");
-    setPlatformInput("");
+    setInputValue("");
   };
-
-  // Handle new custom domain submission (e.g., "mybusiness.com")
-  const handleCustomDomainSubmit = () => {
-    const domain = customDomainInput.toLowerCase().trim();
-    const validation = validateDomain(domain);
-    if (!validation.valid) return;
-
-    handleSelect(domain, "user-input");
-    setCustomDomainInput("");
-  };
-
-  const platformValidation = validateSubdomain(platformInput.toLowerCase().trim());
-  const customDomainValidation = validateDomain(customDomainInput.toLowerCase().trim());
 
   // Check if user can add custom domains (Growth or Pro plan)
   const canAddCustomDomain = context?.plan_tier === "growth" || context?.plan_tier === "pro";
 
+  // Reset input mode and value when dropdown closes
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      setInputMode("platform");
+      setInputValue("");
+    }
+  };
+
+  // Determine if input should be disabled
+  const isInputDisabled = inputMode === "platform" && isOutOfCredits;
+
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
           type="button"
@@ -120,35 +119,69 @@ export function SiteNameDropdown({
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
         <div className="max-h-96 overflow-y-auto">
           {/* ============================================ */}
-          {/* SECTION 1: Create New Site (platform)       */}
+          {/* SECTION 1: Create New Site Input            */}
+          {/* Toggles between platform and custom mode    */}
           {/* ============================================ */}
           <div className="px-4 py-3">
-            <div className="text-sm font-medium text-base-400 mb-2">Create New Site</div>
+            {/* Mode toggle header */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-sm font-medium text-base-400">
+                {inputMode === "platform" ? "Create New Site" : "Connect Your Own Domain"}
+              </div>
+              {inputMode === "custom" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInputMode("platform");
+                    setInputValue("");
+                  }}
+                  className="flex items-center gap-1 text-xs text-base-400 hover:text-base-500 transition-colors cursor-pointer"
+                >
+                  <ArrowLeftIcon className="size-3" />
+                  <span>Back</span>
+                </button>
+              )}
+            </div>
+
+            {/* Input field - suffix shown only in platform mode */}
             <div className="flex items-center rounded-lg border border-neutral-200 bg-neutral-50 focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500">
               <Input
                 type="text"
-                value={platformInput}
-                onChange={(e) => setPlatformInput(e.target.value.toLowerCase())}
-                placeholder="Type to create your own"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value.toLowerCase())}
+                placeholder={
+                  inputMode === "platform" ? "Type to create your own" : "mybusiness.com"
+                }
                 className="text-sm bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                disabled={isOutOfCredits}
+                disabled={isInputDisabled}
+                data-testid={
+                  inputMode === "platform" ? "platform-domain-input" : "custom-domain-input"
+                }
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (platformValidation.valid) {
-                      handlePlatformSubmit();
+                    if (inputValidation.valid) {
+                      handleInputSubmit();
                     }
                   }
                 }}
               />
-              <span className="pr-3 text-sm text-base-400 whitespace-nowrap">{PLATFORM_SUFFIX}</span>
+              {/* Show suffix only in platform mode */}
+              {inputMode === "platform" && (
+                <span className="pr-3 text-sm text-base-400 whitespace-nowrap">
+                  {PLATFORM_SUFFIX}
+                </span>
+              )}
             </div>
-            {platformInput && platformValidation.error && (
-              <p className="text-xs text-destructive mt-1">{platformValidation.error}</p>
+
+            {/* Validation error */}
+            {inputValue && inputValidation.error && (
+              <p className="text-xs text-destructive mt-1">{inputValidation.error}</p>
             )}
-            {/* Upgrade link - shown when out of credits */}
-            {isOutOfCredits && (
+
+            {/* Upgrade link - shown when out of credits in platform mode */}
+            {inputMode === "platform" && isOutOfCredits && (
               <button
                 type="button"
                 onClick={() => {
@@ -178,19 +211,16 @@ export function SiteNameDropdown({
 
                     // Show the domain with its first URL path if any
                     const firstUrl = domainItem.website_urls[0];
-                    const displayUrl = firstUrl?.path && firstUrl.path !== "/"
-                      ? `${domainItem.domain}${firstUrl.path}`
-                      : domainItem.domain;
+                    const displayUrl =
+                      firstUrl?.path && firstUrl.path !== "/"
+                        ? `${domainItem.domain}${firstUrl.path}`
+                        : domainItem.domain;
 
                     return (
                       <button
                         key={domainItem.id}
                         type="button"
-                        onClick={() => handleSelect(
-                          domainItem.domain,
-                          "existing",
-                          domainItem.id
-                        )}
+                        onClick={() => handleSelect(domainItem.domain, "existing", domainItem.id)}
                         className={cn(
                           "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left",
                           "transition-colors",
@@ -210,13 +240,12 @@ export function SiteNameDropdown({
                         <span className="flex-1 text-base-600 truncate">{displayUrl}</span>
 
                         {/* DNS status indicator for custom domains */}
-                        {!isPlatform && (
-                          domainItem.dns_verification_status === "verified" ? (
+                        {!isPlatform &&
+                          (domainItem.dns_verification_status === "verified" ? (
                             <CheckCircleIcon className="size-4 text-success-500 shrink-0" />
                           ) : (
                             <ClockIcon className="size-4 text-amber-500 shrink-0" />
-                          )
-                        )}
+                          ))}
                       </button>
                     );
                   })}
@@ -227,8 +256,9 @@ export function SiteNameDropdown({
 
           {/* ============================================ */}
           {/* SECTION 3: Suggestions                      */}
+          {/* Only show in platform mode                  */}
           {/* ============================================ */}
-          {suggestedSites.length > 0 && (
+          {inputMode === "platform" && suggestedSites.length > 0 && (
             <>
               <div className="border-t border-neutral-100" />
               <div className="px-4 py-3">
@@ -241,16 +271,11 @@ export function SiteNameDropdown({
                       key={site.domain}
                       type="button"
                       disabled={isOutOfCredits}
-                      onClick={() => handleSelect(
-                        site.domain,
-                        "suggestion"
-                      )}
+                      onClick={() => handleSelect(site.domain, "suggestion")}
                       className={cn(
                         "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left",
                         "transition-colors",
-                        selectedDomain === site.domain
-                          ? "bg-neutral-100"
-                          : "hover:bg-neutral-50",
+                        selectedDomain === site.domain ? "bg-neutral-100" : "hover:bg-neutral-50",
                         isOutOfCredits && "opacity-50 cursor-not-allowed"
                       )}
                     >
@@ -271,59 +296,51 @@ export function SiteNameDropdown({
           )}
 
           {/* ============================================ */}
-          {/* SECTION 4: Add Custom Domain                */}
+          {/* SECTION 4: Connect your own site button     */}
+          {/* Only show in platform mode                  */}
           {/* ============================================ */}
-          <div className="border-t border-neutral-100" />
-          <div className="px-4 py-3">
-            {canAddCustomDomain ? (
-              <>
-                <div className="text-sm font-medium text-base-400 mb-2">Add Custom Domain</div>
-                <div className="flex items-center rounded-lg border border-neutral-200 bg-neutral-50 focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500">
-                  <Input
-                    type="text"
-                    value={customDomainInput}
-                    onChange={(e) => setCustomDomainInput(e.target.value.toLowerCase())}
-                    placeholder="mybusiness.com"
-                    className="text-sm bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                    data-testid="custom-domain-input"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (customDomainValidation.valid) {
-                          handleCustomDomainSubmit();
-                        }
-                      }
+          {inputMode === "platform" && (
+            <>
+              <div className="border-t border-neutral-100" />
+              <div className="px-4 py-3">
+                {canAddCustomDomain ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInputMode("custom");
+                      setInputValue("");
                     }}
-                  />
-                </div>
-                {customDomainInput && customDomainValidation.error && (
-                  <p className="text-xs text-destructive mt-1">{customDomainValidation.error}</p>
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm text-base-500 border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 transition-colors cursor-pointer"
+                    data-testid="connect-own-site-button"
+                  >
+                    <span>Connect your own site</span>
+                    <ArrowRightIcon className="size-4" />
+                  </button>
+                ) : (
+                  /* Starter users - show upgrade prompt */
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2 text-sm text-base-400">
+                      <LockClosedIcon className="size-4" />
+                      <span>Custom domains on Growth & Pro</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsOpen(false);
+                        router.visit("/settings");
+                      }}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm text-white border border-[#5867C4] transition-all hover:opacity-90 cursor-pointer"
+                      style={{ background: "linear-gradient(91deg, #5867C4 16.2%, #74BEA1 92.6%)" }}
+                      data-testid="upgrade-badge"
+                    >
+                      <img src="/images/icons/rocket.svg" alt="" className="size-4" />
+                      <span>Available on Growth & Pro Plan</span>
+                    </button>
+                  </div>
                 )}
-              </>
-            ) : (
-              /* Starter users - show upgrade prompt */
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-sm text-base-400">
-                  <LockClosedIcon className="size-4" />
-                  <span>Custom domains on Growth & Pro</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsOpen(false);
-                    router.visit("/settings");
-                  }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm text-white border border-[#5867C4] transition-all hover:opacity-90 cursor-pointer"
-                  style={{ background: "linear-gradient(91deg, #5867C4 16.2%, #74BEA1 92.6%)" }}
-                  data-testid="upgrade-badge"
-                >
-                  <img src="/images/icons/rocket.svg" alt="" className="size-4" />
-                  <span>Available on Growth & Pro Plan</span>
-                </button>
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </PopoverContent>
     </Popover>

@@ -2,10 +2,13 @@ import { useCallback } from "react";
 import {
   InformationCircleIcon,
   ExclamationCircleIcon,
+  CheckCircleIcon,
+  XCircleIcon,
 } from "@heroicons/react/24/outline";
 import { router } from "@inertiajs/react";
 import { Label } from "@components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip";
+import { Spinner } from "@components/ui/spinner";
 import { SiteNameDropdown } from "./SiteNameDropdown";
 import { PageNameInput } from "./PageNameInput";
 import { DnsHelpSection } from "./DnsHelpSection";
@@ -16,6 +19,8 @@ import { useWebsiteId } from "~/stores/projectStore";
 import { useDirtySelection } from "~/hooks/useDirtySelection";
 import { isPlatformDomain, getFullUrl } from "~/lib/domain";
 import { useDomainPickerData, useClaimSubdomain, useSelectionInit } from "./hooks";
+import { useDnsVerification } from "~/hooks/useDnsVerification";
+import { useMinimumDuration } from "~/hooks/useMinimumDuration";
 
 // ============================================================================
 // Types
@@ -104,9 +109,22 @@ export function DomainPicker({ selection, onSelectionChange }: DomainPickerProps
   // Derived values
   const selectedDomain = selection?.domain ?? null;
   const customPath = selection?.path ?? "/";
-  const selectedRec = recommendations?.recommendations?.find(
-    (r) => r.domain === selectedDomain
-  );
+  const selectedRec = recommendations?.recommendations?.find((r) => r.domain === selectedDomain);
+
+  // DNS verification for custom domains (only when we have a saved domain ID)
+  const isCustomDomainWithId =
+    selection && !isPlatformDomain(selection.domain) && selection.existingDomainId;
+  const customDomainId = isCustomDomainWithId ? (selection.existingDomainId ?? null) : null;
+  const {
+    isVerified: isDnsVerified,
+    isPending: isDnsPending,
+    isFailed: isDnsFailed,
+    isFetching: isDnsFetching,
+    error: dnsError,
+  } = useDnsVerification(customDomainId);
+
+  // Show "checking" state with minimum 3 second duration for better UX
+  const isShowingDnsCheck = useMinimumDuration(isDnsFetching, 3000);
 
   // Handle blur - triggers debounced save if dirty
   const handleBlur = useCallback(() => {
@@ -126,20 +144,29 @@ export function DomainPicker({ selection, onSelectionChange }: DomainPickerProps
   const handleDomainSelect = useCallback(
     (domain: string, origin: DomainOrigin, existingDomainId?: number) => {
       const rec = recommendations?.recommendations?.find((r) => r.domain === domain);
+
+      // Keep current path if user has already set one, otherwise use AI recommendation or default
+      const currentPath = selection?.path;
+      const hasUserSetPath = currentPath && currentPath !== "/";
+      const newPath = hasUserSetPath ? currentPath : (rec?.path ?? "/");
+
       const newSelection: WebsiteUrl = {
         domain,
-        path: rec?.path ?? "/",
+        path: newPath,
         origin,
         existingDomainId,
       };
 
-      // Check if needs claim modal
+      // Check if needs claim modal (platform subdomains that don't exist yet)
       if (claim.maybeClaim(newSelection)) return;
 
       onSelectionChange(newSelection);
 
-      // Auto-save for existing domains
-      if (origin === "existing" && websiteId) {
+      // Auto-save for existing domains OR custom domains entered by user
+      const shouldAutoSave =
+        origin === "existing" || (origin === "user-input" && !isPlatformDomain(domain));
+
+      if (shouldAutoSave && websiteId) {
         domainAssignment.mutateDebounced({
           domain: newSelection.domain,
           websiteId,
@@ -152,7 +179,7 @@ export function DomainPicker({ selection, onSelectionChange }: DomainPickerProps
     [recommendations, websiteId, domainAssignment, markPersisted, onSelectionChange, claim]
   );
 
-  // Handle path change
+  // Handle path change - updates selection and triggers debounced save
   const handlePathChange = useCallback(
     (newPath: string) => {
       if (!selection) return;
@@ -162,8 +189,20 @@ export function DomainPicker({ selection, onSelectionChange }: DomainPickerProps
       if (claim.maybeClaim(newSelection)) return;
 
       onSelectionChange(newSelection);
+
+      // Debounced save for path changes (skip if platform domain without existingDomainId - needs claim modal)
+      const shouldAutoSave = selection.existingDomainId || !isPlatformDomain(selection.domain);
+
+      if (shouldAutoSave && websiteId) {
+        domainAssignment.mutateDebounced({
+          domain: newSelection.domain,
+          websiteId,
+          path: newSelection.path,
+          isPlatformSubdomain: isPlatformDomain(newSelection.domain),
+        });
+      }
     },
-    [selection, onSelectionChange, claim]
+    [selection, onSelectionChange, claim, websiteId, domainAssignment]
   );
 
   // Loading state
@@ -244,6 +283,32 @@ export function DomainPicker({ selection, onSelectionChange }: DomainPickerProps
             isOutOfCredits={isOutOfCredits}
             onSelect={handleDomainSelect}
           />
+          {/* DNS Verification Status for custom domains - positioned like path availability */}
+          {isCustomDomainWithId && (
+            <div data-testid="dns-verification-status">
+              {isShowingDnsCheck ? (
+                <div className="flex items-center gap-1 text-xs text-amber-600">
+                  <Spinner className="size-3.5" />
+                  <span>Checking if your site is directing users to launch10.ai...</span>
+                </div>
+              ) : isDnsVerified ? (
+                <div className="flex items-center gap-1 text-xs text-success-500">
+                  <CheckCircleIcon className="size-3.5" />
+                  <span>Your domain is setup!</span>
+                </div>
+              ) : isDnsFailed ? (
+                <div className="flex items-center gap-1 text-xs text-destructive">
+                  <XCircleIcon className="size-3.5" />
+                  <span>DNS verification failed: {dnsError}</span>
+                </div>
+              ) : isDnsPending ? (
+                <div className="flex items-center gap-1 text-xs text-red-400">
+                  <XCircleIcon className="size-3.5" />
+                  <span>Not ready yet. We'll keep checking for you.</span>
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
 
         {/* Page Name (Path) */}
@@ -272,9 +337,7 @@ export function DomainPicker({ selection, onSelectionChange }: DomainPickerProps
       </div>
 
       {/* DNS Help Section - shown only for custom domains */}
-      {selection && !isPlatformDomain(selection.domain) && (
-        <DnsHelpSection domainId={selection.existingDomainId ?? null} />
-      )}
+      {selection && !isPlatformDomain(selection.domain) && <DnsHelpSection />}
 
       {/* Full URL Preview */}
       {selection && (
