@@ -142,6 +142,32 @@ export class DomainPickerPage {
   }
 
   /**
+   * Wait for the domain picker to fully initialize with recommendations.
+   * This waits for:
+   * 1. Loading skeleton to disappear
+   * 2. Header to be visible
+   * 3. Domain recommendations to load (dropdown shows a domain, not "Select a domain...")
+   */
+  async waitForRecommendationsLoaded(timeout: number = 60000): Promise<void> {
+    // First wait for basic loading
+    await this.waitForLoaded(timeout);
+
+    // Then wait for recommendations - "Select a domain..." should disappear
+    // when AI recommendations pre-select a domain
+    await expect(this.page.locator('text="Select a domain..."')).not.toBeVisible({ timeout });
+  }
+
+  /**
+   * Wait for domain context to be loaded (includes credits info, existing domains).
+   * Use this when testing features that depend on context but not AI recommendations.
+   */
+  async waitForContextLoaded(timeout: number = 30000): Promise<void> {
+    await this.waitForLoaded(timeout);
+    // Context is loaded when the "Your site name" section is interactive
+    await this.siteNameDropdown.waitFor({ state: "visible", timeout });
+  }
+
+  /**
    * Check if the domain picker is showing loading state
    */
   async isLoading(): Promise<boolean> {
@@ -237,10 +263,17 @@ export class DomainPickerPage {
   }
 
   /**
-   * Click continue button
+   * Click connect site button
+   */
+  async clickConnectSite(): Promise<void> {
+    await this.connectSiteButton.click();
+  }
+
+  /**
+   * @deprecated Use clickConnectSite instead - button is named "Connect Site"
    */
   async clickContinue(): Promise<void> {
-    await this.continueButton.click();
+    await this.connectSiteButton.click();
   }
 
   /**

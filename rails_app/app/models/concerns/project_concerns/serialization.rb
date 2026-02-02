@@ -19,7 +19,7 @@ module ProjectConcerns
     # Returns the primary URL string for the project (domain + path)
     # Returns nil if no website_url exists
     def primary_url_string
-      url = website&.urls&.first
+      url = website&.website_url
       return nil unless url
 
       domain_str = url.domain&.domain
