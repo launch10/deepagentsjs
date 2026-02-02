@@ -175,7 +175,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     let!(:delete_workflow) { project_to_delete.workflows.first }
     let!(:delete_chat) { brainstorm_data[:chat] }
     let!(:delete_social_link) { create(:social_link, :twitter, project: project_to_delete) }
-    let!(:delete_domain) { create(:domain, account: account, website: delete_website, domain: "delete-test-#{SecureRandom.hex(4)}.launch10.site") }
+    let!(:delete_domain) { create(:domain, account: account, domain: "delete-test-#{SecureRandom.hex(4)}.launch10.site") }
     let!(:delete_website_url) { create(:website_url, website: delete_website, domain: delete_domain, account: account) }
     let!(:delete_website_file) { create(:website_file, website: delete_website, path: '/test.html') }
     let!(:delete_deploy) { create(:deploy, project: project_to_delete, status: 'pending') }
@@ -558,7 +558,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     let!(:restore_workflow) { project_to_restore.workflows.first }
     let!(:restore_chat) { brainstorm_data[:chat] }
     let!(:restore_social_link) { create(:social_link, :twitter, project: project_to_restore) }
-    let!(:restore_domain) { create(:domain, account: account, website: restore_website, domain: "restore-test-#{SecureRandom.hex(4)}.launch10.site") }
+    let!(:restore_domain) { create(:domain, account: account, domain: "restore-test-#{SecureRandom.hex(4)}.launch10.site") }
     let!(:restore_website_url) { create(:website_url, website: restore_website, domain: restore_domain, account: account) }
     let!(:restore_website_file) { create(:website_file, website: restore_website, path: '/restore-test.html') }
     let!(:restore_deploy) { create(:deploy, project: project_to_restore, status: 'pending') }

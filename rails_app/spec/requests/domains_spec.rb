@@ -146,10 +146,10 @@ RSpec.describe "Domains API", type: :request do
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
       parameter name: :website_id, in: :query, type: :integer, required: false, description: 'Filter by website ID'
 
-      let!(:domain1_owned) { create(:domain, domain: 'site1.launch10.site', account: user1_owned_account, website: website1_owned) }
-      let!(:domain2_owned) { create(:domain, domain: 'site2.launch10.site', account: user1_owned_account, website: website1_owned) }
-      let!(:domain1_team) { create(:domain, domain: 'team1.launch10.site', account: user1_team_account, website: website1_team) }
-      let!(:domain2_other) { create(:domain, domain: 'other.launch10.site', account: user2_owned_account, website: website2_owned) }
+      let!(:domain1_owned) { create(:domain, domain: 'site1.launch10.site', account: user1_owned_account) }
+      let!(:domain2_owned) { create(:domain, domain: 'site2.launch10.site', account: user1_owned_account) }
+      let!(:domain1_team) { create(:domain, domain: 'team1.launch10.site', account: user1_team_account) }
+      let!(:domain2_other) { create(:domain, domain: 'other.launch10.site', account: user2_owned_account) }
 
       before do
         switch_account_to(user1_owned_account)
@@ -228,8 +228,8 @@ RSpec.describe "Domains API", type: :request do
 
       parameter name: :search_params, in: :body, schema: APISchemas::Domain.search_params_schema
 
-      let!(:domain1_owned) { create(:domain, :platform_subdomain, domain: 'my-existing.launch10.site', account: user1_owned_account, website: website1_owned) }
-      let!(:domain2_other) { create(:domain, :platform_subdomain, domain: 'taken-by-other.launch10.site', account: user2_owned_account, website: website2_owned) }
+      let!(:domain1_owned) { create(:domain, :platform_subdomain, domain: 'my-existing.launch10.site', account: user1_owned_account) }
+      let!(:domain2_other) { create(:domain, :platform_subdomain, domain: 'taken-by-other.launch10.site', account: user2_owned_account) }
 
       before do
         switch_account_to(user1_owned_account)
@@ -362,9 +362,9 @@ RSpec.describe "Domains API", type: :request do
       parameter name: 'X-Signature', in: :header, type: :string, required: false
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
 
-      let!(:domain1_owned) { create(:domain, domain: 'site1.launch10.site', account: user1_owned_account, website: website1_owned) }
-      let!(:domain1_team) { create(:domain, domain: 'team1.launch10.site', account: user1_team_account, website: website1_team) }
-      let!(:domain2_other) { create(:domain, domain: 'other.launch10.site', account: user2_owned_account, website: website2_owned) }
+      let!(:domain1_owned) { create(:domain, domain: 'site1.launch10.site', account: user1_owned_account) }
+      let!(:domain1_team) { create(:domain, domain: 'team1.launch10.site', account: user1_team_account) }
+      let!(:domain2_other) { create(:domain, domain: 'other.launch10.site', account: user2_owned_account) }
 
       before do
         switch_account_to(user1_owned_account)

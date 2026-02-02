@@ -31,7 +31,7 @@ RSpec.describe "Domain Context API", type: :request do
 
         let!(:website) { create(:website, account: account, project: project) }
         let(:website_id) { website.id }
-        let!(:platform_domain) { create(:domain, :platform_subdomain, account: account, website: nil) }
+        let!(:platform_domain) { create(:domain, :platform_subdomain, account: account) }
 
         run_test! do |response|
           json = JSON.parse(response.body)
@@ -50,7 +50,7 @@ RSpec.describe "Domain Context API", type: :request do
 
         let!(:website) { create(:website, account: account, project: project) }
         let(:website_id) { website.id }
-        let!(:custom_domain) { create(:domain, :custom_domain, account: account, website: nil) }
+        let!(:custom_domain) { create(:domain, :custom_domain, account: account) }
 
         run_test! do |response|
           json = JSON.parse(response.body)
@@ -69,7 +69,7 @@ RSpec.describe "Domain Context API", type: :request do
 
         let!(:website) { create(:website, account: account, project: project) }
         let(:website_id) { website.id }
-        let!(:custom_domain) { create(:domain, :custom_domain, account: account, website: nil, dns_verification_status: "pending") }
+        let!(:custom_domain) { create(:domain, :custom_domain, account: account, dns_verification_status: "pending") }
 
         run_test! do |response|
           json = JSON.parse(response.body)
@@ -80,22 +80,23 @@ RSpec.describe "Domain Context API", type: :request do
         end
       end
 
-      response "200", "returns website associations with domains" do
+      response "200", "returns website associations with domains via website_urls" do
         schema APISchemas::Context.domain_context_response
 
         let!(:other_project) { create(:project, account: account, name: "Other Project") }
         let!(:other_website) { create(:website, name: "Other Site", account: account, project: other_project) }
         let!(:website) { create(:website, account: account, project: project) }
         let(:website_id) { website.id }
-        let!(:domain_with_website) { create(:domain, :platform_subdomain, account: account, website: other_website) }
+        let!(:domain_with_url) { create(:domain, :platform_subdomain, account: account) }
+        let!(:website_url) { create(:website_url, domain: domain_with_url, website: other_website, account: account, path: "/") }
 
         run_test! do |response|
           json = JSON.parse(response.body)
 
-          domain_data = json["existing_domains"].find { |d| d["id"] == domain_with_website.id }
+          domain_data = json["existing_domains"].find { |d| d["id"] == domain_with_url.id }
           expect(domain_data).to be_present
-          expect(domain_data["website_id"]).to eq(other_website.id)
-          expect(domain_data["website_name"]).to eq(other_website.name)
+          expect(domain_data["website_urls"]).to be_an(Array)
+          expect(domain_data["website_urls"].first["website_id"]).to eq(other_website.id)
         end
       end
 
@@ -106,7 +107,7 @@ RSpec.describe "Domain Context API", type: :request do
         let!(:other_website) { create(:website, name: "Site With URLs", account: account, project: other_project) }
         let!(:website) { create(:website, account: account, project: project) }
         let(:website_id) { website.id }
-        let!(:domain) { create(:domain, :platform_subdomain, account: account, website: other_website) }
+        let!(:domain) { create(:domain, :platform_subdomain, account: account) }
         let!(:website_url) { create(:website_url, domain: domain, website: other_website, account: account, path: "/landing") }
 
         run_test! do |response|
@@ -124,7 +125,7 @@ RSpec.describe "Domain Context API", type: :request do
 
         let!(:website) { create(:website, account: account, project: project) }
         let(:website_id) { website.id }
-        let!(:existing_subdomain) { create(:domain, :platform_subdomain, account: account, website: nil) }
+        let!(:existing_subdomain) { create(:domain, :platform_subdomain, account: account) }
 
         run_test! do |response|
           json = JSON.parse(response.body)
@@ -186,10 +187,10 @@ RSpec.describe "Domain Context API", type: :request do
         let(:website_id) { website.id }
 
         # Domains belonging to the current user's account
-        let!(:my_domain) { create(:domain, :platform_subdomain, account: account, website: nil) }
+        let!(:my_domain) { create(:domain, :platform_subdomain, account: account) }
 
         # Domain belonging to another account (should not appear)
-        let!(:other_domain) { create(:domain, :platform_subdomain, account: other_account, website: nil) }
+        let!(:other_domain) { create(:domain, :platform_subdomain, account: other_account) }
 
         run_test! do |response|
           json = JSON.parse(response.body)

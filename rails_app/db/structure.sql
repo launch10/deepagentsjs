@@ -2537,7 +2537,6 @@ CREATE TABLE public.domain_request_counts_2026_12 (
 CREATE TABLE public.domains (
     id bigint NOT NULL,
     domain character varying,
-    website_id bigint,
     account_id bigint,
     cloudflare_zone_id character varying,
     created_at timestamp(6) without time zone NOT NULL,
@@ -8619,13 +8618,6 @@ CREATE INDEX index_domains_on_domain ON public.domains USING btree (domain);
 
 
 --
--- Name: index_domains_on_website_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_domains_on_website_id ON public.domains USING btree (website_id);
-
-
---
 -- Name: index_geo_target_constants_on_canonical_name; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11404,6 +11396,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260201235035'),
 ('20260201153847'),
 ('20260130161923'),
 ('20260130143844'),

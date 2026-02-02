@@ -22,10 +22,10 @@ class API::V1::ContextController < API::BaseController
       render json: {errors: ["Website not found"]}, status: :not_found and return
     end
 
-    domains = current_account.domains.includes(:website, :website_urls)
+    domains = current_account.domains.includes(:website_urls)
 
-    # Get the website's assigned URL (source of truth)
-    assigned_url = website.website_urls.includes(:domain).first
+    # Get the website's assigned URL (source of truth) - 1:1 relationship
+    assigned_url = website.website_url
 
     render json: {
       existing_domains: domains.map { |domain| serialize_domain(domain) },
@@ -43,8 +43,6 @@ class API::V1::ContextController < API::BaseController
       id: domain.id,
       domain: domain.domain,
       is_platform_subdomain: domain.is_platform_subdomain,
-      website_id: domain.website_id,
-      website_name: domain.website&.name,
       website_urls: domain.website_urls.map do |url|
         {
           id: url.id,

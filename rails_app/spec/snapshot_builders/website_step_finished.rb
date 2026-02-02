@@ -26,8 +26,8 @@ class WebsiteStepFinished < BaseBuilder
     end
 
     # Use a .com domain to avoid hitting platform subdomain limits (we already have 2 platform subdomains from website_step)
-    domain = website.domains.first || create(:domain, website: website, account: account, domain: "example-site.com")
-    website_url = website.website_urls.first || create(:website_url, website: website, domain: domain, account: account, path: "/bingo?cloudEnv=staging")
+    domain = website.website_url&.domain || create(:domain, account: account, domain: "example-site.com")
+    website_url = website.website_url || create(:website_url, website: website, domain: domain, account: account, path: "/bingo?cloudEnv=staging")
 
     project.current_workflow.update!(step: "ad_campaign", substep: "content")
 

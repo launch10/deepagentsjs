@@ -29,6 +29,7 @@ class WebsiteUrl < ApplicationRecord
   acts_as_paranoid
 
   include Atlas::WebsiteUrl
+  include WebsiteUrlConcerns::Assignment
 
   acts_as_tenant :account
 

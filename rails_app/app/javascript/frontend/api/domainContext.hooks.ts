@@ -5,7 +5,7 @@ import {
   type UseQueryOptions,
   type UseMutationOptions,
 } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import {
   DomainContextAPIService,
   DomainsAPIService,
@@ -16,6 +16,7 @@ import {
 } from "@rails_api_base";
 import { useWebsiteId } from "~/stores/projectStore";
 import { useJwt, useRootPath } from "~/stores/sessionStore";
+import { useLatestMutation } from "~/hooks/useLatestMutation";
 
 // ============================================================================
 // Query Keys
@@ -225,5 +226,82 @@ export function useSearchWebsiteUrls(
     enabled: !!domainId && paths.length > 0,
     staleTime: 30 * 1000, // 30 seconds
     ...options,
+  });
+}
+
+// ============================================================================
+// Domain Assignment Hook (with debounce + cancel pattern)
+// ============================================================================
+
+export interface DomainAssignmentVariables {
+  domain: string;
+  websiteId: number;
+  path: string;
+  isPlatformSubdomain?: boolean;
+}
+
+/**
+ * Hook for assigning a domain + path to a website with debounce and cancellation.
+ * Uses useLatestMutation to:
+ * - Debounce rapid changes (e.g., while typing path)
+ * - Cancel stale in-flight requests when a new one is made
+ * - Provide immediate save via mutateNowAsync (for explicit save button)
+ *
+ * @param websiteId - The website to assign the domain to
+ * @param debounceMs - Debounce delay in ms (default: 750ms)
+ */
+export function useDomainAssignment(websiteId: number | undefined, debounceMs: number = 750) {
+  const service = useDomainsService();
+  const queryClient = useQueryClient();
+
+  const updateCache = useCallback(
+    (data: CreateDomainResponse, variables: DomainAssignmentVariables) => {
+      if (!websiteId) return;
+      const queryKey = domainContextKeys.context(websiteId);
+
+      queryClient.setQueryData<GetDomainContextResponse>(queryKey, (oldData) => {
+        if (!oldData) return oldData;
+
+        const isPlatformSubdomain = variables.isPlatformSubdomain ?? variables.domain.endsWith(".launch10.site");
+        const path = data.website_url?.path ?? variables.path ?? "/";
+        const normalizedPath = path === "/" ? "" : path;
+        const fullUrl = `${data.domain}${normalizedPath}`;
+
+        return {
+          ...oldData,
+          platform_subdomain_credits:
+            data.platform_subdomain_credits as GetDomainContextResponse["platform_subdomain_credits"],
+          assigned_url: {
+            id: data.website_url?.id ?? 0,
+            domain_id: data.id,
+            domain: data.domain,
+            path,
+            is_platform_subdomain: isPlatformSubdomain,
+            dns_verification_status: isPlatformSubdomain ? "verified" : "pending",
+            full_url: fullUrl,
+          },
+        };
+      });
+
+      queryClient.invalidateQueries({ queryKey });
+    },
+    [websiteId, queryClient]
+  );
+
+  return useLatestMutation<CreateDomainResponse, DomainAssignmentVariables>({
+    mutationKey: ["domain-assignment", websiteId],
+    mutationFn: async (variables: DomainAssignmentVariables, signal: AbortSignal) => {
+      return service.create(
+        {
+          domain: variables.domain,
+          website_id: variables.websiteId,
+          path: variables.path ?? "/",
+          is_platform_subdomain: variables.isPlatformSubdomain ?? variables.domain.endsWith(".launch10.site"),
+        } as Parameters<typeof service.create>[0],
+        { signal }
+      );
+    },
+    debounceMs,
+    onSuccess: updateCache,
   });
 }

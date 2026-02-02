@@ -181,7 +181,7 @@ RSpec.describe Project, type: :model do
       end
 
       context "when website has a website_url" do
-        let!(:domain_record) { create(:domain, website: website, account: account, domain: "test-project.launch10.site") }
+        let!(:domain_record) { create(:domain, account: account, domain: "test-project.launch10.site") }
         let!(:website_url) { create(:website_url, website: website, domain: domain_record, account: account, path: "/") }
 
         it "returns the domain from website_url" do
@@ -192,7 +192,7 @@ RSpec.describe Project, type: :model do
       end
 
       context "when website has a website_url with non-root path" do
-        let!(:domain_record) { create(:domain, website: website, account: account, domain: "multi.launch10.site") }
+        let!(:domain_record) { create(:domain, account: account, domain: "multi.launch10.site") }
         let!(:website_url) { create(:website_url, website: website, domain: domain_record, account: account, path: "/campaign") }
 
         it "returns the domain with path" do
