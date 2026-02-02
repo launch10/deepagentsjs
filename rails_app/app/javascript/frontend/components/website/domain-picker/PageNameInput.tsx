@@ -220,7 +220,7 @@ export function PageNameInput({
           className="flex items-center gap-1 text-xs text-amber-600"
         >
           <ExclamationTriangleIcon className="size-3.5" />
-          <span>You already use this path on this domain</span>
+          <span>You already have another site with this URL</span>
         </div>
       )}
 
@@ -230,7 +230,7 @@ export function PageNameInput({
           className="flex items-center gap-1 text-xs text-success-500"
         >
           <CheckCircleIcon className="size-3.5" />
-          <span>/{inputValue} is assigned to this website</span>
+          <span>/{inputValue} is this site's current URL</span>
         </div>
       )}
 
