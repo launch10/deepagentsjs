@@ -1,6 +1,11 @@
 import { Chat } from "@components/shared/chat/Chat";
 import { ArrowUp, FilePlus, Square } from "lucide-react";
 
+export interface WebsiteChatInputProps {
+  /** When true, the chat input is disabled */
+  disabled?: boolean;
+}
+
 /**
  * Website chat input using Chat compound components.
  *
@@ -10,7 +15,7 @@ import { ArrowUp, FilePlus, Square } from "lucide-react";
  *
  * Matches the same pattern as AdsChatInput for consistency.
  */
-export default function WebsiteChatInput() {
+export default function WebsiteChatInput({ disabled = false }: WebsiteChatInputProps) {
   return (
     <div className="flex flex-col gap-1 w-full">
       <Chat.Input.CreditGate>
@@ -24,10 +29,14 @@ export default function WebsiteChatInput() {
             placeholder="Ask me for changes..."
             className="flex-1 text-xs min-h-[40px]"
             data-testid="website-chat-input"
+            disabled={disabled}
           />
 
           <div className="flex items-center justify-between mt-auto pt-2">
-            <Chat.Input.FileButton className="text-base-500 p-1 hover:bg-neutral-100 rounded">
+            <Chat.Input.FileButton
+              className="text-base-500 p-1 hover:bg-neutral-100 rounded"
+              disabled={disabled}
+            >
               <FilePlus className="size-4" />
             </Chat.Input.FileButton>
 
@@ -35,6 +44,7 @@ export default function WebsiteChatInput() {
               stopIcon={<Square className="size-3" fill="currentColor" />}
               className="rounded-full bg-secondary-500 text-white hover:bg-secondary-600 size-6 flex items-center justify-center"
               data-testid="website-chat-submit"
+              disabled={disabled}
             >
               <ArrowUp className="size-4" />
             </Chat.Input.SubmitButton>

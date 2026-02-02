@@ -29,6 +29,7 @@ class WebsiteUrl < ApplicationRecord
   acts_as_paranoid
 
   include Atlas::WebsiteUrl
+  include WebsiteUrlConcerns::Assignment
 
   acts_as_tenant :account
 
@@ -41,6 +42,7 @@ class WebsiteUrl < ApplicationRecord
   validates :website_id, presence: true
   validates :domain_id, presence: true
   validate :unique_domain_and_path
+  validate :unique_website
   validate :domain_belongs_to_account
   validate :website_belongs_to_account
   validate :path_is_single_level
@@ -53,6 +55,10 @@ class WebsiteUrl < ApplicationRecord
 
   def domain_string
     domain&.domain
+  end
+
+  def full_url
+    "https://#{domain_string}#{path}"
   end
 
   def to_api_json
@@ -102,6 +108,17 @@ class WebsiteUrl < ApplicationRecord
 
     if existing.exists?
       errors.add(:base, "A website URL with this domain and path already exists")
+    end
+  end
+
+  def unique_website
+    return if website_id.blank?
+
+    existing = WebsiteUrl.where(website_id: website_id)
+    existing = existing.where.not(id: id) if persisted?
+
+    if existing.exists?
+      errors.add(:website, "already has a URL assigned")
     end
   end
 

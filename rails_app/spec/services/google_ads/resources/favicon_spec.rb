@@ -6,7 +6,8 @@ RSpec.describe GoogleAds::Resources::Favicon do
   let(:account) { create(:account) }
   let(:project) { create(:project, account: account) }
   let(:website) { create(:website, account: account, project: project) }
-  let!(:domain) { create(:domain, website: website, account: account, domain: "test-site.launch10.ai") }
+  let!(:domain) { create(:domain, account: account, domain: "test-site.launch10.ai") }
+  let!(:website_url) { create(:website_url, domain: domain, website: website, account: account) }
   let(:campaign) { create(:campaign, account: account, project: project, website: website) }
   let(:upload) do
     upload = create(:upload, account: account, is_logo: true)

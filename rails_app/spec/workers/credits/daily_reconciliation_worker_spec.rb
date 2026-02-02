@@ -110,28 +110,36 @@ RSpec.describe Credits::DailyReconciliationWorker do
 
     context "yearly subscriber - anchor day > days in month" do
       it "resets on last day of month when anchor day exceeds month days (e.g., 31st -> Feb 28)" do
-        account = create(:account)
+        # Use a fixed year to avoid date-dependent test failures
+        # We need to ensure the initial credit transaction is in a PREVIOUS month
+        # relative to the month we travel to for testing
+        test_year = 2025
+        account = nil
 
-        # Create subscription that started on the 31st of a month
-        payment_processor = account.set_payment_processor(:fake_processor, allow_fake: true)
-        payment_processor.update!(processor_id: "cus_#{SecureRandom.hex(8)}")
+        # Set up the account and initial allocation in January
+        travel_to Date.new(test_year, 1, 15) do
+          account = create(:account)
 
-        # January 31st start date
-        start_date = Date.new(Date.current.year, 1, 31)
-        payment_processor.subscriptions.create!(
-          processor_id: "sub_#{SecureRandom.hex(8)}",
-          name: "default",
-          processor_plan: yearly_plan.fake_processor_id,
-          status: "active",
-          current_period_start: start_date.to_time,
-          current_period_end: (start_date + 1.year).to_time
-        )
+          # Create subscription that started on the 31st of a month
+          payment_processor = account.set_payment_processor(:fake_processor, allow_fake: true)
+          payment_processor.update!(processor_id: "cus_#{SecureRandom.hex(8)}")
 
-        setup_account_state(account: account, plan_credits: 3000, pack_credits: 0)
+          # January 31st start date
+          start_date = Date.new(test_year, 1, 31)
+          payment_processor.subscriptions.create!(
+            processor_id: "sub_#{SecureRandom.hex(8)}",
+            name: "default",
+            processor_plan: yearly_plan.fake_processor_id,
+            status: "active",
+            current_period_start: start_date.to_time,
+            current_period_end: (start_date + 1.year).to_time
+          )
+
+          setup_account_state(account: account, plan_credits: 3000, pack_credits: 0)
+        end
 
         # Travel to February 28th (last day of Feb in non-leap year)
-        # In a leap year, this would be Feb 29th
-        feb_last_day = Date.new(Date.current.year, 2, 1).end_of_month
+        feb_last_day = Date.new(test_year, 2, 1).end_of_month
 
         travel_to feb_last_day do
           allow_any_instance_of(Pay::Subscription).to receive(:plan).and_return(yearly_plan)

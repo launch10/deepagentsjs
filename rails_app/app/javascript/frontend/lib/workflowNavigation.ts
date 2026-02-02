@@ -4,7 +4,7 @@
  *
  * The workflow has 4 main pages:
  * 1. brainstorm (no substeps)
- * 2. website (no substeps)
+ * 2. website (substeps: build, domain, deploy)
  * 3. ad_campaign (substeps: content, highlights, keywords, settings, launch, review)
  * 4. deploy (no substeps - final deployment step)
  */
@@ -92,14 +92,15 @@ export function isLastPage(page: Workflow.WorkflowPage | null): boolean {
 
 /**
  * Get the first substep for a page that has substeps
- * Returns null for pages without substeps (brainstorm, website, deploy)
+ * Returns null for pages without substeps (brainstorm, deploy)
  */
 export function getFirstSubstep(page: Workflow.WorkflowPage): Workflow.SubstepName | null {
   switch (page) {
     case "brainstorm":
-    case "website":
     case "deploy":
       return null;
+    case "website":
+      return "build";
     case "ad_campaign":
       return "content";
     default:
@@ -109,14 +110,15 @@ export function getFirstSubstep(page: Workflow.WorkflowPage): Workflow.SubstepNa
 
 /**
  * Get the last substep for a page that has substeps
- * Returns null for pages without substeps (brainstorm, website, deploy)
+ * Returns null for pages without substeps (brainstorm, deploy)
  */
 export function getLastSubstep(page: Workflow.WorkflowPage): Workflow.SubstepName | null {
   switch (page) {
     case "brainstorm":
-    case "website":
     case "deploy":
       return null;
+    case "website":
+      return "deploy";
     case "ad_campaign":
       return "review";
     default:
@@ -128,7 +130,7 @@ export function getLastSubstep(page: Workflow.WorkflowPage): Workflow.SubstepNam
  * Check if a page has substeps
  */
 export function pageHasSubsteps(page: Workflow.WorkflowPage | null): boolean {
-  return page === "ad_campaign";
+  return page === "ad_campaign" || page === "website";
 }
 
 /**
@@ -137,8 +139,8 @@ export function pageHasSubsteps(page: Workflow.WorkflowPage | null): boolean {
  *
  * Transitions:
  * - (null) → brainstorm
- * - brainstorm → website
- * - website → ad_campaign/content
+ * - brainstorm → website/build
+ * - website/build → website/domain → website/deploy → ad_campaign/content
  * - ad_campaign substeps → next substep or deploy
  * - deploy → stay at deploy (end of workflow)
  */
@@ -150,16 +152,22 @@ export function continueWorkflow(position: WorkflowPosition): WorkflowPosition {
     return { page: "brainstorm", substep: null };
   }
 
-  // Case 2: Pages without substeps → move to next page
+  // Case 2: Brainstorm → move to website/build
   if (page === "brainstorm") {
-    return { page: "website", substep: null };
+    return { page: "website", substep: "build" };
   }
 
+  // Case 3: Website with substeps
   if (page === "website") {
+    const nextSubstep = getNextWebsiteSubstep(substep);
+    if (nextSubstep) {
+      return { page: "website", substep: nextSubstep };
+    }
+    // End of website → go to ad_campaign/content
     return { page: "ad_campaign", substep: "content" };
   }
 
-  // Case 3: Ad campaign with substeps
+  // Case 4: Ad campaign with substeps
   if (page === "ad_campaign") {
     const nextSubstep = getNextAdCampaignSubstep(substep);
     if (nextSubstep) {
@@ -169,7 +177,7 @@ export function continueWorkflow(position: WorkflowPosition): WorkflowPosition {
     return { page: "deploy", substep: null };
   }
 
-  // Case 4: Deploy has no substeps - end of workflow
+  // Case 5: Deploy has no substeps - end of workflow
   if (page === "deploy") {
     return position;
   }
@@ -194,8 +202,13 @@ export function backWorkflow(position: WorkflowPosition): WorkflowPosition {
     return position;
   }
 
-  // Case 3: Website → go back to brainstorm
+  // Case 3: Website with substeps
   if (page === "website") {
+    const prevSubstep = getPrevWebsiteSubstep(substep);
+    if (prevSubstep) {
+      return { page: "website", substep: prevSubstep };
+    }
+    // At first substep (build) → go back to brainstorm
     return { page: "brainstorm", substep: null };
   }
 
@@ -205,8 +218,8 @@ export function backWorkflow(position: WorkflowPosition): WorkflowPosition {
     if (prevSubstep) {
       return { page: "ad_campaign", substep: prevSubstep };
     }
-    // At first substep → go back to website
-    return { page: "website", substep: null };
+    // At first substep → go back to website/deploy
+    return { page: "website", substep: "deploy" };
   }
 
   // Case 5: Deploy → go back to ad_campaign/review
@@ -218,6 +231,8 @@ export function backWorkflow(position: WorkflowPosition): WorkflowPosition {
 }
 
 // Substep navigation helpers
+
+const WEBSITE_SUBSTEP_ORDER: Workflow.WebsiteSubstepName[] = ["build", "domain", "deploy"];
 
 const AD_CAMPAIGN_SUBSTEP_ORDER: Workflow.AdCampaignSubstepName[] = [
   "content",
@@ -248,4 +263,26 @@ function getPrevAdCampaignSubstep(
     return null;
   }
   return AD_CAMPAIGN_SUBSTEP_ORDER[currentIndex - 1];
+}
+
+function getNextWebsiteSubstep(
+  current: Workflow.SubstepName | null
+): Workflow.WebsiteSubstepName | null {
+  if (!current) return "build";
+  const currentIndex = WEBSITE_SUBSTEP_ORDER.indexOf(current as Workflow.WebsiteSubstepName);
+  if (currentIndex === -1 || currentIndex >= WEBSITE_SUBSTEP_ORDER.length - 1) {
+    return null;
+  }
+  return WEBSITE_SUBSTEP_ORDER[currentIndex + 1];
+}
+
+function getPrevWebsiteSubstep(
+  current: Workflow.SubstepName | null
+): Workflow.WebsiteSubstepName | null {
+  if (!current) return null;
+  const currentIndex = WEBSITE_SUBSTEP_ORDER.indexOf(current as Workflow.WebsiteSubstepName);
+  if (currentIndex <= 0) {
+    return null;
+  }
+  return WEBSITE_SUBSTEP_ORDER[currentIndex - 1];
 }

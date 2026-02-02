@@ -9,9 +9,25 @@ module APISchemas
           id: APISchemas.id_field,
           domain: {type: :string, description: 'Domain name'},
           account_id: APISchemas.id_field,
-          website_id: {type: :integer, nullable: true, description: 'Associated website ID'},
           is_platform_subdomain: {type: :boolean, description: 'Whether this is a platform subdomain'},
           cloudflare_zone_id: {type: :string, nullable: true, description: 'Cloudflare zone ID'},
+          dns_verification_status: {type: :string, nullable: true, description: 'DNS verification status'},
+          dns_last_checked_at: {type: :string, format: 'date-time', nullable: true, description: 'Last DNS check timestamp'},
+          dns_error_message: {type: :string, nullable: true, description: 'DNS error message'},
+          website_urls: {
+            type: :array,
+            nullable: true,
+            items: {
+              type: :object,
+              properties: {
+                id: APISchemas.id_field,
+                path: {type: :string, description: 'URL path'},
+                website_id: {type: :integer, description: 'Website ID'}
+              },
+              required: ['id', 'path', 'website_id']
+            },
+            description: 'URLs associated with this domain (only included when include_website_urls=true)'
+          },
           **APISchemas.timestamps
         },
         required: [
@@ -32,9 +48,19 @@ module APISchemas
           domains: {
             type: :array,
             items: response
-          }
+          },
+          platform_subdomain_credits: {
+            type: :object,
+            properties: {
+              limit: {type: :integer, description: 'Maximum platform subdomains allowed'},
+              used: {type: :integer, description: 'Number of platform subdomains used'},
+              remaining: {type: :integer, description: 'Remaining platform subdomains'}
+            },
+            required: ['limit', 'used', 'remaining']
+          },
+          plan_tier: {type: :string, nullable: true, description: 'User plan tier (starter, growth, pro)'}
         },
-        required: ['domains']
+        required: ['domains', 'platform_subdomain_credits']
       }
     end
 
@@ -105,6 +131,47 @@ module APISchemas
           }
         },
         required: ['results', 'platform_subdomain_credits']
+      }
+    end
+
+    def self.verify_dns_response
+      {
+        type: :object,
+        properties: {
+          domain_id: APISchemas.id_field,
+          domain: {type: :string, description: 'Domain name'},
+          verification_status: {
+            type: :string,
+            enum: ['pending', 'verified', 'failed'],
+            description: 'DNS verification status'
+          },
+          expected_cname: {type: :string, nullable: true, description: 'Expected CNAME target'},
+          actual_cname: {type: :string, nullable: true, description: 'Actual CNAME found'},
+          last_checked_at: {type: :string, format: 'date-time', nullable: true, description: 'Last DNS check timestamp'},
+          error_message: {type: :string, nullable: true, description: 'Error message if verification failed'}
+        },
+        required: ['domain_id', 'domain', 'verification_status']
+      }
+    end
+
+    # Response for POST /api/v1/domains - creates domain + website_url
+    def self.create_response
+      {
+        type: :object,
+        properties: {
+          domain: response,
+          website_url: APISchemas::WebsiteUrl.response,
+          platform_subdomain_credits: {
+            type: :object,
+            properties: {
+              limit: {type: :integer, description: 'Maximum platform subdomains allowed'},
+              used: {type: :integer, description: 'Number of platform subdomains used'},
+              remaining: {type: :integer, description: 'Remaining platform subdomains'}
+            },
+            required: ['limit', 'used', 'remaining']
+          }
+        },
+        required: ['domain', 'website_url', 'platform_subdomain_credits']
       }
     end
   end

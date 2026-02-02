@@ -14,6 +14,11 @@ class API::BaseController < ActionController::API
   include SetLocale
   include Sortable
 
+  rate_limit to: 300, within: 1.minute,
+    unless: -> { internal_api_request? || internal_service_call? },
+    by: -> { current_user&.id || request.remote_ip },
+    with: -> { render json: { error: "Rate limit exceeded. Try again later." }, status: :too_many_requests }
+
   rescue_from ActiveRecord::RecordNotFound, with: :not_found
 
   prepend_before_action :require_api_authentication

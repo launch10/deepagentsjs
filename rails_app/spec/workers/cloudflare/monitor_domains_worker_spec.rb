@@ -9,12 +9,15 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
   let(:bananas_user) { create_subscribed_user(plan_name: plan.name) }
   let(:apples_account) { apples_user.owned_account }
   let(:bananas_account) { bananas_user.owned_account }
-  let(:apples_domain) { create(:domain, account: apples_account, domain: "apples.example.com", website: apples_website) }
-  let(:bananas_domain) { create(:domain, account: bananas_account, domain: "bananas.example.com", website: bananas_website) }
-  let(:www_domain) { create(:domain, account: apples_account, domain: "www.example.com", website: website) }
   let(:website) { create(:website, account: apples_account, name: "www") }
   let(:apples_website) { create(:website, account: apples_account, name: "apples") }
   let(:bananas_website) { create(:website, account: bananas_account, name: "bananas") }
+  let(:apples_domain) { create(:domain, account: apples_account, domain: "apples.example.com") }
+  let(:bananas_domain) { create(:domain, account: bananas_account, domain: "bananas.example.com") }
+  let(:www_domain) { create(:domain, account: apples_account, domain: "www.example.com") }
+  let!(:apples_website_url) { create(:website_url, domain: apples_domain, website: apples_website, account: apples_account) }
+  let!(:bananas_website_url) { create(:website_url, domain: bananas_domain, website: bananas_website, account: bananas_account) }
+  let!(:www_website_url) { create(:website_url, domain: www_domain, website: website, account: apples_account) }
   let(:domain_monitor) { instance_double(Cloudflare::Analytics::Queries::MonitorDomains) }
 
   # Time helpers
@@ -451,9 +454,9 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
 
           firewall_service = instance_double(Cloudflare::FirewallService)
           allow(Cloudflare::FirewallService).to receive(:new).and_return(firewall_service)
-          allow(firewall_service).to receive(:unblock_domains).with(["rule_www_123", "rule_apples_123"]).and_return(
-            mock_api_response(mock_unblock_response)
-          )
+          allow(firewall_service).to receive(:unblock_domains).with(
+            array_including("rule_www_123", "rule_apples_123")
+          ).and_return(mock_api_response(mock_unblock_response))
 
           # Run the monitor worker in the new month
           subject.perform(zone_id)
@@ -589,9 +592,9 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
             errors: [],
             messages: []
           }
-          allow(firewall_service).to receive(:unblock_domains).with(["rule_www_456", "rule_apples_456"]).and_return(
-            mock_api_response(mock_unblock_response)
-          )
+          allow(firewall_service).to receive(:unblock_domains).with(
+            array_including("rule_www_456", "rule_apples_456")
+          ).and_return(mock_api_response(mock_unblock_response))
 
           # Run monitor worker - should unblock because 90k < 150k growth limit
           subject.perform(zone_id)
@@ -668,7 +671,8 @@ RSpec.describe Cloudflare::MonitorDomainsWorker, type: :worker do
         Timecop.freeze(UTC.parse("2025-08-02 10:00:00")) do
           # Create a new domain for the already blocked user
           new_website = create(:website, account: apples_account, name: "new-site")
-          new_domain = create(:domain, account: apples_account, domain: "new.example.com", website: new_website)
+          new_domain = create(:domain, account: apples_account, domain: "new.example.com")
+          create(:website_url, domain: new_domain, website: new_website, account: apples_account)
 
           # Update traffic report to include the new domain
           allow(domain_monitor).to receive(:hourly_traffic_by_host) do |args|

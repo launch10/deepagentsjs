@@ -58,7 +58,7 @@ RSpec.describe Ad, type: :model do
   describe '#final_urls' do
     context 'when website has a website_url with root path' do
       before do
-        domain = create(:domain, website: website, account: account, domain: "example.launch10.ai")
+        domain = create(:domain, account: account, domain: "example.launch10.ai")
         create(:website_url, website: website, account: account, domain: domain, path: "/")
       end
 
@@ -69,7 +69,7 @@ RSpec.describe Ad, type: :model do
 
     context 'when website has a website_url with a path' do
       before do
-        domain = create(:domain, website: website, account: account, domain: "example.launch10.ai")
+        domain = create(:domain, account: account, domain: "example.launch10.ai")
         create(:website_url, website: website, account: account, domain: domain, path: "/campaign")
       end
 
@@ -78,19 +78,7 @@ RSpec.describe Ad, type: :model do
       end
     end
 
-    context 'when website has multiple website_urls' do
-      before do
-        domain = create(:domain, website: website, account: account, domain: "example.launch10.ai")
-        create(:website_url, website: website, account: account, domain: domain, path: "/promo")
-        create(:website_url, website: website, account: account, domain: domain, path: "/sale")
-      end
-
-      it 'returns only the first website_url' do
-        expect(ad.final_urls).to eq(["https://example.launch10.ai/promo"])
-      end
-    end
-
-    context 'when website has no website_urls' do
+    context 'when website has no website_url' do
       it 'returns empty array' do
         expect(ad.final_urls).to eq([])
       end

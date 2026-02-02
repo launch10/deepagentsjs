@@ -59,8 +59,7 @@ function DocumentsIndex({ documents, syncPath }: DocumentsIndexProps) {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Documents</h1>
           <p className="text-muted-foreground mt-1">
-            Manage FAQ documents synced from Google Docs ({documents.length}{" "}
-            documents)
+            Manage FAQ documents synced from Google Docs ({documents.length} documents)
           </p>
         </div>
         <div className="flex gap-2">
@@ -69,9 +68,7 @@ function DocumentsIndex({ documents, syncPath }: DocumentsIndexProps) {
             disabled={syncing}
             className="inline-flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors disabled:opacity-50"
           >
-            <ArrowPathIcon
-              className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`}
-            />
+            <ArrowPathIcon className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
             Sync New
           </button>
           <button
@@ -79,9 +76,7 @@ function DocumentsIndex({ documents, syncPath }: DocumentsIndexProps) {
             disabled={syncing}
             className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
           >
-            <ArrowPathIcon
-              className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`}
-            />
+            <ArrowPathIcon className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
             Force Sync All
           </button>
         </div>
@@ -110,20 +105,13 @@ function DocumentsIndex({ documents, syncPath }: DocumentsIndexProps) {
           </thead>
           <tbody className="divide-y divide-border">
             {documents.map((doc) => (
-              <tr
-                key={doc.id}
-                className="hover:bg-muted/30 transition-colors"
-              >
+              <tr key={doc.id} className="hover:bg-muted/30 transition-colors">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <DocumentTextIcon className="w-5 h-5 text-primary" />
                     <div>
-                      <div className="font-medium text-foreground">
-                        {doc.title}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {doc.slug}
-                      </div>
+                      <div className="font-medium text-foreground">{doc.title}</div>
+                      <div className="text-xs text-muted-foreground">{doc.slug}</div>
                     </div>
                   </div>
                 </td>
@@ -194,7 +182,6 @@ function DocumentsIndex({ documents, syncPath }: DocumentsIndexProps) {
   );
 }
 
-DocumentsIndex.layout = (page: React.ReactNode) =>
-  createElement(AdminLayout, null, page);
+DocumentsIndex.layout = (page: React.ReactNode) => createElement(AdminLayout, null, page);
 
 export default DocumentsIndex;

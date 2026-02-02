@@ -31,7 +31,7 @@ RSpec.describe WebsiteUrl, type: :model do
   let(:account) { create(:account) }
   let(:project) { create(:project, account: account) }
   let(:website) { create(:website, project: project, account: account) }
-  let(:domain) { create(:domain, website: website, account: account) }
+  let(:domain) { create(:domain, account: account) }
 
   describe 'validations' do
     it 'is valid with required attributes' do
@@ -58,24 +58,9 @@ RSpec.describe WebsiteUrl, type: :model do
       expect(duplicate.errors[:base]).to include("A website URL with this domain and path already exists")
     end
 
-    it 'allows same domain with different paths' do
-      create(:website_url, website: website, domain: domain, account: account, path: "/")
-      different_path = build(:website_url, website: website, domain: domain, account: account, path: "/campaign")
-      expect(different_path).to be_valid
-    end
-
-    it 'allows same path with different domains' do
-      other_domain = create(:domain, website: website, account: account)
-      create(:website_url, website: website, domain: domain, account: account, path: "/campaign")
-      different_domain = build(:website_url, website: website, domain: other_domain, account: account, path: "/campaign")
-      expect(different_domain).to be_valid
-    end
-
     it 'validates domain belongs to account' do
       other_account = create(:account)
-      other_project = create(:project, account: other_account)
-      other_website = create(:website, project: other_project, account: other_account)
-      other_domain = create(:domain, website: other_website, account: other_account)
+      other_domain = create(:domain, account: other_account)
 
       website_url = build(:website_url, website: website, domain: other_domain, account: account)
       expect(website_url).not_to be_valid
@@ -90,6 +75,14 @@ RSpec.describe WebsiteUrl, type: :model do
       website_url = build(:website_url, website: other_website, domain: domain, account: account)
       expect(website_url).not_to be_valid
       expect(website_url.errors[:website]).to include("must belong to the account")
+    end
+
+    it 'validates only one website_url per website' do
+      create(:website_url, website: website, domain: domain, account: account, path: "/")
+      other_domain = create(:domain, account: account)
+      duplicate = build(:website_url, website: website, domain: other_domain, account: account, path: "/other")
+      expect(duplicate).not_to be_valid
+      expect(duplicate.errors[:website]).to include("already has a URL assigned")
     end
   end
 
@@ -212,6 +205,173 @@ RSpec.describe WebsiteUrl, type: :model do
     it 'is destroyed when domain is destroyed' do
       create(:website_url, website: website, domain: domain, account: account)
       expect { domain.destroy }.to change { WebsiteUrl.count }.by(-1)
+    end
+  end
+
+  describe 'update-in-place pattern (1:1 with Website)' do
+    # Modeled after location_targets id stability tests in updating_spec.rb
+    # Simplified because Website has_one WebsiteUrl (not has_many)
+
+    let(:domain1) { create(:domain, account: account) }
+    let(:domain2) { create(:domain, account: account) }
+
+    it 'preserves WebsiteUrl ID when domain changes' do
+      # First assignment
+      website_url = create(:website_url, website: website, domain: domain1, account: account, path: "/")
+      original_id = website_url.id
+
+      # Change domain - should update same record, not create new
+      website_url.update!(domain: domain2)
+
+      expect(website_url.id).to eq(original_id)
+      expect(website.reload.website_url.id).to eq(original_id)
+    end
+
+    it 'preserves WebsiteUrl ID when path changes' do
+      website_url = create(:website_url, website: website, domain: domain1, account: account, path: "/")
+      original_id = website_url.id
+
+      # Change path - should update same record
+      website_url.update!(path: "/pricing")
+
+      expect(website_url.id).to eq(original_id)
+    end
+
+    it 'preserves WebsiteUrl ID when both domain and path change' do
+      website_url = create(:website_url, website: website, domain: domain1, account: account, path: "/")
+      original_id = website_url.id
+
+      # Change both - still same record
+      website_url.update!(domain: domain2, path: "/services")
+
+      expect(website_url.id).to eq(original_id)
+      expect(website.reload.website_url.domain).to eq(domain2)
+      expect(website.reload.website_url.path).to eq("/services")
+    end
+
+    it 'does not create additional WebsiteUrl records' do
+      website_url = create(:website_url, website: website, domain: domain1, account: account, path: "/")
+      initial_count = WebsiteUrl.count
+
+      # Multiple updates - should never create new records
+      website_url.update!(domain: domain2)
+      website_url.update!(path: "/pricing")
+      website_url.update!(domain: domain1, path: "/")
+
+      expect(WebsiteUrl.count).to eq(initial_count)
+    end
+
+    it 'does not affect WebsiteUrls from other websites' do
+      website2 = create(:website, project: project, account: account)
+      create(:website_url, website: website, domain: domain1, account: account, path: "/")
+      website2_url = create(:website_url, website: website2, domain: domain2, account: account, path: "/other")
+
+      website2_url_id = website2_url.id
+
+      # Update website1's URL - should not affect website2
+      website.website_url.update!(domain: domain2, path: "/new")
+
+      expect(website2.reload.website_url.id).to eq(website2_url_id)
+      expect(website2.website_url.path).to eq("/other")
+    end
+  end
+
+  describe '.assign_to_website!' do
+    let(:domain1) { create(:domain, account: account) }
+    let(:domain2) { create(:domain, account: account) }
+
+    it 'creates a new WebsiteUrl if none exists' do
+      expect(website.website_url).to be_nil
+
+      website_url = WebsiteUrl.assign_to_website!(website: website, domain: domain1, path: "/landing")
+
+      expect(website_url).to be_persisted
+      expect(website_url.domain).to eq(domain1)
+      expect(website_url.path).to eq("/landing")
+    end
+
+    it 'updates existing WebsiteUrl in place' do
+      original_url = create(:website_url, website: website, domain: domain1, account: account, path: "/")
+      original_id = original_url.id
+
+      website_url = WebsiteUrl.assign_to_website!(website: website, domain: domain2, path: "/pricing")
+
+      expect(website_url.id).to eq(original_id)
+      expect(website_url.domain).to eq(domain2)
+      expect(website_url.path).to eq("/pricing")
+    end
+
+    it 'preserves ID across multiple reassignments' do
+      original_url = WebsiteUrl.assign_to_website!(website: website, domain: domain1, path: "/")
+      original_id = original_url.id
+
+      # Multiple reassignments
+      WebsiteUrl.assign_to_website!(website: website, domain: domain2, path: "/v2")
+      WebsiteUrl.assign_to_website!(website: website, domain: domain1, path: "/v3")
+      final_url = WebsiteUrl.assign_to_website!(website: website, domain: domain2, path: "/final")
+
+      expect(final_url.id).to eq(original_id)
+      expect(WebsiteUrl.where(website: website).count).to eq(1)
+    end
+  end
+
+  describe '.assign_domain_to_website' do
+    let(:domain1) { create(:domain, account: account) }
+
+    it 'creates domain if it does not exist' do
+      result = WebsiteUrl.assign_domain_to_website(
+        website: website,
+        domain_string: "new-site.launch10.site",
+        path: "/",
+        account: account
+      )
+
+      expect(result[:success]).to be true
+      expect(result[:domain].domain).to eq("new-site.launch10.site")
+      expect(result[:website_url]).to be_persisted
+    end
+
+    it 'reuses existing domain owned by account' do
+      result = WebsiteUrl.assign_domain_to_website(
+        website: website,
+        domain_string: domain1.domain,
+        path: "/landing",
+        account: account
+      )
+
+      expect(result[:success]).to be true
+      expect(result[:domain].id).to eq(domain1.id)
+      expect(result[:website_url].path).to eq("/landing")
+    end
+
+    it 'fails if domain is owned by another account' do
+      other_account = create(:account)
+      other_domain = create(:domain, account: other_account)
+
+      result = WebsiteUrl.assign_domain_to_website(
+        website: website,
+        domain_string: other_domain.domain,
+        path: "/",
+        account: account
+      )
+
+      expect(result[:success]).to be false
+      expect(result[:error]).to eq("This domain is not available")
+    end
+
+    it 'updates existing WebsiteUrl in place' do
+      original_url = create(:website_url, website: website, domain: domain1, account: account, path: "/")
+      original_id = original_url.id
+
+      result = WebsiteUrl.assign_domain_to_website(
+        website: website,
+        domain_string: "different-site.launch10.site",
+        path: "/pricing",
+        account: account
+      )
+
+      expect(result[:success]).to be true
+      expect(result[:website_url].id).to eq(original_id)
     end
   end
 end

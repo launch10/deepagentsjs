@@ -127,9 +127,7 @@ function DocumentShow({ document: doc, resyncPath }: DocumentShowProps) {
           disabled={syncing}
           className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
-          <ArrowPathIcon
-            className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`}
-          />
+          <ArrowPathIcon className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
           Re-extract
         </button>
       </header>
@@ -137,29 +135,21 @@ function DocumentShow({ document: doc, resyncPath }: DocumentShowProps) {
       <div className="grid grid-cols-3 gap-4 mb-8">
         <div className="bg-card rounded-lg border border-border p-4">
           <div className="text-sm text-muted-foreground">Q&A Pairs</div>
-          <div className="text-2xl font-bold text-foreground">
-            {doc.chunks.length}
-          </div>
+          <div className="text-2xl font-bold text-foreground">{doc.chunks.length}</div>
         </div>
         <div className="bg-card rounded-lg border border-border p-4">
           <div className="text-sm text-muted-foreground">Last Synced</div>
-          <div className="text-sm font-medium text-foreground">
-            {formatDate(doc.lastSyncedAt)}
-          </div>
+          <div className="text-sm font-medium text-foreground">{formatDate(doc.lastSyncedAt)}</div>
         </div>
         <div className="bg-card rounded-lg border border-border p-4">
           <div className="text-sm text-muted-foreground">Updated</div>
-          <div className="text-sm font-medium text-foreground">
-            {formatDate(doc.updatedAt)}
-          </div>
+          <div className="text-sm font-medium text-foreground">{formatDate(doc.updatedAt)}</div>
         </div>
       </div>
 
       <div className="bg-card rounded-lg border border-border shadow-sm">
         <div className="px-4 py-3 border-b border-border">
-          <h2 className="text-lg font-semibold text-foreground">
-            Extracted Q&A Pairs
-          </h2>
+          <h2 className="text-lg font-semibold text-foreground">Extracted Q&A Pairs</h2>
         </div>
 
         {doc.chunks.length === 0 ? (
@@ -170,9 +160,7 @@ function DocumentShow({ document: doc, resyncPath }: DocumentShowProps) {
               disabled={syncing}
               className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              <ArrowPathIcon
-                className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`}
-              />
+              <ArrowPathIcon className={`w-4 h-4 ${syncing ? "animate-spin" : ""}`} />
               Extract Now
             </button>
           </div>
@@ -181,19 +169,13 @@ function DocumentShow({ document: doc, resyncPath }: DocumentShowProps) {
             {Object.entries(chunksBySection).map(([section, chunks]) => (
               <div key={section}>
                 <div className="px-4 py-2 bg-muted/50">
-                  <h3 className="text-sm font-medium text-muted-foreground">
-                    {section}
-                  </h3>
+                  <h3 className="text-sm font-medium text-muted-foreground">{section}</h3>
                 </div>
                 <div className="divide-y divide-border/50">
                   {chunks.map((chunk) => (
                     <div key={chunk.id} className="px-4 py-3">
-                      <div className="font-medium text-foreground mb-1">
-                        Q: {chunk.question}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        A: {chunk.answer}
-                      </div>
+                      <div className="font-medium text-foreground mb-1">Q: {chunk.question}</div>
+                      <div className="text-sm text-muted-foreground">A: {chunk.answer}</div>
                     </div>
                   ))}
                 </div>
@@ -206,7 +188,6 @@ function DocumentShow({ document: doc, resyncPath }: DocumentShowProps) {
   );
 }
 
-DocumentShow.layout = (page: React.ReactNode) =>
-  createElement(AdminLayout, null, page);
+DocumentShow.layout = (page: React.ReactNode) => createElement(AdminLayout, null, page);
 
 export default DocumentShow;

@@ -2143,7 +2143,8 @@ RSpec.describe "Campaigns API", type: :request do
             first_stage_campaign.reload
             expect(first_stage_campaign.stage).to eq("content")
             expect(first_stage_campaign.launch_workflow.step).to eq("website")
-            expect(first_stage_campaign.launch_workflow.substep).to be_nil
+            # Website now has substeps (build, domain, deploy), so going back lands on the last substep
+            expect(first_stage_campaign.launch_workflow.substep).to eq("deploy")
           end
         end
       end

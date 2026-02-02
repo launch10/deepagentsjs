@@ -5,28 +5,40 @@ import {
   websiteBuilderNode,
   cleanupFilesystemNode,
   syncFilesNode,
-  cacheModeNode,
-  isCacheModeEnabled,
   improveCopyNode,
+  domainRecommendationsNode,
 } from "@nodes";
+import { isCacheModeEnabled } from "@nodes";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { withCreditExhaustion } from "./shared";
 
-// Route from START based on mode and command
-// Chat is pre-created by Rails via ChatCreatable, no createChat node needed
+// Route from START based on command
 const routeFromStart = (state: WebsiteGraphState): string => {
-  if (isCacheModeEnabled()) {
-    return "cacheMode";
-  }
-  // Route to improve_copy node when that command is specified
   if (state.command === "improve_copy") {
     return "improveCopy";
   }
   return "buildContext";
 };
 
+// Route from recommendDomains based on mode
+// In CACHE_MODE: skip cleanupFilesystem/syncFiles (files already provided by websiteBuilder cache)
+// In normal mode: converge with websiteBuilder at cleanupFilesystem
+const routeFromRecommendDomains = (): string => {
+  if (isCacheModeEnabled()) {
+    return "cleanupState";
+  }
+  return "cleanupFilesystem";
+};
+
 /**
  * Website graph for building and updating landing pages.
+ *
+ * Flow:
+ * - buildContext -> [websiteBuilder, recommendDomains] in parallel (or improveCopy alone)
+ * - websiteBuilder -> cleanupFilesystem -> syncFiles -> cleanupState -> END
+ * - recommendDomains -> cleanupFilesystem (normal) or cleanupState (cache mode)
+ *
+ * In CACHE_MODE, websiteBuilder returns cached files immediately (no agent invocation).
  *
  * Credit exhaustion is detected via withCreditExhaustion wrapper,
  * which runs this graph as a subgraph, then calculates credit status.
@@ -35,9 +47,9 @@ export const websiteGraph = withCreditExhaustion(
   new StateGraph(WebsiteAnnotation)
     .addNode("buildContext", buildContext)
     .addNode("websiteBuilder", websiteBuilderNode)
+    .addNode("recommendDomains", domainRecommendationsNode)
     .addNode("cleanupFilesystem", cleanupFilesystemNode)
     .addNode("syncFiles", syncFilesNode)
-    .addNode("cacheMode", cacheModeNode)
     .addNode("improveCopy", improveCopyNode)
     .addNode("cleanupState", (state: WebsiteGraphState, config: LangGraphRunnableConfig) => {
       return {
@@ -46,15 +58,23 @@ export const websiteGraph = withCreditExhaustion(
       };
     })
 
-    // Chat is pre-created by Rails, route directly from START
+    // Route from START: improve_copy skips buildContext, others go through it
     .addConditionalEdges(START, routeFromStart, {
-      cacheMode: "cacheMode",
-      buildContext: "buildContext",
       improveCopy: "improveCopy",
+      buildContext: "buildContext",
     })
-    .addEdge("cacheMode", "cleanupState")
+    // buildContext fans out to websiteBuilder and recommendDomains in parallel
     .addEdge("buildContext", "websiteBuilder")
+    .addEdge("buildContext", "recommendDomains")
+    // websiteBuilder always goes to cleanupFilesystem
     .addEdge("websiteBuilder", "cleanupFilesystem")
+    // recommendDomains routes based on mode:
+    // - CACHE_MODE: directly to cleanupState (files already provided by websiteBuilder)
+    // - Normal: converge with websiteBuilder at cleanupFilesystem
+    .addConditionalEdges("recommendDomains", routeFromRecommendDomains, {
+      cleanupState: "cleanupState",
+      cleanupFilesystem: "cleanupFilesystem",
+    })
     .addEdge("improveCopy", "cleanupFilesystem")
     .addEdge("cleanupFilesystem", "syncFiles")
     .addEdge("syncFiles", "cleanupState")

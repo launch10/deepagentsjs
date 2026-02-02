@@ -55,10 +55,17 @@ RSpec.describe Project, type: :model do
 
       workflow.next_step!
 
-      # TODO: Update this once we build the website_building phase! This should break!
       expect(project.current_chat).to eq(project.website.chat)
-
+      expect(project.current_workflow.step).to eq "website"
+      expect(project.current_workflow.substep).to eq "build"
       workflow.next_step!
+      expect(project.current_workflow.step).to eq "website"
+      expect(project.current_workflow.substep).to eq "domain"
+      workflow.next_step!
+      expect(project.current_workflow.step).to eq "website"
+      expect(project.current_workflow.substep).to eq "deploy"
+      workflow.next_step!
+
       expect(project.current_workflow.step).to eq "ad_campaign"
       expect(project.current_chat.chat_type).to eq "ad_campaign"
     end
@@ -164,9 +171,9 @@ RSpec.describe Project, type: :model do
 
   describe "#to_mini_json" do
     describe "domain field" do
-      context "when website has no website_urls" do
+      context "when website has no website_url" do
         it "returns nil for domain" do
-          # Project created via Brainstorm.create_brainstorm! has no website_urls by default
+          # Project created via Brainstorm.create_brainstorm! has no website_url by default
           json = project.to_mini_json
 
           expect(json[:domain]).to be_nil
@@ -181,7 +188,7 @@ RSpec.describe Project, type: :model do
       end
 
       context "when website has a website_url" do
-        let!(:domain_record) { create(:domain, website: website, account: account, domain: "test-project.launch10.site") }
+        let!(:domain_record) { create(:domain, account: account, domain: "test-project.launch10.site") }
         let!(:website_url) { create(:website_url, website: website, domain: domain_record, account: account, path: "/") }
 
         it "returns the domain from website_url" do
@@ -192,7 +199,7 @@ RSpec.describe Project, type: :model do
       end
 
       context "when website has a website_url with non-root path" do
-        let!(:domain_record) { create(:domain, website: website, account: account, domain: "multi.launch10.site") }
+        let!(:domain_record) { create(:domain, account: account, domain: "multi.launch10.site") }
         let!(:website_url) { create(:website_url, website: website, domain: domain_record, account: account, path: "/campaign") }
 
         it "returns the domain with path" do

@@ -1,6 +1,5 @@
 FactoryBot.define do
   factory :domain do
-    association :website
     association :account
     sequence(:domain) { |n| "test-domain-#{n}.launch10.site" }
     cloudflare_zone_id { nil }

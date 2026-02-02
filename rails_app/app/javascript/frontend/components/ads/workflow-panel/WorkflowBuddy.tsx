@@ -1,65 +1,103 @@
 import { CardTitle, CardDescription, CardHeader } from "@components/ui/card";
-import AdCampaignStep from "./workflow-buddy/AdCampaignStep";
+import WorkflowStep from "./workflow-buddy/WorkflowStep";
 import { Workflow } from "@shared";
-import { useWorkflow, selectStep, selectSubstep } from "@context/WorkflowProvider";
-
-const adCampaignSteps = Workflow.workflows.launch.steps.find(
-  (step) => step.name === "ad_campaign"
-)?.steps;
+import { useWorkflow, selectStep, selectSubstep, selectPage } from "@context/WorkflowProvider";
 
 export type WorkflowBuddyViewProps = {
+  /** Current active page (brainstorm, website, ad_campaign, deploy) */
+  activePage?: Workflow.WorkflowPage | null;
+  /** Current active step (for nested workflows like ad_campaign) */
   activeStep?: string | null;
+  /** Current active substep */
   activeSubstep?: string | null;
 };
 
-/**
- * Determines if a substep is completed based on the current active substep.
- * A substep is considered completed if it comes before the active substep in the order.
- */
-function isSubStepCompleted(
-  substepName: string,
-  activeSubstep: string | null | undefined
-): boolean {
-  if (!activeSubstep) return false;
+export function WorkflowBuddyView({
+  activePage,
+  activeStep,
+  activeSubstep,
+}: WorkflowBuddyViewProps) {
+  // If no active page, don't render anything
+  if (!activePage) return null;
 
-  const substepOrder = Workflow.AdCampaignSubstepNames;
-  const currentIndex = substepOrder.indexOf(activeSubstep as Workflow.AdCampaignSubstepName);
-  const substepIndex = substepOrder.indexOf(substepName as Workflow.AdCampaignSubstepName);
+  const step = Workflow.getStepForPage(activePage);
+  if (!step) return null;
 
-  // If either index is -1 (not found), return false
-  if (currentIndex === -1 || substepIndex === -1) return false;
+  const substepOrder = Workflow.getSubstepOrder(activePage);
+  const substeps = step.steps;
 
-  // A substep is completed if it comes before the current active substep
-  return substepIndex < currentIndex;
-}
+  // For website workflow, we show flat steps (no nested substeps)
+  // For ad_campaign, we show nested steps with substeps
+  const isWebsiteWorkflow = activePage === "website";
 
-export function WorkflowBuddyView({ activeStep, activeSubstep }: WorkflowBuddyViewProps) {
   return (
     <CardHeader className="px-4 py-4">
-      <CardTitle className="text-lg font-semibold font-serif">Ad Campaign</CardTitle>
+      <CardTitle className="text-lg font-semibold font-serif">{step.title ?? step.label}</CardTitle>
       <CardDescription className="flex flex-col gap-[18px]">
         <div className="font-medium text-sm text-base-400">Steps</div>
-        {adCampaignSteps?.map((step) => (
-          <AdCampaignStep
-            key={step.name}
-            step={step.order}
-            stepName={step.label}
-            isActive={step.name === activeStep}
-            subSteps={step.steps?.map((subStep) => ({
-              label: subStep.label,
-              isSubStepActive: subStep.name === activeSubstep,
-              isSubStepCompleted: isSubStepCompleted(subStep.name, activeSubstep),
-            }))}
-          />
-        ))}
+        {substeps?.map((substep: Workflow.Step) => {
+          if (isWebsiteWorkflow) {
+            // Website workflow: flat steps, activeSubstep determines which step is active
+            const isActive = substep.name === activeSubstep;
+            const isCompleted = Workflow.isSubstepCompleted(
+              substep.name,
+              activeSubstep,
+              substepOrder
+            );
+
+            return (
+              <WorkflowStep
+                key={substep.name}
+                step={substep.order}
+                stepName={substep.label}
+                isActive={isActive}
+                isCompleted={isCompleted}
+              />
+            );
+          } else {
+            // Ad campaign workflow: nested steps with substeps
+            return (
+              <WorkflowStep
+                key={substep.name}
+                step={substep.order}
+                stepName={substep.label}
+                isActive={substep.name === activeStep}
+                subSteps={substep.steps?.map((nestedSubstep: Workflow.Step) => ({
+                  label: nestedSubstep.label,
+                  isSubStepActive: nestedSubstep.name === activeSubstep,
+                  isSubStepCompleted: Workflow.isSubstepCompleted(
+                    nestedSubstep.name,
+                    activeSubstep,
+                    substepOrder
+                  ),
+                }))}
+              />
+            );
+          }
+        })}
       </CardDescription>
     </CardHeader>
   );
 }
 
-export default function WorkflowBuddy() {
+export interface WorkflowBuddyProps {
+  /** Override the active page (defaults to current page from workflow context) */
+  workflowStep?: Workflow.WorkflowPage;
+}
+
+export default function WorkflowBuddy({ workflowStep }: WorkflowBuddyProps) {
+  const currentPage = useWorkflow(selectPage);
   const activeStep = useWorkflow(selectStep);
   const activeSubstep = useWorkflow(selectSubstep);
 
-  return <WorkflowBuddyView activeStep={activeStep} activeSubstep={activeSubstep} />;
+  // Use override if provided, otherwise use current page from context
+  const activePage = workflowStep ?? currentPage;
+
+  return (
+    <WorkflowBuddyView
+      activePage={activePage}
+      activeStep={activeStep}
+      activeSubstep={activeSubstep}
+    />
+  );
 }

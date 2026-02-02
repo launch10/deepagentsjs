@@ -122,8 +122,8 @@ describe("workflowNavigation", () => {
       expect(getFirstSubstep("brainstorm")).toBe(null);
     });
 
-    it("returns null for website (no substeps)", () => {
-      expect(getFirstSubstep("website")).toBe(null);
+    it("returns build for website", () => {
+      expect(getFirstSubstep("website")).toBe("build");
     });
 
     it("returns content for ad_campaign", () => {
@@ -140,8 +140,8 @@ describe("workflowNavigation", () => {
       expect(getLastSubstep("brainstorm")).toBe(null);
     });
 
-    it("returns null for website (no substeps)", () => {
-      expect(getLastSubstep("website")).toBe(null);
+    it("returns deploy for website", () => {
+      expect(getLastSubstep("website")).toBe("deploy");
     });
 
     it("returns review for ad_campaign", () => {
@@ -158,8 +158,8 @@ describe("workflowNavigation", () => {
       expect(pageHasSubsteps("brainstorm")).toBe(false);
     });
 
-    it("returns false for website", () => {
-      expect(pageHasSubsteps("website")).toBe(false);
+    it("returns true for website", () => {
+      expect(pageHasSubsteps("website")).toBe(true);
     });
 
     it("returns true for ad_campaign", () => {
@@ -184,16 +184,33 @@ describe("workflowNavigation", () => {
     });
 
     describe("from brainstorm", () => {
-      it("moves to website", () => {
+      it("moves to website/build", () => {
         const result = continueWorkflow({ page: "brainstorm", substep: null });
-        expect(result).toEqual({ page: "website", substep: null });
+        expect(result).toEqual({ page: "website", substep: "build" });
       });
     });
 
     describe("from website", () => {
-      it("moves to ad_campaign/content", () => {
-        const result = continueWorkflow({ page: "website", substep: null });
+      it("moves through website substeps in order", () => {
+        const substepOrder = ["build", "domain", "deploy"];
+
+        for (let i = 0; i < substepOrder.length - 1; i++) {
+          const result = continueWorkflow({
+            page: "website",
+            substep: substepOrder[i] as WorkflowPosition["substep"],
+          });
+          expect(result).toEqual({ page: "website", substep: substepOrder[i + 1] });
+        }
+      });
+
+      it("moves from website/deploy to ad_campaign/content", () => {
+        const result = continueWorkflow({ page: "website", substep: "deploy" });
         expect(result).toEqual({ page: "ad_campaign", substep: "content" });
+      });
+
+      it("starts at build when substep is null", () => {
+        const result = continueWorkflow({ page: "website", substep: null });
+        expect(result).toEqual({ page: "website", substep: "build" });
       });
     });
 
@@ -248,7 +265,20 @@ describe("workflowNavigation", () => {
     });
 
     describe("from website", () => {
-      it("moves back to brainstorm", () => {
+      it("moves back through website substeps", () => {
+        const result1 = backWorkflow({ page: "website", substep: "deploy" });
+        expect(result1).toEqual({ page: "website", substep: "domain" });
+
+        const result2 = backWorkflow({ page: "website", substep: "domain" });
+        expect(result2).toEqual({ page: "website", substep: "build" });
+      });
+
+      it("moves from website/build to brainstorm", () => {
+        const result = backWorkflow({ page: "website", substep: "build" });
+        expect(result).toEqual({ page: "brainstorm", substep: null });
+      });
+
+      it("moves from website with null substep to brainstorm", () => {
         const result = backWorkflow({ page: "website", substep: null });
         expect(result).toEqual({ page: "brainstorm", substep: null });
       });
@@ -263,9 +293,9 @@ describe("workflowNavigation", () => {
         expect(result2).toEqual({ page: "ad_campaign", substep: "content" });
       });
 
-      it("moves from ad_campaign/content to website", () => {
+      it("moves from ad_campaign/content to website/deploy", () => {
         const result = backWorkflow({ page: "ad_campaign", substep: "content" });
-        expect(result).toEqual({ page: "website", substep: null });
+        expect(result).toEqual({ page: "website", substep: "deploy" });
       });
     });
 
@@ -293,7 +323,9 @@ describe("workflowNavigation", () => {
 
       expect(visited).toEqual([
         "brainstorm/null",
-        "website/null",
+        "website/build",
+        "website/domain",
+        "website/deploy",
         "ad_campaign/content",
         "ad_campaign/highlights",
         "ad_campaign/keywords",
@@ -324,7 +356,9 @@ describe("workflowNavigation", () => {
         "ad_campaign/keywords",
         "ad_campaign/highlights",
         "ad_campaign/content",
-        "website/null",
+        "website/deploy",
+        "website/domain",
+        "website/build",
         "brainstorm/null",
       ]);
     });

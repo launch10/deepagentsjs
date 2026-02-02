@@ -2,15 +2,17 @@
 #
 # Table name: domains
 #
-#  id                    :bigint           not null, primary key
-#  deleted_at            :datetime
-#  domain                :string
-#  is_platform_subdomain :boolean          default(FALSE), not null
-#  created_at            :datetime         not null
-#  updated_at            :datetime         not null
-#  account_id            :bigint
-#  cloudflare_zone_id    :string
-#  website_id            :bigint
+#  id                      :bigint           not null, primary key
+#  deleted_at              :datetime
+#  dns_error_message       :string
+#  dns_last_checked_at     :datetime
+#  dns_verification_status :string
+#  domain                  :string
+#  is_platform_subdomain   :boolean          default(FALSE), not null
+#  created_at              :datetime         not null
+#  updated_at              :datetime         not null
+#  account_id              :bigint
+#  cloudflare_zone_id      :string
 #
 # Indexes
 #
@@ -19,8 +21,9 @@
 #  index_domains_on_cloudflare_zone_id                 (cloudflare_zone_id)
 #  index_domains_on_created_at                         (created_at)
 #  index_domains_on_deleted_at                         (deleted_at)
+#  index_domains_on_dns_last_checked_at                (dns_last_checked_at)
+#  index_domains_on_dns_verification_status            (dns_verification_status)
 #  index_domains_on_domain                             (domain)
-#  index_domains_on_website_id                         (website_id)
 #
 
 class Domain < ApplicationRecord
@@ -33,6 +36,8 @@ class Domain < ApplicationRecord
     "www"
   ].map { |d| "#{d}.launch10.ai" }.freeze
 
+  VERIFICATION_STATUSES = %w[pending verified failed].freeze
+
   include Atlas::Domain
   include Cloudflare::Monitorable
   include DomainConcerns::NormalizeDomain
@@ -40,7 +45,6 @@ class Domain < ApplicationRecord
 
   acts_as_tenant :account
 
-  belongs_to :website, optional: true
   belongs_to :account
   has_many :domain_request_counts, dependent: :destroy
   has_many :website_urls, dependent: :destroy
@@ -48,48 +52,51 @@ class Domain < ApplicationRecord
 
   validates :domain, presence: true, uniqueness: true
   validates :account_id, presence: true
+  validates :dns_verification_status, inclusion: {in: VERIFICATION_STATUSES}, allow_nil: true
 
-  before_validation :set_default_domain, on: :create
   before_validation :set_normalized_domain, on: :create
   before_validation :set_is_platform_subdomain
   validate :domain_not_restricted
   validate :within_subdomain_limit, on: :create
 
   scope :platform_subdomains, -> { where(is_platform_subdomain: true) }
+  scope :unverified_custom_domains, -> {
+    where(is_platform_subdomain: false)
+      .where(dns_verification_status: [nil, "pending", "failed"])
+  }
+  scope :stale_unverified, ->(grace_period_days: 7) {
+    unverified_custom_domains
+      .where("created_at < ?", grace_period_days.days.ago)
+  }
 
   alias_attribute :platform_subdomain?, :is_platform_subdomain
+
+  def requires_dns_verification?
+    !is_platform_subdomain && dns_verification_status != "verified"
+  end
+
+  def dns_verified?
+    dns_verification_status == "verified"
+  end
 
   def blocked?
     firewall_rule&.blocked? || false
   end
 
-  private
-
-  def set_default_domain
-    return if domain.present?
-    return unless website
-
-    base_url = ENV.fetch("DEPLOYMENT_BASE_URL", "launch10.site")
-    base_domain = "#{website.name.parameterize}.#{base_url}"
-
-    if self.class.exists?(domain: base_domain)
-      # Find all domains matching the pattern and extract numbers
-      pattern = "#{website.name.parameterize}%.#{base_url}"
-      existing_domains = Domain.where("domain LIKE ?", pattern).pluck(:domain)
-
-      # Extract numbers from domains like test-site1.launch10.site
-      numbers = existing_domains.map do |d|
-        match = d.match(/#{Regexp.escape(website.name.parameterize)}(\d+)\.#{Regexp.escape(base_url)}/)
-        match ? match[1].to_i : 0
-      end
-
-      # Find the next available number
-      counter = (numbers.max || 0) + 1
-      self.domain = "#{website.name.parameterize}#{counter}.#{base_url}"
-    else
-      self.domain = base_domain
-    end
+  # Permanently releases this domain, making it available for anyone to claim again.
+  #
+  # This method:
+  # - Hard deletes the domain and associated website_urls from the database
+  # - Triggers Atlas sync to remove from Cloudflare (via before_destroy callbacks)
+  # - Frees up the subdomain slot for platform subdomains (count-based limit check)
+  #
+  # Use this for cleaning up stale/unverified domains or when a user explicitly
+  # wants to release a domain.
+  def release!
+    really_destroy!
   end
+
+  private
 
   def set_normalized_domain
     return if domain.blank?

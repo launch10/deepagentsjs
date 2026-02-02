@@ -89,7 +89,7 @@ module Madmin
       parts << "#{results[:queued].size} queued" if results[:queued].any?
       parts << "#{results[:skipped].size} skipped" if results[:skipped].any?
       parts << "#{results[:failed].size} failed" if results[:failed].any?
-      "Sync complete: #{parts.join(', ')}"
+      "Sync complete: #{parts.join(", ")}"
     end
   end
 end

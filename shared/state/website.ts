@@ -14,6 +14,7 @@ export type WebsiteGraphState = Simplify<CoreGraphState & {
     errorRetries: number;
     status: Core.Status;
     files: Website.FileMap;
+    domainRecommendations: Website.DomainRecommendations.DomainRecommendations | undefined;
 }>;
 
 export type WebsiteBridgeType = BridgeType<WebsiteGraphState>;

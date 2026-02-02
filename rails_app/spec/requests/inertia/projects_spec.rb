@@ -87,20 +87,20 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     end
   end
 
-  describe 'GET /projects/:uuid/website' do
+  describe 'GET /projects/:uuid/website/build' do
     before do
-      workflow.update!(step: 'website', substep: nil)
+      workflow.update!(step: 'website', substep: 'build')
     end
 
     it 'renders the Website component' do
-      get website_project_path(project.uuid)
+      get website_build_project_path(project.uuid)
 
       expect(response).to have_http_status(:ok)
       expect(inertia.component).to eq('Website')
     end
 
     it 'props conform to Website schema' do
-      get website_project_path(project.uuid)
+      get website_build_project_path(project.uuid)
 
       expect_inertia_props_to_match_schema(InertiaSchemas::Website.props_schema)
     end
@@ -175,7 +175,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     let!(:delete_workflow) { project_to_delete.workflows.first }
     let!(:delete_chat) { brainstorm_data[:chat] }
     let!(:delete_social_link) { create(:social_link, :twitter, project: project_to_delete) }
-    let!(:delete_domain) { create(:domain, account: account, website: delete_website, domain: "delete-test-#{SecureRandom.hex(4)}.launch10.site") }
+    let!(:delete_domain) { create(:domain, account: account, domain: "delete-test-#{SecureRandom.hex(4)}.launch10.site") }
     let!(:delete_website_url) { create(:website_url, website: delete_website, domain: delete_domain, account: account) }
     let!(:delete_website_file) { create(:website_file, website: delete_website, path: '/test.html') }
     let!(:delete_deploy) { create(:deploy, project: project_to_delete, status: 'pending') }
@@ -247,8 +247,11 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
           expect(SocialLink.with_deleted.find(social_link_id).deleted_at).to be_present
         end
 
-        it 'soft-deletes the domain' do
-          expect(Domain.with_deleted.find(domain_id).deleted_at).to be_present
+        it 'does NOT soft-delete the domain (domains are account-level resources)' do
+          # Domains belong to accounts, not websites. When a project is deleted,
+          # the website_url is deleted (breaking the link) but the domain remains
+          # available for reuse with other projects in the same account.
+          expect(Domain.find(domain_id).deleted_at).to be_nil
         end
 
         it 'soft-deletes the website URL' do
@@ -306,8 +309,8 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
           expect(SocialLink.find_by(id: social_link_id)).to be_nil
         end
 
-        it 'hides the domain from default scope' do
-          expect(Domain.find_by(id: domain_id)).to be_nil
+        it 'keeps the domain visible (domains are account-level resources)' do
+          expect(Domain.find_by(id: domain_id)).to be_present
         end
 
         it 'hides the website URL from default scope' do
@@ -492,10 +495,10 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
         sign_in other_user
       end
 
-      it 'returns 404 when trying to delete another account project' do
+      it 'redirects when trying to delete another account project' do
         delete project_path(project_to_delete.uuid)
 
-        expect(response).to have_http_status(:not_found)
+        expect(response).to have_http_status(:redirect)
       end
 
       it 'does not soft-delete the project' do
@@ -558,7 +561,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     let!(:restore_workflow) { project_to_restore.workflows.first }
     let!(:restore_chat) { brainstorm_data[:chat] }
     let!(:restore_social_link) { create(:social_link, :twitter, project: project_to_restore) }
-    let!(:restore_domain) { create(:domain, account: account, website: restore_website, domain: "restore-test-#{SecureRandom.hex(4)}.launch10.site") }
+    let!(:restore_domain) { create(:domain, account: account, domain: "restore-test-#{SecureRandom.hex(4)}.launch10.site") }
     let!(:restore_website_url) { create(:website_url, website: restore_website, domain: restore_domain, account: account) }
     let!(:restore_website_file) { create(:website_file, website: restore_website, path: '/restore-test.html') }
     let!(:restore_deploy) { create(:deploy, project: project_to_restore, status: 'pending') }
@@ -782,10 +785,10 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
         sign_in other_user
       end
 
-      it 'returns 404 when trying to restore another account project' do
+      it 'redirects when trying to restore another account project' do
         patch restore_project_path(project_to_restore.uuid)
 
-        expect(response).to have_http_status(:not_found)
+        expect(response).to have_http_status(:redirect)
       end
 
       it 'does not restore the project' do
@@ -801,10 +804,10 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
       end
       let!(:active_project) { active_project_data[:project] }
 
-      it 'returns 404 for non-deleted project' do
+      it 'redirects for non-deleted project' do
         patch restore_project_path(active_project.uuid)
 
-        expect(response).to have_http_status(:not_found)
+        expect(response).to have_http_status(:redirect)
       end
     end
   end

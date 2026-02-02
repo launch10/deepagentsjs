@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Brainstorm } from "@shared";
 import { useBrainstormSelector } from "@components/brainstorm/hooks";
-import { useWorkflow, selectContinue } from "@context/WorkflowProvider";
 import { useHasAnyPersonalizations } from "@components/brainstorm/hooks";
 import { BrainstormMessages } from "./chat/BrainstormMessages";
 import { BrainstormInput } from "../shared/BrainstormInput";
 import { BrandPersonalizationPanel } from "./brand-panel/BrandPersonalizationPanel";
 import { BrainstormChatSkeleton } from "./chat/BrainstormChatSkeleton";
+import { PaginationFooter } from "@components/shared/pagination-footer";
 
 const SKELETON_DELAY_MS = 200;
 
@@ -44,6 +44,10 @@ function BrainstormConversationContent({
   // Check if any personalizations exist (reads directly from TanStack Query cache)
   const hasPersonalizations = useHasAnyPersonalizations();
 
+  // Can continue when backend signals readiness via redirect
+  const redirect = useBrainstormSelector((s) => s.state.redirect);
+  const canContinue = redirect === "website";
+
   // Auto-open panel if we've reached question 5 or if any personalizations have been applied
   const shouldAutoOpen = currentQuestionNumber >= 5 || hasPersonalizations;
 
@@ -71,6 +75,14 @@ function BrainstormConversationContent({
           </div>
         </div>
       </div>
+
+      {/* Pagination Footer */}
+      <PaginationFooter.Root layout="container" canGoBack={false} canGoForward={canContinue}>
+        <div /> {/* Empty div for left side since no back button */}
+        <PaginationFooter.Actions>
+          <PaginationFooter.ContinueButton disabled={!canContinue} />
+        </PaginationFooter.Actions>
+      </PaginationFooter.Root>
     </div>
   );
 }
@@ -86,7 +98,6 @@ function BrainstormConversationContent({
 export function BrainstormConversationPage() {
   const messages = useBrainstormSelector((s) => s.messages);
   const isLoadingHistory = useBrainstormSelector((s) => s.isLoadingHistory);
-  const redirect = useBrainstormSelector((s) => s.state.redirect);
 
   // Compute current question number from messages (memoized)
   const currentQuestionNumber = useMemo(() => computeQuestionNumber(messages), [messages]);
@@ -133,18 +144,6 @@ export function BrainstormConversationPage() {
       }
     };
   }, [isLoading]);
-
-  // Get workflow continue action
-  const workflowContinue = useWorkflow(selectContinue);
-
-  // Handle redirect when brainstorm is complete
-  // Backend returns redirect: "website" (a WorkflowPage) to authorize navigation
-  useEffect(() => {
-    if (redirect === "website") {
-      // URL-as-truth: store derives projectUUID from URL, so just continue
-      workflowContinue();
-    }
-  }, [redirect, workflowContinue]);
 
   // Show skeleton with fade (only if delay has passed)
   if (isLoading && showSkeleton) {

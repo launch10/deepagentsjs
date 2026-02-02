@@ -24,19 +24,29 @@ module PartitionHelpers
       cache_key = current.strftime('%Y_%m')
 
       unless @partition_cache.include?(cache_key)
-        partition_name = "domain_request_counts_#{cache_key}"
-
+        # Create domain_request_counts partition (hourly granularity)
         begin
           ActiveRecord::Base.connection.execute <<-SQL
-            CREATE TABLE IF NOT EXISTS #{partition_name} 
-            PARTITION OF domain_request_counts 
+            CREATE TABLE IF NOT EXISTS domain_request_counts_#{cache_key}
+            PARTITION OF domain_request_counts
             FOR VALUES FROM ('#{current.to_fs(:db)}') TO ('#{(current + 1.month).to_fs(:db)}')
           SQL
-          @partition_cache.add(cache_key)
         rescue ActiveRecord::StatementInvalid => e
-          # Partition already exists, add to cache
-          @partition_cache.add(cache_key) if e.message.include?("already exists")
+          raise unless e.message.include?("already exists")
         end
+
+        # Create account_request_counts partition (monthly granularity)
+        begin
+          ActiveRecord::Base.connection.execute <<-SQL
+            CREATE TABLE IF NOT EXISTS account_request_counts_#{cache_key}
+            PARTITION OF account_request_counts
+            FOR VALUES FROM ('#{current.to_fs(:db)}') TO ('#{(current + 1.month).to_fs(:db)}')
+          SQL
+        rescue ActiveRecord::StatementInvalid => e
+          raise unless e.message.include?("already exists")
+        end
+
+        @partition_cache.add(cache_key)
       end
 
       current += 1.month

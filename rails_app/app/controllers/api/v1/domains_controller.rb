@@ -38,10 +38,15 @@ class API::V1::DomainsController < API::BaseController
   end
 
   def index
-    domains = current_account.domains
-    domains = domains.where(website_id: params[:website_id]) if params[:website_id].present?
+    domains = current_account.domains.includes(:website_urls)
 
-    render json: {domains: domains.map(&:to_api_json)}
+    include_urls = ActiveModel::Type::Boolean.new.cast(params[:include_website_urls])
+
+    render json: {
+      domains: domains.map { |d| d.to_api_json(include_website_urls: include_urls) },
+      platform_subdomain_credits: platform_subdomain_credits,
+      plan_tier: current_account.plan&.plan_tier&.name
+    }
   end
 
   def show
@@ -54,20 +59,96 @@ class API::V1::DomainsController < API::BaseController
     render json: domain.to_api_json
   end
 
+  # Unified endpoint for claiming a domain + path for a website.
+  # Uses update-in-place pattern for WebsiteUrl to prevent ID churn.
+  #
+  # Handles all cases:
+  # 1. New domain (creates Domain, updates/creates WebsiteUrl)
+  # 2. Existing domain owned by account (finds Domain, updates/creates WebsiteUrl)
+  # 3. Existing domain owned by another account (returns error)
+  # 4. Out of credits for new platform subdomain (returns error)
+  #
   def create
-    domain = current_account.domains.build(domain_params)
+    website = current_account.websites.find_by(id: domain_params[:website_id])
+    unless website
+      render json: {errors: ["Website not found"]}, status: :unprocessable_entity and return
+    end
 
-    if domain.save
-      render json: domain.to_api_json, status: :created
+    result = WebsiteUrl.assign_domain_to_website(
+      website: website,
+      domain_string: domain_params[:domain],
+      path: domain_params[:path] || "/",
+      is_platform_subdomain: domain_params[:is_platform_subdomain],
+      account: current_account
+    )
+
+    if result[:success]
+      render json: {
+        domain: result[:domain].to_api_json,
+        website_url: result[:website_url].to_api_json,
+        platform_subdomain_credits: platform_subdomain_credits
+      }, status: :created
+    else
+      render json: {errors: [result[:error]]}, status: :unprocessable_entity
+    end
+  end
+
+  def update
+    domain = current_account.domains.find_by(id: params[:id])
+
+    unless domain
+      render json: {errors: ["Not found"]}, status: :not_found and return
+    end
+
+    if domain.update(update_params)
+      render json: domain.to_api_json
     else
       render json: {errors: domain.errors.full_messages}, status: :unprocessable_entity
     end
   end
 
+  def verify_dns
+    domain = current_account.domains.find_by(id: params[:id])
+
+    unless domain
+      render json: {errors: ["Domain not found"]}, status: :not_found
+      return
+    end
+
+    if domain.is_platform_subdomain
+      render json: {
+        domain_id: domain.id,
+        domain: domain.domain,
+        verification_status: "verified",
+        expected_cname: nil,
+        actual_cname: nil,
+        last_checked_at: nil,
+        error_message: nil
+      }
+      return
+    end
+
+    result = Domains::DnsVerificationService.new(domain).verify
+
+    render json: {
+      domain_id: domain.id,
+      domain: domain.domain,
+      verification_status: result[:status],
+      expected_cname: Domains::DnsVerificationService::EXPECTED_CNAME,
+      actual_cname: result[:actual_cname],
+      last_checked_at: domain.reload.dns_last_checked_at&.iso8601,
+      error_message: result[:error]
+    }
+  end
+
   private
 
   def domain_params
-    params.require(:domain).permit(:domain, :website_id, :is_platform_subdomain)
+    params.require(:domain).permit(:domain, :website_id, :is_platform_subdomain, :path)
+  end
+
+  def update_params
+    params.require(:domain).permit(:dns_verification_status)
   end
 
   def normalize_domain(domain_string)

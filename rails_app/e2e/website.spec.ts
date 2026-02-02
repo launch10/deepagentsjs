@@ -1,5 +1,6 @@
 import { test, expect, loginUser } from "./fixtures/auth";
 import { DatabaseSnapshotter } from "./fixtures/database";
+import { appQuery } from "./support/on-rails";
 import { WebsitePage } from "./pages/website.page";
 
 /**
@@ -19,7 +20,7 @@ test.describe("Website Builder", () => {
 
   test.beforeEach(async ({ page }) => {
     await DatabaseSnapshotter.restoreSnapshot("website_step");
-    const project = await DatabaseSnapshotter.getFirstProject();
+    const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
     projectUuid = project.uuid;
     await loginUser(page);
     websitePage = new WebsitePage(page);

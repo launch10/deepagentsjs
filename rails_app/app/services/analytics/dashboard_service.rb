@@ -98,7 +98,7 @@ module Analytics
         .index_by(&:project_id)
 
       # Get all projects for the account with associations
-      projects = account.projects.includes(website: :domains)
+      projects = account.projects.includes(website: :website_url)
 
       projects.map do |project|
         metrics = projects_with_metrics[project.id]
@@ -138,10 +138,10 @@ module Analytics
     end
 
     def project_url(project)
-      domain = project.website&.domains&.first
-      return nil unless domain
+      website_url = project.website&.website_url
+      return nil unless website_url&.domain
 
-      "https://#{domain.domain}"
+      "https://#{website_url.domain.domain}#{website_url.path}"
     end
 
     def project_thumbnail_url(project)

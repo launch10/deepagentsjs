@@ -3,7 +3,7 @@ import LogoSpinner from "@components/ui/logo-spinner";
 import { useAdsChatIsLoadingHistory } from "@components/ads/hooks";
 import AdPreview from "@components/ads/AdPreview";
 import AdsForm from "@components/ads/forms/AdsForm";
-import { PaginationFooter } from "@components/shared/pagination-footer";
+import { PaginationFooterDefault as AdsPaginationFooter } from "@components/shared/pagination-footer";
 import WorkflowPanel from "@components/ads/WorkflowPanel";
 import { selectSubstep, useWorkflow } from "@context/WorkflowProvider";
 import { cn } from "@lib/utils";
@@ -36,7 +36,7 @@ export default function Campaign() {
         ) : (
           <>
             <AdsForm />
-            <PaginationFooter />
+            <AdsPaginationFooter />
           </>
         )}
       </div>

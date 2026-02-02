@@ -118,14 +118,13 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
     let(:website) { create(:website, project: project, account: account) }
 
     context 'when domain is created' do
-      it 'syncs to Atlas with domain and website_id' do
-        domain = build(:domain, website: website, account: account)
+      it 'syncs to Atlas with domain' do
+        domain = build(:domain, account: account)
 
         expect(atlas_domains).to receive(:create).with(
           hash_including(
             id: kind_of(Integer),
-            domain: kind_of(String),
-            website_id: website.id
+            domain: kind_of(String)
           )
         ).and_return({'id' => 'domain_123'})
 
@@ -135,14 +134,13 @@ RSpec.describe 'Atlas Integration', type: :model, atlas_sync: true, custom_atlas
 
     context 'when domain is updated' do
       it 'syncs changes to Atlas' do
-        domain = create(:domain, website: website, account: account)
+        domain = create(:domain, account: account)
 
         expect(atlas_domains).to receive(:update).with(
           domain.id,
           hash_including(
             id: domain.id,
-            domain: 'newdomain.com',
-            website_id: website.id
+            domain: 'newdomain.com'
           )
         ).and_return({'id' => 'domain_123'})
 

@@ -20,11 +20,7 @@ vi.mock("@services", async () => {
 });
 
 // Now import everything
-import {
-  verifyGoogleNode,
-  isGoogleVerified,
-  shouldSkipGoogleVerify,
-} from "../../../../app/nodes/deploy/verifyGoogleNode";
+import { verifyGoogleNode, isGoogleVerified, shouldSkipGoogleVerify } from "@nodes";
 import { JobRunAPIService } from "@rails_api";
 import { GoogleAPIService } from "@services";
 

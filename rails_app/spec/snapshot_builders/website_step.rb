@@ -64,8 +64,77 @@ class WebsiteStep < BaseBuilder
 
     project.current_workflow.update!(step: "website") # Ready to do website builder
 
+    # Create domains with website_urls for testing domain picker
+    create_domains_with_urls(account, website)
+
     puts "Created website with brainstorm: #{brainstorm.id}"
     puts "Website ID: #{website.id}, Theme ID: #{website.theme_id}"
     puts "Total uploads for website: #{website.uploads.count}"
+  end
+
+  private
+
+  def create_domains_with_urls(account, _main_website)
+    # NOTE: We use Domain.new + save!(validate: false) to bypass the subdomain limit
+    # validation. This allows us to create test domains regardless of plan limits.
+    #
+    # CREDIT BALANCE: Growth plan has 2 platform subdomain credits.
+    # This snapshot creates 1 platform subdomain, leaving 1 credit available
+    # for testing "create new subdomain" flows.
+
+    # 1. Platform subdomain assigned to a DIFFERENT website (root path)
+    # Useful for testing path conflicts when same domain has multiple websites
+    other_data = Brainstorm.create_brainstorm!(account, name: "Meeting Tool Project", thread_id: SecureRandom.uuid)
+    other_website = other_data[:website]
+    other_website.update!(name: "Meeting Tool")
+    other_data[:brainstorm].update!(
+      idea: "Team meeting scheduler",
+      audience: "Remote teams",
+      solution: "Easy meeting scheduling"
+    )
+
+    domain1 = Domain.new(
+      account: account,
+      domain: "meeting-tool.launch10.site",
+      is_platform_subdomain: true
+    )
+    domain1.save!(validate: false)
+
+    # Assign root path to the meeting tool website
+    WebsiteUrl.create!(domain: domain1, website: other_website, account: account, path: "/")
+    puts "Created platform subdomain with website: #{domain1.domain} (ID: #{domain1.id})"
+    puts "  - website: #{other_website.name} (ID: #{other_website.id})"
+    puts "  - path: /"
+    puts "  - platform subdomain credits used: 1 of 2"
+
+    # 2. Create another website using the same domain with /landing path
+    # This is useful for testing path collision detection (same domain, different path, different website)
+    landing_data = Brainstorm.create_brainstorm!(account, name: "Landing Page Project", thread_id: SecureRandom.uuid)
+    landing_website = landing_data[:website]
+    landing_website.update!(name: "Landing Page")
+    landing_data[:brainstorm].update!(
+      idea: "Landing page for product",
+      audience: "Visitors",
+      solution: "Convert visitors to leads"
+    )
+
+    # Same domain (domain1), different path, different website
+    WebsiteUrl.create!(domain: domain1, website: landing_website, account: account, path: "/landing")
+    puts "Created website with /landing path: #{domain1.domain}/landing"
+    puts "  - website: #{landing_website.name} (ID: #{landing_website.id})"
+
+    # NOTE: We intentionally create only 1 platform subdomain to leave 1 credit
+    # available for testing "create new subdomain" flows. The Growth plan has 2 credits.
+
+    # 3. Custom domain (not platform subdomain) - unassigned
+    # Useful for testing custom domain scenarios
+    # Note: Custom domains don't count against platform subdomain limit
+    domain2 = Domain.new(
+      account: account,
+      domain: "my-custom-site.com",
+      is_platform_subdomain: false
+    )
+    domain2.save!(validate: false)
+    puts "Created custom domain: #{domain2.domain} (ID: #{domain2.id})"
   end
 end

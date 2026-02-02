@@ -4,6 +4,7 @@ module InertiaSchemas
   module Website
     def self.page_props
       {
+        substep: { type: :string, nullable: true, description: 'Current website substep (build, domain, deploy)' },
         thread_id: InertiaSchemas.nullable(type: :string, description: 'Langgraph thread ID for the conversation'),
         project: InertiaSchemas.nullable(
           type: :object,

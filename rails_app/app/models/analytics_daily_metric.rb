@@ -5,19 +5,20 @@
 #
 # Table name: analytics_daily_metrics
 #
-#  id                    :bigint           not null, primary key
-#  clicks                :bigint           default(0), not null
-#  cost_micros           :bigint           default(0), not null
-#  date                  :date             not null
-#  deleted_at            :datetime
-#  impressions           :bigint           default(0), not null
-#  leads_count           :integer          default(0), not null
-#  page_views_count      :bigint           default(0), not null
-#  unique_visitors_count :bigint           default(0), not null
-#  created_at            :datetime         not null
-#  updated_at            :datetime         not null
-#  account_id            :bigint           not null
-#  project_id            :bigint           not null
+#  id                     :bigint           not null, primary key
+#  clicks                 :bigint           default(0), not null
+#  conversion_value_cents :bigint           default(0), not null
+#  cost_micros            :bigint           default(0), not null
+#  date                   :date             not null
+#  deleted_at             :datetime
+#  impressions            :bigint           default(0), not null
+#  leads_count            :integer          default(0), not null
+#  page_views_count       :bigint           default(0), not null
+#  unique_visitors_count  :bigint           default(0), not null
+#  created_at             :datetime         not null
+#  updated_at             :datetime         not null
+#  account_id             :bigint           not null
+#  project_id             :bigint           not null
 #
 # Indexes
 #
