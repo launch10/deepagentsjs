@@ -44,7 +44,7 @@ Add a "domain" substep to the website workflow page, triggered by the Continue b
 │  Step 2: Path Recommendation                                        │
 │  ┌─────────────────────────────────────────────────────────────┐   │
 │  │ If existing domain selected:                                │   │
-│  │   - Query existing paths via searchPathsTool                │   │
+│  │   - Query existing paths via searchWebsiteUrlsTool          │   │
 │  │   - LLM generates path that doesn't conflict                │   │
 │  │ If new domain:                                              │   │
 │  │   - Recommend "/" or derive from page purpose               │   │
@@ -235,19 +235,19 @@ Ensure `WorkflowConfig.substeps_for("launch", "website")` returns `["build", "do
 
 ## Phase 1: Extend Langgraph Node for Path Recommendations
 
-### 1.1 Create `searchPathsTool`
+### 1.1 Create `searchWebsiteUrlsTool`
 
-**File:** `langgraph_app/app/tools/website/searchPaths.ts`
+**File:** `langgraph_app/app/tools/website/searchWebsiteUrls.ts`
 
 ```typescript
-export function createSearchPathsTool(jwt: string) {
+export function createSearchWebsiteUrlsTool(jwt: string) {
   return tool(
     async ({ domainId, candidates }) => {
       const api = new WebsiteUrlsAPIService({ jwt });
       return api.search(domainId, candidates);
     },
     {
-      name: "search_paths",
+      name: "search_website_urls",
       description:
         "Check if paths are available on a specific domain. Use after selecting a domain to find an available path.",
       schema: z.object({
@@ -289,7 +289,7 @@ export class WebsiteUrlsAPIService extends RailsAPIBase {
 // - Select best domain
 
 // Phase 2: Path Recommendation (conditional)
-// - If existing domain selected: use search_paths tool to get existing paths
+// - If existing domain selected: use search_website_urls tool to get existing paths
 // - Generate path candidates based on page purpose
 // - Check availability and select best path
 // - If new domain: default to "/" or derive from content
@@ -306,7 +306,7 @@ PHASE 2: PATH RECOMMENDATION
 After selecting the best domain:
 
 1. If selecting an EXISTING domain with high score:
-   - Use the search_paths tool with the domain's ID
+   - Use the search_website_urls tool with the domain's ID
    - Pass candidate paths derived from the page purpose
    - Paths MUST be single-level (e.g., "/landing" NOT "/marketing/landing")
    - Choose a path that doesn't conflict with existing paths
@@ -500,7 +500,7 @@ The deploy step shows:
 
 | File                                                 | Change                     |
 | ---------------------------------------------------- | -------------------------- |
-| `app/tools/website/searchPaths.ts`                   | **NEW** - Path search tool |
+| `app/tools/website/searchWebsiteUrls.ts`             | **NEW** - Path search tool |
 | `app/tools/website/index.ts`                         | Export new tool            |
 | `app/nodes/website/recommendDomains.ts`              | Add two-phase path logic   |
 | `app/prompts/website/recommendDomains.ts`            | Add path instructions      |

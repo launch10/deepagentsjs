@@ -9,7 +9,7 @@ import {
   type BrainstormContext,
   type DomainRecommendationsOutput,
 } from "@prompts";
-import { createSearchDomainsTool, createSearchPathsTool } from "@tools";
+import { createSearchDomainsTool, createSearchWebsiteUrlsTool } from "@tools";
 import { HumanMessage } from "@langchain/core/messages";
 import { lastAIMessage } from "@types";
 import { createAgent } from "langchain";
@@ -80,10 +80,10 @@ export const domainRecommendationsNode = NodeMiddleware.use(
       // Build tools array based on context:
       // - search_domains: always provided so AI can suggest available subdomains
       //   (even when out of credits - UI will show them as disabled)
-      // - search_paths: for checking path availability on existing domains
+      // - search_website_urls: for checking path availability on existing domains
       const tools = [createSearchDomainsTool(state.jwt)];
       if (hasExistingDomains) {
-        tools.push(createSearchPathsTool(state.jwt));
+        tools.push(createSearchWebsiteUrlsTool(state.jwt));
       }
 
       // Create and run the agent
