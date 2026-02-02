@@ -48,9 +48,7 @@ class Website < ApplicationRecord
   has_many :template_files, through: :template, source: :files
   has_many :code_files
   alias_method :files, :code_files
-  has_many :domains, dependent: :destroy
-  has_many :website_urls, dependent: :destroy
-  alias_method :urls, :website_urls
+  has_one :website_url, dependent: :destroy
   has_many :deploys, class_name: "WebsiteDeploy", dependent: :destroy
 
   has_many :website_uploads
@@ -111,7 +109,7 @@ class Website < ApplicationRecord
 
   # Get the domain for this website (there can only be one)
   def domain
-    domains.first&.domain || name
+    website_url&.domain&.domain || name
   end
 
   # Creates website_files from the fixture
@@ -137,8 +135,8 @@ class Website < ApplicationRecord
 
   def sync_all_to_atlas
     account.sync_to_atlas
-    domains.each { |d| d.sync_to_atlas }
-    website_urls.each { |wu| wu.sync_to_atlas }
+    website_url&.domain&.sync_to_atlas
+    website_url&.sync_to_atlas
     account.plan.sync_to_atlas
     sync_to_atlas
   end

@@ -7,8 +7,6 @@ module DomainConcerns
         id: id,
         domain: domain,
         account_id: account_id,
-        website_id: website_id,
-        website_name: website&.name,
         is_platform_subdomain: is_platform_subdomain,
         cloudflare_zone_id: cloudflare_zone_id,
         dns_verification_status: dns_verification_status,

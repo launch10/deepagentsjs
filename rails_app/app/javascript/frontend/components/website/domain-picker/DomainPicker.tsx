@@ -1,9 +1,9 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Launch10SitePicker } from "./Launch10SitePicker";
 import { CustomDomainPicker } from "./CustomDomainPicker";
 import { FullUrlPreview } from "./FullUrlPreview";
 import { ClaimSubdomainModal } from "./ClaimSubdomainModal";
-import { useDomainContext, useCreateDomain } from "~/api/domainContext.hooks";
+import { useDomainContext, useDomainAssignment } from "~/api/domainContext.hooks";
 import { useWebsiteChatState, useWebsiteChatIsLoading } from "~/hooks/website/useWebsiteChat";
 import { useWebsiteId } from "~/stores/projectStore";
 import type { Website } from "@shared";
@@ -30,6 +30,8 @@ export interface DomainSelection {
 export interface BaseDomainPickerProps {
   selection: DomainSelection | null;
   onSelect: (selection: DomainSelection) => void;
+  /** Called when user finishes editing (blur) - triggers debounced save */
+  onBlur?: () => void;
   // Navigation between picker modes
   onConnectOwnSite?: () => void;
   onSwitchToLaunch10?: () => void;
@@ -80,8 +82,12 @@ export function DomainPicker({
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [pendingClaim, setPendingClaim] = useState<DomainSelection | null>(null);
 
-  // Domain creation mutation for claiming new subdomains
-  const createDomain = useCreateDomain();
+  // Track the last persisted selection to detect changes that need saving
+  const lastPersistedSelection = useRef<DomainSelection | null>(null);
+
+  // Domain assignment mutation with debounce + cancel pattern
+  // Uses useLatestMutation for blur-to-save behavior
+  const domainAssignment = useDomainAssignment(websiteId ?? undefined, 750);
 
   // Support both controlled and uncontrolled modes
   const isControlled = controlledSelection !== undefined;
@@ -94,7 +100,7 @@ export function DomainPicker({
     error: contextError,
   } = useDomainContext(websiteId ?? undefined);
 
-  // The assigned URL is the source of truth - comes directly from website.website_urls
+  // The assigned URL is the source of truth - comes directly from website.website_url
   const assignedUrl = context?.assigned_url ?? null;
 
   // Get AI recommendations from website graph state
@@ -120,10 +126,21 @@ export function DomainPicker({
     []
   );
 
-  // Actually commit the selection (after modal confirmation if needed)
+  // Check if the selection has changed from the last persisted state
+  const hasSelectionChanged = useCallback(
+    (current: DomainSelection | null): boolean => {
+      if (!current) return false;
+      const last = lastPersistedSelection.current;
+      if (!last) return true;
+      return current.domain !== last.domain || current.path !== last.path;
+    },
+    []
+  );
+
+  // Actually commit the selection to local state (UI-only, no API call)
   const commitSelection = useCallback(
     (newSelection: DomainSelection) => {
-      console.log("[DomainPicker] commitSelection:", newSelection);
+      console.log("[DomainPicker] commitSelection (local):", newSelection);
       if (isControlled) {
         onSelectionChange?.(newSelection);
       } else {
@@ -133,30 +150,59 @@ export function DomainPicker({
     [isControlled, onSelectionChange]
   );
 
-  // Handle selection from either picker mode
+  // Handle blur - triggers debounced save if selection has changed
+  const handleBlur = useCallback(() => {
+    if (!selection || !websiteId || !hasSelectionChanged(selection)) return;
+
+    // Don't save if it requires the claim modal (new subdomain)
+    if (requiresClaimModal(selection)) return;
+
+    console.log("[DomainPicker] handleBlur - saving via debounce:", selection);
+    domainAssignment.mutateDebounced({
+      domain: selection.domain,
+      websiteId,
+      path: selection.path,
+      isPlatformSubdomain: selection.domain.endsWith(".launch10.site"),
+    });
+
+    // Update the last persisted selection
+    lastPersistedSelection.current = selection;
+  }, [selection, websiteId, hasSelectionChanged, requiresClaimModal, domainAssignment]);
+
+  // Handle selection from either picker mode (UI-only, no API call)
   const handleSelect = useCallback(
     (newSelection: DomainSelection) => {
-      console.log("[DomainPicker] handleSelect called:", { newSelection, isControlled });
+      console.log("[DomainPicker] handleSelect called (local):", { newSelection, isControlled });
 
-      // Check if we need to show the claim modal
+      const isCustomDomain = !newSelection.domain.endsWith(".launch10.site");
+
+      // If selecting a custom domain, switch to custom view
+      if (isCustomDomain) {
+        setShowCustomDomain(true);
+        commitSelection(newSelection);
+        return;
+      }
+
+      // Check if we need to show the claim modal (new platform subdomain uses a credit)
       if (requiresClaimModal(newSelection)) {
         setPendingClaim(newSelection);
         setShowClaimModal(true);
         return;
       }
 
-      // Otherwise commit immediately
+      // For all other cases, just update local selection (API call on blur)
       commitSelection(newSelection);
     },
     [isControlled, requiresClaimModal, commitSelection]
   );
 
-  // Handle claim confirmation from modal
+  // Handle claim confirmation from modal (immediate save)
   const handleClaimConfirm = useCallback(async () => {
     if (!pendingClaim || !websiteId) return;
 
     try {
-      const result = await createDomain.mutateAsync({
+      // Use mutateNowAsync for immediate save (cancels any pending debounced saves)
+      const result = await domainAssignment.mutateNowAsync({
         domain: pendingClaim.domain,
         websiteId,
         path: pendingClaim.path,
@@ -171,12 +217,13 @@ export function DomainPicker({
       };
 
       commitSelection(claimedSelection);
+      lastPersistedSelection.current = claimedSelection;
       setShowClaimModal(false);
       setPendingClaim(null);
     } catch (error) {
       console.error("Failed to claim subdomain:", error);
     }
-  }, [pendingClaim, websiteId, createDomain, commitSelection]);
+  }, [pendingClaim, websiteId, domainAssignment, commitSelection]);
 
   // Handle claim modal close
   const handleClaimClose = useCallback(() => {
@@ -209,19 +256,18 @@ export function DomainPicker({
         existingDomainId: assignedUrl.domain_id,
       };
 
-      console.log("[DomainPicker] Initializing from assigned URL:", newSelection);
-
       // Set view mode based on domain type
       if (!assignedUrl.is_platform_subdomain) {
         setShowCustomDomain(true);
       }
 
-      // Set selection
+      // Set selection and track as persisted (already saved on server)
       if (isControlled) {
         onSelectionChange?.(newSelection);
       } else {
         setInternalSelection(newSelection);
       }
+      lastPersistedSelection.current = newSelection;
 
       setHasInitialized(true);
       return;
@@ -240,13 +286,12 @@ export function DomainPicker({
         existingDomainId: top.existingDomainId,
       };
 
-      console.log("[DomainPicker] Initializing from AI recommendation:", newSelection);
-
       if (isControlled) {
         onSelectionChange?.(newSelection);
       } else {
         setInternalSelection(newSelection);
       }
+      // Note: AI recommendations are NOT yet persisted - will save on blur
 
       setHasInitialized(true);
     }
@@ -270,37 +315,6 @@ export function DomainPicker({
     );
   }
 
-  // // Show custom domain picker when triggered from dropdown
-  // if (showCustomDomain) {
-  //   return (
-  //     <div className="flex flex-col gap-5 rounded-2xl border border-neutral-300 bg-white px-10 py-7">
-  //       {/* Header */}
-  //       <div className="flex flex-col gap-0.5">
-  //         <h2 className="text-lg font-semibold leading-[22px] text-base-500">Website Setup</h2>
-  //         <p className="text-xs leading-4 text-base-300">
-  //           Connect your own domain to your landing page
-  //         </p>
-  //       </div>
-
-  //       <CustomDomainPicker
-  //         selection={selection}
-  //         onSelect={handleSelect}
-  //         onSwitchToLaunch10={() => setShowCustomDomain(false)}
-  //       />
-
-  //       {/* Full URL Preview */}
-  //       {selection && (
-  //         <div className="pt-4 border-t border-neutral-200">
-  //           <FullUrlPreview
-  //             fullUrl={selection.fullUrl}
-  //             isNew={selection.isNew}
-  //             source={selection.source}
-  //           />
-  //         </div>
-  //       )}
-  //     </div>
-  //   );
-  // }
   const title = showCustomDomain ? "Connect your own site" : "Website Setup";
   const subtitle = showCustomDomain ? "Use a site you already own, like mybusiness.com" : "Choose how you want your website to be accessed";
   const DomainPickerComponent = showCustomDomain ? CustomDomainPicker : Launch10SitePicker;
@@ -318,6 +332,7 @@ export function DomainPicker({
         context={context}
         selection={selection}
         onSelect={handleSelect}
+        onBlur={handleBlur}
         onConnectOwnSite={() => setShowCustomDomain(true)}
         onSwitchToLaunch10={() => setShowCustomDomain(false)}
       />
@@ -336,7 +351,7 @@ export function DomainPicker({
         onConfirm={handleClaimConfirm}
         domain={pendingClaim?.domain ?? ""}
         creditsRemaining={creditsRemaining}
-        isLoading={createDomain.isPending}
+        isLoading={domainAssignment.isPending}
       />
     </div>
   );

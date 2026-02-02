@@ -28,6 +28,7 @@ export function Launch10SitePicker({
   context,
   selection,
   onSelect,
+  onBlur,
   onConnectOwnSite,
 }: Launch10SitePickerProps) {
   const websiteId = useWebsiteId();
@@ -76,6 +77,13 @@ export function Launch10SitePicker({
     };
     console.log("[Launch10SitePicker] calling onSelect with:", newSelection);
     onSelect(newSelection);
+
+    // Trigger save after domain selection (if it's an existing domain)
+    // New domains will go through the claim modal which saves immediately
+    if (source === "existing") {
+      // Small delay to let the selection update before triggering save
+      setTimeout(() => onBlur?.(), 0);
+    }
   };
 
   // Handle path change
@@ -157,6 +165,7 @@ export function Launch10SitePicker({
           <PageNameInput
             value={customPath}
             onChange={handlePathChange}
+            onBlur={onBlur}
             domainId={selectedRec?.existingDomainId}
             websiteId={websiteId ?? undefined}
             recommendedPath={selectedRec?.path}

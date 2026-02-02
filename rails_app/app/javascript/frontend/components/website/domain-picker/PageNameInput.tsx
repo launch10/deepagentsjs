@@ -16,6 +16,8 @@ import { Spinner } from "@components/ui/spinner";
 export interface PageNameInputProps {
   value: string;
   onChange: (path: string) => void;
+  /** Callback when user finishes editing (blur) - triggers save */
+  onBlur?: () => void;
   domainId?: number;
   websiteId?: number;
   recommendedPath?: string;
@@ -66,6 +68,7 @@ function validatePath(value: string): { valid: boolean; error?: string; warning?
 export function PageNameInput({
   value,
   onChange,
+  onBlur,
   domainId,
   websiteId,
   recommendedPath,
@@ -165,7 +168,10 @@ export function PageNameInput({
           value={inputValue}
           onChange={(e) => handleChange(e.target.value)}
           onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onBlur={() => {
+            setIsFocused(false);
+            onBlur?.();
+          }}
           placeholder={recommendedPath?.replace(/^\//, "") || "landing"}
           className="flex-1 px-1 py-2 text-sm bg-transparent border-0 outline-none focus:ring-0"
           data-testid="page-name-input"

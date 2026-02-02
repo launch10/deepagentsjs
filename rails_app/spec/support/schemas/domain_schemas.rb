@@ -9,10 +9,11 @@ module APISchemas
           id: APISchemas.id_field,
           domain: {type: :string, description: 'Domain name'},
           account_id: APISchemas.id_field,
-          website_id: {type: :integer, nullable: true, description: 'Associated website ID'},
-          website_name: {type: :string, nullable: true, description: 'Associated website name'},
           is_platform_subdomain: {type: :boolean, description: 'Whether this is a platform subdomain'},
           cloudflare_zone_id: {type: :string, nullable: true, description: 'Cloudflare zone ID'},
+          dns_verification_status: {type: :string, nullable: true, description: 'DNS verification status'},
+          dns_last_checked_at: {type: :string, format: 'date-time', nullable: true, description: 'Last DNS check timestamp'},
+          dns_error_message: {type: :string, nullable: true, description: 'DNS error message'},
           website_urls: {
             type: :array,
             nullable: true,

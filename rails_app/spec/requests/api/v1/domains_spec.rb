@@ -33,7 +33,7 @@ RSpec.describe "Domains API", type: :request do
         schema APISchemas::Domain.list_response
 
         let!(:website) { create(:website, account: account, project: project) }
-        let!(:domain) { create(:domain, :platform_subdomain, account: account, website: website) }
+        let!(:domain) { create(:domain, :platform_subdomain, account: account) }
 
         run_test! do |response|
           json = JSON.parse(response.body)
@@ -50,8 +50,8 @@ RSpec.describe "Domains API", type: :request do
         schema APISchemas::Domain.list_response
 
         let!(:website) { create(:website, account: account, project: project) }
-        let!(:domain) { create(:domain, :platform_subdomain, account: account, website: website) }
-        let!(:website_url) { create(:website_url, account: account, domain: domain, website: website, path: "/landing") }
+        let!(:domain) { create(:domain, :platform_subdomain, account: account) }
+        let!(:website_url) { create(:website_url, account: account, domain: domain, path: "/landing") }
         let(:include_website_urls) { true }
 
         run_test! do |response|
@@ -62,20 +62,18 @@ RSpec.describe "Domains API", type: :request do
         end
       end
 
-      response "200", "filters domains by website_id" do
+      response "200", "returns all domains for account (website_id filter removed)" do
         schema APISchemas::Domain.list_response
 
         let!(:website1) { create(:website, account: account, project: project) }
         let!(:other_project) { create(:project, account: account) }
         let!(:website2) { create(:website, account: account, project: other_project) }
-        let!(:domain1) { create(:domain, :platform_subdomain, account: account, website: website1) }
-        let!(:domain2) { create(:domain, :platform_subdomain, account: account, website: website2) }
-        let(:website_id) { website1.id }
+        let!(:domain1) { create(:domain, :platform_subdomain, account: account) }
+        let!(:domain2) { create(:domain, :platform_subdomain, account: account) }
 
         run_test! do |response|
           json = JSON.parse(response.body)
-          expect(json["domains"].length).to eq(1)
-          expect(json["domains"][0]["id"]).to eq(domain1.id)
+          expect(json["domains"].length).to eq(2)
         end
       end
 
@@ -88,7 +86,7 @@ RSpec.describe "Domains API", type: :request do
   end
 
   path "/api/v1/domains/{id}" do
-    patch "Reassigns a domain to a different website" do
+    patch "Updates domain DNS verification status" do
       tags "Domains"
       consumes "application/json"
       produces "application/json"
@@ -103,54 +101,33 @@ RSpec.describe "Domains API", type: :request do
           domain: {
             type: :object,
             properties: {
-              website_id: {type: :integer}
+              dns_verification_status: {type: :string}
             }
           }
         }
       }
 
-      response "200", "successfully reassigns domain to new website" do
+      response "200", "successfully updates dns_verification_status" do
         schema APISchemas::Context.domain_response
 
-        let!(:website) { create(:website, account: account, project: project) }
-        let!(:other_project) { create(:project, account: account) }
-        let!(:other_website) { create(:website, account: account, project: other_project) }
-        let!(:domain) { create(:domain, :platform_subdomain, account: account, website: website) }
+        let!(:domain) { create(:domain, :custom_domain, account: account, dns_verification_status: "pending") }
         let(:id) { domain.id }
-        let(:body) { {domain: {website_id: other_website.id}} }
+        let(:body) { {domain: {dns_verification_status: "verified"}} }
 
         run_test! do |response|
           json = JSON.parse(response.body)
           expect(json["id"]).to eq(domain.id)
-          expect(json["website_id"]).to eq(other_website.id)
-          expect(domain.reload.website_id).to eq(other_website.id)
-        end
-      end
-
-      response "200", "removes domain from website when website_id is nil" do
-        schema APISchemas::Context.domain_response
-
-        let!(:website) { create(:website, account: account, project: project) }
-        let!(:domain) { create(:domain, :platform_subdomain, account: account, website: website) }
-        let(:id) { domain.id }
-        let(:body) { {domain: {website_id: nil}} }
-
-        run_test! do |response|
-          json = JSON.parse(response.body)
-          expect(json["id"]).to eq(domain.id)
-          expect(json["website_id"]).to be_nil
-          expect(domain.reload.website_id).to be_nil
+          expect(json["dns_verification_status"]).to eq("verified")
+          expect(domain.reload.dns_verification_status).to eq("verified")
         end
       end
 
       response "404", "returns not found for domain belonging to another account" do
         let!(:other_user) { create(:user) }
         let!(:other_account) { other_user.owned_account }
-        let!(:other_project) { create(:project, account: other_account) }
-        let!(:other_domain) { create(:domain, :platform_subdomain, account: other_account, website: nil) }
-        let!(:website) { create(:website, account: account, project: project) }
+        let!(:other_domain) { create(:domain, :platform_subdomain, account: other_account) }
         let(:id) { other_domain.id }
-        let(:body) { {domain: {website_id: website.id}} }
+        let(:body) { {domain: {dns_verification_status: "verified"}} }
 
         run_test! do |response|
           json = JSON.parse(response.body)
@@ -158,25 +135,9 @@ RSpec.describe "Domains API", type: :request do
         end
       end
 
-      response "422", "cannot reassign to website belonging to another account" do
-        let!(:other_user) { create(:user) }
-        let!(:other_account) { other_user.owned_account }
-        let!(:other_project) { create(:project, account: other_account) }
-        let!(:other_website) { create(:website, account: other_account, project: other_project) }
-        let!(:domain) { create(:domain, :platform_subdomain, account: account, website: nil) }
-        let(:id) { domain.id }
-        let(:body) { {domain: {website_id: other_website.id}} }
-
-        run_test! do |response|
-          json = JSON.parse(response.body)
-          expect(json["errors"]).to include("Website not found")
-        end
-      end
-
       response "404", "returns not found for non-existent domain" do
-        let!(:website) { create(:website, account: account, project: project) }
         let(:id) { 999999 }
-        let(:body) { {domain: {website_id: website.id}} }
+        let(:body) { {domain: {dns_verification_status: "verified"}} }
 
         run_test! do |response|
           json = JSON.parse(response.body)
@@ -185,9 +146,9 @@ RSpec.describe "Domains API", type: :request do
       end
 
       response "401", "unauthorized - missing token" do
-        let!(:domain) { create(:domain, :platform_subdomain, account: account, website: nil) }
+        let!(:domain) { create(:domain, :platform_subdomain, account: account) }
         let(:id) { domain.id }
-        let(:body) { {domain: {website_id: nil}} }
+        let(:body) { {domain: {dns_verification_status: "verified"}} }
         let(:Authorization) { nil }
 
         run_test!
@@ -208,7 +169,7 @@ RSpec.describe "Domains API", type: :request do
       response "200", "returns verified status for platform subdomains" do
         schema APISchemas::Domain.verify_dns_response
 
-        let!(:domain) { create(:domain, :platform_subdomain, account: account, website: nil) }
+        let!(:domain) { create(:domain, :platform_subdomain, account: account) }
         let(:id) { domain.id }
 
         run_test! do |response|
@@ -224,7 +185,7 @@ RSpec.describe "Domains API", type: :request do
       response "200", "verifies DNS for custom domain" do
         schema APISchemas::Domain.verify_dns_response
 
-        let!(:domain) { create(:domain, :custom_domain, account: account, website: nil) }
+        let!(:domain) { create(:domain, :custom_domain, account: account) }
         let(:id) { domain.id }
 
         before do
@@ -245,7 +206,7 @@ RSpec.describe "Domains API", type: :request do
       response "200", "returns pending status when CNAME not configured" do
         schema APISchemas::Domain.verify_dns_response
 
-        let!(:domain) { create(:domain, :custom_domain, account: account, website: nil) }
+        let!(:domain) { create(:domain, :custom_domain, account: account) }
         let(:id) { domain.id }
 
         before do
@@ -272,7 +233,7 @@ RSpec.describe "Domains API", type: :request do
       response "404", "returns not found for domain belonging to another account" do
         let!(:other_user) { create(:user) }
         let!(:other_account) { other_user.owned_account }
-        let!(:other_domain) { create(:domain, :custom_domain, account: other_account, website: nil) }
+        let!(:other_domain) { create(:domain, :custom_domain, account: other_account) }
         let(:id) { other_domain.id }
 
         run_test! do |response|
@@ -282,7 +243,7 @@ RSpec.describe "Domains API", type: :request do
       end
 
       response "401", "unauthorized - missing token" do
-        let!(:domain) { create(:domain, :custom_domain, account: account, website: nil) }
+        let!(:domain) { create(:domain, :custom_domain, account: account) }
         let(:id) { domain.id }
         let(:Authorization) { nil }
 
@@ -449,7 +410,7 @@ RSpec.describe "Domains API", type: :request do
 
         let!(:website) { create(:website, account: account, project: project) }
         let!(:existing_domain) { create(:domain, domain: "mysite.launch10.site", account: account) }
-        let!(:existing_url) { create(:website_url, domain: existing_domain, website: website, account: account, path: "/landing") }
+        let!(:existing_url) { create(:website_url, domain: existing_domain, account: account, path: "/landing") }
         let(:body) { {domain: {domain: "mysite.launch10.site", website_id: website.id, path: "/landing"}} }
 
         run_test! do |response|
@@ -494,12 +455,14 @@ RSpec.describe "Domains API", type: :request do
       response "201", "user switches from platform subdomain to custom domain" do
         schema APISchemas::Domain.create_response
 
-        # User already has a platform subdomain with a path
+        # User already has a platform subdomain with a path assigned to a different website_url
         let!(:website) { create(:website, account: account, project: project) }
-        let!(:existing_domain) { create(:domain, domain: "xyz.launch10.site", account: account, website: website) }
-        let!(:existing_url) { create(:website_url, domain: existing_domain, website: website, account: account, path: "/pets") }
+        let!(:existing_domain) { create(:domain, domain: "xyz.launch10.site", account: account) }
+        let!(:other_project) { create(:project, account: account) }
+        let!(:other_website) { create(:website, account: account, project: other_project) }
+        let!(:existing_url) { create(:website_url, domain: existing_domain, website: other_website, account: account, path: "/pets") }
 
-        # Now user wants to use a custom domain instead (pets.launch10.ai already has subdomain, no www added)
+        # Now user wants to use a custom domain for their website (pets.launch10.ai already has subdomain, no www added)
         let(:body) { {domain: {domain: "pets.launch10.ai", website_id: website.id, is_platform_subdomain: false}} }
 
         run_test! do |response|
@@ -508,39 +471,33 @@ RSpec.describe "Domains API", type: :request do
           # Custom domain should be created (subdomain domains don't get www prefix)
           expect(json["domain"]["domain"]).to eq("pets.launch10.ai")
           expect(json["domain"]["is_platform_subdomain"]).to eq(false)
-          expect(json["domain"]["website_id"]).to eq(website.id)
 
           # WebsiteUrl should be created for the new domain
           expect(json["website_url"]["path"]).to eq("/")
           expect(json["website_url"]["website_id"]).to eq(website.id)
 
-          # Only the new domain should be linked to website
-          expect(website.domains.count).to eq(1)
-          expect(website.domains.first.domain).to eq("pets.launch10.ai")
-
           # Website should have exactly one website_url (the new one)
-          expect(website.website_urls.count).to eq(1)
-          expect(website.website_urls.first.domain.domain).to eq("pets.launch10.ai")
+          expect(website.reload.website_url).to be_present
+          expect(website.website_url.domain.domain).to eq("pets.launch10.ai")
 
-          # Old domain should be KEPT but unlinked (website_id=nil)
+          # Old domain should still exist (owned by account)
           old_domain = Domain.find_by(domain: "xyz.launch10.site")
           expect(old_domain).to be_present
-          expect(old_domain.website_id).to be_nil
           expect(old_domain.account_id).to eq(account.id)
 
-          # Old website_url should be deleted
-          expect(WebsiteUrl.find_by(id: existing_url.id)).to be_nil
+          # Old website_url for other_website should still exist
+          expect(WebsiteUrl.find_by(id: existing_url.id)).to be_present
         end
       end
 
-      response "201", "unlinks old domain when creating new one for same website" do
+      response "201", "updates existing website_url to new domain (update-in-place)" do
         schema APISchemas::Domain.create_response
 
         let!(:website) { create(:website, account: account, project: project) }
-        let!(:existing_domain) { create(:domain, domain: "existing.launch10.site", account: account, website: website) }
+        let!(:existing_domain) { create(:domain, domain: "existing.launch10.site", account: account) }
         let!(:existing_url) { create(:website_url, domain: existing_domain, website: website, account: account, path: "/") }
 
-        # Create a completely different custom domain
+        # Create a completely different custom domain for the same website
         let(:body) { {domain: {domain: "newcustom.com", website_id: website.id}} }
 
         run_test! do |response|
@@ -550,24 +507,20 @@ RSpec.describe "Domains API", type: :request do
           expect(json["domain"]["is_platform_subdomain"]).to eq(false)
           expect(json["website_url"]["website_id"]).to eq(website.id)
 
-          # New domain should exist and be linked to website
+          # New domain should exist
           new_domain = Domain.find_by(domain: "www.newcustom.com")
           expect(new_domain).to be_present
-          expect(new_domain.website_id).to eq(website.id)
 
-          # Old domain should be KEPT but unlinked (website_id=nil)
+          # Old domain should still exist (owned by account)
           old_domain = Domain.find_by(domain: "existing.launch10.site")
           expect(old_domain).to be_present
-          expect(old_domain.website_id).to be_nil
           expect(old_domain.account_id).to eq(account.id)
 
-          # Old website_url should be deleted
-          expect(WebsiteUrl.find_by(id: existing_url.id)).to be_nil
-
-          # Website should have only one domain and one website_url
-          expect(website.domains.count).to eq(1)
-          expect(website.website_urls.count).to eq(1)
-          expect(website.website_urls.first.domain.domain).to eq("www.newcustom.com")
+          # Website should have exactly one website_url (update-in-place pattern)
+          # The same WebsiteUrl record is updated, not destroyed and recreated
+          expect(website.reload.website_url).to be_present
+          expect(website.website_url.id).to eq(existing_url.id) # Same ID - no churn!
+          expect(website.website_url.domain.domain).to eq("www.newcustom.com")
         end
       end
     end

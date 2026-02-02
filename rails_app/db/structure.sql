@@ -2542,7 +2542,6 @@ CREATE TABLE public.domain_request_counts_2026_12 (
 CREATE TABLE public.domains (
     id bigint NOT NULL,
     domain character varying,
-    website_id bigint,
     account_id bigint,
     cloudflare_zone_id character varying,
     created_at timestamp(6) without time zone NOT NULL,
@@ -11582,6 +11581,7 @@ INSERT INTO "schema_migrations" (version) VALUES
 ('20260131154443'),
 ('20260130210726'),
 ('20260130204037'),
+('20260201235035'),
 ('20260201153847'),
 ('20260130161923'),
 ('20260130143844'),
