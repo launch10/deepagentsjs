@@ -8,6 +8,7 @@ import { Label } from "@components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@components/ui/tooltip";
 import { SiteNameDropdown } from "./SiteNameDropdown";
 import { PageNameInput } from "./PageNameInput";
+import { DnsHelpSection } from "./DnsHelpSection";
 import { useWebsiteId } from "~/stores/projectStore";
 import type { BaseDomainPickerProps } from "./DomainPicker";
 
@@ -29,7 +30,6 @@ export function Launch10SitePicker({
   selection,
   onSelect,
   onBlur,
-  onConnectOwnSite,
 }: Launch10SitePickerProps) {
   const websiteId = useWebsiteId();
 
@@ -56,7 +56,8 @@ export function Launch10SitePicker({
     domain: string,
     subdomain: string,
     source: "existing" | "generated" | "custom",
-    existingDomainId?: number
+    existingDomainId?: number,
+    isPlatformSubdomain?: boolean
   ) => {
 
     // Find the recommendation to get the suggested path
@@ -75,6 +76,7 @@ export function Launch10SitePicker({
       source,
       isNew: source === "generated" || source === "custom",
       existingDomainId,
+      isPlatformSubdomain: isPlatformSubdomain ?? domain.endsWith(".launch10.site"),
     };
     onSelect(newSelection);
 
@@ -144,7 +146,6 @@ export function Launch10SitePicker({
             selectedDomain={selectedDomain}
             isOutOfCredits={isOutOfCredits}
             onSelect={handleDomainSelect}
-            onConnectOwnSite={onConnectOwnSite}
           />
         </div>
 
@@ -172,6 +173,11 @@ export function Launch10SitePicker({
           />
         </div>
       </div>
+
+      {/* DNS Help Section - shown only for custom domains (not .launch10.site) */}
+      {selection && !selection.domain.endsWith(".launch10.site") && (
+        <DnsHelpSection domainId={selection.existingDomainId ?? null} />
+      )}
     </div>
   );
 }
