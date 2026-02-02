@@ -182,6 +182,8 @@ GEM
       rexml
     crass (1.0.6)
     csv (3.3.5)
+    cypress-on-rails (1.20.0)
+      rack
     dalli (3.2.8)
     database_cleaner-active_record (2.2.2)
       activerecord (>= 5.a)
@@ -929,6 +931,7 @@ DEPENDENCIES
   carrierwave-aws
   chroma
   csv
+  cypress-on-rails (~> 1.0)
   database_cleaner-active_record
   debug
   devise!

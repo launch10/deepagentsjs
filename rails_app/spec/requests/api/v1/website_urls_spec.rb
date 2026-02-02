@@ -65,6 +65,32 @@ RSpec.describe "Website URLs API", type: :request do
         end
       end
 
+      response "200", "returns mixed statuses for batch of candidates" do
+        schema APISchemas::WebsiteUrl.search_response
+
+        let!(:website) { create(:website, account: account, project: project) }
+        let!(:domain) { create(:domain, :platform_subdomain, account: account) }
+        let!(:owned_url) { create(:website_url, account: account, website: website, domain: domain, path: "/owned") }
+
+        let(:body) { {domain_id: domain.id, candidates: ["/new", "/owned"]} }
+
+        run_test! do |response|
+          json = JSON.parse(response.body)
+          expect(json["results"].length).to eq(2)
+
+          # Available
+          available = json["results"].find { |r| r["path"] == "/new" }
+          expect(available["status"]).to eq("available")
+          expect(available["existing_id"]).to be_nil
+
+          # Existing (owned by current account)
+          existing = json["results"].find { |r| r["path"] == "/owned" }
+          expect(existing["status"]).to eq("existing")
+          expect(existing["existing_id"]).to eq(owned_url.id)
+          expect(existing["existing_website_id"]).to eq(website.id)
+        end
+      end
+
       response "200", "returns unavailable for paths owned by another account" do
         schema APISchemas::WebsiteUrl.search_response
 
@@ -84,43 +110,6 @@ RSpec.describe "Website URLs API", type: :request do
           expect(json["results"][0]["status"]).to eq("unavailable")
           expect(json["results"][0]["existing_id"]).to be_nil
           expect(json["results"][0]["existing_website_id"]).to be_nil
-        end
-      end
-
-      response "200", "returns mixed statuses for batch of candidates" do
-        schema APISchemas::WebsiteUrl.search_response
-
-        let!(:website) { create(:website, account: account, project: project) }
-        let!(:domain) { create(:domain, :platform_subdomain, account: account) }
-        let!(:owned_url) { create(:website_url, account: account, website: website, domain: domain, path: "/owned") }
-
-        let!(:other_user) { create(:user) }
-        let!(:other_account) { other_user.owned_account }
-        let!(:other_project) { create(:project, account: other_account) }
-        let!(:other_website) { create(:website, account: other_account, project: other_project) }
-        let!(:other_url) { create(:website_url, account: other_account, website: other_website, domain: domain, path: "/other") }
-
-        let(:body) { {domain_id: domain.id, candidates: ["/new", "/owned", "/other"]} }
-
-        run_test! do |response|
-          json = JSON.parse(response.body)
-          expect(json["results"].length).to eq(3)
-
-          # Available
-          available = json["results"].find { |r| r["path"] == "/new" }
-          expect(available["status"]).to eq("available")
-          expect(available["existing_id"]).to be_nil
-
-          # Existing (owned by current account)
-          existing = json["results"].find { |r| r["path"] == "/owned" }
-          expect(existing["status"]).to eq("existing")
-          expect(existing["existing_id"]).to eq(owned_url.id)
-          expect(existing["existing_website_id"]).to eq(website.id)
-
-          # Unavailable (owned by another account)
-          unavailable = json["results"].find { |r| r["path"] == "/other" }
-          expect(unavailable["status"]).to eq("unavailable")
-          expect(unavailable["existing_id"]).to be_nil
         end
       end
 
@@ -263,11 +252,13 @@ RSpec.describe "Website URLs API", type: :request do
       response "200", "filters by domain_id" do
         schema APISchemas::WebsiteUrl.list_response
 
-        let!(:website) { create(:website, account: account, project: project) }
+        let!(:website1) { create(:website, account: account, project: project) }
+        let!(:other_project) { create(:project, account: account) }
+        let!(:website2) { create(:website, account: account, project: other_project) }
         let!(:domain1) { create(:domain, :platform_subdomain, account: account) }
         let!(:domain2) { create(:domain, :platform_subdomain, account: account) }
-        let!(:url1) { create(:website_url, account: account, website: website, domain: domain1, path: "/one") }
-        let!(:url2) { create(:website_url, account: account, website: website, domain: domain2, path: "/two") }
+        let!(:url1) { create(:website_url, account: account, website: website1, domain: domain1, path: "/one") }
+        let!(:url2) { create(:website_url, account: account, website: website2, domain: domain2, path: "/two") }
         let(:domain_id) { domain1.id }
 
         run_test! do |response|

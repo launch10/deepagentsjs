@@ -1,5 +1,6 @@
 import { test, expect, loginUser, testUser } from "./fixtures/auth";
 import { DatabaseSnapshotter } from "./fixtures/database";
+import { appScenario } from "./support/on-rails";
 import { SettingsPage } from "./pages/settings.page";
 
 test.describe("Settings Page", () => {
@@ -272,7 +273,7 @@ test.describe("Settings Page", () => {
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("basic_account");
       // Set credits high enough to avoid the low credit warning modal
-      await DatabaseSnapshotter.setCredits(testUser.email, 4000000, 0); // 4000 credits
+      await appScenario("set_credits", { email: testUser.email, plan_millicredits: 4000000, pack_millicredits: 0 });
       settingsPage = new SettingsPage(page);
     });
 

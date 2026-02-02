@@ -1,5 +1,6 @@
 import { test, expect, loginUser, testUser } from "../fixtures/auth";
 import { DatabaseSnapshotter } from "../fixtures/database";
+import { appScenario } from "../support/on-rails";
 import { BrainstormPage } from "../pages/brainstorm.page";
 import { WebsitePage } from "../pages/website.page";
 import { CampaignPage } from "../pages/campaign.page";
@@ -89,7 +90,7 @@ test.describe("Credit Limits", () => {
 
       // Set credits to 10 millicredits (0.01 credits) - non-zero so textarea
       // isn't disabled, but small enough to be exhausted by one LLM call (~57mc)
-      await DatabaseSnapshotter.setCredits(testUser.email, 10, 0);
+      await appScenario("set_credits", { email: testUser.email, plan_millicredits: 10, pack_millicredits: 0 });
 
       await loginUser(page);
       brainstormPage = new BrainstormPage(page);
@@ -184,7 +185,7 @@ test.describe("Credit Limits", () => {
       await DatabaseSnapshotter.restoreSnapshot("basic_account");
 
       // Set credits to 0 (completely exhausted)
-      await DatabaseSnapshotter.setCredits(testUser.email, 0, 0);
+      await appScenario("set_credits", { email: testUser.email, plan_millicredits: 0, pack_millicredits: 0 });
 
       await loginUser(page);
       brainstormPage = new BrainstormPage(page);
@@ -255,7 +256,7 @@ test.describe("Credit Limits", () => {
 
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("brainstorm_step");
-      await DatabaseSnapshotter.setCredits(testUser.email, 0, 0);
+      await appScenario("set_credits", { email: testUser.email, plan_millicredits: 0, pack_millicredits: 0 });
 
       const project = await DatabaseSnapshotter.getFirstProject();
       projectUuid = project.uuid;
@@ -299,7 +300,7 @@ test.describe("Credit Limits", () => {
 
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("website_step");
-      await DatabaseSnapshotter.setCredits(testUser.email, 0, 0);
+      await appScenario("set_credits", { email: testUser.email, plan_millicredits: 0, pack_millicredits: 0 });
 
       const project = await DatabaseSnapshotter.getFirstProject();
       projectUuid = project.uuid;
@@ -349,7 +350,7 @@ test.describe("Credit Limits", () => {
 
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("campaign_content_step");
-      await DatabaseSnapshotter.setCredits(testUser.email, 0, 0);
+      await appScenario("set_credits", { email: testUser.email, plan_millicredits: 0, pack_millicredits: 0 });
 
       const project = await DatabaseSnapshotter.getFirstProject();
       projectUuid = project.uuid;
@@ -397,7 +398,7 @@ test.describe("Credit Limits", () => {
 
       // Set plan credits to 200 millicredits (0.2 credits remaining).
       // The plan tier allocates 2000+ credits, so this is well above 80% usage.
-      await DatabaseSnapshotter.setCredits(testUser.email, 200, 0);
+      await appScenario("set_credits", { email: testUser.email, plan_millicredits: 200, pack_millicredits: 0 });
 
       await loginUser(page);
 
@@ -449,7 +450,7 @@ test.describe("Credit Limits", () => {
 
     test("does not show low credit warning when credits are fully exhausted", async ({ page }) => {
       // Set credits to 0 — out of credits takes precedence
-      await DatabaseSnapshotter.setCredits(testUser.email, 0, 0);
+      await appScenario("set_credits", { email: testUser.email, plan_millicredits: 0, pack_millicredits: 0 });
 
       const brainstorm = new BrainstormPage(page);
       await brainstorm.goto();
