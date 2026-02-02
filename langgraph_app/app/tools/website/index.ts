@@ -1,2 +1,2 @@
 export * from "./searchDomains";
-export * from "./searchPaths";
+export * from "./searchWebsiteUrls";

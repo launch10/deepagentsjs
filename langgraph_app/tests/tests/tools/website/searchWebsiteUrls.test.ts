@@ -1,15 +1,15 @@
 /**
- * Tests for the search_paths tool
+ * Tests for the search_website_urls tool
  *
  * These tests verify the tool's response transformation logic.
  * Integration tests with the Rails API are covered by the graph tests.
  */
 
 import { describe, it, expect } from "vitest";
-import type { SearchPathsResult } from "../../../../app/tools/website/searchPaths";
+import type { SearchWebsiteUrlsResult } from "../../../../app/tools/website/searchWebsiteUrls";
 
 // Test the result transformation logic separately from the tool invocation
-describe("search_paths tool", () => {
+describe("search_website_urls tool", () => {
   describe("result transformation", () => {
     it("correctly maps available status", () => {
       const apiResponse = {
@@ -21,7 +21,7 @@ describe("search_paths tool", () => {
       };
 
       // This is the transformation logic from the tool
-      const result: SearchPathsResult = {
+      const result: SearchWebsiteUrlsResult = {
         domainId: apiResponse.domain_id,
         domain: apiResponse.domain,
         results: apiResponse.results.map((r) => ({
@@ -51,7 +51,7 @@ describe("search_paths tool", () => {
         ],
       };
 
-      const result: SearchPathsResult = {
+      const result: SearchWebsiteUrlsResult = {
         domainId: apiResponse.domain_id,
         domain: apiResponse.domain,
         results: apiResponse.results.map((r) => ({
@@ -81,7 +81,7 @@ describe("search_paths tool", () => {
         ],
       };
 
-      const result: SearchPathsResult = {
+      const result: SearchWebsiteUrlsResult = {
         domainId: apiResponse.domain_id,
         domain: apiResponse.domain,
         results: apiResponse.results.map((r) => ({
@@ -106,7 +106,7 @@ describe("search_paths tool", () => {
         ],
       };
 
-      const result: SearchPathsResult = {
+      const result: SearchWebsiteUrlsResult = {
         domainId: apiResponse.domain_id,
         domain: apiResponse.domain,
         results: apiResponse.results.map((r) => ({
@@ -134,7 +134,7 @@ describe("search_paths tool", () => {
         ],
       };
 
-      const result: SearchPathsResult = {
+      const result: SearchWebsiteUrlsResult = {
         domainId: apiResponse.domain_id,
         domain: apiResponse.domain,
         results: apiResponse.results.map((r) => ({
@@ -163,7 +163,7 @@ describe("search_paths tool", () => {
       const candidates = ["/test", "/another"];
 
       // Error handling logic from the tool
-      const result: SearchPathsResult = {
+      const result: SearchWebsiteUrlsResult = {
         domainId: 1,
         domain: "",
         error: "API call failed: Network error",

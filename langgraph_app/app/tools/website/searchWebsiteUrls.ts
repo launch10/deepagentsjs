@@ -2,7 +2,7 @@ import { z } from "zod";
 import { tool } from "@langchain/core/tools";
 import { WebsiteUrlsAPIService, type SearchWebsiteUrlsResponse } from "@rails_api";
 
-const searchPathsSchema = z.object({
+const searchWebsiteUrlsSchema = z.object({
   domainId: z.number().describe("The domain ID to check paths on"),
   candidates: z
     .array(z.string())
@@ -11,7 +11,7 @@ const searchPathsSchema = z.object({
     .describe("List of paths to check availability for (e.g., '/landing', '/promo')"),
 });
 
-export type SearchPathsResult = {
+export type SearchWebsiteUrlsResult = {
   domainId: number;
   domain: string;
   results: Array<{
@@ -28,17 +28,17 @@ export type SearchPathsResult = {
  * Tool for searching path availability on a specific domain.
  * Uses WebsiteUrlsAPIService to check if paths are available on the given domain.
  */
-export const createSearchPathsTool = (jwt: string) =>
+export const createSearchWebsiteUrlsTool = (jwt: string) =>
   tool(
     async (input): Promise<string> => {
       const { domainId, candidates } = input;
-      console.log("[search_paths] Called with domainId:", domainId, "candidates:", candidates);
+      console.log("[search_website_urls] Called with domainId:", domainId, "candidates:", candidates);
 
       try {
         const service = new WebsiteUrlsAPIService({ jwt });
         const response = await service.search(domainId, candidates);
 
-        const result: SearchPathsResult = {
+        const result: SearchWebsiteUrlsResult = {
           domainId: response.domain_id,
           domain: response.domain,
           results: response.results.map((r) => ({
@@ -50,10 +50,10 @@ export const createSearchPathsTool = (jwt: string) =>
           })),
         };
 
-        console.log("[search_paths] Results:", JSON.stringify(result, null, 2));
+        console.log("[search_website_urls] Results:", JSON.stringify(result, null, 2));
         return JSON.stringify(result);
       } catch (error) {
-        const result: SearchPathsResult = {
+        const result: SearchWebsiteUrlsResult = {
           domainId,
           domain: "",
           error: `API call failed: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -68,11 +68,11 @@ export const createSearchPathsTool = (jwt: string) =>
       }
     },
     {
-      name: "search_paths",
+      name: "search_website_urls",
       description: `Search for available paths on a specific domain.
 Pass the domain ID and an array of candidate paths (e.g., '/landing', '/promo').
 Returns availability status for each path on that domain.
 Use this AFTER selecting a domain to find an available path that doesn't conflict with existing pages.`,
-      schema: searchPathsSchema,
+      schema: searchWebsiteUrlsSchema,
     }
   );

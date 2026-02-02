@@ -38,7 +38,7 @@ export const domainRecommendationsOutputSchema = z.object({
       existingDomainId: z
         .number()
         .optional()
-        .describe("Domain ID for existing domains - use this with search_paths tool"),
+        .describe("Domain ID for existing domains - use this with search_website_urls tool"),
     })
   ),
   topRecommendation: z
@@ -78,7 +78,7 @@ ${domainList}
 
 Evaluate whether any of these existing domains are a good fit for the current business.
 A score of 80+ means the domain is highly relevant and should be recommended.
-If recommending an existing domain, use search_paths with the Domain ID to find an available path.
+If recommending an existing domain, use search_website_urls with the Domain ID to find an available path.
 `;
   }
 
@@ -114,7 +114,7 @@ ${creditsSection}
 2. Generate 3-5 creative, brandable subdomains which would be a good fit for the current business
 3. Use the search_domains tool to check availability of the subdomain candidates you generated
 4. For each domain, recommend what URL path would be used (e.g. paw-portraits.launch10.site/dogs)
-5. Use the search_paths tool to find available paths for each domain (paths that do not already have a website launched there)
+5. Use the search_website_urls tool to find available paths for each domain (paths that do not already have a website launched there)
 6. Return your final recommendations, including both existing and new, generated subdomain suggestions, with recommended paths
 
 ## Domain Requirements
@@ -129,7 +129,7 @@ ${creditsSection}
 - Lowercase letters, numbers, and hyphens only
 - Keep paths short and descriptive
 - For NEW domains, default path is "/" (root)
-- For EXISTING domains, use search_paths to find an available path that doesn't conflict
+- For EXISTING domains, use search_website_urls to find an available path that doesn't conflict
 
 ## Scoring Guidelines
 - **90-100**: Perfect match - domain strongly conveys the business value proposition
@@ -149,7 +149,7 @@ ${
     ? `
 ## Path Strategy for Existing Domains
 When recommending an existing domain:
-1. Use the search_paths tool with the domain's ID
+1. Use the search_website_urls tool with the domain's ID
 2. Pass 3-5 candidate paths derived from the page purpose
 3. Choose an available path that best describes the landing page
 4. Good path examples: "/promo", "/launch", "/beta", "/landing"
