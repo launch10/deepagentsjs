@@ -64,6 +64,7 @@ const createContext = (
   platform_subdomain_credits: credits,
   brainstorm_context: null,
   plan_tier: planTier,
+  assigned_url: null,
 });
 
 // ============================================================================
@@ -121,7 +122,6 @@ const outOfCreditsNoMatchRecommendations: Website.DomainRecommendations.DomainRe
 describe("SiteNameDropdown", () => {
   const defaultHandlers = {
     onSelect: vi.fn(),
-    onConnectOwnSite: vi.fn(),
   };
 
   beforeEach(() => {
@@ -383,7 +383,6 @@ describe("SiteNameDropdown", () => {
           selectedDomain={null}
           isOutOfCredits={false}
           onSelect={onSelect}
-          onConnectOwnSite={vi.fn()}
         />
       );
 
@@ -410,7 +409,6 @@ describe("SiteNameDropdown", () => {
           selectedDomain={null}
           isOutOfCredits={false}
           onSelect={onSelect}
-          onConnectOwnSite={vi.fn()}
         />
       );
 

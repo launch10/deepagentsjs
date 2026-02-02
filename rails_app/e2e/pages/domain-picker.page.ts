@@ -285,25 +285,32 @@ export class DomainPickerPage {
   }
 
   /**
-   * Check if we're in Custom Domain mode
+   * Check if a custom domain is currently selected (not a .launch10.site domain)
+   * In the unified picker, this checks the dropdown's displayed value
    */
   async isInCustomDomainMode(): Promise<boolean> {
-    return this.customDomainInput.isVisible();
+    // Check if the DNS help section is visible (only shows for custom domains)
+    return this.dnsVerificationStatus.isVisible();
   }
 
   /**
-   * Switch to Custom Domain mode via dropdown
+   * Opens dropdown and focuses the custom domain input section.
+   * In the unified picker, custom domain input is inside the dropdown popover.
    */
   async switchToCustomDomain(): Promise<void> {
     await this.siteNameDropdown.click();
-    await this.connectOwnSiteButton.click();
+    // Wait for dropdown to be visible
+    await this.page.waitForTimeout(500);
   }
 
   /**
-   * Switch back to Launch10 Site mode
+   * @deprecated With the unified picker, there's no separate "Launch10 Site mode".
+   * Simply select a platform subdomain from the dropdown.
    */
   async switchToLaunch10Site(): Promise<void> {
-    await this.switchToLaunch10Button.click();
+    // Open dropdown and select first existing platform subdomain
+    await this.siteNameDropdown.click();
+    await this.page.waitForTimeout(500);
   }
 
   /**
@@ -321,7 +328,7 @@ export class DomainPickerPage {
   }
 
   /**
-   * @deprecated Tabs have been removed - returns based on which picker is visible
+   * @deprecated With the unified picker, mode is determined by the selected domain type.
    */
   async getActiveTab(): Promise<"launch10" | "custom"> {
     const isCustom = await this.isInCustomDomainMode();
@@ -421,13 +428,6 @@ export class DomainPickerPage {
    */
   async expectCnameInstructionsVisible(): Promise<void> {
     await expect(this.cnameInstructions).toBeVisible({ timeout: 5000 });
-  }
-
-  /**
-   * Click Connect Site button to trigger claim flow
-   */
-  async clickConnectSite(): Promise<void> {
-    await this.connectSiteButton.click();
   }
 
   /**

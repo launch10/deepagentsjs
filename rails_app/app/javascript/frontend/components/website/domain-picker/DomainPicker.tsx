@@ -1,6 +1,5 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Launch10SitePicker } from "./Launch10SitePicker";
-import { CustomDomainPicker } from "./CustomDomainPicker";
 import { FullUrlPreview } from "./FullUrlPreview";
 import { ClaimSubdomainModal } from "./ClaimSubdomainModal";
 import { useDomainContext, useDomainAssignment } from "~/api/domainContext.hooks";
@@ -9,11 +8,9 @@ import { useWebsiteId } from "~/stores/projectStore";
 import type { Website } from "@shared";
 import type { GetDomainContextResponse } from "@rails_api_base";
 
-
 // ============================================================================
 // Types
 // ============================================================================
-
 export interface DomainSelection {
   domain: string;
   subdomain: string;
@@ -25,18 +22,15 @@ export interface DomainSelection {
 }
 
 /**
- * Base props shared by Launch10SitePicker and CustomDomainPicker.
- * Allows switching between pickers with the same prop object.
+ * Base props for the unified domain picker.
+ * Handles both platform subdomains (.launch10.site) and custom domains.
  */
 export interface BaseDomainPickerProps {
   selection: DomainSelection | null;
   onSelect: (selection: DomainSelection) => void;
   /** Called when user finishes editing (blur) - triggers debounced save */
   onBlur?: () => void;
-  // Navigation between picker modes
-  onConnectOwnSite?: () => void;
-  onSwitchToLaunch10?: () => void;
-  // Context (used by Launch10SitePicker, ignored by CustomDomainPicker)
+  // Context data
   recommendations?: Website.DomainRecommendations.DomainRecommendations | null;
   context?: import("@rails_api_base").GetDomainContextResponse | null;
 }
@@ -75,7 +69,6 @@ export function DomainPicker({
   onBack,
 }: DomainPickerProps) {
   const websiteId = useWebsiteId();
-  const [showCustomDomain, setShowCustomDomain] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [internalSelection, setInternalSelection] = useState<DomainSelection | null>(null);
 
@@ -179,19 +172,9 @@ export function DomainPicker({
     lastPersistedSelection.current = selection;
   }, [selection, websiteId, hasSelectionChanged, requiresClaimModal, domainAssignment]);
 
-  // Handle selection from either picker mode (UI-only, no API call)
+  // Handle selection from the picker (UI-only, no API call)
   const handleSelect = useCallback(
     (newSelection: DomainSelection) => {
-
-      const isCustomDomain = !newSelection.domain.endsWith(".launch10.site");
-
-      // If selecting a custom domain, switch to custom view
-      if (isCustomDomain) {
-        setShowCustomDomain(true);
-        commitSelection(newSelection);
-        return;
-      }
-
       // Check if we need to show the claim modal (new platform subdomain uses a credit)
       if (requiresClaimModal(newSelection)) {
         setPendingClaim(newSelection);
@@ -202,7 +185,7 @@ export function DomainPicker({
       // For all other cases, just update local selection (API call on blur)
       commitSelection(newSelection);
     },
-    [isControlled, requiresClaimModal, commitSelection]
+    [requiresClaimModal, commitSelection]
   );
 
   // Handle claim confirmation from modal (immediate save)
@@ -265,11 +248,6 @@ export function DomainPicker({
         existingDomainId: assignedUrl.domain_id,
       };
 
-      // Set view mode based on domain type
-      if (!assignedUrl.is_platform_subdomain) {
-        setShowCustomDomain(true);
-      }
-
       // Set selection and track as persisted (already saved on server)
       if (isControlled) {
         onSelectionChange?.(newSelection);
@@ -324,9 +302,12 @@ export function DomainPicker({
     );
   }
 
-  const title = showCustomDomain ? "Connect your own site" : "Website Setup";
-  const subtitle = showCustomDomain ? "Use a site you already own, like mybusiness.com" : "Choose how you want your website to be accessed";
-  const DomainPickerComponent = showCustomDomain ? CustomDomainPicker : Launch10SitePicker;
+  // Derive header text based on whether a custom domain is selected
+  const isCustomDomain = selection && !selection.domain.endsWith(".launch10.site");
+  const title = isCustomDomain ? "Connect your own site" : "Website Setup";
+  const subtitle = isCustomDomain
+    ? "Use a site you already own, like mybusiness.com"
+    : "Choose how you want your website to be accessed";
 
   return (
     <div className="flex flex-col gap-5 rounded-2xl border border-neutral-300 bg-white px-10 py-7">
@@ -336,14 +317,12 @@ export function DomainPicker({
         <p className="text-xs leading-4 text-base-300">{subtitle}</p>
       </div>
 
-      <DomainPickerComponent
+      <Launch10SitePicker
         recommendations={domainRecommendations}
         context={context}
         selection={selection}
         onSelect={handleSelect}
         onBlur={handleBlur}
-        onConnectOwnSite={() => setShowCustomDomain(true)}
-        onSwitchToLaunch10={() => setShowCustomDomain(false)}
       />
 
       {/* Full URL Preview */}

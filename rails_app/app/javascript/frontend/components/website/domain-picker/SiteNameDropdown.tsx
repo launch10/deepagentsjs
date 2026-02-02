@@ -1,6 +1,10 @@
 import { useState, useMemo, useCallback } from "react";
 import { ChevronDownIcon, LockClosedIcon } from "@heroicons/react/24/solid";
-import { StarIcon, ArrowRightIcon } from "@heroicons/react/24/outline";
+import {
+  StarIcon,
+  CheckCircleIcon,
+  ClockIcon,
+} from "@heroicons/react/24/outline";
 import { router } from "@inertiajs/react";
 import { cn } from "~/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
@@ -21,9 +25,9 @@ export interface SiteNameDropdownProps {
     domain: string,
     subdomain: string,
     source: "existing" | "generated" | "custom",
-    existingDomainId?: number
+    existingDomainId?: number,
+    isPlatformSubdomain?: boolean
   ) => void;
-  onConnectOwnSite?: () => void;
 }
 
 const PLATFORM_SUFFIX = ".launch10.site";
@@ -33,6 +37,7 @@ const PLATFORM_SUFFIX = ".launch10.site";
 // ============================================================================
 
 const SUBDOMAIN_REGEX = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
+const DOMAIN_REGEX = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/;
 
 function validateSubdomain(value: string): { valid: boolean; error?: string } {
   if (!value) return { valid: false };
@@ -42,6 +47,18 @@ function validateSubdomain(value: string): { valid: boolean; error?: string } {
   }
   if (value.startsWith("-") || value.endsWith("-")) {
     return { valid: false, error: "Cannot start or end with hyphen" };
+  }
+  return { valid: true };
+}
+
+function validateDomain(value: string): { valid: boolean; error?: string } {
+  if (!value) return { valid: false };
+  if (value.length > 253) return { valid: false, error: "Domain too long" };
+  if (value.endsWith(".launch10.site")) {
+    return { valid: false, error: "Use 'Create New Site' for launch10.site domains" };
+  }
+  if (!DOMAIN_REGEX.test(value.toLowerCase())) {
+    return { valid: false, error: "Enter a valid domain (e.g., example.com)" };
   }
   return { valid: true };
 }
@@ -56,15 +73,15 @@ export function SiteNameDropdown({
   selectedDomain,
   isOutOfCredits,
   onSelect,
-  onConnectOwnSite,
 }: SiteNameDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [customInput, setCustomInput] = useState("");
+  const [platformInput, setPlatformInput] = useState("");
+  const [customDomainInput, setCustomDomainInput] = useState("");
 
-  // Get existing platform subdomains from Rails (source of truth)
-  const existingPlatformSubdomains = useMemo(() => {
+  // All existing domains (both platform and custom) merged into one list
+  const existingDomains = useMemo(() => {
     if (!context?.existing_domains) return [];
-    return context.existing_domains.filter((d) => d.is_platform_subdomain);
+    return context.existing_domains;
   }, [context]);
 
   // Set of existing domain names for quick lookup
@@ -81,12 +98,6 @@ export function SiteNameDropdown({
       .filter((r) => !existingDomainNames.has(r.domain)); // Filter out claimed domains
   }, [recommendations, existingDomainNames]);
 
-  // Existing custom domains from context (Requirement 7: show in BOTH picker views)
-  const existingCustomDomains = useMemo(() => {
-    if (!context?.existing_domains) return [];
-    return context.existing_domains.filter((d) => !d.is_platform_subdomain);
-  }, [context]);
-
   // Check if a domain is the top recommendation
   const isTopRecommendation = useCallback(
     (domain: string) => {
@@ -98,43 +109,56 @@ export function SiteNameDropdown({
   // Get display name for selected domain
   const selectedDisplayName = useMemo(() => {
     if (!selectedDomain) return "Select a domain...";
-    // Show full URL (including suffix) in the trigger
     return selectedDomain;
   }, [selectedDomain]);
 
-  // Handle selecting a domain from the dropdown
-  const handleSelect = (
+  // Handle selecting an existing domain from the dropdown
+  const handleSelectExisting = (
     domain: string,
     subdomain: string,
     source: "existing" | "generated",
-    existingDomainId?: number
+    existingDomainId?: number,
+    isPlatformSubdomain?: boolean
   ) => {
-    onSelect(domain, subdomain, source, existingDomainId);
+    onSelect(domain, subdomain, source, existingDomainId, isPlatformSubdomain);
     setIsOpen(false);
   };
 
-  // Handle custom subdomain submission
-  const handleCustomSubmit = () => {
-    const subdomain = customInput.toLowerCase().trim();
+  // Handle new platform subdomain submission (e.g., "mysite" → "mysite.launch10.site")
+  const handlePlatformSubmit = () => {
+    const subdomain = platformInput.toLowerCase().trim();
     const validation = validateSubdomain(subdomain);
     if (!validation.valid) return;
 
     const domain = `${subdomain}${PLATFORM_SUFFIX}`;
-    onSelect(domain, subdomain, "custom");
+    onSelect(domain, subdomain, "custom", undefined, true);
     setIsOpen(false);
-    setCustomInput("");
+    setPlatformInput("");
   };
 
-  const customValidation = validateSubdomain(customInput.toLowerCase().trim());
+  // Handle new custom domain submission (e.g., "mybusiness.com")
+  const handleCustomDomainSubmit = () => {
+    const domain = customDomainInput.toLowerCase().trim();
+    const validation = validateDomain(domain);
+    if (!validation.valid) return;
 
-  // Check if user can connect custom domains (Growth or Pro plan)
-  const canConnectCustomDomain = context?.plan_tier === "growth" || context?.plan_tier === "pro";
+    onSelect(domain, domain.split(".")[0], "custom", undefined, false);
+    setIsOpen(false);
+    setCustomDomainInput("");
+  };
+
+  const platformValidation = validateSubdomain(platformInput.toLowerCase().trim());
+  const customDomainValidation = validateDomain(customDomainInput.toLowerCase().trim());
+
+  // Check if user can add custom domains (Growth or Pro plan)
+  const canAddCustomDomain = context?.plan_tier === "growth" || context?.plan_tier === "pro";
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
+          data-testid="site-name-dropdown"
           className={cn(
             "flex w-full items-center justify-between gap-2",
             "rounded-lg border border-neutral-300 bg-white px-3 py-2.5",
@@ -151,14 +175,16 @@ export function SiteNameDropdown({
 
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
         <div className="max-h-96 overflow-y-auto">
-          {/* Create New Site Section */}
+          {/* ============================================ */}
+          {/* SECTION 1: Create New Site (platform)       */}
+          {/* ============================================ */}
           <div className="px-4 py-3">
             <div className="text-sm font-medium text-base-400 mb-2">Create New Site</div>
             <div className="flex items-center rounded-lg border border-neutral-200 bg-neutral-50 focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500">
               <Input
                 type="text"
-                value={customInput}
-                onChange={(e) => setCustomInput(e.target.value.toLowerCase())}
+                value={platformInput}
+                onChange={(e) => setPlatformInput(e.target.value.toLowerCase())}
                 placeholder="Type to create your own"
                 className="text-sm bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                 disabled={isOutOfCredits}
@@ -166,18 +192,18 @@ export function SiteNameDropdown({
                   if (e.key === "Enter") {
                     e.preventDefault();
                     e.stopPropagation();
-                    if (customValidation.valid) {
-                      handleCustomSubmit();
+                    if (platformValidation.valid) {
+                      handlePlatformSubmit();
                     }
                   }
                 }}
               />
               <span className="pr-3 text-sm text-base-400 whitespace-nowrap">{PLATFORM_SUFFIX}</span>
             </div>
-            {customInput && customValidation.error && (
-              <p className="text-xs text-destructive mt-1">{customValidation.error}</p>
+            {platformInput && platformValidation.error && (
+              <p className="text-xs text-destructive mt-1">{platformValidation.error}</p>
             )}
-            {/* Upgrade link - shown right under the locked input when out of credits */}
+            {/* Upgrade link - shown when out of credits */}
             {isOutOfCredits && (
               <button
                 type="button"
@@ -193,15 +219,22 @@ export function SiteNameDropdown({
             )}
           </div>
 
-          {/* Existing Platform Subdomains Section (from Rails - source of truth) */}
-          {existingPlatformSubdomains.length > 0 && (
+          {/* ============================================ */}
+          {/* SECTION 2: Your Existing Sites (ALL)        */}
+          {/* Platform + Custom domains merged together   */}
+          {/* ============================================ */}
+          {existingDomains.length > 0 && (
             <>
               <div className="border-t border-neutral-100" />
               <div className="px-4 py-3">
                 <div className="text-sm font-medium text-base-400 mb-2">Your Existing Sites</div>
                 <div className="flex flex-col gap-0.5">
-                  {existingPlatformSubdomains.map((domain) => {
-                    const subdomain = domain.domain.replace(".launch10.site", "");
+                  {existingDomains.map((domain) => {
+                    const isPlatform = domain.is_platform_subdomain;
+                    const subdomain = isPlatform
+                      ? domain.domain.replace(".launch10.site", "")
+                      : domain.domain.split(".")[0];
+
                     // Show the domain with its first URL path if any
                     const firstUrl = domain.website_urls[0];
                     const displayUrl = firstUrl?.path && firstUrl.path !== "/"
@@ -212,7 +245,13 @@ export function SiteNameDropdown({
                       <button
                         key={domain.id}
                         type="button"
-                        onClick={() => handleSelect(domain.domain, subdomain, "existing", domain.id)}
+                        onClick={() => handleSelectExisting(
+                          domain.domain,
+                          subdomain,
+                          "existing",
+                          domain.id,
+                          isPlatform
+                        )}
                         className={cn(
                           "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left",
                           "transition-colors",
@@ -221,15 +260,24 @@ export function SiteNameDropdown({
                             : "hover:bg-neutral-50"
                         )}
                       >
-                        {/* Star icon on the left for recommended */}
+                        {/* Star icon for top recommendation */}
                         {isTopRecommendation(domain.domain) ? (
-                          <StarIcon className="size-5 text-base-400 shrink-0" />
+                          <StarIcon className="size-5 text-amber-500 shrink-0" />
                         ) : (
                           <span className="size-5 shrink-0" />
                         )}
 
-                        {/* Full URL - no wrapping */}
+                        {/* Domain name */}
                         <span className="flex-1 text-base-600 truncate">{displayUrl}</span>
+
+                        {/* DNS status indicator for custom domains */}
+                        {!isPlatform && (
+                          domain.dns_verification_status === "verified" ? (
+                            <CheckCircleIcon className="size-4 text-success-500 shrink-0" />
+                          ) : (
+                            <ClockIcon className="size-4 text-amber-500 shrink-0" />
+                          )
+                        )}
                       </button>
                     );
                   })}
@@ -238,7 +286,9 @@ export function SiteNameDropdown({
             </>
           )}
 
-          {/* Suggested Sites Section */}
+          {/* ============================================ */}
+          {/* SECTION 3: Suggestions                      */}
+          {/* ============================================ */}
           {suggestedSites.length > 0 && (
             <>
               <div className="border-t border-neutral-100" />
@@ -252,7 +302,13 @@ export function SiteNameDropdown({
                       key={site.domain}
                       type="button"
                       disabled={isOutOfCredits}
-                      onClick={() => handleSelect(site.domain, site.subdomain, "generated")}
+                      onClick={() => handleSelectExisting(
+                        site.domain,
+                        site.subdomain,
+                        "generated",
+                        undefined,
+                        true
+                      )}
                       className={cn(
                         "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left",
                         "transition-colors",
@@ -262,14 +318,14 @@ export function SiteNameDropdown({
                         isOutOfCredits && "opacity-50 cursor-not-allowed"
                       )}
                     >
-                      {/* Star icon on the left for recommended */}
+                      {/* Star icon for top recommendation */}
                       {isTopRecommendation(site.domain) ? (
-                        <StarIcon className="size-5 text-base-400 shrink-0" />
+                        <StarIcon className="size-5 text-amber-500 shrink-0" />
                       ) : (
                         <span className="size-5 shrink-0" />
                       )}
 
-                      {/* Full URL - no wrapping */}
+                      {/* Full URL */}
                       <span className="flex-1 text-base-600 truncate">{site.fullUrl}</span>
                     </button>
                   ))}
@@ -278,79 +334,58 @@ export function SiteNameDropdown({
             </>
           )}
 
-          {/* Existing Custom Domains Section (Requirement 7) */}
-          {existingCustomDomains.length > 0 && (
-            <>
-              <div className="border-t border-neutral-100" />
-              <div className="px-4 py-3">
-                <div className="text-sm font-medium text-base-400 mb-2">Your Custom Domains</div>
-                <div className="flex flex-col gap-0.5">
-                  {existingCustomDomains.map((domain) => (
-                    <button
-                      key={domain.id}
-                      type="button"
-                      onClick={() => {
-                        // Custom domains don't have a subdomain in the same sense
-                        onSelect(domain.domain, domain.domain.split(".")[0], "existing", domain.id);
-                        setIsOpen(false);
-                      }}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left",
-                        "transition-colors",
-                        selectedDomain === domain.domain
-                          ? "bg-neutral-100"
-                          : "hover:bg-neutral-50"
-                      )}
-                    >
-                      <span className="size-5 shrink-0" />
-                      <span className="flex-1 text-base-600 truncate">{domain.domain}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Bottom section - Connect own site and upgrade options */}
+          {/* ============================================ */}
+          {/* SECTION 4: Add Custom Domain                */}
+          {/* ============================================ */}
           <div className="border-t border-neutral-100" />
-          <div className="px-4 py-3 flex flex-col gap-2">
-            {/* Connect your own site - shown for Growth/Pro users */}
-            {canConnectCustomDomain ? (
-              <button
-                type="button"
-                data-testid="connect-own-site-button"
-                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm border border-neutral-200 hover:bg-neutral-50 transition-colors"
-                onClick={() => {
-                  setIsOpen(false);
-                  onConnectOwnSite?.();
-                }}
-              >
-                <span className="text-base-600">Connect your own site</span>
-                <ArrowRightIcon className="size-4 text-base-400" />
-              </button>
+          <div className="px-4 py-3">
+            {canAddCustomDomain ? (
+              <>
+                <div className="text-sm font-medium text-base-400 mb-2">Add Custom Domain</div>
+                <div className="flex items-center rounded-lg border border-neutral-200 bg-neutral-50 focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500">
+                  <Input
+                    type="text"
+                    value={customDomainInput}
+                    onChange={(e) => setCustomDomainInput(e.target.value.toLowerCase())}
+                    placeholder="mybusiness.com"
+                    className="text-sm bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                    data-testid="custom-domain-input"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (customDomainValidation.valid) {
+                          handleCustomDomainSubmit();
+                        }
+                      }
+                    }}
+                  />
+                </div>
+                {customDomainInput && customDomainValidation.error && (
+                  <p className="text-xs text-destructive mt-1">{customDomainValidation.error}</p>
+                )}
+              </>
             ) : (
-              /* Starter users - show upgrade to launch more sites */
-              <div className="w-full flex items-center gap-2 px-3 py-2 text-sm text-base-400">
-                <LockClosedIcon className="size-4" />
-                <span className="flex-1">Upgrade to launch more sites</span>
+              /* Starter users - show upgrade prompt */
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2 text-sm text-base-400">
+                  <LockClosedIcon className="size-4" />
+                  <span>Custom domains on Growth & Pro</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOpen(false);
+                    router.visit("/settings");
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm text-white border border-[#5867C4] transition-all hover:opacity-90 cursor-pointer"
+                  style={{ background: "linear-gradient(91deg, #5867C4 16.2%, #74BEA1 92.6%)" }}
+                  data-testid="upgrade-badge"
+                >
+                  <img src="/images/icons/rocket.svg" alt="" className="size-4" />
+                  <span>Available on Growth & Pro Plan</span>
+                </button>
               </div>
-            )}
-
-            {/* Upgrade badge - shown for Starter users with purple-to-teal gradient */}
-            {!canConnectCustomDomain && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsOpen(false);
-                  router.visit("/settings");
-                }}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm text-white border border-[#5867C4] transition-all hover:opacity-90 cursor-pointer"
-                style={{ background: "linear-gradient(91deg, #5867C4 16.2%, #74BEA1 92.6%)" }}
-                data-testid="upgrade-badge"
-              >
-                <img src="/images/icons/rocket.svg" alt="" className="size-4" />
-                <span>Available on Growth & Pro Plan</span>
-              </button>
             )}
           </div>
         </div>
