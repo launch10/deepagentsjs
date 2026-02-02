@@ -1,13 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { bugFixNode } from "../../../../app/nodes/deploy/bugFixNode";
+import { bugFixNode } from "@nodes";
 import type { DeployGraphState } from "@annotation";
 import type { Task } from "@types";
 
 // Mock createCodingAgent
-vi.mock("../../../../app/nodes/coding/agent", () => ({
-  createCodingAgent: vi.fn(),
-}));
+vi.mock("@nodes", async () => {
+  const actual = await vi.importActual("@nodes");
+  return {
+    ...actual,
+    createCodingAgent: vi.fn(),
+  };
+});
 
 import { createCodingAgent } from "@nodes";
 
