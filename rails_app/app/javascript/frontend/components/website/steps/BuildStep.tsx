@@ -2,6 +2,7 @@ import WebsiteLoader from "@components/website/WebsiteLoader";
 import WebsiteSidebar from "@components/website/sidebar/WebsiteSidebar";
 import { WebsitePreview } from "@components/website/preview";
 import { Chat } from "@components/shared/chat/Chat";
+import { PaginationFooter } from "@components/shared/pagination-footer";
 import { useEffect, useEffectEvent, useRef, useCallback } from "react";
 import { usePage, router } from "@inertiajs/react";
 import {
@@ -11,7 +12,6 @@ import {
   useWebsiteChatIsLoadingHistory,
   useWebsiteChatIsStreaming,
 } from "@hooks/website";
-import { WebsitePaginationFooter } from "./WebsitePaginationFooter";
 
 interface WebsitePageProps {
   website?: { id?: number };
@@ -104,7 +104,17 @@ export default function BuildStep() {
         </main>
 
         {/* Footer - full width background, content aligned with preview */}
-        <WebsitePaginationFooter isLoading={isLoading} onContinue={handleContinue} />
+        <PaginationFooter.Root layout="full-bleed" isPending={isLoading} canGoBack={false}>
+          <PaginationFooter.BackButton />
+          <PaginationFooter.Actions>
+            <PaginationFooter.ActionButton disabled={isLoading}>
+              Preview
+            </PaginationFooter.ActionButton>
+            <PaginationFooter.ActionButton onClick={handleContinue}>
+              Continue
+            </PaginationFooter.ActionButton>
+          </PaginationFooter.Actions>
+        </PaginationFooter.Root>
       </div>
     </Chat.Root>
   );

@@ -2,7 +2,7 @@ import WebsiteSidebar from "@components/website/sidebar/WebsiteSidebar";
 import { DomainPicker } from "@components/website/domain-picker";
 import { ClaimSubdomainModal } from "@components/website/domain-picker/ClaimSubdomainModal";
 import { Chat } from "@components/shared/chat/Chat";
-import { Button } from "@components/ui/button";
+import { PaginationFooter } from "@components/shared/pagination-footer";
 import { useEffect, useEffectEvent, useRef, useCallback, useState } from "react";
 import { usePage, router } from "@inertiajs/react";
 import {
@@ -174,34 +174,21 @@ export default function DomainStep() {
         </main>
 
         {/* Footer - same style as BuildStep */}
-        <div className="shrink-0 relative z-10 bg-background">
-          {/* Border line - fades on left, extends to right edge of screen */}
-          <div className="grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%]">
-            <div />
-            <div
-              className="h-px bg-neutral-200 -ml-8 -mr-[2.5vw] shadow-[0px_-16px_26px_0px_rgba(15,17,19,0.06)]"
-              style={{
-                maskImage: "linear-gradient(to right, transparent, black 32px)",
-                WebkitMaskImage: "linear-gradient(to right, transparent, black 32px)",
-              }}
-            />
-          </div>
-
-          {/* Button content */}
-          <div className="grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%] py-4">
-            <div />
-            <div className="flex items-center justify-between pr-[2.5%]">
-              <Button variant="link" onClick={handleBack}>
-                Previous Step
-              </Button>
-              <div className="flex gap-3">
-                <Button onClick={handleConnectSiteClick} disabled={!selection}>
-                  Connect Site
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <PaginationFooter.Root
+          layout="full-bleed"
+          isPending={createDomain.isPending}
+          canGoBack={true}
+        >
+          <PaginationFooter.BackButton onClick={handleBack} />
+          <PaginationFooter.Actions>
+            <PaginationFooter.ActionButton
+              onClick={handleConnectSiteClick}
+              disabled={!selection}
+            >
+              Connect Site
+            </PaginationFooter.ActionButton>
+          </PaginationFooter.Actions>
+        </PaginationFooter.Root>
       </div>
 
       {/* Confirmation modal for claiming platform subdomain */}

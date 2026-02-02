@@ -28,7 +28,7 @@ RSpec.describe Domains::ReleaseDomainWorker do
     context "with associated website_urls" do
       let(:project) { create(:project, account: account) }
       let(:website) { create(:website, project: project, account: account) }
-      let!(:domain) { create(:domain, domain: "www.stale.com", account: account, website: website) }
+      let!(:domain) { create(:domain, domain: "www.stale.com", account: account) }
       let!(:website_url) { create(:website_url, domain: domain, website: website, account: account, path: "/landing") }
 
       it "destroys associated website_urls" do

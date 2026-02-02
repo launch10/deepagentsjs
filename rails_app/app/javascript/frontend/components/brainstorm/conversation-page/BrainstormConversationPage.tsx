@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { Brainstorm } from "@shared";
 import { useBrainstormSelector } from "@components/brainstorm/hooks";
 import { useWorkflow, selectContinue } from "@context/WorkflowProvider";
@@ -7,6 +7,7 @@ import { BrainstormMessages } from "./chat/BrainstormMessages";
 import { BrainstormInput } from "../shared/BrainstormInput";
 import { BrandPersonalizationPanel } from "./brand-panel/BrandPersonalizationPanel";
 import { BrainstormChatSkeleton } from "./chat/BrainstormChatSkeleton";
+import { PaginationFooter } from "@components/shared/pagination-footer";
 
 const SKELETON_DELAY_MS = 200;
 
@@ -37,9 +38,13 @@ function computeQuestionNumber(
 function BrainstormConversationContent({
   contentVisible,
   currentQuestionNumber,
+  canContinue,
+  onContinue,
 }: {
   contentVisible: boolean;
   currentQuestionNumber: number;
+  canContinue: boolean;
+  onContinue: () => void;
 }) {
   // Check if any personalizations exist (reads directly from TanStack Query cache)
   const hasPersonalizations = useHasAnyPersonalizations();
@@ -71,6 +76,16 @@ function BrainstormConversationContent({
           </div>
         </div>
       </div>
+
+      {/* Pagination Footer */}
+      <PaginationFooter.Root layout="container" canGoBack={false} canGoForward={canContinue}>
+        <div /> {/* Empty div for left side since no back button */}
+        <PaginationFooter.Actions>
+          <PaginationFooter.ActionButton onClick={onContinue} disabled={!canContinue}>
+            Continue
+          </PaginationFooter.ActionButton>
+        </PaginationFooter.Actions>
+      </PaginationFooter.Root>
     </div>
   );
 }
@@ -137,14 +152,15 @@ export function BrainstormConversationPage() {
   // Get workflow continue action
   const workflowContinue = useWorkflow(selectContinue);
 
-  // Handle redirect when brainstorm is complete
-  // Backend returns redirect: "website" (a WorkflowPage) to authorize navigation
-  useEffect(() => {
-    if (redirect === "website") {
-      // URL-as-truth: store derives projectUUID from URL, so just continue
+  // Can continue when backend signals readiness via redirect
+  const canContinue = redirect === "website";
+
+  // Handler for manual continue via pagination footer
+  const handleContinue = useCallback(() => {
+    if (canContinue) {
       workflowContinue();
     }
-  }, [redirect, workflowContinue]);
+  }, [canContinue, workflowContinue]);
 
   // Show skeleton with fade (only if delay has passed)
   if (isLoading && showSkeleton) {
@@ -164,6 +180,8 @@ export function BrainstormConversationPage() {
     <BrainstormConversationContent
       contentVisible={contentVisible}
       currentQuestionNumber={currentQuestionNumber}
+      canContinue={canContinue}
+      onContinue={handleContinue}
     />
   );
 }
