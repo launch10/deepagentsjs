@@ -1,30 +1,23 @@
 // ============================================================================
 // PaginationFooter Compound Component
 // ============================================================================
-// A context-aware pagination footer that works both inside and outside
-// WorkflowProvider. Use PaginationFooter.Root to wrap, and compose with
-// BackButton, Actions, and ActionButton.
+// A context-aware pagination footer that integrates with WorkflowProvider.
+// BackButton and ContinueButton default to workflow navigation.
 //
-// Example (outside WorkflowProvider - Website):
-//   <PaginationFooter.Root layout="full-bleed" isPending={isLoading}>
-//     <PaginationFooter.BackButton onClick={handleBack} />
+// Example (simple - uses workflow navigation):
+//   <PaginationFooter.Root>
+//     <PaginationFooter.BackButton />
 //     <PaginationFooter.Actions>
-//       <PaginationFooter.ActionButton onClick={handleContinue}>
-//         Continue
-//       </PaginationFooter.ActionButton>
+//       <PaginationFooter.ContinueButton />
 //     </PaginationFooter.Actions>
 //   </PaginationFooter.Root>
 //
-// Example (inside WorkflowProvider - Ads):
-//   <PaginationFooter.Root layout="container">
-//     <PaginationFooter.BackButton onClick={handleBack} />
+// Example (custom action - like "Connect Site" on domain page):
+//   <PaginationFooter.Root layout="full-bleed" isPending={isLoading}>
+//     <PaginationFooter.BackButton />
 //     <PaginationFooter.Actions>
-//       <PaginationFooter.ActionButton
-//         onClick={handleContinue}
-//         validationFailed={shake}
-//         onAnimationEnd={clearShake}
-//       >
-//         Continue
+//       <PaginationFooter.ActionButton onClick={handleSaveAndNavigate}>
+//         Connect Site
 //       </PaginationFooter.ActionButton>
 //     </PaginationFooter.Actions>
 //   </PaginationFooter.Root>
@@ -46,6 +39,7 @@ export { Root, type RootProps } from "./Root";
 export { BackButton, type BackButtonProps } from "./BackButton";
 export { Actions, type ActionsProps } from "./Actions";
 export { ActionButton, type ActionButtonProps } from "./ActionButton";
+export { ContinueButton, type ContinueButtonProps, type BeforeContinueResult } from "./ContinueButton";
 
 // ============================================================================
 // Compound Component Object
@@ -56,10 +50,12 @@ import { Root } from "./Root";
 import { BackButton } from "./BackButton";
 import { Actions } from "./Actions";
 import { ActionButton } from "./ActionButton";
+import { ContinueButton } from "./ContinueButton";
 
 export const PaginationFooter = {
   Root,
   BackButton,
   Actions,
   ActionButton,
+  ContinueButton,
 };

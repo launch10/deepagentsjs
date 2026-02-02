@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import { Button } from "@components/ui/button";
 import { usePaginationFooterContext } from "./PaginationFooterContext";
+import { useWorkflowOptional, selectBack } from "@context/WorkflowProvider";
 
 export interface BackButtonProps {
-  /** Click handler for back navigation */
+  /** Click handler for back navigation. Defaults to workflow store's back(). */
   onClick?: () => void;
   /** Custom label (defaults to "Previous Step") */
   children?: ReactNode;
@@ -16,13 +17,20 @@ export interface BackButtonProps {
 /**
  * PaginationFooter.BackButton - Back navigation button.
  *
+ * Default behavior: uses workflow store's back() to navigate to previous step.
+ * This works even if user navigated directly to the current page.
+ * Override with onClick prop for custom navigation.
+ *
  * Automatically disables when:
  * - canGoBack is false (from context or props)
  * - isPending is true (navigation in progress)
- * - onClick is not provided
  *
  * @example
  * ```tsx
+ * // Default: workflow back (previous step)
+ * <PaginationFooter.BackButton />
+ *
+ * // Custom navigation
  * <PaginationFooter.BackButton onClick={handleBack}>
  *   Previous Step
  * </PaginationFooter.BackButton>
@@ -35,14 +43,17 @@ export function BackButton({
   "data-testid": testId,
 }: BackButtonProps) {
   const { canGoBack, isPending } = usePaginationFooterContext();
+  const workflowBack = useWorkflowOptional(selectBack);
 
-  // Disable if: explicit disabled prop, can't go back, pending, or no handler
-  const isDisabled = disabled ?? (!canGoBack || isPending || !onClick);
+  const handleClick = onClick ?? workflowBack ?? (() => window.history.back());
+
+  // Disable if: explicit disabled prop, can't go back, or pending
+  const isDisabled = disabled ?? (!canGoBack || isPending);
 
   return (
     <Button
       variant="link"
-      onClick={onClick}
+      onClick={handleClick}
       disabled={isDisabled}
       data-testid={testId}
     >

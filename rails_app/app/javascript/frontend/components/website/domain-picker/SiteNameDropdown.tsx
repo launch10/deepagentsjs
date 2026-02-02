@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { ChevronDownIcon, LockClosedIcon } from "@heroicons/react/24/solid";
 import {
   StarIcon,
@@ -8,16 +8,16 @@ import {
 import { router } from "@inertiajs/react";
 import { cn } from "~/lib/utils";
 import { validateSubdomain, validateDomain } from "~/lib/validation/domain";
+import { PLATFORM_SUFFIX } from "~/lib/domain";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { Input } from "@components/ui/input";
 import type { Website } from "@shared";
 import type { GetDomainContextResponse } from "@rails_api_base";
+import type { DomainOrigin } from "./DomainPicker";
 
 // ============================================================================
 // Types
 // ============================================================================
-
-import type { DomainOrigin } from "./DomainPicker";
 
 export interface SiteNameDropdownProps {
   recommendations?: Website.DomainRecommendations.DomainRecommendations | null;
@@ -30,8 +30,6 @@ export interface SiteNameDropdownProps {
     existingDomainId?: number
   ) => void;
 }
-
-const PLATFORM_SUFFIX = ".launch10.site";
 
 // ============================================================================
 // Component
@@ -48,39 +46,19 @@ export function SiteNameDropdown({
   const [platformInput, setPlatformInput] = useState("");
   const [customDomainInput, setCustomDomainInput] = useState("");
 
-  // All existing domains (both platform and custom) merged into one list
-  const existingDomains = useMemo(() => {
-    if (!context?.existing_domains) return [];
-    return context.existing_domains;
-  }, [context]);
-
-  // Set of existing domain names for quick lookup
-  const existingDomainNames = useMemo(() => {
-    if (!context?.existing_domains) return new Set<string>();
-    return new Set(context.existing_domains.map((d) => d.domain));
-  }, [context]);
+  const existingDomains = context?.existing_domains ?? [];
+  const existingDomainNames = new Set(existingDomains.map((d) => d.domain));
 
   // AI-suggested sites, filtered to exclude domains that now exist in Rails
   const suggestedSites = useMemo(() => {
     if (!recommendations?.recommendations) return [];
     return recommendations.recommendations
       .filter((r) => r.source === "suggestion")
-      .filter((r) => !existingDomainNames.has(r.domain)); // Filter out claimed domains
+      .filter((r) => !existingDomainNames.has(r.domain));
   }, [recommendations, existingDomainNames]);
 
-  // Check if a domain is the top recommendation
-  const isTopRecommendation = useCallback(
-    (domain: string) => {
-      return recommendations?.topRecommendation?.domain === domain;
-    },
-    [recommendations]
-  );
-
-  // Get display name for selected domain
-  const selectedDisplayName = useMemo(() => {
-    if (!selectedDomain) return "Select a domain...";
-    return selectedDomain;
-  }, [selectedDomain]);
+  const isTopRecommendation = (domain: string) =>
+    recommendations?.topRecommendation?.domain === domain;
 
   // Handle selecting a domain from the dropdown
   const handleSelect = (
@@ -133,7 +111,7 @@ export function SiteNameDropdown({
           )}
         >
           <span className={cn("truncate", selectedDomain ? "text-base-600" : "text-base-400")}>
-            {selectedDisplayName}
+            {selectedDomain ?? "Select a domain..."}
           </span>
           <ChevronDownIcon className="size-4 text-base-400 shrink-0" />
         </button>

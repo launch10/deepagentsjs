@@ -3,8 +3,8 @@ import WebsiteSidebar from "@components/website/sidebar/WebsiteSidebar";
 import { WebsitePreview } from "@components/website/preview";
 import { Chat } from "@components/shared/chat/Chat";
 import { PaginationFooter } from "@components/shared/pagination-footer";
-import { useEffect, useEffectEvent, useRef, useCallback } from "react";
-import { usePage, router } from "@inertiajs/react";
+import { useEffect, useEffectEvent, useRef } from "react";
+import { usePage } from "@inertiajs/react";
 import {
   useWebsiteChat,
   useWebsiteChatState,
@@ -60,7 +60,6 @@ function useWebsiteInit() {
  * Website Build step - generates the website content
  */
 export default function BuildStep() {
-  const { project } = usePage<WebsitePageProps>().props;
   const chat = useWebsiteChat();
   const isLoadingHistory = useWebsiteChatIsLoadingHistory();
   const isStreaming = useWebsiteChatIsStreaming();
@@ -72,13 +71,6 @@ export default function BuildStep() {
   // 1. Loading chat history from server
   // 2. Sending message
   const isLoading = isLoadingHistory || isStreaming;
-
-  // Navigate to domain step
-  const handleContinue = useCallback(() => {
-    if (project?.uuid) {
-      router.visit(`/projects/${project.uuid}/website/domain`);
-    }
-  }, [project?.uuid]);
 
   // Credit integration is automatic via ChatProvider - no manual wiring needed
   return (
@@ -110,9 +102,7 @@ export default function BuildStep() {
             <PaginationFooter.ActionButton disabled={isLoading}>
               Preview
             </PaginationFooter.ActionButton>
-            <PaginationFooter.ActionButton onClick={handleContinue}>
-              Continue
-            </PaginationFooter.ActionButton>
+            <PaginationFooter.ContinueButton disabled={isLoading} />
           </PaginationFooter.Actions>
         </PaginationFooter.Root>
       </div>

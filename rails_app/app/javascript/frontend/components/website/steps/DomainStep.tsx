@@ -1,18 +1,17 @@
 import WebsiteSidebar from "@components/website/sidebar/WebsiteSidebar";
 import { DomainPicker } from "@components/website/domain-picker";
-import { ClaimSubdomainModal } from "@components/website/domain-picker/ClaimSubdomainModal";
 import { Chat } from "@components/shared/chat/Chat";
 import { PaginationFooter } from "@components/shared/pagination-footer";
 import { useEffect, useEffectEvent, useRef, useCallback, useState } from "react";
-import { usePage, router } from "@inertiajs/react";
+import { usePage } from "@inertiajs/react";
 import {
   useWebsiteChat,
   useWebsiteChatState,
   useWebsiteChatActions,
   useWebsiteChatIsStreaming,
 } from "@hooks/website";
-import { useDomainContext, useCreateDomain } from "~/api/domainContext.hooks";
-import { isPlatformDomain, getFullUrl } from "~/lib/domain";
+import { useCreateDomain } from "~/api/domainContext.hooks";
+import { isPlatformDomain } from "~/lib/domain";
 import type { WebsiteUrl } from "@components/website/domain-picker";
 
 interface WebsitePageProps {
@@ -85,73 +84,37 @@ export default function DomainStep() {
   const { project, website } = usePage<WebsitePageProps>().props;
   const chat = useWebsiteChat();
   const [selection, setSelection] = useState<WebsiteUrl | null>(null);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Auto-init the website graph if it hasn't run yet
   // This ensures domainRecommendations are populated even if user navigates directly here
   useDomainPageInit();
 
-  // Fetch domain context for credits info
-  const { data: domainContext } = useDomainContext(website?.id);
-  const creditsRemaining = domainContext?.platform_subdomain_credits?.remaining ?? 0;
-
   // Domain creation mutation
-  const createDomain = useCreateDomain({
-    onSuccess: () => {
-      // Navigate to deploy step after successful domain creation
-      if (project?.uuid) {
-        router.visit(`/projects/${project.uuid}/website/deploy`);
-      }
-    },
-    onError: (error) => {
-      console.error("Failed to create domain:", error);
-      setShowConfirmModal(false);
-    },
-  });
+  const createDomain = useCreateDomain();
 
   const handleSelectionChange = useCallback((newSelection: WebsiteUrl | null) => {
     setSelection(newSelection);
   }, []);
 
-  // Handle confirmation of subdomain claim
-  const handleConfirmClaim = useCallback(() => {
+  // Save domain before continuing to next step
+  const beforeContinue = useCallback(async () => {
     if (!selection || !website?.id) {
-      console.warn("Missing selection or website ID");
-      return;
+      return "Please select a domain first";
     }
 
-    createDomain.mutate({
-      domain: selection.domain,
-      websiteId: website.id,
-      path: selection.path,
-      isPlatformSubdomain: isPlatformDomain(selection.domain),
-    });
+    try {
+      await createDomain.mutateAsync({
+        domain: selection.domain,
+        websiteId: website.id,
+        path: selection.path,
+        isPlatformSubdomain: isPlatformDomain(selection.domain),
+      });
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to connect domain";
+      return message;
+    }
   }, [selection, website?.id, createDomain]);
-
-  // Handle Connect Site button click - show confirmation modal for platform subdomains
-  const handleConnectSiteClick = useCallback(() => {
-    if (!selection) {
-      console.warn("No domain selection to save");
-      return;
-    }
-
-    // Show confirmation modal for NEW platform subdomains (uses a credit)
-    const isNewPlatformSubdomain = !selection.existingDomainId && isPlatformDomain(selection.domain);
-
-    if (isNewPlatformSubdomain) {
-      setShowConfirmModal(true);
-    } else {
-      // For existing domains or custom domains, proceed directly
-      handleConfirmClaim();
-    }
-  }, [selection, handleConfirmClaim]);
-
-  // Handle back navigation
-  const handleBack = useCallback(() => {
-    if (project?.uuid) {
-      router.visit(`/projects/${project.uuid}/website/build`);
-    }
-  }, [project?.uuid]);
 
   return (
     <Chat.Root chat={chat}>
@@ -178,29 +141,18 @@ export default function DomainStep() {
           isPending={createDomain.isPending}
           canGoBack={true}
         >
-          <PaginationFooter.BackButton onClick={handleBack} />
+          <PaginationFooter.BackButton />
           <PaginationFooter.Actions>
-            <PaginationFooter.ActionButton
-              onClick={handleConnectSiteClick}
+            <PaginationFooter.ContinueButton
+              beforeContinue={beforeContinue}
               disabled={!selection}
+              loading={createDomain.isPending}
             >
               Connect Site
-            </PaginationFooter.ActionButton>
+            </PaginationFooter.ContinueButton>
           </PaginationFooter.Actions>
         </PaginationFooter.Root>
       </div>
-
-      {/* Confirmation modal for claiming platform subdomain */}
-      {selection && (
-        <ClaimSubdomainModal
-          isOpen={showConfirmModal}
-          onClose={() => setShowConfirmModal(false)}
-          onConfirm={handleConfirmClaim}
-          domain={getFullUrl(selection.domain, selection.path)}
-          creditsRemaining={creditsRemaining}
-          isLoading={createDomain.isPending}
-        />
-      )}
     </Chat.Root>
   );
 }
