@@ -1,9 +1,4 @@
-import { useState, useEffect, useRef } from "react";
 import { router } from "@inertiajs/react";
-import AwsLogo from "@assets/aws-logo.png";
-import CloudflareLogo from "@assets/cloudflare-logo.png";
-import GoDaddyLogo from "@assets/godaddy-logo.png";
-import NamecheapLogo from "@assets/namecheap-logo.svg";
 import { Copyable } from "@components/ui/copyable";
 import {
   ArrowTopRightOnSquareIcon,
@@ -16,6 +11,8 @@ import {
 } from "@heroicons/react/24/outline";
 import { Spinner } from "@components/ui/spinner";
 import { useDnsVerification } from "~/hooks/useDnsVerification";
+import { useMinimumDuration } from "~/hooks/useMinimumDuration";
+import { DNS_PROVIDERS, CNAME_TARGET } from "~/lib/constants/dnsProviders";
 
 // ============================================================================
 // Types
@@ -25,37 +22,6 @@ export interface DnsHelpSectionProps {
   /** Domain ID for DNS verification polling. If null, only shows instructions. */
   domainId: number | null;
 }
-
-interface DnsProvider {
-  name: string;
-  logo?: React.ReactNode;
-  guideUrl: string;
-}
-
-const DNS_PROVIDERS: DnsProvider[] = [
-  {
-    name: "Cloudflare",
-    logo: <img src={CloudflareLogo} alt="Cloudflare" className="w-4" />,
-    guideUrl: "https://developers.cloudflare.com/dns/manage-dns-records/how-to/create-dns-records/",
-  },
-  {
-    name: "GoDaddy",
-    logo: <img src={GoDaddyLogo} alt="GoDaddy" className="w-4" />,
-    guideUrl: "https://www.godaddy.com/help/add-a-cname-record-19236",
-  },
-  {
-    name: "Namecheap",
-    logo: <img src={NamecheapLogo} alt="Namecheap" className="w-4" />,
-    guideUrl:
-      "https://www.namecheap.com/support/knowledgebase/article.aspx/9646/2237/how-to-create-a-cname-record-for-your-domain/",
-  },
-  {
-    name: "AWS Route 53",
-    logo: <img src={AwsLogo} alt="AWS Route 53" className="w-4" />,
-    guideUrl:
-      "https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resource-record-sets-creating.html",
-  },
-];
 
 // ============================================================================
 // Component
@@ -76,27 +42,7 @@ export function DnsHelpSection({ domainId }: DnsHelpSectionProps) {
   } = useDnsVerification(domainId);
 
   // Show "checking" state with minimum 3 second duration for better UX
-  const [isShowingCheck, setIsShowingCheck] = useState(false);
-  const checkStartTimeRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (isDnsFetching && !isShowingCheck) {
-      // Start showing check state
-      setIsShowingCheck(true);
-      checkStartTimeRef.current = Date.now();
-    } else if (!isDnsFetching && isShowingCheck && checkStartTimeRef.current) {
-      // Fetching done - ensure minimum 3 second display
-      const elapsed = Date.now() - checkStartTimeRef.current;
-      const remaining = Math.max(0, 3000 - elapsed);
-
-      const timer = setTimeout(() => {
-        setIsShowingCheck(false);
-        checkStartTimeRef.current = null;
-      }, remaining);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isDnsFetching, isShowingCheck]);
+  const isShowingCheck = useMinimumDuration(isDnsFetching, 3000);
 
   return (
     <div className="flex flex-col gap-4 mt-4">
@@ -145,7 +91,7 @@ export function DnsHelpSection({ domainId }: DnsHelpSectionProps) {
           </div>
           <div className="flex flex-col gap-1">
             <p className="text-xs font-medium leading-4 text-base-400">Points to</p>
-            <Copyable text="cname.launch10.ai">
+            <Copyable text={CNAME_TARGET}>
               <Copyable.Text className="text-sm leading-[18px] text-base-500" />
               <Copyable.Trigger className="size-3.5" />
             </Copyable>

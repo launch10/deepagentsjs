@@ -168,7 +168,6 @@ export default function DomainStep() {
             <DomainPicker
               selection={selection}
               onSelectionChange={handleSelectionChange}
-              onBack={handleBack}
             />
           </div>
         </main>
