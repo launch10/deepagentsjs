@@ -1,4 +1,4 @@
-import { test, expect, loginUser } from "./fixtures/auth";
+import { test, expect, loginUser, testUser } from "./fixtures/auth";
 import { DatabaseSnapshotter } from "./fixtures/database";
 import { DomainPickerPage } from "./pages/domain-picker.page";
 
@@ -14,8 +14,28 @@ import { DomainPickerPage } from "./pages/domain-picker.page";
  * - Creating new subdomains (1 credit available out of 2)
  * - Selecting existing domains from dropdown
  *
- * NOTE: AI recommendations don't work in test mode (langgraph never completes).
- * Tests that depend on AI recommendations are either skipped or manually select domains.
+ * IMPORTANT: Domain Recommendations Flow
+ * ======================================
+ * AI recommendations (domainRecommendations state) are populated by the langgraph
+ * website graph when it runs. The graph is triggered when:
+ *
+ * 1. User visits /website/build (WebsiteBuild component)
+ * 2. useWebsiteInit() hook fires updateState({ command: "create", ... })
+ * 3. This POSTs to /api/website/stream, invoking the graph
+ * 4. Graph runs: buildContext → [websiteBuilder + recommendDomains] in parallel
+ * 5. domainRecommendations is populated and streamed back to frontend
+ *
+ * If tests navigate directly to /website/domain:
+ * - Only a GET request is made to load history
+ * - The graph never runs
+ * - domainRecommendations remains undefined
+ *
+ * Tests that need AI recommendations should use gotoWithBuild() instead of goto().
+ * Tests that only need database-seeded data (existing domains, pre-assigned URLs)
+ * can use goto() directly.
+ *
+ * CACHE_MODE: Ensure langgraph_app/.env has CACHE_MODE=true for fast, deterministic
+ * responses without making actual AI calls.
  */
 test.describe("Domain Picker", () => {
   test.setTimeout(60000);
@@ -152,14 +172,9 @@ test.describe("Domain Picker", () => {
       await page.waitForTimeout(1000);
       // Select the first existing domain (meeting-tool.launch10.site)
       const existingDomain = page.locator('text="meeting-tool.launch10.site"');
-      if (await existingDomain.isVisible({ timeout: 5000 })) {
-        await existingDomain.click();
-        // Should show URL preview section (only visible when a domain is selected)
-        await expect(domainPickerPage.fullUrlPreview).toBeVisible({ timeout: 10000 });
-      } else {
-        // If no existing domains, test should still pass since dropdown was opened
-        test.skip();
-      }
+      await existingDomain.click();
+      // Should show URL preview section (only visible when a domain is selected)
+      await expect(domainPickerPage.fullUrlPreview).toBeVisible({ timeout: 10000 });
     });
   });
 
@@ -192,13 +207,8 @@ test.describe("Domain Picker", () => {
       await domainPickerPage.siteNameDropdown.click();
       await page.waitForTimeout(1000);
       const existingDomain = page.locator('text="meeting-tool.launch10.site"');
-      if (await existingDomain.isVisible({ timeout: 5000 })) {
-        await existingDomain.click();
-        // With a domain selected, Connect Site should be enabled
-        await expect(domainPickerPage.connectSiteButton).toBeEnabled({ timeout: 5000 });
-      } else {
-        test.skip();
-      }
+      await existingDomain.click();
+      await expect(domainPickerPage.connectSiteButton).toBeEnabled({ timeout: 5000 });
     });
   });
 
@@ -259,7 +269,7 @@ test.describe("Domain Picker", () => {
  *
  * TODO: Fix langgraph cache to work with e2e tests, or mock the API responses.
  */
-test.describe.skip("Domain Picker - Subdomain Limit", () => {
+test.describe("Domain Picker - Subdomain Limit", () => {
   test.setTimeout(60000);
 
   let domainPickerPage: DomainPickerPage;
@@ -271,7 +281,7 @@ test.describe.skip("Domain Picker - Subdomain Limit", () => {
     projectUuid = project.uuid;
 
     // Fill up the subdomain limit to trigger "out of credits" state
-    await DatabaseSnapshotter.fillSubdomainLimit("brett@launch10.ai");
+    await DatabaseSnapshotter.fillSubdomainLimit(testUser.email);
 
     await loginUser(page);
     domainPickerPage = new DomainPickerPage(page);
@@ -336,8 +346,8 @@ test.describe.skip("Domain Picker - Subdomain Limit", () => {
     // Click on site name dropdown
     await domainPickerPage.siteNameDropdown.click();
 
-    // Should show upgrade link
-    await expect(page.locator('text="Upgrade to launch more sites"')).toBeVisible();
+    // Should show upgrade link (appears when out of credits in the Create New Site section)
+    await expect(page.locator('text="Upgrade to create more launch10 sites"')).toBeVisible();
   });
 });
 
@@ -356,7 +366,7 @@ test.describe.skip("Domain Picker - Subdomain Limit", () => {
  * correctly pass domainId={selection?.existingDomainId} instead of
  * domainId={selectedRec?.existingDomainId}.
  */
-test.describe.skip("Domain Picker - Path Availability", () => {
+test.describe("Domain Picker - Path Availability", () => {
   test.setTimeout(60000);
 
   let domainPickerPage: DomainPickerPage;
@@ -371,7 +381,6 @@ test.describe.skip("Domain Picker - Path Availability", () => {
   });
 
   test("shows checking state when typing in page name input", async ({ page }) => {
-    // SKIPPED: The "checking" state is too brief to reliably catch in tests.
     await domainPickerPage.goto(projectUuid);
     await domainPickerPage.waitForLoaded();
 
@@ -811,6 +820,204 @@ test.describe("Domain Picker - Pre-Population", () => {
     // Should show URL preview with the assigned domain
     await expect(domainPickerPage.fullUrlPreview).toBeVisible();
     await expect(domainPickerPage.fullUrlPreview).toContainText("preview-test.launch10.site/landing");
+  });
+});
+
+/**
+ * Domain Picker - Claim Subdomain Modal Tests
+ *
+ * Tests the claim subdomain confirmation modal that appears when users
+ * create a new platform subdomain (which uses a credit).
+ *
+ * The modal should:
+ * - Show when claiming a new subdomain (not existing ones)
+ * - Display the domain being claimed
+ * - Show remaining credits
+ * - Allow confirmation or cancellation
+ * - Update credits after claiming
+ *
+ * NOTE: Tests that require Enter key submission use a helper function that
+ * clicks on the input, types slowly, and presses Enter to ensure React
+ * state updates properly.
+ */
+test.describe("Domain Picker - Claim Subdomain Modal", () => {
+  test.setTimeout(90000);
+
+  let domainPickerPage: DomainPickerPage;
+  let projectUuid: string;
+
+  test.beforeEach(async ({ page }) => {
+    await DatabaseSnapshotter.restoreSnapshot("website_step");
+    const project = await DatabaseSnapshotter.getFirstProject();
+    projectUuid = project.uuid;
+    await loginUser(page);
+    domainPickerPage = new DomainPickerPage(page);
+  });
+
+  /**
+   * Helper to reliably enter a custom subdomain and trigger the claim modal.
+   * Uses focus + keyboard.type (instead of fill) + Enter for better reliability.
+   * The key insight is to use page.keyboard for typing to avoid focus issues.
+   */
+  async function enterCustomSubdomainAndSubmit(page: import("@playwright/test").Page, subdomain: string) {
+    const customInput = page.locator('input[placeholder="Type to create your own"]');
+    await expect(customInput).toBeVisible({ timeout: 5000 });
+    await expect(customInput).toBeEnabled();
+
+    // Focus the input using JavaScript to avoid click-related issues
+    await customInput.focus();
+    await page.waitForTimeout(100);
+
+    // Clear any existing value
+    await customInput.selectText();
+    await page.keyboard.press("Backspace");
+    await page.waitForTimeout(50);
+
+    // Type using page.keyboard for more reliable key events
+    await page.keyboard.type(subdomain, { delay: 30 });
+    await page.waitForTimeout(300);
+
+    // Verify the input has the correct value before submitting
+    const inputValue = await customInput.inputValue();
+    if (inputValue !== subdomain) {
+      console.log(`Input value mismatch: expected "${subdomain}", got "${inputValue}"`);
+    }
+
+    // Press Enter to submit
+    await page.keyboard.press("Enter");
+  }
+
+  test("shows claim modal when creating a new subdomain via custom input", async ({ page }) => {
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Open dropdown and enter a new custom subdomain
+    await domainPickerPage.siteNameDropdown.click();
+    await page.waitForTimeout(500);
+
+    const subdomain = `claimtest${Date.now() % 10000}`;
+    await enterCustomSubdomainAndSubmit(page, subdomain);
+
+    // The claim modal should appear
+    await domainPickerPage.waitForClaimModal();
+    await expect(domainPickerPage.claimSubdomainModal).toBeVisible();
+
+    // Modal should show the domain being claimed
+    await expect(page.locator(`text="${subdomain}.launch10.site"`)).toBeVisible();
+  });
+
+  test("claim modal shows remaining credits", async ({ page }) => {
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Open dropdown and create a new subdomain
+    await domainPickerPage.siteNameDropdown.click();
+    await page.waitForTimeout(500);
+
+    const subdomain = `credtest${Date.now() % 10000}`;
+    await enterCustomSubdomainAndSubmit(page, subdomain);
+
+    // Wait for modal
+    await domainPickerPage.waitForClaimModal();
+
+    // Should show credits remaining (Growth plan has 2 credits, 1 used = 1 remaining)
+    const creditsText = await domainPickerPage.getCreditsRemaining();
+    expect(creditsText).toContain("remaining");
+  });
+
+  test("can cancel the claim modal", async ({ page }) => {
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Open dropdown and create a new subdomain
+    await domainPickerPage.siteNameDropdown.click();
+    await page.waitForTimeout(500);
+
+    const subdomain = `canceltest${Date.now() % 10000}`;
+    await enterCustomSubdomainAndSubmit(page, subdomain);
+
+    // Wait for modal
+    await domainPickerPage.waitForClaimModal();
+
+    // Cancel the claim
+    await domainPickerPage.cancelClaim();
+
+    // Modal should close
+    await expect(domainPickerPage.claimSubdomainModal).not.toBeVisible({ timeout: 5000 });
+
+    // The dropdown should still be showing (or page reset to initial state)
+    await expect(domainPickerPage.siteNameDropdown).toBeVisible();
+  });
+
+  test("can confirm claim and modal closes", async ({ page }) => {
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Open dropdown and create a new subdomain
+    await domainPickerPage.siteNameDropdown.click();
+    await page.waitForTimeout(500);
+
+    const subdomain = `confirmtest${Date.now() % 10000}`;
+    await enterCustomSubdomainAndSubmit(page, subdomain);
+
+    // Wait for modal
+    await domainPickerPage.waitForClaimModal();
+
+    // Verify modal shows correct domain
+    await expect(page.locator(`text="${subdomain}.launch10.site"`)).toBeVisible();
+
+    // Confirm the claim
+    await domainPickerPage.confirmClaim();
+
+    // Modal should close (the key behavior we're testing)
+    await expect(domainPickerPage.claimSubdomainModal).not.toBeVisible({ timeout: 10000 });
+
+    // Note: After confirming, the page may refresh or update context.
+    // The most important assertion is that the modal closes successfully.
+  });
+
+  test("does NOT show claim modal when selecting an existing domain", async ({ page }) => {
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Select an existing domain (meeting-tool.launch10.site)
+    await domainPickerPage.siteNameDropdown.click();
+    await page.waitForTimeout(500);
+
+    // Use a more specific locator - the one in the popover content (not the trigger)
+    const popoverContent = page.locator('[data-radix-popper-content-wrapper]');
+    await popoverContent.locator('text="meeting-tool.launch10.site"').click();
+
+    // Wait a moment to ensure modal doesn't appear
+    await page.waitForTimeout(1000);
+
+    // Modal should NOT appear (existing domains don't use credits)
+    await expect(domainPickerPage.claimSubdomainModal).not.toBeVisible();
+
+    // Domain should be selected - check dropdown shows it
+    const dropdownText = await domainPickerPage.siteNameDropdown.textContent();
+    expect(dropdownText).toContain("meeting-tool.launch10.site");
+  });
+
+  test("shows last credit warning when claiming with 1 credit remaining", async ({ page }) => {
+    await domainPickerPage.goto(projectUuid);
+    await domainPickerPage.waitForLoaded();
+
+    // Create a new subdomain (snapshot has 1 credit remaining)
+    await domainPickerPage.siteNameDropdown.click();
+    await page.waitForTimeout(500);
+
+    const subdomain = `lastcredit${Date.now() % 10000}`;
+    await enterCustomSubdomainAndSubmit(page, subdomain);
+
+    // Wait for modal
+    await domainPickerPage.waitForClaimModal();
+
+    // Should show "1 remaining"
+    await domainPickerPage.expectCreditsRemaining(1);
+
+    // Should show last credit warning (full text: "This is your last available subdomain on your current plan.")
+    await expect(page.locator('text="This is your last available subdomain on your current plan."')).toBeVisible();
   });
 });
 

@@ -219,6 +219,8 @@ class Test::DatabaseController < Test::TestController
     current_count = account.domains.platform_subdomains.count
     domains_to_create = limit - current_count
 
+    Rails.logger.info "[FillSubdomainLimit] account=#{account.id} plan=#{account.plan&.plan_tier&.name} limit=#{limit} current=#{current_count} to_create=#{domains_to_create}"
+
     created = 0
     domains_to_create.times do |i|
       domain_name = "test-subdomain-#{SecureRandom.hex(4)}.launch10.site"
@@ -229,12 +231,15 @@ class Test::DatabaseController < Test::TestController
       created += 1 if domain.persisted?
     end
 
+    final_count = account.domains.platform_subdomains.count
+    Rails.logger.info "[FillSubdomainLimit] DONE account=#{account.id} created=#{created} final_count=#{final_count} remaining=#{[limit - final_count, 0].max}"
+
     render json: {
       status: "ok",
       message: "Subdomain limit filled",
       subdomains_created: created,
       limit: limit,
-      used: account.domains.platform_subdomains.count
+      used: final_count
     }, status: :ok
   rescue => e
     render json: {

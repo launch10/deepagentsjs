@@ -7,6 +7,10 @@ import { type Page, type Locator, expect } from "@playwright/test";
  * The Domain Picker uses a dropdown-first design (not tabs):
  * - Launch10 Site picker is shown by default
  * - "Connect your own site" in the dropdown opens Custom Domain Picker
+ *
+ * IMPORTANT: Domain recommendations require the website graph to run first.
+ * If navigating directly to /website/domain, use gotoWithBuild() to ensure
+ * the graph runs and populates domainRecommendations state.
  */
 export class DomainPickerPage {
   readonly page: Page;
@@ -123,10 +127,116 @@ export class DomainPickerPage {
   }
 
   /**
-   * Navigate to a project's domain picker page
+   * Navigate to a project's domain picker page.
+   *
+   * NOTE: This navigates directly to /website/domain. If the website graph
+   * hasn't run yet (e.g., fresh test), domainRecommendations won't be populated.
+   * Use gotoWithBuild() instead if you need AI recommendations.
    */
   async goto(projectUuid: string): Promise<void> {
     await this.page.goto(`/projects/${projectUuid}/website/domain`);
+  }
+
+  /**
+   * Navigate to domain picker by first going through the build page.
+   * This ensures the website graph runs and populates domainRecommendations.
+   *
+   * Flow:
+   * 1. Navigate to /website/build
+   * 2. Wait for the graph to start (POST /stream)
+   * 3. Wait for streaming to complete (isStreaming becomes false)
+   * 4. Navigate to /website/domain
+   *
+   * @param projectUuid - The project UUID
+   * @param options.waitForRecommendations - If true, waits for domainRecommendations to be populated (default: true)
+   * @param options.timeout - Max time to wait for graph completion (default: 60000ms)
+   */
+  async gotoWithBuild(
+    projectUuid: string,
+    options: { waitForRecommendations?: boolean; timeout?: number } = {}
+  ): Promise<void> {
+    const { waitForRecommendations = true, timeout = 60000 } = options;
+
+    console.log(`[DomainPickerPage] gotoWithBuild: Starting for project ${projectUuid}`);
+
+    // Step 1: Navigate to build page to trigger the website graph
+    await this.page.goto(`/projects/${projectUuid}/website/build`);
+    console.log(`[DomainPickerPage] gotoWithBuild: Navigated to /website/build`);
+
+    // Step 2: Wait for the POST /stream request to be sent (graph invocation)
+    const streamPromise = this.page.waitForResponse(
+      (response) =>
+        response.url().includes("/api/website/stream") && response.request().method() === "POST",
+      { timeout }
+    );
+
+    // Step 3: Wait for streaming to complete by watching for the loading state to end
+    // We poll for the WebsitePreview to become visible (indicates streaming complete)
+    if (waitForRecommendations) {
+      console.log(`[DomainPickerPage] gotoWithBuild: Waiting for graph to complete...`);
+
+      // Wait for POST to complete
+      await streamPromise.catch(() => {
+        console.log(`[DomainPickerPage] gotoWithBuild: POST /stream may have already happened`);
+      });
+
+      // Wait for loading to finish - the WebsitePreview appears when streaming completes
+      // or we can wait for the loader to disappear
+      await this.page
+        .locator('[data-testid="website-preview"]')
+        .or(this.page.locator(".border-\\[\\#D3D2D0\\]").filter({ hasNot: this.page.locator("text=Setting up") }))
+        .waitFor({ state: "visible", timeout })
+        .catch(async () => {
+          // Alternative: wait for loading indicator to disappear
+          console.log(`[DomainPickerPage] gotoWithBuild: Waiting for loading to complete...`);
+          await this.page.waitForTimeout(5000); // Give graph time to complete
+        });
+
+      console.log(`[DomainPickerPage] gotoWithBuild: Graph appears to have completed`);
+    }
+
+    // Step 4: Navigate to domain picker
+    console.log(`[DomainPickerPage] gotoWithBuild: Navigating to /website/domain`);
+    await this.page.goto(`/projects/${projectUuid}/website/domain`);
+  }
+
+  /**
+   * Wait for domain recommendations to be loaded in the chat state.
+   * Polls the page to check if domainRecommendations is populated.
+   */
+  async waitForDomainRecommendations(timeout: number = 30000): Promise<void> {
+    const startTime = Date.now();
+    const pollInterval = 500;
+
+    console.log(`[DomainPickerPage] waitForDomainRecommendations: Starting...`);
+
+    while (Date.now() - startTime < timeout) {
+      // Check if domain recommendations are present by looking for selection in dropdown
+      const hasSelection = await this.siteNameDropdown
+        .locator("text=.launch10.site")
+        .isVisible()
+        .catch(() => false);
+
+      if (hasSelection) {
+        console.log(`[DomainPickerPage] waitForDomainRecommendations: Found domain selection`);
+        return;
+      }
+
+      // Also check if we're past the loading state
+      const isLoading = await this.loadingSkeleton.isVisible().catch(() => false);
+      if (!isLoading) {
+        // Check dropdown text - if it shows a domain (not "Select..."), recommendations are loaded
+        const dropdownText = await this.siteNameDropdown.textContent();
+        if (dropdownText && !dropdownText.includes("Select") && dropdownText.includes(".")) {
+          console.log(`[DomainPickerPage] waitForDomainRecommendations: Dropdown shows domain: ${dropdownText}`);
+          return;
+        }
+      }
+
+      await this.page.waitForTimeout(pollInterval);
+    }
+
+    console.log(`[DomainPickerPage] waitForDomainRecommendations: Timeout - recommendations may not have loaded`);
   }
 
   /**
