@@ -17,6 +17,8 @@ import type { GetDomainContextResponse } from "@rails_api_base";
 // Types
 // ============================================================================
 
+import type { DomainOrigin } from "./DomainPicker";
+
 export interface SiteNameDropdownProps {
   recommendations?: Website.DomainRecommendations.DomainRecommendations | null;
   context?: GetDomainContextResponse | null;
@@ -24,26 +26,12 @@ export interface SiteNameDropdownProps {
   isOutOfCredits: boolean;
   onSelect: (
     domain: string,
-    subdomain: string,
-    source: "existing" | "generated" | "custom",
-    existingDomainId?: number,
-    isPlatformSubdomain?: boolean
+    origin: DomainOrigin,
+    existingDomainId?: number
   ) => void;
 }
 
 const PLATFORM_SUFFIX = ".launch10.site";
-
-/**
- * Extract subdomain from a full domain name.
- * For platform domains: "mysite.launch10.site" → "mysite"
- * For custom domains: "mybusiness.com" → "mybusiness"
- */
-function getSubdomain(domain: string, isPlatformSubdomain: boolean): string {
-  if (isPlatformSubdomain) {
-    return domain.replace(PLATFORM_SUFFIX, "");
-  }
-  return domain.split(".")[0];
-}
 
 // ============================================================================
 // Component
@@ -76,7 +64,7 @@ export function SiteNameDropdown({
   const suggestedSites = useMemo(() => {
     if (!recommendations?.recommendations) return [];
     return recommendations.recommendations
-      .filter((r) => r.source === "generated")
+      .filter((r) => r.source === "suggestion")
       .filter((r) => !existingDomainNames.has(r.domain)); // Filter out claimed domains
   }, [recommendations, existingDomainNames]);
 
@@ -97,12 +85,10 @@ export function SiteNameDropdown({
   // Handle selecting a domain from the dropdown
   const handleSelect = (
     domain: string,
-    source: "existing" | "generated" | "custom",
-    existingDomainId?: number,
-    isPlatformSubdomain?: boolean
+    origin: DomainOrigin,
+    existingDomainId?: number
   ) => {
-    const subdomain = getSubdomain(domain, isPlatformSubdomain ?? domain.endsWith(PLATFORM_SUFFIX));
-    onSelect(domain, subdomain, source, existingDomainId, isPlatformSubdomain);
+    onSelect(domain, origin, existingDomainId);
     setIsOpen(false);
   };
 
@@ -113,7 +99,7 @@ export function SiteNameDropdown({
     if (!validation.valid) return;
 
     const domain = `${subdomain}${PLATFORM_SUFFIX}`;
-    handleSelect(domain, "custom", undefined, true);
+    handleSelect(domain, "user-input");
     setPlatformInput("");
   };
 
@@ -123,7 +109,7 @@ export function SiteNameDropdown({
     const validation = validateDomain(domain);
     if (!validation.valid) return;
 
-    handleSelect(domain, "custom", undefined, false);
+    handleSelect(domain, "user-input");
     setCustomDomainInput("");
   };
 
@@ -225,8 +211,7 @@ export function SiteNameDropdown({
                         onClick={() => handleSelect(
                           domainItem.domain,
                           "existing",
-                          domainItem.id,
-                          isPlatform
+                          domainItem.id
                         )}
                         className={cn(
                           "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left",
@@ -280,9 +265,7 @@ export function SiteNameDropdown({
                       disabled={isOutOfCredits}
                       onClick={() => handleSelect(
                         site.domain,
-                        "generated",
-                        undefined,
-                        true
+                        "suggestion"
                       )}
                       className={cn(
                         "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left",

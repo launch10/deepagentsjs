@@ -14,27 +14,27 @@ import { ClaimSubdomainModal } from "./ClaimSubdomainModal";
 import { useDomainContext, useDomainAssignment } from "~/api/domainContext.hooks";
 import { useWebsiteChatState } from "~/hooks/website/useWebsiteChat";
 import { useWebsiteId } from "~/stores/projectStore";
+import { isPlatformDomain, getSubdomain, getFullUrl } from "~/lib/domain";
 import type { Website } from "@shared";
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export interface DomainSelection {
+export type DomainOrigin = "existing" | "suggestion" | "user-input";
+
+export interface WebsiteUrl {
   domain: string;
-  subdomain: string;
   path: string;
-  fullUrl: string;
-  source: "existing" | "generated" | "custom";
-  isNew: boolean;
+  origin: DomainOrigin;
   existingDomainId?: number;
 }
 
 export interface DomainPickerProps {
   /** Current selection (controlled) - if provided, component is controlled */
-  selection?: DomainSelection | null;
+  selection?: WebsiteUrl | null;
   /** Called when selection changes */
-  onSelectionChange?: (selection: DomainSelection | null) => void;
+  onSelectionChange?: (selection: WebsiteUrl | null) => void;
 }
 
 // ============================================================================
@@ -68,14 +68,14 @@ export function DomainPicker({
 }: DomainPickerProps) {
   const websiteId = useWebsiteId();
   const [hasInitialized, setHasInitialized] = useState(false);
-  const [internalSelection, setInternalSelection] = useState<DomainSelection | null>(null);
+  const [internalSelection, setInternalSelection] = useState<WebsiteUrl | null>(null);
 
   // Claim subdomain modal state
   const [showClaimModal, setShowClaimModal] = useState(false);
-  const [pendingClaim, setPendingClaim] = useState<DomainSelection | null>(null);
+  const [pendingClaim, setPendingClaim] = useState<WebsiteUrl | null>(null);
 
   // Track the last persisted selection to detect changes that need saving
-  const lastPersistedSelection = useRef<DomainSelection | null>(null);
+  const lastPersistedSelection = useRef<WebsiteUrl | null>(null);
 
   // Domain assignment mutation with debounce + cancel pattern
   const domainAssignment = useDomainAssignment(websiteId ?? undefined, 750);
@@ -109,7 +109,7 @@ export function DomainPicker({
     return context.platform_subdomain_credits.remaining === 0;
   }, [context]);
 
-  // Get the selected recommendation details
+  // Get the selected recommendation details (for recommended path hint)
   const selectedRec = useMemo(() => {
     if (!selectedDomain || !domainRecommendations?.recommendations) return null;
     return domainRecommendations.recommendations.find((r) => r.domain === selectedDomain);
@@ -119,18 +119,17 @@ export function DomainPicker({
   const creditsRemaining = context?.platform_subdomain_credits?.remaining ?? 0;
 
   // Check if a selection requires claiming a new platform subdomain
-  const requiresClaimModal = useCallback(
-    (newSelection: DomainSelection): boolean => {
-      const isPlatformSubdomain = newSelection.domain.endsWith(".launch10.site");
-      const isNewSubdomain = newSelection.isNew && (newSelection.source === "generated" || newSelection.source === "custom");
-      return isPlatformSubdomain && isNewSubdomain;
+  const needsClaimModal = useCallback(
+    (sel: WebsiteUrl): boolean => {
+      // Only show modal for NEW platform subdomains (uses a credit)
+      return !sel.existingDomainId && isPlatformDomain(sel.domain);
     },
     []
   );
 
   // Check if the selection has changed from the last persisted state
   const hasSelectionChanged = useCallback(
-    (current: DomainSelection | null): boolean => {
+    (current: WebsiteUrl | null): boolean => {
       if (!current) return false;
       const last = lastPersistedSelection.current;
       if (!last) return true;
@@ -141,7 +140,7 @@ export function DomainPicker({
 
   // Commit selection to local state (UI-only, no API call)
   const commitSelection = useCallback(
-    (newSelection: DomainSelection) => {
+    (newSelection: WebsiteUrl) => {
       if (isControlled) {
         onSelectionChange?.(newSelection);
       } else {
@@ -154,79 +153,70 @@ export function DomainPicker({
   // Handle blur - triggers debounced save if selection has changed
   const handleBlur = useCallback(() => {
     if (!selection || !websiteId || !hasSelectionChanged(selection)) return;
-    if (requiresClaimModal(selection)) return;
+    if (needsClaimModal(selection)) return;
 
     domainAssignment.mutateDebounced({
       domain: selection.domain,
       websiteId,
       path: selection.path,
-      isPlatformSubdomain: selection.domain.endsWith(".launch10.site"),
+      isPlatformSubdomain: isPlatformDomain(selection.domain),
     });
 
     lastPersistedSelection.current = selection;
-  }, [selection, websiteId, hasSelectionChanged, requiresClaimModal, domainAssignment]);
+  }, [selection, websiteId, hasSelectionChanged, needsClaimModal, domainAssignment]);
 
   // Handle selection from the picker
   const handleSelect = useCallback(
-    (newSelection: DomainSelection) => {
-      if (requiresClaimModal(newSelection)) {
+    (newSelection: WebsiteUrl) => {
+      if (needsClaimModal(newSelection)) {
         setPendingClaim(newSelection);
         setShowClaimModal(true);
         return;
       }
       commitSelection(newSelection);
     },
-    [requiresClaimModal, commitSelection]
+    [needsClaimModal, commitSelection]
   );
 
   // Handle domain selection from dropdown
   const handleDomainSelect = useCallback(
-    (
-      domain: string,
-      subdomain: string,
-      source: "existing" | "generated" | "custom",
-      existingDomainId?: number,
-      isPlatformSubdomain?: boolean
-    ) => {
+    (domain: string, origin: DomainOrigin, existingDomainId?: number) => {
       // Find the recommendation to get the suggested path
       const rec = domainRecommendations?.recommendations?.find((r) => r.domain === domain);
       const path = rec?.path ?? "/";
 
-      // Build full URL
-      const normalizedPath = path === "/" ? "" : path;
-      const fullUrl = `${domain}${normalizedPath}`;
-
-      const newSelection: DomainSelection = {
+      const newSelection: WebsiteUrl = {
         domain,
-        subdomain,
         path,
-        fullUrl,
-        source,
-        isNew: source === "generated" || source === "custom",
+        origin,
         existingDomainId,
       };
 
       handleSelect(newSelection);
 
-      // Trigger save after domain selection (if it's an existing domain)
-      if (source === "existing") {
-        setTimeout(() => handleBlur(), 0);
+      // Trigger save immediately for existing domains
+      // Note: We can't use handleBlur here because it reads `selection` from closure,
+      // which won't have the new value yet (stale closure issue). Instead, save directly.
+      if (origin === "existing" && websiteId && !needsClaimModal(newSelection)) {
+        domainAssignment.mutateDebounced({
+          domain: newSelection.domain,
+          websiteId,
+          path: newSelection.path,
+          isPlatformSubdomain: isPlatformDomain(newSelection.domain),
+        });
+        lastPersistedSelection.current = newSelection;
       }
     },
-    [domainRecommendations, handleSelect, handleBlur]
+    [domainRecommendations, handleSelect, websiteId, needsClaimModal, domainAssignment]
   );
 
   // Handle path change
   const handlePathChange = useCallback(
     (newPath: string) => {
       if (selectedDomain && selection) {
-        const normalizedPath = newPath === "/" ? "" : newPath;
-        const fullUrl = `${selectedDomain}${normalizedPath}`;
-
         handleSelect({
           ...selection,
           path: newPath,
-          fullUrl,
         });
       }
     },
@@ -245,9 +235,9 @@ export function DomainPicker({
         isPlatformSubdomain: true,
       });
 
-      const claimedSelection: DomainSelection = {
+      const claimedSelection: WebsiteUrl = {
         ...pendingClaim,
-        isNew: false,
+        origin: "existing",
         existingDomainId: result.id,
       };
 
@@ -272,21 +262,10 @@ export function DomainPicker({
 
     // Priority 1: If website has an assigned URL, use it
     if (assignedUrl) {
-      const path = assignedUrl.path ?? "/";
-      const normalizedPath = path === "/" ? "" : path;
-
-      let subdomain = "";
-      if (assignedUrl.is_platform_subdomain && assignedUrl.domain.endsWith(".launch10.site")) {
-        subdomain = assignedUrl.domain.replace(".launch10.site", "");
-      }
-
-      const newSelection: DomainSelection = {
+      const newSelection: WebsiteUrl = {
         domain: assignedUrl.domain,
-        subdomain,
-        path,
-        fullUrl: `${assignedUrl.domain}${normalizedPath}`,
-        source: "existing",
-        isNew: false,
+        path: assignedUrl.path ?? "/",
+        origin: "existing",
         existingDomainId: assignedUrl.domain_id,
       };
 
@@ -303,13 +282,11 @@ export function DomainPicker({
     // Priority 2: Use AI recommendation
     if (context && domainRecommendations?.topRecommendation) {
       const top = domainRecommendations.topRecommendation;
-      const newSelection: DomainSelection = {
+
+      const newSelection: WebsiteUrl = {
         domain: top.domain,
-        subdomain: top.subdomain,
         path: top.path,
-        fullUrl: top.fullUrl,
-        source: top.source,
-        isNew: top.source === "generated",
+        origin: top.source, // "existing" | "suggestion" from backend
         existingDomainId: top.existingDomainId,
       };
 
@@ -343,7 +320,7 @@ export function DomainPicker({
   }
 
   // Derive header text based on whether a custom domain is selected
-  const isCustomDomain = selection && !selection.domain.endsWith(".launch10.site");
+  const isCustomDomain = selection && !isPlatformDomain(selection.domain);
   const title = isCustomDomain ? "Connect your own site" : "Website Setup";
   const subtitle = isCustomDomain
     ? "Use a site you already own, like mybusiness.com"
@@ -428,14 +405,14 @@ export function DomainPicker({
       </div>
 
       {/* DNS Help Section - shown only for custom domains */}
-      {selection && !selection.domain.endsWith(".launch10.site") && (
+      {selection && !isPlatformDomain(selection.domain) && (
         <DnsHelpSection domainId={selection.existingDomainId ?? null} />
       )}
 
       {/* Full URL Preview */}
       {selection && (
         <div className="pt-4 border-t border-neutral-200">
-          <FullUrlPreview fullUrl={selection.fullUrl} />
+          <FullUrlPreview fullUrl={getFullUrl(selection.domain, selection.path)} />
         </div>
       )}
 

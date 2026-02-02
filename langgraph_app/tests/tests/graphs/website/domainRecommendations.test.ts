@@ -116,7 +116,7 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
       // Top recommendation should be set
       expect(recommendations?.topRecommendation).toBeDefined();
       const existingRecommendations = recommendations?.recommendations.filter((rec) => rec.source === "existing");
-      const newRecommendations = recommendations?.recommendations.filter((rec) => rec.source === "generated");
+      const newRecommendations = recommendations?.recommendations.filter((rec) => rec.source === "suggestion");
 
       expect(existingRecommendations?.length).toBeGreaterThan(0);
       expect(newRecommendations?.length).toBeGreaterThan(0);
@@ -169,7 +169,7 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
         expect(rec.fullUrl).toBeDefined();
         expect(rec.score).toBeGreaterThanOrEqual(0);
         expect(rec.score).toBeLessThanOrEqual(100);
-        expect(rec.source).toMatch(/existing|generated/);
+        expect(rec.source).toMatch(/existing|suggestion/);
       }
     });
 
@@ -195,7 +195,7 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
         expect(topRec.domain).toMatch(/\.launch10\.site$/);
         expect(topRec.subdomain).toBeDefined();
         expect(topRec.path).toBeDefined();
-        expect(topRec.source).toMatch(/existing|generated/);
+        expect(topRec.source).toMatch(/existing|suggestion/);
       }
     });
   });
@@ -212,7 +212,7 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
             fullUrl: "test-domain.launch10.site",
             score: 90,
             reasoning: "Pre-existing recommendation",
-            source: "generated" as const,
+            source: "suggestion" as const,
             availability: "available" as const,
           },
         ],
@@ -223,7 +223,7 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
           fullUrl: "test-domain.launch10.site",
           score: 90,
           reasoning: "Pre-existing recommendation",
-          source: "generated" as const,
+          source: "suggestion" as const,
           availability: "available" as const,
         },
       };

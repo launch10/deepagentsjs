@@ -158,10 +158,10 @@ function determineState(
   hasCreditsRemaining: boolean
 ): Website.DomainRecommendations.DomainRecommendations {
   const existingRecs = recommendations.filter((r) => r.source === "existing");
-  const generatedRecs = recommendations.filter((r) => r.source === "generated");
+  const suggestionRecs = recommendations.filter((r) => r.source === "suggestion");
 
   const highestExisting = existingRecs.sort((a, b) => b.score - a.score)[0];
-  const highestGenerated = generatedRecs.sort((a, b) => b.score - a.score)[0];
+  const highestSuggestion = suggestionRecs.sort((a, b) => b.score - a.score)[0];
 
   const hasGoodExistingMatch = highestExisting && highestExisting.score >= SCORE_THRESHOLD;
 
@@ -170,7 +170,7 @@ function determineState(
 
   if (!hasExistingDomains) {
     state = "no_existing_sites";
-    topRecommendation = highestGenerated ?? null;
+    topRecommendation = highestSuggestion ?? null;
   } else if (hasGoodExistingMatch) {
     // Good existing match takes priority - even if out of credits
     state = "existing_recommended";
@@ -182,7 +182,7 @@ function determineState(
   } else {
     // No good existing match but has credits for new domains
     state = "new_recommended";
-    topRecommendation = highestGenerated ?? highestExisting ?? null;
+    topRecommendation = highestSuggestion ?? highestExisting ?? null;
   }
 
   return {
@@ -210,9 +210,9 @@ function getFallbackRecommendations(
       path: "/",
       fullUrl: domain,
       score: 50,
-      source: "generated",
+      source: "suggestion",
       availability: "unknown",
-      reasoning: "Generated from your business idea",
+      reasoning: "Suggested based on your business idea",
     },
   ];
 

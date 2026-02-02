@@ -58,7 +58,7 @@ const createSuggestedSite = (
   fullUrl: `${subdomain}.launch10.site`,
   score: 0.7,
   reasoning,
-  source: "generated",
+  source: "suggestion",
 });
 
 const createDomainWithWebsite = (

@@ -36,7 +36,7 @@ const createSuggestedSite = (
   fullUrl: `${subdomain}.launch10.site`,
   score,
   reasoning,
-  source: "generated",
+  source: "suggestion",
   availability: "available",
 });
 
@@ -150,7 +150,7 @@ describe("SiteNameDropdown", () => {
       expect(screen.getByText("pawsomephotos.launch10.site")).toBeInTheDocument();
     });
 
-    it("shows star/recommended badge on top suggestion", async () => {
+    it("shows star icon on top suggestion", async () => {
       render(
         <SiteNameDropdown
           recommendations={noExistingSitesRecommendations}
@@ -164,9 +164,11 @@ describe("SiteNameDropdown", () => {
       const trigger = screen.getByRole("button", { name: /select a domain/i });
       await userEvent.click(trigger);
 
-      // The top recommendation should have a recommended indicator
-      const recommendedItem = screen.getByText("petportraits.launch10.site").closest("[role='option']");
-      expect(recommendedItem).toHaveTextContent(/recommended/i);
+      // The top recommendation should have a star icon
+      const recommendedItem = screen.getByText("petportraits.launch10.site").closest("button");
+      expect(recommendedItem).toBeInTheDocument();
+      // Star icon should be present (SVG element inside the button)
+      expect(recommendedItem?.querySelector("svg")).toBeInTheDocument();
     });
 
     it("does not show 'Your sites' section when user has no domains", async () => {
@@ -194,7 +196,7 @@ describe("SiteNameDropdown", () => {
       { limit: 1, used: 1, remaining: 0 }
     );
 
-    it("shows existing site with recommended badge", async () => {
+    it("shows existing site with star icon", async () => {
       render(
         <SiteNameDropdown
           recommendations={existingRecommendedRecommendations}
@@ -211,9 +213,9 @@ describe("SiteNameDropdown", () => {
       // Existing site should be visible
       expect(screen.getByText("pawportraits.launch10.site")).toBeInTheDocument();
 
-      // And should have recommended badge (since it's the top recommendation)
-      const recommendedItem = screen.getByText("pawportraits.launch10.site").closest("[role='option']");
-      expect(recommendedItem).toHaveTextContent(/recommended/i);
+      // And should have star icon (since it's the top recommendation)
+      const recommendedItem = screen.getByText("pawportraits.launch10.site").closest("button");
+      expect(recommendedItem?.querySelector("svg")).toBeInTheDocument();
     });
 
     it("star is on existing site, not on suggestions", async () => {
@@ -230,13 +232,13 @@ describe("SiteNameDropdown", () => {
       const trigger = screen.getByRole("button", { name: /select a domain/i });
       await userEvent.click(trigger);
 
-      // Existing site has the badge
-      const existingItem = screen.getByText("pawportraits.launch10.site").closest("[role='option']");
-      expect(existingItem).toHaveTextContent(/recommended/i);
+      // Existing site has the star icon
+      const existingItem = screen.getByText("pawportraits.launch10.site").closest("button");
+      expect(existingItem?.querySelector("svg")).toBeInTheDocument();
 
-      // Suggestions should NOT have the badge
-      const suggestionItem = screen.getByText("petportraits.launch10.site").closest("[role='option']");
-      expect(suggestionItem).not.toHaveTextContent(/recommended/i);
+      // Suggestions should NOT have the star icon (they have an empty placeholder span)
+      const suggestionItem = screen.getByText("petportraits.launch10.site").closest("button");
+      expect(suggestionItem?.querySelector("svg")).not.toBeInTheDocument();
     });
   });
 
@@ -263,13 +265,13 @@ describe("SiteNameDropdown", () => {
       const trigger = screen.getByRole("button", { name: /select a domain/i });
       await userEvent.click(trigger);
 
-      // Top suggestion should have recommended badge
-      const suggestionItem = screen.getByText("pawportraits.launch10.site").closest("[role='option']");
-      expect(suggestionItem).toHaveTextContent(/recommended/i);
+      // Top suggestion should have star icon
+      const suggestionItem = screen.getByText("pawportraits.launch10.site").closest("button");
+      expect(suggestionItem?.querySelector("svg")).toBeInTheDocument();
 
-      // Existing sites should NOT have the badge
-      const existingItem = screen.getByText("family-portraits.launch10.site").closest("[role='option']");
-      expect(existingItem).not.toHaveTextContent(/recommended/i);
+      // Existing sites should NOT have the star icon
+      const existingItem = screen.getByText("family-portraits.launch10.site").closest("button");
+      expect(existingItem?.querySelector("svg")).not.toBeInTheDocument();
     });
 
     it("shows both existing sites and suggestions", async () => {
@@ -358,12 +360,12 @@ describe("SiteNameDropdown", () => {
       const trigger = screen.getByRole("button", { name: /select a domain/i });
       await userEvent.click(trigger);
 
-      // Suggested site should be disabled/greyed when out of credits
+      // Suggested site should be disabled when out of credits
       const suggestionItem = screen.queryByText("pawportraits.launch10.site");
       if (suggestionItem) {
-        const option = suggestionItem.closest("[role='option']");
-        // Should have disabled styling or aria-disabled
-        expect(option).toHaveAttribute("aria-disabled", "true");
+        const button = suggestionItem.closest("button");
+        // Should have disabled attribute
+        expect(button).toBeDisabled();
       }
     });
   });
@@ -394,7 +396,6 @@ describe("SiteNameDropdown", () => {
 
       expect(onSelect).toHaveBeenCalledWith(
         "pawportraits.launch10.site",
-        "pawportraits",
         "existing",
         1 // existingDomainId
       );
@@ -420,9 +421,8 @@ describe("SiteNameDropdown", () => {
 
       expect(onSelect).toHaveBeenCalledWith(
         "petportraits.launch10.site",
-        "petportraits",
-        "generated",
-        undefined // no existingDomainId for generated
+        "suggestion",
+        undefined // no existingDomainId for suggestions
       );
     });
   });
@@ -442,8 +442,8 @@ describe("SiteNameDropdown", () => {
       const trigger = screen.getByRole("button", { name: /select a domain/i });
       await userEvent.click(trigger);
 
-      // Should show upgrade section with badge
-      expect(screen.getByText(/upgrade to launch more sites/i)).toBeInTheDocument();
+      // Should show custom domain restriction message for Starter plan
+      expect(screen.getByText(/custom domains on growth & pro/i)).toBeInTheDocument();
       expect(screen.getByText(/available on growth & pro plan/i)).toBeInTheDocument();
       expect(screen.getByTestId("upgrade-badge")).toBeInTheDocument();
     });
@@ -479,7 +479,7 @@ describe("SiteNameDropdown", () => {
 
     it("generated recommendations have availability: available", () => {
       const generated = noExistingSitesRecommendations.recommendations.filter(
-        (r) => r.source === "generated"
+        (r) => r.source === "suggestion"
       );
       generated.forEach((rec) => {
         expect(rec.availability).toBe("available");

@@ -1,4 +1,4 @@
-export { DomainPicker, type DomainPickerProps, type DomainSelection } from "./DomainPicker";
+export { DomainPicker, type DomainPickerProps, type WebsiteUrl } from "./DomainPicker";
 export { SiteNameDropdown } from "./SiteNameDropdown";
 export { PageNameInput } from "./PageNameInput";
 export { FullUrlPreview } from "./FullUrlPreview";
