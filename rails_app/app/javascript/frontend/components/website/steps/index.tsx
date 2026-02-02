@@ -20,5 +20,3 @@ export default function WebsiteStep() {
   const StepComponent = STEPS[substep];
   return StepComponent ? <StepComponent /> : <BuildStep />;
 }
-
-export { WebsitePaginationFooter } from "./WebsitePaginationFooter";
