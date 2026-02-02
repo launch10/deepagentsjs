@@ -70,7 +70,7 @@ export function useChatOptions<TBridge extends Bridge<any, any, any>>(
         "Content-Type": "application/json",
         Authorization: `Bearer ${jwt}`,
       },
-      getInitialThreadId: customGetInitialThreadId ?? (() => thread_id),
+      getInitialThreadId: customGetInitialThreadId ?? (() => thread_id ?? undefined),
     };
 
     if (merge) {

@@ -1,11 +1,7 @@
 import { Card, CardContent } from "@components/ui/card";
 import { Chat } from "@components/shared/chat/Chat";
 import { ArrowUpIcon, StopIcon } from "@heroicons/react/24/outline";
-import {
-  useSupportChat,
-  useSupportMessages,
-  useSupportIsStreaming,
-} from "@hooks/useSupportChat";
+import { useSupportChat, useSupportMessages, useSupportIsStreaming } from "@hooks/useSupportChat";
 
 export default function SupportChat() {
   const chat = useSupportChat();
@@ -17,19 +13,58 @@ export default function SupportChat() {
       <CardContent className="p-0">
         <Chat.Root chat={chat}>
           <div className="flex flex-col h-[500px] bg-white">
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {/* Initial greeting when no messages */}
-              {messages.length === 0 && !isStreaming && (
-                <div className="flex gap-3">
-                  <div className="bg-neutral-100 rounded-lg px-4 py-3 max-w-[85%]">
-                    <p className="font-sans text-sm text-base-500">
-                      Hi! I can help answer questions about Launch10. What
-                      would you like to know?
-                    </p>
+            <div className="flex-1 overflow-y-auto p-4">
+              <Chat.Messages.List className="space-y-4">
+                {/* Initial greeting when no messages */}
+                {messages.length === 0 && !isStreaming && (
+                  <div className="flex gap-3">
+                    <div className="bg-neutral-100 rounded-lg px-4 py-3 max-w-[85%]">
+                      <p className="font-sans text-sm text-base-500">
+                        Hi! I can help answer questions about Launch10. What would you like to know?
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
-              <Chat.Messages.List />
+                )}
+                {messages.map((message, index) => {
+                  const isLastMessage = index === messages.length - 1;
+
+                  if (message.role === "user") {
+                    return (
+                      <Chat.UserMessage
+                        key={message.id}
+                        blocks={message.blocks}
+                        className="text-sm"
+                      />
+                    );
+                  }
+
+                  if (message.role === "assistant") {
+                    const textBlocks = message.blocks.filter(
+                      (b) => b.type === "text" && b.text?.trim()
+                    );
+
+                    if (!textBlocks.length) return null;
+
+                    return (
+                      <Chat.AIMessage.Root key={message.id}>
+                        {textBlocks.map((block) => (
+                          <Chat.AIMessage.Content
+                            key={block.id}
+                            state={isLastMessage ? "active" : "inactive"}
+                            className="text-sm"
+                          >
+                            {block.text}
+                          </Chat.AIMessage.Content>
+                        ))}
+                      </Chat.AIMessage.Root>
+                    );
+                  }
+
+                  return null;
+                })}
+                <Chat.Messages.StreamingIndicator />
+                <Chat.Messages.ScrollAnchor />
+              </Chat.Messages.List>
             </div>
             <div className="border-t border-neutral-200 p-3">
               <Chat.Input.CreditGate>
