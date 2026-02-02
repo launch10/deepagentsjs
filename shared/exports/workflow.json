@@ -9,11 +9,12 @@
       {
         "name": "website",
         "label": "Landing Page",
+        "title": "Landing Page Designer",
         "order": 2,
         "steps": [
           {
             "name": "build",
-            "label": "Build",
+            "label": "Page Overview",
             "order": 1
           },
           {
@@ -23,7 +24,7 @@
           },
           {
             "name": "deploy",
-            "label": "Deploy",
+            "label": "Launch",
             "order": 3
           }
         ]

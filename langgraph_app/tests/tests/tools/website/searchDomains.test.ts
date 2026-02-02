@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import type { SearchDomainsResult } from "../../../../app/tools/website/searchDomains";
+import type { SearchDomainsResult } from "@tools";
 
 // Test the result transformation logic separately from the tool invocation
 describe("search_domains tool", () => {

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Hono } from "hono";
 import { createHmac } from "crypto";
-import { jobRunCallbackRoutes } from "../../../app/server/routes/webhooks/jobRunCallback";
+import { jobRunCallbackRoutes } from "@server/routes/webhooks/jobRunCallback";
 import { env } from "@core";
 import { Deploy } from "@types";
 

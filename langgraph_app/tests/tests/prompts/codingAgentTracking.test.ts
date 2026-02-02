@@ -5,8 +5,7 @@
  * lead capture and conversion tracking instructions.
  */
 import { describe, it, expect } from "vitest";
-import { buildCodingPrompt, type CodingPromptState } from "@prompts";
-import { trackingPrompt } from "../../../app/prompts/coding/shared/tracking";
+import { buildCodingPrompt, trackingPrompt, type CodingPromptState } from "@prompts";
 
 describe("Coding Agent Tracking Prompts", () => {
   const mockState: CodingPromptState = {

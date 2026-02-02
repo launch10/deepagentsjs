@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { StateGraph, START, END, Annotation } from "@langchain/langgraph";
-import { withCreditExhaustion } from "../../../../app/graphs/shared";
+import { withCreditExhaustion } from "@graphs";
 import type { CreditStatus } from "@types";
 
 // Mock the calculateCreditStatusNode
