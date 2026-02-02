@@ -209,13 +209,6 @@ export function SiteNameDropdown({
                   {existingDomains.map((domainItem) => {
                     const isPlatform = domainItem.is_platform_subdomain;
 
-                    // Show the domain with its first URL path if any
-                    const firstUrl = domainItem.website_urls[0];
-                    const displayUrl =
-                      firstUrl?.path && firstUrl.path !== "/"
-                        ? `${domainItem.domain}${firstUrl.path}`
-                        : domainItem.domain;
-
                     return (
                       <button
                         key={domainItem.id}
@@ -237,7 +230,7 @@ export function SiteNameDropdown({
                         )}
 
                         {/* Domain name */}
-                        <span className="flex-1 text-base-600 truncate">{displayUrl}</span>
+                        <span className="flex-1 text-base-600 truncate">{domainItem.domain}</span>
 
                         {/* DNS status indicator for custom domains */}
                         {!isPlatform &&
