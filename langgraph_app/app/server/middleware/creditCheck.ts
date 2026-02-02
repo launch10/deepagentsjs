@@ -31,7 +31,7 @@ export interface CreditState {
  * - Requires authMiddleware to run first (uses c.get("auth"))
  * - Sets c.set("creditState", ...) on success
  * - Returns 402 Payment Required if credits exhausted
- * - Fails open on errors (logs warning, allows request to proceed)
+ * - Returns 503 Service Unavailable if credit check fails (fail closed)
  */
 export const creditCheckMiddleware = async (c: Context, next: Next) => {
   const auth = c.get("auth") as AuthContext | undefined;
@@ -74,20 +74,17 @@ export const creditCheckMiddleware = async (c: Context, next: Next) => {
 
     await next();
   } catch (error) {
-    // Fail open - allow request to proceed if credit check fails
-    if (error instanceof CreditCheckError) {
-      console.warn("[creditCheckMiddleware] Credit check failed, proceeding anyway:", error.message);
-    } else {
-      console.warn("[creditCheckMiddleware] Unexpected error, proceeding anyway:", error);
-    }
+    // Fail closed - block request if credit check fails
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[creditCheckMiddleware] Credit check failed, blocking request:", message);
 
-    // Set minimal credit state (no balance info available)
-    c.set("creditState", {
-      accountId: auth.accountId,
-      preRunCreditsRemaining: undefined,
-    });
-
-    await next();
+    return c.json(
+      {
+        error: "Unable to verify credits. Please try again.",
+        code: "CREDIT_CHECK_FAILED",
+      },
+      503 // Service Unavailable
+    );
   }
 };
 
