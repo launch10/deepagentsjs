@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   CheckCircleIcon,
   XCircleIcon,
@@ -15,6 +15,7 @@ import { Spinner } from "@components/ui/spinner";
 // ============================================================================
 
 export interface PageNameInputProps {
+  /** Path value with leading slash (e.g., "/landing" or "/") */
   value: string;
   onChange: (path: string) => void;
   /** Callback when user finishes editing (blur) - triggers save */
@@ -39,23 +40,16 @@ export function PageNameInput({
   recommendedPath,
   onAvailabilityChange,
 }: PageNameInputProps) {
-  const [inputValue, setInputValue] = useState(value.replace(/^\//, ""));
   const [isFocused, setIsFocused] = useState(false);
 
-  // Sync external value changes
-  useEffect(() => {
-    const newValue = value.replace(/^\//, "");
-    if (newValue !== inputValue) {
-      setInputValue(newValue);
-    }
-  }, [value]);
+  // Derive display value from prop (strip leading slash for display)
+  const displayValue = value.replace(/^\//, "");
 
   // Validate the path
-  const fullPath = `/${inputValue}`;
-  const validation = useMemo(() => validatePath(fullPath), [fullPath]);
+  const validation = useMemo(() => validatePath(value), [value]);
 
   // Debounce the path for API calls (300ms delay)
-  const debouncedPath = useDebounce(fullPath, 300);
+  const debouncedPath = useDebounce(value, 300);
 
   // Check availability with backend
   const {
@@ -71,7 +65,7 @@ export function PageNameInput({
   // Get availability status from search result
   const availabilityStatus = useMemo(() => {
     if (!domainId || !validation.valid) return null;
-    if (isCheckingAvailability || isFetching || debouncedPath !== fullPath) return "checking";
+    if (isCheckingAvailability || isFetching || debouncedPath !== value) return "checking";
     if (!searchResult?.results?.[0]) return null;
 
     const result = searchResult.results[0];
@@ -82,7 +76,7 @@ export function PageNameInput({
     }
 
     return result.status as "available" | "unavailable" | "existing";
-  }, [domainId, websiteId, validation.valid, isCheckingAvailability, isFetching, debouncedPath, fullPath, searchResult]);
+  }, [domainId, websiteId, validation.valid, isCheckingAvailability, isFetching, debouncedPath, value, searchResult]);
 
   // Notify parent of availability changes
   useEffect(() => {
@@ -91,17 +85,16 @@ export function PageNameInput({
 
   // Handle input change
   const handleChange = (newValue: string) => {
-    // Remove leading slash if user types it
+    // Remove leading slashes and lowercase
     const sanitized = newValue.replace(/^\/+/, "").toLowerCase();
-    setInputValue(sanitized);
-
+    // Convert to path format (always starts with /)
     const path = sanitized ? `/${sanitized}` : "/";
     onChange(path);
   };
 
   // Determine status for styling
   const status = useMemo(() => {
-    if (!inputValue && !isFocused) return "idle";
+    if (!displayValue && !isFocused) return "idle";
     if (!validation.valid) return "error";
     if (availabilityStatus === "checking") return "checking";
     if (availabilityStatus === "unavailable") return "unavailable";
@@ -109,7 +102,7 @@ export function PageNameInput({
     if (availabilityStatus === "assigned") return "assigned";
     if (availabilityStatus === "available") return "available";
     return "idle";
-  }, [inputValue, isFocused, validation.valid, availabilityStatus]);
+  }, [displayValue, isFocused, validation.valid, availabilityStatus]);
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -130,7 +123,7 @@ export function PageNameInput({
         <span className="pl-3 text-sm text-base-400">/</span>
         <input
           type="text"
-          value={inputValue}
+          value={displayValue}
           onChange={(e) => handleChange(e.target.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => {
@@ -195,7 +188,7 @@ export function PageNameInput({
           className="flex items-center gap-1 text-xs text-success-500"
         >
           <CheckCircleIcon className="size-3.5" />
-          <span>/{inputValue} is this site's current URL</span>
+          <span>/{displayValue} is this site's current URL</span>
         </div>
       )}
 
@@ -205,12 +198,12 @@ export function PageNameInput({
           className="flex items-center gap-1 text-xs text-success-500"
         >
           <CheckCircleIcon className="size-3.5" />
-          <span>/{inputValue} is available</span>
+          <span>/{displayValue} is available</span>
         </div>
       )}
 
       {/* Show recommended path hint */}
-      {recommendedPath && recommendedPath !== "/" && recommendedPath !== fullPath && (
+      {recommendedPath && recommendedPath !== "/" && recommendedPath !== value && (
         <button
           type="button"
           onClick={() => handleChange(recommendedPath.replace(/^\//, ""))}

@@ -33,6 +33,18 @@ export interface SiteNameDropdownProps {
 
 const PLATFORM_SUFFIX = ".launch10.site";
 
+/**
+ * Extract subdomain from a full domain name.
+ * For platform domains: "mysite.launch10.site" → "mysite"
+ * For custom domains: "mybusiness.com" → "mybusiness"
+ */
+function getSubdomain(domain: string, isPlatformSubdomain: boolean): string {
+  if (isPlatformSubdomain) {
+    return domain.replace(PLATFORM_SUFFIX, "");
+  }
+  return domain.split(".")[0];
+}
+
 // ============================================================================
 // Component
 // ============================================================================
@@ -82,14 +94,14 @@ export function SiteNameDropdown({
     return selectedDomain;
   }, [selectedDomain]);
 
-  // Handle selecting an existing domain from the dropdown
-  const handleSelectExisting = (
+  // Handle selecting a domain from the dropdown
+  const handleSelect = (
     domain: string,
-    subdomain: string,
-    source: "existing" | "generated",
+    source: "existing" | "generated" | "custom",
     existingDomainId?: number,
     isPlatformSubdomain?: boolean
   ) => {
+    const subdomain = getSubdomain(domain, isPlatformSubdomain ?? domain.endsWith(PLATFORM_SUFFIX));
     onSelect(domain, subdomain, source, existingDomainId, isPlatformSubdomain);
     setIsOpen(false);
   };
@@ -101,8 +113,7 @@ export function SiteNameDropdown({
     if (!validation.valid) return;
 
     const domain = `${subdomain}${PLATFORM_SUFFIX}`;
-    onSelect(domain, subdomain, "custom", undefined, true);
-    setIsOpen(false);
+    handleSelect(domain, "custom", undefined, true);
     setPlatformInput("");
   };
 
@@ -112,8 +123,7 @@ export function SiteNameDropdown({
     const validation = validateDomain(domain);
     if (!validation.valid) return;
 
-    onSelect(domain, domain.split(".")[0], "custom", undefined, false);
-    setIsOpen(false);
+    handleSelect(domain, "custom", undefined, false);
     setCustomDomainInput("");
   };
 
@@ -199,39 +209,35 @@ export function SiteNameDropdown({
               <div className="px-4 py-3">
                 <div className="text-sm font-medium text-base-400 mb-2">Your Existing Sites</div>
                 <div className="flex flex-col gap-0.5">
-                  {existingDomains.map((domain) => {
-                    const isPlatform = domain.is_platform_subdomain;
-                    const subdomain = isPlatform
-                      ? domain.domain.replace(".launch10.site", "")
-                      : domain.domain.split(".")[0];
+                  {existingDomains.map((domainItem) => {
+                    const isPlatform = domainItem.is_platform_subdomain;
 
                     // Show the domain with its first URL path if any
-                    const firstUrl = domain.website_urls[0];
+                    const firstUrl = domainItem.website_urls[0];
                     const displayUrl = firstUrl?.path && firstUrl.path !== "/"
-                      ? `${domain.domain}${firstUrl.path}`
-                      : domain.domain;
+                      ? `${domainItem.domain}${firstUrl.path}`
+                      : domainItem.domain;
 
                     return (
                       <button
-                        key={domain.id}
+                        key={domainItem.id}
                         type="button"
-                        onClick={() => handleSelectExisting(
-                          domain.domain,
-                          subdomain,
+                        onClick={() => handleSelect(
+                          domainItem.domain,
                           "existing",
-                          domain.id,
+                          domainItem.id,
                           isPlatform
                         )}
                         className={cn(
                           "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-left",
                           "transition-colors",
-                          selectedDomain === domain.domain
+                          selectedDomain === domainItem.domain
                             ? "bg-neutral-100"
                             : "hover:bg-neutral-50"
                         )}
                       >
                         {/* Star icon for top recommendation */}
-                        {isTopRecommendation(domain.domain) ? (
+                        {isTopRecommendation(domainItem.domain) ? (
                           <StarIcon className="size-5 text-amber-500 shrink-0" />
                         ) : (
                           <span className="size-5 shrink-0" />
@@ -242,7 +248,7 @@ export function SiteNameDropdown({
 
                         {/* DNS status indicator for custom domains */}
                         {!isPlatform && (
-                          domain.dns_verification_status === "verified" ? (
+                          domainItem.dns_verification_status === "verified" ? (
                             <CheckCircleIcon className="size-4 text-success-500 shrink-0" />
                           ) : (
                             <ClockIcon className="size-4 text-amber-500 shrink-0" />
@@ -272,9 +278,8 @@ export function SiteNameDropdown({
                       key={site.domain}
                       type="button"
                       disabled={isOutOfCredits}
-                      onClick={() => handleSelectExisting(
+                      onClick={() => handleSelect(
                         site.domain,
-                        site.subdomain,
                         "generated",
                         undefined,
                         true
