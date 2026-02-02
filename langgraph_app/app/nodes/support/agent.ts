@@ -6,41 +6,37 @@ import { createAgent, createMiddleware } from "langchain";
 import { type BaseMessage } from "@langchain/core/messages";
 import { lastAIMessage } from "@types";
 import { SupportBridge } from "@annotation";
+import { supportFaqTool } from "@tools";
 
 const SUPPORT_SYSTEM_PROMPT = `You are a helpful Launch10 support assistant. Your job is to answer user questions about Launch10, a platform that helps users test their business ideas through landing pages and Google Ads campaigns.
 
-Answer questions using the FAQ content provided below. Be concise, friendly, and accurate.
+You have access to a FAQ tool that searches the knowledge base. Use it whenever the user asks a question about how Launch10 works, billing, credits, landing pages, Google Ads, or their account.
 
 Guidelines:
-- If the user's question is directly answered in the FAQs, provide the relevant answer.
-- If the question is partially related, share what you know and mention that the FAQs cover related topics.
-- If you cannot answer from the FAQs, let the user know and suggest they submit a support request using the contact form below the chat.
+- Use the FAQ tool to look up answers before responding to questions.
+- If the FAQ tool returns relevant results, use them to provide an accurate answer.
+- If the FAQ tool returns no results or the question isn't covered, let the user know and suggest they submit a support request using the "Contact Support" tab.
 - Keep responses focused and avoid lengthy preambles.
 - Use markdown formatting for readability (bullet points, bold for emphasis).
 - Do not make up information that isn't in the FAQs.`;
 
 /**
- * Creates middleware that injects the FAQ context into the system prompt.
+ * Creates middleware that sets the support system prompt.
  */
-const createSupportMiddleware = (faqContext: string | undefined) => {
-  const fullPrompt = faqContext
-    ? `${SUPPORT_SYSTEM_PROMPT}\n\n---\n\n# FAQ Knowledge Base\n\n${faqContext}`
-    : SUPPORT_SYSTEM_PROMPT;
-
+const createSupportMiddleware = () => {
   return createMiddleware({
     name: "SupportMiddleware",
     wrapModelCall: async (request, handler) => {
       return await handler({
         ...request,
-        systemPrompt: fullPrompt,
+        systemPrompt: SUPPORT_SYSTEM_PROMPT,
       });
     },
   });
 };
 
 /**
- * Support agent node that handles user questions using FAQ context.
- * Simple conversational agent with no tools for v1.
+ * Support agent node that handles user questions using an FAQ tool.
  */
 export const supportAgent = NodeMiddleware.use(
   {},
@@ -52,8 +48,8 @@ export const supportAgent = NodeMiddleware.use(
 
     const agent = await createAgent({
       model: llm,
-      tools: [],
-      middleware: [createSupportMiddleware(state.faqContext)],
+      tools: [supportFaqTool],
+      middleware: [createSupportMiddleware()],
     });
 
     const result = (await agent.invoke(
