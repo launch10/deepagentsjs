@@ -1,6 +1,6 @@
 import { test, expect, loginUser, testUser } from "../fixtures/auth";
 import { DatabaseSnapshotter } from "../fixtures/database";
-import { appScenario } from "../support/on-rails";
+import { appScenario, appQuery } from "../support/on-rails";
 import { BrainstormPage } from "../pages/brainstorm.page";
 import { WebsitePage } from "../pages/website.page";
 import { CampaignPage } from "../pages/campaign.page";
@@ -258,7 +258,7 @@ test.describe("Credit Limits", () => {
       await DatabaseSnapshotter.restoreSnapshot("brainstorm_step");
       await appScenario("set_credits", { email: testUser.email, plan_millicredits: 0, pack_millicredits: 0 });
 
-      const project = await DatabaseSnapshotter.getFirstProject();
+      const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
       projectUuid = project.uuid;
 
       await loginUser(page);
@@ -302,7 +302,7 @@ test.describe("Credit Limits", () => {
       await DatabaseSnapshotter.restoreSnapshot("website_step");
       await appScenario("set_credits", { email: testUser.email, plan_millicredits: 0, pack_millicredits: 0 });
 
-      const project = await DatabaseSnapshotter.getFirstProject();
+      const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
       projectUuid = project.uuid;
 
       await loginUser(page);
@@ -352,7 +352,7 @@ test.describe("Credit Limits", () => {
       await DatabaseSnapshotter.restoreSnapshot("campaign_content_step");
       await appScenario("set_credits", { email: testUser.email, plan_millicredits: 0, pack_millicredits: 0 });
 
-      const project = await DatabaseSnapshotter.getFirstProject();
+      const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
       projectUuid = project.uuid;
 
       await loginUser(page);

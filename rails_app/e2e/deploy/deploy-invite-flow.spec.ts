@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { DatabaseSnapshotter } from "../fixtures/database";
+import { appQuery } from "../support/on-rails";
 import { E2EMocks } from "../fixtures/e2e-mocks";
 import { loginUser } from "../fixtures/auth";
 import { e2eConfig } from "../config";
@@ -31,7 +32,7 @@ test.describe("Deploy - Google Ads Invite Flow", () => {
   });
 
   test("deploy page loads and shows deploy button", async ({ page }) => {
-    const project = await DatabaseSnapshotter.getFirstProject();
+    const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
     await page.goto(`/projects/${project.uuid}/deploy`);
 
     // Verify basic page structure is present
@@ -40,7 +41,7 @@ test.describe("Deploy - Google Ads Invite Flow", () => {
   });
 
   test("navigates to deploy page from campaign review", async ({ page }) => {
-    const project = await DatabaseSnapshotter.getFirstProject();
+    const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
 
     // Start from the review step
     await page.goto(`/projects/${project.uuid}/campaigns/review`);

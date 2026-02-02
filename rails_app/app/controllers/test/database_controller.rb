@@ -5,11 +5,11 @@
 # - Snapshot creation/restoration
 # - Listing snapshots
 #
-# For test data scenarios (creating records, setting credits, etc.),
-# use cypress-on-rails app_commands in e2e/app_commands/scenarios/.
+# For test data scenarios and queries, use cypress-on-rails middleware:
+# - Scenarios: e2e/app_commands/scenarios/
+# - Queries: e2e/app_commands/queries/
 #
 # @see e2e/support/on-rails.ts for TypeScript client
-# @see e2e/app_commands/scenarios/ for available scenarios
 class Test::DatabaseController < Test::TestController
   SNAPSHOT_DIR = Rails.root.join("test/fixtures/database/snapshots")
 
@@ -76,34 +76,6 @@ class Test::DatabaseController < Test::TestController
       status: "error",
       errors: ["Failed to restore snapshot: #{e.message}"]
     }, status: :unprocessable_content
-  end
-
-  # GET /test/database/first_project
-  # Kept for backward compatibility - returns first project from snapshot
-  def first_project
-    project = Project.first
-    if project
-      render json: {
-        status: "ok",
-        project: {id: project.id, uuid: project.uuid, name: project.name}
-      }, status: :ok
-    else
-      render json: {status: "error", errors: ["No project found"]}, status: :not_found
-    end
-  end
-
-  # GET /test/database/first_website
-  # Kept for backward compatibility - returns first website from snapshot
-  def first_website
-    website = Website.first
-    if website
-      render json: {
-        status: "ok",
-        website: {id: website.id, name: website.name, project_id: website.project_id}
-      }, status: :ok
-    else
-      render json: {status: "error", errors: ["No website found"]}, status: :not_found
-    end
   end
 
   private

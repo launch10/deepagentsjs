@@ -1,5 +1,6 @@
 import { test, expect, loginUser } from "./fixtures/auth";
 import { DatabaseSnapshotter } from "./fixtures/database";
+import { appQuery } from "./support/on-rails";
 import { PerformancePage } from "./pages/performance.page";
 
 /**
@@ -21,7 +22,7 @@ test.describe("Project Performance Page", () => {
   test.describe("With Healthy Account Data (analytics/healthy_account)", () => {
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("analytics/healthy_account");
-      const project = await DatabaseSnapshotter.getFirstProject();
+      const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
       projectUuid = project.uuid;
       await loginUser(page);
       performancePage = new PerformancePage(page);
@@ -163,7 +164,7 @@ test.describe("Project Performance Page", () => {
   test.describe("With New Account (minimal data)", () => {
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("analytics/new_account");
-      const project = await DatabaseSnapshotter.getFirstProject();
+      const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
       projectUuid = project.uuid;
       await loginUser(page);
       performancePage = new PerformancePage(page);
@@ -192,7 +193,7 @@ test.describe("Project Performance Page", () => {
   test.describe("Empty State (no analytics data)", () => {
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("website_step");
-      const project = await DatabaseSnapshotter.getFirstProject();
+      const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
       projectUuid = project.uuid;
       await loginUser(page);
       performancePage = new PerformancePage(page);
@@ -314,7 +315,7 @@ test.describe("Project Performance Page", () => {
 
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("analytics/healthy_account");
-      const project = await DatabaseSnapshotter.getFirstProject();
+      const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
       projectUuid = project.uuid;
       performancePage = new PerformancePage(page);
     });

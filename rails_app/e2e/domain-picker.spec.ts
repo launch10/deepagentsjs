@@ -1,6 +1,6 @@
 import { test, expect, loginUser, testUser } from "./fixtures/auth";
 import { DatabaseSnapshotter } from "./fixtures/database";
-import { appScenario } from "./support/on-rails";
+import { appScenario, appQuery } from "./support/on-rails";
 import { DomainPickerPage } from "./pages/domain-picker.page";
 
 /**
@@ -47,7 +47,7 @@ test.describe("Domain Picker", () => {
   test.beforeEach(async ({ page }) => {
     // Restore snapshot with domain test data
     await DatabaseSnapshotter.restoreSnapshot("website_step");
-    const project = await DatabaseSnapshotter.getFirstProject();
+    const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
     projectUuid = project.uuid;
     await loginUser(page);
     domainPickerPage = new DomainPickerPage(page);
@@ -285,7 +285,7 @@ test.describe("Domain Picker - Subdomain Limit", () => {
 
   test.beforeEach(async ({ page }) => {
     await DatabaseSnapshotter.restoreSnapshot("website_step");
-    const project = await DatabaseSnapshotter.getFirstProject();
+    const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
     projectUuid = project.uuid;
 
     // Fill up the subdomain limit to trigger "out of credits" state
@@ -382,7 +382,7 @@ test.describe("Domain Picker - Path Availability", () => {
 
   test.beforeEach(async ({ page }) => {
     await DatabaseSnapshotter.restoreSnapshot("website_step");
-    const project = await DatabaseSnapshotter.getFirstProject();
+    const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
     projectUuid = project.uuid;
     await loginUser(page);
     domainPickerPage = new DomainPickerPage(page);
@@ -443,7 +443,7 @@ test.describe("Domain Picker - Path Availability", () => {
   });
 
   test("shows assigned status when path belongs to current website", async ({ page }) => {
-    const website = await DatabaseSnapshotter.getFirstWebsite();
+    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
     await appScenario("assign_platform_subdomain", { website_id: website.id, subdomain: "my-assigned-site", path: "/mypath" });
 
     await domainPickerPage.goto(projectUuid);
@@ -479,7 +479,7 @@ test.describe("Domain Picker - Credit Updates", () => {
 
   test.beforeEach(async ({ page }) => {
     await DatabaseSnapshotter.restoreSnapshot("website_step");
-    const project = await DatabaseSnapshotter.getFirstProject();
+    const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
     projectUuid = project.uuid;
     await loginUser(page);
     domainPickerPage = new DomainPickerPage(page);
@@ -562,7 +562,7 @@ test.describe("Domain Picker - Custom Domain Auto-Switch", () => {
 
   test.beforeEach(async ({ page }) => {
     await DatabaseSnapshotter.restoreSnapshot("website_step");
-    const project = await DatabaseSnapshotter.getFirstProject();
+    const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
     projectUuid = project.uuid;
     await loginUser(page);
     domainPickerPage = new DomainPickerPage(page);
@@ -570,7 +570,7 @@ test.describe("Domain Picker - Custom Domain Auto-Switch", () => {
 
   test("shows custom domain header and DNS help when custom domain is assigned", async ({ page }) => {
     // Get the website ID first
-    const website = await DatabaseSnapshotter.getFirstWebsite();
+    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
 
     // Assign a custom domain to this website
     const customDomain = `my-business-${Date.now()}.example.com`;
@@ -613,7 +613,7 @@ test.describe("Domain Picker - Custom Domain Auto-Switch", () => {
 
   test("can switch to platform subdomain after custom domain is assigned", async ({ page }) => {
     // Get the website ID and assign a custom domain
-    const website = await DatabaseSnapshotter.getFirstWebsite();
+    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
     const customDomain = `switch-test-${Date.now()}.example.com`;
     await appScenario("assign_custom_domain", {
       website_id: website.id,
@@ -640,7 +640,7 @@ test.describe("Domain Picker - Custom Domain Auto-Switch", () => {
 
   test("auto-selects the assigned custom domain as initial selection", async ({ page }) => {
     // Get the website ID and assign a custom domain
-    const website = await DatabaseSnapshotter.getFirstWebsite();
+    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
     const customDomain = `auto-select-${Date.now()}.example.com`;
     await appScenario("assign_custom_domain", {
       website_id: website.id,
@@ -695,7 +695,7 @@ test.describe("Domain Picker - Pre-Population", () => {
 
   test.beforeEach(async ({ page }) => {
     await DatabaseSnapshotter.restoreSnapshot("website_step");
-    const project = await DatabaseSnapshotter.getFirstProject();
+    const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
     projectUuid = project.uuid;
     await loginUser(page);
     domainPickerPage = new DomainPickerPage(page);
@@ -703,7 +703,7 @@ test.describe("Domain Picker - Pre-Population", () => {
 
   test("pre-selects assigned platform subdomain in dropdown", async ({ page }) => {
     // Assign a platform subdomain to this website
-    const website = await DatabaseSnapshotter.getFirstWebsite();
+    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
     await appScenario("assign_platform_subdomain", {
       website_id: website.id,
       subdomain: "my-awesome-site",
@@ -725,7 +725,7 @@ test.describe("Domain Picker - Pre-Population", () => {
 
   test("pre-selects assigned platform subdomain with custom path", async ({ page }) => {
     // Assign a platform subdomain with a custom path
-    const website = await DatabaseSnapshotter.getFirstWebsite();
+    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
     await appScenario("assign_platform_subdomain", {
       website_id: website.id,
       subdomain: "landing-pages",
@@ -747,7 +747,7 @@ test.describe("Domain Picker - Pre-Population", () => {
 
   test("pre-selects custom domain in dropdown when assigned", async ({ page }) => {
     // Assign a custom domain to this website
-    const website = await DatabaseSnapshotter.getFirstWebsite();
+    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
     const customDomain = "mybusiness.example.com";
     await appScenario("assign_custom_domain", {
       website_id: website.id,
@@ -770,7 +770,7 @@ test.describe("Domain Picker - Pre-Population", () => {
 
   test("pre-selects custom domain with custom path in dropdown", async ({ page }) => {
     // Assign a custom domain with a custom path
-    const website = await DatabaseSnapshotter.getFirstWebsite();
+    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
     const customDomain = "mystore.example.com";
     await appScenario("assign_custom_domain", {
       website_id: website.id,
@@ -816,7 +816,7 @@ test.describe("Domain Picker - Pre-Population", () => {
 
   test("full URL preview shows assigned domain", async ({ page }) => {
     // Assign a platform subdomain
-    const website = await DatabaseSnapshotter.getFirstWebsite();
+    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
     await appScenario("assign_platform_subdomain", {
       website_id: website.id,
       subdomain: "preview-test",
@@ -858,7 +858,7 @@ test.describe("Domain Picker - Claim Subdomain Modal", () => {
 
   test.beforeEach(async ({ page }) => {
     await DatabaseSnapshotter.restoreSnapshot("website_step");
-    const project = await DatabaseSnapshotter.getFirstProject();
+    const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
     projectUuid = project.uuid;
     await loginUser(page);
     domainPickerPage = new DomainPickerPage(page);
@@ -1051,7 +1051,7 @@ test.describe("Domain Picker - Existing Domains", () => {
 
   test.beforeEach(async ({ page }) => {
     await DatabaseSnapshotter.restoreSnapshot("website_step");
-    const project = await DatabaseSnapshotter.getFirstProject();
+    const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
     projectUuid = project.uuid;
     await loginUser(page);
     domainPickerPage = new DomainPickerPage(page);
@@ -1147,7 +1147,7 @@ test.describe("Domain Picker - Autosave", () => {
 
   test.beforeEach(async ({ page }) => {
     await DatabaseSnapshotter.restoreSnapshot("website_step");
-    const project = await DatabaseSnapshotter.getFirstProject();
+    const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
     projectUuid = project.uuid;
     await loginUser(page);
     domainPickerPage = new DomainPickerPage(page);
@@ -1197,7 +1197,7 @@ test.describe("Domain Picker - Autosave", () => {
 
   test("autosaves when changing the path on an existing domain", async ({ page }) => {
     // First, assign a domain so we can test changing the path
-    const website = await DatabaseSnapshotter.getFirstWebsite();
+    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
     await appScenario("assign_platform_subdomain", { website_id: website.id, subdomain: "autosave-test", path: "/original" });
 
     await domainPickerPage.goto(projectUuid);
@@ -1261,7 +1261,7 @@ test.describe("Domain Picker - Autosave", () => {
 
   test("autosaves when switching from platform subdomain to custom domain", async ({ page }) => {
     // Start with a platform subdomain assigned
-    const website = await DatabaseSnapshotter.getFirstWebsite();
+    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
     await appScenario("assign_platform_subdomain", { website_id: website.id, subdomain: "switch-from-me", path: "/" });
 
     await domainPickerPage.goto(projectUuid);
@@ -1294,7 +1294,7 @@ test.describe("Domain Picker - Autosave", () => {
 
   test("autosaves path changes with custom domain", async ({ page }) => {
     // Start with a custom domain assigned
-    const website = await DatabaseSnapshotter.getFirstWebsite();
+    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
     await appScenario("assign_custom_domain", { website_id: website.id, domain_name: "autosave-custom.example.com", path: "/initial" });
 
     await domainPickerPage.goto(projectUuid);
@@ -1330,7 +1330,7 @@ test.describe("Domain Picker - Autosave", () => {
 
   test("multiple rapid path changes only save the final value", async ({ page }) => {
     // Assign a domain first
-    const website = await DatabaseSnapshotter.getFirstWebsite();
+    const website = await appQuery<{ id: number; name: string; project_id: number }>("first_website");
     await appScenario("assign_platform_subdomain", { website_id: website.id, subdomain: "rapid-changes", path: "/start" });
 
     await domainPickerPage.goto(projectUuid);
