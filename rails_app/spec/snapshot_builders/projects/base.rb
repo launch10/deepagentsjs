@@ -51,7 +51,6 @@ module SnapshotBuilders
         # Use custom domains to avoid platform subdomain limits
         if status != "draft"
           domain = Domain.new(
-            website: website,
             account: account,
             domain: "#{name.parameterize}-#{index}.test-domain.com"
           )

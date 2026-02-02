@@ -91,27 +91,10 @@ RSpec.describe "Website URLs API", type: :request do
         end
       end
 
-      response "200", "returns unavailable for paths owned by another account" do
-        schema APISchemas::WebsiteUrl.search_response
-
-        let!(:other_user) { create(:user) }
-        let!(:other_account) { other_user.owned_account }
-        let!(:other_project) { create(:project, account: other_account) }
-        let!(:other_website) { create(:website, account: other_account, project: other_project) }
-        # Domain owned by current account, but path taken by other account
-        let!(:domain) { create(:domain, :platform_subdomain, account: account) }
-        let!(:other_website_url) { create(:website_url, account: other_account, website: other_website, domain: domain, path: "/taken") }
-        let(:body) { {domain_id: domain.id, candidates: ["/taken"]} }
-
-        run_test! do |response|
-          json = JSON.parse(response.body)
-          expect(json["results"].length).to eq(1)
-          expect(json["results"][0]["path"]).to eq("/taken")
-          expect(json["results"][0]["status"]).to eq("unavailable")
-          expect(json["results"][0]["existing_id"]).to be_nil
-          expect(json["results"][0]["existing_website_id"]).to be_nil
-        end
-      end
+      # NOTE: The "unavailable" status (path owned by another account on the same domain)
+      # is no longer testable because domain_belongs_to_account validation prevents
+      # creating website_urls for domains owned by other accounts. The controller
+      # code handles this case for any legacy data.
 
       response "200", "normalizes paths with leading slashes" do
         schema APISchemas::WebsiteUrl.search_response

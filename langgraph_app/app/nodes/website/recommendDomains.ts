@@ -13,6 +13,9 @@ import { createSearchDomainsTool, createSearchWebsiteUrlsTool } from "@tools";
 import { HumanMessage } from "@langchain/core/messages";
 import { lastAIMessage } from "@types";
 import { createAgent } from "langchain";
+import type { DynamicStructuredTool } from "@langchain/core/tools";
+
+type AnyTool = DynamicStructuredTool<any, any, any, string>;
 
 const SCORE_THRESHOLD = 80;
 const PLATFORM_DOMAIN_SUFFIX = ".launch10.site";
@@ -81,7 +84,7 @@ export const domainRecommendationsNode = NodeMiddleware.use(
       // - search_domains: always provided so AI can suggest available subdomains
       //   (even when out of credits - UI will show them as disabled)
       // - search_website_urls: for checking path availability on existing domains
-      const tools = [createSearchDomainsTool(state.jwt)];
+      const tools: AnyTool[] = [createSearchDomainsTool(state.jwt)];
       if (hasExistingDomains) {
         tools.push(createSearchWebsiteUrlsTool(state.jwt));
       }
