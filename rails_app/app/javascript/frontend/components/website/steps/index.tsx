@@ -1,13 +1,8 @@
-import { usePage } from "@inertiajs/react";
 import type { Workflow } from "@shared";
+import { useWorkflow, selectSubstep } from "@context/WorkflowProvider";
 import BuildStep from "./BuildStep";
 import DomainStep from "./DomainStep";
 import DeployStep from "./DeployStep";
-
-interface WebsitePageProps {
-  substep?: Workflow.WebsiteSubstepName;
-  [key: string]: unknown;
-}
 
 const STEPS: Record<Workflow.WebsiteSubstepName, React.ComponentType> = {
   build: BuildStep,
@@ -16,7 +11,9 @@ const STEPS: Record<Workflow.WebsiteSubstepName, React.ComponentType> = {
 };
 
 export default function WebsiteStep() {
-  const { substep = "build" } = usePage<WebsitePageProps>().props;
-  const StepComponent = STEPS[substep];
+  // Use workflow store for substep (like Campaign page does)
+  // This allows pushState navigation without full page reload
+  const substep = useWorkflow(selectSubstep) as Workflow.WebsiteSubstepName | null;
+  const StepComponent = substep ? STEPS[substep] : null;
   return StepComponent ? <StepComponent /> : <BuildStep />;
 }

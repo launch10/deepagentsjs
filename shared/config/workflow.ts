@@ -10,7 +10,10 @@ export const StepNames = [
 export type StepName = typeof StepNames[number];
 export interface Step {
   name: StepName;
+  /** Short label for navigation/stepper (e.g., "Landing Page") */
   label: string;
+  /** Optional longer title for section headings (e.g., "Landing Page Launch"). Falls back to label if not set. */
+  title?: string;
   order: number;
   steps?: Step[];
 }
@@ -39,11 +42,11 @@ export const workflows = {
   launch: {
     steps: [
       { name: "brainstorm", label: "Brainstorm", order: 1 },
-      { name: "website", label: "Landing Page", order: 2,
+      { name: "website", label: "Landing Page", title: "Landing Page Designer", order: 2,
         steps: [
-          { name: "build", label: "Build", order: 1 },
+          { name: "build", label: "Page Overview", order: 1 },
           { name: "domain", label: "Website Setup", order: 2 },
-          { name: "deploy", label: "Deploy", order: 3 }
+          { name: "deploy", label: "Launch", order: 3 }
         ]
       },
       { name: "ad_campaign", label: "Ad Campaign", order: 3,
@@ -118,6 +121,48 @@ const substepToStepMap: Partial<Record<SubstepName, AdCampaignStepName>> = {
 export function deriveStep(substep: SubstepName | null | undefined): AdCampaignStepName | null {
   if (!substep) return null;
   return substepToStepMap[substep] ?? null;
+}
+
+/**
+ * Get the step definition for a given page name from the workflow
+ */
+export function getStepForPage(pageName: WorkflowPage): Step | undefined {
+  return workflows.launch.steps.find((s) => s.name === pageName);
+}
+
+/**
+ * Get the ordered list of substep names for a page
+ */
+export function getSubstepOrder(pageName: WorkflowPage): readonly string[] {
+  switch (pageName) {
+    case "website":
+      return WebsiteSubstepNames;
+    case "ad_campaign":
+      return AdCampaignSubstepNames;
+    default:
+      return [];
+  }
+}
+
+/**
+ * Determines if a substep is completed based on the current active substep.
+ * A substep is considered completed if it comes before the active substep in the order.
+ */
+export function isSubstepCompleted(
+  substepName: string,
+  activeSubstep: string | null | undefined,
+  substepOrder: readonly string[]
+): boolean {
+  if (!activeSubstep) return false;
+
+  const currentIndex = substepOrder.indexOf(activeSubstep);
+  const substepIndex = substepOrder.indexOf(substepName);
+
+  // If either index is -1 (not found), return false
+  if (currentIndex === -1 || substepIndex === -1) return false;
+
+  // A substep is completed if it comes before the current active substep
+  return substepIndex < currentIndex;
 }
 
 export const workflow = workflows;
