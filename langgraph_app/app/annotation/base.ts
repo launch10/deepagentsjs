@@ -1,6 +1,13 @@
 import { Annotation, messagesStateReducer } from "@langchain/langgraph";
 
-import type { ErrorStateType, BaseMessage, PrimaryKeyType, ThreadIDType, CreditStatus } from "@types";
+import type {
+  ErrorStateType,
+  BaseMessage,
+  PrimaryKeyType,
+  ThreadIDType,
+  CreditStatus,
+  Intent,
+} from "@types";
 
 export const BaseAnnotation = Annotation.Root({
   threadId: Annotation<ThreadIDType | undefined>(),
@@ -56,5 +63,12 @@ export const BaseAnnotation = Annotation.Root({
   creditStatus: Annotation<CreditStatus | undefined>({
     default: () => undefined,
     reducer: (current, next) => next ?? current,
+  }),
+
+  // Intent: user action that triggered this graph invocation
+  // Consumed after handling (cleared by handler nodes)
+  intent: Annotation<Intent | undefined>({
+    default: () => undefined,
+    reducer: (current, next) => next,
   }),
 });

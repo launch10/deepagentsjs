@@ -30,7 +30,8 @@ export async function calculateCreditStatusNode(
 
   // No credit tracking for this run (middleware failed open or test)
   if (preRunCreditsRemaining === undefined) {
-    return {};
+    // Still clear intent - it's ephemeral and should be consumed each run
+    return { intent: undefined };
   }
 
   // Get usage from current run via usageStorage
@@ -38,6 +39,7 @@ export async function calculateCreditStatusNode(
   if (!usageContext || usageContext.records.length === 0) {
     // No LLM calls made, return current balance with no change
     return {
+      intent: undefined, // Clear ephemeral intent
       creditStatus: {
         justExhausted: false,
         estimatedRemainingMillicredits: preRunCreditsRemaining,
@@ -52,10 +54,7 @@ export async function calculateCreditStatusNode(
     const modelConfigs = await LLMManager.getModelConfigs();
 
     // Calculate estimated cost of this run
-    const estimatedCostMillicredits = calculateRunCost(
-      usageContext.records,
-      modelConfigs
-    );
+    const estimatedCostMillicredits = calculateRunCost(usageContext.records, modelConfigs);
 
     // Derive credit status (includes justExhausted calculation)
     const creditStatus = deriveCreditStatus({
@@ -63,13 +62,10 @@ export async function calculateCreditStatusNode(
       estimatedCostMillicredits,
     });
 
-    return { creditStatus };
+    return { intent: undefined, creditStatus };
   } catch (error) {
     // Log error with details about which models were used
-    console.warn(
-      "[calculateCreditStatusNode] Failed to calculate credit status:",
-      error
-    );
+    console.warn("[calculateCreditStatusNode] Failed to calculate credit status:", error);
 
     // Log the usage records to help debug which LLM is causing issues
     console.warn(
@@ -82,6 +78,7 @@ export async function calculateCreditStatusNode(
         outputTokens: r.outputTokens,
       }))
     );
-    return {};
+    // Still clear intent even on error
+    return { intent: undefined };
   }
 }
