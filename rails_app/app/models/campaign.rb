@@ -122,7 +122,7 @@ class Campaign < ApplicationRecord
     CampaignDeploy.deploy(self, async: async)
   end
 
-  def pause!
+  def pause!(async: true)
     # Update local statuses
     self.google_status = "PAUSED"
     save!
