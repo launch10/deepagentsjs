@@ -1,10 +1,7 @@
 class SupportController < SubscribedController
   def show
-    support_chat = current_account.find_or_create_support_chat
-
     render inertia: "Support", props: {
-      categories: SupportRequest::CATEGORIES,
-      thread_id: support_chat.thread_id
+      categories: SupportRequest::CATEGORIES
     }
   end
 
@@ -32,5 +29,4 @@ class SupportController < SubscribedController
       :category, :subject, :description, :submitted_from_url, :browser_info, attachments: []
     )
   end
-
 end

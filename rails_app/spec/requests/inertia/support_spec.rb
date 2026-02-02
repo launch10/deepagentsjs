@@ -29,23 +29,10 @@ RSpec.describe "Support Inertia Page", type: :request, inertia: true do
         expect(inertia.props[:categories]).to eq(SupportRequest::CATEGORIES)
       end
 
-      it "creates a support chat and passes thread_id" do
-        expect {
-          get support_path
-        }.to change(Chat, :count).by(1)
-
-        expect(inertia.props[:thread_id]).to be_present
-      end
-
-      it "reuses existing support chat on subsequent visits" do
+      it "does not pass thread_id (fresh chat each visit)" do
         get support_path
-        thread_id = inertia.props[:thread_id]
 
-        expect {
-          get support_path
-        }.not_to change(Chat, :count)
-
-        expect(inertia.props[:thread_id]).to eq(thread_id)
+        expect(inertia.props).not_to have_key(:thread_id)
       end
     end
 

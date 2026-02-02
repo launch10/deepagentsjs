@@ -69,7 +69,6 @@ class Account < ApplicationRecord
   has_many :support_requests, dependent: :destroy
   has_one :dashboard_insight, dependent: :destroy
   has_one :insights_chat, -> { where(chat_type: "insights") }, class_name: "Chat", dependent: :destroy
-  has_one :support_chat, -> { where(chat_type: "support") }, class_name: "Chat", dependent: :destroy
 
   scope :personal, -> { where(personal: true) }
   scope :team, -> { where(personal: false) }
@@ -167,12 +166,4 @@ class Account < ApplicationRecord
     )
   end
 
-  # Find or create the support chat for this account
-  def find_or_create_support_chat
-    support_chat || create_support_chat!(
-      chat_type: "support",
-      thread_id: SecureRandom.uuid,
-      name: "Support Chat"
-    )
-  end
 end
