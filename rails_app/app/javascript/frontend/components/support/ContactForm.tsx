@@ -312,10 +312,13 @@ export default function ContactForm() {
           </div>
 
           {/* Submit */}
-          <div className="pt-2">
+          <div className="pt-2 space-y-2">
             <Button type="submit" disabled={processing}>
               {processing ? "Submitting..." : "Submit Request"}
             </Button>
+            <p className="font-sans text-xs text-neutral-500">
+              Our team typically responds within 24 hours
+            </p>
           </div>
         </form>
       </CardContent>

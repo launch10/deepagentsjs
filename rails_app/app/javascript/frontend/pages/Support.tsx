@@ -1,30 +1,16 @@
-import { useState, useRef } from "react";
-import { usePage } from "@inertiajs/react";
-import FaqSection from "@components/support/FaqSection";
+import { useState } from "react";
 import SupportChat from "@components/support/SupportChat";
 import ContactForm from "@components/support/ContactForm";
 import { Button } from "@components/ui/button";
-import { ArrowDownIcon, ChatBubbleLeftEllipsisIcon } from "@heroicons/react/24/outline";
-import type { FaqItem } from "~/types/faq";
+import {
+  ChatBubbleLeftEllipsisIcon,
+  EnvelopeIcon,
+} from "@heroicons/react/24/outline";
 
-interface SupportPageProps {
-  faqs: FaqItem[];
-  thread_id: string | null;
-  [key: string]: unknown;
-}
+type Tab = "ai" | "human";
 
 export default function Support() {
-  const { faqs } = usePage<SupportPageProps>().props;
-  const [chatOpen, setChatOpen] = useState(false);
-  const contactFormRef = useRef<HTMLDivElement>(null);
-
-  const scrollToContactForm = () => {
-    contactFormRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  const handleChatToggle = () => {
-    setChatOpen(!chatOpen);
-  };
+  const [activeTab, setActiveTab] = useState<Tab>("ai");
 
   return (
     <main className="min-h-screen bg-neutral-background">
@@ -33,63 +19,33 @@ export default function Support() {
           Help Center
         </h1>
         <p className="font-sans text-sm text-neutral-600 mb-6">
-          Find answers to common questions or chat with our AI assistant.
+          Find quick answers or get help from our team.
         </p>
 
-        <div className="w-full lg:w-[720px] space-y-8">
-          {/* FAQ Section */}
-          {faqs && faqs.length > 0 ? (
-            <FaqSection faqs={faqs} />
-          ) : (
-            <p className="font-sans text-sm text-neutral-500 py-4">
-              No FAQs available at this time. Try chatting with our AI assistant or contact support below.
-            </p>
-          )}
-
-          {/* CTA Section */}
-          {!chatOpen && (
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 py-4">
-              <p className="font-sans text-sm text-neutral-600">
-                Can't find what you're looking for?
-              </p>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handleChatToggle}>
-                  <ChatBubbleLeftEllipsisIcon className="w-3.5 h-3.5" />
-                  Chat with AI
-                </Button>
-                <Button variant="outline" size="sm" onClick={scrollToContactForm}>
-                  <ArrowDownIcon className="w-3.5 h-3.5" />
-                  Contact Support
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* AI Chat */}
-          {chatOpen && (
-            <SupportChat
-              isOpen={chatOpen}
-              onToggle={handleChatToggle}
-            />
-          )}
-
-          {/* Contact Form */}
-          <div ref={contactFormRef}>
-            <h2 className="font-sans text-lg font-semibold text-base-500 mb-3">
+        <div className="w-full lg:w-[720px]">
+          {/* Tab buttons */}
+          <div className="flex gap-2 mb-6">
+            <Button
+              variant={activeTab === "ai" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveTab("ai")}
+            >
+              <ChatBubbleLeftEllipsisIcon className="w-4 h-4" />
+              Chat with AI
+            </Button>
+            <Button
+              variant={activeTab === "human" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveTab("human")}
+            >
+              <EnvelopeIcon className="w-4 h-4" />
               Contact Support
-            </h2>
-            <ContactForm />
+            </Button>
           </div>
 
-          <p className="font-sans text-sm text-neutral-600 mt-4">
-            You can also email us directly at{" "}
-            <a
-              href="mailto:support@launch10.ai"
-              className="text-base-500 underline"
-            >
-              support@launch10.ai
-            </a>
-          </p>
+          {/* Tab content */}
+          {activeTab === "ai" && <SupportChat />}
+          {activeTab === "human" && <ContactForm />}
         </div>
       </div>
     </main>

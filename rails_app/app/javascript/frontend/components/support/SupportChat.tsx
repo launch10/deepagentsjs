@@ -1,13 +1,13 @@
 import { Card, CardContent } from "@components/ui/card";
 import { Chat } from "@components/shared/chat/Chat";
-import { XMarkIcon, ArrowUpIcon, StopIcon } from "@heroicons/react/24/outline";
+import { ArrowUpIcon, StopIcon } from "@heroicons/react/24/outline";
 import {
   useSupportChat,
   useSupportMessages,
   useSupportIsStreaming,
 } from "@hooks/useSupportChat";
 
-function SupportChatPanel() {
+export default function SupportChat() {
   const chat = useSupportChat();
   const messages = useSupportMessages();
   const isStreaming = useSupportIsStreaming();
@@ -16,7 +16,7 @@ function SupportChatPanel() {
     <Card>
       <CardContent className="p-0">
         <Chat.Root chat={chat}>
-          <div className="flex flex-col h-[400px] bg-white">
+          <div className="flex flex-col h-[500px] bg-white">
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {/* Initial greeting when no messages */}
               {messages.length === 0 && !isStreaming && (
@@ -53,30 +53,5 @@ function SupportChatPanel() {
         </Chat.Root>
       </CardContent>
     </Card>
-  );
-}
-
-interface SupportChatProps {
-  isOpen: boolean;
-  onToggle: () => void;
-}
-
-export default function SupportChat({ isOpen, onToggle }: SupportChatProps) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <h3 className="font-sans text-sm font-medium text-base-500">
-          AI Assistant
-        </h3>
-        <button
-          type="button"
-          onClick={onToggle}
-          className="text-neutral-500 hover:text-neutral-600 transition-colors"
-        >
-          <XMarkIcon className="w-5 h-5" />
-        </button>
-      </div>
-      <SupportChatPanel />
-    </div>
   );
 }
