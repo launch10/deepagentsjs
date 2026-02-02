@@ -553,6 +553,37 @@ import { router } from "@inertiajs/react";
 </button>
 ```
 
+## E2E Tests (Playwright)
+
+E2E tests use the **cypress-on-rails** gem for server-side helpers. Key pattern:
+
+```typescript
+import { DatabaseSnapshotter } from "./fixtures/database";
+import { appScenario, appQuery } from "./support/on-rails";
+
+test.beforeEach(async ({ page }) => {
+  // 1. Restore snapshot (baseline state)
+  await DatabaseSnapshotter.restoreSnapshot('website_step');
+
+  // 2. Get record references
+  const project = await appQuery<{ id: number; uuid: string }>('first_project');
+
+  // 3. Layer scenarios for test-specific state
+  await appScenario('fill_subdomain_limit', { email: testUser.email });
+
+  // 4. Login
+  await loginUser(page);
+});
+```
+
+**Key files:**
+- `e2e/support/on-rails.ts` - TypeScript client for server commands
+- `e2e/app_commands/scenarios/` - Ruby scenarios (state manipulation)
+- `e2e/app_commands/queries/` - Ruby queries (data retrieval)
+- `e2e/fixtures/database.ts` - Snapshot operations only
+
+**See:** `rails_app/.claude/skills/playwright-e2e-tests.md` for full documentation.
+
 ## Tips
 
 - Use `pnpm` for Langgraph, not `npm` or `yarn`

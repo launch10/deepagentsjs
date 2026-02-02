@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useCallback } from "react";
 import {
   InformationCircleIcon,
   ExclamationCircleIcon,
@@ -11,11 +11,11 @@ import { PageNameInput } from "./PageNameInput";
 import { DnsHelpSection } from "./DnsHelpSection";
 import { FullUrlPreview } from "./FullUrlPreview";
 import { ClaimSubdomainModal } from "./ClaimSubdomainModal";
-import { useDomainContext, useDomainAssignment } from "~/api/domainContext.hooks";
-import { useWebsiteChatState } from "~/hooks/website/useWebsiteChat";
+import { useDomainAssignment } from "~/api/domainContext.hooks";
 import { useWebsiteId } from "~/stores/projectStore";
-import { isPlatformDomain, getSubdomain, getFullUrl } from "~/lib/domain";
-import type { Website } from "@shared";
+import { useDirtySelection } from "~/hooks/useDirtySelection";
+import { isPlatformDomain, getFullUrl } from "~/lib/domain";
+import { useDomainPickerData, useClaimSubdomain, useSelectionInit } from "./hooks";
 
 // ============================================================================
 // Types
@@ -31,10 +31,10 @@ export interface WebsiteUrl {
 }
 
 export interface DomainPickerProps {
-  /** Current selection (controlled) - if provided, component is controlled */
-  selection?: WebsiteUrl | null;
+  /** Current selection (controlled) */
+  selection: WebsiteUrl | null;
   /** Called when selection changes */
-  onSelectionChange?: (selection: WebsiteUrl | null) => void;
+  onSelectionChange: (selection: WebsiteUrl | null) => void;
 }
 
 // ============================================================================
@@ -62,98 +62,56 @@ function LoadingSkeleton() {
 // Component
 // ============================================================================
 
-export function DomainPicker({
-  selection: controlledSelection,
-  onSelectionChange,
-}: DomainPickerProps) {
+export function DomainPicker({ selection, onSelectionChange }: DomainPickerProps) {
   const websiteId = useWebsiteId();
-  const [hasInitialized, setHasInitialized] = useState(false);
-  const [internalSelection, setInternalSelection] = useState<WebsiteUrl | null>(null);
 
-  // Claim subdomain modal state
-  const [showClaimModal, setShowClaimModal] = useState(false);
-  const [pendingClaim, setPendingClaim] = useState<WebsiteUrl | null>(null);
+  // Data fetching
+  const {
+    context,
+    recommendations,
+    isLoading,
+    error,
+    assignedUrl,
+    isOutOfCredits,
+    creditsRemaining,
+  } = useDomainPickerData(websiteId ?? undefined);
 
-  // Track the last persisted selection to detect changes that need saving
-  const lastPersistedSelection = useRef<WebsiteUrl | null>(null);
+  // Dirty state tracking for blur-based saving
+  const { isDirty, markPersisted } = useDirtySelection(
+    selection,
+    (a, b) => a.domain === b.domain && a.path === b.path
+  );
 
-  // Domain assignment mutation with debounce + cancel pattern
+  // Claim modal flow
+  const claim = useClaimSubdomain({
+    websiteId: websiteId ?? undefined,
+    onClaimed: onSelectionChange,
+    markPersisted,
+  });
+
+  // Domain assignment for auto-save
   const domainAssignment = useDomainAssignment(websiteId ?? undefined, 750);
 
-  // Support both controlled and uncontrolled modes
-  const isControlled = controlledSelection !== undefined;
-  const selection = isControlled ? controlledSelection : internalSelection;
+  // Initialize selection from assigned URL or recommendations
+  useSelectionInit({
+    isLoading,
+    assignedUrl,
+    topRecommendation: recommendations?.topRecommendation,
+    onSelectionChange,
+    markPersisted,
+  });
 
-  // Fetch domain context from Rails (existing domains, credits, assigned URL)
-  const {
-    data: context,
-    isLoading: isContextLoading,
-    error: contextError,
-  } = useDomainContext(websiteId ?? undefined);
-
-  // The assigned URL is the source of truth - comes directly from website.website_url
-  const assignedUrl = context?.assigned_url ?? null;
-
-  // Get AI recommendations from website graph state
-  const domainRecommendations = useWebsiteChatState("domainRecommendations") as
-    | Website.DomainRecommendations.DomainRecommendations
-    | undefined;
-
-  // Derive display values from selection
+  // Derived values
   const selectedDomain = selection?.domain ?? null;
   const customPath = selection?.path ?? "/";
-
-  // Determine if out of credits
-  const isOutOfCredits = useMemo(() => {
-    if (!context?.platform_subdomain_credits) return false;
-    return context.platform_subdomain_credits.remaining === 0;
-  }, [context]);
-
-  // Get the selected recommendation details (for recommended path hint)
-  const selectedRec = useMemo(() => {
-    if (!selectedDomain || !domainRecommendations?.recommendations) return null;
-    return domainRecommendations.recommendations.find((r) => r.domain === selectedDomain);
-  }, [selectedDomain, domainRecommendations]);
-
-  // Get credits remaining for the modal
-  const creditsRemaining = context?.platform_subdomain_credits?.remaining ?? 0;
-
-  // Check if a selection requires claiming a new platform subdomain
-  const needsClaimModal = useCallback(
-    (sel: WebsiteUrl): boolean => {
-      // Only show modal for NEW platform subdomains (uses a credit)
-      return !sel.existingDomainId && isPlatformDomain(sel.domain);
-    },
-    []
+  const selectedRec = recommendations?.recommendations?.find(
+    (r) => r.domain === selectedDomain
   );
 
-  // Check if the selection has changed from the last persisted state
-  const hasSelectionChanged = useCallback(
-    (current: WebsiteUrl | null): boolean => {
-      if (!current) return false;
-      const last = lastPersistedSelection.current;
-      if (!last) return true;
-      return current.domain !== last.domain || current.path !== last.path;
-    },
-    []
-  );
-
-  // Commit selection to local state (UI-only, no API call)
-  const commitSelection = useCallback(
-    (newSelection: WebsiteUrl) => {
-      if (isControlled) {
-        onSelectionChange?.(newSelection);
-      } else {
-        setInternalSelection(newSelection);
-      }
-    },
-    [isControlled, onSelectionChange]
-  );
-
-  // Handle blur - triggers debounced save if selection has changed
+  // Handle blur - triggers debounced save if dirty
   const handleBlur = useCallback(() => {
-    if (!selection || !websiteId || !hasSelectionChanged(selection)) return;
-    if (needsClaimModal(selection)) return;
+    if (!selection || !websiteId || !isDirty) return;
+    if (!selection.existingDomainId && isPlatformDomain(selection.domain)) return;
 
     domainAssignment.mutateDebounced({
       domain: selection.domain,
@@ -161,146 +119,55 @@ export function DomainPicker({
       path: selection.path,
       isPlatformSubdomain: isPlatformDomain(selection.domain),
     });
-
-    lastPersistedSelection.current = selection;
-  }, [selection, websiteId, hasSelectionChanged, needsClaimModal, domainAssignment]);
-
-  // Handle selection from the picker
-  const handleSelect = useCallback(
-    (newSelection: WebsiteUrl) => {
-      if (needsClaimModal(newSelection)) {
-        setPendingClaim(newSelection);
-        setShowClaimModal(true);
-        return;
-      }
-      commitSelection(newSelection);
-    },
-    [needsClaimModal, commitSelection]
-  );
+    markPersisted(selection);
+  }, [selection, websiteId, isDirty, domainAssignment, markPersisted]);
 
   // Handle domain selection from dropdown
   const handleDomainSelect = useCallback(
     (domain: string, origin: DomainOrigin, existingDomainId?: number) => {
-      // Find the recommendation to get the suggested path
-      const rec = domainRecommendations?.recommendations?.find((r) => r.domain === domain);
-      const path = rec?.path ?? "/";
-
+      const rec = recommendations?.recommendations?.find((r) => r.domain === domain);
       const newSelection: WebsiteUrl = {
         domain,
-        path,
+        path: rec?.path ?? "/",
         origin,
         existingDomainId,
       };
 
-      handleSelect(newSelection);
+      // Check if needs claim modal
+      if (claim.maybeClaim(newSelection)) return;
 
-      // Trigger save immediately for existing domains
-      // Note: We can't use handleBlur here because it reads `selection` from closure,
-      // which won't have the new value yet (stale closure issue). Instead, save directly.
-      if (origin === "existing" && websiteId && !needsClaimModal(newSelection)) {
+      onSelectionChange(newSelection);
+
+      // Auto-save for existing domains
+      if (origin === "existing" && websiteId) {
         domainAssignment.mutateDebounced({
           domain: newSelection.domain,
           websiteId,
           path: newSelection.path,
           isPlatformSubdomain: isPlatformDomain(newSelection.domain),
         });
-        lastPersistedSelection.current = newSelection;
+        markPersisted(newSelection);
       }
     },
-    [domainRecommendations, handleSelect, websiteId, needsClaimModal, domainAssignment]
+    [recommendations, websiteId, domainAssignment, markPersisted, onSelectionChange, claim]
   );
 
   // Handle path change
   const handlePathChange = useCallback(
     (newPath: string) => {
-      if (selectedDomain && selection) {
-        handleSelect({
-          ...selection,
-          path: newPath,
-        });
-      }
+      if (!selection) return;
+
+      const newSelection: WebsiteUrl = { ...selection, path: newPath };
+
+      if (claim.maybeClaim(newSelection)) return;
+
+      onSelectionChange(newSelection);
     },
-    [selectedDomain, selection, handleSelect]
+    [selection, onSelectionChange, claim]
   );
 
-  // Handle claim confirmation from modal (immediate save)
-  const handleClaimConfirm = useCallback(async () => {
-    if (!pendingClaim || !websiteId) return;
-
-    try {
-      const result = await domainAssignment.mutateNowAsync({
-        domain: pendingClaim.domain,
-        websiteId,
-        path: pendingClaim.path,
-        isPlatformSubdomain: true,
-      });
-
-      const claimedSelection: WebsiteUrl = {
-        ...pendingClaim,
-        origin: "existing",
-        existingDomainId: result.id,
-      };
-
-      commitSelection(claimedSelection);
-      lastPersistedSelection.current = claimedSelection;
-      setShowClaimModal(false);
-      setPendingClaim(null);
-    } catch (error) {
-      console.error("Failed to claim subdomain:", error);
-    }
-  }, [pendingClaim, websiteId, domainAssignment, commitSelection]);
-
-  // Handle claim modal close
-  const handleClaimClose = useCallback(() => {
-    setShowClaimModal(false);
-    setPendingClaim(null);
-  }, []);
-
-  // Initialize selection from assigned URL or AI recommendations
-  useEffect(() => {
-    if (hasInitialized || isContextLoading) return;
-
-    // Priority 1: If website has an assigned URL, use it
-    if (assignedUrl) {
-      const newSelection: WebsiteUrl = {
-        domain: assignedUrl.domain,
-        path: assignedUrl.path ?? "/",
-        origin: "existing",
-        existingDomainId: assignedUrl.domain_id,
-      };
-
-      if (isControlled) {
-        onSelectionChange?.(newSelection);
-      } else {
-        setInternalSelection(newSelection);
-      }
-      lastPersistedSelection.current = newSelection;
-      setHasInitialized(true);
-      return;
-    }
-
-    // Priority 2: Use AI recommendation
-    if (context && domainRecommendations?.topRecommendation) {
-      const top = domainRecommendations.topRecommendation;
-
-      const newSelection: WebsiteUrl = {
-        domain: top.domain,
-        path: top.path,
-        origin: top.source, // "existing" | "suggestion" from backend
-        existingDomainId: top.existingDomainId,
-      };
-
-      if (isControlled) {
-        onSelectionChange?.(newSelection);
-      } else {
-        setInternalSelection(newSelection);
-      }
-      setHasInitialized(true);
-    }
-  }, [hasInitialized, isContextLoading, assignedUrl, context, domainRecommendations, isControlled, onSelectionChange]);
-
   // Loading state
-  if (isContextLoading) {
+  if (isLoading) {
     return (
       <div className="flex flex-col gap-5 rounded-2xl border border-neutral-300 bg-white px-10 py-7">
         <LoadingSkeleton />
@@ -309,7 +176,7 @@ export function DomainPicker({
   }
 
   // Error state
-  if (contextError) {
+  if (error) {
     return (
       <div className="flex flex-col gap-5 rounded-2xl border border-neutral-300 bg-white px-10 py-7">
         <div className="text-center py-8">
@@ -319,7 +186,7 @@ export function DomainPicker({
     );
   }
 
-  // Derive header text based on whether a custom domain is selected
+  // Header text
   const isCustomDomain = selection && !isPlatformDomain(selection.domain);
   const title = isCustomDomain ? "Connect your own site" : "Website Setup";
   const subtitle = isCustomDomain
@@ -371,7 +238,7 @@ export function DomainPicker({
             </Tooltip>
           </Label>
           <SiteNameDropdown
-            recommendations={domainRecommendations}
+            recommendations={recommendations}
             context={context}
             selectedDomain={selectedDomain}
             isOutOfCredits={isOutOfCredits}
@@ -418,12 +285,12 @@ export function DomainPicker({
 
       {/* Claim Subdomain Modal */}
       <ClaimSubdomainModal
-        isOpen={showClaimModal}
-        onClose={handleClaimClose}
-        onConfirm={handleClaimConfirm}
-        domain={pendingClaim?.domain ?? ""}
+        isOpen={claim.showModal}
+        onClose={claim.close}
+        onConfirm={claim.confirm}
+        domain={claim.pendingClaim?.domain ?? ""}
         creditsRemaining={creditsRemaining}
-        isLoading={domainAssignment.isPending}
+        isLoading={claim.isPending}
       />
     </div>
   );
