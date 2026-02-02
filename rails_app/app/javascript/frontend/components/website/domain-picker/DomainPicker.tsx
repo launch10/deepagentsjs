@@ -4,10 +4,11 @@ import { CustomDomainPicker } from "./CustomDomainPicker";
 import { FullUrlPreview } from "./FullUrlPreview";
 import { ClaimSubdomainModal } from "./ClaimSubdomainModal";
 import { useDomainContext, useDomainAssignment } from "~/api/domainContext.hooks";
-import { useWebsiteChatState, useWebsiteChatIsLoading } from "~/hooks/website/useWebsiteChat";
+import { useWebsiteChatState } from "~/hooks/website/useWebsiteChat";
 import { useWebsiteId } from "~/stores/projectStore";
 import type { Website } from "@shared";
 import type { GetDomainContextResponse } from "@rails_api_base";
+
 
 // ============================================================================
 // Types
@@ -103,14 +104,25 @@ export function DomainPicker({
   // The assigned URL is the source of truth - comes directly from website.website_url
   const assignedUrl = context?.assigned_url ?? null;
 
+  // Log key data for debugging
+  if (context) {
+    console.log("[DomainPicker] Rails context:", {
+      credits: context.platform_subdomain_credits,
+      assignedUrl: context.assigned_url,
+      existingDomains: context.existing_domains?.length,
+    });
+  }
+
   // Get AI recommendations from website graph state
   const domainRecommendations = useWebsiteChatState("domainRecommendations") as
     | Website.DomainRecommendations.DomainRecommendations
     | undefined;
-  const isChatLoading = useWebsiteChatIsLoading();
 
-  // Show loading state (context loading or chat still generating recommendations)
-  const isLoading = isContextLoading || (isChatLoading && !domainRecommendations);
+  // Show loading state ONLY while Rails context is loading.
+  // We don't block on AI recommendations - the domain picker can work without them.
+  // Users can select existing domains, enter custom subdomains, etc.
+  // AI recommendations will populate the dropdown when they arrive.
+  const isLoading = isContextLoading;
 
   // Get credits remaining for the modal
   const creditsRemaining = context?.platform_subdomain_credits?.remaining ?? 0;
@@ -140,7 +152,6 @@ export function DomainPicker({
   // Actually commit the selection to local state (UI-only, no API call)
   const commitSelection = useCallback(
     (newSelection: DomainSelection) => {
-      console.log("[DomainPicker] commitSelection (local):", newSelection);
       if (isControlled) {
         onSelectionChange?.(newSelection);
       } else {
@@ -157,7 +168,6 @@ export function DomainPicker({
     // Don't save if it requires the claim modal (new subdomain)
     if (requiresClaimModal(selection)) return;
 
-    console.log("[DomainPicker] handleBlur - saving via debounce:", selection);
     domainAssignment.mutateDebounced({
       domain: selection.domain,
       websiteId,
@@ -172,7 +182,6 @@ export function DomainPicker({
   // Handle selection from either picker mode (UI-only, no API call)
   const handleSelect = useCallback(
     (newSelection: DomainSelection) => {
-      console.log("[DomainPicker] handleSelect called (local):", { newSelection, isControlled });
 
       const isCustomDomain = !newSelection.domain.endsWith(".launch10.site");
 

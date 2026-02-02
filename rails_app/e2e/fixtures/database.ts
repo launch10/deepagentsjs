@@ -220,6 +220,7 @@ export const DatabaseSnapshotter = {
     }
 
     const data = await response.json();
+    console.log("[DatabaseSnapshotter] fillSubdomainLimit response:", data);
     return data;
   },
 

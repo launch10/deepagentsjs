@@ -40,7 +40,9 @@ export function Launch10SitePicker({
   // Determine if out of credits
   const isOutOfCredits = useMemo(() => {
     if (!context?.platform_subdomain_credits) return false;
-    return context.platform_subdomain_credits.remaining === 0;
+    const result = context.platform_subdomain_credits.remaining === 0;
+    console.log("[Launch10SitePicker] isOutOfCredits:", result, "credits:", context.platform_subdomain_credits);
+    return result;
   }, [context]);
 
   // Get the selected recommendation details
@@ -56,7 +58,6 @@ export function Launch10SitePicker({
     source: "existing" | "generated" | "custom",
     existingDomainId?: number
   ) => {
-    console.log("[Launch10SitePicker] handleDomainSelect called:", { domain, subdomain, source, existingDomainId });
 
     // Find the recommendation to get the suggested path
     const rec = recommendations?.recommendations?.find((r) => r.domain === domain);
@@ -75,7 +76,6 @@ export function Launch10SitePicker({
       isNew: source === "generated" || source === "custom",
       existingDomainId,
     };
-    console.log("[Launch10SitePicker] calling onSelect with:", newSelection);
     onSelect(newSelection);
 
     // Trigger save after domain selection (if it's an existing domain)
@@ -166,7 +166,7 @@ export function Launch10SitePicker({
             value={customPath}
             onChange={handlePathChange}
             onBlur={onBlur}
-            domainId={selectedRec?.existingDomainId}
+            domainId={selection?.existingDomainId}
             websiteId={websiteId ?? undefined}
             recommendedPath={selectedRec?.path}
           />

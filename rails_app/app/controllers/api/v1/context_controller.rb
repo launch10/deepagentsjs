@@ -27,10 +27,12 @@ class API::V1::ContextController < API::BaseController
     # Get the website's assigned URL (source of truth) - 1:1 relationship
     assigned_url = website.website_url
 
+    credits = platform_subdomain_credits
+
     render json: {
       existing_domains: domains.map { |domain| serialize_domain(domain) },
       assigned_url: assigned_url ? serialize_website_url(assigned_url) : nil,
-      platform_subdomain_credits: platform_subdomain_credits,
+      platform_subdomain_credits: credits,
       brainstorm_context: serialize_brainstorm(website.brainstorm),
       plan_tier: current_account.plan&.plan_tier&.name
     }

@@ -23,8 +23,12 @@ interface WebsitePageProps {
   website?: { id?: number };
   project?: { id?: number; uuid?: string };
   substep?: Workflow.WebsiteSubstepName;
+  thread_id?: string;
+  jwt?: string;
+  langgraph_path?: string;
   [key: string]: unknown;
 }
+
 
 const websiteLoaderSteps = [{ id: "1", label: "Setting up branding & colors" }];
 
@@ -120,6 +124,62 @@ function useWebsiteInit() {
 }
 
 /**
+ * Auto-initialize the website graph if it hasn't run yet.
+ * Used on the Domain page to ensure domainRecommendations are populated.
+ *
+ * This handles the case where user navigates directly to /website/domain
+ * without going through /website/build first. The graph needs to run to
+ * populate domainRecommendations.
+ *
+ * Detection logic:
+ * - If domainRecommendations is undefined AND we're not streaming AND files don't exist
+ * - Then the graph hasn't run, so trigger it
+ */
+function useDomainPageInit() {
+  const { website, project } = usePage<WebsitePageProps>().props;
+  const websiteId = website?.id;
+  const projectId = project?.id;
+
+  const { updateState } = useWebsiteChatActions();
+  const isStreaming = useWebsiteChatIsStreaming();
+  const domainRecommendations = useWebsiteChatState("domainRecommendations");
+  const files = useWebsiteChatState("files");
+  const status = useWebsiteChatState("status");
+
+  const hasInitialized = useRef(false);
+
+  const maybeInit = useEffectEvent(() => {
+    if (hasInitialized.current) return;
+    if (isStreaming) return;
+    if (!websiteId || !projectId) return;
+
+    // Check if graph has already run
+    const hasFiles = files && Object.keys(files).length > 0;
+    const hasRecommendations = !!domainRecommendations;
+    const graphHasRun = hasRecommendations || hasFiles || (status && status !== "pending");
+
+    if (graphHasRun) {
+      hasInitialized.current = true;
+      return;
+    }
+
+    // Graph hasn't run - kick it off
+    hasInitialized.current = true;
+    updateState({
+      command: "create",
+      websiteId,
+      projectId,
+    });
+  });
+
+  useEffect(() => {
+    maybeInit();
+  }, [websiteId, projectId, domainRecommendations, files, status, isStreaming]);
+
+  return { isInitializing: isStreaming && !domainRecommendations };
+}
+
+/**
  * Website Build step - generates the website content
  */
 function WebsiteBuild() {
@@ -178,10 +238,14 @@ function WebsiteBuild() {
  * Uses the same layout as WebsiteBuild with sidebar + main content
  */
 function WebsiteDomainStep() {
-  const { project, website } = usePage<WebsitePageProps>().props;
+  const { project, website, thread_id } = usePage<WebsitePageProps>().props;
   const chat = useWebsiteChat();
   const [selection, setSelection] = useState<DomainSelection | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // Auto-init the website graph if it hasn't run yet
+  // This ensures domainRecommendations are populated even if user navigates directly here
+  useDomainPageInit();
 
   // Fetch domain context for credits info
   const { data: domainContext } = useDomainContext(website?.id);
@@ -201,9 +265,7 @@ function WebsiteDomainStep() {
     },
   });
 
-  // Debug: log selection changes
   const handleSelectionChange = useCallback((newSelection: DomainSelection | null) => {
-    console.log("[Website.tsx] handleSelectionChange called:", newSelection);
     setSelection(newSelection);
   }, []);
 
