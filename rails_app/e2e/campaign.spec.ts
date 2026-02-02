@@ -24,6 +24,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { loginUser } from "./fixtures/auth";
 import { DatabaseSnapshotter } from "./fixtures/database";
+import { appQuery } from "./support/on-rails";
 import { CampaignPage, VALID_TEST_DATA, INVALID_TEST_DATA } from "./pages/campaign.page";
 
 // Snapshot builders available (chain from earlier to later):
@@ -42,7 +43,7 @@ test.describe("Ad Campaign Workflow", () => {
     // Individual tests may restore different snapshots as needed
     await DatabaseSnapshotter.restoreSnapshot("campaign_content_step");
     // Get the project UUID from the restored snapshot
-    const project = await DatabaseSnapshotter.getFirstProject();
+    const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
     projectUuid = project.uuid;
     // Login the test user
     await loginUser(page);
@@ -447,7 +448,7 @@ test.describe("Ad Campaign Workflow", () => {
     // Use campaign_settings_step snapshot to start directly on the settings page
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("campaign_settings_step");
-      const project = await DatabaseSnapshotter.getFirstProject();
+      const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
       projectUuid = project.uuid;
       campaignPage = new CampaignPage(page);
 
@@ -695,7 +696,7 @@ test.describe("Ad Campaign Workflow", () => {
     // Use campaign_settings_step snapshot to start directly on the settings page
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("campaign_settings_step");
-      const project = await DatabaseSnapshotter.getFirstProject();
+      const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
       projectUuid = project.uuid;
       campaignPage = new CampaignPage(page);
     });
@@ -757,7 +758,7 @@ test.describe("Ad Campaign Workflow", () => {
     // Use campaign_settings_step snapshot to start directly on the settings page
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("campaign_settings_step");
-      const project = await DatabaseSnapshotter.getFirstProject();
+      const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
       projectUuid = project.uuid;
       campaignPage = new CampaignPage(page);
     });
@@ -803,7 +804,7 @@ test.describe("Ad Campaign Workflow", () => {
     // Use campaign_review_step snapshot to start directly on the review page
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("campaign_review_step");
-      const project = await DatabaseSnapshotter.getFirstProject();
+      const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
       projectUuid = project.uuid;
       campaignPage = new CampaignPage(page);
     });
@@ -838,7 +839,7 @@ test.describe("Ad Campaign Workflow", () => {
     // Use campaign_review_step snapshot to start directly on the review page
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("campaign_review_step");
-      const project = await DatabaseSnapshotter.getFirstProject();
+      const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
       projectUuid = project.uuid;
       campaignPage = new CampaignPage(page);
     });
@@ -1054,7 +1055,7 @@ test.describe("Ad Campaign Workflow", () => {
     // Use campaign_keywords_step snapshot to start directly on the keywords page
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("campaign_keywords_step");
-      const project = await DatabaseSnapshotter.getFirstProject();
+      const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
       projectUuid = project.uuid;
       campaignPage = new CampaignPage(page);
     });
@@ -1131,7 +1132,7 @@ test.describe("Full Workflow Integration", () => {
   test("should complete entire ad campaign workflow", async ({ page }) => {
     // Restore database
     await DatabaseSnapshotter.restoreSnapshot("campaign_content_step");
-    const project = await DatabaseSnapshotter.getFirstProject();
+    const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
     const projectUuid = project.uuid;
     await loginUser(page);
 

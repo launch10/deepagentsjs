@@ -1,5 +1,6 @@
 import { test, expect, loginUser } from "./fixtures/auth";
 import { DatabaseSnapshotter } from "./fixtures/database";
+import { appQuery } from "./support/on-rails";
 import { LeadsPage } from "./pages/leads.page";
 
 /**
@@ -15,7 +16,7 @@ test.describe("Leads Page", () => {
   test.describe("With Leads (website_deployed snapshot)", () => {
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("website_deployed");
-      const project = await DatabaseSnapshotter.getFirstProject();
+      const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
       projectUuid = project.uuid;
       await loginUser(page);
       leadsPage = new LeadsPage(page);
@@ -142,7 +143,7 @@ test.describe("Leads Page", () => {
   test.describe("Empty State (website_step snapshot)", () => {
     test.beforeEach(async ({ page }) => {
       await DatabaseSnapshotter.restoreSnapshot("website_step");
-      const project = await DatabaseSnapshotter.getFirstProject();
+      const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
       projectUuid = project.uuid;
       await loginUser(page);
       leadsPage = new LeadsPage(page);
@@ -186,7 +187,7 @@ test.describe("Leads Page", () => {
   // test.describe("Navigation", () => {
   //   test.beforeEach(async ({ page }) => {
   //     await DatabaseSnapshotter.restoreSnapshot("website_step");
-  //     const project = await DatabaseSnapshotter.getFirstProject();
+  //     const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
   //     projectUuid = project.uuid;
   //     await loginUser(page);
   //     leadsPage = new LeadsPage(page);
