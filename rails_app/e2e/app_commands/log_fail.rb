@@ -13,10 +13,8 @@ json_result['error'] = command_options.fetch('error_message', 'no error message'
 if defined?(ActiveRecord::Base)
   json_result['records'] =
     ActiveRecord::Base.descendants.each_with_object({}) do |record_class, records|
-      begin
-        records[record_class.to_s] = record_class.limit(100).map(&:attributes)
-      rescue
-      end
+      records[record_class.to_s] = record_class.limit(100).map(&:attributes)
+    rescue
     end
 end
 

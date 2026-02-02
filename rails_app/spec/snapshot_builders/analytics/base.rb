@@ -24,32 +24,64 @@ module SnapshotBuilders
       # @param pages_per_visit [Range] how many page views per visit (default 1..3)
       #
       def create_page_views(website, visits_per_day, pages_per_visit: 1..3)
+        landing_page = "https://#{website.domain}/"
+        browsers = %w[Chrome Safari Firefox Edge]
+        device_types = %w[Desktop Mobile Tablet]
+        pages = ["/about", "/pricing", "/contact"]
+
+        visits = []
+        events_by_visit_token = {}
+
         visits_per_day.each do |date, visitor_count|
           visitor_count.times do
             timestamp = date.to_time + rand(0..23).hours + rand(0..59).minutes
+            visit_token = SecureRandom.uuid
 
-            # Create the visit (unique visitor)
-            visit = Ahoy::Visit.create!(
+            visits << Ahoy::Visit.new(
               website: website,
-              visit_token: SecureRandom.uuid,
+              visit_token: visit_token,
               visitor_token: SecureRandom.uuid,
               started_at: timestamp,
-              browser: %w[Chrome Safari Firefox Edge].sample,
-              device_type: %w[Desktop Mobile Tablet].sample,
-              landing_page: "https://#{website.domains.first&.domain || "example.com"}/"
+              browser: browsers.sample,
+              device_type: device_types.sample,
+              landing_page: landing_page
             )
 
-            # Create page_view events (1-3 per visit)
-            rand(pages_per_visit).times do |i|
-              Ahoy::Event.create!(
-                visit: visit,
+            # Pre-generate event data (will link after visits are imported)
+            events_by_visit_token[visit_token] = rand(pages_per_visit).times.map do |i|
+              {
                 name: "page_view",
                 time: timestamp + (i * rand(10..60)).seconds,
-                properties: { page: (i == 0) ? "/" : ["/about", "/pricing", "/contact"].sample }
-              )
+                properties: { page: (i == 0) ? "/" : pages.sample }
+              }
             end
           end
         end
+
+        # Bulk insert visits
+        Ahoy::Visit.import(visits)
+
+        # Fetch inserted visits to get their IDs
+        visit_id_by_token = Ahoy::Visit
+          .where(visit_token: events_by_visit_token.keys)
+          .pluck(:visit_token, :id)
+          .to_h
+
+        # Build events with correct visit IDs
+        events = events_by_visit_token.flat_map do |visit_token, event_data_list|
+          visit_id = visit_id_by_token[visit_token]
+          event_data_list.map do |event_data|
+            Ahoy::Event.new(
+              visit_id: visit_id,
+              name: event_data[:name],
+              time: event_data[:time],
+              properties: event_data[:properties]
+            )
+          end
+        end
+
+        # Bulk insert events
+        Ahoy::Event.import(events)
       end
 
       # Create website leads for a project on specific dates.
@@ -62,28 +94,45 @@ module SnapshotBuilders
       def create_leads(website, leads_per_day)
         account = website.account
 
+        leads = []
+        timestamps_by_email = {}
+
         leads_per_day.each do |date, count|
           count.times do
             timestamp = date.to_time + rand(0..23).hours + rand(0..59).minutes
+            email = "lead-#{SecureRandom.hex(4)}@example.com"
 
-            # Create the Lead (account-level record with email)
-            lead = Lead.create!(
+            leads << Lead.new(
               account: account,
-              email: "lead-#{SecureRandom.hex(4)}@example.com",
+              email: email,
               name: "Test Lead #{SecureRandom.hex(3)}",
               created_at: timestamp,
               updated_at: timestamp
             )
-
-            # Create the WebsiteLead (join table linking to website)
-            WebsiteLead.create!(
-              lead: lead,
-              website: website,
-              created_at: timestamp,
-              updated_at: timestamp
-            )
+            timestamps_by_email[email] = timestamp
           end
         end
+
+        return if leads.empty?
+
+        # Bulk insert leads
+        Lead.import(leads)
+
+        # Fetch inserted leads to get their IDs
+        lead_records = Lead.where(email: timestamps_by_email.keys).select(:id, :email, :created_at)
+
+        # Build website leads with correct lead IDs
+        website_leads = lead_records.map do |lead|
+          WebsiteLead.new(
+            lead_id: lead.id,
+            website: website,
+            created_at: lead.created_at,
+            updated_at: lead.created_at
+          )
+        end
+
+        # Bulk insert website leads
+        WebsiteLead.import(website_leads)
       end
 
       # Create ad performance records (raw Google Ads data).
@@ -107,17 +156,77 @@ module SnapshotBuilders
         AdPerformanceDaily.import(records)
       end
 
-      # Run the actual ComputeMetricsService to generate AnalyticsDailyMetric.
+      # Compute and bulk-insert AnalyticsDailyMetric records for a project.
       #
-      # This ensures the computed metrics match production behavior.
+      # Uses aggregated queries instead of per-day service calls for performance.
       #
       # @param project [Project]
       # @param dates [Array<Date>]
       #
       def compute_metrics_for_project(project, dates)
-        dates.each do |date|
-          ::Analytics::ComputeMetricsService.new(project, date: date).call
+        return if dates.empty?
+
+        account = project.account
+        website = project.website
+        campaign_ids = project.campaigns.pluck(:id)
+
+        # Aggregate leads by date
+        leads_by_date = website ? WebsiteLead
+          .where(website: website)
+          .where(created_at: dates.first.beginning_of_day..dates.last.end_of_day)
+          .group("DATE(created_at)")
+          .count : {}
+
+        # Aggregate unique visitors by date
+        visitors_by_date = website ? Ahoy::Visit
+          .where(website: website)
+          .where(started_at: dates.first.beginning_of_day..dates.last.end_of_day)
+          .group("DATE(started_at)")
+          .count : {}
+
+        # Aggregate page views by date
+        page_views_by_date = website ? Ahoy::Event
+          .joins(:visit)
+          .where(ahoy_visits: { website_id: website.id })
+          .where(name: "page_view")
+          .where(time: dates.first.beginning_of_day..dates.last.end_of_day)
+          .group("DATE(ahoy_events.time)")
+          .count : {}
+
+        # Aggregate ad metrics by date
+        ads_by_date = campaign_ids.any? ? AdPerformanceDaily
+          .where(campaign_id: campaign_ids, date: dates)
+          .group(:date)
+          .select(
+            "date",
+            "SUM(impressions) as impressions",
+            "SUM(clicks) as clicks",
+            "SUM(cost_micros) as cost_micros"
+          )
+          .index_by(&:date) : {}
+
+        # Build all metric records
+        now = Time.current
+        records = dates.map do |date|
+          ads = ads_by_date[date]
+          {
+            account_id: account.id,
+            project_id: project.id,
+            date: date,
+            leads_count: leads_by_date[date.to_s] || 0,
+            unique_visitors_count: visitors_by_date[date.to_s] || 0,
+            page_views_count: page_views_by_date[date.to_s] || 0,
+            conversion_value_cents: 0,
+            impressions: ads&.impressions.to_i,
+            clicks: ads&.clicks.to_i,
+            cost_micros: ads&.cost_micros.to_i,
+            created_at: now,
+            updated_at: now
+          }
         end
+
+        # Bulk upsert all records
+        AnalyticsDailyMetric.upsert_all(records, unique_by: [:account_id, :project_id, :date])
       end
 
       # Create a project with website, optionally with campaign and deploy.

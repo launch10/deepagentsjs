@@ -13,7 +13,9 @@ describe("search_domains tool", () => {
   describe("result transformation", () => {
     it("correctly maps available status", () => {
       const apiResponse = {
-        results: [{ domain: "my-site.launch10.site", status: "available" as const, existing_id: null }],
+        results: [
+          { domain: "my-site.launch10.site", status: "available" as const, existing_id: null },
+        ],
         platform_subdomain_credits: { limit: 2, used: 0, remaining: 2 },
       };
 
@@ -40,7 +42,9 @@ describe("search_domains tool", () => {
 
     it("correctly maps unavailable status", () => {
       const apiResponse = {
-        results: [{ domain: "taken.launch10.site", status: "unavailable" as const, existing_id: null }],
+        results: [
+          { domain: "taken.launch10.site", status: "unavailable" as const, existing_id: null },
+        ],
         platform_subdomain_credits: { limit: 2, used: 1, remaining: 1 },
       };
 
@@ -48,15 +52,15 @@ describe("search_domains tool", () => {
         results: apiResponse.results.map((r) => ({
           domain: r.domain,
           subdomain: r.domain.replace(".launch10.site", ""),
-          available: r.status === "available",
+          available: (r.status as string) === "available",
           status: r.status,
           existingId: r.existing_id,
         })),
         credits: apiResponse.platform_subdomain_credits,
       };
 
-      expect(result.results[0].available).toBe(false);
-      expect(result.results[0].status).toBe("unavailable");
+      expect(result.results[0]!.available).toBe(false);
+      expect(result.results[0]!.status).toBe("unavailable");
     });
 
     it("correctly maps existing status with domain ID", () => {
@@ -69,7 +73,7 @@ describe("search_domains tool", () => {
         results: apiResponse.results.map((r) => ({
           domain: r.domain,
           subdomain: r.domain.replace(".launch10.site", ""),
-          available: r.status === "available",
+          available: (r.status as string) === "available",
           status: r.status,
           existingId: r.existing_id,
         })),
@@ -111,7 +115,7 @@ describe("search_domains tool", () => {
       // Only "available" should have available=true
       const availableResults = result.results.filter((r) => r.available);
       expect(availableResults).toHaveLength(1);
-      expect(availableResults[0].subdomain).toBe("a");
+      expect(availableResults[0]!.subdomain).toBe("a");
 
       // Check credits are passed through
       expect(result.credits).toEqual({

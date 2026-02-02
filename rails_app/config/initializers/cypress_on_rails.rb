@@ -15,12 +15,12 @@ if defined?(CypressOnRails)
     #    cassette_library_dir: File.expand_path("#{__dir__}/../../e2e/fixtures/vcr_cassettes")
     #  }
     c.logger = Rails.logger
-    
+
     # Server configuration for rake tasks (cypress:open, cypress:run, playwright:open, playwright:run)
     # c.server_host = 'localhost'  # or use ENV['CYPRESS_RAILS_HOST']
-    # c.server_port = 3001         # or use ENV['CYPRESS_RAILS_PORT']  
+    # c.server_port = 3001         # or use ENV['CYPRESS_RAILS_PORT']
     # c.transactional_server = true  # Enable automatic transaction rollback between tests
-    
+
     # Server lifecycle hooks for rake tasks
     # c.before_server_start = -> { DatabaseCleaner.clean_with(:truncation) }
     # c.after_server_start = -> { puts "Test server started on port #{CypressOnRails.configuration.server_port}" }

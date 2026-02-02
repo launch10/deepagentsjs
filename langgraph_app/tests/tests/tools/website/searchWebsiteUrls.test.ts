@@ -16,7 +16,12 @@ describe("search_website_urls tool", () => {
         domain_id: 1,
         domain: "my-site.launch10.site",
         results: [
-          { path: "/landing", status: "available" as const, existing_id: null, existing_website_id: null },
+          {
+            path: "/landing",
+            status: "available" as const,
+            existing_id: null,
+            existing_website_id: null,
+          },
         ],
       };
 
@@ -47,7 +52,12 @@ describe("search_website_urls tool", () => {
         domain_id: 1,
         domain: "shared.launch10.site",
         results: [
-          { path: "/landing", status: "existing" as const, existing_id: 5, existing_website_id: 10 },
+          {
+            path: "/landing",
+            status: "existing" as const,
+            existing_id: 5,
+            existing_website_id: 10,
+          },
         ],
       };
 
@@ -56,7 +66,7 @@ describe("search_website_urls tool", () => {
         domain: apiResponse.domain,
         results: apiResponse.results.map((r) => ({
           path: r.path,
-          available: r.status === "available",
+          available: (r.status as string) === "available",
           status: r.status,
           existingId: r.existing_id,
           existingWebsiteId: r.existing_website_id,
@@ -72,12 +82,14 @@ describe("search_website_urls tool", () => {
       });
     });
 
-    it("correctly maps assigned status (path used by current website)", () => {
+    it("correctly maps existing status (path used by current website)", () => {
+      // Note: The API returns "existing" for paths owned by the current account
+      // (whether by the current website or another website in the same account)
       const apiResponse = {
         domain_id: 1,
         domain: "my-site.launch10.site",
         results: [
-          { path: "/my-page", status: "assigned" as const, existing_id: 3, existing_website_id: 5 },
+          { path: "/my-page", status: "existing" as const, existing_id: 3, existing_website_id: 5 },
         ],
       };
 
@@ -86,15 +98,15 @@ describe("search_website_urls tool", () => {
         domain: apiResponse.domain,
         results: apiResponse.results.map((r) => ({
           path: r.path,
-          available: r.status === "available",
+          available: (r.status as string) === "available",
           status: r.status,
           existingId: r.existing_id,
           existingWebsiteId: r.existing_website_id,
         })),
       };
 
-      expect(result.results[0].status).toBe("assigned");
-      expect(result.results[0].available).toBe(false);
+      expect(result.results[0]!.status).toBe("existing");
+      expect(result.results[0]!.available).toBe(false);
     });
 
     it("correctly maps unavailable status (path used by another account)", () => {
@@ -102,7 +114,12 @@ describe("search_website_urls tool", () => {
         domain_id: 1,
         domain: "shared.launch10.site",
         results: [
-          { path: "/taken", status: "unavailable" as const, existing_id: null, existing_website_id: null },
+          {
+            path: "/taken",
+            status: "unavailable" as const,
+            existing_id: null,
+            existing_website_id: null,
+          },
         ],
       };
 
@@ -111,15 +128,15 @@ describe("search_website_urls tool", () => {
         domain: apiResponse.domain,
         results: apiResponse.results.map((r) => ({
           path: r.path,
-          available: r.status === "available",
+          available: (r.status as string) === "available",
           status: r.status,
           existingId: r.existing_id,
           existingWebsiteId: r.existing_website_id,
         })),
       };
 
-      expect(result.results[0].status).toBe("unavailable");
-      expect(result.results[0].available).toBe(false);
+      expect(result.results[0]!.status).toBe("unavailable");
+      expect(result.results[0]!.available).toBe(false);
     });
 
     it("handles batch of mixed path statuses", () => {
@@ -128,9 +145,24 @@ describe("search_website_urls tool", () => {
         domain: "my-site.launch10.site",
         results: [
           { path: "/", status: "available" as const, existing_id: null, existing_website_id: null },
-          { path: "/landing", status: "existing" as const, existing_id: 5, existing_website_id: 10 },
-          { path: "/promo", status: "available" as const, existing_id: null, existing_website_id: null },
-          { path: "/blog", status: "unavailable" as const, existing_id: null, existing_website_id: null },
+          {
+            path: "/landing",
+            status: "existing" as const,
+            existing_id: 5,
+            existing_website_id: 10,
+          },
+          {
+            path: "/promo",
+            status: "available" as const,
+            existing_id: null,
+            existing_website_id: null,
+          },
+          {
+            path: "/blog",
+            status: "unavailable" as const,
+            existing_id: null,
+            existing_website_id: null,
+          },
         ],
       };
 
