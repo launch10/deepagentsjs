@@ -53,16 +53,13 @@ module Analytics
     # @return [Hash] Status counts { all: N, live: N, paused: N, draft: N }
     #
     def status_counts
-      projects = account.projects.includes(:campaigns)
-
-      counts = { all: projects.count, live: 0, paused: 0, draft: 0 }
-
-      projects.each do |project|
-        status = project_status(project)
-        counts[status.to_sym] += 1
-      end
-
-      counts
+      counts = account.projects.group(:status).count
+      {
+        all: counts.values.sum,
+        live: counts["live"] || 0,
+        paused: counts["paused"] || 0,
+        draft: counts["draft"] || 0
+      }
     end
 
     private
@@ -101,7 +98,7 @@ module Analytics
         .index_by(&:project_id)
 
       # Get all projects for the account with associations
-      projects = account.projects.includes(:campaigns, website: :domains)
+      projects = account.projects.includes(website: :domains)
 
       projects.map do |project|
         metrics = projects_with_metrics[project.id]
@@ -137,17 +134,7 @@ module Analytics
     end
 
     def project_status(project)
-      campaigns = project.campaigns
-      return "draft" if campaigns.empty?
-
-      # If any campaign is active, project is "live"
-      return "live" if campaigns.any? { |c| c.status == "active" }
-
-      # If any campaign is paused, project is "paused"
-      return "paused" if campaigns.any? { |c| c.status == "paused" }
-
-      # Otherwise draft
-      "draft"
+      project.status
     end
 
     def project_url(project)

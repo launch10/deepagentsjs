@@ -17,14 +17,26 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
   /**
    * Capture input messages at the start of each LLM call.
    * Deduplicates to avoid counting the same message twice.
+   * Also stores metadata (including _modelCard) in the usage context for handleLLMEnd.
    */
   override async handleChatModelStart(
     _llm: Serialized,
     messages: BaseMessage[][],
-    _runId: string
+    runId: string,
+    _parentRunId?: string,
+    _extraParams?: Record<string, unknown>,
+    _tags?: string[],
+    metadata?: Record<string, unknown>,
+    _runName?: string
   ): Promise<void> {
     const context = getUsageContext();
     if (!context) return;
+
+    // Store metadata in context for this langchain runId so we can access _modelCard in handleLLMEnd
+    // Using the context's Map ensures automatic cleanup when the context ends
+    if (metadata) {
+      context._runIdToMetadata.set(runId, metadata);
+    }
 
     const inputMessages = messages[0] ?? [];
 
@@ -50,6 +62,9 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
     const context = getUsageContext();
     if (!context) return;
 
+    // Retrieve metadata stored in handleChatModelStart (includes _modelCard)
+    const storedMetadata = context._runIdToMetadata.get(llmCallId);
+
     for (const generationBatch of output.generations ?? []) {
       for (const generation of generationBatch) {
         const message = (generation as any).message as AIMessage | undefined;
@@ -72,12 +87,16 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
               llmCallId,
               parentLlmCallId,
               tags,
-              extraParams
+              extraParams,
+              storedMetadata
             )
           );
         }
       }
     }
+
+    // Clean up stored metadata after use (context cleanup handles overall cleanup)
+    context._runIdToMetadata.delete(llmCallId);
   }
 
   private getMessageId(msg: BaseMessage): string {
@@ -98,17 +117,53 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
     langchainRunId: string,
     parentLangchainRunId?: string,
     tags?: string[],
-    extraParams?: Record<string, unknown>
+    extraParams?: Record<string, unknown>,
+    storedMetadata?: Record<string, unknown>
   ): UsageRecord {
     const usage = (message as any).usage_metadata;
     const responseMeta = (message as any).response_metadata || llmOutput || {};
+
+    // Get model name for billing - prefer _modelCard since it's set at creation time
+    // and guaranteed to match our cost configuration. Response metadata is a fallback
+    // in case the config metadata isn't available (e.g., direct LLM usage without getLLM wrapper)
+    //
+    // Priority:
+    // 1. storedMetadata._modelCard - captured from handleChatModelStart's metadata param (most reliable)
+    // 2. extraParams.metadata._modelCard - in case LangChain passes it through (less common)
+    // 3. responseMeta.model_name - OpenAI style response
+    // 4. responseMeta.model - Anthropic style response
+    const configMetadata = extraParams?.metadata as Record<string, unknown> | undefined;
+    const model =
+      storedMetadata?._modelCard ||
+      configMetadata?._modelCard ||
+      responseMeta.model_name ||
+      responseMeta.model ||
+      "unknown";
+
+    // Warn early when model is unknown to help debug cost calculation errors
+    if (model === "unknown") {
+      console.warn(
+        "[UsageTracker] Unknown model detected. response_metadata:",
+        JSON.stringify(responseMeta, null, 2),
+        "llmOutput:",
+        JSON.stringify(llmOutput, null, 2),
+        "storedMetadata:",
+        JSON.stringify(storedMetadata, null, 2),
+        "configMetadata:",
+        JSON.stringify(configMetadata, null, 2),
+        "langchainRunId:",
+        langchainRunId,
+        "tags:",
+        tags
+      );
+    }
 
     return {
       runId,
       messageId: message.id || responseMeta.id || "",
       langchainRunId,
       parentLangchainRunId,
-      model: responseMeta.model_name || responseMeta.model || "unknown",
+      model,
       inputTokens: usage.input_tokens || 0,
       outputTokens: usage.output_tokens || 0,
       reasoningTokens: usage.output_token_details?.reasoning || 0,
@@ -117,7 +172,7 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
       cacheReadTokens: usage.cache_read_input_tokens || usage.input_token_details?.cache_read || 0,
       timestamp: new Date(),
       tags,
-      metadata: extraParams?.metadata as Record<string, unknown>,
+      metadata: storedMetadata ?? (extraParams?.metadata as Record<string, unknown>),
     };
   }
 }

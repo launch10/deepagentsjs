@@ -35,7 +35,7 @@ class Website < ApplicationRecord
   acts_as_tenant :account
 
   belongs_to :project
-  has_one :brainstorm
+  has_one :brainstorm, dependent: :destroy
   belongs_to :account
 
   def self.chat_type

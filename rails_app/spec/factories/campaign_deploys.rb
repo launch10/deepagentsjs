@@ -4,6 +4,7 @@
 #
 #  id                  :bigint           not null, primary key
 #  current_step        :string
+#  deleted_at          :datetime
 #  stacktrace          :text
 #  status              :string           default("pending"), not null
 #  created_at          :datetime         not null
@@ -18,6 +19,7 @@
 #  index_campaign_deploys_on_campaign_id_and_status  (campaign_id,status)
 #  index_campaign_deploys_on_created_at              (created_at)
 #  index_campaign_deploys_on_current_step            (current_step)
+#  index_campaign_deploys_on_deleted_at              (deleted_at)
 #  index_campaign_deploys_on_status                  (status)
 #
 FactoryBot.define do

@@ -36,6 +36,7 @@ module SnapshotBuilders
 
         project.update!(name: "My First Startup")
         ensure_campaign(project)
+        ensure_live_deploy(project)
 
         dates = date_range(30)
 

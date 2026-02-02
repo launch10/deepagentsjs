@@ -6,3 +6,4 @@ export * from "./launch";
 export * from "./website";
 export * from "./deploy";
 export * from "./insights";
+export * from "./support";

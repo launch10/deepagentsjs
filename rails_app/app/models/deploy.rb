@@ -4,6 +4,7 @@
 #
 #  id                 :bigint           not null, primary key
 #  current_step       :string
+#  deleted_at         :datetime
 #  is_live            :boolean          default(FALSE)
 #  stacktrace         :text
 #  status             :string           default("pending"), not null
@@ -17,6 +18,7 @@
 # Indexes
 #
 #  index_deploys_on_campaign_deploy_id      (campaign_deploy_id)
+#  index_deploys_on_deleted_at              (deleted_at)
 #  index_deploys_on_is_live                 (is_live)
 #  index_deploys_on_project_id              (project_id)
 #  index_deploys_on_project_id_and_is_live  (project_id,is_live)
@@ -31,6 +33,8 @@
 #  fk_rails_...  (website_deploy_id => website_deploys.id)
 #
 class Deploy < ApplicationRecord
+  acts_as_paranoid
+
   include ChatCreatable
 
   STATUS = %w[pending running completed failed].freeze
@@ -43,6 +47,8 @@ class Deploy < ApplicationRecord
 
   validates :status, presence: true, inclusion: { in: STATUS }
 
+  after_save :refresh_project_status, if: :saved_change_to_is_live?
+
   scope :live, -> { where(is_live: true) }
   scope :in_progress, -> { where(status: %w[pending running]) }
   scope :user_recently_active, -> { where(user_active_at: 5.minutes.ago..) }
@@ -53,5 +59,11 @@ class Deploy < ApplicationRecord
 
   def touch_user_active!
     update_column(:user_active_at, Time.current)
+  end
+
+  private
+
+  def refresh_project_status
+    project.refresh_status!
   end
 end

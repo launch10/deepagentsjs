@@ -28,6 +28,7 @@ export function createUsageContext(
     records: [],
     messages: [],
     _seenMessageIds: new Set(),
+    _runIdToMetadata: new Map(),
     ...options,
   };
 }

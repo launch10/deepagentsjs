@@ -1,5 +1,19 @@
 class ProjectsController < SubscribedController
-  before_action :set_project, except: [:new]
+  include ProjectsPagination
+
+  before_action :set_project, except: [:index, :new]
+
+  def index
+    @pagy, projects = paginated_projects
+
+    render inertia: "Projects",
+      props: {
+        projects: projects.map(&:to_mini_json),
+        pagination: pagy_metadata(@pagy),
+        status_counts: status_counts
+      },
+      layout: "layouts/webcontainer"
+  end
 
   def new
     respond_to do |format|
@@ -69,10 +83,54 @@ class ProjectsController < SubscribedController
       layout: "layouts/webcontainer"
   end
 
+  def destroy
+    @project.destroy
+
+    redirect_to projects_path, notice: "Project deleted successfully"
+  end
+
+  def restore
+    @project.restore(recursive: true)
+
+    redirect_to project_path(@project.uuid), notice: "Project restored successfully"
+  end
+
+  def performance
+    render inertia: "ProjectPerformance", props: {
+      project: @project.to_mini_json,
+      metrics: all_metrics_for_date_ranges,
+      date_range_options: [
+        { days: 7, label: "Last 7 days" },
+        { days: 30, label: "Last 30 days" },
+        { days: 90, label: "Last 90 days" },
+        { days: 0, label: "All time" }
+      ]
+    }
+  end
+
   private
 
+  def all_metrics_for_date_ranges
+    [7, 30, 90, 0].each_with_object({}) do |days, hash|
+      effective_days = (days == 0) ? days_since_first_data : days
+      service = Analytics::ProjectPerformanceService.new(@project, days: effective_days)
+      hash[days.to_s] = service.metrics
+    end
+  end
+
+  def days_since_first_data
+    first_metric = @project.analytics_daily_metrics.order(:date).first
+    return 30 unless first_metric
+    (Date.current - first_metric.date).to_i
+  end
+
   def set_project
-    @project = current_account.projects.find_by(uuid: params[:uuid])
+    @project = if action_name == "restore"
+      # For restore, only find soft-deleted projects
+      current_account.projects.only_deleted.find_by(uuid: params[:uuid])
+    else
+      current_account.projects.find_by(uuid: params[:uuid])
+    end
     render json: { error: "Project not found" }, status: :not_found unless @project
   end
 end

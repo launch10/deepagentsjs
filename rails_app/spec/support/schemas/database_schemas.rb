@@ -65,5 +65,56 @@ module APISchemas
         required: ['status', 'errors']
       }
     end
+
+    # Credits params for set_credits endpoint
+    def self.credits_params
+      {
+        type: :object,
+        properties: {
+          credits: {
+            type: :object,
+            properties: {
+              email: {
+                type: :string,
+                description: 'Email of the user whose account credits to set'
+              },
+              plan_millicredits: {
+                type: :integer,
+                description: 'Plan millicredits to set',
+                default: 0
+              },
+              pack_millicredits: {
+                type: :integer,
+                description: 'Pack millicredits to set',
+                default: 0
+              }
+            },
+            required: ['email']
+          }
+        },
+        required: ['credits']
+      }
+    end
+
+    # Success response for set_credits
+    def self.credits_response
+      {
+        type: :object,
+        properties: {
+          status: {type: :string, example: 'ok'},
+          message: {type: :string, example: 'Credits updated'},
+          account: {
+            type: :object,
+            properties: {
+              id: {type: :integer},
+              plan_millicredits: {type: :integer},
+              pack_millicredits: {type: :integer},
+              total_millicredits: {type: :integer}
+            }
+          }
+        },
+        required: ['status', 'message', 'account']
+      }
+    end
   end
 end

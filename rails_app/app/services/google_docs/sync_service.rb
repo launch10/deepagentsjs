@@ -12,16 +12,24 @@ module GoogleDocs
     def initialize(langgraph_client: nil)
       @client = GoogleDocs::Client.new
       @langgraph_client = LanggraphClient.new
+      set_system_account
     end
 
-    def sync_all
+    def set_system_account
+      return if Current.account.present?
+
+      user = User.find_by(email: "brett@launch10.ai")
+      Current.account = user&.owned_account
+    end
+
+    def sync_all(force: false)
       files = client.list_files_in_folder(FOLDER_PATHS["FAQs"])
-      Rails.logger.info("[GoogleDocs::SyncService] Found #{files.count} documents in FAQs")
+      Rails.logger.info("[GoogleDocs::SyncService] Found #{files.count} documents in FAQs#{force ? ' (force mode)' : ''}")
 
       results = { queued: [], skipped: [], failed: [] }
 
       files.each do |file|
-        result = sync_document(file)
+        result = sync_document(file, force: force)
         results[result[:status]] << result
       rescue => e
         Rails.logger.error("[GoogleDocs::SyncService] Error syncing #{file.name}: #{e.message}")
@@ -31,16 +39,18 @@ module GoogleDocs
       results
     end
 
-    def sync_document(file)
+    def sync_document(file, force: false)
       doc = Document.find_by(source_type: "google_docs", source_id: file.id)
 
-      if doc&.last_synced_at && doc.last_synced_at >= file.modified_time
+      if !force && doc&.last_synced_at && doc.last_synced_at >= file.modified_time
         Rails.logger.info("[GoogleDocs::SyncService] Skipping #{file.name} - not modified")
         return { status: :skipped, file: file.name, reason: "not_modified" }
       end
 
       content = client.get_document_content(file.id)
       metadata = client.get_document_metadata(file.id)
+
+      Rails.logger.info("[GoogleDocs::SyncService] Fetched #{file.name}: #{content&.length || 0} chars")
 
       doc = Document.find_or_create_from_external!(content,
         document_type: "faq",
@@ -53,6 +63,11 @@ module GoogleDocs
           google_modified_time: metadata[:modified_time],
           google_created_time: metadata[:created_time]
         })
+
+      if doc.content.blank?
+        Rails.logger.warn("[GoogleDocs::SyncService] Document #{file.name} has no content - skipping extraction")
+        return { status: :skipped, file: file.name, document_id: doc.id, reason: "no_content" }
+      end
 
       enqueue_extraction(doc)
 

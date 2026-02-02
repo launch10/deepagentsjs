@@ -1,7 +1,10 @@
 class SupportController < SubscribedController
   def show
+    support_chat = current_account.chats.find_by(chat_type: "support")
+
     render inertia: "Support", props: {
-      categories: SupportRequest::CATEGORIES
+      categories: SupportRequest::CATEGORIES,
+      thread_id: support_chat&.thread_id
     }
   end
 

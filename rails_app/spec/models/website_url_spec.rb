@@ -3,6 +3,7 @@
 # Table name: website_urls
 #
 #  id         :bigint           not null, primary key
+#  deleted_at :datetime
 #  path       :string           default("/"), not null
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
@@ -13,8 +14,9 @@
 # Indexes
 #
 #  index_website_urls_on_account_id          (account_id)
+#  index_website_urls_on_deleted_at          (deleted_at)
 #  index_website_urls_on_domain_id           (domain_id)
-#  index_website_urls_on_domain_id_and_path  (domain_id,path) UNIQUE
+#  index_website_urls_on_domain_id_and_path  (domain_id,path) UNIQUE WHERE (deleted_at IS NULL)
 #  index_website_urls_on_website_id          (website_id)
 #
 # Foreign Keys

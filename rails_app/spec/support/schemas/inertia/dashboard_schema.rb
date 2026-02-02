@@ -53,9 +53,14 @@ module InertiaSchemas
             items: series_data_props,
             description: 'Metric values per project'
           },
-          totals: totals_props
+          totals: totals_props,
+          data_delay: {
+            type: :string,
+            enum: %w[realtime ads],
+            description: 'Data freshness: realtime (15 min) or ads (2-4 hours)'
+          }
         },
-        required: %w[dates series totals]
+        required: %w[dates series totals data_delay]
       }
     end
 

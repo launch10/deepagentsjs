@@ -9,10 +9,10 @@ paths:
     get:
       summary: Sign In page props
       tags:
-        - Auth Pages
+      - Auth Pages
       parameters: []
       responses:
-        "200":
+        '200':
           description: Sign In page props
           content:
             application/json:
@@ -22,23 +22,36 @@ paths:
     get:
       summary: Sign Up page props
       tags:
-        - Auth Pages
+      - Auth Pages
       parameters: []
       responses:
-        "200":
+        '200':
           description: Sign Up page props
           content:
             application/json:
               schema:
                 "$ref": "#/components/schemas/SignUpProps"
+  "/projects":
+    get:
+      summary: Projects page props
+      tags:
+      - Inertia Pages
+      parameters: []
+      responses:
+        '200':
+          description: Projects page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/ProjectsProps"
   "/projects/new":
     get:
       summary: New page props
       tags:
-        - Inertia Pages
+      - Inertia Pages
       parameters: []
       responses:
-        "200":
+        '200':
           description: New page props
           content:
             application/json:
@@ -48,16 +61,16 @@ paths:
     get:
       summary: Brainstorm page props
       tags:
-        - Inertia Pages
+      - Inertia Pages
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Brainstorm page props
           content:
             application/json:
@@ -67,16 +80,16 @@ paths:
     get:
       summary: Website page props
       tags:
-        - Inertia Pages
+      - Inertia Pages
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Website page props
           content:
             application/json:
@@ -86,16 +99,16 @@ paths:
     get:
       summary: Leads page props
       tags:
-        - Inertia Pages
+      - Inertia Pages
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Leads page props
           content:
             application/json:
@@ -105,10 +118,10 @@ paths:
     get:
       summary: Settings page props
       tags:
-        - Inertia Pages
+      - Inertia Pages
       parameters: []
       responses:
-        "200":
+        '200':
           description: Settings page props
           content:
             application/json:
@@ -118,29 +131,48 @@ paths:
     get:
       summary: Dashboard page props
       tags:
-        - Inertia Pages
+      - Inertia Pages
       parameters: []
       responses:
-        "200":
+        '200':
           description: Dashboard page props
           content:
             application/json:
               schema:
                 "$ref": "#/components/schemas/DashboardProps"
+  "/projects/{uuid}/performance":
+    get:
+      summary: Performance page props
+      tags:
+      - Inertia Pages
+      parameters:
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
+      responses:
+        '200':
+          description: Performance page props
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/PerformanceProps"
   "/projects/{uuid}/campaigns/content":
     get:
       summary: Content page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Content page props
           content:
             application/json:
@@ -150,16 +182,16 @@ paths:
     get:
       summary: Highlights page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Highlights page props
           content:
             application/json:
@@ -169,16 +201,16 @@ paths:
     get:
       summary: Keywords page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Keywords page props
           content:
             application/json:
@@ -188,16 +220,16 @@ paths:
     get:
       summary: Settings page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Settings page props
           content:
             application/json:
@@ -207,16 +239,16 @@ paths:
     get:
       summary: Launch page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Launch page props
           content:
             application/json:
@@ -226,16 +258,16 @@ paths:
     get:
       summary: Review page props
       tags:
-        - Inertia Pages - Campaigns
+      - Inertia Pages - Campaigns
       parameters:
-        - name: uuid
-          in: path
-          required: true
-          schema:
-            type: string
-          description: Project UUID
+      - name: uuid
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Project UUID
       responses:
-        "200":
+        '200':
           description: Review page props
           content:
             application/json:
@@ -262,14 +294,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         errors:
           type: object
@@ -279,7 +311,7 @@ components:
               type: string
           nullable: true
       required:
-        - csrf_token
+      - csrf_token
     SignUpProps:
       type: object
       additionalProperties: false
@@ -299,14 +331,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         captcha_field_name:
           type: string
@@ -322,10 +354,10 @@ components:
               type: string
           nullable: true
       required:
-        - csrf_token
-        - captcha_field_name
-        - minimum_password_length
-        - spinner
+      - csrf_token
+      - captcha_field_name
+      - minimum_password_length
+      - spinner
     NewBrainstormProps:
       type: object
       additionalProperties: false
@@ -354,14 +386,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         current_user:
           type: object
@@ -373,9 +405,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -388,9 +420,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
@@ -411,28 +443,28 @@ components:
               type: string
               nullable: true
           required:
-            - plan_credits
-            - pack_credits
-            - total_credits
-            - plan_credits_allocated
+          - plan_credits
+          - pack_credits
+          - total_credits
+          - plan_credits_allocated
           nullable: true
           description: Credit balance for the current account
         thread_id:
-          type: "null"
+          type: 'null'
           description: Langgraph thread ID for the conversation
         project:
           type: object
           additionalProperties: false
           properties:
             uuid:
-              type: "null"
+              type: 'null'
               description: Project UUID
           nullable: true
       required:
-        - root_path
-        - langgraph_path
-        - jwt
-        - thread_id
+      - root_path
+      - langgraph_path
+      - jwt
+      - thread_id
     BrainstormProps:
       type: object
       additionalProperties: false
@@ -461,14 +493,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         current_user:
           type: object
@@ -480,9 +512,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -495,9 +527,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
@@ -518,10 +550,10 @@ components:
               type: string
               nullable: true
           required:
-            - plan_credits
-            - pack_credits
-            - total_credits
-            - plan_credits_allocated
+          - plan_credits
+          - pack_credits
+          - total_credits
+          - plan_credits_allocated
           nullable: true
           description: Credit balance for the current account
         thread_id:
@@ -600,10 +632,10 @@ components:
               type: string
           nullable: true
       required:
-        - root_path
-        - langgraph_path
-        - jwt
-        - thread_id
+      - root_path
+      - langgraph_path
+      - jwt
+      - thread_id
     WebsiteProps:
       type: object
       additionalProperties: false
@@ -632,14 +664,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         current_user:
           type: object
@@ -651,9 +683,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -666,9 +698,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
@@ -689,10 +721,10 @@ components:
               type: string
               nullable: true
           required:
-            - plan_credits
-            - pack_credits
-            - total_credits
-            - plan_credits_allocated
+          - plan_credits
+          - pack_credits
+          - total_credits
+          - plan_credits_allocated
           nullable: true
           description: Credit balance for the current account
         thread_id:
@@ -745,9 +777,9 @@ components:
               type: string
           nullable: true
       required:
-        - root_path
-        - langgraph_path
-        - jwt
+      - root_path
+      - langgraph_path
+      - jwt
     CampaignsProps:
       type: object
       additionalProperties: false
@@ -776,14 +808,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         current_user:
           type: object
@@ -795,9 +827,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -810,9 +842,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
@@ -833,10 +865,10 @@ components:
               type: string
               nullable: true
           required:
-            - plan_credits
-            - pack_credits
-            - total_credits
-            - plan_credits_allocated
+          - plan_credits
+          - pack_credits
+          - total_credits
+          - plan_credits_allocated
           nullable: true
           description: Credit balance for the current account
         thread_id:
@@ -1059,9 +1091,9 @@ components:
               type: string
           nullable: true
       required:
-        - root_path
-        - langgraph_path
-        - jwt
+      - root_path
+      - langgraph_path
+      - jwt
     LaunchProps:
       type: object
       additionalProperties: false
@@ -1090,14 +1122,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         current_user:
           type: object
@@ -1109,9 +1141,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -1124,9 +1156,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
@@ -1147,10 +1179,10 @@ components:
               type: string
               nullable: true
           required:
-            - plan_credits
-            - pack_credits
-            - total_credits
-            - plan_credits_allocated
+          - plan_credits
+          - pack_credits
+          - total_credits
+          - plan_credits_allocated
           nullable: true
           description: Credit balance for the current account
         thread_id:
@@ -1382,9 +1414,9 @@ components:
               type: string
           nullable: true
       required:
-        - root_path
-        - langgraph_path
-        - jwt
+      - root_path
+      - langgraph_path
+      - jwt
     LeadsProps:
       type: object
       additionalProperties: false
@@ -1413,14 +1445,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         current_user:
           type: object
@@ -1432,9 +1464,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -1447,9 +1479,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
@@ -1470,10 +1502,10 @@ components:
               type: string
               nullable: true
           required:
-            - plan_credits
-            - pack_credits
-            - total_credits
-            - plan_credits_allocated
+          - plan_credits
+          - pack_credits
+          - total_credits
+          - plan_credits_allocated
           nullable: true
           description: Credit balance for the current account
         project:
@@ -1490,13 +1522,23 @@ components:
               type: integer
             name:
               type: string
+            status:
+              type: string
+              enum:
+              - live
+              - paused
+              - draft
+            domain:
+              type: string
+              nullable: true
             created_at: {}
             updated_at: {}
           required:
-            - id
-            - uuid
-            - account_id
-            - name
+          - id
+          - uuid
+          - account_id
+          - name
+          - status
         leads:
           type: array
           items:
@@ -1512,9 +1554,9 @@ components:
               date:
                 type: string
             required:
-              - id
-              - email
-              - date
+            - id
+            - email
+            - date
         pagination:
           type: object
           properties:
@@ -1540,22 +1582,22 @@ components:
               type: array
               items:
                 oneOf:
-                  - type: integer
-                  - type: string
+                - type: integer
+                - type: string
           required:
-            - current_page
-            - total_pages
-            - total_count
-            - prev_page
-            - next_page
-            - series
+          - current_page
+          - total_pages
+          - total_count
+          - prev_page
+          - next_page
+          - series
       required:
-        - root_path
-        - langgraph_path
-        - jwt
-        - project
-        - leads
-        - pagination
+      - root_path
+      - langgraph_path
+      - jwt
+      - project
+      - leads
+      - pagination
     SettingsProps:
       type: object
       additionalProperties: false
@@ -1584,14 +1626,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         current_user:
           type: object
@@ -1603,9 +1645,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -1618,9 +1660,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
@@ -1641,10 +1683,10 @@ components:
               type: string
               nullable: true
           required:
-            - plan_credits
-            - pack_credits
-            - total_credits
-            - plan_credits_allocated
+          - plan_credits
+          - pack_credits
+          - total_credits
+          - plan_credits_allocated
           nullable: true
           description: Credit balance for the current account
         user:
@@ -1669,9 +1711,9 @@ components:
               description: User last name
               nullable: true
           required:
-            - id
-            - email
-            - name
+          - id
+          - email
+          - name
         subscription:
           type: object
           additionalProperties: false
@@ -1718,15 +1760,15 @@ components:
                 type: string
               description: Plan features
           required:
-            - id
-            - prefix_id
-            - status
-            - plan_name
-            - plan_display_name
-            - interval
-            - amount_cents
-            - currency
-            - features
+          - id
+          - prefix_id
+          - status
+          - plan_name
+          - plan_display_name
+          - interval
+          - amount_cents
+          - currency
+          - features
           nullable: true
         billing_history:
           type: array
@@ -1753,12 +1795,12 @@ components:
                 type: string
                 description: Charge type (charge, refund, subscription)
             required:
-              - id
-              - amount_cents
-              - currency
-              - description
-              - created_at
-              - type
+            - id
+            - amount_cents
+            - currency
+            - description
+            - created_at
+            - type
           description: Recent billing transactions
           nullable: true
         stripe_portal_url:
@@ -1788,10 +1830,10 @@ components:
                 description: Stripe price ID
                 nullable: true
             required:
-              - id
-              - name
-              - credits
-              - price_cents
+            - id
+            - name
+            - credits
+            - price_cents
           description: Available credit packs for purchase
         payment_method:
           type: object
@@ -1824,10 +1866,10 @@ components:
           required: []
           nullable: true
       required:
-        - root_path
-        - langgraph_path
-        - jwt
-        - user
+      - root_path
+      - langgraph_path
+      - jwt
+      - user
     DashboardProps:
       type: object
       additionalProperties: false
@@ -1856,14 +1898,14 @@ components:
               type:
                 type: string
                 enum:
-                  - success
-                  - error
-                  - info
+                - success
+                - error
+                - info
               message:
                 type: string
             required:
-              - type
-              - message
+            - type
+            - message
           description: Flash messages
         current_user:
           type: object
@@ -1875,9 +1917,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Currently authenticated user
         true_user:
@@ -1890,9 +1932,9 @@ components:
             email:
               type: string
           required:
-            - id
-            - name
-            - email
+          - id
+          - name
+          - email
           nullable: true
           description: Original admin user when impersonating
         impersonating:
@@ -1913,17 +1955,17 @@ components:
               type: string
               nullable: true
           required:
-            - plan_credits
-            - pack_credits
-            - total_credits
-            - plan_credits_allocated
+          - plan_credits
+          - pack_credits
+          - total_credits
+          - plan_credits_allocated
           nullable: true
           description: Credit balance for the current account
         all_performance:
           type: object
           additionalProperties: false
           properties:
-            "7":
+            '7':
               type: object
               additionalProperties: false
               properties:
@@ -1957,10 +1999,10 @@ components:
                               type: number
                             description: Daily metric values for each date in range
                         required:
-                          - project_id
-                          - project_uuid
-                          - project_name
-                          - data
+                        - project_id
+                        - project_uuid
+                        - project_name
+                        - data
                       description: Metric values per project
                     totals:
                       type: object
@@ -1978,19 +2020,27 @@ components:
                         trend_direction:
                           type: string
                           enum:
-                            - up
-                            - down
-                            - flat
+                          - up
+                          - down
+                          - flat
                           description: Direction of the trend
                       required:
-                        - current
-                        - previous
-                        - trend_percent
-                        - trend_direction
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    data_delay:
+                      type: string
+                      enum:
+                      - realtime
+                      - ads
+                      description: 'Data freshness: realtime (15 min) or ads (2-4
+                        hours)'
                   required:
-                    - dates
-                    - series
-                    - totals
+                  - dates
+                  - series
+                  - totals
+                  - data_delay
                 unique_visitors:
                   type: object
                   additionalProperties: false
@@ -2021,10 +2071,10 @@ components:
                               type: number
                             description: Daily metric values for each date in range
                         required:
-                          - project_id
-                          - project_uuid
-                          - project_name
-                          - data
+                        - project_id
+                        - project_uuid
+                        - project_name
+                        - data
                       description: Metric values per project
                     totals:
                       type: object
@@ -2042,19 +2092,27 @@ components:
                         trend_direction:
                           type: string
                           enum:
-                            - up
-                            - down
-                            - flat
+                          - up
+                          - down
+                          - flat
                           description: Direction of the trend
                       required:
-                        - current
-                        - previous
-                        - trend_percent
-                        - trend_direction
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    data_delay:
+                      type: string
+                      enum:
+                      - realtime
+                      - ads
+                      description: 'Data freshness: realtime (15 min) or ads (2-4
+                        hours)'
                   required:
-                    - dates
-                    - series
-                    - totals
+                  - dates
+                  - series
+                  - totals
+                  - data_delay
                 page_views:
                   type: object
                   additionalProperties: false
@@ -2085,10 +2143,10 @@ components:
                               type: number
                             description: Daily metric values for each date in range
                         required:
-                          - project_id
-                          - project_uuid
-                          - project_name
-                          - data
+                        - project_id
+                        - project_uuid
+                        - project_name
+                        - data
                       description: Metric values per project
                     totals:
                       type: object
@@ -2106,19 +2164,27 @@ components:
                         trend_direction:
                           type: string
                           enum:
-                            - up
-                            - down
-                            - flat
+                          - up
+                          - down
+                          - flat
                           description: Direction of the trend
                       required:
-                        - current
-                        - previous
-                        - trend_percent
-                        - trend_direction
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    data_delay:
+                      type: string
+                      enum:
+                      - realtime
+                      - ads
+                      description: 'Data freshness: realtime (15 min) or ads (2-4
+                        hours)'
                   required:
-                    - dates
-                    - series
-                    - totals
+                  - dates
+                  - series
+                  - totals
+                  - data_delay
                 ctr:
                   type: object
                   additionalProperties: false
@@ -2149,10 +2215,10 @@ components:
                               type: number
                             description: Daily metric values for each date in range
                         required:
-                          - project_id
-                          - project_uuid
-                          - project_name
-                          - data
+                        - project_id
+                        - project_uuid
+                        - project_name
+                        - data
                       description: Metric values per project
                     totals:
                       type: object
@@ -2170,19 +2236,27 @@ components:
                         trend_direction:
                           type: string
                           enum:
-                            - up
-                            - down
-                            - flat
+                          - up
+                          - down
+                          - flat
                           description: Direction of the trend
                       required:
-                        - current
-                        - previous
-                        - trend_percent
-                        - trend_direction
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    data_delay:
+                      type: string
+                      enum:
+                      - realtime
+                      - ads
+                      description: 'Data freshness: realtime (15 min) or ads (2-4
+                        hours)'
                   required:
-                    - dates
-                    - series
-                    - totals
+                  - dates
+                  - series
+                  - totals
+                  - data_delay
                 cpl:
                   type: object
                   additionalProperties: false
@@ -2213,10 +2287,10 @@ components:
                               type: number
                             description: Daily metric values for each date in range
                         required:
-                          - project_id
-                          - project_uuid
-                          - project_name
-                          - data
+                        - project_id
+                        - project_uuid
+                        - project_name
+                        - data
                       description: Metric values per project
                     totals:
                       type: object
@@ -2234,26 +2308,34 @@ components:
                         trend_direction:
                           type: string
                           enum:
-                            - up
-                            - down
-                            - flat
+                          - up
+                          - down
+                          - flat
                           description: Direction of the trend
                       required:
-                        - current
-                        - previous
-                        - trend_percent
-                        - trend_direction
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    data_delay:
+                      type: string
+                      enum:
+                      - realtime
+                      - ads
+                      description: 'Data freshness: realtime (15 min) or ads (2-4
+                        hours)'
                   required:
-                    - dates
-                    - series
-                    - totals
+                  - dates
+                  - series
+                  - totals
+                  - data_delay
               required:
-                - leads
-                - unique_visitors
-                - page_views
-                - ctr
-                - cpl
-            "30":
+              - leads
+              - unique_visitors
+              - page_views
+              - ctr
+              - cpl
+            '30':
               type: object
               additionalProperties: false
               properties:
@@ -2287,10 +2369,10 @@ components:
                               type: number
                             description: Daily metric values for each date in range
                         required:
-                          - project_id
-                          - project_uuid
-                          - project_name
-                          - data
+                        - project_id
+                        - project_uuid
+                        - project_name
+                        - data
                       description: Metric values per project
                     totals:
                       type: object
@@ -2308,19 +2390,27 @@ components:
                         trend_direction:
                           type: string
                           enum:
-                            - up
-                            - down
-                            - flat
+                          - up
+                          - down
+                          - flat
                           description: Direction of the trend
                       required:
-                        - current
-                        - previous
-                        - trend_percent
-                        - trend_direction
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    data_delay:
+                      type: string
+                      enum:
+                      - realtime
+                      - ads
+                      description: 'Data freshness: realtime (15 min) or ads (2-4
+                        hours)'
                   required:
-                    - dates
-                    - series
-                    - totals
+                  - dates
+                  - series
+                  - totals
+                  - data_delay
                 unique_visitors:
                   type: object
                   additionalProperties: false
@@ -2351,10 +2441,10 @@ components:
                               type: number
                             description: Daily metric values for each date in range
                         required:
-                          - project_id
-                          - project_uuid
-                          - project_name
-                          - data
+                        - project_id
+                        - project_uuid
+                        - project_name
+                        - data
                       description: Metric values per project
                     totals:
                       type: object
@@ -2372,19 +2462,27 @@ components:
                         trend_direction:
                           type: string
                           enum:
-                            - up
-                            - down
-                            - flat
+                          - up
+                          - down
+                          - flat
                           description: Direction of the trend
                       required:
-                        - current
-                        - previous
-                        - trend_percent
-                        - trend_direction
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    data_delay:
+                      type: string
+                      enum:
+                      - realtime
+                      - ads
+                      description: 'Data freshness: realtime (15 min) or ads (2-4
+                        hours)'
                   required:
-                    - dates
-                    - series
-                    - totals
+                  - dates
+                  - series
+                  - totals
+                  - data_delay
                 page_views:
                   type: object
                   additionalProperties: false
@@ -2415,10 +2513,10 @@ components:
                               type: number
                             description: Daily metric values for each date in range
                         required:
-                          - project_id
-                          - project_uuid
-                          - project_name
-                          - data
+                        - project_id
+                        - project_uuid
+                        - project_name
+                        - data
                       description: Metric values per project
                     totals:
                       type: object
@@ -2436,19 +2534,27 @@ components:
                         trend_direction:
                           type: string
                           enum:
-                            - up
-                            - down
-                            - flat
+                          - up
+                          - down
+                          - flat
                           description: Direction of the trend
                       required:
-                        - current
-                        - previous
-                        - trend_percent
-                        - trend_direction
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    data_delay:
+                      type: string
+                      enum:
+                      - realtime
+                      - ads
+                      description: 'Data freshness: realtime (15 min) or ads (2-4
+                        hours)'
                   required:
-                    - dates
-                    - series
-                    - totals
+                  - dates
+                  - series
+                  - totals
+                  - data_delay
                 ctr:
                   type: object
                   additionalProperties: false
@@ -2479,10 +2585,10 @@ components:
                               type: number
                             description: Daily metric values for each date in range
                         required:
-                          - project_id
-                          - project_uuid
-                          - project_name
-                          - data
+                        - project_id
+                        - project_uuid
+                        - project_name
+                        - data
                       description: Metric values per project
                     totals:
                       type: object
@@ -2500,19 +2606,27 @@ components:
                         trend_direction:
                           type: string
                           enum:
-                            - up
-                            - down
-                            - flat
+                          - up
+                          - down
+                          - flat
                           description: Direction of the trend
                       required:
-                        - current
-                        - previous
-                        - trend_percent
-                        - trend_direction
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    data_delay:
+                      type: string
+                      enum:
+                      - realtime
+                      - ads
+                      description: 'Data freshness: realtime (15 min) or ads (2-4
+                        hours)'
                   required:
-                    - dates
-                    - series
-                    - totals
+                  - dates
+                  - series
+                  - totals
+                  - data_delay
                 cpl:
                   type: object
                   additionalProperties: false
@@ -2543,10 +2657,10 @@ components:
                               type: number
                             description: Daily metric values for each date in range
                         required:
-                          - project_id
-                          - project_uuid
-                          - project_name
-                          - data
+                        - project_id
+                        - project_uuid
+                        - project_name
+                        - data
                       description: Metric values per project
                     totals:
                       type: object
@@ -2564,26 +2678,34 @@ components:
                         trend_direction:
                           type: string
                           enum:
-                            - up
-                            - down
-                            - flat
+                          - up
+                          - down
+                          - flat
                           description: Direction of the trend
                       required:
-                        - current
-                        - previous
-                        - trend_percent
-                        - trend_direction
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    data_delay:
+                      type: string
+                      enum:
+                      - realtime
+                      - ads
+                      description: 'Data freshness: realtime (15 min) or ads (2-4
+                        hours)'
                   required:
-                    - dates
-                    - series
-                    - totals
+                  - dates
+                  - series
+                  - totals
+                  - data_delay
               required:
-                - leads
-                - unique_visitors
-                - page_views
-                - ctr
-                - cpl
-            "90":
+              - leads
+              - unique_visitors
+              - page_views
+              - ctr
+              - cpl
+            '90':
               type: object
               additionalProperties: false
               properties:
@@ -2617,10 +2739,10 @@ components:
                               type: number
                             description: Daily metric values for each date in range
                         required:
-                          - project_id
-                          - project_uuid
-                          - project_name
-                          - data
+                        - project_id
+                        - project_uuid
+                        - project_name
+                        - data
                       description: Metric values per project
                     totals:
                       type: object
@@ -2638,19 +2760,27 @@ components:
                         trend_direction:
                           type: string
                           enum:
-                            - up
-                            - down
-                            - flat
+                          - up
+                          - down
+                          - flat
                           description: Direction of the trend
                       required:
-                        - current
-                        - previous
-                        - trend_percent
-                        - trend_direction
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    data_delay:
+                      type: string
+                      enum:
+                      - realtime
+                      - ads
+                      description: 'Data freshness: realtime (15 min) or ads (2-4
+                        hours)'
                   required:
-                    - dates
-                    - series
-                    - totals
+                  - dates
+                  - series
+                  - totals
+                  - data_delay
                 unique_visitors:
                   type: object
                   additionalProperties: false
@@ -2681,10 +2811,10 @@ components:
                               type: number
                             description: Daily metric values for each date in range
                         required:
-                          - project_id
-                          - project_uuid
-                          - project_name
-                          - data
+                        - project_id
+                        - project_uuid
+                        - project_name
+                        - data
                       description: Metric values per project
                     totals:
                       type: object
@@ -2702,19 +2832,27 @@ components:
                         trend_direction:
                           type: string
                           enum:
-                            - up
-                            - down
-                            - flat
+                          - up
+                          - down
+                          - flat
                           description: Direction of the trend
                       required:
-                        - current
-                        - previous
-                        - trend_percent
-                        - trend_direction
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    data_delay:
+                      type: string
+                      enum:
+                      - realtime
+                      - ads
+                      description: 'Data freshness: realtime (15 min) or ads (2-4
+                        hours)'
                   required:
-                    - dates
-                    - series
-                    - totals
+                  - dates
+                  - series
+                  - totals
+                  - data_delay
                 page_views:
                   type: object
                   additionalProperties: false
@@ -2745,10 +2883,10 @@ components:
                               type: number
                             description: Daily metric values for each date in range
                         required:
-                          - project_id
-                          - project_uuid
-                          - project_name
-                          - data
+                        - project_id
+                        - project_uuid
+                        - project_name
+                        - data
                       description: Metric values per project
                     totals:
                       type: object
@@ -2766,19 +2904,27 @@ components:
                         trend_direction:
                           type: string
                           enum:
-                            - up
-                            - down
-                            - flat
+                          - up
+                          - down
+                          - flat
                           description: Direction of the trend
                       required:
-                        - current
-                        - previous
-                        - trend_percent
-                        - trend_direction
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    data_delay:
+                      type: string
+                      enum:
+                      - realtime
+                      - ads
+                      description: 'Data freshness: realtime (15 min) or ads (2-4
+                        hours)'
                   required:
-                    - dates
-                    - series
-                    - totals
+                  - dates
+                  - series
+                  - totals
+                  - data_delay
                 ctr:
                   type: object
                   additionalProperties: false
@@ -2809,10 +2955,10 @@ components:
                               type: number
                             description: Daily metric values for each date in range
                         required:
-                          - project_id
-                          - project_uuid
-                          - project_name
-                          - data
+                        - project_id
+                        - project_uuid
+                        - project_name
+                        - data
                       description: Metric values per project
                     totals:
                       type: object
@@ -2830,19 +2976,27 @@ components:
                         trend_direction:
                           type: string
                           enum:
-                            - up
-                            - down
-                            - flat
+                          - up
+                          - down
+                          - flat
                           description: Direction of the trend
                       required:
-                        - current
-                        - previous
-                        - trend_percent
-                        - trend_direction
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    data_delay:
+                      type: string
+                      enum:
+                      - realtime
+                      - ads
+                      description: 'Data freshness: realtime (15 min) or ads (2-4
+                        hours)'
                   required:
-                    - dates
-                    - series
-                    - totals
+                  - dates
+                  - series
+                  - totals
+                  - data_delay
                 cpl:
                   type: object
                   additionalProperties: false
@@ -2873,10 +3027,10 @@ components:
                               type: number
                             description: Daily metric values for each date in range
                         required:
-                          - project_id
-                          - project_uuid
-                          - project_name
-                          - data
+                        - project_id
+                        - project_uuid
+                        - project_name
+                        - data
                       description: Metric values per project
                     totals:
                       type: object
@@ -2894,34 +3048,42 @@ components:
                         trend_direction:
                           type: string
                           enum:
-                            - up
-                            - down
-                            - flat
+                          - up
+                          - down
+                          - flat
                           description: Direction of the trend
                       required:
-                        - current
-                        - previous
-                        - trend_percent
-                        - trend_direction
+                      - current
+                      - previous
+                      - trend_percent
+                      - trend_direction
+                    data_delay:
+                      type: string
+                      enum:
+                      - realtime
+                      - ads
+                      description: 'Data freshness: realtime (15 min) or ads (2-4
+                        hours)'
                   required:
-                    - dates
-                    - series
-                    - totals
+                  - dates
+                  - series
+                  - totals
+                  - data_delay
               required:
-                - leads
-                - unique_visitors
-                - page_views
-                - ctr
-                - cpl
+              - leads
+              - unique_visitors
+              - page_views
+              - ctr
+              - cpl
           required:
-            - "7"
-            - "30"
-            - "90"
+          - '7'
+          - '30'
+          - '90'
         all_projects:
           type: object
           additionalProperties: false
           properties:
-            "7":
+            '7':
               type: array
               items:
                 type: object
@@ -2939,9 +3101,9 @@ components:
                   status:
                     type: string
                     enum:
-                      - live
-                      - paused
-                      - draft
+                    - live
+                    - paused
+                    - draft
                     description: Project status derived from campaign states
                   url:
                     type: string
@@ -2978,18 +3140,18 @@ components:
                     description: Cost per lead
                     nullable: true
                 required:
-                  - id
-                  - uuid
-                  - name
-                  - status
-                  - total_leads
-                  - total_unique_visitors
-                  - total_page_views
-                  - total_impressions
-                  - total_clicks
-                  - cost_dollars
+                - id
+                - uuid
+                - name
+                - status
+                - total_leads
+                - total_unique_visitors
+                - total_page_views
+                - total_impressions
+                - total_clicks
+                - cost_dollars
               description: Project summaries for 7-day range
-            "30":
+            '30':
               type: array
               items:
                 type: object
@@ -3007,9 +3169,9 @@ components:
                   status:
                     type: string
                     enum:
-                      - live
-                      - paused
-                      - draft
+                    - live
+                    - paused
+                    - draft
                     description: Project status derived from campaign states
                   url:
                     type: string
@@ -3046,18 +3208,18 @@ components:
                     description: Cost per lead
                     nullable: true
                 required:
-                  - id
-                  - uuid
-                  - name
-                  - status
-                  - total_leads
-                  - total_unique_visitors
-                  - total_page_views
-                  - total_impressions
-                  - total_clicks
-                  - cost_dollars
+                - id
+                - uuid
+                - name
+                - status
+                - total_leads
+                - total_unique_visitors
+                - total_page_views
+                - total_impressions
+                - total_clicks
+                - cost_dollars
               description: Project summaries for 30-day range
-            "90":
+            '90':
               type: array
               items:
                 type: object
@@ -3075,9 +3237,9 @@ components:
                   status:
                     type: string
                     enum:
-                      - live
-                      - paused
-                      - draft
+                    - live
+                    - paused
+                    - draft
                     description: Project status derived from campaign states
                   url:
                     type: string
@@ -3114,21 +3276,21 @@ components:
                     description: Cost per lead
                     nullable: true
                 required:
-                  - id
-                  - uuid
-                  - name
-                  - status
-                  - total_leads
-                  - total_unique_visitors
-                  - total_page_views
-                  - total_impressions
-                  - total_clicks
-                  - cost_dollars
+                - id
+                - uuid
+                - name
+                - status
+                - total_leads
+                - total_unique_visitors
+                - total_page_views
+                - total_impressions
+                - total_clicks
+                - cost_dollars
               description: Project summaries for 90-day range
           required:
-            - "7"
-            - "30"
-            - "90"
+          - '7'
+          - '30'
+          - '90'
         status_counts:
           type: object
           additionalProperties: false
@@ -3146,10 +3308,10 @@ components:
               type: integer
               description: Draft projects count
           required:
-            - all
-            - live
-            - paused
-            - draft
+          - all
+          - live
+          - paused
+          - draft
         date_range_options:
           type: array
           items:
@@ -3163,8 +3325,8 @@ components:
                 type: integer
                 description: Number of days
             required:
-              - label
-              - days
+            - label
+            - days
           description: Available date range options
         insights:
           type: array
@@ -3181,9 +3343,9 @@ components:
               sentiment:
                 type: string
                 enum:
-                  - positive
-                  - negative
-                  - neutral
+                - positive
+                - negative
+                - neutral
                 description: Insight sentiment
               project_uuid:
                 type: string
@@ -3200,13 +3362,13 @@ components:
                     type: string
                     description: Action URL
                 required:
-                  - label
-                  - url
+                - label
+                - url
             required:
-              - title
-              - description
-              - sentiment
-              - action
+            - title
+            - description
+            - sentiment
+            - action
           description: AI-generated insights (null if stale)
           nullable: true
         metrics_summary:
@@ -3218,16 +3380,536 @@ components:
           type: string
           description: Thread ID for Langgraph insights generation
       required:
-        - root_path
-        - langgraph_path
-        - jwt
-        - all_performance
-        - all_projects
-        - status_counts
-        - date_range_options
-        - thread_id
+      - root_path
+      - langgraph_path
+      - jwt
+      - all_performance
+      - all_projects
+      - status_counts
+      - date_range_options
+      - thread_id
+    PerformanceProps:
+      type: object
+      additionalProperties: false
+      properties:
+        root_path:
+          type: string
+          description: Base URL of the application
+        langgraph_path:
+          type: string
+          description: URL of the Langgraph service
+        jwt:
+          type: string
+          description: JWT token for API authentication
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Validation errors from session
+        flash:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                - success
+                - error
+                - info
+              message:
+                type: string
+            required:
+            - type
+            - message
+          description: Flash messages
+        current_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+          - id
+          - name
+          - email
+          nullable: true
+          description: Currently authenticated user
+        true_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+          - id
+          - name
+          - email
+          nullable: true
+          description: Original admin user when impersonating
+        impersonating:
+          type: boolean
+          description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+          - plan_credits
+          - pack_credits
+          - total_credits
+          - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
+        project:
+          type: object
+          required:
+          - id
+          - uuid
+          - name
+          properties:
+            id:
+              type: integer
+              description: Project ID
+            uuid:
+              type: string
+              description: Project UUID
+            name:
+              type: string
+              description: Project name
+            website_id:
+              type: integer
+              nullable: true
+            account_id:
+              type: integer
+            created_at:
+              type: string
+            updated_at:
+              type: string
+        metrics:
+          type: object
+          additionalProperties:
+            type: object
+            required:
+            - summary
+            - impressions
+            - clicks
+            - ctr
+            - has_data
+            properties:
+              summary:
+                type: object
+                required:
+                - ad_spend
+                - leads
+                properties:
+                  ad_spend:
+                    type: number
+                  ad_spend_trend:
+                    type: object
+                    required:
+                    - direction
+                    - percent
+                    properties:
+                      direction:
+                        type: string
+                        enum:
+                        - up
+                        - down
+                        - flat
+                      percent:
+                        type: number
+                  leads:
+                    type: integer
+                  leads_trend:
+                    type: object
+                    required:
+                    - direction
+                    - percent
+                    properties:
+                      direction:
+                        type: string
+                        enum:
+                        - up
+                        - down
+                        - flat
+                      percent:
+                        type: number
+                  cpl:
+                    type: number
+                    nullable: true
+                  cpl_trend:
+                    type: object
+                    required:
+                    - direction
+                    - percent
+                    properties:
+                      direction:
+                        type: string
+                        enum:
+                        - up
+                        - down
+                        - flat
+                      percent:
+                        type: number
+                  roas:
+                    type: number
+                    nullable: true
+                  roas_trend:
+                    type: object
+                    required:
+                    - direction
+                    - percent
+                    properties:
+                      direction:
+                        type: string
+                        enum:
+                        - up
+                        - down
+                        - flat
+                      percent:
+                        type: number
+              impressions:
+                type: object
+                required:
+                - dates
+                - data
+                - totals
+                - data_delay
+                properties:
+                  dates:
+                    type: array
+                    items:
+                      type: string
+                  data:
+                    type: array
+                    items:
+                      type: number
+                  totals:
+                    type: object
+                    required:
+                    - current
+                    - previous
+                    - trend_percent
+                    - trend_direction
+                    properties:
+                      current:
+                        type: number
+                      previous:
+                        type: number
+                      trend_percent:
+                        type: number
+                      trend_direction:
+                        type: string
+                        enum:
+                        - up
+                        - down
+                        - flat
+                  data_delay:
+                    type: string
+                    enum:
+                    - realtime
+                    - ads
+                    description: 'Data freshness: realtime (15 min) or ads (2-4 hours)'
+              clicks:
+                type: object
+                required:
+                - dates
+                - data
+                - totals
+                - data_delay
+                properties:
+                  dates:
+                    type: array
+                    items:
+                      type: string
+                  data:
+                    type: array
+                    items:
+                      type: number
+                  totals:
+                    type: object
+                    required:
+                    - current
+                    - previous
+                    - trend_percent
+                    - trend_direction
+                    properties:
+                      current:
+                        type: number
+                      previous:
+                        type: number
+                      trend_percent:
+                        type: number
+                      trend_direction:
+                        type: string
+                        enum:
+                        - up
+                        - down
+                        - flat
+                  data_delay:
+                    type: string
+                    enum:
+                    - realtime
+                    - ads
+                    description: 'Data freshness: realtime (15 min) or ads (2-4 hours)'
+              ctr:
+                type: object
+                required:
+                - dates
+                - data
+                - totals
+                - data_delay
+                properties:
+                  dates:
+                    type: array
+                    items:
+                      type: string
+                  data:
+                    type: array
+                    items:
+                      type: number
+                  totals:
+                    type: object
+                    required:
+                    - current
+                    - previous
+                    - trend_percent
+                    - trend_direction
+                    properties:
+                      current:
+                        type: number
+                      previous:
+                        type: number
+                      trend_percent:
+                        type: number
+                      trend_direction:
+                        type: string
+                        enum:
+                        - up
+                        - down
+                        - flat
+                  data_delay:
+                    type: string
+                    enum:
+                    - realtime
+                    - ads
+                    description: 'Data freshness: realtime (15 min) or ads (2-4 hours)'
+              has_data:
+                type: boolean
+        date_range_options:
+          type: array
+          items:
+            type: object
+            required:
+            - days
+            - label
+            properties:
+              days:
+                type: integer
+              label:
+                type: string
+      required:
+      - root_path
+      - langgraph_path
+      - jwt
+      - project
+      - metrics
+      - date_range_options
+    ProjectsProps:
+      type: object
+      additionalProperties: false
+      properties:
+        root_path:
+          type: string
+          description: Base URL of the application
+        langgraph_path:
+          type: string
+          description: URL of the Langgraph service
+        jwt:
+          type: string
+          description: JWT token for API authentication
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Validation errors from session
+        flash:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                - success
+                - error
+                - info
+              message:
+                type: string
+            required:
+            - type
+            - message
+          description: Flash messages
+        current_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+          - id
+          - name
+          - email
+          nullable: true
+          description: Currently authenticated user
+        true_user:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+          required:
+          - id
+          - name
+          - email
+          nullable: true
+          description: Original admin user when impersonating
+        impersonating:
+          type: boolean
+          description: Whether admin is currently impersonating another user
+        credits:
+          type: object
+          properties:
+            plan_credits:
+              type: number
+            pack_credits:
+              type: number
+            total_credits:
+              type: number
+            plan_credits_allocated:
+              type: number
+            period_ends_at:
+              type: string
+              nullable: true
+          required:
+          - plan_credits
+          - pack_credits
+          - total_credits
+          - plan_credits_allocated
+          nullable: true
+          description: Credit balance for the current account
+        projects:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              uuid:
+                type: string
+              website_id:
+                type: integer
+                nullable: true
+              account_id:
+                type: integer
+              name:
+                type: string
+              status:
+                type: string
+                enum:
+                - live
+                - paused
+                - draft
+              domain:
+                type: string
+                nullable: true
+              created_at: {}
+              updated_at: {}
+            required:
+            - id
+            - uuid
+            - account_id
+            - name
+            - status
+        pagination:
+          type: object
+          properties:
+            current_page:
+              type: integer
+            total_pages:
+              type: integer
+            total_count:
+              type: integer
+            prev_page:
+              type: integer
+              nullable: true
+            next_page:
+              type: integer
+              nullable: true
+            from:
+              type: integer
+              nullable: true
+            to:
+              type: integer
+              nullable: true
+            series:
+              type: array
+              items:
+                oneOf:
+                - type: integer
+                - type: string
+          required:
+          - current_page
+          - total_pages
+          - total_count
+          - prev_page
+          - next_page
+          - series
+        status_counts:
+          type: object
+          properties:
+            draft:
+              type: integer
+            paused:
+              type: integer
+            live:
+              type: integer
+      required:
+      - root_path
+      - langgraph_path
+      - jwt
+      - projects
+      - pagination
+      - status_counts
 servers:
-  - url: https://{defaultHost}
-    variables:
-      defaultHost:
-        default: www.example.com
+- url: https://{defaultHost}
+  variables:
+    defaultHost:
+      default: www.example.com

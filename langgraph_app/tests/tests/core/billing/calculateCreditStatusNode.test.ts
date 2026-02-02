@@ -4,7 +4,7 @@ import type { CoreGraphState, ThreadIDType } from "@types";
 
 // Mock dependencies
 vi.mock("@core/billing", async (importOriginal) => {
-  const original = await importOriginal() as any;
+  const original = (await importOriginal()) as any;
   return {
     ...original,
     getUsageContext: vi.fn(),
@@ -12,7 +12,7 @@ vi.mock("@core/billing", async (importOriginal) => {
 });
 
 vi.mock("@core", async (importOriginal) => {
-  const original = await importOriginal() as any;
+  const original = (await importOriginal()) as any;
   return {
     ...original,
     LLMManager: {
@@ -87,6 +87,7 @@ describe.sequential("calculateCreditStatusNode", () => {
         records: [],
         messages: [],
         _seenMessageIds: new Set(),
+        _runIdToMetadata: new Map(),
       });
 
       const state = createMockState({ preRunCreditsRemaining: 5000 });
@@ -122,6 +123,7 @@ describe.sequential("calculateCreditStatusNode", () => {
         ],
         messages: [],
         _seenMessageIds: new Set(),
+        _runIdToMetadata: new Map(),
       });
 
       vi.mocked(calculateRunCost).mockReturnValue(1000); // 1 credit
@@ -157,6 +159,7 @@ describe.sequential("calculateCreditStatusNode", () => {
         ],
         messages: [],
         _seenMessageIds: new Set(),
+        _runIdToMetadata: new Map(),
       });
 
       vi.mocked(calculateRunCost).mockReturnValue(5000); // Exactly exhausts balance
@@ -188,6 +191,7 @@ describe.sequential("calculateCreditStatusNode", () => {
         ],
         messages: [],
         _seenMessageIds: new Set(),
+        _runIdToMetadata: new Map(),
       });
 
       vi.mocked(calculateRunCost).mockReturnValue(10000); // Exceeds balance
@@ -221,11 +225,10 @@ describe.sequential("calculateCreditStatusNode", () => {
         ],
         messages: [],
         _seenMessageIds: new Set(),
+        _runIdToMetadata: new Map(),
       });
 
-      vi.mocked(LLMManager.getModelConfigs).mockRejectedValue(
-        new Error("Failed to fetch configs")
-      );
+      vi.mocked(LLMManager.getModelConfigs).mockRejectedValue(new Error("Failed to fetch configs"));
 
       const state = createMockState({ preRunCreditsRemaining: 5000 });
 
@@ -254,6 +257,7 @@ describe.sequential("calculateCreditStatusNode", () => {
         ],
         messages: [],
         _seenMessageIds: new Set(),
+        _runIdToMetadata: new Map(),
       });
 
       vi.mocked(calculateRunCost).mockImplementation(() => {

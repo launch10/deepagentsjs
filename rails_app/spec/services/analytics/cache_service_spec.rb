@@ -6,11 +6,15 @@ RSpec.describe Analytics::CacheService do
   let(:account) { create(:account) }
 
   around do |example|
-    # Use memory store for cache tests
+    # Use memory store for cache tests and enable caching
     original_store = Rails.cache
+    original_cache_mode = ENV["CACHE_MODE"]
     Rails.cache = ActiveSupport::Cache::MemoryStore.new
+    ENV["CACHE_MODE"] = "true"
     example.run
+  ensure
     Rails.cache = original_store
+    ENV["CACHE_MODE"] = original_cache_mode
   end
 
   describe ".fetch" do

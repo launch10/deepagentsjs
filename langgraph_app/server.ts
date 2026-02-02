@@ -9,6 +9,7 @@ import { deployRoutes } from "./app/server/routes/deploy";
 import { documentsRoutes } from "./app/server/routes/documents";
 import { websiteRoutes } from "./app/server/routes/website";
 import { insightsRoutes } from "./app/server/routes/insights";
+import { supportRoutes } from "./app/server/routes/support";
 import { jobRunCallbackRoutes } from "./app/server/routes/webhooks/jobRunCallback";
 import { clearLlmCacheRoutes } from "./app/server/routes/webhooks/clearLlmCache";
 import { errorHandler } from "./app/server/middleware/errorHandler";
@@ -47,6 +48,7 @@ app.route("/api/deploy", deployRoutes);
 app.route("/api/documents", documentsRoutes);
 app.route("/api/website", websiteRoutes);
 app.route("/api/insights", insightsRoutes);
+app.route("/api/support", supportRoutes);
 app.route("/", jobRunCallbackRoutes);
 app.route("/", clearLlmCacheRoutes);
 

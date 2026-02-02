@@ -136,15 +136,9 @@ RSpec.describe Analytics::DashboardService do
   end
 
   describe "#status_counts" do
-    let!(:live_project) { create(:project, account: account) }
-    let!(:paused_project) { create(:project, account: account) }
-    let!(:draft_project) { create(:project, account: account) }
-
-    before do
-      create(:campaign, project: live_project, status: "active", account: account, website: create(:website, project: live_project))
-      create(:campaign, project: paused_project, status: "paused", account: account, website: create(:website, project: paused_project))
-      # draft_project has no campaigns
-    end
+    let!(:live_project) { create(:project, account: account, status: "live") }
+    let!(:paused_project) { create(:project, account: account, status: "paused") }
+    let!(:draft_project) { create(:project, account: account, status: "draft") }
 
     it "returns counts for all statuses" do
       result = subject.status_counts
@@ -156,9 +150,10 @@ RSpec.describe Analytics::DashboardService do
     end
   end
 
-  describe "project status derivation" do
+  describe "project status" do
     it "includes status in projects_summary" do
-      create(:campaign, project: project, status: "active", account: account, website: website)
+      # Create a live deploy to trigger live status
+      create(:deploy, project: project, is_live: true)
 
       result = subject.projects_summary
       project_result = result.find { |p| p[:uuid] == project.uuid }
@@ -166,7 +161,16 @@ RSpec.describe Analytics::DashboardService do
       expect(project_result[:status]).to eq("live")
     end
 
-    it "returns draft status for projects with no campaigns" do
+    it "returns paused status for projects with paused campaigns" do
+      create(:campaign, project: project, status: "paused", account: account, website: website)
+
+      result = subject.projects_summary
+      project_result = result.find { |p| p[:uuid] == project.uuid }
+
+      expect(project_result[:status]).to eq("paused")
+    end
+
+    it "returns draft status for projects with no live deploys or paused campaigns" do
       # Force project creation
       project
 
@@ -174,6 +178,17 @@ RSpec.describe Analytics::DashboardService do
       project_result = result.find { |p| p[:uuid] == project.uuid }
 
       expect(project_result[:status]).to eq("draft")
+    end
+
+    it "prioritizes paused status over live" do
+      # Create both live deploy and paused campaign
+      create(:deploy, project: project, is_live: true)
+      create(:campaign, project: project, status: "paused", account: account, website: website)
+
+      result = subject.projects_summary
+      project_result = result.find { |p| p[:uuid] == project.uuid }
+
+      expect(project_result[:status]).to eq("paused")
     end
   end
 end

@@ -9,12 +9,21 @@ authenticated :user do
 
   get "dashboard", to: "dashboard#show"
 
-  resources :projects, only: [:new, :show], param: :uuid do
+  resources :projects, only: [:index, :new, :show, :destroy], param: :uuid do
     resources :workflows, only: [:show]
 
     member do
       get :brainstorm
-      get :website
+      get :performance
+
+      # Website substeps (build, domain, deploy)
+      scope :website do
+        WorkflowConfig.substeps_for("launch", "website").each do |substep|
+          get substep, to: "projects#website_#{substep}", as: "website_#{substep}"
+        end
+      end
+      # Backwards compatibility: redirect /website to /website/build
+      get :website, to: redirect { |params, _req| "/projects/#{params[:uuid]}/website/build" }
 
       scope :campaigns do
         WorkflowConfig.substeps_for("launch", "ad_campaign").each do |substep|
@@ -23,6 +32,7 @@ authenticated :user do
       end
 
       get :deploy
+      patch :restore
     end
 
     resources :leads, only: [:index], controller: "leads" do

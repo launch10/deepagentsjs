@@ -17,6 +17,26 @@ function getModelCard(model: BaseChatModel): string {
 }
 
 /**
+ * Helper to get model from LLMManager.get() result (which now returns { model, modelCard })
+ */
+async function getModel(
+  skill: string,
+  speed: string,
+  cost: string,
+  usagePercent: number = 0,
+  maxTier?: number
+): Promise<BaseChatModel> {
+  const result = await LLMManager.get(
+    skill as any,
+    speed as any,
+    cost as any,
+    usagePercent,
+    maxTier
+  );
+  return result.model;
+}
+
+/**
  * Helper to create a timestamp for database records
  */
 function now() {
@@ -163,7 +183,7 @@ describe.sequential("LLMService Integration Tests", () => {
       await LLMManager.clearCache();
 
       // Fetch model - this calls the real Rails API
-      const model = await LLMManager.get("coding", "slow", "paid", 0);
+      const model = await getModel("coding", "slow", "paid", 0);
 
       // Should return sonnet (first in preference chain)
       expect(model).toBeInstanceOf(BaseChatModel);
@@ -193,7 +213,7 @@ describe.sequential("LLMService Integration Tests", () => {
 
       await LLMManager.clearCache();
 
-      const model = await LLMManager.get("coding", "slow", "paid", 0);
+      const model = await getModel("coding", "slow", "paid", 0);
 
       // Should skip disabled opus and return sonnet
       expect(getModelCard(model)).toBe("claude-sonnet-4-5");
@@ -225,7 +245,7 @@ describe.sequential("LLMService Integration Tests", () => {
       await LLMManager.clearCache();
 
       // First call - fetches from API and caches
-      let model = await LLMManager.get("coding", "slow", "paid", 0);
+      let model = await getModel("coding", "slow", "paid", 0);
       expect(getModelCard(model)).toBe("claude-sonnet-4-5");
 
       // Update database - change preference order
@@ -235,14 +255,14 @@ describe.sequential("LLMService Integration Tests", () => {
         .where(eq(modelPreferences.costTier, "paid"));
 
       // Without cache bust, should still return cached value
-      model = await LLMManager.get("coding", "slow", "paid", 0);
+      model = await getModel("coding", "slow", "paid", 0);
       expect(getModelCard(model)).toBe("claude-sonnet-4-5"); // Still cached
 
       // Bust cache
       await LLMManager.clearCache();
 
       // Now should see updated value
-      model = await LLMManager.get("coding", "slow", "paid", 0);
+      model = await getModel("coding", "slow", "paid", 0);
       expect(getModelCard(model)).toBe("claude-haiku-4-5"); // New order from DB
     });
 
@@ -350,37 +370,37 @@ describe.sequential("LLMService Integration Tests", () => {
 
     it("returns premium model when usage is below threshold", async () => {
       await setupTieredModels();
-      const model = await LLMManager.get("coding", "slow", "paid", 40);
+      const model = await getModel("coding", "slow", "paid", 40);
       expect(getModelCard(model)).toBe("claude-opus-4-5"); // 40% < 50% threshold
     });
 
     it("falls back to next model when usage exceeds threshold", async () => {
       await setupTieredModels();
-      const model = await LLMManager.get("coding", "slow", "paid", 51);
+      const model = await getModel("coding", "slow", "paid", 51);
       expect(getModelCard(model)).toBe("claude-sonnet-4-5"); // 51% > 50% threshold, falls back to sonnet
     });
 
     it("cascades through fallback chain as usage increases", async () => {
       await setupTieredModels();
       // At 0% - get opus (best model)
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 0))).toBe(
+      expect(getModelCard(await getModel("coding", "slow", "paid", 0))).toBe(
         "claude-opus-4-5"
       );
 
       // At 51% - opus excluded, get sonnet
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 51))).toBe(
+      expect(getModelCard(await getModel("coding", "slow", "paid", 51))).toBe(
         "claude-sonnet-4-5"
       );
 
       // At 81% - opus and sonnet excluded, get haiku
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 81))).toBe(
+      expect(getModelCard(await getModel("coding", "slow", "paid", 81))).toBe(
         "claude-haiku-4-5"
       );
     });
 
     it("model with 100% threshold is always available", async () => {
       await setupTieredModels();
-      const model = await LLMManager.get("coding", "slow", "paid", 99);
+      const model = await getModel("coding", "slow", "paid", 99);
       expect(getModelCard(model)).toBe("claude-haiku-4-5"); // Only haiku available at 99%
     });
 
@@ -388,7 +408,7 @@ describe.sequential("LLMService Integration Tests", () => {
       await setupTieredModels();
       // All models in preference chain are excluded by usage (101% > all thresholds)
       // Fallback picks the cheapest valid model in the system (haiku, highest price_tier)
-      const model = await LLMManager.get("coding", "slow", "paid", 101);
+      const model = await getModel("coding", "slow", "paid", 101);
       expect(getModelCard(model)).toBe("claude-haiku-4-5");
     });
 
@@ -444,7 +464,7 @@ describe.sequential("LLMService Integration Tests", () => {
       await LLMManager.clearCache();
 
       // Step 3: Verify model selection at 0% usage
-      let model = await LLMManager.get("coding", "slow", "paid", 0);
+      let model = await getModel("coding", "slow", "paid", 0);
       expect(getModelCard(model)).toBe("claude-opus-4-5");
 
       // Step 4: Verify cache is populated
@@ -452,25 +472,25 @@ describe.sequential("LLMService Integration Tests", () => {
       expect(cached.length).toBe(1);
 
       // Step 5: Simulate user reaching 60% usage - should fall back
-      model = await LLMManager.get("coding", "slow", "paid", 60);
+      model = await getModel("coding", "slow", "paid", 60);
       expect(getModelCard(model)).toBe("claude-sonnet-4-5");
 
       // Step 6: Simulate user reaching 85% usage - should fall back again
-      model = await LLMManager.get("coding", "slow", "paid", 85);
+      model = await getModel("coding", "slow", "paid", 85);
       expect(getModelCard(model)).toBe("claude-haiku-4-5");
 
       // Step 7: Admin changes config in database (increase opus threshold)
       await updateModelConfig("opus", { maxUsagePercent: 70 });
 
       // Step 8: Without cache bust, still uses old cached config
-      model = await LLMManager.get("coding", "slow", "paid", 60);
+      model = await getModel("coding", "slow", "paid", 60);
       expect(getModelCard(model)).toBe("claude-sonnet-4-5"); // Still cached with old threshold
 
       // Step 9: Bust cache
       await LLMManager.clearCache();
 
       // Step 10: Now at 60% usage, opus should be available (threshold increased to 70%)
-      model = await LLMManager.get("coding", "slow", "paid", 60);
+      model = await getModel("coding", "slow", "paid", 60);
       expect(getModelCard(model)).toBe("claude-opus-4-5");
     });
   });
@@ -548,17 +568,17 @@ describe.sequential("LLMService Integration Tests", () => {
       await setupTieredPriceModels();
 
       // Without maxTier, returns opus (first in preference)
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 0))).toBe(
+      expect(getModelCard(await getModel("coding", "slow", "paid", 0))).toBe(
         "claude-opus-4-5"
       );
 
       // With maxTier=2, skips opus and returns sonnet
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 0, 2))).toBe(
+      expect(getModelCard(await getModel("coding", "slow", "paid", 0, 2))).toBe(
         "claude-sonnet-4-5"
       );
 
       // With maxTier=3, skips opus and sonnet, returns haiku
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 0, 3))).toBe(
+      expect(getModelCard(await getModel("coding", "slow", "paid", 0, 3))).toBe(
         "claude-haiku-4-5"
       );
     });
@@ -568,7 +588,7 @@ describe.sequential("LLMService Integration Tests", () => {
 
       // maxTier=4 means only tier 4+ allowed, but our cheapest is tier 3
       // Fallback ignores tier constraint and picks cheapest valid model (haiku, tier 3)
-      const model = await LLMManager.get("coding", "slow", "paid", 0, 4);
+      const model = await getModel("coding", "slow", "paid", 0, 4);
       expect(getModelCard(model)).toBe("claude-haiku-4-5");
     });
 
@@ -610,17 +630,17 @@ describe.sequential("LLMService Integration Tests", () => {
       await LLMManager.clearCache();
 
       // At 0% usage with maxTier=2: opus excluded by tier, sonnet and haiku available
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 0, 2))).toBe(
+      expect(getModelCard(await getModel("coding", "slow", "paid", 0, 2))).toBe(
         "claude-sonnet-4-5"
       );
 
       // At 60% usage with maxTier=2: opus excluded by tier AND usage, sonnet available
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 60, 2))).toBe(
+      expect(getModelCard(await getModel("coding", "slow", "paid", 60, 2))).toBe(
         "claude-sonnet-4-5"
       );
 
       // At 85% usage with maxTier=2: opus excluded by tier, sonnet excluded by usage, haiku available
-      expect(getModelCard(await LLMManager.get("coding", "slow", "paid", 85, 2))).toBe(
+      expect(getModelCard(await getModel("coding", "slow", "paid", 85, 2))).toBe(
         "claude-haiku-4-5"
       );
     });
@@ -630,7 +650,7 @@ describe.sequential("LLMService Integration Tests", () => {
 
       // maxTier=5 means only tier 5+ allowed, but our cheapest is tier 3
       // Fallback ignores tier constraint and picks cheapest valid model (haiku, tier 3)
-      const model = await LLMManager.get("coding", "slow", "paid", 0, 5);
+      const model = await getModel("coding", "slow", "paid", 0, 5);
       expect(getModelCard(model)).toBe("claude-haiku-4-5");
     });
   });
@@ -654,7 +674,7 @@ describe.sequential("LLMService Integration Tests", () => {
       await LLMManager.clearCache();
 
       // Should be available even at 99%
-      const model = await LLMManager.get("coding", "slow", "paid", 99);
+      const model = await getModel("coding", "slow", "paid", 99);
       expect(getModelCard(model)).toBe("claude-haiku-4-5");
     });
 
@@ -682,11 +702,11 @@ describe.sequential("LLMService Integration Tests", () => {
       await LLMManager.clearCache();
 
       // At exactly 50%, sonnet should still be available (not > 50)
-      let model = await LLMManager.get("coding", "slow", "paid", 50);
+      let model = await getModel("coding", "slow", "paid", 50);
       expect(getModelCard(model)).toBe("claude-sonnet-4-5");
 
       // At 50.001%, sonnet should be excluded
-      model = await LLMManager.get("coding", "slow", "paid", 50.001);
+      model = await getModel("coding", "slow", "paid", 50.001);
       expect(getModelCard(model)).toBe("claude-haiku-4-5");
     });
 
@@ -723,7 +743,7 @@ describe.sequential("LLMService Integration Tests", () => {
       await LLMManager.clearCache();
 
       // Should skip unknown model and return haiku
-      const model = await LLMManager.get("coding", "slow", "paid", 0);
+      const model = await getModel("coding", "slow", "paid", 0);
       expect(getModelCard(model)).toBe("claude-haiku-4-5");
     });
   });
@@ -758,7 +778,7 @@ describe.sequential("LLMService Integration Tests", () => {
 
       await LLMManager.clearCache();
 
-      const model = await LLMManager.get("coding", "slow", "paid", 0);
+      const model = await getModel("coding", "slow", "paid", 0);
       expect(getModelCard(model)).toBe("claude-haiku-4-5");
     });
 
@@ -791,7 +811,7 @@ describe.sequential("LLMService Integration Tests", () => {
 
       await LLMManager.clearCache();
 
-      const model = await LLMManager.get("coding", "slow", "paid", 0);
+      const model = await getModel("coding", "slow", "paid", 0);
       // haiku rejected (missing cost_out), falls back to cheapest valid model
       expect(getModelCard(model)).toBe("claude-sonnet-4-5");
     });
@@ -825,7 +845,7 @@ describe.sequential("LLMService Integration Tests", () => {
 
       await LLMManager.clearCache();
 
-      const model = await LLMManager.get("coding", "slow", "paid", 0);
+      const model = await getModel("coding", "slow", "paid", 0);
       // haiku rejected (missing cost_in), falls back to cheapest valid model
       expect(getModelCard(model)).toBe("claude-sonnet-4-5");
     });
@@ -868,7 +888,7 @@ describe.sequential("LLMService Integration Tests", () => {
       await LLMManager.clearCache();
 
       // Should fall back to haiku (cheapest valid model in the system)
-      const model = await LLMManager.get("coding", "slow", "paid", 0);
+      const model = await getModel("coding", "slow", "paid", 0);
       expect(getModelCard(model)).toBe("claude-haiku-4-5");
     });
 
@@ -911,7 +931,7 @@ describe.sequential("LLMService Integration Tests", () => {
       await LLMManager.clearCache();
 
       // Should fall back to haiku (tier 3 > tier 2, so haiku is cheaper)
-      const model = await LLMManager.get("coding", "slow", "paid", 0);
+      const model = await getModel("coding", "slow", "paid", 0);
       expect(getModelCard(model)).toBe("claude-haiku-4-5");
     });
 
@@ -944,6 +964,83 @@ describe.sequential("LLMService Integration Tests", () => {
       await expect(LLMManager.get("coding", "slow", "paid", 0)).rejects.toThrow(
         "No available model"
       );
+    });
+  });
+
+  describe("Model Card Return Value (for billing identification)", () => {
+    it("returns modelCard along with model for billing purposes", async () => {
+      await createModelConfig({
+        modelKey: "sonnet",
+        enabled: true,
+        maxUsagePercent: 100,
+        modelCard: "claude-sonnet-4-5",
+      });
+      await createModelPreference({
+        costTier: "paid",
+        speedTier: "slow",
+        skill: "coding",
+        modelKeys: ["sonnet"],
+      });
+
+      await LLMManager.clearCache();
+
+      // Use LLMManager.get directly to test the new return type
+      const result = await LLMManager.get("coding", "slow", "paid", 0);
+
+      expect(result).toHaveProperty("model");
+      expect(result).toHaveProperty("modelCard");
+      expect(result.modelCard).toBe("claude-sonnet-4-5");
+      expect(getModelCard(result.model)).toBe("claude-sonnet-4-5");
+    });
+
+    it("returns 'unknown' modelCard when model_card is null in config", async () => {
+      await createModelConfig({
+        modelKey: "sonnet",
+        enabled: true,
+        maxUsagePercent: 100,
+        modelCard: null, // Explicitly null
+      });
+      await createModelPreference({
+        costTier: "paid",
+        speedTier: "slow",
+        skill: "coding",
+        modelKeys: ["sonnet"],
+      });
+
+      await LLMManager.clearCache();
+
+      const result = await LLMManager.get("coding", "slow", "paid", 0);
+
+      expect(result.modelCard).toBe("unknown");
+    });
+
+    it("modelCard matches the selected model in fallback scenarios", async () => {
+      await createModelConfig({
+        modelKey: "opus",
+        enabled: false, // Disabled - will be skipped
+        maxUsagePercent: 100,
+        modelCard: "claude-opus-4-5",
+      });
+      await createModelConfig({
+        modelKey: "sonnet",
+        enabled: true,
+        maxUsagePercent: 100,
+        modelCard: "claude-sonnet-4-5",
+      });
+      await createModelPreference({
+        costTier: "paid",
+        speedTier: "slow",
+        skill: "coding",
+        modelKeys: ["opus", "sonnet"], // opus first but disabled
+      });
+
+      await LLMManager.clearCache();
+
+      const result = await LLMManager.get("coding", "slow", "paid", 0);
+
+      // Should have fallen back to sonnet
+      expect(result.modelCard).toBe("claude-sonnet-4-5");
+      expect(getModelCard(result.model)).toBe("claude-sonnet-4-5");
     });
   });
 });

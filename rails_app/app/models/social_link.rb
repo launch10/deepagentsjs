@@ -3,6 +3,7 @@
 # Table name: social_links
 #
 #  id         :bigint           not null, primary key
+#  deleted_at :datetime
 #  handle     :string
 #  platform   :string           not null
 #  url        :string           not null
@@ -12,8 +13,9 @@
 #
 # Indexes
 #
+#  index_social_links_on_deleted_at               (deleted_at)
 #  index_social_links_on_project_id               (project_id)
-#  index_social_links_on_project_id_and_platform  (project_id,platform) UNIQUE
+#  index_social_links_on_project_id_and_platform  (project_id,platform) UNIQUE WHERE (deleted_at IS NULL)
 #
 # Foreign Keys
 #
@@ -21,6 +23,8 @@
 #
 
 class SocialLink < ApplicationRecord
+  acts_as_paranoid
+
   include SocialLinkConcerns::Normalizable
 
   PLATFORMS = %w[twitter instagram facebook linkedin youtube tiktok website other].freeze

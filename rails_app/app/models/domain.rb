@@ -3,6 +3,7 @@
 # Table name: domains
 #
 #  id                    :bigint           not null, primary key
+#  deleted_at            :datetime
 #  domain                :string
 #  is_platform_subdomain :boolean          default(FALSE), not null
 #  created_at            :datetime         not null
@@ -17,11 +18,14 @@
 #  index_domains_on_account_id_and_platform_subdomain  (account_id,is_platform_subdomain)
 #  index_domains_on_cloudflare_zone_id                 (cloudflare_zone_id)
 #  index_domains_on_created_at                         (created_at)
+#  index_domains_on_deleted_at                         (deleted_at)
 #  index_domains_on_domain                             (domain)
 #  index_domains_on_website_id                         (website_id)
 #
 
 class Domain < ApplicationRecord
+  acts_as_paranoid
+
   RESTRICTED_DOMAINS = [
     "uploads",
     "dev-uploads",
