@@ -512,15 +512,12 @@ RSpec.describe Credits::AllocationService do
           }.not_to change { CreditTransaction.count }
         end
 
-        it "raises BillingCycleError when using different idempotency key" do
+        it "skips silently when using different idempotency key (duplicate webhook scenario)" do
           different_key = "plan_credits:#{subscription.id}:#{(period_start + 1.day).to_date.iso8601}"
 
           expect {
             service.reset_plan_credits!(subscription: subscription, idempotency_key: different_key)
-          }.to raise_error(
-            Credits::AllocationService::BillingCycleError,
-            /Plan credits already allocated for this billing period/
-          )
+          }.not_to change { CreditTransaction.count }
         end
       end
 
@@ -549,7 +546,7 @@ RSpec.describe Credits::AllocationService do
 
           expect {
             service.reset_plan_credits!(subscription: subscription, idempotency_key: fake_key)
-          }.to raise_error(Credits::AllocationService::BillingCycleError)
+          }.not_to change { CreditTransaction.count }
         end
 
         it "cannot get double allocation by passing future period key" do
@@ -557,7 +554,7 @@ RSpec.describe Credits::AllocationService do
 
           expect {
             service.reset_plan_credits!(subscription: subscription, idempotency_key: future_key)
-          }.to raise_error(Credits::AllocationService::BillingCycleError)
+          }.not_to change { CreditTransaction.count }
         end
       end
 
@@ -839,13 +836,13 @@ RSpec.describe Credits::AllocationService do
           )
         end
 
-        it "rejects mid-month renewal attempt (yearly gets one allocation per year)" do
+        it "skips mid-month renewal attempt (yearly gets one allocation per year)" do
           # Try to get another allocation mid-year
           mid_year_key = "plan_credits:#{subscription.id}:#{6.months.from_now.to_date.iso8601}"
 
           expect {
             service.reset_plan_credits!(subscription: subscription, idempotency_key: mid_year_key)
-          }.to raise_error(Credits::AllocationService::BillingCycleError)
+          }.not_to change { CreditTransaction.count }
         end
       end
 
