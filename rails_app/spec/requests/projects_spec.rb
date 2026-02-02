@@ -61,13 +61,13 @@ RSpec.describe "Projects", type: :request, inertia: true do
         subscribe_account(other_account, plan_name: "growth_monthly")
       end
 
-      it "returns 404 when trying to access another account's project" do
+      it "redirects when trying to access another account's project" do
         sign_out user
         sign_in other_user
 
         get brainstorm_project_path(project.uuid)
 
-        expect(response).to have_http_status(:not_found)
+        expect(response).to have_http_status(:redirect)
       end
 
       it "can access project after switching to the correct account" do

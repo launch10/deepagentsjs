@@ -88,7 +88,10 @@ class WorkflowConfig
       all_substeps = substeps_for(workflow_type, current_step)
       return nil unless all_substeps.any?
 
-      all_substeps[all_substeps.index(current_substep) + 1]
+      current_idx = all_substeps.index(current_substep)
+      return nil if current_idx.nil? # current_substep not found (e.g., nil)
+
+      all_substeps[current_idx + 1]
     end
 
     def step_order(workflow_type, step_name)

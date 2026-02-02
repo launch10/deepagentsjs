@@ -65,7 +65,7 @@ module Credits
           # Renewal - validate this is actually at a billing cycle boundary
           # Skip validation for monthly resets (yearly subscriptions with monthly credit refresh)
           unless idempotency_key.start_with?("monthly_reset:")
-            validate_renewal_timing!(subscription, idempotency_key)
+            return if validate_renewal_timing!(subscription, idempotency_key)
           end
 
           handle_renewal!(
@@ -355,12 +355,14 @@ module Credits
     # For renewals (no plan change), we verify:
     # 1. No allocation exists for this billing period
     # 2. The idempotency key matches the expected format for this period
+    #
+    # Returns true if renewal should be skipped (already allocated), false otherwise
     def validate_renewal_timing!(subscription, idempotency_key)
       # Fall back to current date if period_start is nil (e.g., fake_processor in tests)
       period_start = (subscription.current_period_start || Time.current).to_date
 
       # Check if there's already an allocation for this billing period
-      # This catches the case where someone passes a different idempotency key
+      # This catches the case where Stripe sends duplicate webhooks with different event IDs
       existing_allocation = @account.credit_transactions
         .where(transaction_type: "allocate")
         .where(reason: "plan_renewal")
@@ -370,10 +372,14 @@ module Credits
         .exists?
 
       if existing_allocation
-        raise BillingCycleError,
-          "Plan credits already allocated for this billing period (started #{period_start}). " \
-          "Renewals are only allowed once per billing cycle."
+        Rails.logger.info(
+          "[Credits::AllocationService] Skipping renewal - credits already allocated for billing period " \
+          "(subscription_id=#{subscription.id}, period_start=#{period_start}, idempotency_key=#{idempotency_key})"
+        )
+        return true
       end
+
+      false
     end
 
     def downgrade?(previous_plan, new_plan_tier)
