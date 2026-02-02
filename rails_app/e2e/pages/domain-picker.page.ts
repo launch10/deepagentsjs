@@ -157,11 +157,11 @@ export class DomainPickerPage {
   ): Promise<void> {
     const { waitForRecommendations = true, timeout = 60000 } = options;
 
-    console.log(`[DomainPickerPage] gotoWithBuild: Starting for project ${projectUuid}`);
+    console.warn(`[DomainPickerPage] gotoWithBuild: Starting for project ${projectUuid}`);
 
     // Step 1: Navigate to build page to trigger the website graph
     await this.page.goto(`/projects/${projectUuid}/website/build`);
-    console.log(`[DomainPickerPage] gotoWithBuild: Navigated to /website/build`);
+    console.warn(`[DomainPickerPage] gotoWithBuild: Navigated to /website/build`);
 
     // Step 2: Wait for the POST /stream request to be sent (graph invocation)
     const streamPromise = this.page.waitForResponse(
@@ -173,30 +173,34 @@ export class DomainPickerPage {
     // Step 3: Wait for streaming to complete by watching for the loading state to end
     // We poll for the WebsitePreview to become visible (indicates streaming complete)
     if (waitForRecommendations) {
-      console.log(`[DomainPickerPage] gotoWithBuild: Waiting for graph to complete...`);
+      console.warn(`[DomainPickerPage] gotoWithBuild: Waiting for graph to complete...`);
 
       // Wait for POST to complete
       await streamPromise.catch(() => {
-        console.log(`[DomainPickerPage] gotoWithBuild: POST /stream may have already happened`);
+        console.warn(`[DomainPickerPage] gotoWithBuild: POST /stream may have already happened`);
       });
 
       // Wait for loading to finish - the WebsitePreview appears when streaming completes
       // or we can wait for the loader to disappear
       await this.page
         .locator('[data-testid="website-preview"]')
-        .or(this.page.locator(".border-\\[\\#D3D2D0\\]").filter({ hasNot: this.page.locator("text=Setting up") }))
+        .or(
+          this.page
+            .locator(".border-\\[\\#D3D2D0\\]")
+            .filter({ hasNot: this.page.locator("text=Setting up") })
+        )
         .waitFor({ state: "visible", timeout })
         .catch(async () => {
           // Alternative: wait for loading indicator to disappear
-          console.log(`[DomainPickerPage] gotoWithBuild: Waiting for loading to complete...`);
+          console.warn(`[DomainPickerPage] gotoWithBuild: Waiting for loading to complete...`);
           await this.page.waitForTimeout(5000); // Give graph time to complete
         });
 
-      console.log(`[DomainPickerPage] gotoWithBuild: Graph appears to have completed`);
+      console.warn(`[DomainPickerPage] gotoWithBuild: Graph appears to have completed`);
     }
 
     // Step 4: Navigate to domain picker
-    console.log(`[DomainPickerPage] gotoWithBuild: Navigating to /website/domain`);
+    console.warn(`[DomainPickerPage] gotoWithBuild: Navigating to /website/domain`);
     await this.page.goto(`/projects/${projectUuid}/website/domain`);
   }
 
@@ -208,7 +212,7 @@ export class DomainPickerPage {
     const startTime = Date.now();
     const pollInterval = 500;
 
-    console.log(`[DomainPickerPage] waitForDomainRecommendations: Starting...`);
+    console.warn(`[DomainPickerPage] waitForDomainRecommendations: Starting...`);
 
     while (Date.now() - startTime < timeout) {
       // Check if domain recommendations are present by looking for selection in dropdown
@@ -218,7 +222,7 @@ export class DomainPickerPage {
         .catch(() => false);
 
       if (hasSelection) {
-        console.log(`[DomainPickerPage] waitForDomainRecommendations: Found domain selection`);
+        console.warn(`[DomainPickerPage] waitForDomainRecommendations: Found domain selection`);
         return;
       }
 
@@ -228,7 +232,9 @@ export class DomainPickerPage {
         // Check dropdown text - if it shows a domain (not "Select..."), recommendations are loaded
         const dropdownText = await this.siteNameDropdown.textContent();
         if (dropdownText && !dropdownText.includes("Select") && dropdownText.includes(".")) {
-          console.log(`[DomainPickerPage] waitForDomainRecommendations: Dropdown shows domain: ${dropdownText}`);
+          console.warn(
+            `[DomainPickerPage] waitForDomainRecommendations: Dropdown shows domain: ${dropdownText}`
+          );
           return;
         }
       }
@@ -236,7 +242,9 @@ export class DomainPickerPage {
       await this.page.waitForTimeout(pollInterval);
     }
 
-    console.log(`[DomainPickerPage] waitForDomainRecommendations: Timeout - recommendations may not have loaded`);
+    console.warn(
+      `[DomainPickerPage] waitForDomainRecommendations: Timeout - recommendations may not have loaded`
+    );
   }
 
   /**
@@ -294,13 +302,17 @@ export class DomainPickerPage {
   }
 
   /**
-   * Opens dropdown and focuses the custom domain input section.
-   * In the unified picker, custom domain input is inside the dropdown popover.
+   * Opens dropdown and switches to the custom domain input mode.
+   * Clicks the "Connect your own site" button to toggle the input mode.
    */
   async switchToCustomDomain(): Promise<void> {
     await this.siteNameDropdown.click();
     // Wait for dropdown to be visible
     await this.page.waitForTimeout(500);
+    // Click "Connect your own site" button to switch input mode
+    await this.connectOwnSiteButton.click();
+    // Wait for mode to switch
+    await this.page.waitForTimeout(300);
   }
 
   /**
@@ -363,9 +375,25 @@ export class DomainPickerPage {
   }
 
   /**
-   * Enter a custom domain
+   * Enter a custom domain (switches to custom domain mode first if needed)
    */
   async enterCustomDomain(domain: string): Promise<void> {
+    // Open dropdown if not already open
+    const isDropdownOpen = await this.page
+      .locator("[data-radix-popper-content-wrapper]")
+      .isVisible();
+    if (!isDropdownOpen) {
+      await this.siteNameDropdown.click();
+      await this.page.waitForTimeout(300);
+    }
+
+    // Check if we're in custom domain mode (no suffix visible) or need to switch
+    const isCustomMode = await this.customDomainInput.isVisible();
+    if (!isCustomMode) {
+      await this.connectOwnSiteButton.click();
+      await this.page.waitForTimeout(300);
+    }
+
     await this.customDomainInput.fill(domain);
   }
 
