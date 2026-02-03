@@ -10,6 +10,7 @@ import { CreditWarningModal } from "@components/credits";
 import { useProjectStore } from "~/stores/projectStore";
 import { useSessionStore } from "~/stores/sessionStore";
 import { useCreditStore } from "~/stores/creditStore";
+import { WebContainerManager } from "@lib/webcontainer";
 
 const queryClient = new QueryClient();
 
@@ -92,6 +93,17 @@ export const SiteLayout = ({ children }: { children: React.ReactNode }): React.R
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0);
   }, [url]);
+
+  // Start WebContainer warmup early when user is logged in.
+  // This runs in background while user browses, so by the time they
+  // navigate to Website page, the container is already running.
+  useEffect(() => {
+    if (props.current_user) {
+      WebContainerManager.warmup().catch((e) => {
+        console.error("[WebContainer] Warmup failed:", e);
+      });
+    }
+  }, [props.current_user]);
 
   // Show flash messages as toasts
   useEffect(() => {
