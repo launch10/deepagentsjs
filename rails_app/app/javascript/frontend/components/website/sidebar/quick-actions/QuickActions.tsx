@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { CardHeader, CardTitle, CardDescription } from "@components/ui/card";
 import { Separator } from "@components/ui/separator";
 import { AnimatePresence, motion } from "framer-motion";
@@ -7,6 +7,7 @@ import { ColorPaletteSection } from "@components/brainstorm/conversation-page/br
 import { ProjectImagesSection } from "@components/brainstorm/conversation-page/brand-panel/ProjectImagesSection";
 import ImproveCopy from "@components/quick-actions/improve-copy/ImproveCopy";
 import { DocumentTextIcon, PhotoIcon, SwatchIcon } from "@heroicons/react/24/solid";
+import { useWebsiteChatActions } from "@hooks/website/useWebsiteChat";
 
 export type QuickActionType = "colors" | "images" | "copy";
 
@@ -82,17 +83,34 @@ export function QuickActionsView({
 
 export default function QuickActions() {
   const [activeAction, setActiveAction] = useState<QuickActionType | null>();
+  const { updateState } = useWebsiteChatActions();
 
   const handleActionClick = (action: QuickActionType) => {
     // Toggle off if clicking the same action, otherwise switch to new action
     setActiveAction((prev) => (prev === action ? null : action));
   };
 
+  // Intent-based theme selection handler
+  const handleThemeSelect = useCallback(
+    (themeId: number | null) => {
+      if (themeId === null) return; // Deselection not supported via intent yet
+
+      updateState({
+        intent: {
+          type: "change_theme",
+          payload: { themeId },
+          createdAt: new Date().toISOString(),
+        },
+      });
+    },
+    [updateState]
+  );
+
   // Render settings content based on active action
   const renderSettingsContent = () => {
     switch (activeAction) {
       case "colors":
-        return <ColorPaletteSection />;
+        return <ColorPaletteSection onThemeSelect={handleThemeSelect} />;
       case "images":
         return <ProjectImagesSection />;
       case "copy":
