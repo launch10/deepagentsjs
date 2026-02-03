@@ -207,7 +207,8 @@ describe("Website Builder", () => {
 
       // Create a snapshot after successful generation for other tests to use
       // This ensures the snapshot is always schema-current with real generated data
-      await DatabaseSnapshotter.createSnapshot("website_generated");
+      // This is now handled in website_generated snapshot, and gets updated whenever we call saveExample above and rebuild
+      // await DatabaseSnapshotter.createSnapshot("website_generated");
     }, 500000);
   });
 
