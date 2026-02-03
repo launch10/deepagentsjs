@@ -7,18 +7,15 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install pnpm (faster than npm) and tsx
-RUN corepack enable && corepack prepare pnpm@latest --activate
-RUN pnpm add -g tsx
+# Install tsx globally for running TypeScript
+RUN npm install -g tsx
 
 # Copy only what we need for snapshot generation
 COPY scripts/generate-webcontainer-snapshot.ts ./scripts/
 COPY templates/default ./templates/default/
 
-# Install @webcontainer/snapshot with BuildKit cache
-# pnpm store is much more efficient than npm cache
-RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    pnpm init && pnpm add @webcontainer/snapshot
+# Install @webcontainer/snapshot
+RUN npm init -y && npm install @webcontainer/snapshot
 
 # Create output directory
 RUN mkdir -p public
