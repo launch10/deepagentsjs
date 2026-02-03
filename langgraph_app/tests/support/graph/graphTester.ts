@@ -348,7 +348,7 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
       }
 
       return {
-        state: result,
+        state: result as TGraphState,
         messages: result.messages || [],
         error: result.error,
       };

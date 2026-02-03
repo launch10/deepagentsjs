@@ -134,7 +134,7 @@ function createFetchWithTimeout(timeoutMs: number): typeof fetch {
  */
 export async function createRailsApiClient(options: RailsApiClientOptions = {}) {
   // Disable timeout in tests to avoid Polly compatibility issues
-  const isTest = env.NODE_ENV === 'test' || (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test');
+  const isTest = env.NODE_ENV === 'test';
   const defaultTimeout = isTest ? 0 : DEFAULT_TIMEOUT_MS;
 
   const {
