@@ -137,7 +137,7 @@ describe("Website Builder", () => {
   });
 
   describe("Page Generation", () => {
-    it.only("generates a complete landing page with required sections", async () => {
+    it("generates a complete landing page with required sections", async () => {
       // Load the chat's threadId from the snapshot so the graph state matches the DB
       const [existingChat] = await db
         .select()

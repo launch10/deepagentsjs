@@ -17,7 +17,6 @@
 import type { CoreGraphState } from "@types";
 import { getUsageContext, deriveCreditStatus } from "@core/billing";
 import { LLMManager, calculateRunCost } from "@core";
-import { env } from "@core";
 
 /**
  * Calculate credit status based on pre-run balance and usage during the run.
@@ -30,8 +29,7 @@ export async function calculateCreditStatusNode(
 
   // No credit tracking for this run (middleware failed open or test)
   if (preRunCreditsRemaining === undefined) {
-    // Still clear intent - it's ephemeral and should be consumed each run
-    return { intent: undefined };
+    return {};
   }
 
   // Get usage from current run via usageStorage
@@ -39,7 +37,6 @@ export async function calculateCreditStatusNode(
   if (!usageContext || usageContext.records.length === 0) {
     // No LLM calls made, return current balance with no change
     return {
-      intent: undefined, // Clear ephemeral intent
       creditStatus: {
         justExhausted: false,
         estimatedRemainingMillicredits: preRunCreditsRemaining,
@@ -62,7 +59,7 @@ export async function calculateCreditStatusNode(
       estimatedCostMillicredits,
     });
 
-    return { intent: undefined, creditStatus };
+    return { creditStatus };
   } catch (error) {
     // Log error with details about which models were used
     console.warn("[calculateCreditStatusNode] Failed to calculate credit status:", error);
@@ -78,7 +75,6 @@ export async function calculateCreditStatusNode(
         outputTokens: r.outputTokens,
       }))
     );
-    // Still clear intent even on error
-    return { intent: undefined };
+    return {};
   }
 }
