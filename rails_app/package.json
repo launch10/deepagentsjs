@@ -132,6 +132,7 @@
     "@types/node": "^20",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "@webcontainer/snapshot": "^0.1.0",
     "clsx": "^2.1.1",
     "eslint": "^9",
     "eslint-config-prettier": "^10.1.8",
