@@ -168,7 +168,8 @@
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
     "lint:fix": "npm run lint -- --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "webcontainer:snapshot": "tsx scripts/generate-webcontainer-snapshot.ts"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [

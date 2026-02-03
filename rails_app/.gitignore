@@ -93,3 +93,7 @@ storybook-static
 /test-results/
 /.playwright-mcp/
 *.tsbuildinfo
+
+# WebContainer snapshot (generated via pnpm run webcontainer:snapshot)
+/public/webcontainer-snapshot.bin
+/.snapshot-temp/
