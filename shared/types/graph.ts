@@ -32,5 +32,5 @@ export type CoreGraphState = {
     /** Credit status calculated at end of run (for frontend exhaustion notification) */
     creditStatus: CreditStatus | undefined;
     /** Intent: user action that triggered this graph invocation (consumed after handling) */
-    intent?: Intent | undefined;
+    intent: Intent | undefined;
 }

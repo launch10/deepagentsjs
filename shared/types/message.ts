@@ -1,8 +1,14 @@
-import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { type BaseMessageLike, BaseMessage, AIMessage, HumanMessage, SystemMessage, type Message } from "@langchain/core/messages";
+import { type LangGraphRunnableConfig, MessagesAnnotation } from "@langchain/langgraph";
+import { type BaseMessageLike, AIMessage, HumanMessage, SystemMessage, type Message } from "@langchain/core/messages";
 import { isContextMessage } from "langgraph-ai-sdk";
 
-export type { BaseMessageLike, BaseMessage, AIMessage, HumanMessage, SystemMessage, Message, LangGraphRunnableConfig };
+/**
+ * Derive BaseMessage from LangGraph's MessagesAnnotation to ensure type consistency
+ * between our state types and LangGraph's annotation inference.
+ */
+export type BaseMessage = typeof MessagesAnnotation.State["messages"][number];
+
+export type { BaseMessageLike, AIMessage, HumanMessage, SystemMessage, Message, LangGraphRunnableConfig };
 export { isContextMessage };
 
 interface RecordWithMessages {

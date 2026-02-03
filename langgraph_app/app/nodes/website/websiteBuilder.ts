@@ -6,62 +6,17 @@ import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
 import { createMultimodalContextMessage, createContextMessage } from "langgraph-ai-sdk";
 import { isCacheModeEnabled } from "./cacheMode";
-import {
-  getSchedulingToolFiles,
-  getSchedulingToolMinorEditFiles,
-  getSchedulingToolProfessionalFiles,
-  getSchedulingToolFriendlyFiles,
-  getSchedulingToolShorterFiles,
-} from "@cache";
+import { getSchedulingToolMinorEditFiles } from "@cache";
 import type { Website } from "@types";
 
 /**
  * Get cached response for cache mode.
- * Returns files and message based on command type.
+ * Returns files and message for the create flow.
  */
-function getCachedResponse(state: WebsiteGraphState): {
+function getCachedResponse(): {
   files: Website.FileMap;
   message: string;
 } {
-  const isCreateCommand = state.command === "create";
-  const isImproveCopyCommand = state.command === "improve_copy";
-
-  if (isCreateCommand) {
-    return {
-      files: getSchedulingToolFiles(),
-      message:
-        "I've created a scheduling tool landing page for you with a hero section, features, and pricing.",
-    };
-  }
-
-  if (isImproveCopyCommand) {
-    switch (state.improveCopyStyle) {
-      case "professional":
-        return {
-          files: getSchedulingToolProfessionalFiles(),
-          message:
-            "I've updated the copy to be more professional with formal language and business-focused messaging.",
-        };
-      case "friendly":
-        return {
-          files: getSchedulingToolFriendlyFiles(),
-          message:
-            "I've made the copy more friendly and approachable with casual language and personality.",
-        };
-      case "shorter":
-        return {
-          files: getSchedulingToolShorterFiles(),
-          message: "I've made the copy shorter and more concise - straight to the point.",
-        };
-      default:
-        return {
-          files: getSchedulingToolProfessionalFiles(),
-          message: "I've improved the copy to be more professional and polished.",
-        };
-    }
-  }
-
-  // Default: minor edit
   return {
     files: getSchedulingToolMinorEditFiles(),
     message: "I've updated the headline and subtitle on your landing page to be more compelling.",
@@ -112,21 +67,15 @@ export const websiteBuilderNode = NodeMiddleware.use(
 
     // In cache mode, return cached files instead of running the agent
     if (isCacheModeEnabled()) {
-      const { files, message } = getCachedResponse(state);
-      const commandType =
-        state.command === "create"
-          ? "create"
-          : state.command === "improve_copy"
-            ? `improve-copy-${state.improveCopyStyle || "default"}`
-            : "edit";
+      const { files, message } = getCachedResponse();
 
       const rawMessage = new AIMessage({
         content: message,
-        id: `cache-mode-${commandType}-${Date.now()}`,
+        id: `cache-mode-create-${Date.now()}`,
       });
 
       const [aiMessage] = await toStructuredMessage(rawMessage);
-      const messages = ((state.messages || []).length === 0) ? [aiMessage] : state.messages; 
+      const messages = (state.messages || []).length === 0 ? [aiMessage] : state.messages;
 
       return {
         messages,
@@ -135,17 +84,15 @@ export const websiteBuilderNode = NodeMiddleware.use(
       };
     }
 
-    const isCreateCommand = state.command === "create";
-    const agent = await createCodingAgent({ ...state, isFirstMessage: isCreateCommand });
+    // This node only runs in the "default" intent case (create flow)
+    const agent = await createCodingAgent({ ...state, isFirstMessage: true });
     const brainstormContext = buildBrainstormContext(state);
 
     const result = await agent.invoke(
       {
         messages: [
           ...(state.messages || []),
-          ...(isCreateCommand
-            ? [createContextMessage("Create a landing page for this business")]
-            : []),
+          createContextMessage("Create a landing page for this business"),
           brainstormContext,
         ],
       },

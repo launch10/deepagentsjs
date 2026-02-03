@@ -11,7 +11,7 @@ import { WebsiteExporter } from "@services";
  * it("generates a great landing page", async () => {
  *   const result = await testGraph<WebsiteGraphState>()
  *     .withGraph(websiteGraph)
- *     .withState({ websiteId, command: "create" })
+ *     .withState({ websiteId })
  *     .execute();
  *
  *   // Save this generation before cleanup

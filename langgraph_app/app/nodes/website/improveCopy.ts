@@ -3,12 +3,12 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
 import { createContextMessage } from "langgraph-ai-sdk";
-import type { Website } from "@types";
+import { type ImproveCopyStyle, isImproveCopyIntent } from "@types";
 
 /**
  * Get the prompt for the given improve_copy style.
  */
-function getImproveCopyPrompt(style: Website.ImproveCopyStyle | undefined): string {
+function getImproveCopyPrompt(style: ImproveCopyStyle | undefined): string {
   const basePrompt = `Review and rewrite all the copy on this landing page. Keep the same structure and HTML elements, but update the text content.`;
 
   switch (style) {
@@ -66,8 +66,13 @@ export const improveCopyNode = NodeMiddleware.use(
       throw new Error("websiteId and jwt are required");
     }
 
+    // Get style from intent payload
+    const style = isImproveCopyIntent(state.intent!)
+      ? (state.intent.payload.style as ImproveCopyStyle | undefined)
+      : undefined;
+
     const agent = await createCodingAgent({ ...state, isFirstMessage: false });
-    const prompt = getImproveCopyPrompt(state.improveCopyStyle);
+    const prompt = getImproveCopyPrompt(style);
 
     const result = await agent.invoke(
       {

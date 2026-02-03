@@ -170,8 +170,8 @@ importers:
         specifier: ^4.1.0
         version: 4.1.0
       deepagents:
-        specifier: ^1.4.0
-        version: 1.4.0(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(zod-to-json-schema@3.25.1(zod@3.25.76))
+        specifier: ^1.6.2
+        version: 1.6.2(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(zod-to-json-schema@3.25.1(zod@3.25.76))
       diff:
         specifier: ^7.0.0
         version: 7.0.0
@@ -2891,8 +2891,8 @@ packages:
     peerDependencies:
       '@langchain/core': 1.1.4
 
-  '@langchain/anthropic@1.3.7':
-    resolution: {integrity: sha512-tuj877NsygqpQXdv1QCnhcycRNntZnv8S86oY4/0TEkq4aKqyB8VfCcKxcf03EdKufdPkF6phmWY59czV2CM0g==}
+  '@langchain/anthropic@1.3.13':
+    resolution: {integrity: sha512-9uAkLZUSr004QRDtzU1qo12u+I5XlO9PfhXDPUUxG298mPY9bahotSTXOmXlwykZ/lRTOUcwrhD7O1Am1Z/+Rg==}
     engines: {node: '>=20'}
     peerDependencies:
       '@langchain/core': 1.1.4
@@ -5981,8 +5981,8 @@ packages:
   deep-is@0.1.4:
     resolution: {integrity: sha512-oIPzksmTg4/MriiaYGO+okXDT7ztn/w3Eptv/+gSIdMdKsJo0u4CfYNFJPy+4SKMuCqGw2wxnA+URMg3t8a/bQ==}
 
-  deepagents@1.4.0:
-    resolution: {integrity: sha512-S7+kxafOTvb62hsNX/85VzHc8YsCv/NJLCXO16SngXw/qktwREHiQglmWkn4XcuhMcMYsy73sf1h6G4HHEwehg==}
+  deepagents@1.6.2:
+    resolution: {integrity: sha512-ekr1SkX7bx3x9JX/UtgYeWz40+ZzLsspJ1Uo6YmmMW1bgLukWDyteWP9VZyAHzWJ62ZYWFkleTp8JcG5+uHcRg==}
 
   deepmerge@4.3.1:
     resolution: {integrity: sha512-3sUqbMEc77XqpdNO7FRyRog+eW3ph+GYCbj+rK+uYyRMuwsVy0rMiVtPn+QJlKFvWP/1PYpapqYn0Me2knFn+A==}
@@ -11798,7 +11798,7 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@langchain/anthropic@1.3.7(@langchain/core@1.1.4(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76)))':
+  '@langchain/anthropic@1.3.13(@langchain/core@1.1.4(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76)))':
     dependencies:
       '@anthropic-ai/sdk': 0.71.2(zod@3.25.76)
       '@langchain/core': 1.1.4(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76))
@@ -13888,11 +13888,11 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vitest/browser@3.2.4(msw@2.12.7(@types/node@20.19.27)(typescript@5.9.3))(playwright@1.57.0)(vite@5.4.21(@types/node@20.19.27)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1))(vitest@3.2.4)':
+  '@vitest/browser@3.2.4(msw@2.12.7(@types/node@20.19.27)(typescript@5.9.3))(playwright@1.57.0)(vite@6.4.1(@types/node@20.19.27)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@3.2.4)':
     dependencies:
       '@testing-library/dom': 10.4.1
       '@testing-library/user-event': 14.6.1(@testing-library/dom@10.4.1)
-      '@vitest/mocker': 3.2.4(msw@2.12.7(@types/node@20.19.27)(typescript@5.9.3))(vite@5.4.21(@types/node@20.19.27)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1))
+      '@vitest/mocker': 3.2.4(msw@2.12.7(@types/node@20.19.27)(typescript@5.9.3))(vite@6.4.1(@types/node@20.19.27)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))
       '@vitest/utils': 3.2.4
       magic-string: 0.30.21
       sirv: 3.0.2
@@ -14036,7 +14036,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@20.19.27)(@vitest/browser@3.2.4)(@vitest/ui@3.2.4)(happy-dom@16.8.1)(jiti@2.6.1)(lightningcss@1.30.2)(msw@2.12.7(@types/node@20.19.27)(typescript@5.9.3))(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
+      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@24.10.4)(@vitest/browser@3.2.4)(@vitest/ui@3.2.4)(happy-dom@16.8.1)(jiti@2.6.1)(lightningcss@1.30.2)(msw@2.12.7(@types/node@24.10.4)(typescript@5.9.3))(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2)
 
   '@vitest/utils@2.1.9':
     dependencies:
@@ -14863,9 +14863,9 @@ snapshots:
 
   deep-is@0.1.4: {}
 
-  deepagents@1.4.0(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(zod-to-json-schema@3.25.1(zod@3.25.76)):
+  deepagents@1.6.2(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(zod-to-json-schema@3.25.1(zod@3.25.76)):
     dependencies:
-      '@langchain/anthropic': 1.3.7(@langchain/core@1.1.4(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76)))
+      '@langchain/anthropic': 1.3.13(@langchain/core@1.1.4(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76)))
       '@langchain/core': 1.1.4(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76))
       '@langchain/langgraph': 1.0.2(@langchain/core@1.1.4(@opentelemetry/api@1.9.0)(openai@6.15.0(ws@8.19.0)(zod@3.25.76)))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(zod-to-json-schema@3.25.1(zod@3.25.76))(zod@3.25.76)
       fast-glob: 3.3.3
@@ -16044,7 +16044,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.3
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.13.2)
+      retry-axios: 2.6.0(axios@1.13.2(debug@4.4.3))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -18133,7 +18133,7 @@ snapshots:
 
   ret@0.5.0: {}
 
-  retry-axios@2.6.0(axios@1.13.2):
+  retry-axios@2.6.0(axios@1.13.2(debug@4.4.3)):
     dependencies:
       axios: 1.13.2(debug@4.4.3)
 
@@ -19342,7 +19342,7 @@ snapshots:
     optionalDependencies:
       '@types/debug': 4.1.12
       '@types/node': 20.19.27
-      '@vitest/browser': 3.2.4(msw@2.12.7(@types/node@20.19.27)(typescript@5.9.3))(playwright@1.57.0)(vite@5.4.21(@types/node@20.19.27)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1))(vitest@3.2.4)
+      '@vitest/browser': 3.2.4(msw@2.12.7(@types/node@20.19.27)(typescript@5.9.3))(playwright@1.57.0)(vite@6.4.1(@types/node@20.19.27)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.97.2)(terser@5.44.1)(tsx@4.21.0)(yaml@2.8.2))(vitest@3.2.4)
       '@vitest/ui': 3.2.4(vitest@3.2.4)
       happy-dom: 16.8.1
     transitivePeerDependencies:

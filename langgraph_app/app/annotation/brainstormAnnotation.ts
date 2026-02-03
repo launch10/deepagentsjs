@@ -1,7 +1,7 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 import { Brainstorm, type PrimaryKeyType } from "@types";
-import type { Equal, Expect, UUIDType } from "@types";
+import type { Equal, Expect, ShowMismatches, UUIDType } from "@types";
 import type { BrainstormGraphState } from "@state";
 import { uniq } from "@utils";
 import { createAppBridge } from "@api/middleware";
@@ -40,7 +40,9 @@ export const BrainstormAnnotation = Annotation.Root({
   brainstormMode: Annotation<BrainstormModeType | undefined>(),
 });
 
-// Just a convenience to ensure the annotation matches the state type
+// Ensure the annotation matches the state type
+// Hover over _Mismatches to see which fields differ when this fails
+type _Mismatches = ShowMismatches<BrainstormGraphState, typeof BrainstormAnnotation.State>;
 type _Assertion = Expect<Equal<BrainstormGraphState, typeof BrainstormAnnotation.State>>;
 
 // Bridge for streaming frontend - uses createAppBridge for automatic usage tracking
