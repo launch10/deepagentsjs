@@ -4,6 +4,31 @@ import type { FileSystemTree } from "@webcontainer/api";
 export const WORK_DIR_NAME = "project";
 export const WORK_DIR = `/home/${WORK_DIR_NAME}`;
 
+/**
+ * Dependencies included in the snapshot.
+ * If a project has deps not in this list, we run npm install.
+ * Keep in sync with scripts/generate-webcontainer-snapshot.ts
+ */
+const SNAPSHOT_DEPS = new Set([
+  // dependencies
+  "react",
+  "react-dom",
+  "lucide-react",
+  "clsx",
+  "tailwind-merge",
+  "class-variance-authority",
+  // devDependencies
+  "vite",
+  "@vitejs/plugin-react-swc",
+  "typescript",
+  "tailwindcss",
+  "postcss",
+  "autoprefixer",
+  "@types/react",
+  "@types/react-dom",
+  "tailwindcss-animate",
+]);
+
 interface WarmupState {
   booted: boolean;
   depsInstalled: boolean;
@@ -161,6 +186,8 @@ class WebContainerManagerClass {
    * Load a project's files into the warm container.
    * Returns preview URL immediately if container is warm.
    * If not warm yet, waits for warmup then loads.
+   *
+   * If the project has dependencies not in the snapshot, runs npm install.
    */
   async loadProject(files: FileSystemTree): Promise<string> {
     // Ensure warmup is complete
@@ -175,12 +202,58 @@ class WebContainerManagerClass {
     await this.instance.mount(files);
     this.log("[WebContainer] Project files mounted");
 
+    // Check if project has dependencies not in the snapshot
+    const missingDeps = await this.checkForMissingDeps();
+    if (missingDeps.length > 0) {
+      this.log(
+        `[WebContainer] Project has ${missingDeps.length} deps not in snapshot: ${missingDeps.join(", ")}`
+      );
+      this.log("[WebContainer] Running npm install for missing deps...");
+      const installStart = performance.now();
+      const proc = await this.instance.spawn("npm", ["install"]);
+      const exitCode = await proc.exit;
+      if (exitCode !== 0) {
+        this.log("[WebContainer] npm install failed, but continuing...");
+      } else {
+        this.log(
+          `[WebContainer] npm install complete in ${(performance.now() - installStart).toFixed(0)}ms`
+        );
+      }
+    }
+
     // Return the preview URL (Vite already running)
     if (!this.state.previewUrl) {
       throw new Error("Preview URL not available");
     }
 
     return this.state.previewUrl;
+  }
+
+  /**
+   * Check if the mounted project has dependencies not in the snapshot.
+   */
+  private async checkForMissingDeps(): Promise<string[]> {
+    if (!this.instance) return [];
+
+    try {
+      const pkgJson = await this.instance.fs.readFile("/package.json", "utf-8");
+      const pkg = JSON.parse(pkgJson);
+      const projectDeps = {
+        ...pkg.dependencies,
+        ...pkg.devDependencies,
+      };
+
+      const missing: string[] = [];
+      for (const dep of Object.keys(projectDeps)) {
+        if (!SNAPSHOT_DEPS.has(dep)) {
+          missing.push(dep);
+        }
+      }
+      return missing;
+    } catch {
+      // If we can't read package.json, assume no missing deps
+      return [];
+    }
   }
 
   /**

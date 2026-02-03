@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1
+# Dockerfile for generating WebContainer snapshots
+# Uses Alpine (musl libc) to match WebContainer's runtime environment
+# This ensures platform-specific binaries (rollup, esbuild, etc.) are compatible
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install pnpm (faster than npm) and tsx
+RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN pnpm add -g tsx
+
+# Copy only what we need for snapshot generation
+COPY scripts/generate-webcontainer-snapshot.ts ./scripts/
+COPY templates/default ./templates/default/
+
+# Install @webcontainer/snapshot with BuildKit cache
+# pnpm store is much more efficient than npm cache
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm init && pnpm add @webcontainer/snapshot
+
+# Create output directory
+RUN mkdir -p public
+
+# Run the snapshot generator with increased memory for large dep trees
+# Container has 16GB, give Node 14GB heap
+ENV NODE_OPTIONS="--max-old-space-size=14336"
+CMD ["tsx", "scripts/generate-webcontainer-snapshot.ts"]
