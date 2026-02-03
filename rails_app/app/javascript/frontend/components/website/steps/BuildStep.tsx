@@ -23,7 +23,7 @@ const websiteLoaderSteps = [{ id: "1", label: "Setting up branding & colors" }];
 
 /**
  * Auto-initialize the website generation when the page loads.
- * Sends command: "create" to langgraph on first load.
+ * Triggers the default graph flow (website builder) on first load.
  *
  * Uses useEffectEvent pattern from useStageInit to avoid
  * updateState reference changes causing infinite re-renders.
@@ -44,8 +44,8 @@ function useWebsiteInit() {
     if (!websiteId || !projectId) return;
 
     hasInitialized.current = true;
+    // No intent = default flow (website builder)
     updateState({
-      command: "create",
       websiteId,
       projectId,
     });

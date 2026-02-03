@@ -17,7 +17,6 @@
 import type { CoreGraphState } from "@types";
 import { getUsageContext, deriveCreditStatus } from "@core/billing";
 import { LLMManager, calculateRunCost } from "@core";
-import { env } from "@core";
 
 /**
  * Calculate credit status based on pre-run balance and usage during the run.
@@ -52,10 +51,7 @@ export async function calculateCreditStatusNode(
     const modelConfigs = await LLMManager.getModelConfigs();
 
     // Calculate estimated cost of this run
-    const estimatedCostMillicredits = calculateRunCost(
-      usageContext.records,
-      modelConfigs
-    );
+    const estimatedCostMillicredits = calculateRunCost(usageContext.records, modelConfigs);
 
     // Derive credit status (includes justExhausted calculation)
     const creditStatus = deriveCreditStatus({
@@ -66,10 +62,7 @@ export async function calculateCreditStatusNode(
     return { creditStatus };
   } catch (error) {
     // Log error with details about which models were used
-    console.warn(
-      "[calculateCreditStatusNode] Failed to calculate credit status:",
-      error
-    );
+    console.warn("[calculateCreditStatusNode] Failed to calculate credit status:", error);
 
     // Log the usage records to help debug which LLM is causing issues
     console.warn(

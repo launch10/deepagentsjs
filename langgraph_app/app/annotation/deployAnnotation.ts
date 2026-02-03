@@ -1,7 +1,7 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 import { Deploy } from "@types";
-import type { PrimaryKeyType, Task, ConsoleError } from "@types";
+import type { PrimaryKeyType, Task, ConsoleError, ShowMismatches, Expect, Equal } from "@types";
 import { createAppBridge } from "@api/middleware";
 
 export const DeployAnnotation = Annotation.Root({
@@ -65,6 +65,8 @@ export const DeployAnnotation = Annotation.Root({
 });
 
 export type DeployGraphState = typeof DeployAnnotation.State;
+type _Mismatches = ShowMismatches<DeployGraphState, typeof DeployAnnotation.State>;
+type _Assertion = Expect<Equal<DeployGraphState, typeof DeployAnnotation.State>>;
 
 // Bridge for streaming frontend - uses createAppBridge for automatic usage tracking
 export const DeployBridge = createAppBridge({

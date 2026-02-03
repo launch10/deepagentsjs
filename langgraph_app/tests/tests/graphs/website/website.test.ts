@@ -70,7 +70,7 @@ const assertMessageContent = async (result: { state: WebsiteGraphState }, websit
 
 // describe.sequential
 // temporarily skipping because caching is failing on CI - use this mainly for local testing and debugging speed
-describe.skip("Website Builder", () => {
+describe("Website Builder", () => {
   let websiteId: number;
   let website: DBTypes.WebsiteType;
   let themeColors: string[];
@@ -152,7 +152,6 @@ describe.skip("Website Builder", () => {
       const result = await testGraph<WebsiteGraphState>()
         .withGraph(websiteGraph)
         .withState({
-          command: "create",
           websiteId,
           threadId: existingChat.threadId as ThreadIDType,
           accountId: website.accountId ?? undefined,
@@ -205,6 +204,166 @@ describe.skip("Website Builder", () => {
       await assertMessageContent(result, websiteId);
 
       await saveExample(websiteId, "scheduling-tool"); // So we can see the result
+
+      // Create a snapshot after successful generation for other tests to use
+      // This ensures the snapshot is always schema-current with real generated data
+      // This is now handled in website_generated snapshot, and gets updated whenever we call saveExample above and rebuild
+      // await DatabaseSnapshotter.createSnapshot("website_generated");
     }, 500000);
+  });
+
+  describe("Quick Actions", () => {
+    describe("Change theme", () => {
+      let websiteId: number;
+      let threadId: ThreadIDType;
+      let originalThemeId: number;
+      let newThemeId: number;
+
+      beforeEach(async () => {
+        // Restore snapshot created by website.test.ts after successful page generation
+        // This ensures we have a fully-generated website with files, theme, and chat context
+        await DatabaseSnapshotter.restoreSnapshot("website_generated");
+
+        // Get the website and its current theme
+        const [websiteRow] = await db.select().from(websites).limit(1);
+        if (!websiteRow) {
+          throw new Error("No website found in snapshot");
+        }
+
+        websiteId = websiteRow.id;
+        originalThemeId = websiteRow.themeId!;
+
+        // Load the chat's threadId so graphTester can merge persisted checkpoint state
+        const [chat] = await db
+          .select()
+          .from(chats)
+          .where(and(eq(chats.contextableId, websiteId), eq(chats.contextableType, "Website")))
+          .limit(1);
+
+        if (!chat?.threadId) {
+          throw new Error("No chat with threadId found for website");
+        }
+        threadId = chat.threadId as ThreadIDType;
+
+        // Find a different theme to switch to
+        const allThemes = await db.select().from(themes).limit(5);
+        const otherTheme = allThemes.find((t) => t.id !== originalThemeId);
+        if (!otherTheme) {
+          throw new Error("Need at least 2 themes in database");
+        }
+        newThemeId = otherTheme.id;
+      });
+
+      describe("change_theme intent", () => {
+        it("routes to themeHandler and completes without AI messages", async () => {
+          const result = await testGraph<WebsiteGraphState>()
+            .withGraph(websiteGraph)
+            .withState({
+              websiteId,
+              threadId,
+              intent: {
+                type: "change_theme",
+                payload: { themeId: newThemeId },
+                createdAt: new Date().toISOString(),
+              },
+            })
+            .execute();
+
+          // Graph should complete successfully
+          expect(result.error).toBeUndefined();
+          expect(result.state.status).toBe("completed");
+
+          // Intent should be cleared after handling
+          expect(result.state.intent).toBeUndefined();
+
+          // Should not have any AI messages - this is a silent action
+          const aiMessages = result.state.messages.filter(
+            (m) => m._getType?.() === "ai" || (m as any).type === "ai"
+          );
+          expect(aiMessages.length).toBe(0);
+        });
+
+        it("updates website theme in database via Rails API", async () => {
+          await testGraph<WebsiteGraphState>()
+            .withGraph(websiteGraph)
+            .withState({
+              websiteId,
+              threadId,
+              intent: {
+                type: "change_theme",
+                payload: { themeId: newThemeId },
+                createdAt: new Date().toISOString(),
+              },
+            })
+            .execute();
+
+          // Verify theme was updated in database
+          const [updatedWebsite] = await db
+            .select()
+            .from(websites)
+            .where(eq(websites.id, websiteId))
+            .limit(1);
+
+          expect(updatedWebsite).toBeDefined();
+          expect(updatedWebsite!.themeId).toBe(newThemeId);
+        });
+
+        it("returns index.css with new theme CSS variables", async () => {
+          // Get the new theme's CSS variables
+          const [newTheme] = await db
+            .select()
+            .from(themes)
+            .where(eq(themes.id, newThemeId))
+            .limit(1);
+
+          expect(newTheme).toBeDefined();
+          expect(newTheme!.theme).toBeDefined();
+
+          const result = await testGraph<WebsiteGraphState>()
+            .withGraph(websiteGraph)
+            .withState({
+              websiteId,
+              threadId,
+              intent: {
+                type: "change_theme",
+                payload: { themeId: newThemeId },
+                createdAt: new Date().toISOString(),
+              },
+            })
+            .execute();
+
+          // Should have index.css in the returned files
+          const indexCss = result.state.files["src/index.css"];
+          expect(indexCss).toBeDefined();
+          expect(indexCss!.content).toBeDefined();
+
+          // Verify the CSS contains variables from the new theme
+          const themeVars = newTheme!.theme as Record<string, string>;
+          for (const [varName, varValue] of Object.entries(themeVars)) {
+            expect(indexCss!.content).toContain(`${varName}: ${varValue};`);
+          }
+        });
+      });
+
+      describe("no intent present", () => {
+        it("routes to normal buildContext flow", async () => {
+          // When no intent, should follow normal flow
+          // We stop after buildContext to verify routing without running full generation
+          const result = await testGraph<WebsiteGraphState>()
+            .withGraph(websiteGraph)
+            .withPrompt("Help me improve my landing page")
+            .withState({
+              websiteId,
+              threadId,
+              // No intent - should route to buildContext
+            })
+            .stopAfter("buildContext")
+            .execute();
+
+          // Should reach buildContext (normal flow, not themeHandler)
+          expect(result.error).toBeUndefined();
+        });
+      });
+    });
   });
 });

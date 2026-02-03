@@ -133,11 +133,15 @@ function createFetchWithTimeout(timeoutMs: number): typeof fetch {
  * @returns A typed openapi-fetch client
  */
 export async function createRailsApiClient(options: RailsApiClientOptions = {}) {
+  // Disable timeout in tests to avoid Polly compatibility issues
+  const isTest = env.NODE_ENV === 'test';
+  const defaultTimeout = isTest ? 0 : DEFAULT_TIMEOUT_MS;
+
   const {
     jwt: jwtToken,
     baseUrl = env.RAILS_API_URL || env.VITE_RAILS_API_URL || "http://localhost:3000",
     internalServiceCall = false,
-    timeoutMs = DEFAULT_TIMEOUT_MS,
+    timeoutMs = defaultTimeout,
   } = options;
 
   if (isBackend()) {

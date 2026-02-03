@@ -310,6 +310,26 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
       },
     };
 
+    // If we have a threadId, load any persisted checkpoint state and merge it
+    // This allows tests to resume from a snapshot with existing thread state
+    const threadId =
+      (configWithJwt.configurable as any)?.thread_id ?? (initialState as any).threadId;
+    if (threadId) {
+      // Ensure thread_id is in config for getState
+      (configWithJwt.configurable as any).thread_id = threadId;
+
+      try {
+        const checkpoint = await graph.getState(configWithJwt);
+        if (checkpoint?.values && Object.keys(checkpoint.values).length > 0) {
+          // Merge persisted state with initial state
+          // User-provided state takes precedence over persisted state
+          initialState = { ...checkpoint.values, ...initialState } as TGraphState;
+        }
+      } catch {
+        // No checkpoint exists yet, continue with initial state
+      }
+    }
+
     const invokeConfig = this.targetNode
       ? { ...configWithJwt, interruptAfter: [this.targetNode] }
       : configWithJwt;
@@ -328,7 +348,7 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
       }
 
       return {
-        state: result,
+        state: result as TGraphState,
         messages: result.messages || [],
         error: result.error,
       };

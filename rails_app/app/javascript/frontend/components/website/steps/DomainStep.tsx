@@ -60,10 +60,9 @@ function useDomainPageInit() {
       return;
     }
 
-    // Graph hasn't run - kick it off
+    // Graph hasn't run - kick it off (no intent = default flow)
     hasInitialized.current = true;
     updateState({
-      command: "create",
       websiteId,
       projectId,
     });
@@ -128,10 +127,7 @@ export default function DomainStep() {
 
           {/* Main content - domain picker form */}
           <div className="min-h-0 -mb-20 overflow-hidden">
-            <DomainPicker
-              selection={selection}
-              onSelectionChange={handleSelectionChange}
-            />
+            <DomainPicker selection={selection} onSelectionChange={handleSelectionChange} />
           </div>
         </main>
 

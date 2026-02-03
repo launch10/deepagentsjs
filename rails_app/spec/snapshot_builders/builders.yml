@@ -24,7 +24,12 @@ brainstorm_step:
 website_step:
   class: WebsiteStep
   base_snapshot: basic_account
-  description: "Creates a website with brainstorm, theme, and uploads (logo + images)"
+  description: "Creates a website with brainstorm, theme, and uploads - template state only (no generated content)"
+
+website_generated:
+  class: WebsiteGenerated
+  base_snapshot: website_step
+  description: "Website with generated scheduling-tool landing page content (Hero, Features, etc.)"
 
 website_step_finished:
   class: WebsiteStepFinished

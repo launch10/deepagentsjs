@@ -1,32 +1,34 @@
 import { useWebsitePreview } from "@hooks/website";
-import LogoSpinner from "@components/ui/logo-spinner";
+import WebsiteLoader from "@components/website/WebsiteLoader";
 import type { WebContainerStatus } from "@lib/webcontainer";
+
+const previewSteps = [
+  { id: "booting", label: "Starting preview environment..." },
+  { id: "mounting", label: "Loading files..." },
+  { id: "installing", label: "Installing dependencies..." },
+  { id: "starting", label: "Starting preview server..." },
+];
+
+const statusToStepIndex: Record<WebContainerStatus, number> = {
+  idle: 0,
+  booting: 0,
+  mounting: 1,
+  installing: 2,
+  starting: 3,
+  ready: 4,
+  error: 0,
+};
 
 interface StatusMessageProps {
   status: WebContainerStatus;
 }
 
 function StatusMessage({ status }: StatusMessageProps) {
-  const messages: Record<WebContainerStatus, string> = {
-    idle: "Waiting for files...",
-    booting: "Starting preview environment...",
-    mounting: "Loading files...",
-    installing: "Installing dependencies...",
-    starting: "Starting preview server...",
-    ready: "Preview ready",
-    error: "Preview failed to load",
-  };
+  const currentStep = statusToStepIndex[status] ?? 0;
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4" data-testid="preview-status">
-      {status !== "error" && status !== "ready" && (
-        <div className="w-16 h-16">
-          <LogoSpinner />
-        </div>
-      )}
-      <p className="text-neutral-600 text-sm" data-testid={`preview-status-${status}`}>
-        {messages[status]}
-      </p>
+    <div data-testid="preview-status" data-status={status}>
+      <WebsiteLoader title="Loading your preview" steps={previewSteps} currentStep={currentStep} />
     </div>
   );
 }
@@ -80,7 +82,10 @@ export function WebsitePreview() {
 
   // Show preview iframe
   return (
-    <div className="w-full h-full flex flex-col rounded-2xl border border-neutral-200 overflow-hidden" data-testid="preview-container">
+    <div
+      className="w-full h-full flex flex-col rounded-2xl border border-neutral-200 overflow-hidden"
+      data-testid="preview-container"
+    >
       {/* Preview header */}
       <div className="flex items-center gap-2 px-4 py-2 bg-neutral-100 border-b border-neutral-200">
         <div className="flex gap-1.5">

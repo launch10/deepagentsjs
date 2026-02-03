@@ -12,9 +12,15 @@ const PALETTES_PER_PAGE = 3;
 
 interface ColorPaletteSectionProps {
   className?: string;
+  /**
+   * Optional handler for theme selection.
+   * If provided, this is called instead of the internal mutation.
+   * Used on Website page to trigger intent-based graph flow.
+   */
+  onThemeSelect?: (themeId: number | null) => void;
 }
 
-export function ColorPaletteSection({ className }: ColorPaletteSectionProps) {
+export function ColorPaletteSection({ className, onThemeSelect }: ColorPaletteSectionProps) {
   // Read directly from queries - no store
   const { data: themes = [], isLoading: isLoadingThemes } = useThemes();
   const { data: website, isLoading: isLoadingWebsite } = useWebsite();
@@ -59,10 +65,16 @@ export function ColorPaletteSection({ className }: ColorPaletteSectionProps) {
   const handleSelectTheme = useCallback(
     (themeId: number) => {
       const newThemeId = selectedThemeId === themeId ? null : themeId;
-      // Mutation updates backend, cache invalidation updates UI
-      updateThemeMutation.mutate({ themeId: newThemeId });
+
+      if (onThemeSelect) {
+        // Use external handler (intent-based flow on Website page)
+        onThemeSelect(newThemeId);
+      } else {
+        // Fallback to direct mutation (Brainstorm page)
+        updateThemeMutation.mutate({ themeId: newThemeId });
+      }
     },
-    [selectedThemeId, updateThemeMutation]
+    [selectedThemeId, onThemeSelect, updateThemeMutation]
   );
 
   const handleCreateCustomPalette = useCallback(

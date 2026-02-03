@@ -1,5 +1,7 @@
 export * as Website from "./website";
 export * as Project from "./project";
+export * as IntentNS from "./intent";
+export * from "./intent";
 
 export * from "./core";
 export * from "./website/errors";

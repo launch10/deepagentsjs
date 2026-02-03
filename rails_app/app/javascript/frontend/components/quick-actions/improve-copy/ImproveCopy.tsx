@@ -48,8 +48,11 @@ export default function ImproveCopy() {
 
   const handleOptionSelect = (option: CopyOption) => {
     updateState({
-      command: "improve_copy",
-      improveCopyStyle: option.id,
+      intent: {
+        type: "improve_copy",
+        payload: { style: option.id },
+        createdAt: new Date().toISOString(),
+      },
     });
   };
 

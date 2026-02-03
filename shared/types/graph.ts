@@ -1,4 +1,4 @@
-import { type PrimaryKeyType, type BaseMessage, type ThreadIDType } from ".";
+import { type PrimaryKeyType, type BaseMessage, type ThreadIDType, type Intent } from ".";
 
 export interface ErrorStateType { message: string; node: string }
 
@@ -31,4 +31,6 @@ export type CoreGraphState = {
     preRunCreditsRemaining: number | undefined;
     /** Credit status calculated at end of run (for frontend exhaustion notification) */
     creditStatus: CreditStatus | undefined;
+    /** Intent: user action that triggered this graph invocation (consumed after handling) */
+    intent: Intent | undefined;
 }
