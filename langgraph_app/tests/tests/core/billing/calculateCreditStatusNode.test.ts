@@ -52,6 +52,7 @@ describe.sequential("calculateCreditStatusNode", () => {
     chatId: 1,
     preRunCreditsRemaining: undefined,
     creditStatus: undefined,
+    intent: undefined,
     ...overrides,
   });
 

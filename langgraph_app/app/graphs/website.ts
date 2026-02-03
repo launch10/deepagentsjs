@@ -21,6 +21,7 @@ import {
   isCacheModeEnabled,
 } from "@nodes";
 import { createIntentGraph } from "./shared";
+import type { WebsiteIntent } from "@types";
 
 // =============================================================================
 // Subgraphs
@@ -98,7 +99,7 @@ const websiteBuilderSubgraph = new StateGraph(WebsiteAnnotation)
 // Main Graph
 // =============================================================================
 
-export const websiteGraph = createIntentGraph({
+export const websiteGraph = createIntentGraph<WebsiteIntent["type"]>()({
   annotation: WebsiteAnnotation,
   intents: {
     change_theme: themeHandlerSubgraph,

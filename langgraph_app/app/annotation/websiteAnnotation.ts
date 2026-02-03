@@ -1,21 +1,11 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
-import type { PrimaryKeyType } from "@types";
+import type { Equal, Expect, PrimaryKeyType, ShowMismatches } from "@types";
 import { Brainstorm, Website, Core } from "@types";
 import { createAppBridge } from "@api/middleware";
 
 export const WebsiteAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
-
-  command: Annotation<Website.CommandName | undefined>({
-    default: () => undefined,
-    reducer: (current, next) => next,
-  }),
-
-  improveCopyStyle: Annotation<Website.ImproveCopyStyle | undefined>({
-    default: () => undefined,
-    reducer: (current, next) => next,
-  }),
 
   brainstormId: Annotation<PrimaryKeyType | undefined>({
     default: () => undefined,
@@ -69,6 +59,9 @@ export const WebsiteAnnotation = Annotation.Root({
 });
 
 export type WebsiteGraphState = typeof WebsiteAnnotation.State;
+
+type _Mismatches = ShowMismatches<WebsiteGraphState, typeof WebsiteAnnotation.State>;
+type _Assertion = Expect<Equal<WebsiteGraphState, typeof WebsiteAnnotation.State>>;
 
 // Bridge for streaming frontend - uses createAppBridge for automatic usage tracking
 export const WebsiteBridge = createAppBridge({

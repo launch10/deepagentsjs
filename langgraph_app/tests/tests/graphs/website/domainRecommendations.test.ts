@@ -86,11 +86,9 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
         updatedAt: now,
       });
 
-
       const result = await testGraph<WebsiteGraphState>()
         .withGraph(websiteGraph)
         .withState({
-          command: "create",
           websiteId,
           threadId,
           accountId,
@@ -115,8 +113,12 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
 
       // Top recommendation should be set
       expect(recommendations?.topRecommendation).toBeDefined();
-      const existingRecommendations = recommendations?.recommendations.filter((rec) => rec.source === "existing");
-      const newRecommendations = recommendations?.recommendations.filter((rec) => rec.source === "suggestion");
+      const existingRecommendations = recommendations?.recommendations.filter(
+        (rec) => rec.source === "existing"
+      );
+      const newRecommendations = recommendations?.recommendations.filter(
+        (rec) => rec.source === "suggestion"
+      );
 
       expect(existingRecommendations?.length).toBeGreaterThan(0);
       expect(newRecommendations?.length).toBeGreaterThan(0);
@@ -147,7 +149,6 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
       const result = await testGraph<WebsiteGraphState>()
         .withGraph(websiteGraph)
         .withState({
-          command: "create",
           websiteId,
           threadId,
           accountId,
@@ -177,7 +178,6 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
       const result = await testGraph<WebsiteGraphState>()
         .withGraph(websiteGraph)
         .withState({
-          command: "create",
           websiteId,
           threadId,
           accountId,
@@ -231,7 +231,6 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
       const result = await testGraph<WebsiteGraphState>()
         .withGraph(websiteGraph)
         .withState({
-          command: "create",
           websiteId,
           threadId,
           accountId,
@@ -253,7 +252,6 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
       const result = await testGraph<WebsiteGraphState>()
         .withGraph(websiteGraph)
         .withState({
-          command: "create",
           websiteId,
           threadId,
           accountId,

@@ -1,7 +1,7 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 import { Ads, Brainstorm } from "@types";
-import type { Equal, Expect, UUIDType, PrimaryKeyType } from "@types";
+import type { Equal, Expect, ShowMismatches, UUIDType, PrimaryKeyType } from "@types";
 import type { AdsGraphState } from "@state";
 import { createAppBridge } from "@api/middleware";
 
@@ -23,7 +23,9 @@ export const AdsAnnotation = Annotation.Root({
   hasStartedStep: Annotation<Ads.HasStartedStep | undefined>(),
 });
 
-// Just a convenience to ensure the annotation matches the state type
+// Ensure the annotation matches the state type
+// Hover over _Mismatches to see which fields differ when this fails
+type _Mismatches = ShowMismatches<AdsGraphState, typeof AdsAnnotation.State>;
 type _Assertion = Expect<Equal<AdsGraphState, typeof AdsAnnotation.State>>;
 
 // Bridge for streaming frontend - uses createAppBridge for automatic usage tracking

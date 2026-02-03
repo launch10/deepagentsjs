@@ -19,6 +19,10 @@ export default {
 			}
 		},
 		extend: {
+			fontFamily: {
+				sans: ['DM Sans', 'system-ui', 'sans-serif'],
+				heading: ['Space Grotesk', 'system-ui', 'sans-serif'],
+			},
 			colors: {
 				// shadcn standard
 				background: 'hsl(var(--background))',

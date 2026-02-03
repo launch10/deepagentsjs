@@ -1,6 +1,6 @@
 import { db, websites, eq } from "@db";
 import { Website } from "@types";
-import { createDeepAgent, createSkillsMiddleware, createSettings } from "deepagents";
+import { createDeepAgent, createSettings } from "deepagents";
 import { getLLM, getLLMFallbacks } from "@core";
 import { WebsiteFilesBackend } from "@services";
 import { SearchIconsTool } from "@tools";
@@ -14,7 +14,6 @@ import {
 } from "langchain";
 import { buildCodingPrompt, type CodingPromptState } from "@prompts";
 import { ThemeAPIService } from "@rails_api";
-import path from "path";
 
 export type MinimalCodingAgentState = {
   websiteId?: number;
@@ -23,9 +22,6 @@ export type MinimalCodingAgentState = {
   errors?: string;
   isFirstMessage?: boolean;
 };
-
-// Skills directory for design-focused agent skills
-const SKILLS_DIR = path.join(process.cwd(), ".deepagents/skills");
 
 const getMiddlewares = (): AgentMiddleware[] => {
   // const fallbacks = getLLMFallbacks("coding", "slow", "paid");
@@ -37,13 +33,7 @@ const getMiddlewares = (): AgentMiddleware[] => {
   //   keep: { messages: 15 },
   // });
 
-  // Skills middleware for design-focused skills
-  const skillsMiddleware = createSkillsMiddleware({
-    skillsDir: SKILLS_DIR,
-    assistantId: "coding-agent",
-  });
-
-  return [toolRetryMiddleware(), skillsMiddleware];
+  return [toolRetryMiddleware()];
 };
 
 export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
@@ -112,7 +102,7 @@ export async function createCodingAgent(
     );
   }
 
-  const backend = existingBackend ?? await getCodingAgentBackend(state);
+  const backend = existingBackend ?? (await getCodingAgentBackend(state));
   const llm = await getLLM({ skill: "coding", speed: "slow", cost: "paid" });
   const middlewares = getMiddlewares();
 
