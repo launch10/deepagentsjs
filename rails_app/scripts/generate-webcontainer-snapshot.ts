@@ -38,21 +38,30 @@ const TEMP_DIR = join(process.cwd(), ".snapshot-temp");
 const OUTPUT_PATH = join(process.cwd(), "public", "webcontainer-snapshot.bin");
 
 /**
- * WebContainer-compatible overrides for native binaries.
- * These get merged into the template's package.json.
+ * Build the snapshot package.json from the template.
+ * Adds WASM overrides and modifies scripts for WebContainer.
  */
-const WEBCONTAINER_OVERRIDES = {
-  // CRITICAL: Swap native binaries for WASM versions (WebContainer can't run native binaries)
-  // See: https://github.com/vitejs/vite/issues/15122
-  overrides: {
-    rollup: "npm:@rollup/wasm-node",
-    esbuild: "npm:esbuild-wasm",
-  },
-};
+function buildSnapshotPackageJson(): Record<string, unknown> {
+  const templatePkg = JSON.parse(readFileSync(join(TEMPLATE_DIR, "package.json"), "utf-8"));
+
+  return {
+    ...templatePkg,
+    scripts: {
+      // Use full path since .bin symlinks are removed from snapshot
+      dev: "node node_modules/vite/bin/vite.js --port 3000 --host",
+      build: "node node_modules/vite/bin/vite.js build",
+    },
+    // WASM overrides for WebContainer (can't run native binaries)
+    overrides: {
+      rollup: "npm:@rollup/wasm-node",
+      esbuild: "npm:esbuild-wasm",
+    },
+  };
+}
 
 async function generateSnapshot() {
   console.log("Generating WebContainer snapshot...");
-  console.log(`Using minimal template for snapshot generation`);
+  console.log("Using template package.json from templates/default/");
 
   const start = Date.now();
 
@@ -67,26 +76,11 @@ async function generateSnapshot() {
     mkdirSync(TEMP_DIR, { recursive: true });
     mkdirSync(join(TEMP_DIR, "src"), { recursive: true });
 
-    // Read template package.json and add WebContainer overrides
-    const templatePkgJson = JSON.parse(readFileSync(join(TEMPLATE_DIR, "package.json"), "utf-8"));
-
-    const snapshotPkgJson = {
-      ...templatePkgJson,
-      scripts: {
-        // Use full path since .bin symlinks are removed from snapshot
-        dev: "node node_modules/vite/bin/vite.js --port 3000 --host",
-        build: "node node_modules/vite/bin/vite.js build",
-      },
-      devDependencies: {
-        ...templatePkgJson.devDependencies,
-        // Use Babel-based plugin, not SWC (SWC needs native binaries)
-        "@vitejs/plugin-react": "^4.3.0",
-      },
-      ...WEBCONTAINER_OVERRIDES,
-    };
-    // Remove SWC plugin if present (it needs native binaries)
-    delete snapshotPkgJson.devDependencies["@vitejs/plugin-react-swc"];
-    write(join(TEMP_DIR, "package.json"), JSON.stringify(snapshotPkgJson, null, 2));
+    // Build and write package.json with WASM overrides
+    const snapshotPkg = buildSnapshotPackageJson();
+    write(join(TEMP_DIR, "package.json"), JSON.stringify(snapshotPkg, null, 2));
+    console.log(`  Dependencies: ${Object.keys(snapshotPkg.dependencies || {}).length}`);
+    console.log(`  DevDependencies: ${Object.keys(snapshotPkg.devDependencies || {}).length}`);
 
     // Copy config files from template (but use .js versions to avoid esbuild compilation)
     const configFiles = [
@@ -178,9 +172,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 @tailwind utilities;`
     );
 
-    // Install dependencies in temp directory using pnpm (faster than npm)
-    console.log("Installing dependencies with pnpm...");
-    execSync("pnpm install", {
+    // Install dependencies in temp directory using npm
+    // NOTE: We use npm (not pnpm) because pnpm creates symlinks in node_modules,
+    // which @webcontainer/snapshot cannot serialize
+    console.log("Installing dependencies with npm...");
+    execSync("npm install", {
       cwd: TEMP_DIR,
       stdio: "inherit",
     });
@@ -304,7 +300,21 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
     // Generate the snapshot from the temp directory
     console.log("Generating snapshot binary...");
+
+    // Memory tracking - log every 5 seconds
+    const memoryInterval = setInterval(() => {
+      const used = process.memoryUsage();
+      console.log(
+        `  Memory: heap=${(used.heapUsed / 1024 / 1024).toFixed(0)}MB, rss=${(used.rss / 1024 / 1024).toFixed(0)}MB`
+      );
+    }, 5000);
+
+    // Count files being snapshotted
+    const fileCount = execSync(`find "${TEMP_DIR}" -type f | wc -l`, { encoding: "utf-8" }).trim();
+    console.log(`  Files to snapshot: ${fileCount}`);
+
     const snapshotBuffer = await snapshot(TEMP_DIR);
+    clearInterval(memoryInterval);
 
     // Write snapshot to public directory
     writeFileSync(OUTPUT_PATH, snapshotBuffer);

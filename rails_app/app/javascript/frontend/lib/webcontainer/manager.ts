@@ -7,26 +7,66 @@ export const WORK_DIR = `/home/${WORK_DIR_NAME}`;
 /**
  * Dependencies included in the snapshot.
  * If a project has deps not in this list, we run npm install.
- * Keep in sync with scripts/generate-webcontainer-snapshot.ts
+ * Keep in sync with scripts/generate-webcontainer-snapshot.ts CURATED_SNAPSHOT_PKG
  */
 const SNAPSHOT_DEPS = new Set([
-  // dependencies
+  // Core
   "react",
   "react-dom",
+  "react-router-dom",
+
+  // Icons
   "lucide-react",
+
+  // Toasts
+  "sonner",
+
+  // Styling utilities
   "clsx",
   "tailwind-merge",
   "class-variance-authority",
-  // devDependencies
+  "tailwindcss-animate",
+
+  // All Radix UI components
+  "@radix-ui/react-accordion",
+  "@radix-ui/react-alert-dialog",
+  "@radix-ui/react-aspect-ratio",
+  "@radix-ui/react-avatar",
+  "@radix-ui/react-checkbox",
+  "@radix-ui/react-collapsible",
+  "@radix-ui/react-context-menu",
+  "@radix-ui/react-dialog",
+  "@radix-ui/react-dropdown-menu",
+  "@radix-ui/react-hover-card",
+  "@radix-ui/react-label",
+  "@radix-ui/react-menubar",
+  "@radix-ui/react-navigation-menu",
+  "@radix-ui/react-popover",
+  "@radix-ui/react-progress",
+  "@radix-ui/react-radio-group",
+  "@radix-ui/react-scroll-area",
+  "@radix-ui/react-select",
+  "@radix-ui/react-separator",
+  "@radix-ui/react-slider",
+  "@radix-ui/react-slot",
+  "@radix-ui/react-switch",
+  "@radix-ui/react-tabs",
+  "@radix-ui/react-toast",
+  "@radix-ui/react-toggle",
+  "@radix-ui/react-toggle-group",
+  "@radix-ui/react-tooltip",
+
+  // Build tools (devDependencies)
   "vite",
-  "@vitejs/plugin-react-swc",
+  "@vitejs/plugin-react",
   "typescript",
   "tailwindcss",
   "postcss",
   "autoprefixer",
+  "@tailwindcss/typography",
   "@types/react",
   "@types/react-dom",
-  "tailwindcss-animate",
+  "@types/node",
 ]);
 
 interface WarmupState {

@@ -1,6 +1,9 @@
 #!/bin/bash
 # Generate WebContainer snapshot using Docker (Linux environment)
 # This ensures platform-specific binaries match WebContainer's runtime
+#
+# Usage:
+#   ./generate-snapshot-docker.sh
 
 set -e
 
@@ -15,10 +18,10 @@ echo "Building Docker image for snapshot generation..."
 docker build --platform linux/amd64 -t webcontainer-snapshot -f "$SCRIPT_DIR/Dockerfile.snapshot" "$RAILS_APP_DIR"
 
 echo "Running snapshot generation in Docker..."
-# Use named volume for pnpm store persistence between runs
+# Use named volume for npm cache persistence between runs
 docker run --platform linux/amd64 --rm --memory=16g \
   -v "$RAILS_APP_DIR/public:/app/public" \
-  -v webcontainer-pnpm-store:/root/.local/share/pnpm/store \
+  -v webcontainer-npm-cache:/root/.npm \
   webcontainer-snapshot
 
 echo "Done! Snapshot saved to public/webcontainer-snapshot.bin"
