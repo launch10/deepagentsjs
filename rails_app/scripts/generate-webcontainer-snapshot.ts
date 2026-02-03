@@ -28,6 +28,7 @@ import {
   readFileSync,
   writeFileSync as write,
   mkdirSync,
+  readdirSync,
 } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
@@ -36,34 +37,16 @@ const TEMPLATE_DIR = join(process.cwd(), "templates", "default");
 const TEMP_DIR = join(process.cwd(), ".snapshot-temp");
 const OUTPUT_PATH = join(process.cwd(), "public", "webcontainer-snapshot.bin");
 
-// Minimal dependencies for the snapshot - just enough to run Vite + React + Tailwind
-// The full template deps are too large for snapshot generation
-const MINIMAL_PACKAGE_JSON = {
-  name: "landing-page-snapshot",
-  private: true,
-  type: "module",
-  scripts: {
-    dev: "vite --port 3000 --host",
-    build: "vite build",
-  },
-  dependencies: {
-    react: "^18.3.1",
-    "react-dom": "^18.3.1",
-    "lucide-react": "^0.462.0",
-    clsx: "^2.1.1",
-    "tailwind-merge": "^2.5.2",
-    "class-variance-authority": "^0.7.1",
-  },
-  devDependencies: {
-    vite: "^5.4.1",
-    "@vitejs/plugin-react-swc": "^3.5.0",
-    typescript: "^5.5.3",
-    tailwindcss: "^3.4.11",
-    postcss: "^8.4.47",
-    autoprefixer: "^10.4.20",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "tailwindcss-animate": "^1.0.7",
+/**
+ * WebContainer-compatible overrides for native binaries.
+ * These get merged into the template's package.json.
+ */
+const WEBCONTAINER_OVERRIDES = {
+  // CRITICAL: Swap native binaries for WASM versions (WebContainer can't run native binaries)
+  // See: https://github.com/vitejs/vite/issues/15122
+  overrides: {
+    rollup: "npm:@rollup/wasm-node",
+    esbuild: "npm:esbuild-wasm",
   },
 };
 
@@ -84,29 +67,77 @@ async function generateSnapshot() {
     mkdirSync(TEMP_DIR, { recursive: true });
     mkdirSync(join(TEMP_DIR, "src"), { recursive: true });
 
-    // Write minimal package.json
-    write(join(TEMP_DIR, "package.json"), JSON.stringify(MINIMAL_PACKAGE_JSON, null, 2));
+    // Read template package.json and add WebContainer overrides
+    const templatePkgJson = JSON.parse(readFileSync(join(TEMPLATE_DIR, "package.json"), "utf-8"));
 
-    // Copy config files from template
+    const snapshotPkgJson = {
+      ...templatePkgJson,
+      scripts: {
+        // Use full path since .bin symlinks are removed from snapshot
+        dev: "node node_modules/vite/bin/vite.js --port 3000 --host",
+        build: "node node_modules/vite/bin/vite.js build",
+      },
+      devDependencies: {
+        ...templatePkgJson.devDependencies,
+        // Use Babel-based plugin, not SWC (SWC needs native binaries)
+        "@vitejs/plugin-react": "^4.3.0",
+      },
+      ...WEBCONTAINER_OVERRIDES,
+    };
+    // Remove SWC plugin if present (it needs native binaries)
+    delete snapshotPkgJson.devDependencies["@vitejs/plugin-react-swc"];
+    write(join(TEMP_DIR, "package.json"), JSON.stringify(snapshotPkgJson, null, 2));
+
+    // Copy config files from template (but use .js versions to avoid esbuild compilation)
     const configFiles = [
-      "vite.config.ts",
-      "tailwind.config.ts",
       "postcss.config.js",
       "tsconfig.json",
+      "tsconfig.app.json",
+      "tsconfig.node.json",
     ];
     for (const file of configFiles) {
       const srcPath = join(TEMPLATE_DIR, file);
       if (existsSync(srcPath)) {
-        let content = readFileSync(srcPath, "utf-8");
-        // Modify vite.config for WebContainer
-        if (file === "vite.config.ts") {
-          content = content
-            .replace(/port:\s*\d+/, "port: 3000")
-            .replace(/host:\s*["'][^"']*["']/, "host: true");
-        }
+        const content = readFileSync(srcPath, "utf-8");
         write(join(TEMP_DIR, file), content);
       }
     }
+
+    // Write vite.config.js (NOT .ts) to avoid needing esbuild to compile config
+    // WebContainer can't run native esbuild binary
+    write(
+      join(TEMP_DIR, "vite.config.js"),
+      `import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import path from "path";
+
+export default defineConfig({
+  base: './',
+  server: {
+    host: true,
+    port: 3000,
+  },
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": path.resolve(process.cwd(), "./src"),
+    },
+  },
+});`
+    );
+
+    // Write tailwind.config.js (NOT .ts)
+    write(
+      join(TEMP_DIR, "tailwind.config.js"),
+      `/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  theme: {
+    extend: {},
+  },
+  plugins: [require('tailwindcss-animate')],
+};`
+    );
 
     // Add minimal index.html
     write(
@@ -147,13 +178,17 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 @tailwind utilities;`
     );
 
-    // Install dependencies in temp directory
-    // Using --install-links to avoid symlinks that the snapshot tool can't handle
-    console.log("Installing dependencies (this may take a while)...");
-    execSync("npm install --install-links", {
+    // Install dependencies in temp directory using pnpm (faster than npm)
+    console.log("Installing dependencies with pnpm...");
+    execSync("pnpm install", {
       cwd: TEMP_DIR,
       stdio: "inherit",
     });
+
+    // NOTE: We keep all native packages - WebContainer should handle swapping
+    // esbuild → esbuild-wasm automatically per StackBlitz's documented approach
+    // See: https://github.com/stackblitz/webcontainer-core/issues/8
+    console.log("\nKeeping native packages (WebContainer handles WASM fallbacks)...");
 
     // Remove .bin directory which contains symlinks that can't be serialized
     const binDir = join(TEMP_DIR, "node_modules", ".bin");
@@ -161,6 +196,111 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       console.log("Removing node_modules/.bin symlinks...");
       rmSync(binDir, { recursive: true, force: true });
     }
+
+    // Aggressively trim node_modules to reduce snapshot size and memory usage
+    console.log("Trimming node_modules to reduce snapshot size...");
+    const nodeModulesDir = join(TEMP_DIR, "node_modules");
+
+    // Get size before trimming
+    const getSizeCmd = `du -sh "${nodeModulesDir}" 2>/dev/null || echo "unknown"`;
+    const sizeBefore = execSync(getSizeCmd, { encoding: "utf-8" }).trim();
+    console.log(`  Size before: ${sizeBefore}`);
+
+    // Remove unnecessary files and directories
+    const patternsToRemove = [
+      // Documentation and metadata
+      "README*",
+      "readme*",
+      "CHANGELOG*",
+      "changelog*",
+      "HISTORY*",
+      "history*",
+      "LICENSE*",
+      "license*",
+      "LICENCE*",
+      "licence*",
+      "NOTICE*",
+      "AUTHORS*",
+      "CONTRIBUTORS*",
+      "SECURITY*",
+      "FUNDING*",
+      "*.md",
+      "*.markdown",
+      "*.txt",
+      // Test directories
+      "test",
+      "tests",
+      "__tests__",
+      "spec",
+      "specs",
+      "__mocks__",
+      // Documentation directories
+      "docs",
+      "doc",
+      "documentation",
+      "example",
+      "examples",
+      "demo",
+      "demos",
+      // TypeScript source (keep .d.ts, remove .ts source)
+      "*.ts.map",
+      "tsconfig*.json",
+      // Build artifacts and config
+      ".npmignore",
+      ".gitignore",
+      ".editorconfig",
+      ".eslintrc*",
+      ".prettierrc*",
+      "*.tsbuildinfo",
+      "Makefile",
+      "Gruntfile.js",
+      "Gulpfile.js",
+      // Package manager files
+      "yarn.lock",
+      "pnpm-lock.yaml",
+      "package-lock.json",
+      "shrinkwrap.json",
+    ];
+
+    // Use find to remove files matching patterns (more efficient than walking in JS)
+    for (const pattern of patternsToRemove) {
+      try {
+        // -type f for files, -type d for directories
+        if (
+          [
+            "test",
+            "tests",
+            "__tests__",
+            "spec",
+            "specs",
+            "__mocks__",
+            "docs",
+            "doc",
+            "documentation",
+            "example",
+            "examples",
+            "demo",
+            "demos",
+          ].includes(pattern)
+        ) {
+          execSync(
+            `find "${nodeModulesDir}" -type d -name "${pattern}" -exec rm -rf {} + 2>/dev/null || true`,
+            { stdio: "pipe" }
+          );
+        } else {
+          execSync(
+            `find "${nodeModulesDir}" -type f -name "${pattern}" -delete 2>/dev/null || true`,
+            { stdio: "pipe" }
+          );
+        }
+      } catch {
+        // Ignore errors - some patterns may not match
+      }
+    }
+
+    // Get size after trimming
+    const sizeAfter = execSync(getSizeCmd, { encoding: "utf-8" }).trim();
+    console.log(`  Size after: ${sizeAfter}`);
 
     // Generate the snapshot from the temp directory
     console.log("Generating snapshot binary...");
