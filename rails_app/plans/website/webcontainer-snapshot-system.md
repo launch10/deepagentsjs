@@ -131,48 +131,71 @@ NODE_OPTIONS="--max-old-space-size=8192" pnpm run webcontainer:snapshot
 
 ---
 
-# Production Considerations
+# Production Setup
 
-## 1. CDN Deployment (Cloudflare R2)
+## 1. CDN Deployment (Cloudflare R2) ✅
 
-The 111MB snapshot should be served from R2, not bundled with the Rails app.
+The snapshot is uploaded to R2 and served via CDN.
 
-**TODO:** Create `scripts/upload-snapshot-to-r2.ts`
+**Scripts:**
 
-- Upload to same R2 bucket as user assets
-- Path: `snapshots/webcontainer-snapshot-{hash}.bin`
+- `pnpm run webcontainer:snapshot` - Generate snapshot locally
+- `pnpm run webcontainer:upload` - Upload to R2 with content hash
 
-**TODO:** Update `WebContainerManager.fetchSnapshot()`
+**Upload script:** `scripts/upload-snapshot-to-r2.ts`
 
-- Fetch from R2 URL in production
-- URL passed via Inertia shared data or env var
-- Fallback to `/webcontainer-snapshot.bin` in development
+- Computes SHA256 hash of snapshot
+- Uploads to `{env}/snapshots/webcontainer-snapshot-{hash}.bin`
+- Writes manifest to `public/webcontainer-snapshot-manifest.json`
+- Sets cache headers: `public, max-age=31536000, immutable` (1 year, content-addressed)
 
-## 2. Cache Busting / Versioning
+**Required secrets for upload:**
 
-**TODO:** Add content hash to filename
+```
+CLOUDFLARE_R2_ENDPOINT
+CLOUDFLARE_R2_ACCESS_KEY_ID
+CLOUDFLARE_R2_SECRET_ACCESS_KEY
+CLOUDFLARE_UPLOADS_BUCKET
+CLOUDFLARE_ASSET_HOST
+CLOUDFLARE_DEPLOY_ENV
+```
 
-- Generate: `webcontainer-snapshot-a1b2c3d4.bin`
-- Create manifest file with current snapshot filename
-- Update Rails to read manifest and pass URL to frontend
+## 2. Frontend Configuration ✅
 
-## 3. CI/CD Pipeline
+**WebContainerManager** fetches from R2 in production via env var:
 
-**TODO:** Create `.github/workflows/webcontainer-snapshot.yml`
+```bash
+# In production .env:
+VITE_WEBCONTAINER_SNAPSHOT_URL=https://uploads.launch10.ai/production/snapshots/webcontainer-snapshot-abc123.bin
+```
 
-Trigger on changes to:
+In development, leave empty to use local `/webcontainer-snapshot.bin`.
 
-- `templates/default/package.json`
-- `scripts/generate-webcontainer-snapshot.ts`
+## 3. CI/CD Pipeline ✅
 
-Steps:
+**Workflow:** `.github/workflows/webcontainer-snapshot.yml`
 
-1. Checkout repo
-2. Setup Node with increased memory
-3. Run `pnpm run webcontainer:snapshot`
+Triggers on push to main when these files change:
+
+- `rails_app/templates/default/package.json`
+- `rails_app/scripts/generate-webcontainer-snapshot.ts`
+- `rails_app/scripts/upload-snapshot-to-r2.ts`
+
+Also supports manual trigger via `workflow_dispatch`.
+
+**What it does:**
+
+1. Checkout code
+2. Setup pnpm and Node.js with 8GB memory
+3. Generate snapshot
 4. Upload to R2
-5. Update manifest/version reference
-6. Commit manifest changes (or store in R2)
+5. Output manifest as GitHub Actions artifact
+
+**After workflow runs:**
+
+1. Check the workflow run for the new snapshot URL
+2. Update `VITE_WEBCONTAINER_SNAPSHOT_URL` in production environment
+3. Deploy to pick up the new URL
 
 ## 4. Monitoring
 

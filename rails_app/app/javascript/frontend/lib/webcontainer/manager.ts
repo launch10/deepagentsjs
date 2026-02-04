@@ -358,9 +358,14 @@ class WebContainerManagerClass {
   }
 
   private async fetchSnapshot(): Promise<Uint8Array> {
-    const response = await fetch("/webcontainer-snapshot.bin");
+    // In production, fetch from R2 CDN. In development, use local file.
+    const snapshotUrl =
+      import.meta.env.VITE_WEBCONTAINER_SNAPSHOT_URL || "/webcontainer-snapshot.bin";
+
+    this.log(`[WebContainer] Fetching snapshot from: ${snapshotUrl}`);
+    const response = await fetch(snapshotUrl);
     if (!response.ok) {
-      throw new Error("Snapshot not found");
+      throw new Error(`Snapshot not found: ${response.status} ${response.statusText}`);
     }
     const buffer = await response.arrayBuffer();
     return new Uint8Array(buffer);
