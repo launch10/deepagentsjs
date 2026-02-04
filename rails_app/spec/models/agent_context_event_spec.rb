@@ -1,9 +1,9 @@
 require "rails_helper"
 
 RSpec.describe AgentContextEvent, type: :model do
-  let(:account) { create(:account) }
+  let(:user) { create(:user) }
+  let(:account) { user.owned_account }
   let(:project) { create(:project, account: account) }
-  let(:user) { create(:user, account: account) }
 
   describe "associations" do
     it { is_expected.to belong_to(:account) }
