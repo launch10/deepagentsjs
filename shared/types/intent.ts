@@ -87,25 +87,29 @@ export const intentSchema = z.union([
   baseIntentSchema, // Fallback for unknown intents
 ]);
 
-export type Intent = z.infer<typeof intentSchema>;
+// Note: Intent can be null when cleared (LangGraph skips undefined state updates)
+export type Intent = z.infer<typeof intentSchema> | null;
 
-// Type guard helpers
+// Type guard helpers (handle null case)
 export function isChangeThemeIntent(intent: Intent): intent is ChangeThemeIntent {
-  return intent.type === "change_theme";
+  return intent !== null && intent.type === "change_theme";
 }
 
 export function isImproveCopyIntent(intent: Intent): intent is ImproveCopyIntent {
-  return intent.type === "improve_copy";
+  return intent !== null && intent.type === "improve_copy";
 }
 
 export function isWebsiteIntent(intent: Intent): intent is WebsiteIntent {
-  return ["change_theme", "upload_images", "delete_image", "improve_copy"].includes(intent.type);
+  return (
+    intent !== null &&
+    ["change_theme", "upload_images", "delete_image", "improve_copy"].includes(intent.type)
+  );
 }
 
 export function isBrainstormIntent(intent: Intent): intent is BrainstormIntent {
-  return ["skip_topic", "do_the_rest"].includes(intent.type);
+  return intent !== null && ["skip_topic", "do_the_rest"].includes(intent.type);
 }
 
 export function isNavigationIntent(intent: Intent): intent is NavigationIntent {
-  return intent.type === "navigate";
+  return intent !== null && intent.type === "navigate";
 }

@@ -65,6 +65,7 @@ function groupEventsByCategory(events: ContextEvent[]): Record<string, ContextEv
 function getCategoryKey(eventType: string): string {
   // Group related events: images.created + images.deleted -> "images"
   if (eventType.startsWith("images.")) return "images";
+  if (eventType.startsWith("brainstorm.")) return "brainstorm";
   if (eventType.startsWith("keywords.")) return "keywords";
   if (eventType.startsWith("theme.")) return "theme";
   if (eventType.startsWith("domain.")) return "domain";
@@ -116,6 +117,36 @@ const SUMMARIZERS: Record<string, Summarizer> = {
     return {
       event_type: "images",
       content,
+      created_at: last.created_at,
+    };
+  },
+
+  brainstorm: (events) => {
+    // Use the most recent brainstorm.finished event (should only be one per conversation)
+    const finished = events.filter((e) => e.event_type === "brainstorm.finished");
+    if (finished.length === 0) return null;
+
+    const last = finished[finished.length - 1]!;
+    const payload = last.payload as {
+      idea?: string;
+      audience?: string;
+      solution?: string;
+      social_proof?: string;
+      theme_name?: string;
+    };
+
+    const contextText = `## Brainstorm Context
+- Idea: ${payload.idea || "Not provided"}
+- Audience: ${payload.audience || "Not provided"}
+- Solution: ${payload.solution || "Not provided"}
+- Social Proof: ${payload.social_proof || "Not provided"}
+${payload.theme_name ? `\n## Theme\nUsing theme: ${payload.theme_name}` : ""}
+
+Please create a landing page based on this context.`;
+
+    return {
+      event_type: "brainstorm",
+      message: contextText,
       created_at: last.created_at,
     };
   },

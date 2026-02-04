@@ -58,9 +58,11 @@ export function createIntentGraph<TIntentType extends string = string>() {
     };
 
     // Clear intent after flow completes
-    const clearIntent = () => ({
-      intent: undefined,
-    });
+    const clearIntent = (state: any) => {
+      return {
+        intent: null,
+      };
+    };
 
     // Build the graph dynamically
     // Using 'any' casts because Langgraph's types don't support dynamic node names

@@ -4,11 +4,10 @@ import { AIMessage } from "@langchain/core/messages";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
-import { createMultimodalContextMessage, createContextMessage } from "langgraph-ai-sdk";
+import { createContextMessage } from "langgraph-ai-sdk";
 import { isCacheModeEnabled } from "./cacheMode";
 import { getSchedulingToolMinorEditFiles } from "@cache";
 import type { Website } from "@types";
-import { db, websiteFiles, eq } from "@db";
 import { injectAgentContext } from "@api/middleware";
 
 /**
@@ -24,38 +23,6 @@ function getCachedResponse(): {
     message: "I've updated the headline and subtitle on your landing page to be more compelling.",
   };
 }
-
-const buildBrainstormContext = (state: WebsiteGraphState) => {
-  const contextContent = `
-      ## Brainstorm Context
-      - Idea: ${state.brainstorm.idea || "Not provided"}
-      - Audience: ${state.brainstorm.audience || "Not provided"}
-      - Solution: ${state.brainstorm.solution || "Not provided"}
-      - Social Proof: ${state.brainstorm.socialProof || "Not provided"}
-
-      ## Theme
-      ${state.theme ? `Using theme: ${state.theme.name}` : "Using default theme"}
-
-      ## Images
-      ${state.images.length > 0 ? state.images.map((img) => `- ${img.url}${img.isLogo ? " (logo)" : ""}`).join("\n") : "No images uploaded"}
-
-      Please create a landing page based on this context.
-    `;
-
-  // Build context message - combine context with visual images if available
-  const contextMessage =
-    state.images.length > 0
-      ? createMultimodalContextMessage([
-          { type: "text" as const, text: contextContent },
-          ...state.images.map((img) => ({
-            type: "image_url" as const,
-            image_url: { url: img.url },
-          })),
-        ])
-      : { role: "user", content: contextContent };
-
-  return contextMessage;
-};
 
 export const websiteBuilderNode = NodeMiddleware.use(
   {},
@@ -88,11 +55,11 @@ export const websiteBuilderNode = NodeMiddleware.use(
 
     const isFirstMessage = state.messages.length === 0;
     const agent = await createCodingAgent({ ...state, isFirstMessage });
-    const brainstormContext = buildBrainstormContext(state);
 
-    // Inject context events (e.g., images uploaded via QuickActions)
+    // Inject context events (brainstorm.finished, images.created, images.deleted)
     // This runs within AsyncLocalStorage context, preserving Polly.js caching
-    const messagesWithContext =
+    // For the first message (create flow), this will include brainstorm context from events
+    const contextMessages =
       state.projectId && state.jwt
         ? await injectAgentContext({
             graphName: "website",
@@ -102,14 +69,15 @@ export const websiteBuilderNode = NodeMiddleware.use(
           })
         : state.messages || [];
 
-    // Use different context based on whether this is create or edit
-    const contextMessages = isFirstMessage
-      ? [createContextMessage("Create a landing page for this business"), brainstormContext]
+    // For create flow, add instruction to create a landing page
+    // Brainstorm context and images come from events via injectAgentContext
+    const instructions = isFirstMessage
+      ? [createContextMessage("Create a landing page for this business")]
       : []; // For edits, just use the user's message directly
 
     const result = await agent.invoke(
       {
-        messages: [...messagesWithContext, ...contextMessages],
+        messages: [...contextMessages, ...instructions],
       },
       {
         ...config,

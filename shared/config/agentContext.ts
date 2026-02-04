@@ -5,12 +5,15 @@
  * These are shared between Rails (validation) and Langgraph (subscriptions).
  */
 
-// Website graph subscribes to image events
-export const WEBSITE_EVENT_TYPES = ["images.created", "images.deleted"] as const;
+// Website graph subscribes to image and brainstorm events
+export const WEBSITE_EVENT_TYPES = [
+  "images.created",
+  "images.deleted",
+  "brainstorm.finished",
+] as const;
 export type WebsiteEventType = (typeof WEBSITE_EVENT_TYPES)[number];
 
 // Future: Add event types for other graphs as needed
-// export const BRAINSTORM_EVENT_TYPES = [] as const;
 // export const ADS_EVENT_TYPES = [] as const;
 
 // All valid event types (union of all graph-specific types)

@@ -30,7 +30,7 @@ class AgentContextEvent < ApplicationRecord
   belongs_to :eventable, polymorphic: true, optional: true
 
   # Valid verbs per context-engineering/PLAN.md
-  VALID_VERBS = %w[created updated deleted assigned unassigned completed paused resumed].freeze
+  VALID_VERBS = %w[created updated deleted assigned unassigned completed paused resumed finished].freeze
 
   validates :event_type, presence: true
   validates :event_type, format: {

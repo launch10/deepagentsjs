@@ -93,7 +93,6 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
           threadId,
           accountId,
           projectId,
-          images: [], // Prevent middleware from trying to download images
         })
         .execute();
 
@@ -153,7 +152,6 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
           threadId,
           accountId,
           projectId,
-          images: [], // Prevent middleware from trying to download images
         })
         .execute();
 
@@ -182,7 +180,6 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
           threadId,
           accountId,
           projectId,
-          images: [], // Prevent middleware from trying to download images
         })
         .execute();
 
@@ -236,7 +233,6 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
           accountId,
           projectId,
           domainRecommendations: existingRecommendations,
-          images: [], // Prevent middleware from trying to download images
         })
         .execute();
 
@@ -256,7 +252,6 @@ describe.sequential("Domain Recommendations (Graph Tests)", () => {
           threadId,
           accountId,
           projectId,
-          images: [], // Prevent middleware from trying to download images
         })
         .execute();
 

@@ -224,9 +224,10 @@ const restartChatFrom = async (
       .join("\n");
   }
 
-  // Save the pre-defined answers directly to the database
+  // Save the pre-defined answers directly to the database via Rails API
+  // This triggers TracksAgentContext callbacks for brainstorm.finished events
   if (Object.keys(memories).length > 0) {
-    await saveAnswers(memories, partialState.websiteId!, []);
+    await saveAnswers(memories, partialState.websiteId!, [], threadId, "test-jwt");
   }
 
   // Tag messages with topics for proper history tracking

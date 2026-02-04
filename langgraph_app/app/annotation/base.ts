@@ -24,8 +24,7 @@ function timestampedMessagesReducer(
   const timestampedMessages = messagesToAdd.map((msg) => {
     if (msg instanceof AIMessage || msg._getType?.() === "ai") {
       const responseMetadata = msg.response_metadata as Record<string, unknown> | undefined;
-      const hasTimestamp =
-        responseMetadata?.timestamp || msg.additional_kwargs?.timestamp;
+      const hasTimestamp = responseMetadata?.timestamp || msg.additional_kwargs?.timestamp;
       if (!hasTimestamp) {
         return new AIMessage({
           ...msg,
@@ -100,8 +99,9 @@ export const BaseAnnotation = Annotation.Root({
 
   // Intent: user action that triggered this graph invocation
   // Consumed after handling (cleared by handler nodes)
-  intent: Annotation<Intent | undefined>({
+  // Note: LangGraph skips state updates for undefined values, so we use null to clear
+  intent: Annotation<Intent | null | undefined>({
     default: () => undefined,
-    reducer: (current, next) => next,
+    reducer: (_current, next) => next,
   }),
 });

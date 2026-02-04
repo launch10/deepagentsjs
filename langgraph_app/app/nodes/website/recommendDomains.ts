@@ -1,6 +1,6 @@
-import { BrainstormBridge, WebsiteBridge, type WebsiteGraphState } from "@annotation";
+import { type WebsiteGraphState } from "@annotation";
 import { NodeMiddleware } from "@middleware";
-import { DomainContextAPIService, type DomainWithWebsite } from "@rails_api";
+import { DomainContextAPIService, ContextAPIService, type DomainWithWebsite } from "@rails_api";
 import { getLLM } from "@core";
 import type { Website } from "@types";
 import {
@@ -11,7 +11,6 @@ import {
 } from "@prompts";
 import { createSearchDomainsTool, createSearchWebsiteUrlsTool } from "@tools";
 import { HumanMessage } from "@langchain/core/messages";
-import { lastAIMessage } from "@types";
 import { createAgent } from "langchain";
 import type { DynamicStructuredTool } from "@langchain/core/tools";
 
@@ -48,24 +47,27 @@ export const domainRecommendationsNode = NodeMiddleware.use(
       console.log("[domainRecommendations] Skipping - no jwt");
       return {};
     }
-    // Need brainstorm context to generate recommendations
-    const brainstorm = state.brainstorm;
-    if (!brainstorm?.idea) {
-      console.log("[domainRecommendations] Skipping - no brainstorm context");
-      return {};
-    }
 
     try {
       console.log("[domainRecommendations] Starting domain recommendations");
 
+      // Fetch brainstorm context from Rails
+      const contextAPI = new ContextAPIService({ jwt: state.jwt });
+      const context = await contextAPI.get(state.websiteId);
+
+      if (!context.brainstorm?.idea) {
+        console.log("[domainRecommendations] Skipping - no brainstorm context");
+        return {};
+      }
+
       // Fetch domain context from Rails (existing domains, credits)
-      const contextAPI = new DomainContextAPIService({ jwt: state.jwt });
-      const domainContext = await contextAPI.get(state.websiteId);
+      const domainContextAPI = new DomainContextAPIService({ jwt: state.jwt });
+      const domainContext = await domainContextAPI.get(state.websiteId);
 
       const brainstormContext: BrainstormContext = {
-        idea: brainstorm.idea ?? "",
-        audience: brainstorm.audience ?? "",
-        solution: brainstorm.solution ?? "",
+        idea: context.brainstorm.idea ?? "",
+        audience: context.brainstorm.audience ?? "",
+        solution: context.brainstorm.solution ?? "",
       };
 
       // Build the system prompt with all context
@@ -114,7 +116,7 @@ export const domainRecommendationsNode = NodeMiddleware.use(
     } catch (error) {
       console.error("[domainRecommendations] Error:", error);
       // On error, return fallback recommendations
-      const fallback = getFallbackRecommendations(brainstorm.idea ?? "my-site", []);
+      const fallback = getFallbackRecommendations("my-site", []);
       return { domainRecommendations: fallback };
     }
   }

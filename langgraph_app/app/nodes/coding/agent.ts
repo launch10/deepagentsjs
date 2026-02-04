@@ -125,13 +125,15 @@ export async function createCodingAgent(
     systemPrompt ? Promise.resolve(systemPrompt) : buildCodingPrompt(promptState),
     buildCoderSubAgent(promptState),
   ]);
+  console.log("finalSystemPrompt", finalSystemPrompt);
 
   return createDeepAgent({
     model: llm as any,
     name: "coding-agent",
     systemPrompt: finalSystemPrompt,
     backend: () => backend as any,
-    subagents: [copywriterSubAgent, coderSubAgent],
+    // subagents: [copywriterSubAgent, coderSubAgent],
+    subagents: [coderSubAgent],
     tools: [new SearchIconsTool()],
     middleware: middlewares as any,
     checkpointer: checkpointer as any,
