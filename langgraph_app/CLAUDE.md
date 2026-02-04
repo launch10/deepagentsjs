@@ -18,6 +18,68 @@ Langgraph is one half of the application. The other half is Ruby On Rails, which
 - Polly (test recording)
 - Evalite (evals)
 
+## Testing
+
+### CRITICAL: Always use --no-file-parallelism
+
+**When running tests, ALWAYS use `--no-file-parallelism`:**
+
+```bash
+# Correct - recordings work properly
+pnpm test --no-file-parallelism
+
+# Run specific test file
+pnpm test tests/tests/graphs/website/website.test.ts --no-file-parallelism
+
+# Run specific test by name
+pnpm test tests/tests/graphs/website/website.test.ts --no-file-parallelism -t "test name"
+```
+
+**Why this matters:**
+
+Polly.js uses a **global singleton** for HTTP recording/playback. The `setRecordingName()` method mutates global state:
+
+```typescript
+// From withPolly.ts - this is GLOBAL mutation
+server.any().recordingName(nodeName);
+```
+
+With parallel test execution:
+
+1. Test A runs → sets recording name to "website-builder"
+2. Test B runs in parallel → sets recording name to "unknown-node-execution"
+3. Test A's HTTP requests → recorded to WRONG location ("unknown-node-execution")
+
+This causes:
+
+- **Cache misses** - requests hit real APIs instead of cached recordings
+- **Expensive API calls** - $6+ per test run instead of $0
+- **Flaky tests** - results depend on execution order
+
+The `--no-file-parallelism` flag ensures only one test file runs at a time, preventing the race condition.
+
+### Test Commands
+
+The vitest config already sets `fileParallelism: false` by default. Just run:
+
+```bash
+# Run all tests
+pnpm test
+
+# Run specific test file
+pnpm test path/to/test.ts
+
+# Run with name filter
+pnpm test path/to/test.ts -t "pattern"
+```
+
+**NEVER override parallelism:**
+
+```bash
+# DANGEROUS - causes race conditions and real API calls ($6+ per run)
+pnpm test --fileParallelism=true  # NEVER DO THIS
+```
+
 ## Database
 
 The Langgraph application NEVER modifies the database schema. To get the most up-to-date schema, run the following command:

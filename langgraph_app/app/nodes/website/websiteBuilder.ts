@@ -9,6 +9,7 @@ import { isCacheModeEnabled } from "./cacheMode";
 import { getSchedulingToolMinorEditFiles } from "@cache";
 import type { Website } from "@types";
 import { db, websiteFiles, eq } from "@db";
+import { injectAgentContext } from "@api/middleware";
 
 /**
  * Get cached response for cache mode.
@@ -85,18 +86,21 @@ export const websiteBuilderNode = NodeMiddleware.use(
       };
     }
 
-    // Detect if this is a new site or an edit by checking files in database
-    // We can't rely on state.files as files are loaded by the backend, not checkpoint
-    const existingFiles = await db
-      .select({ id: websiteFiles.id })
-      .from(websiteFiles)
-      .where(eq(websiteFiles.websiteId, state.websiteId))
-      .limit(1);
-    const hasExistingFiles = existingFiles.length > 0;
-    const isFirstMessage = !hasExistingFiles;
-
+    const isFirstMessage = state.messages.length === 0;
     const agent = await createCodingAgent({ ...state, isFirstMessage });
     const brainstormContext = buildBrainstormContext(state);
+
+    // Inject context events (e.g., images uploaded via QuickActions)
+    // This runs within AsyncLocalStorage context, preserving Polly.js caching
+    const messagesWithContext =
+      state.projectId && state.jwt
+        ? await injectAgentContext({
+            graphName: "website",
+            projectId: state.projectId,
+            jwt: state.jwt,
+            messages: state.messages || [],
+          })
+        : state.messages || [];
 
     // Use different context based on whether this is create or edit
     const contextMessages = isFirstMessage
@@ -105,7 +109,7 @@ export const websiteBuilderNode = NodeMiddleware.use(
 
     const result = await agent.invoke(
       {
-        messages: [...(state.messages || []), ...contextMessages],
+        messages: [...messagesWithContext, ...contextMessages],
       },
       {
         ...config,

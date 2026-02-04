@@ -345,6 +345,62 @@ describe("Website Builder", () => {
             expect(indexCss!.content).toContain(`${varName}: ${varValue};`);
           }
         });
+
+        it("applies a newly-created custom theme via intent", async () => {
+          // Simulate creating a custom theme (what happens when user clicks "Add Custom" on Website page)
+          const customColors = ["#FF5733", "#33FF57", "#3357FF", "#F333FF", "#33FFF3"];
+
+          const customTheme = await appScenario<{ id: number; name: string; colors: string[] }>(
+            "create_custom_theme",
+            {
+              name: "Test Custom Theme",
+              colors: customColors,
+            }
+          );
+
+          const result = await testGraph<WebsiteGraphState>()
+            .withGraph(websiteGraph)
+            .withState({
+              websiteId,
+              threadId,
+              intent: {
+                type: "change_theme",
+                payload: { themeId: customTheme.id },
+                createdAt: new Date().toISOString(),
+              },
+            })
+            .execute();
+
+          // Verify intent processed successfully
+          expect(result.error).toBeUndefined();
+          expect(result.state.status).toBe("completed");
+          expect(result.state.intent).toBeUndefined();
+
+          // Verify database updated with the custom theme
+          const [updatedWebsite] = await db
+            .select()
+            .from(websites)
+            .where(eq(websites.id, websiteId))
+            .limit(1);
+          expect(updatedWebsite!.themeId).toBe(customTheme.id);
+
+          // Verify CSS contains the custom theme variables
+          const indexCss = result.state.files["src/index.css"];
+          expect(indexCss).toBeDefined();
+
+          // Get the computed theme variables from the database
+          const [savedTheme] = await db
+            .select()
+            .from(themes)
+            .where(eq(themes.id, customTheme.id))
+            .limit(1);
+
+          expect(savedTheme!.theme).toBeDefined();
+          const themeVars = savedTheme!.theme as Record<string, string>;
+          for (const [varName, varValue] of Object.entries(themeVars)) {
+            expect(indexCss!.content).toContain(`${varName}: ${varValue};`);
+          }
+        });
       });
 
       describe("no intent present", () => {
