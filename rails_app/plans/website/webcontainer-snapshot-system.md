@@ -259,3 +259,72 @@ WebContainerManager logs to console in dev mode:
 ```
 
 If you see "Snapshot not available, falling back to npm install", the snapshot isn't being served correctly.
+
+---
+
+# Production Deployment Checklist
+
+## First-Time Setup
+
+### 1. Add GitHub Secrets
+
+Add these secrets to the repository settings (Settings → Secrets and variables → Actions):
+
+| Secret                            | Description     | Example                                         |
+| --------------------------------- | --------------- | ----------------------------------------------- |
+| `CLOUDFLARE_R2_ENDPOINT`          | R2 API endpoint | `https://<account_id>.r2.cloudflarestorage.com` |
+| `CLOUDFLARE_R2_ACCESS_KEY_ID`     | R2 access key   | From Cloudflare dashboard                       |
+| `CLOUDFLARE_R2_SECRET_ACCESS_KEY` | R2 secret key   | From Cloudflare dashboard                       |
+| `CLOUDFLARE_UPLOADS_BUCKET`       | Bucket name     | `uploads`                                       |
+| `CLOUDFLARE_ASSET_HOST`           | Public CDN URL  | `https://uploads.launch10.ai`                   |
+
+### 2. Merge to Main
+
+Merge the `webcontainer-fast` branch to `main`. This will:
+
+- Trigger the GitHub Actions workflow
+- Generate the snapshot (~2-3 min)
+- Upload to R2
+- Output the manifest with the new URL
+
+### 3. Get Snapshot URL
+
+After the workflow completes:
+
+1. Go to Actions → WebContainer Snapshot → Latest run
+2. Check the "Output snapshot URL" step or download the manifest artifact
+3. Copy the URL from the manifest (looks like `https://uploads.launch10.ai/production/snapshots/webcontainer-snapshot-abc123def456.bin`)
+
+### 4. Update Production Environment
+
+Add to your production environment variables:
+
+```bash
+VITE_WEBCONTAINER_SNAPSHOT_URL=https://uploads.launch10.ai/production/snapshots/webcontainer-snapshot-abc123def456.bin
+```
+
+### 5. Deploy
+
+Deploy the application. The WebContainerManager will now fetch the snapshot from R2.
+
+## Updating the Snapshot
+
+When template dependencies change:
+
+1. Push changes to `templates/default/package.json` on `main`
+2. Workflow auto-triggers → generates new snapshot → uploads to R2
+3. Get new URL from workflow output
+4. Update `VITE_WEBCONTAINER_SNAPSHOT_URL` in production
+5. Redeploy
+
+Or manually trigger: Actions → WebContainer Snapshot → Run workflow
+
+## Rollback
+
+To rollback to a previous snapshot:
+
+1. Find the previous snapshot URL (check R2 bucket or workflow history)
+2. Update `VITE_WEBCONTAINER_SNAPSHOT_URL` to the old URL
+3. Redeploy
+
+Old snapshots are retained in R2 (content-addressed, immutable cache headers).
