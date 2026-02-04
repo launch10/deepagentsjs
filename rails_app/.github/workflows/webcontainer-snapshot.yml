@@ -1,0 +1,67 @@
+name: WebContainer Snapshot
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "rails_app/templates/default/package.json"
+      - "rails_app/scripts/generate-webcontainer-snapshot.ts"
+      - "rails_app/scripts/upload-snapshot-to-r2.ts"
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  generate-and-upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: rails_app
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: "rails_app/.node-version"
+          cache: "pnpm"
+          cache-dependency-path: "rails_app/pnpm-lock.yaml"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate WebContainer snapshot
+        run: pnpm run webcontainer:snapshot
+        env:
+          NODE_OPTIONS: "--max-old-space-size=8192"
+
+      - name: Upload snapshot to R2
+        run: pnpm run webcontainer:upload
+        env:
+          CLOUDFLARE_R2_ENDPOINT: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+          CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          CLOUDFLARE_UPLOADS_BUCKET: ${{ secrets.CLOUDFLARE_UPLOADS_BUCKET }}
+          CLOUDFLARE_ASSET_HOST: ${{ secrets.CLOUDFLARE_ASSET_HOST }}
+          CLOUDFLARE_DEPLOY_ENV: production
+
+      - name: Upload manifest as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: webcontainer-snapshot-manifest
+          path: rails_app/public/webcontainer-snapshot-manifest.json
+          retention-days: 90
+
+      - name: Output snapshot URL
+        run: |
+          echo "## WebContainer Snapshot Generated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat public/webcontainer-snapshot-manifest.json >> $GITHUB_STEP_SUMMARY

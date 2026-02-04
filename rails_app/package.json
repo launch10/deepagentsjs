@@ -117,6 +117,7 @@
     "zustand": "^5.0.9"
   },
   "devDependencies": {
+    "@aws-sdk/client-s3": "^3.600.0",
     "@eslint/eslintrc": "^3",
     "@eslint/js": "^9.39.1",
     "@playwright/test": "^1.57.0",
@@ -132,6 +133,7 @@
     "@types/node": "^20",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
+    "@webcontainer/snapshot": "^0.1.0",
     "clsx": "^2.1.1",
     "eslint": "^9",
     "eslint-config-prettier": "^10.1.8",
@@ -167,7 +169,9 @@
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
     "lint:fix": "npm run lint -- --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "webcontainer:snapshot": "tsx scripts/generate-webcontainer-snapshot.ts",
+    "webcontainer:upload": "tsx scripts/upload-snapshot-to-r2.ts"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [

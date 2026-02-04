@@ -93,3 +93,6 @@ storybook-static
 /test-results/
 /.playwright-mcp/
 *.tsbuildinfo
+
+# WebContainer snapshot temp directory (generated during snapshot creation)
+/.snapshot-temp/

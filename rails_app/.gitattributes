@@ -6,3 +6,5 @@ vendor/* linguist-vendored
 config/credentials/*.yml.enc diff=rails_credentials
 config/credentials.yml.enc diff=rails_credentials
 test/fixtures/database/snapshots/**/*.sql filter=lfs diff=lfs merge=lfs -text
+# WebContainer snapshot binary (shared via LFS, served from CDN in production)
+public/webcontainer-snapshot.bin filter=lfs diff=lfs merge=lfs -text

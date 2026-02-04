@@ -1,45 +1,16 @@
-import { WebContainer } from "@webcontainer/api";
+// Re-export from manager for new API
+export { WebContainerManager, WORK_DIR_NAME, WORK_DIR } from "./manager";
 
-export const WORK_DIR_NAME = "project";
-export const WORK_DIR = `/home/${WORK_DIR_NAME}`;
-
-interface WebContainerContext {
-  loaded: boolean;
-}
-
-export const webcontainerContext: WebContainerContext = import.meta.hot?.data
-  .webcontainerContext ?? {
-  loaded: false,
-};
-
-if (import.meta.hot) {
-  import.meta.hot.data.webcontainerContext = webcontainerContext;
-}
+// Legacy exports for backward compatibility
+// The manager is now the source of truth for WebContainer
+import { WebContainerManager } from "./manager";
 
 /**
- * Singleton promise for the WebContainer instance.
- * Supports hot module reloading by preserving the instance across reloads.
+ * @deprecated Use WebContainerManager instead.
+ * This is kept for backward compatibility during migration.
+ * Returns a promise that resolves to the WebContainer instance from the manager.
  */
-export let webcontainer: Promise<WebContainer> = new Promise(() => {
-  // noop for ssr
-});
-
-if (!import.meta.env.SSR) {
-  webcontainer =
-    import.meta.hot?.data.webcontainer ??
-    Promise.resolve()
-      .then(() => {
-        return WebContainer.boot({ workdirName: WORK_DIR_NAME });
-      })
-      .then((wc) => {
-        webcontainerContext.loaded = true;
-        return wc;
-      });
-
-  if (import.meta.hot) {
-    import.meta.hot.data.webcontainer = webcontainer;
-  }
-}
+export const webcontainer = WebContainerManager.getInstance();
 
 export * from "./types";
 export * from "./file-utils";
