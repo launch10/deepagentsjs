@@ -4,71 +4,6 @@ import type { FileSystemTree } from "@webcontainer/api";
 export const WORK_DIR_NAME = "project";
 export const WORK_DIR = `/home/${WORK_DIR_NAME}`;
 
-/**
- * Dependencies included in the snapshot.
- * If a project has deps not in this list, we run npm install.
- * Keep in sync with scripts/generate-webcontainer-snapshot.ts CURATED_SNAPSHOT_PKG
- */
-const SNAPSHOT_DEPS = new Set([
-  // Core
-  "react",
-  "react-dom",
-  "react-router-dom",
-
-  // Icons
-  "lucide-react",
-
-  // Toasts
-  "sonner",
-
-  // Styling utilities
-  "clsx",
-  "tailwind-merge",
-  "class-variance-authority",
-  "tailwindcss-animate",
-
-  // All Radix UI components
-  "@radix-ui/react-accordion",
-  "@radix-ui/react-alert-dialog",
-  "@radix-ui/react-aspect-ratio",
-  "@radix-ui/react-avatar",
-  "@radix-ui/react-checkbox",
-  "@radix-ui/react-collapsible",
-  "@radix-ui/react-context-menu",
-  "@radix-ui/react-dialog",
-  "@radix-ui/react-dropdown-menu",
-  "@radix-ui/react-hover-card",
-  "@radix-ui/react-label",
-  "@radix-ui/react-menubar",
-  "@radix-ui/react-navigation-menu",
-  "@radix-ui/react-popover",
-  "@radix-ui/react-progress",
-  "@radix-ui/react-radio-group",
-  "@radix-ui/react-scroll-area",
-  "@radix-ui/react-select",
-  "@radix-ui/react-separator",
-  "@radix-ui/react-slider",
-  "@radix-ui/react-slot",
-  "@radix-ui/react-switch",
-  "@radix-ui/react-tabs",
-  "@radix-ui/react-toast",
-  "@radix-ui/react-toggle",
-  "@radix-ui/react-toggle-group",
-  "@radix-ui/react-tooltip",
-
-  // Build tools (devDependencies)
-  "vite",
-  "@vitejs/plugin-react",
-  "typescript",
-  "tailwindcss",
-  "postcss",
-  "autoprefixer",
-  "@tailwindcss/typography",
-  "@types/react",
-  "@types/react-dom",
-  "@types/node",
-]);
-
 interface WarmupState {
   booted: boolean;
   depsInstalled: boolean;
@@ -104,6 +39,7 @@ class WebContainerManagerClass {
   private instance: WebContainer | null = null;
   private warmupPromise: Promise<void> | null = null;
   private listeners: Set<WarmupListener> = new Set();
+  private snapshotDeps: Set<string> = new Set();
   private state: WarmupState = {
     booted: false,
     depsInstalled: false,
@@ -146,6 +82,10 @@ class WebContainerManagerClass {
       const snapshot = await this.fetchSnapshot();
       this.log("[WebContainer] Snapshot found, mounting...");
       await this.instance.mount(snapshot);
+
+      // Read snapshot's package.json to know which deps are pre-installed
+      await this.loadSnapshotDeps();
+
       this.updateState({ depsInstalled: true });
       this.log(
         `[WebContainer] Snapshot mounted in ${(performance.now() - snapshotStart).toFixed(0)}ms`
@@ -239,6 +179,28 @@ class WebContainerManagerClass {
   }
 
   /**
+   * Read the snapshot's package.json to know which deps are pre-installed.
+   * Called after mounting the snapshot.
+   */
+  private async loadSnapshotDeps(): Promise<void> {
+    if (!this.instance) return;
+
+    try {
+      const pkgJson = await this.instance.fs.readFile("/package.json", "utf-8");
+      const pkg = JSON.parse(pkgJson);
+      const allDeps = {
+        ...pkg.dependencies,
+        ...pkg.devDependencies,
+      };
+
+      this.snapshotDeps = new Set(Object.keys(allDeps));
+      this.log(`[WebContainer] Snapshot has ${this.snapshotDeps.size} pre-installed deps`);
+    } catch (e) {
+      this.log(`[WebContainer] Could not read snapshot package.json: ${e}`);
+    }
+  }
+
+  /**
    * Check if the mounted project has dependencies not in the snapshot.
    */
   private async checkForMissingDeps(): Promise<string[]> {
@@ -254,7 +216,7 @@ class WebContainerManagerClass {
 
       const missing: string[] = [];
       for (const dep of Object.keys(projectDeps)) {
-        if (!SNAPSHOT_DEPS.has(dep)) {
+        if (!this.snapshotDeps.has(dep)) {
           missing.push(dep);
         }
       }
