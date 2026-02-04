@@ -7,7 +7,7 @@
 
 export {
   WEBSITE_EVENT_TYPES,
-  ALL_EVENT_TYPES,
+  AGENT_CONTEXT_EVENTS,
   SUBSCRIBABLE_GRAPHS,
   agentEventSubscriptions as AGENT_EVENT_SUBSCRIPTIONS,
   getSubscribedEventTypes,

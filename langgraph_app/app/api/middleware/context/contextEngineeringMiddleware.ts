@@ -131,11 +131,34 @@ async function injectContextEvents(ctx: StreamMiddlewareContext<any>): Promise<v
  *
  * Custom middleware that AWAITS context injection before calling next().
  * This is necessary because createMiddlewareFromHooks fires onStart without awaiting.
+ *
+ * NOTE: We can't use async/await directly because StreamMiddleware expects
+ * a synchronous Response return. Instead, we block on the async work using
+ * a ReadableStream that waits for injection before piping through.
  */
-export const contextEngineeringMiddleware: StreamMiddleware<any> = async (ctx, next) => {
-  // Await the context injection before proceeding
-  await injectContextEvents(ctx);
+export const contextEngineeringMiddleware: StreamMiddleware<any> = (ctx, next) => {
+  // Create a stream that waits for context injection before starting
+  const { readable, writable } = new TransformStream();
 
-  // Now call next with the modified context
-  return next();
+  // Run async injection, then pipe the real response through
+  (async () => {
+    try {
+      await injectContextEvents(ctx);
+      const response = next();
+
+      if (response.body) {
+        await response.body.pipeTo(writable);
+      } else {
+        await writable.close();
+      }
+    } catch (error) {
+      const writer = writable.getWriter();
+      await writer.abort(error);
+    }
+  })();
+
+  // Return immediately with the readable side
+  return new Response(readable, {
+    headers: { "Content-Type": "text/event-stream" },
+  });
 };

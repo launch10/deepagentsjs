@@ -38,7 +38,7 @@ export async function appCommand<T = unknown>(name: string, options?: unknown): 
     throw new Error(`App command '${name}' failed: ${response.status} - ${error}`);
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as T[];
   // cypress-on-rails returns an array with the command result
   return data[0] as T;
 }

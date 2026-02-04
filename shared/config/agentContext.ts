@@ -14,8 +14,8 @@ export type WebsiteEventType = (typeof WEBSITE_EVENT_TYPES)[number];
 // export const ADS_EVENT_TYPES = [] as const;
 
 // All valid event types (union of all graph-specific types)
-export const ALL_EVENT_TYPES = [...WEBSITE_EVENT_TYPES] as const;
-export type AgentContextEventType = (typeof ALL_EVENT_TYPES)[number];
+export const AGENT_CONTEXT_EVENTS = [...WEBSITE_EVENT_TYPES] as const;
+export type AgentContextEventType = (typeof AGENT_CONTEXT_EVENTS)[number];
 
 // Graph names that can subscribe to events
 export const SUBSCRIBABLE_GRAPHS = [
@@ -51,5 +51,5 @@ export function getSubscribedEventTypes(graphName: string | undefined): readonly
  * Check if an event type is valid.
  */
 export function isValidEventType(eventType: string): eventType is AgentContextEventType {
-  return ALL_EVENT_TYPES.includes(eventType as AgentContextEventType);
+  return AGENT_CONTEXT_EVENTS.includes(eventType as AgentContextEventType);
 }

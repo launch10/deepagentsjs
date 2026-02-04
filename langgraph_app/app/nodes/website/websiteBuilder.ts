@@ -8,6 +8,7 @@ import { createMultimodalContextMessage, createContextMessage } from "langgraph-
 import { isCacheModeEnabled } from "./cacheMode";
 import { getSchedulingToolMinorEditFiles } from "@cache";
 import type { Website } from "@types";
+import { db, websiteFiles, eq } from "@db";
 
 /**
  * Get cached response for cache mode.
@@ -84,17 +85,27 @@ export const websiteBuilderNode = NodeMiddleware.use(
       };
     }
 
-    // This node only runs in the "default" intent case (create flow)
-    const agent = await createCodingAgent({ ...state, isFirstMessage: true });
+    // Detect if this is a new site or an edit by checking files in database
+    // We can't rely on state.files as files are loaded by the backend, not checkpoint
+    const existingFiles = await db
+      .select({ id: websiteFiles.id })
+      .from(websiteFiles)
+      .where(eq(websiteFiles.websiteId, state.websiteId))
+      .limit(1);
+    const hasExistingFiles = existingFiles.length > 0;
+    const isFirstMessage = !hasExistingFiles;
+
+    const agent = await createCodingAgent({ ...state, isFirstMessage });
     const brainstormContext = buildBrainstormContext(state);
+
+    // Use different context based on whether this is create or edit
+    const contextMessages = isFirstMessage
+      ? [createContextMessage("Create a landing page for this business"), brainstormContext]
+      : []; // For edits, just use the user's message directly
 
     const result = await agent.invoke(
       {
-        messages: [
-          ...(state.messages || []),
-          createContextMessage("Create a landing page for this business"),
-          brainstormContext,
-        ],
+        messages: [...(state.messages || []), ...contextMessages],
       },
       {
         ...config,

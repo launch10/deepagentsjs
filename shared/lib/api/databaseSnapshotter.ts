@@ -29,13 +29,21 @@ export type RestoreSnapshotResponse = NonNullable<
   paths["/test/database/restore_snapshot"]["post"]["responses"][200]["content"]
 >["application/json"];
 
-export type SetCreditsRequest = NonNullable<
-  paths["/test/database/set_credits"]["post"]["requestBody"]
->["content"]["application/json"];
+// Note: set_credits endpoint not yet in generated OpenAPI types - using inline types
+export interface SetCreditsRequest {
+  credits: {
+    email: string;
+    plan_millicredits: number;
+    pack_millicredits: number;
+  };
+}
 
-export type SetCreditsResponse = NonNullable<
-  paths["/test/database/set_credits"]["post"]["responses"][200]["content"]
->["application/json"];
+export interface SetCreditsResponse {
+  status: string;
+  message: string;
+  plan_millicredits: number;
+  pack_millicredits: number;
+}
 
 export interface DatabaseOperationResult {
   status: string;
@@ -160,7 +168,8 @@ export class DatabaseSnapshotterAPI extends RailsAPIBase {
     packMillicredits: number
   ): Promise<SetCreditsResponse> {
     const client = await this.getClient();
-    const response = await client.POST("/test/database/set_credits", {
+    // Using type assertion since endpoint not yet in generated OpenAPI types
+    const response = await (client as any).POST("/test/database/set_credits", {
       body: {
         credits: {
           email,
@@ -178,7 +187,7 @@ export class DatabaseSnapshotterAPI extends RailsAPIBase {
       throw new Error(`Failed to set credits: no data returned`);
     }
 
-    return response.data satisfies SetCreditsResponse;
+    return response.data as SetCreditsResponse;
   }
 }
 

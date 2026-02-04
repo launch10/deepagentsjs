@@ -32,7 +32,7 @@ const dynamicPromptMiddleware = createMiddleware({
   wrapModelCall: async (request, handler) => {
     const state = request.state as unknown as AdsGraphState;
 
-    const systemPrompt = await chooseAdsPrompt(state, request.runtime);
+    const systemPrompt = await chooseAdsPrompt(state, request.runtime as LangGraphRunnableConfig);
 
     return await handler({
       ...request,

@@ -5,7 +5,7 @@
 class AgentContextConfig
   class << self
     def valid_event_types
-      @valid_event_types ||= load_config("ALL_EVENT_TYPES")
+      @valid_event_types ||= load_config("AGENT_CONTEXT_EVENTS")
     end
 
     def subscriptions

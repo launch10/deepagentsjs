@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { testGraph } from "@support";
+import { HumanMessage } from "@langchain/core/messages";
+import { testGraph, appScenario, consumeStream } from "@support";
 import { DatabaseSnapshotter } from "@services";
+import { WebsiteAPI } from "@api";
 import { getCodingAgentBackend } from "@nodes";
 import {
   db,
@@ -364,6 +366,96 @@ describe("Website Builder", () => {
           expect(result.error).toBeUndefined();
         });
       });
+    });
+
+    describe("Image uploads via context engineering", () => {
+      let websiteId: number;
+      let projectId: number;
+      let accountId: number;
+      let threadId: ThreadIDType;
+
+      beforeEach(async () => {
+        // Use website_generated snapshot - has a fully generated website with files
+        await DatabaseSnapshotter.restoreSnapshot("website_generated");
+
+        const [websiteRow] = await db.select().from(websites).limit(1);
+        if (!websiteRow) {
+          throw new Error("No website found in snapshot");
+        }
+
+        websiteId = websiteRow.id;
+        projectId = websiteRow.projectId!;
+        accountId = websiteRow.accountId!;
+
+        // Load the chat's threadId for checkpoint state
+        const [chat] = await db
+          .select()
+          .from(chats)
+          .where(and(eq(chats.contextableId, websiteId), eq(chats.contextableType, "Website")))
+          .limit(1);
+
+        if (!chat?.threadId) {
+          throw new Error("No chat with threadId found for website");
+        }
+        threadId = chat.threadId as ThreadIDType;
+      });
+
+      it("incorporates uploaded images into the website when user asks", async () => {
+        // Simulate user uploading images via QuickActions (creates AgentContextEvents)
+        await appScenario("create_agent_context_event", {
+          project_id: projectId,
+          event_type: "images.created",
+          payload: {
+            filename: "hero-banner.png",
+            url: "https://dev-uploads.launch10.ai/uploads/024dfc6c-335d-4f11-883b-f8e241f91744.png",
+          },
+        });
+        await appScenario("create_agent_context_event", {
+          project_id: projectId,
+          event_type: "images.created",
+          payload: {
+            filename: "product-shot.png",
+            url: "https://dev-uploads.launch10.ai/uploads/4524ac00-da1d-49b5-b601-bdd015aa6d2b.png",
+          },
+        });
+
+        // Use WebsiteAPI to stream - this goes through the bridge with context middleware
+        const userMessage = { role: "user", content: "Add these new images to my landing page" };
+        const response = WebsiteAPI.stream({
+          messages: [userMessage],
+          threadId,
+          state: {
+            websiteId,
+            threadId,
+            projectId,
+            accountId,
+            jwt: "test-jwt",
+            messages: [new HumanMessage(userMessage.content)], // Include for middleware
+          },
+        });
+        await consumeStream(response);
+
+        // Get the final state from checkpoint
+        const checkpoint = await websiteGraph.getState({ configurable: { thread_id: threadId } });
+        const state = checkpoint.values as WebsiteGraphState;
+
+        expect(state.status).toBe("completed");
+
+        // Verify the agent responded with awareness of the uploaded images
+        const aiMessage = state.messages.find(isAIMessage);
+        expect(aiMessage).toBeDefined();
+
+        // Check that generated files reference the uploaded images
+        const allFileContent = Object.values(state.files)
+          .map((f) => (f as Website.File.File).content || "")
+          .join("\n");
+
+        // The agent should have added at least one of the uploaded images
+        const hasHeroBanner = allFileContent.includes("024dfc6c-335d-4f11-883b-f8e241f91744.png");
+        const hasProductShot = allFileContent.includes("4524ac00-da1d-49b5-b601-bdd015aa6d2b.png");
+
+        expect(hasHeroBanner || hasProductShot).toBe(true);
+      }, 300000);
     });
   });
 });

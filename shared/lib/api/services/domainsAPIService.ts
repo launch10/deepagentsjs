@@ -69,10 +69,9 @@ export class DomainsAPIService extends RailsAPIBase {
    */
   async list(websiteId?: number): Promise<GetDomainsResponse> {
     const client = await this.getClient();
+    // Note: website_id query param not yet in generated OpenAPI types
     const response = await client.GET("/api/v1/domains", {
-      params: {
-        query: websiteId ? { website_id: websiteId } : undefined,
-      },
+      params: websiteId ? { query: { website_id: websiteId } as any } : {},
     });
 
     if (response.error) {
