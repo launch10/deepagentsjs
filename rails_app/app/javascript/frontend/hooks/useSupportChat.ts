@@ -1,9 +1,25 @@
+import { useMemo } from "react";
 import { useLanggraph, type ChatSnapshot, type LanggraphChat } from "langgraph-ai-sdk-react";
 import type { UIMessage } from "ai";
 import type { SupportBridgeType, SupportGraphState } from "@shared";
 import { useChatOptions } from "@hooks/useChatOptions";
 
 export type SupportSnapshot = ChatSnapshot<SupportGraphState>;
+
+const INITIAL_GREETING =
+  "Hi! I can help answer questions about Launch10. What would you like to know?";
+
+const INITIAL_ASSISTANT_MESSAGE = {
+  id: "initial-greeting",
+  role: "assistant" as const,
+  blocks: [
+    {
+      id: "initial-greeting-block",
+      type: "text" as const,
+      text: INITIAL_GREETING,
+    },
+  ],
+};
 
 function useSupportChatOptions() {
   return useChatOptions<SupportBridgeType>({
@@ -25,7 +41,17 @@ export const useSupportSelector = <TSelected>(
 };
 
 export function useSupportMessages() {
-  return useSupportSelector((s) => s.messages);
+  const messages = useSupportSelector((s) => s.messages);
+  const isStreaming = useSupportIsStreaming();
+
+  // Prepend the initial greeting as the first message (when not actively streaming a response)
+  return useMemo(() => {
+    // Don't show greeting while streaming the first response
+    if (messages.length === 0 && isStreaming) {
+      return messages;
+    }
+    return [INITIAL_ASSISTANT_MESSAGE, ...messages];
+  }, [messages, isStreaming]);
 }
 
 export function useSupportIsStreaming() {

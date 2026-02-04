@@ -1,15 +1,12 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useForm, usePage, router } from "@inertiajs/react";
 import { Card, CardContent } from "@components/ui/card";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Textarea } from "@components/ui/textarea";
-import {
-  CheckCircleIcon,
-  PaperClipIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
+import { CheckCircleIcon, PaperClipIcon } from "@heroicons/react/24/outline";
 import { Link } from "@inertiajs/react";
+import { BaseAttachmentList, filesToAttachments } from "@components/shared/chat/attachments";
 
 const CATEGORIES = [
   "Report a bug",
@@ -21,13 +18,7 @@ const CATEGORIES = [
 
 const MAX_FILES = 3;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_TYPES = [
-  "image/png",
-  "image/jpeg",
-  "image/gif",
-  "image/webp",
-  "application/pdf",
-];
+const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"];
 
 export default function ContactForm() {
   const { errors, current_user } = usePage<{
@@ -52,22 +43,10 @@ export default function ContactForm() {
     setFileError(null);
 
     const formData = new FormData();
-    formData.append(
-      "support_request[category]",
-      data["support_request[category]"]
-    );
-    formData.append(
-      "support_request[subject]",
-      data["support_request[subject]"]
-    );
-    formData.append(
-      "support_request[description]",
-      data["support_request[description]"]
-    );
-    formData.append(
-      "support_request[submitted_from_url]",
-      window.location.href
-    );
+    formData.append("support_request[category]", data["support_request[category]"]);
+    formData.append("support_request[subject]", data["support_request[subject]"]);
+    formData.append("support_request[description]", data["support_request[description]"]);
+    formData.append("support_request[submitted_from_url]", window.location.href);
     formData.append("support_request[browser_info]", navigator.userAgent);
 
     files.forEach((file) => {
@@ -80,9 +59,7 @@ export default function ContactForm() {
         const flash = (page.props as Record<string, unknown>).flash as
           | Array<{ type: string; title?: string; description?: string }>
           | undefined;
-        const successFlash = flash?.find((f) =>
-          f.title?.includes("Request submitted")
-        );
+        const successFlash = flash?.find((f) => f.title?.includes("Request submitted"));
         if (successFlash) {
           setTicketInfo(successFlash.description || "");
         }
@@ -122,10 +99,18 @@ export default function ContactForm() {
     }
   };
 
-  const removeFile = (index: number) => {
-    setFiles(files.filter((_, i) => i !== index));
-    setFileError(null);
+  const removeFile = (id: string) => {
+    // Extract index from id format "file-{index}-{name}"
+    const match = id.match(/^file-(\d+)-/);
+    if (match) {
+      const index = parseInt(match[1], 10);
+      setFiles(files.filter((_, i) => i !== index));
+      setFileError(null);
+    }
   };
+
+  // Convert files to attachment format for preview component
+  const attachments = useMemo(() => filesToAttachments(files), [files]);
 
   const handleReset = () => {
     reset();
@@ -140,9 +125,7 @@ export default function ContactForm() {
       <Card>
         <CardContent className="flex flex-col items-center text-center py-12">
           <CheckCircleIcon className="w-16 h-16 text-success-500 mb-4" />
-          <h2 className="font-sans text-xl font-semibold text-base-500 mb-2">
-            Request submitted
-          </h2>
+          <h2 className="font-sans text-xl font-semibold text-base-500 mb-2">Request submitted</h2>
           <p className="font-sans text-sm text-neutral-600 mb-6 max-w-md">
             {ticketInfo ||
               `Thanks for reaching out. We'll get back to you within 24 hours at ${current_user?.email}.`}
@@ -171,9 +154,7 @@ export default function ContactForm() {
             </label>
             <select
               value={data["support_request[category]"]}
-              onChange={(e) =>
-                setData("support_request[category]", e.target.value)
-              }
+              onChange={(e) => setData("support_request[category]", e.target.value)}
               required
               className="border-input h-9 w-full rounded-md border bg-transparent px-3 py-1 text-base text-base-500 shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm"
             >
@@ -187,9 +168,7 @@ export default function ContactForm() {
               ))}
             </select>
             {errors?.["category"] && (
-              <p className="text-xs text-red-500 mt-1">
-                {errors["category"][0]}
-              </p>
+              <p className="text-xs text-red-500 mt-1">{errors["category"][0]}</p>
             )}
           </div>
 
@@ -200,18 +179,14 @@ export default function ContactForm() {
             </label>
             <Input
               value={data["support_request[subject]"]}
-              onChange={(e) =>
-                setData("support_request[subject]", e.target.value)
-              }
+              onChange={(e) => setData("support_request[subject]", e.target.value)}
               required
               maxLength={200}
               placeholder="Brief summary of your issue"
               className="text-base-500"
             />
             {errors?.["subject"] && (
-              <p className="text-xs text-red-500 mt-1">
-                {errors["subject"][0]}
-              </p>
+              <p className="text-xs text-red-500 mt-1">{errors["subject"][0]}</p>
             )}
           </div>
 
@@ -222,9 +197,7 @@ export default function ContactForm() {
             </label>
             <Textarea
               value={data["support_request[description]"]}
-              onChange={(e) =>
-                setData("support_request[description]", e.target.value)
-              }
+              onChange={(e) => setData("support_request[description]", e.target.value)}
               required
               maxLength={5000}
               rows={6}
@@ -235,9 +208,7 @@ export default function ContactForm() {
               {data["support_request[description]"].length}/5000
             </p>
             {errors?.["description"] && (
-              <p className="text-xs text-red-500 mt-1">
-                {errors["description"][0]}
-              </p>
+              <p className="text-xs text-red-500 mt-1">{errors["description"][0]}</p>
             )}
           </div>
 
@@ -245,36 +216,14 @@ export default function ContactForm() {
           <div>
             <label className="font-sans text-sm font-medium text-base-500 block mb-1.5">
               Attachments{" "}
-              <span className="font-normal text-neutral-500">
-                (optional, max 3 files)
-              </span>
+              <span className="font-normal text-neutral-500">(optional, max 3 files)</span>
             </label>
 
-            {files.length > 0 && (
-              <div className="space-y-2 mb-3">
-                {files.map((file, i) => (
-                  <div
-                    key={`${file.name}-${i}`}
-                    className="flex items-center gap-2 rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm"
-                  >
-                    <PaperClipIcon className="w-4 h-4 text-neutral-500 shrink-0" />
-                    <span className="truncate flex-1 text-base-500">
-                      {file.name}
-                    </span>
-                    <span className="text-neutral-500 shrink-0">
-                      {(file.size / 1024 / 1024).toFixed(1)}MB
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeFile(i)}
-                      className="text-neutral-500 hover:text-red-500 transition-colors"
-                    >
-                      <XMarkIcon className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+            <BaseAttachmentList
+              attachments={attachments}
+              onRemove={removeFile}
+              className="flex flex-wrap gap-2 mb-3"
+            />
 
             {files.length < MAX_FILES && (
               <>
@@ -298,13 +247,9 @@ export default function ContactForm() {
               </>
             )}
 
-            {fileError && (
-              <p className="text-xs text-red-500 mt-1">{fileError}</p>
-            )}
+            {fileError && <p className="text-xs text-red-500 mt-1">{fileError}</p>}
             {errors?.["attachments"] && (
-              <p className="text-xs text-red-500 mt-1">
-                {errors["attachments"][0]}
-              </p>
+              <p className="text-xs text-red-500 mt-1">{errors["attachments"][0]}</p>
             )}
             <p className="text-xs text-neutral-500 mt-1">
               Images (PNG, JPEG, GIF, WebP) and PDFs up to 10MB each

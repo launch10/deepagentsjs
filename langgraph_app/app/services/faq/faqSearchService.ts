@@ -122,11 +122,26 @@ export class FAQSearchService {
       },
     }));
 
-    const reranked = rerankThreshold
+    let reranked = rerankThreshold
       ? await this.rerankService.rerankWithThreshold(query, rerankDocs, rerankThreshold, {
           topN: rerankTopN,
         })
       : await this.rerankService.rerank(query, rerankDocs, { topN: rerankTopN });
+
+    // Fallback: if reranking filtered everything out, return top embedding results
+    if (reranked.length === 0 && candidateResults.length > 0) {
+      return candidateResults.slice(0, Math.min(3, topK)).map((r) => ({
+        id: r.id,
+        question: r.question,
+        answer: r.answer,
+        section: r.section,
+        documentId: r.documentId,
+        documentTitle: r.documentTitle,
+        documentSlug: r.documentSlug,
+        tags: (r.tags as string[]) || [],
+        relevanceScore: r.similarity,
+      }));
+    }
 
     return reranked.map((r) => ({
       id: r.document.metadata?.id as number,

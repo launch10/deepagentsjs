@@ -13,7 +13,7 @@ class SupportMailer < ApplicationMailer
     end
 
     mail(
-      to: "support@launch10.ai",
+      to: Jumpstart.config.support_email,
       subject: "[#{@support_request.category}] #{@support_request.subject}",
       reply_to: @user.email
     )

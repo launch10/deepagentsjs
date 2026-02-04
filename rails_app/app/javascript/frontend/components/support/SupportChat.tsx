@@ -1,12 +1,11 @@
 import { Card, CardContent } from "@components/ui/card";
 import { Chat } from "@components/shared/chat/Chat";
 import { ArrowUpIcon, StopIcon } from "@heroicons/react/24/outline";
-import { useSupportChat, useSupportMessages, useSupportIsStreaming } from "@hooks/useSupportChat";
+import { useSupportChat, useSupportMessages } from "@hooks/useSupportChat";
 
 export default function SupportChat() {
   const chat = useSupportChat();
   const messages = useSupportMessages();
-  const isStreaming = useSupportIsStreaming();
 
   return (
     <Card>
@@ -15,16 +14,6 @@ export default function SupportChat() {
           <div className="flex flex-col h-[500px] bg-white">
             <div className="flex-1 overflow-y-auto p-4">
               <Chat.Messages.List className="space-y-4">
-                {/* Initial greeting when no messages */}
-                {messages.length === 0 && !isStreaming && (
-                  <div className="flex gap-3">
-                    <div className="bg-neutral-100 rounded-lg px-4 py-3 max-w-[85%]">
-                      <p className="font-sans text-sm text-base-500">
-                        Hi! I can help answer questions about Launch10. What would you like to know?
-                      </p>
-                    </div>
-                  </div>
-                )}
                 {messages.map((message, index) => {
                   const isLastMessage = index === messages.length - 1;
 
@@ -68,7 +57,7 @@ export default function SupportChat() {
             </div>
             <div className="border-t border-neutral-200 p-3">
               <Chat.Input.CreditGate>
-                <Chat.Input.DropZone className="relative bg-white border border-neutral-300 rounded-xl p-4 flex flex-col min-h-[100px]">
+                <div className="relative bg-white border border-neutral-300 rounded-xl p-4 flex flex-col min-h-[100px]">
                   <Chat.Input.Textarea
                     placeholder="Ask a question..."
                     className="flex-1 text-base-500 placeholder:text-neutral-500 placeholder:opacity-100"
@@ -81,7 +70,7 @@ export default function SupportChat() {
                       <ArrowUpIcon className="w-4 h-4" strokeWidth={2} />
                     </Chat.Input.SubmitButton>
                   </div>
-                </Chat.Input.DropZone>
+                </div>
               </Chat.Input.CreditGate>
             </div>
           </div>

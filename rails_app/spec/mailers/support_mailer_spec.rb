@@ -7,8 +7,8 @@ RSpec.describe SupportMailer, type: :mailer do
     let(:support_request) { create(:support_request) }
     let(:mail) { described_class.support_request(support_request) }
 
-    it "sends to support@launch10.ai" do
-      expect(mail.to).to eq(["support@launch10.ai"])
+    it "sends to configured support email" do
+      expect(mail.to).to eq([Jumpstart.config.support_email])
     end
 
     it "sets the subject with category" do

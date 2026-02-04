@@ -28,3 +28,23 @@ export function toDisplayAttachment(attachment: ComposerAttachment): ChatAttachm
     errorMessage: attachment.errorMessage,
   };
 }
+
+/**
+ * Convert a File to ChatAttachment for standalone usage (no upload tracking).
+ * Used by forms that manage files independently of the chat composer.
+ */
+export function fileToAttachment(file: File, index: number): ChatAttachment {
+  return {
+    id: `file-${index}-${file.name}`,
+    file,
+    status: "completed",
+    type: file.type.startsWith("image/") ? "image" : "document",
+  };
+}
+
+/**
+ * Convert an array of Files to ChatAttachments.
+ */
+export function filesToAttachments(files: File[]): ChatAttachment[] {
+  return files.map((file, index) => fileToAttachment(file, index));
+}

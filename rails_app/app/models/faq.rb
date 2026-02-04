@@ -17,9 +17,9 @@
 #
 # Indexes
 #
-#  index_faqs_on_category              (category)
-#  index_faqs_on_published_and_position (published,position)
-#  index_faqs_on_slug                  (slug) UNIQUE
+#  index_faqs_on_category                (category)
+#  index_faqs_on_published_and_position  (published,position)
+#  index_faqs_on_slug                    (slug) UNIQUE
 #
 class FAQ < ApplicationRecord
   self.table_name = "faqs"

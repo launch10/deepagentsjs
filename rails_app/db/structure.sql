@@ -1,8 +1,3 @@
-\restrict ip81ENRVNCXVvSypboVeRYF2OgfrJdef80n9KamnBs3defWFVEPB8AUXW6rqERI
-
--- Dumped from database version 16.11 (Ubuntu 16.11-1.pgdg24.04+1)
--- Dumped by pg_dump version 16.11 (Ubuntu 16.11-1.pgdg24.04+1)
-
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
@@ -1239,8 +1234,8 @@ CREATE TABLE public.analytics_daily_metrics (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     page_views_count bigint DEFAULT 0 NOT NULL,
-    deleted_at timestamp(6) without time zone,
-    conversion_value_cents bigint DEFAULT 0 NOT NULL
+    conversion_value_cents bigint DEFAULT 0 NOT NULL,
+    deleted_at timestamp(6) without time zone
 );
 
 
@@ -8732,13 +8727,6 @@ CREATE INDEX index_domains_on_domain ON public.domains USING btree (domain);
 
 
 --
--- Name: index_domains_on_website_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_domains_on_website_id ON public.domains USING btree (website_id);
-
-
---
 -- Name: index_faqs_on_category; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11572,17 +11560,16 @@ ALTER TABLE ONLY public.job_runs
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ip81ENRVNCXVvSypboVeRYF2OgfrJdef80n9KamnBs3defWFVEPB8AUXW6rqERI
-
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260204152455'),
 ('20260202005230'),
+('20260201235035'),
+('20260201153847'),
 ('20260131154443'),
 ('20260130210726'),
 ('20260130204037'),
-('20260201235035'),
-('20260201153847'),
 ('20260130161923'),
 ('20260130143844'),
 ('20260130100003'),

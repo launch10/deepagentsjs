@@ -3,7 +3,7 @@ application_name: Launch10
 business_name: Launch10
 business_address:
 domain: example.com
-support_email: support@example.com
+support_email: support@launch10.ai
 default_from_email: My App <no-reply@example.com>
 background_job_processor: sidekiq
 email_provider:
