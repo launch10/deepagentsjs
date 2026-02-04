@@ -141,46 +141,15 @@ class WebContainerManagerClass {
       this.updateState({ booted: true });
       this.log(`[WebContainer] Booted in ${(performance.now() - start).toFixed(0)}ms`);
 
-      // Step 2: Mount snapshot (if available) or run npm install
+      // Step 2: Mount snapshot (required - contains pre-installed node_modules)
       const snapshotStart = performance.now();
-      try {
-        const snapshot = await this.fetchSnapshot();
-        this.log("[WebContainer] Snapshot found, mounting...");
-        await this.instance.mount(snapshot);
-        this.updateState({ depsInstalled: true });
-        this.log(
-          `[WebContainer] Snapshot mounted in ${(performance.now() - snapshotStart).toFixed(0)}ms`
-        );
-      } catch {
-        // Fallback to npm install if snapshot fails
-        this.log("[WebContainer] Snapshot not available, falling back to npm install");
-        await this.instance.mount(this.getBaseTemplate());
-
-        const proc = await this.instance.spawn("npm", ["install"]);
-
-        // Pipe output for debugging
-        proc.output.pipeTo(
-          new WritableStream({
-            write: (chunk) => {
-              const lines = chunk.split("\n");
-              for (const line of lines) {
-                if (line.trim()) {
-                  this.log(`[npm-install] ${line}`);
-                }
-              }
-            },
-          })
-        );
-
-        const exitCode = await proc.exit;
-        if (exitCode !== 0) {
-          throw new Error(`npm install failed with code ${exitCode}`);
-        }
-        this.updateState({ depsInstalled: true });
-        this.log(
-          `[WebContainer] npm install complete in ${(performance.now() - snapshotStart).toFixed(0)}ms`
-        );
-      }
+      const snapshot = await this.fetchSnapshot();
+      this.log("[WebContainer] Snapshot found, mounting...");
+      await this.instance.mount(snapshot);
+      this.updateState({ depsInstalled: true });
+      this.log(
+        `[WebContainer] Snapshot mounted in ${(performance.now() - snapshotStart).toFixed(0)}ms`
+      );
 
       // Step 3: Start Vite dev server
       const viteStart = performance.now();
@@ -369,112 +338,6 @@ class WebContainerManagerClass {
     }
     const buffer = await response.arrayBuffer();
     return new Uint8Array(buffer);
-  }
-
-  private getBaseTemplate(): FileSystemTree {
-    return {
-      "package.json": {
-        file: {
-          contents: JSON.stringify(
-            {
-              name: "landing-page",
-              type: "module",
-              scripts: {
-                dev: "vite --port 3000 --host",
-                build: "vite build",
-              },
-              dependencies: {
-                react: "^18.3.1",
-                "react-dom": "^18.3.1",
-              },
-              devDependencies: {
-                vite: "^5.4.1",
-                "@vitejs/plugin-react-swc": "^3.5.0",
-                typescript: "^5.5.3",
-                tailwindcss: "^3.4.11",
-                postcss: "^8.4.47",
-                autoprefixer: "^10.4.20",
-                "@types/react": "^18.3.3",
-                "@types/react-dom": "^18.3.0",
-              },
-            },
-            null,
-            2
-          ),
-        },
-      },
-      "vite.config.ts": {
-        file: {
-          contents: `
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react-swc';
-
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    port: 3000,
-    host: true,
-  },
-});
-          `.trim(),
-        },
-      },
-      "tailwind.config.js": {
-        file: {
-          contents: `
-/** @type {import('tailwindcss').Config} */
-export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
-  theme: { extend: {} },
-  plugins: [],
-};
-          `.trim(),
-        },
-      },
-      "postcss.config.js": {
-        file: {
-          contents: `
-export default {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-};
-          `.trim(),
-        },
-      },
-      "tsconfig.json": {
-        file: {
-          contents: JSON.stringify(
-            {
-              compilerOptions: {
-                target: "ES2020",
-                useDefineForClassFields: true,
-                lib: ["ES2020", "DOM", "DOM.Iterable"],
-                module: "ESNext",
-                skipLibCheck: true,
-                moduleResolution: "bundler",
-                allowImportingTsExtensions: true,
-                resolveJsonModule: true,
-                isolatedModules: true,
-                noEmit: true,
-                jsx: "react-jsx",
-                strict: true,
-              },
-              include: ["src"],
-            },
-            null,
-            2
-          ),
-        },
-      },
-      index: {
-        directory: {},
-      },
-      src: {
-        directory: {},
-      },
-    };
   }
 }
 
