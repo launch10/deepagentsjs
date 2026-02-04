@@ -231,9 +231,21 @@ Consider:
 
 ## Local Development
 
-1. Generate snapshot once: `pnpm run webcontainer:snapshot`
-2. Snapshot served from `public/webcontainer-snapshot.bin`
-3. Changes to template files require regenerating snapshot
+The snapshot is stored in Git LFS, so developers get it automatically:
+
+```bash
+git pull  # LFS downloads public/webcontainer-snapshot.bin
+```
+
+The local dev server serves from `public/webcontainer-snapshot.bin`.
+
+**To regenerate locally** (only needed when updating dependencies):
+
+```bash
+pnpm run webcontainer:snapshot
+```
+
+**Note:** In production, the snapshot is served from R2 CDN via `VITE_WEBCONTAINER_SNAPSHOT_URL`. The LFS file is for local development convenience.
 
 ## Testing Changes
 

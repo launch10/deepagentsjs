@@ -94,6 +94,5 @@ storybook-static
 /.playwright-mcp/
 *.tsbuildinfo
 
-# WebContainer snapshot (generated via pnpm run webcontainer:snapshot)
-/public/webcontainer-snapshot.bin
+# WebContainer snapshot temp directory (generated during snapshot creation)
 /.snapshot-temp/
