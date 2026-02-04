@@ -71,6 +71,8 @@ const SNAPSHOT_DEPS = new Set([
 
 interface WarmupState {
   booted: boolean;
+  snapshotLoaded: boolean;
+  projectMounted: boolean;
   depsInstalled: boolean;
   viteRunning: boolean;
   previewUrl: string | null;
@@ -106,6 +108,8 @@ class WebContainerManagerClass {
   private listeners: Set<WarmupListener> = new Set();
   private state: WarmupState = {
     booted: false,
+    snapshotLoaded: false,
+    projectMounted: false,
     depsInstalled: false,
     viteRunning: false,
     previewUrl: null,
