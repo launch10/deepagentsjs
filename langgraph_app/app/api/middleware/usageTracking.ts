@@ -13,6 +13,7 @@ import {
   createStorageMiddleware,
   type StreamMiddleware,
 } from "langgraph-ai-sdk";
+import { contextEngineeringMiddleware } from "./context";
 import {
   usageStorage,
   createUsageContext,
@@ -51,9 +52,7 @@ function extractCreditState(state?: Record<string, unknown>): {
   return {
     accountId: typeof state.accountId === "number" ? state.accountId : undefined,
     preRunCreditsRemaining:
-      typeof state.preRunCreditsRemaining === "number"
-        ? state.preRunCreditsRemaining
-        : undefined,
+      typeof state.preRunCreditsRemaining === "number" ? state.preRunCreditsRemaining : undefined,
   };
 }
 
@@ -117,10 +116,13 @@ const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddleware<a
 });
 
 /**
- * Bridge factory with usage tracking baked in.
- * All graph APIs use this to get automatic billing.
+ * Bridge factory with context engineering and usage tracking baked in.
+ * All graph APIs use this to get automatic billing and context awareness.
  *
+ * Middleware order:
+ * 1. contextEngineeringMiddleware - Inject context events before processing
+ * 2. usageTrackingMiddleware - Track LLM usage for billing
  */
 export const createAppBridge = createBridgeFactory({
-  middleware: [usageTrackingMiddleware],
+  middleware: [contextEngineeringMiddleware, usageTrackingMiddleware],
 });
