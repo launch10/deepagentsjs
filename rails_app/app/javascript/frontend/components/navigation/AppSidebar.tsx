@@ -5,6 +5,7 @@ import {
   RocketLaunchIcon,
   Cog8ToothIcon,
   ArrowRightStartOnRectangleIcon,
+  BookOpenIcon,
 } from "@heroicons/react/24/outline";
 import { twMerge } from "tailwind-merge";
 import { NewProjectButton } from "./NewProjectButton";
@@ -30,6 +31,9 @@ export default function AppSidebar() {
     }
     if (href === "/projects") {
       return url.startsWith("/projects");
+    }
+    if (href === "/support") {
+      return url === "/support";
     }
     return url.startsWith(href);
   };
@@ -93,7 +97,7 @@ export default function AppSidebar() {
         })}
       </nav>
 
-      {/* Divider above Settings */}
+      {/* Divider above Settings & Support */}
       <div
         className="h-px"
         style={{
@@ -103,13 +107,29 @@ export default function AppSidebar() {
         }}
       />
 
+      {/* Help Center */}
+      <div className={twMerge("px-1", isCollapsed && "flex justify-center")}>
+        <Link
+          href="/support"
+          className={twMerge(
+            "flex items-center gap-3 px-6 py-3 font-sans relative transition-colors",
+            isActive("/support") ? "text-secondary-500" : "text-white hover:bg-white/10",
+            isCollapsed && "justify-center px-0"
+          )}
+        >
+          <BookOpenIcon className="w-6 h-6 shrink-0" strokeWidth={1.5} />
+          {!isCollapsed && <span className={isActive("/support") ? "font-semibold" : ""}>Help Center</span>}
+        </Link>
+      </div>
+
       {/* Settings */}
-      <div className={twMerge("p-6", isCollapsed && "p-4 flex justify-center")}>
+      <div className={twMerge("px-1 pb-6", isCollapsed && "flex justify-center pb-4")}>
         <Link
           href="/settings"
           className={twMerge(
-            "flex items-center gap-3 text-white font-sans",
-            isCollapsed && "justify-center"
+            "flex items-center gap-3 px-6 py-3 font-sans relative transition-colors",
+            "text-white hover:bg-white/10",
+            isCollapsed && "justify-center px-0"
           )}
         >
           <Cog8ToothIcon className="w-6 h-6 shrink-0" strokeWidth={1.5} />

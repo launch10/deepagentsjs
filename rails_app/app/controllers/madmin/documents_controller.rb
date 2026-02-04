@@ -25,7 +25,7 @@ module Madmin
       service = GoogleDocs::SyncService.new
       results = service.sync_all(force: force)
 
-      redirect_to madmin_documents_path, notice: sync_notice(results)
+      redirect_to main_app.madmin_documents_path, notice: sync_notice(results)
     end
 
     def resync
@@ -41,9 +41,9 @@ module Madmin
       result = service.sync_document(file, force: true)
 
       if result[:status] == :queued
-        redirect_to madmin_document_path(@document), notice: "Extraction queued for #{@document.title}"
+        redirect_to main_app.madmin_document_path(@document), notice: "Extraction queued for #{@document.title}"
       else
-        redirect_to madmin_document_path(@document), alert: "Failed to sync: #{result[:error] || result[:reason]}"
+        redirect_to main_app.madmin_document_path(@document), alert: "Failed to sync: #{result[:error] || result[:reason]}"
       end
     end
 

@@ -2569,6 +2569,43 @@ ALTER SEQUENCE public.domains_id_seq OWNED BY public.domains.id;
 
 
 --
+-- Name: faqs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.faqs (
+    id bigint NOT NULL,
+    question character varying NOT NULL,
+    answer text NOT NULL,
+    category character varying NOT NULL,
+    subcategory character varying,
+    slug character varying NOT NULL,
+    "position" integer DEFAULT 0 NOT NULL,
+    published boolean DEFAULT true NOT NULL,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: faqs_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.faqs_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: faqs_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.faqs_id_seq OWNED BY public.faqs.id;
+
+
+--
 -- Name: geo_target_constants; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3610,6 +3647,48 @@ CREATE TABLE public.store (
 CREATE TABLE public.store_migrations (
     v integer NOT NULL
 );
+
+
+--
+-- Name: support_requests; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.support_requests (
+    id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    category character varying NOT NULL,
+    subject character varying NOT NULL,
+    description text NOT NULL,
+    subscription_tier character varying,
+    credits_remaining integer,
+    submitted_from_url character varying,
+    browser_info text,
+    slack_notified boolean DEFAULT false,
+    notion_created boolean DEFAULT false,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    ticket_id character varying NOT NULL
+);
+
+
+--
+-- Name: support_requests_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.support_requests_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: support_requests_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.support_requests_id_seq OWNED BY public.support_requests.id;
 
 
 --
@@ -4877,6 +4956,13 @@ ALTER TABLE ONLY public.domains ALTER COLUMN id SET DEFAULT nextval('public.doma
 
 
 --
+-- Name: faqs id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.faqs ALTER COLUMN id SET DEFAULT nextval('public.faqs_id_seq'::regclass);
+
+
+--
 -- Name: geo_target_constants id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5049,6 +5135,13 @@ ALTER TABLE ONLY public.projects ALTER COLUMN id SET DEFAULT nextval('public.pro
 --
 
 ALTER TABLE ONLY public.social_links ALTER COLUMN id SET DEFAULT nextval('public.social_links_id_seq'::regclass);
+
+
+--
+-- Name: support_requests id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_requests ALTER COLUMN id SET DEFAULT nextval('public.support_requests_id_seq'::regclass);
 
 
 --
@@ -5882,6 +5975,14 @@ ALTER TABLE ONLY public.domains
 
 
 --
+-- Name: faqs faqs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.faqs
+    ADD CONSTRAINT faqs_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: geo_target_constants geo_target_constants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6135,6 +6236,14 @@ ALTER TABLE ONLY public.store_migrations
 
 ALTER TABLE ONLY public.store
     ADD CONSTRAINT store_pkey PRIMARY KEY (namespace_path, key);
+
+
+--
+-- Name: support_requests support_requests_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_requests
+    ADD CONSTRAINT support_requests_pkey PRIMARY KEY (id);
 
 
 --
@@ -8618,6 +8727,27 @@ CREATE INDEX index_domains_on_domain ON public.domains USING btree (domain);
 
 
 --
+-- Name: index_faqs_on_category; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_faqs_on_category ON public.faqs USING btree (category);
+
+
+--
+-- Name: index_faqs_on_published_and_position; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_faqs_on_published_and_position ON public.faqs USING btree (published, "position");
+
+
+--
+-- Name: index_faqs_on_slug; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_faqs_on_slug ON public.faqs USING btree (slug);
+
+
+--
 -- Name: index_geo_target_constants_on_canonical_name; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9119,6 +9249,27 @@ CREATE INDEX index_social_links_on_project_id ON public.social_links USING btree
 --
 
 CREATE UNIQUE INDEX index_social_links_on_project_id_and_platform ON public.social_links USING btree (project_id, platform) WHERE (deleted_at IS NULL);
+
+
+--
+-- Name: index_support_requests_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_requests_on_account_id ON public.support_requests USING btree (account_id);
+
+
+--
+-- Name: index_support_requests_on_ticket_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_support_requests_on_ticket_id ON public.support_requests USING btree (ticket_id);
+
+
+--
+-- Name: index_support_requests_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_requests_on_user_id ON public.support_requests USING btree (user_id);
 
 
 --
@@ -11166,6 +11317,14 @@ CREATE TRIGGER update_store_updated_at BEFORE UPDATE ON public.store FOR EACH RO
 
 
 --
+-- Name: support_requests fk_rails_03ae9ca37e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_requests
+    ADD CONSTRAINT fk_rails_03ae9ca37e FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: account_invitations fk_rails_04a176d6ed; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -11203,6 +11362,14 @@ ALTER TABLE ONLY public.dashboard_insights
 
 ALTER TABLE ONLY public.ads_account_invitations
     ADD CONSTRAINT fk_rails_1d7b1920c0 FOREIGN KEY (ads_account_id) REFERENCES public.ads_accounts(id);
+
+
+--
+-- Name: support_requests fk_rails_23b687fadb; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.support_requests
+    ADD CONSTRAINT fk_rails_23b687fadb FOREIGN KEY (account_id) REFERENCES public.accounts(id);
 
 
 --
@@ -11396,8 +11563,13 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260204152455'),
+('20260202005230'),
 ('20260201235035'),
 ('20260201153847'),
+('20260131154443'),
+('20260130210726'),
+('20260130204037'),
 ('20260130161923'),
 ('20260130143844'),
 ('20260130100003'),

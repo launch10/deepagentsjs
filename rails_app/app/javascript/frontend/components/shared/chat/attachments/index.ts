@@ -10,4 +10,4 @@ export { BaseDropZone } from "./BaseDropZone";
 
 // Types
 export type { ChatAttachment } from "./types";
-export { toDisplayAttachment } from "./types";
+export { toDisplayAttachment, fileToAttachment, filesToAttachments } from "./types";

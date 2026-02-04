@@ -36,7 +36,7 @@ class Chat < ApplicationRecord
   PROJECT_CHAT_TYPES = ProjectWorkflow.steps_for(:launch) # brainstorm, website, ad_campaign, etc
 
   # Account-level chat types (no project_id)
-  ACCOUNT_CHAT_TYPES = %w[insights].freeze
+  ACCOUNT_CHAT_TYPES = %w[insights support].freeze
 
   CHAT_TYPES = PROJECT_CHAT_TYPES + ACCOUNT_CHAT_TYPES
 

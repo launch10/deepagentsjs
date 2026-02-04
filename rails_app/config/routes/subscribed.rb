@@ -5,6 +5,8 @@ authenticated :user do
     patch :update_password, on: :member
   end
 
+  resource :support, only: [:show, :create], controller: "support"
+
   get "dashboard", to: "dashboard#show"
 
   resources :projects, only: [:index, :new, :show, :destroy], param: :uuid do
