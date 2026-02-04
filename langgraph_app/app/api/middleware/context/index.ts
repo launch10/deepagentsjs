@@ -9,6 +9,3 @@
 export { injectAgentContext } from "./injectAgentContext";
 export { AGENT_EVENT_SUBSCRIPTIONS, getSubscribedEventTypes } from "./subscriptions";
 export { summarizeEvents, type SummarizedEvent } from "./summarization";
-
-// Deprecated: breaks AsyncLocalStorage, kept for reference
-export { contextEngineeringMiddleware } from "./contextEngineeringMiddleware";
