@@ -1,4 +1,5 @@
 import { Annotation, messagesStateReducer } from "@langchain/langgraph";
+import { AIMessage } from "@langchain/core/messages";
 
 import type {
   ErrorStateType,
@@ -8,6 +9,38 @@ import type {
   CreditStatus,
   Intent,
 } from "@types";
+
+/**
+ * Custom messages reducer that wraps messagesStateReducer
+ * and adds timestamps to AI messages for context engineering.
+ */
+function timestampedMessagesReducer(
+  current: BaseMessage[],
+  next: BaseMessage | BaseMessage[]
+): BaseMessage[] {
+  const messagesToAdd = Array.isArray(next) ? next : [next];
+
+  // Add timestamp to AI messages that don't have one
+  const timestampedMessages = messagesToAdd.map((msg) => {
+    if (msg instanceof AIMessage || msg._getType?.() === "ai") {
+      const responseMetadata = msg.response_metadata as Record<string, unknown> | undefined;
+      const hasTimestamp =
+        responseMetadata?.timestamp || msg.additional_kwargs?.timestamp;
+      if (!hasTimestamp) {
+        return new AIMessage({
+          ...msg,
+          response_metadata: {
+            ...responseMetadata,
+            timestamp: new Date().toISOString(),
+          },
+        });
+      }
+    }
+    return msg;
+  });
+
+  return messagesStateReducer(current, timestampedMessages);
+}
 
 export const BaseAnnotation = Annotation.Root({
   threadId: Annotation<ThreadIDType | undefined>(),
@@ -24,7 +57,7 @@ export const BaseAnnotation = Annotation.Root({
 
   messages: Annotation<BaseMessage[]>({
     default: () => [],
-    reducer: messagesStateReducer,
+    reducer: timestampedMessagesReducer,
   }),
 
   accountId: Annotation<PrimaryKeyType | undefined>({
