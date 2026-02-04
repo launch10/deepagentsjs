@@ -24,7 +24,7 @@ const INITIAL_ASSISTANT_MESSAGE = {
 function useSupportChatOptions() {
   return useChatOptions<SupportBridgeType>({
     apiPath: "api/support/stream",
-    includeAttachments: false,
+    includeAttachments: true,
   });
 }
 

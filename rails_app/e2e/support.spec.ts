@@ -81,4 +81,43 @@ test.describe("Support Page", () => {
     const response = await page.goto("/support");
     expect(response?.status()).toBe(404);
   });
+
+  test("can send a message and receive AI response", async ({ page }) => {
+    test.setTimeout(60000); // AI response may take time
+
+    await loginUser(page);
+    await page.goto("/support");
+
+    // Wait for chat input to be ready
+    const chatInput = page.getByTestId("chat-input");
+    await expect(chatInput).toBeVisible({ timeout: 10000 });
+
+    // Initially there should be one AI message (the greeting)
+    await expect(page.getByTestId("ai-message")).toHaveCount(1);
+
+    // Type a message
+    const userMessage = "How do credits work";
+    await chatInput.fill(userMessage);
+
+    // Send the message
+    await page.getByTestId("send-button").click();
+
+    // User message should appear in the chat
+    await expect(page.getByTestId("user-message").getByText(userMessage)).toBeVisible({
+      timeout: 5000,
+    });
+
+    // Wait for thinking indicator to appear then disappear (response complete)
+    const thinkingIndicator = page.getByTestId("thinking-indicator");
+    await thinkingIndicator.waitFor({ state: "visible", timeout: 10000 });
+    await thinkingIndicator.waitFor({ state: "hidden", timeout: 30000 });
+
+    // Verify the AI response appeared with actual content
+    // The second ai-message should exist and have text content
+    const secondAiMessage = page.getByTestId("ai-message").nth(1);
+    await expect(secondAiMessage).toBeVisible({ timeout: 5000 });
+
+    // Ensure the response has actual content (not empty)
+    await expect(secondAiMessage).not.toBeEmpty();
+  });
 });

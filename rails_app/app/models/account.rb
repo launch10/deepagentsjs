@@ -165,5 +165,4 @@ class Account < ApplicationRecord
       name: "Dashboard Insights"
     )
   end
-
 end

@@ -5,17 +5,17 @@ module Support
     sidekiq_options queue: :default, retry: 3
 
     # Notion database property names — must match the Notion database schema exactly
-    PROP_REFERENCE   = "Reference"
-    PROP_SUBJECT     = "Subject"
+    PROP_REFERENCE = "Reference"
+    PROP_SUBJECT = "Subject"
     PROP_DESCRIPTION = "Description"
-    PROP_CATEGORY    = "Category"
-    PROP_EMAIL       = "Email"
-    PROP_STATUS      = "Status"
+    PROP_CATEGORY = "Category"
+    PROP_EMAIL = "Email"
+    PROP_STATUS = "Status"
     PROP_SUBSCRIPTION = "Subscription"
-    PROP_CREDITS     = "Credits"
-    PROP_SUBMITTED   = "Submitted"
-    PROP_SOURCE_URL  = "Source URL"
-    PROP_USER_ID     = "User ID"
+    PROP_CREDITS = "Credits"
+    PROP_SUBMITTED = "Submitted"
+    PROP_SOURCE_URL = "Source URL"
+    PROP_USER_ID = "User ID"
     PROP_ATTACHMENTS = "Attachments"
 
     STATUS_OPEN = "Open"
