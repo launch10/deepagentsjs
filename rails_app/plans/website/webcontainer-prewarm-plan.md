@@ -1,5 +1,11 @@
 # Eager Warmup + Binary Snapshots
 
+> **✅ IMPLEMENTED** (Feb 2026)
+>
+> This plan has been implemented. See `webcontainer-snapshot-system.md` for the final system documentation and production considerations.
+>
+> Results: Website preview startup reduced from ~60s to ~3.5s.
+
 ## IMPORTANT
 
 This is the most important work we will ever do for our business. Both for the customer and for our team. We're a scrappy startup, and our team is burning crazy cycles waiting for webcontainers to build DURING the development process. We need this work to save the business. Be in founder mode. Be scrappy. Think how we would think. Let's get it done.
