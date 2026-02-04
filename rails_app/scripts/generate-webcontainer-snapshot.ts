@@ -82,9 +82,13 @@ async function generateSnapshot() {
     console.log(`  Dependencies: ${Object.keys(snapshotPkg.dependencies || {}).length}`);
     console.log(`  DevDependencies: ${Object.keys(snapshotPkg.devDependencies || {}).length}`);
 
-    // Copy config files from template (but use .js versions to avoid esbuild compilation)
+    // Copy config files from template (use real template files, not hardcoded versions)
+    // NOTE: Using .ts files requires esbuild-wasm to compile them, which is why we
+    // have the esbuild override in package.json
     const configFiles = [
       "postcss.config.js",
+      "vite.config.ts",
+      "tailwind.config.ts",
       "tsconfig.json",
       "tsconfig.app.json",
       "tsconfig.node.json",
@@ -94,63 +98,27 @@ async function generateSnapshot() {
       if (existsSync(srcPath)) {
         const content = readFileSync(srcPath, "utf-8");
         write(join(TEMP_DIR, file), content);
+        console.log(`  Copied ${file}`);
       }
     }
 
-    // Write vite.config.js (NOT .ts) to avoid needing esbuild to compile config
-    // WebContainer can't run native esbuild binary
-    write(
-      join(TEMP_DIR, "vite.config.js"),
-      `import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import path from "path";
+    // Copy index.html from template
+    const indexHtmlPath = join(TEMPLATE_DIR, "index.html");
+    if (existsSync(indexHtmlPath)) {
+      const content = readFileSync(indexHtmlPath, "utf-8");
+      write(join(TEMP_DIR, "index.html"), content);
+      console.log("  Copied index.html");
+    }
 
-export default defineConfig({
-  base: './',
-  server: {
-    host: true,
-    port: 3000,
-  },
-  plugins: [react()],
-  resolve: {
-    alias: {
-      "@": path.resolve(process.cwd(), "./src"),
-    },
-  },
-});`
-    );
+    // Copy src/index.css from template (has CSS variables for shadcn/ui)
+    const indexCssPath = join(TEMPLATE_DIR, "src", "index.css");
+    if (existsSync(indexCssPath)) {
+      const content = readFileSync(indexCssPath, "utf-8");
+      write(join(TEMP_DIR, "src", "index.css"), content);
+      console.log("  Copied src/index.css");
+    }
 
-    // Write tailwind.config.js (NOT .ts)
-    write(
-      join(TEMP_DIR, "tailwind.config.js"),
-      `/** @type {import('tailwindcss').Config} */
-export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
-  theme: {
-    extend: {},
-  },
-  plugins: [require('tailwindcss-animate')],
-};`
-    );
-
-    // Add minimal index.html
-    write(
-      join(TEMP_DIR, "index.html"),
-      `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Landing Page</title>
-</head>
-<body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
-</body>
-</html>`
-    );
-
-    // Add minimal main.tsx
+    // Add minimal main.tsx (just needs to exist for npm install, will be overwritten)
     write(
       join(TEMP_DIR, "src", "main.tsx"),
       `import React from 'react';
@@ -162,14 +130,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <div>Loading...</div>
   </React.StrictMode>
 );`
-    );
-
-    // Add Tailwind CSS
-    write(
-      join(TEMP_DIR, "src", "index.css"),
-      `@tailwind base;
-@tailwind components;
-@tailwind utilities;`
     );
 
     // Install dependencies in temp directory using npm
@@ -193,110 +153,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       rmSync(binDir, { recursive: true, force: true });
     }
 
-    // Aggressively trim node_modules to reduce snapshot size and memory usage
-    console.log("Trimming node_modules to reduce snapshot size...");
+    // Show node_modules size
     const nodeModulesDir = join(TEMP_DIR, "node_modules");
-
-    // Get size before trimming
     const getSizeCmd = `du -sh "${nodeModulesDir}" 2>/dev/null || echo "unknown"`;
-    const sizeBefore = execSync(getSizeCmd, { encoding: "utf-8" }).trim();
-    console.log(`  Size before: ${sizeBefore}`);
-
-    // Remove unnecessary files and directories
-    const patternsToRemove = [
-      // Documentation and metadata
-      "README*",
-      "readme*",
-      "CHANGELOG*",
-      "changelog*",
-      "HISTORY*",
-      "history*",
-      "LICENSE*",
-      "license*",
-      "LICENCE*",
-      "licence*",
-      "NOTICE*",
-      "AUTHORS*",
-      "CONTRIBUTORS*",
-      "SECURITY*",
-      "FUNDING*",
-      "*.md",
-      "*.markdown",
-      "*.txt",
-      // Test directories
-      "test",
-      "tests",
-      "__tests__",
-      "spec",
-      "specs",
-      "__mocks__",
-      // Documentation directories
-      "docs",
-      "doc",
-      "documentation",
-      "example",
-      "examples",
-      "demo",
-      "demos",
-      // TypeScript source (keep .d.ts, remove .ts source)
-      "*.ts.map",
-      "tsconfig*.json",
-      // Build artifacts and config
-      ".npmignore",
-      ".gitignore",
-      ".editorconfig",
-      ".eslintrc*",
-      ".prettierrc*",
-      "*.tsbuildinfo",
-      "Makefile",
-      "Gruntfile.js",
-      "Gulpfile.js",
-      // Package manager files
-      "yarn.lock",
-      "pnpm-lock.yaml",
-      "package-lock.json",
-      "shrinkwrap.json",
-    ];
-
-    // Use find to remove files matching patterns (more efficient than walking in JS)
-    for (const pattern of patternsToRemove) {
-      try {
-        // -type f for files, -type d for directories
-        if (
-          [
-            "test",
-            "tests",
-            "__tests__",
-            "spec",
-            "specs",
-            "__mocks__",
-            "docs",
-            "doc",
-            "documentation",
-            "example",
-            "examples",
-            "demo",
-            "demos",
-          ].includes(pattern)
-        ) {
-          execSync(
-            `find "${nodeModulesDir}" -type d -name "${pattern}" -exec rm -rf {} + 2>/dev/null || true`,
-            { stdio: "pipe" }
-          );
-        } else {
-          execSync(
-            `find "${nodeModulesDir}" -type f -name "${pattern}" -delete 2>/dev/null || true`,
-            { stdio: "pipe" }
-          );
-        }
-      } catch {
-        // Ignore errors - some patterns may not match
-      }
-    }
-
-    // Get size after trimming
-    const sizeAfter = execSync(getSizeCmd, { encoding: "utf-8" }).trim();
-    console.log(`  Size after: ${sizeAfter}`);
+    const nodeModulesSize = execSync(getSizeCmd, { encoding: "utf-8" }).trim();
+    console.log(`  node_modules size: ${nodeModulesSize}`);
 
     // Generate the snapshot from the temp directory
     console.log("Generating snapshot binary...");
