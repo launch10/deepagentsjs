@@ -8037,6 +8037,13 @@ CREATE INDEX index_agent_context_events_on_account_id ON public.agent_context_ev
 
 
 --
+-- Name: index_agent_context_events_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_context_events_on_created_at ON public.agent_context_events USING btree (created_at);
+
+
+--
 -- Name: index_agent_context_events_on_event_type; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11645,6 +11652,7 @@ SET search_path TO "$user", public;
 INSERT INTO "schema_migrations" (version) VALUES
 ('20260204152455'),
 ('20260202005230'),
+('20260204124042'),
 ('20260204014903'),
 ('20260201235035'),
 ('20260201153847'),

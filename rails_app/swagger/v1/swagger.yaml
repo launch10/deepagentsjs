@@ -4,6 +4,106 @@ info:
   title: API V1
   version: v1
 paths:
+  "/api/v1/agent_context_events":
+    get:
+      summary: Lists context events for a project
+      tags:
+      - Agent Context Events
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: project_id
+        in: query
+        required: true
+        description: Project ID to fetch events for
+        schema:
+          type: integer
+      - name: event_types[]
+        in: query
+        items:
+          type: string
+        required: false
+        description: Filter by event types
+        schema:
+          type: array
+      - name: since
+        in: query
+        format: date-time
+        required: false
+        description: ISO8601 timestamp to filter events after
+        schema:
+          type: string
+      responses:
+        '200':
+          description: includes event payload
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                      description: Unique identifier
+                    event_type:
+                      type: string
+                      description: Type of the context event
+                    payload:
+                      type: object
+                      additionalProperties: true
+                      description: Event payload data
+                    created_at:
+                      type: string
+                      format: date-time
+                      description: Timestamp
+                  required:
+                  - id
+                  - event_type
+                  - payload
+                  - created_at
+        '400':
+          description: missing project_id
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    description: Single error message
+                  errors:
+                    oneOf:
+                    - type: array
+                      items:
+                        type: string
+                      description: Array of error messages
+                    - type: object
+                      additionalProperties:
+                        type: array
+                        items:
+                          type: string
+                      description: Object with field paths as keys and arrays of error
+                        messages as values
+        '404':
+          description: cannot access another account's project
+        '401':
+          description: unauthorized - invalid token
   "/api/v1/credits/check":
     get:
       summary: Checks account credit balance
@@ -105,14 +205,6 @@ paths:
                         is_platform_subdomain:
                           type: boolean
                           description: Whether this is a platform subdomain
-                        website_id:
-                          type: integer
-                          nullable: true
-                          description: Associated website ID
-                        website_name:
-                          type: string
-                          nullable: true
-                          description: Associated website name
                         website_urls:
                           type: array
                           items:
@@ -226,15 +318,9 @@ paths:
         required: false
         schema:
           type: string
-      - name: website_id
-        in: query
-        required: false
-        description: Filter by website ID
-        schema:
-          type: integer
       responses:
         '200':
-          description: filters domains by website_id
+          description: returns domains for team account after switching
           content:
             application/json:
               schema:
@@ -254,14 +340,6 @@ paths:
                         account_id:
                           type: integer
                           description: Unique identifier
-                        website_id:
-                          type: integer
-                          nullable: true
-                          description: Associated website ID
-                        website_name:
-                          type: string
-                          nullable: true
-                          description: Associated website name
                         is_platform_subdomain:
                           type: boolean
                           description: Whether this is a platform subdomain
@@ -269,6 +347,19 @@ paths:
                           type: string
                           nullable: true
                           description: Cloudflare zone ID
+                        dns_verification_status:
+                          type: string
+                          nullable: true
+                          description: DNS verification status
+                        dns_last_checked_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+                          description: Last DNS check timestamp
+                        dns_error_message:
+                          type: string
+                          nullable: true
+                          description: DNS error message
                         website_urls:
                           type: array
                           nullable: true
@@ -361,7 +452,7 @@ paths:
                 type: object
                 properties:
                   domain:
-                    type: string
+                    type: object
                     properties:
                       id:
                         type: integer
@@ -372,14 +463,6 @@ paths:
                       account_id:
                         type: integer
                         description: Unique identifier
-                      website_id:
-                        type: integer
-                        nullable: true
-                        description: Associated website ID
-                      website_name:
-                        type: string
-                        nullable: true
-                        description: Associated website name
                       is_platform_subdomain:
                         type: boolean
                         description: Whether this is a platform subdomain
@@ -387,6 +470,19 @@ paths:
                         type: string
                         nullable: true
                         description: Cloudflare zone ID
+                      dns_verification_status:
+                        type: string
+                        nullable: true
+                        description: DNS verification status
+                      dns_last_checked_at:
+                        type: string
+                        format: date-time
+                        nullable: true
+                        description: Last DNS check timestamp
+                      dns_error_message:
+                        type: string
+                        nullable: true
+                        description: DNS error message
                       website_urls:
                         type: array
                         nullable: true
@@ -423,7 +519,6 @@ paths:
                     - is_platform_subdomain
                     - created_at
                     - updated_at
-                    description: Domain name
                   website_url:
                     type: object
                     properties:
@@ -478,63 +573,10 @@ paths:
                     - limit
                     - used
                     - remaining
-                  id:
-                    type: integer
-                    description: Unique identifier
-                  account_id:
-                    type: integer
-                    description: Unique identifier
-                  website_id:
-                    type: integer
-                    nullable: true
-                    description: Associated website ID
-                  website_name:
-                    type: string
-                    nullable: true
-                    description: Associated website name
-                  is_platform_subdomain:
-                    type: boolean
-                    description: Whether this is a platform subdomain
-                  cloudflare_zone_id:
-                    type: string
-                    nullable: true
-                    description: Cloudflare zone ID
-                  website_urls:
-                    type: array
-                    nullable: true
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                          description: Unique identifier
-                        path:
-                          type: string
-                          description: URL path
-                        website_id:
-                          type: integer
-                          description: Website ID
-                      required:
-                      - id
-                      - path
-                      - website_id
-                    description: URLs associated with this domain (only included when
-                      include_website_urls=true)
-                  created_at:
-                    type: string
-                    format: date-time
-                    description: Timestamp
-                  updated_at:
-                    type: string
-                    format: date-time
-                    description: Timestamp
                 required:
-                - id
                 - domain
-                - account_id
-                - is_platform_subdomain
-                - created_at
-                - updated_at
+                - website_url
+                - platform_subdomain_credits
         '422':
           description: subdomain limit exceeded
         '401':
@@ -559,9 +601,98 @@ paths:
                       description: Whether this is a platform subdomain
               required:
               - domain
+  "/api/v1/domains/search":
+    post:
+      summary: Searches for domain availability
+      tags:
+      - Domains
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: normalizes domain inputs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        domain:
+                          type: string
+                          description: Domain name
+                        status:
+                          type: string
+                          enum:
+                          - existing
+                          - unavailable
+                          - available
+                          description: Availability status
+                        existing_id:
+                          type: integer
+                          nullable: true
+                          description: ID of existing domain if owned by current account
+                      required:
+                      - domain
+                      - status
+                  platform_subdomain_credits:
+                    type: object
+                    properties:
+                      limit:
+                        type: integer
+                        description: Maximum platform subdomains allowed
+                      used:
+                        type: integer
+                        description: Number of platform subdomains used
+                      remaining:
+                        type: integer
+                        description: Remaining platform subdomains
+                    required:
+                    - limit
+                    - used
+                    - remaining
+                required:
+                - results
+                - platform_subdomain_credits
+        '422':
+          description: exceeds maximum candidates
+        '401':
+          description: unauthorized - missing token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                candidates:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of domain names to check availability (max 10)
+              required:
+              - candidates
   "/api/v1/domains/{id}":
     patch:
-      summary: Reassigns a domain to a different website
+      summary: Updates domain DNS verification status
       tags:
       - Domains
       security:
@@ -589,7 +720,7 @@ paths:
           type: integer
       responses:
         '200':
-          description: removes domain from website when website_id is nil
+          description: successfully updates dns_verification_status
           content:
             application/json:
               schema:
@@ -604,10 +735,6 @@ paths:
                   account_id:
                     type: integer
                     description: Unique identifier
-                  website_id:
-                    type: integer
-                    nullable: true
-                    description: Associated website ID
                   is_platform_subdomain:
                     type: boolean
                     description: Whether this is a platform subdomain
@@ -615,6 +742,19 @@ paths:
                     type: string
                     nullable: true
                     description: Cloudflare zone ID
+                  dns_verification_status:
+                    type: string
+                    nullable: true
+                    description: DNS verification status
+                  dns_last_checked_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                    description: Last DNS check timestamp
+                  dns_error_message:
+                    type: string
+                    nullable: true
+                    description: DNS error message
                   created_at:
                     type: string
                     format: date-time
@@ -632,8 +772,6 @@ paths:
                 - updated_at
         '404':
           description: returns not found for non-existent domain
-        '422':
-          description: cannot reassign to website belonging to another account
         '401':
           description: unauthorized - missing token
       requestBody:
@@ -645,8 +783,8 @@ paths:
                 domain:
                   type: object
                   properties:
-                    website_id:
-                      type: integer
+                    dns_verification_status:
+                      type: string
     parameters:
     - name: id
       in: path
@@ -693,14 +831,6 @@ paths:
                   account_id:
                     type: integer
                     description: Unique identifier
-                  website_id:
-                    type: integer
-                    nullable: true
-                    description: Associated website ID
-                  website_name:
-                    type: string
-                    nullable: true
-                    description: Associated website name
                   is_platform_subdomain:
                     type: boolean
                     description: Whether this is a platform subdomain
@@ -708,6 +838,19 @@ paths:
                     type: string
                     nullable: true
                     description: Cloudflare zone ID
+                  dns_verification_status:
+                    type: string
+                    nullable: true
+                    description: DNS verification status
+                  dns_last_checked_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                    description: Last DNS check timestamp
+                  dns_error_message:
+                    type: string
+                    nullable: true
+                    description: DNS error message
                   website_urls:
                     type: array
                     nullable: true
@@ -1103,6 +1246,278 @@ paths:
           description: cannot restore another account's project
         '401':
           description: unauthorized - missing token
+  "/api/v1/website_urls/search":
+    post:
+      summary: Searches for website URL availability
+      tags:
+      - WebsiteUrls
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: normalizes path inputs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  domain_id:
+                    type: integer
+                    description: Unique identifier
+                  domain:
+                    type: string
+                    description: Domain name
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        path:
+                          type: string
+                          description: URL path
+                        status:
+                          type: string
+                          enum:
+                          - existing
+                          - unavailable
+                          - available
+                          description: Availability status
+                        existing_id:
+                          type: integer
+                          nullable: true
+                          description: ID of existing website URL if owned by current
+                            account
+                        existing_website_id:
+                          type: integer
+                          nullable: true
+                          description: Website ID of existing URL if owned by current
+                            account
+                      required:
+                      - path
+                      - status
+                required:
+                - domain_id
+                - domain
+                - results
+        '404':
+          description: domain belongs to another account
+        '422':
+          description: exceeds maximum candidates
+        '401':
+          description: unauthorized - missing token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                domain_id:
+                  type: integer
+                  description: Domain ID to search within
+                candidates:
+                  type: array
+                  items:
+                    type: string
+                  description: Array of paths to check availability (max 10)
+              required:
+              - domain_id
+              - candidates
+  "/api/v1/website_urls":
+    get:
+      summary: Lists website URLs for the account
+      tags:
+      - WebsiteUrls
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: website_id
+        in: query
+        required: false
+        description: Filter by website ID
+        schema:
+          type: integer
+      - name: domain_id
+        in: query
+        required: false
+        description: Filter by domain ID
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: filters website URLs by domain_id
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  website_urls:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        path:
+                          type: string
+                          description: URL path
+                        account_id:
+                          type: integer
+                          description: Unique identifier
+                        website_id:
+                          type: integer
+                          description: Unique identifier
+                        domain_id:
+                          type: integer
+                          description: Unique identifier
+                        domain_string:
+                          type: string
+                          nullable: true
+                          description: Domain name
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Timestamp
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Timestamp
+                      required:
+                      - id
+                      - path
+                      - account_id
+                      - website_id
+                      - domain_id
+                      - created_at
+                      - updated_at
+                required:
+                - website_urls
+        '401':
+          description: unauthorized - missing token
+    post:
+      summary: Creates a website URL
+      tags:
+      - WebsiteUrls
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '201':
+          description: website URL created in team account after switching
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  path:
+                    type: string
+                    description: URL path
+                  account_id:
+                    type: integer
+                    description: Unique identifier
+                  website_id:
+                    type: integer
+                    description: Unique identifier
+                  domain_id:
+                    type: integer
+                    description: Unique identifier
+                  domain_string:
+                    type: string
+                    nullable: true
+                    description: Domain name
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - path
+                - account_id
+                - website_id
+                - domain_id
+                - created_at
+                - updated_at
+        '401':
+          description: unauthorized - missing token
+        '422':
+          description: domain does not belong to account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                website_url:
+                  type: object
+                  properties:
+                    path:
+                      type: string
+                      description: URL path
+                    website_id:
+                      type: integer
+                      description: Associated website ID
+                    domain_id:
+                      type: integer
+                      description: Associated domain ID
+                  required:
+                  - domain_id
+                  - website_id
+                  - path
+              required:
+              - website_url
   "/api/v1/brainstorms":
     post:
       summary: Creates a brainstorm
@@ -3303,95 +3718,6 @@ paths:
           description: user activity updated
         '404':
           description: cannot touch deploy from different account
-  "/api/v1/domains/search":
-    post:
-      summary: Searches for domain availability
-      tags:
-      - Domains
-      security:
-      - bearer_auth: []
-      parameters:
-      - name: Authorization
-        in: header
-        required: false
-        schema:
-          type: string
-      - name: X-Signature
-        in: header
-        required: false
-        schema:
-          type: string
-      - name: X-Timestamp
-        in: header
-        required: false
-        schema:
-          type: string
-      responses:
-        '200':
-          description: normalizes domain inputs
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  results:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        domain:
-                          type: string
-                          description: Domain name
-                        status:
-                          type: string
-                          enum:
-                          - existing
-                          - unavailable
-                          - available
-                          description: Availability status
-                        existing_id:
-                          type: integer
-                          nullable: true
-                          description: ID of existing domain if owned by current account
-                      required:
-                      - domain
-                      - status
-                  platform_subdomain_credits:
-                    type: object
-                    properties:
-                      limit:
-                        type: integer
-                        description: Maximum platform subdomains allowed
-                      used:
-                        type: integer
-                        description: Number of platform subdomains used
-                      remaining:
-                        type: integer
-                        description: Remaining platform subdomains
-                    required:
-                    - limit
-                    - used
-                    - remaining
-                required:
-                - results
-                - platform_subdomain_credits
-        '422':
-          description: exceeds maximum candidates
-        '401':
-          description: unauthorized - missing token
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                candidates:
-                  type: array
-                  items:
-                    type: string
-                  description: Array of domain names to check availability (max 10)
-              required:
-              - candidates
   "/api/v1/geo_target_constants":
     get:
       summary: Search geo target constants
@@ -4772,103 +5098,6 @@ paths:
                   - name
               required:
               - snapshot
-  "/test/database/set_credits":
-    post:
-      summary: Sets credits for an account
-      tags:
-      - Test Database
-      description: Sets plan and pack millicredits for a user account. Only available
-        in development/test environments.
-      parameters: []
-      responses:
-        '200':
-          description: credits set successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: ok
-                  message:
-                    type: string
-                    example: Credits updated
-                  account:
-                    type: object
-                    properties:
-                      id:
-                        type: integer
-                      plan_millicredits:
-                        type: integer
-                      pack_millicredits:
-                        type: integer
-                      total_millicredits:
-                        type: integer
-                required:
-                - status
-                - message
-                - account
-        '404':
-          description: user not found
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                      example: 'Failed to perform operation: error details'
-                required:
-                - status
-                - errors
-        '422':
-          description: missing required parameters
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    example: error
-                  errors:
-                    type: array
-                    items:
-                      type: string
-                      example: 'Failed to perform operation: error details'
-                required:
-                - status
-                - errors
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                credits:
-                  type: object
-                  properties:
-                    email:
-                      type: string
-                      description: Email of the user whose account credits to set
-                    plan_millicredits:
-                      type: integer
-                      description: Plan millicredits to set
-                      default: 0
-                    pack_millicredits:
-                      type: integer
-                      description: Pack millicredits to set
-                      default: 0
-                  required:
-                  - email
-              required:
-              - credits
   "/api/v1/themes":
     get:
       summary: Lists official themes + themes in account
@@ -5700,278 +5929,6 @@ paths:
               - path
               - old_string
               - new_string
-  "/api/v1/website_urls":
-    post:
-      summary: Creates a website URL
-      tags:
-      - WebsiteUrls
-      security:
-      - bearer_auth: []
-      parameters:
-      - name: Authorization
-        in: header
-        required: false
-        schema:
-          type: string
-      - name: X-Signature
-        in: header
-        required: false
-        schema:
-          type: string
-      - name: X-Timestamp
-        in: header
-        required: false
-        schema:
-          type: string
-      responses:
-        '201':
-          description: website URL created in team account after switching
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                    description: Unique identifier
-                  path:
-                    type: string
-                    description: URL path
-                  account_id:
-                    type: integer
-                    description: Unique identifier
-                  website_id:
-                    type: integer
-                    description: Unique identifier
-                  domain_id:
-                    type: integer
-                    description: Unique identifier
-                  domain_string:
-                    type: string
-                    nullable: true
-                    description: Domain name
-                  created_at:
-                    type: string
-                    format: date-time
-                    description: Timestamp
-                  updated_at:
-                    type: string
-                    format: date-time
-                    description: Timestamp
-                required:
-                - id
-                - path
-                - account_id
-                - website_id
-                - domain_id
-                - created_at
-                - updated_at
-        '401':
-          description: unauthorized - missing token
-        '422':
-          description: domain does not belong to account
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                website_url:
-                  type: object
-                  properties:
-                    path:
-                      type: string
-                      description: URL path
-                    website_id:
-                      type: integer
-                      description: Associated website ID
-                    domain_id:
-                      type: integer
-                      description: Associated domain ID
-                  required:
-                  - domain_id
-                  - website_id
-                  - path
-              required:
-              - website_url
-    get:
-      summary: Lists website URLs for the account
-      tags:
-      - WebsiteUrls
-      security:
-      - bearer_auth: []
-      parameters:
-      - name: Authorization
-        in: header
-        required: false
-        schema:
-          type: string
-      - name: X-Signature
-        in: header
-        required: false
-        schema:
-          type: string
-      - name: X-Timestamp
-        in: header
-        required: false
-        schema:
-          type: string
-      - name: website_id
-        in: query
-        required: false
-        description: Filter by website ID
-        schema:
-          type: integer
-      - name: domain_id
-        in: query
-        required: false
-        description: Filter by domain ID
-        schema:
-          type: integer
-      responses:
-        '200':
-          description: filters website URLs by domain_id
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  website_urls:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        id:
-                          type: integer
-                          description: Unique identifier
-                        path:
-                          type: string
-                          description: URL path
-                        account_id:
-                          type: integer
-                          description: Unique identifier
-                        website_id:
-                          type: integer
-                          description: Unique identifier
-                        domain_id:
-                          type: integer
-                          description: Unique identifier
-                        domain_string:
-                          type: string
-                          nullable: true
-                          description: Domain name
-                        created_at:
-                          type: string
-                          format: date-time
-                          description: Timestamp
-                        updated_at:
-                          type: string
-                          format: date-time
-                          description: Timestamp
-                      required:
-                      - id
-                      - path
-                      - account_id
-                      - website_id
-                      - domain_id
-                      - created_at
-                      - updated_at
-                required:
-                - website_urls
-        '401':
-          description: unauthorized - missing token
-  "/api/v1/website_urls/search":
-    post:
-      summary: Searches for website URL availability
-      tags:
-      - WebsiteUrls
-      security:
-      - bearer_auth: []
-      parameters:
-      - name: Authorization
-        in: header
-        required: false
-        schema:
-          type: string
-      - name: X-Signature
-        in: header
-        required: false
-        schema:
-          type: string
-      - name: X-Timestamp
-        in: header
-        required: false
-        schema:
-          type: string
-      responses:
-        '200':
-          description: normalizes path inputs
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  domain_id:
-                    type: integer
-                    description: Unique identifier
-                  domain:
-                    type: string
-                    description: Domain name
-                  results:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        path:
-                          type: string
-                          description: URL path
-                        status:
-                          type: string
-                          enum:
-                          - existing
-                          - unavailable
-                          - available
-                          description: Availability status
-                        existing_id:
-                          type: integer
-                          nullable: true
-                          description: ID of existing website URL if owned by current
-                            account
-                        existing_website_id:
-                          type: integer
-                          nullable: true
-                          description: Website ID of existing URL if owned by current
-                            account
-                      required:
-                      - path
-                      - status
-                required:
-                - domain_id
-                - domain
-                - results
-        '404':
-          description: domain belongs to another account
-        '422':
-          description: exceeds maximum candidates
-        '401':
-          description: unauthorized - missing token
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                domain_id:
-                  type: integer
-                  description: Domain ID to search within
-                candidates:
-                  type: array
-                  items:
-                    type: string
-                  description: Array of paths to check availability (max 10)
-              required:
-              - domain_id
-              - candidates
   "/api/v1/website_urls/{id}":
     parameters:
     - name: id
@@ -6114,8 +6071,6 @@ paths:
                 - updated_at
         '404':
           description: cannot update other user website URL
-        '422':
-          description: duplicate domain and path on update
         '401':
           description: unauthorized - missing token
       requestBody:

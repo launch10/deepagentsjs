@@ -6,12 +6,36 @@
  *
  * This enables agents to be aware of changes that happened outside
  * of the conversation (e.g., user uploaded images via QuickActions).
+ *
+ * NOTE: We use a custom middleware function (not createMiddlewareFromHooks)
+ * because we need to AWAIT the context injection before the stream starts.
+ * createMiddlewareFromHooks uses fire-and-forget for onStart.
  */
-import { createMiddlewareFromHooks, type StreamMiddlewareContext } from "langgraph-ai-sdk";
+import {
+  createMultimodalContextMessage,
+  type StreamMiddleware,
+  type StreamMiddlewareContext,
+} from "langgraph-ai-sdk";
 import { HumanMessage, AIMessage, type BaseMessage } from "@langchain/core/messages";
 import { getSubscribedEventTypes } from "./subscriptions";
-import { summarizeEvents } from "./summarization";
+import { summarizeEvents, type SummarizedEvent } from "./summarization";
 import { ContextEventsAPIService } from "@rails_api";
+
+/**
+ * Build a context message from a summarized event.
+ * Uses multimodal format for events with images, text-only for others.
+ */
+function buildContextMessage(summary: SummarizedEvent): BaseMessage {
+  // Multimodal content (e.g., images)
+  if (summary.content && summary.content.length > 0) {
+    return createMultimodalContextMessage(summary.content);
+  }
+
+  // Text-only content
+  return new HumanMessage({
+    content: `[Context] ${summary.message}`,
+  });
+}
 
 /**
  * Find the timestamp of the last AI message in the conversation.
@@ -40,74 +64,78 @@ function findLastAiMessageTime(messages: BaseMessage[]): Date | null {
 }
 
 /**
+ * Inject context events into the message stream.
+ * This modifies ctx.state.messages to include context messages.
+ */
+async function injectContextEvents(ctx: StreamMiddlewareContext<any>): Promise<void> {
+  const { state, graphName } = ctx;
+
+  // Extract project_id from state (websites have projectId)
+  const projectId = state?.projectId;
+  const jwt = state?.jwt;
+
+  // Skip if no project or JWT
+  if (!projectId || !jwt) {
+    return;
+  }
+
+  // Get subscriptions for this graph
+  const eventTypes = getSubscribedEventTypes(graphName);
+  if (eventTypes.length === 0) {
+    return;
+  }
+
+  // Find timestamp of last AI message
+  const messages = state.messages ?? [];
+  const lastAiTime = findLastAiMessageTime(messages);
+
+  // Fetch events from Rails
+  const api = new ContextEventsAPIService({ jwt: jwt as string });
+  let rawEvents;
+  try {
+    rawEvents = await api.list({
+      project_id: projectId as number,
+      "event_types[]": [...eventTypes],
+      since: lastAiTime?.toISOString(),
+    });
+  } catch (error) {
+    console.warn("[contextEngineering] Failed to fetch events:", error);
+    return;
+  }
+
+  if (rawEvents.length === 0) {
+    return;
+  }
+
+  // Summarize events
+  const summarizedEvents = summarizeEvents(rawEvents);
+  if (summarizedEvents.length === 0) {
+    return;
+  }
+
+  // Build context messages (text-only or multimodal)
+  const contextMessages = summarizedEvents.map((summary) => buildContextMessage(summary));
+
+  // Inject before last message (the user's current input)
+  const existingMessages = [...messages];
+  const lastMessage = existingMessages.pop();
+
+  ctx.state = {
+    ...state,
+    messages: [...existingMessages, ...contextMessages, lastMessage].filter(Boolean),
+  };
+}
+
+/**
  * Context Engineering Middleware
  *
- * Injected into the bridge factory to run before every graph invocation.
+ * Custom middleware that AWAITS context injection before calling next().
+ * This is necessary because createMiddlewareFromHooks fires onStart without awaiting.
  */
-export const contextEngineeringMiddleware = createMiddlewareFromHooks({
-  name: "context-engineering",
+export const contextEngineeringMiddleware: StreamMiddleware<any> = async (ctx, next) => {
+  // Await the context injection before proceeding
+  await injectContextEvents(ctx);
 
-  async onStart(ctx: StreamMiddlewareContext<any>) {
-    const { state, graphName } = ctx;
-
-    // Extract project_id from state (websites have projectId)
-    const projectId = state?.projectId;
-    const jwt = state?.jwt;
-
-    // Skip if no project or JWT
-    if (!projectId || !jwt) {
-      return;
-    }
-
-    // Get subscriptions for this graph
-    const eventTypes = getSubscribedEventTypes(graphName);
-    if (eventTypes.length === 0) {
-      return;
-    }
-
-    // Find timestamp of last AI message
-    const messages = state.messages ?? [];
-    const lastAiTime = findLastAiMessageTime(messages);
-
-    // Fetch events from Rails
-    const api = new ContextEventsAPIService({ jwt: jwt as string });
-    let rawEvents;
-    try {
-      rawEvents = await api.list({
-        project_id: projectId as number,
-        event_types: eventTypes,
-        since: lastAiTime?.toISOString(),
-      });
-    } catch (error) {
-      console.warn("[contextEngineering] Failed to fetch events:", error);
-      return;
-    }
-
-    if (rawEvents.length === 0) {
-      return;
-    }
-
-    // Summarize events
-    const summarizedEvents = summarizeEvents(rawEvents);
-    if (summarizedEvents.length === 0) {
-      return;
-    }
-
-    // Build context messages
-    const contextMessages = summarizedEvents.map(
-      (summary) =>
-        new HumanMessage({
-          content: `[Context] ${summary.message}`,
-        })
-    );
-
-    // Inject before last message (the user's current input)
-    const existingMessages = [...messages];
-    const lastMessage = existingMessages.pop();
-
-    ctx.state = {
-      ...state,
-      messages: [...existingMessages, ...contextMessages, lastMessage].filter(Boolean),
-    };
-  },
-});
+  // Now call next with the modified context
+  return next();
+};

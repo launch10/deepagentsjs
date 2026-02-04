@@ -1,24 +1,18 @@
 /**
  * Agent Subscriptions
  *
- * Defines which event types each graph subscribes to.
- * Events not in a graph's subscription list won't be fetched.
+ * Re-exports from shared config for type-safe event subscriptions.
+ * The source of truth is in shared/config/agentContext.ts.
  */
 
-export const AGENT_EVENT_SUBSCRIPTIONS: Record<string, string[]> = {
-  website: ["images.created", "images.deleted"],
-  brainstorm: [],
-  ads: [],
-  insights: [],
-  deploy: [],
-  router: [],
-};
-
-/**
- * Get the event types a graph subscribes to.
- * Returns empty array for unknown graphs.
- */
-export function getSubscribedEventTypes(graphName: string | undefined): string[] {
-  if (!graphName) return [];
-  return AGENT_EVENT_SUBSCRIPTIONS[graphName] ?? [];
-}
+export {
+  WEBSITE_EVENT_TYPES,
+  ALL_EVENT_TYPES,
+  SUBSCRIBABLE_GRAPHS,
+  agentEventSubscriptions as AGENT_EVENT_SUBSCRIPTIONS,
+  getSubscribedEventTypes,
+  isValidEventType,
+  type WebsiteEventType,
+  type AgentContextEventType,
+  type SubscribableGraph,
+} from "@shared/config/agentContext";

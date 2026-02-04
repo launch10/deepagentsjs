@@ -4,6 +4,99 @@
  */
 
 export interface paths {
+    "/api/v1/agent_context_events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists context events for a project */
+        get: {
+            parameters: {
+                query: {
+                    /** @description Project ID to fetch events for */
+                    project_id: number;
+                    /** @description Filter by event types */
+                    "event_types[]"?: unknown[];
+                    /**
+                     * Format: date-time
+                     * @description ISO8601 timestamp to filter events after
+                     */
+                    since?: string;
+                };
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description includes event payload */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Type of the context event */
+                            event_type: string;
+                            /** @description Event payload data */
+                            payload: {
+                                [key: string]: unknown;
+                            };
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                        }[];
+                    };
+                };
+                /** @description missing project_id */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Single error message */
+                            error?: string;
+                            errors?: string[] | {
+                                [key: string]: string[];
+                            };
+                        };
+                    };
+                };
+                /** @description unauthorized - invalid token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description cannot access another account's project */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/credits/check": {
         parameters: {
             query?: never;
@@ -98,10 +191,6 @@ export interface paths {
                                 domain: string;
                                 /** @description Whether this is a platform subdomain */
                                 is_platform_subdomain: boolean;
-                                /** @description Associated website ID */
-                                website_id?: number | null;
-                                /** @description Associated website name */
-                                website_name?: string | null;
                                 /** @description URLs associated with this domain */
                                 website_urls?: {
                                     /** @description Unique identifier */
@@ -181,10 +270,7 @@ export interface paths {
         /** Lists domains for the account */
         get: {
             parameters: {
-                query?: {
-                    /** @description Filter by website ID */
-                    website_id?: number;
-                };
+                query?: never;
                 header?: {
                     Authorization?: string;
                     "X-Signature"?: string;
@@ -195,7 +281,7 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description filters domains by website_id */
+                /** @description returns domains for team account after switching */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -209,14 +295,19 @@ export interface paths {
                                 domain: string;
                                 /** @description Unique identifier */
                                 account_id: number;
-                                /** @description Associated website ID */
-                                website_id?: number | null;
-                                /** @description Associated website name */
-                                website_name?: string | null;
                                 /** @description Whether this is a platform subdomain */
                                 is_platform_subdomain: boolean;
                                 /** @description Cloudflare zone ID */
                                 cloudflare_zone_id?: string | null;
+                                /** @description DNS verification status */
+                                dns_verification_status?: string | null;
+                                /**
+                                 * Format: date-time
+                                 * @description Last DNS check timestamp
+                                 */
+                                dns_last_checked_at?: string | null;
+                                /** @description DNS error message */
+                                dns_error_message?: string | null;
                                 /** @description URLs associated with this domain (only included when include_website_urls=true) */
                                 website_urls?: {
                                     /** @description Unique identifier */
@@ -294,9 +385,47 @@ export interface paths {
                     };
                     content: {
                         "application/json": {
-                            /** @description Domain name */
-                            domain: string;
-                            website_url?: {
+                            domain: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Domain name */
+                                domain: string;
+                                /** @description Unique identifier */
+                                account_id: number;
+                                /** @description Whether this is a platform subdomain */
+                                is_platform_subdomain: boolean;
+                                /** @description Cloudflare zone ID */
+                                cloudflare_zone_id?: string | null;
+                                /** @description DNS verification status */
+                                dns_verification_status?: string | null;
+                                /**
+                                 * Format: date-time
+                                 * @description Last DNS check timestamp
+                                 */
+                                dns_last_checked_at?: string | null;
+                                /** @description DNS error message */
+                                dns_error_message?: string | null;
+                                /** @description URLs associated with this domain (only included when include_website_urls=true) */
+                                website_urls?: {
+                                    /** @description Unique identifier */
+                                    id: number;
+                                    /** @description URL path */
+                                    path: string;
+                                    /** @description Website ID */
+                                    website_id: number;
+                                }[] | null;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                created_at: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                updated_at: string;
+                            };
+                            website_url: {
                                 /** @description Unique identifier */
                                 id: number;
                                 /** @description URL path */
@@ -320,7 +449,7 @@ export interface paths {
                                  */
                                 updated_at: string;
                             };
-                            platform_subdomain_credits?: {
+                            platform_subdomain_credits: {
                                 /** @description Maximum platform subdomains allowed */
                                 limit: number;
                                 /** @description Number of platform subdomains used */
@@ -328,37 +457,6 @@ export interface paths {
                                 /** @description Remaining platform subdomains */
                                 remaining: number;
                             };
-                            /** @description Unique identifier */
-                            id: number;
-                            /** @description Unique identifier */
-                            account_id: number;
-                            /** @description Associated website ID */
-                            website_id?: number | null;
-                            /** @description Associated website name */
-                            website_name?: string | null;
-                            /** @description Whether this is a platform subdomain */
-                            is_platform_subdomain: boolean;
-                            /** @description Cloudflare zone ID */
-                            cloudflare_zone_id?: string | null;
-                            /** @description URLs associated with this domain (only included when include_website_urls=true) */
-                            website_urls?: {
-                                /** @description Unique identifier */
-                                id: number;
-                                /** @description URL path */
-                                path: string;
-                                /** @description Website ID */
-                                website_id: number;
-                            }[] | null;
-                            /**
-                             * Format: date-time
-                             * @description Timestamp
-                             */
-                            created_at: string;
-                            /**
-                             * Format: date-time
-                             * @description Timestamp
-                             */
-                            updated_at: string;
                         };
                     };
                 };
@@ -370,6 +468,87 @@ export interface paths {
                     content?: never;
                 };
                 /** @description subdomain limit exceeded */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/domains/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Searches for domain availability */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description Array of domain names to check availability (max 10) */
+                        candidates: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description normalizes domain inputs */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            results: {
+                                /** @description Domain name */
+                                domain: string;
+                                /**
+                                 * @description Availability status
+                                 * @enum {string}
+                                 */
+                                status: "existing" | "unavailable" | "available";
+                                /** @description ID of existing domain if owned by current account */
+                                existing_id?: number | null;
+                            }[];
+                            platform_subdomain_credits: {
+                                /** @description Maximum platform subdomains allowed */
+                                limit: number;
+                                /** @description Number of platform subdomains used */
+                                used: number;
+                                /** @description Remaining platform subdomains */
+                                remaining: number;
+                            };
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description exceeds maximum candidates */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -424,14 +603,19 @@ export interface paths {
                             domain: string;
                             /** @description Unique identifier */
                             account_id: number;
-                            /** @description Associated website ID */
-                            website_id?: number | null;
-                            /** @description Associated website name */
-                            website_name?: string | null;
                             /** @description Whether this is a platform subdomain */
                             is_platform_subdomain: boolean;
                             /** @description Cloudflare zone ID */
                             cloudflare_zone_id?: string | null;
+                            /** @description DNS verification status */
+                            dns_verification_status?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description Last DNS check timestamp
+                             */
+                            dns_last_checked_at?: string | null;
+                            /** @description DNS error message */
+                            dns_error_message?: string | null;
                             /** @description URLs associated with this domain (only included when include_website_urls=true) */
                             website_urls?: {
                                 /** @description Unique identifier */
@@ -468,7 +652,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Reassigns a domain to a different website */
+        /** Updates domain DNS verification status */
         patch: {
             parameters: {
                 query?: never;
@@ -486,13 +670,13 @@ export interface paths {
                 content: {
                     "application/json": {
                         domain?: {
-                            website_id?: number;
+                            dns_verification_status?: string;
                         };
                     };
                 };
             };
             responses: {
-                /** @description removes domain from website when website_id is nil */
+                /** @description successfully updates dns_verification_status */
                 200: {
                     headers: {
                         [name: string]: unknown;
@@ -505,12 +689,19 @@ export interface paths {
                             domain: string;
                             /** @description Unique identifier */
                             account_id: number;
-                            /** @description Associated website ID */
-                            website_id?: number | null;
                             /** @description Whether this is a platform subdomain */
                             is_platform_subdomain: boolean;
                             /** @description Cloudflare zone ID */
                             cloudflare_zone_id?: string | null;
+                            /** @description DNS verification status */
+                            dns_verification_status?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description Last DNS check timestamp
+                             */
+                            dns_last_checked_at?: string | null;
+                            /** @description DNS error message */
+                            dns_error_message?: string | null;
                             /**
                              * Format: date-time
                              * @description Timestamp
@@ -533,13 +724,6 @@ export interface paths {
                 };
                 /** @description returns not found for non-existent domain */
                 404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description cannot reassign to website belonging to another account */
-                422: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -880,6 +1064,245 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/v1/website_urls/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Searches for website URL availability */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description Domain ID to search within */
+                        domain_id: number;
+                        /** @description Array of paths to check availability (max 10) */
+                        candidates: string[];
+                    };
+                };
+            };
+            responses: {
+                /** @description normalizes path inputs */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            domain_id: number;
+                            /** @description Domain name */
+                            domain: string;
+                            results: {
+                                /** @description URL path */
+                                path: string;
+                                /**
+                                 * @description Availability status
+                                 * @enum {string}
+                                 */
+                                status: "existing" | "unavailable" | "available";
+                                /** @description ID of existing website URL if owned by current account */
+                                existing_id?: number | null;
+                                /** @description Website ID of existing URL if owned by current account */
+                                existing_website_id?: number | null;
+                            }[];
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description domain belongs to another account */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description exceeds maximum candidates */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/website_urls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists website URLs for the account */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Filter by website ID */
+                    website_id?: number;
+                    /** @description Filter by domain ID */
+                    domain_id?: number;
+                };
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description filters website URLs by domain_id */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            website_urls: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description URL path */
+                                path: string;
+                                /** @description Unique identifier */
+                                account_id: number;
+                                /** @description Unique identifier */
+                                website_id: number;
+                                /** @description Unique identifier */
+                                domain_id: number;
+                                /** @description Domain name */
+                                domain_string?: string | null;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                created_at: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                updated_at: string;
+                            }[];
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        /** Creates a website URL */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        website_url: {
+                            /** @description URL path */
+                            path: string;
+                            /** @description Associated website ID */
+                            website_id: number;
+                            /** @description Associated domain ID */
+                            domain_id: number;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description website URL created in team account after switching */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description URL path */
+                            path: string;
+                            /** @description Unique identifier */
+                            account_id: number;
+                            /** @description Unique identifier */
+                            website_id: number;
+                            /** @description Unique identifier */
+                            domain_id: number;
+                            /** @description Domain name */
+                            domain_string?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description domain does not belong to account */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/brainstorms": {
@@ -2577,87 +3000,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/domains/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Searches for domain availability */
-        post: {
-            parameters: {
-                query?: never;
-                header?: {
-                    Authorization?: string;
-                    "X-Signature"?: string;
-                    "X-Timestamp"?: string;
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        /** @description Array of domain names to check availability (max 10) */
-                        candidates: string[];
-                    };
-                };
-            };
-            responses: {
-                /** @description normalizes domain inputs */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            results: {
-                                /** @description Domain name */
-                                domain: string;
-                                /**
-                                 * @description Availability status
-                                 * @enum {string}
-                                 */
-                                status: "existing" | "unavailable" | "available";
-                                /** @description ID of existing domain if owned by current account */
-                                existing_id?: number | null;
-                            }[];
-                            platform_subdomain_credits: {
-                                /** @description Maximum platform subdomains allowed */
-                                limit: number;
-                                /** @description Number of platform subdomains used */
-                                used: number;
-                                /** @description Remaining platform subdomains */
-                                remaining: number;
-                            };
-                        };
-                    };
-                };
-                /** @description unauthorized - missing token */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description exceeds maximum candidates */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/geo_target_constants": {
         parameters: {
             query?: never;
@@ -4020,101 +4362,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/test/database/set_credits": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Sets credits for an account
-         * @description Sets plan and pack millicredits for a user account. Only available in development/test environments.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        credits: {
-                            /** @description Email of the user whose account credits to set */
-                            email: string;
-                            /**
-                             * @description Plan millicredits to set
-                             * @default 0
-                             */
-                            plan_millicredits?: number;
-                            /**
-                             * @description Pack millicredits to set
-                             * @default 0
-                             */
-                            pack_millicredits?: number;
-                        };
-                    };
-                };
-            };
-            responses: {
-                /** @description credits set successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example ok */
-                            status: string;
-                            /** @example Credits updated */
-                            message: string;
-                            account: {
-                                id?: number;
-                                plan_millicredits?: number;
-                                pack_millicredits?: number;
-                                total_millicredits?: number;
-                            };
-                        };
-                    };
-                };
-                /** @description user not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example error */
-                            status: string;
-                            errors: string[];
-                        };
-                    };
-                };
-                /** @description missing required parameters */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @example error */
-                            status: string;
-                            errors: string[];
-                        };
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/themes": {
         parameters: {
             query?: never;
@@ -4798,245 +5045,6 @@ export interface paths {
         };
         trace?: never;
     };
-    "/api/v1/website_urls": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lists website URLs for the account */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Filter by website ID */
-                    website_id?: number;
-                    /** @description Filter by domain ID */
-                    domain_id?: number;
-                };
-                header?: {
-                    Authorization?: string;
-                    "X-Signature"?: string;
-                    "X-Timestamp"?: string;
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description filters website URLs by domain_id */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            website_urls: {
-                                /** @description Unique identifier */
-                                id: number;
-                                /** @description URL path */
-                                path: string;
-                                /** @description Unique identifier */
-                                account_id: number;
-                                /** @description Unique identifier */
-                                website_id: number;
-                                /** @description Unique identifier */
-                                domain_id: number;
-                                /** @description Domain name */
-                                domain_string?: string | null;
-                                /**
-                                 * Format: date-time
-                                 * @description Timestamp
-                                 */
-                                created_at: string;
-                                /**
-                                 * Format: date-time
-                                 * @description Timestamp
-                                 */
-                                updated_at: string;
-                            }[];
-                        };
-                    };
-                };
-                /** @description unauthorized - missing token */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        /** Creates a website URL */
-        post: {
-            parameters: {
-                query?: never;
-                header?: {
-                    Authorization?: string;
-                    "X-Signature"?: string;
-                    "X-Timestamp"?: string;
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        website_url: {
-                            /** @description URL path */
-                            path: string;
-                            /** @description Associated website ID */
-                            website_id: number;
-                            /** @description Associated domain ID */
-                            domain_id: number;
-                        };
-                    };
-                };
-            };
-            responses: {
-                /** @description website URL created in team account after switching */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @description Unique identifier */
-                            id: number;
-                            /** @description URL path */
-                            path: string;
-                            /** @description Unique identifier */
-                            account_id: number;
-                            /** @description Unique identifier */
-                            website_id: number;
-                            /** @description Unique identifier */
-                            domain_id: number;
-                            /** @description Domain name */
-                            domain_string?: string | null;
-                            /**
-                             * Format: date-time
-                             * @description Timestamp
-                             */
-                            created_at: string;
-                            /**
-                             * Format: date-time
-                             * @description Timestamp
-                             */
-                            updated_at: string;
-                        };
-                    };
-                };
-                /** @description unauthorized - missing token */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description domain does not belong to account */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/website_urls/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Searches for website URL availability */
-        post: {
-            parameters: {
-                query?: never;
-                header?: {
-                    Authorization?: string;
-                    "X-Signature"?: string;
-                    "X-Timestamp"?: string;
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: {
-                content: {
-                    "application/json": {
-                        /** @description Domain ID to search within */
-                        domain_id: number;
-                        /** @description Array of paths to check availability (max 10) */
-                        candidates: string[];
-                    };
-                };
-            };
-            responses: {
-                /** @description normalizes path inputs */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            /** @description Unique identifier */
-                            domain_id: number;
-                            /** @description Domain name */
-                            domain: string;
-                            results: {
-                                /** @description URL path */
-                                path: string;
-                                /**
-                                 * @description Availability status
-                                 * @enum {string}
-                                 */
-                                status: "existing" | "unavailable" | "available";
-                                /** @description ID of existing website URL if owned by current account */
-                                existing_id?: number | null;
-                                /** @description Website ID of existing URL if owned by current account */
-                                existing_website_id?: number | null;
-                            }[];
-                        };
-                    };
-                };
-                /** @description unauthorized - missing token */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description domain belongs to another account */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description exceeds maximum candidates */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/website_urls/{id}": {
         parameters: {
             query?: never;
@@ -5181,13 +5189,6 @@ export interface paths {
                 };
                 /** @description cannot update other user website URL */
                 404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description duplicate domain and path on update */
-                422: {
                     headers: {
                         [name: string]: unknown;
                     };

@@ -31,7 +31,7 @@ type _Assertion = Expect<Equal<AdsGraphState, typeof AdsAnnotation.State>>;
 // Bridge for streaming frontend - uses createAppBridge for automatic usage tracking
 export const AdsBridge = createAppBridge({
   endpoint: "/api/ads/stream",
-  stateAnnotation: AdsAnnotation as any,
+  stateAnnotation: AdsAnnotation,
   messageSchema: Ads.jsonSchema,
   jsonTarget: "state",
   transforms: Ads.StreamingTransforms,

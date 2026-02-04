@@ -43,7 +43,7 @@ export type InsightsGraphState = typeof InsightsAnnotation.State;
 // Bridge for insights API - uses createAppBridge for automatic usage tracking
 export const InsightsBridge = createAppBridge({
   endpoint: "/api/insights/generate",
-  stateAnnotation: InsightsAnnotation as any,
+  stateAnnotation: InsightsAnnotation,
   messageSchema: Insights.jsonSchema,
   jsonTarget: "state",
 });

@@ -3,4 +3,6 @@
  *
  * Middleware for graph stream processing.
  */
-export { createAppBridge } from "./usageTracking";
+export { createAppBridge } from "./appBridge";
+export { usageTrackingMiddleware } from "./usageTracking";
+export { contextEngineeringMiddleware } from "./context";

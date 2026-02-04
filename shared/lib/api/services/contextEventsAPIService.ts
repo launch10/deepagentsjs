@@ -1,24 +1,22 @@
-import { RailsAPIBase } from "../index";
+import { RailsAPIBase, type paths } from "../index";
 import type { Simplify } from "type-fest";
 
 /**
- * Context event returned by the API
+ * Type definitions derived from OpenAPI spec
  */
-export interface ContextEvent {
-  id: number;
-  event_type: string;
-  payload: Record<string, unknown>;
-  created_at: string;
-}
 
-/**
- * Parameters for listing context events
- */
-export interface ListContextEventsParams {
-  project_id: number;
-  event_types?: string[];
-  since?: string;
-}
+/** Full response type from GET /api/v1/agent_context_events */
+export type ContextEventsListResponse = NonNullable<
+  paths["/api/v1/agent_context_events"]["get"]["responses"][200]["content"]["application/json"]
+>;
+
+/** Single context event type */
+export type ContextEvent = ContextEventsListResponse[number];
+
+/** Request parameters for GET /api/v1/agent_context_events */
+export type ListContextEventsParams = NonNullable<
+  paths["/api/v1/agent_context_events"]["get"]["parameters"]["query"]
+>;
 
 /**
  * Service for interacting with the Rails Agent Context Events API
@@ -37,30 +35,17 @@ export class ContextEventsAPIService extends RailsAPIBase {
    * @param params.since - Optional ISO8601 timestamp to filter events after
    * @returns Array of context events in chronological order
    */
-  async list(params: ListContextEventsParams): Promise<ContextEvent[]> {
+  async list(params: ListContextEventsParams): Promise<ContextEventsListResponse> {
     const client = await this.getClient();
 
-    // Build query parameters
-    const searchParams: Record<string, string | string[]> = {
-      project_id: String(params.project_id),
-    };
-
-    if (params.event_types?.length) {
-      searchParams["event_types[]"] = params.event_types;
-    }
-
-    if (params.since) {
-      searchParams.since = params.since;
-    }
-
-    const response = await client.GET("/api/v1/agent_context_events" as any, {
-      params: { query: searchParams },
+    const response = await client.GET("/api/v1/agent_context_events", {
+      params: { query: params },
     });
 
     if (response.error) {
       throw new Error(`Failed to get context events: ${JSON.stringify(response.error)}`);
     }
 
-    return (response.data ?? []) as ContextEvent[];
+    return response.data ?? [];
   }
 }

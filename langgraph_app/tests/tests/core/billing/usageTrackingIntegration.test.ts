@@ -8,6 +8,7 @@ import { DatabaseSnapshotter } from "@services";
 import { createAppBridge } from "@api";
 import { getLLM, usageStorage } from "@core";
 import { NodeMiddleware } from "@middleware";
+import { consumeStream } from "@support";
 
 /**
  * USAGE TRACKING INTEGRATION TESTS - BILLING CRITICAL
@@ -180,23 +181,6 @@ describe.sequential("Usage Tracking Integration - Real Middleware", () => {
     await db.delete(llmUsage).where(eq(llmUsage.threadId, testThreadId));
     await db.delete(llmConversationTraces).where(eq(llmConversationTraces.threadId, testThreadId));
   });
-
-  /**
-   * Helper to consume stream and return result
-   */
-  async function consumeStream(response: Response): Promise<string> {
-    const reader = response.body?.getReader();
-    if (!reader) throw new Error("Response has no body");
-
-    const decoder = new TextDecoder();
-    let result = "";
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      result += decoder.decode(value, { stream: true });
-    }
-    return result;
-  }
 
   describe("Multi-turn conversations (no double-counting)", () => {
     it("MUST assign different runIds to each conversation turn", async () => {

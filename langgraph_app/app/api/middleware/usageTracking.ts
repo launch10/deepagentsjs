@@ -8,12 +8,7 @@
  * - Extracts accountId and preRunCreditsRemaining from state
  * - Credit status is emitted to frontend via withCreditTracking graph wrapper
  */
-import {
-  createBridgeFactory,
-  createStorageMiddleware,
-  type StreamMiddleware,
-} from "langgraph-ai-sdk";
-import { contextEngineeringMiddleware } from "./context";
+import { createStorageMiddleware, type StreamMiddleware } from "langgraph-ai-sdk";
 import {
   usageStorage,
   createUsageContext,
@@ -59,7 +54,10 @@ function extractCreditState(state?: Record<string, unknown>): {
 /**
  * Middleware that tracks usage and persists billing data.
  */
-const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddleware<any, UsageContext>({
+export const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddleware<
+  any,
+  UsageContext
+>({
   name: "usage-tracking",
   storage: usageStorage,
 
@@ -113,16 +111,4 @@ const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddleware<a
       console.error("[usageTrackingMiddleware] Failed to persist:", error);
     }
   },
-});
-
-/**
- * Bridge factory with context engineering and usage tracking baked in.
- * All graph APIs use this to get automatic billing and context awareness.
- *
- * Middleware order:
- * 1. contextEngineeringMiddleware - Inject context events before processing
- * 2. usageTrackingMiddleware - Track LLM usage for billing
- */
-export const createAppBridge = createBridgeFactory({
-  middleware: [contextEngineeringMiddleware, usageTrackingMiddleware],
 });

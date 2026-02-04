@@ -1,15 +1,25 @@
 /**
  * Event Summarization
  *
- * Groups events by category and produces human-readable summaries.
+ * Groups events by category and produces summaries.
  * Multiple events of the same type get summarized into a single message.
+ *
+ * Supports both text-only and multimodal (with images) summaries.
  */
 
 import type { ContextEvent } from "@rails_api";
 
+/** Content block types for multimodal messages */
+export type TextContent = { type: "text"; text: string };
+export type ImageContent = { type: "image_url"; image_url: { url: string } };
+export type ContentBlock = TextContent | ImageContent;
+
 export interface SummarizedEvent {
   event_type: string;
-  message: string;
+  /** For simple text-only summaries */
+  message?: string;
+  /** For multimodal summaries (images + text) */
+  content?: ContentBlock[];
   created_at: string; // Timestamp of LAST event in group
 }
 
@@ -70,27 +80,42 @@ const SUMMARIZERS: Record<string, Summarizer> = {
     const deleted = events.filter((e) => e.event_type === "images.deleted");
     const last = events[events.length - 1]!;
 
-    const parts: string[] = [];
+    const content: ContentBlock[] = [];
 
     if (created.length > 0) {
+      // Text intro for created images
       const filenames = created.map((e) => e.payload.filename as string).filter(Boolean);
+      content.push({
+        type: "text",
+        text: `I uploaded ${created.length} image${created.length > 1 ? "s" : ""}: ${filenames.join(", ")}`,
+      });
 
-      if (created.length <= 3 && filenames.length > 0) {
-        parts.push(`uploaded ${filenames.join(", ")}`);
-      } else {
-        parts.push(`uploaded ${created.length} image${created.length > 1 ? "s" : ""}`);
+      // Add actual image blocks so agent can SEE the images
+      for (const event of created) {
+        const url = event.payload.url as string;
+        if (url) {
+          content.push({
+            type: "image_url",
+            image_url: { url },
+          });
+        }
       }
     }
 
     if (deleted.length > 0) {
-      parts.push(`deleted ${deleted.length} image${deleted.length > 1 ? "s" : ""}`);
+      // Include filenames so agent knows what paths to remove from code
+      const filenames = deleted.map((e) => e.payload.filename as string).filter(Boolean);
+      content.push({
+        type: "text",
+        text: `I deleted ${deleted.length} image${deleted.length > 1 ? "s" : ""}: ${filenames.join(", ")}. Please remove any references to these files.`,
+      });
     }
 
-    if (parts.length === 0) return null;
+    if (content.length === 0) return null;
 
     return {
       event_type: "images",
-      message: `I ${parts.join(" and ")}`,
+      content,
       created_at: last.created_at,
     };
   },

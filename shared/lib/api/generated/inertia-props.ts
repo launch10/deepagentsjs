@@ -804,6 +804,8 @@ export interface components {
                 plan_credits_allocated: number;
                 period_ends_at?: string | null;
             } | null;
+            /** @description Current website substep (build, domain, deploy) */
+            substep?: string | null;
             /** @description Langgraph thread ID for the conversation */
             thread_id?: string | null;
             project?: {
