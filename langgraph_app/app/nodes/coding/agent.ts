@@ -1,7 +1,7 @@
 import { db, websites, eq } from "@db";
 import { Website } from "@types";
 import { createDeepAgent, createSettings } from "deepagents";
-import { getLLM, getLLMFallbacks } from "@core";
+import { getLLM, getLLMFallbacks, createPromptCachingMiddleware } from "@core";
 import { WebsiteFilesBackend } from "@services";
 import { SearchIconsTool } from "@tools";
 import { copywriterSubAgent, buildCoderSubAgent } from "./subagents";
@@ -33,7 +33,7 @@ const getMiddlewares = (): AgentMiddleware[] => {
   //   keep: { messages: 15 },
   // });
 
-  return [toolRetryMiddleware()];
+  return [createPromptCachingMiddleware(), toolRetryMiddleware()];
 };
 
 export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
@@ -136,6 +136,5 @@ export async function createCodingAgent(
     subagents: [coderSubAgent],
     tools: [new SearchIconsTool()],
     middleware: middlewares as any,
-    checkpointer: checkpointer as any,
   });
 }

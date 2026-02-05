@@ -1,5 +1,5 @@
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLLM } from "@core";
+import { getLLM, createPromptCachingMiddleware } from "@core";
 import { NodeMiddleware } from "@middleware";
 import { type SupportGraphState } from "@annotation";
 import { createAgent, createMiddleware } from "langchain";
@@ -68,6 +68,7 @@ export const supportAgent = NodeMiddleware.use(
       model: llm,
       tools: [supportFaqTool],
       systemPrompt: SUPPORT_SYSTEM_PROMPT,
+      middleware: [createPromptCachingMiddleware()],
     });
 
     const result = (await agent.invoke(

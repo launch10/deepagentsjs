@@ -30,7 +30,12 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
     _runName?: string
   ): Promise<void> {
     const context = getUsageContext();
-    if (!context) return;
+    if (!context) {
+      console.warn(
+        `[UsageTracker] handleChatModelStart: no usage context (runId=${runId}). This LLM call will NOT be tracked.`
+      );
+      return;
+    }
 
     // Store metadata in context for this langchain runId so we can access _modelCard in handleLLMEnd
     // Using the context's Map ensures automatic cleanup when the context ends
@@ -60,7 +65,12 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
     extraParams?: Record<string, unknown>
   ): Promise<void> {
     const context = getUsageContext();
-    if (!context) return;
+    if (!context) {
+      console.warn(
+        `[UsageTracker] handleLLMEnd: no usage context (runId=${llmCallId}). Usage record lost.`
+      );
+      return;
+    }
 
     // Retrieve metadata stored in handleChatModelStart (includes _modelCard)
     const storedMetadata = context._runIdToMetadata.get(llmCallId);
@@ -79,17 +89,23 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
 
         // Record usage for billing
         if (message.usage_metadata) {
-          context.records.push(
-            this.extractUsageRecord(
-              context.runId,
-              message,
-              output.llmOutput,
-              llmCallId,
-              parentLlmCallId,
-              tags,
-              extraParams,
-              storedMetadata
-            )
+          const record = this.extractUsageRecord(
+            context.runId,
+            message,
+            output.llmOutput,
+            llmCallId,
+            parentLlmCallId,
+            tags,
+            extraParams,
+            storedMetadata
+          );
+          context.records.push(record);
+          console.log(
+            `[UsageTracker] Recorded: model=${record.model} input=${record.inputTokens} output=${record.outputTokens} (total records: ${context.records.length})`
+          );
+        } else {
+          console.warn(
+            `[UsageTracker] handleLLMEnd: message has no usage_metadata (runId=${llmCallId})`
           );
         }
       }
@@ -122,6 +138,13 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
   ): UsageRecord {
     const usage = (message as any).usage_metadata;
     const responseMeta = (message as any).response_metadata || llmOutput || {};
+
+    // LangChain's streaming handler sums message_start + message_delta usage,
+    // but Anthropic's message_delta repeats cache token counts (cumulative, not
+    // incremental). This exactly doubles cache_creation and cache_read tokens in
+    // usage_metadata. The raw Anthropic data in response_metadata.usage is NOT
+    // merged across streaming chunks and contains the correct values.
+    const rawAnthropicUsage = (message as any).response_metadata?.usage;
 
     // Get model name for billing - prefer _modelCard since it's set at creation time
     // and guaranteed to match our cost configuration. Response metadata is a fallback
@@ -168,8 +191,13 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
       outputTokens: usage.output_tokens || 0,
       reasoningTokens: usage.output_token_details?.reasoning || 0,
       cacheCreationTokens:
-        usage.cache_creation_input_tokens || usage.input_token_details?.cache_creation || 0,
-      cacheReadTokens: usage.cache_read_input_tokens || usage.input_token_details?.cache_read || 0,
+        rawAnthropicUsage?.cache_creation_input_tokens ??
+        usage.input_token_details?.cache_creation ??
+        0,
+      cacheReadTokens:
+        rawAnthropicUsage?.cache_read_input_tokens ??
+        usage.input_token_details?.cache_read ??
+        0,
       timestamp: new Date(),
       tags,
       metadata: storedMetadata ?? (extraParams?.metadata as Record<string, unknown>),

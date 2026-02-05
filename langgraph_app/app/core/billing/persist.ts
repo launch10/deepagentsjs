@@ -14,6 +14,8 @@ import type {
   UsageSummary,
   SerializedMessage,
 } from "./types";
+import { calculateCost } from "../llm/cost";
+import type { ModelConfig } from "../llm/types";
 
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 100;
@@ -30,25 +32,41 @@ function sleep(ms: number): Promise<void> {
  * Transform usage records to database row format.
  * Exported for testing.
  */
-export function prepareUsageRecordsForInsert(records: UsageRecord[], context: UsagePersistContext) {
-  return records.map((record) => ({
-    chatId: context.chatId,
-    threadId: context.threadId,
-    runId: record.runId,
-    messageId: record.messageId,
-    langchainRunId: record.langchainRunId,
-    parentLangchainRunId: record.parentLangchainRunId,
-    graphName: context.graphName,
-    modelRaw: record.model,
-    inputTokens: record.inputTokens,
-    outputTokens: record.outputTokens,
-    reasoningTokens: record.reasoningTokens,
-    cacheCreationTokens: record.cacheCreationTokens,
-    cacheReadTokens: record.cacheReadTokens,
-    tags: record.tags,
-    metadata: record.metadata,
-    createdAt: record.timestamp.toISOString(),
-  }));
+export function prepareUsageRecordsForInsert(
+  records: UsageRecord[],
+  context: UsagePersistContext,
+  modelConfigs?: Record<string, ModelConfig>
+) {
+  return records.map((record) => {
+    let costMillicredits: number | null = null;
+    if (modelConfigs) {
+      try {
+        costMillicredits = calculateCost(record, modelConfigs);
+      } catch {
+          // Model not found in configs — leave null, Rails will calculate later
+      }
+    }
+
+    return {
+      chatId: context.chatId,
+      threadId: context.threadId,
+      runId: record.runId,
+      messageId: record.messageId,
+      langchainRunId: record.langchainRunId,
+      parentLangchainRunId: record.parentLangchainRunId,
+      graphName: context.graphName,
+      modelRaw: record.model,
+      inputTokens: record.inputTokens,
+      outputTokens: record.outputTokens,
+      reasoningTokens: record.reasoningTokens,
+      cacheCreationTokens: record.cacheCreationTokens,
+      cacheReadTokens: record.cacheReadTokens,
+      costMillicredits,
+      tags: record.tags,
+      metadata: record.metadata,
+      createdAt: record.timestamp.toISOString(),
+    };
+  });
 }
 
 /**
@@ -57,11 +75,13 @@ export function prepareUsageRecordsForInsert(records: UsageRecord[], context: Us
  */
 export async function persistUsage(
   records: UsageRecord[],
-  context: UsagePersistContext
+  context: UsagePersistContext,
+  modelConfigs?: Record<string, ModelConfig>
 ): Promise<void> {
   if (records.length === 0) return;
+  console.log(`[persistUsage] Persisting ${records.length} records`);
 
-  const rows = prepareUsageRecordsForInsert(records, context).map((row) => ({
+  const rows = prepareUsageRecordsForInsert(records, context, modelConfigs).map((row) => ({
     ...row,
     updatedAt: row.createdAt,
   }));

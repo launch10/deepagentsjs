@@ -5,6 +5,7 @@ export {
   unavailableModelFallbackMiddleware,
   isAvailabilityError,
 } from "./unavailableModelFallbackMiddleware";
+export { createPromptCachingMiddleware } from "./promptCachingMiddleware";
 export {
   calculateCost,
   calculateRunCost,

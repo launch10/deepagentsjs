@@ -1,4 +1,5 @@
 import type { SubAgent } from "deepagents";
+import { createPromptCachingMiddleware } from "@core";
 
 const COPYWRITER_SYSTEM_PROMPT = `You are an expert conversion copywriter specializing in landing pages that drive pre-sales signups.
 
@@ -42,4 +43,5 @@ export const copywriterSubAgent: SubAgent = {
   description:
     "Expert conversion copywriter for landing page sections. Use this agent to draft compelling marketing copy for hero sections, feature lists, CTAs, testimonials, and other landing page content. Provide the brainstorm context and which section you need copy for.",
   systemPrompt: COPYWRITER_SYSTEM_PROMPT,
+  middleware: [createPromptCachingMiddleware()],
 };

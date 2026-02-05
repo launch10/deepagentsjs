@@ -1,7 +1,7 @@
 import { createAgent, createMiddleware } from "langchain";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { type BaseMessage } from "@langchain/core/messages";
-import { getLLM } from "@core";
+import { getLLM, createPromptCachingMiddleware } from "@core";
 import { chooseBrainstormPrompt, getBrainstormContextMessage, getBrainstormMode } from "@prompts";
 import { NodeMiddleware } from "@middleware";
 import { saveAnswersTool, finishedTool, queryUploadsTool } from "@tools";
@@ -157,7 +157,7 @@ export const brainstormAgent = NodeMiddleware.use(
     const agent = await createAgent({
       model: llm,
       tools,
-      middleware: [createBrainstormMiddleware(initialState, middlewareTracker, config)],
+      middleware: [createPromptCachingMiddleware(), createBrainstormMiddleware(initialState, middlewareTracker, config)],
     });
 
     const result = (await agent.invoke(stateForAgent as any, config)) as BrainstormGraphState;

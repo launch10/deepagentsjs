@@ -1,9 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { HumanMessage } from "@langchain/core/messages";
-import { testGraph, appScenario, consumeStream } from "@support";
-import { DatabaseSnapshotter } from "@services";
-import { WebsiteAPI } from "@api";
-import { getCodingAgentBackend } from "@nodes";
 import {
   db,
   Types as DBTypes,
@@ -13,9 +9,15 @@ import {
   websiteFiles,
   themes,
   websiteUploads,
+  llmUsage,
+  llmConversationTraces,
   eq,
   and,
 } from "@db";
+import { testGraph, appScenario, consumeStream, logCostSummary } from "@support";
+import { DatabaseSnapshotter } from "@services";
+import { WebsiteAPI } from "@api";
+import { getCodingAgentBackend } from "@nodes";
 import { Website, isAIMessage, type ThreadIDType } from "@types";
 import { websiteGraph as uncompiledGraph } from "@graphs";
 import { graphParams } from "@core";
@@ -66,15 +68,7 @@ const assertMessageContent = async (result: { state: WebsiteGraphState }, websit
 
   const containsBrainstormContext = significantWords.some((word) => replyLower.includes(word));
 
-  console.log(`brainstorm`);
-  console.log(`brainstorm`);
-  console.log(`brainstorm`);
-  console.log(`brainstorm`);
-  console.log(`brainstorm`);
-  console.log(`brainstorm`);
-  console.log(`brainstorm`);
-  console.log(`brainstorm`);
-  console.log(textContent);
+  console.log(`AI response preview: ${textContent?.slice(0, 200)}...`);
   expect(containsBrainstormContext).toBe(true);
 };
 
@@ -147,7 +141,7 @@ describe("Website Builder", () => {
   });
 
   describe("Page Generation", () => {
-    it.skip("generates a complete landing page with required sections", async () => {
+    it.only("generates a complete landing page with required sections", async () => {
       // Load the chat's threadId from the snapshot so the graph state matches the DB
       const [existingChat] = await db
         .select()
@@ -159,20 +153,46 @@ describe("Website Builder", () => {
         throw new Error("No chat with threadId found in snapshot for website");
       }
 
-      const result = await testGraph<WebsiteGraphState>()
-        .withGraph(websiteGraph)
-        .withState({
+      const threadId = existingChat.threadId as ThreadIDType;
+
+      // Use WebsiteAPI.stream to go through the bridge with usageTrackingMiddleware
+      const response = WebsiteAPI.stream({
+        messages: [{ role: "user", content: "howdy big guy, let's make the landing page" }],
+        threadId,
+        state: {
           websiteId,
-          threadId: existingChat.threadId as ThreadIDType,
+          threadId,
           accountId: website.accountId ?? undefined,
           projectId: website.projectId ?? undefined,
-        })
-        .execute();
+          jwt: "test-jwt",
+          messages: [new HumanMessage("howdy big guy, let's make the landing page")],
+        },
+      });
+      await consumeStream(response);
 
-      expect(result.error).toBeNull();
-      expect(result.state.status).toBe("completed");
+      // Get the final state from checkpoint
+      const checkpoint = await websiteGraph.getState({ configurable: { thread_id: threadId } });
+      const state = checkpoint.values as WebsiteGraphState;
 
-      // Get generated files
+      expect(state.status).toBe("completed");
+
+      // ---- Usage tracking assertions ----
+      const usageRecords = await db.select().from(llmUsage);
+
+      expect(usageRecords.length).toBeGreaterThan(0);
+
+      // All records should have costMillicredits populated
+      for (const record of usageRecords) {
+        expect(record.inputTokens).toBeGreaterThan(0);
+        expect(record.outputTokens).toBeGreaterThan(0);
+        expect(record.costMillicredits).not.toBeNull();
+        expect(record.costMillicredits).toBeGreaterThan(0);
+      }
+
+      // Log cost summary for debugging
+      logCostSummary("Website Build Cost Summary", usageRecords);
+
+      // ---- File generation assertions ----
       const generatedFiles = await db
         .select()
         .from(websiteFiles)
@@ -191,7 +211,7 @@ describe("Website Builder", () => {
       expect(firstComponent?.content).toMatch(/function|const/);
 
       // State should be synced with database
-      const stateFile = result.state.files[firstComponent?.path!] as Website.File.File;
+      const stateFile = state.files[firstComponent?.path!] as Website.File.File;
       expect(stateFile?.content).toEqual(firstComponent?.content);
 
       // At least one file contains tracking
@@ -209,16 +229,75 @@ describe("Website Builder", () => {
         .limit(1);
       const chat = chatsResult.at(0);
       expect(chat).toBeDefined();
-      expect(chat?.threadId).toEqual(result.state.threadId);
+      expect(chat?.threadId).toEqual(state.threadId);
 
-      await assertMessageContent(result, websiteId);
+      await assertMessageContent({ state }, websiteId);
+
+      // ---- Message trimming assertions ----
+      // Outer graph should only have user-visible messages (human + AI), not 40+ internal agent messages
+      const humanMessages = state.messages.filter((m: any) => m._getType?.() === "human" || m.type === "human");
+      const aiMessages = state.messages.filter(isAIMessage);
+      console.log(`\n=== Message Count ===`);
+      console.log(`Total messages in state: ${state.messages.length}`);
+      console.log(`Human messages: ${humanMessages.length}`);
+      console.log(`AI messages: ${aiMessages.length}`);
+      console.log(`====================\n`);
+
+      // Should be a small number of user-visible messages, not 40+ internal ones
+      expect(state.messages.length).toBeLessThanOrEqual(10);
 
       await saveExample(websiteId, "scheduling-tool"); // So we can see the result
 
-      // Create a snapshot after successful generation for other tests to use
-      // This ensures the snapshot is always schema-current with real generated data
-      // This is now handled in website_generated snapshot, and gets updated whenever we call saveExample above and rebuild
-      // await DatabaseSnapshotter.createSnapshot("website_generated");
+      // ========================================
+      // SECOND RUN: Edit the hero headline
+      // ========================================
+      const createUsageCount = usageRecords.length;
+
+      const editResponse = WebsiteAPI.stream({
+        messages: [{ role: "user", content: "Can the hero be pink?" }],
+        threadId,
+        state: {
+          websiteId,
+          threadId,
+          accountId: website.accountId ?? undefined,
+          projectId: website.projectId ?? undefined,
+          jwt: "test-jwt",
+          messages: [
+            ...state.messages,
+            new HumanMessage("Can the hero be pink?"),
+          ],
+        },
+      });
+      await consumeStream(editResponse);
+
+      // Get the state after edit
+      const editCheckpoint = await websiteGraph.getState({ configurable: { thread_id: threadId } });
+      const editState = editCheckpoint.values as WebsiteGraphState;
+
+      expect(editState.status).toBe("completed");
+
+      // ---- Edit cost assertions ----
+      const allUsageRecords = await db.select().from(llmUsage);
+      const editUsageRecords = allUsageRecords.slice(createUsageCount);
+
+      logCostSummary("Hero Edit Cost Summary", editUsageRecords);
+
+      // Edit should have generated some LLM calls
+      expect(editUsageRecords.length).toBeGreaterThan(0);
+
+      // Verify hero file was updated
+      const heroFile = Object.entries(editState.files).find(
+        ([path]) => path.toLowerCase().includes("hero")
+      );
+      if (heroFile) {
+        const heroContent = (heroFile[1] as Website.File.File).content;
+        console.log(`Hero file found: ${heroFile[0]}`);
+        console.log(`Contains new headline: ${heroContent.includes("Transform Your Business Today")}`);
+      }
+
+      // Messages should still be trimmed after edit
+      console.log(`Messages after edit: ${editState.messages.length}`);
+      expect(editState.messages.length).toBeLessThanOrEqual(15);
     }, 500000);
   });
 
@@ -464,7 +543,7 @@ describe("Website Builder", () => {
         });
 
         // Use WebsiteAPI to stream - this goes through the bridge with context middleware
-        const userMessage = { role: "user", content: "Add these new images to my landing page" };
+        const userMessage = { role: "user", content: "Add these new images to my landing page, please" };
         const response = WebsiteAPI.stream({
           messages: [userMessage],
           threadId,

@@ -7,7 +7,7 @@ import { createCodingAgent } from "@nodes";
 import { createContextMessage } from "langgraph-ai-sdk";
 import { isCacheModeEnabled } from "./cacheMode";
 import { getSchedulingToolMinorEditFiles } from "@cache";
-import type { Website } from "@types";
+import { lastAIMessage, type Website } from "@types";
 import { injectAgentContext } from "@api/middleware";
 
 /**
@@ -85,8 +85,15 @@ export const websiteBuilderNode = NodeMiddleware.use(
       }
     );
 
+    // Only return user-visible messages to the outer graph.
+    // The deep agent maintains its own checkpoint with full internal context.
+    const lastAI = lastAIMessage(result);
+    const [structuredMessage] = lastAI
+      ? await toStructuredMessage(lastAI)
+      : [undefined];
+
     return {
-      messages: result.messages,
+      messages: structuredMessage ? [structuredMessage] : [],
       status: "completed",
     };
   }

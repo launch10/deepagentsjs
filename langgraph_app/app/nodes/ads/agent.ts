@@ -1,7 +1,7 @@
 import { createAgent, createMiddleware } from "langchain";
 import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLLM } from "@core";
+import { getLLM, createPromptCachingMiddleware } from "@core";
 import { chooseAdsPrompt, injectAdsContextMessage } from "@prompts";
 import { NodeMiddleware } from "@middleware";
 import { type AdsGraphState } from "@state";
@@ -53,7 +53,7 @@ export const adsAgent = NodeMiddleware.use(
     const agent = await createAgent({
       model: llm,
       tools,
-      middleware: [dynamicPromptMiddleware],
+      middleware: [createPromptCachingMiddleware(), dynamicPromptMiddleware],
     });
 
     const stateWithMessages = {

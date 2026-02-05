@@ -17,6 +17,7 @@ import {
   notifyRails,
   calculateRunCost,
   deriveCreditStatus,
+  LLMManager,
   type UsageContext,
   type UsageSummary,
 } from "@core";
@@ -76,12 +77,21 @@ export const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddl
   async onComplete(ctx, usageContext) {
     const { records, messages, runId, accountId, preRunCreditsRemaining } = usageContext;
 
-    if (records.length === 0 && messages.length === 0) return;
+    console.log(
+      `[usageTrackingMiddleware] onComplete fired: runId=${runId} records=${records.length} messages=${messages.length} threadId=${ctx.threadId}`
+    );
+
+    if (records.length === 0 && messages.length === 0) {
+      console.warn(
+        `[usageTrackingMiddleware] onComplete: zero records AND zero messages — nothing to persist. runId=${runId}`
+      );
+      return;
+    }
 
     const chatId = await getChatIdFromThread(ctx.threadId);
     if (!chatId) {
       console.warn(
-        `[usageTrackingMiddleware] No chat found for threadId ${ctx.threadId}, skipping billing`
+        `[usageTrackingMiddleware] No chat found for threadId ${ctx.threadId}, skipping billing. ${records.length} usage records LOST.`
       );
       return;
     }
@@ -93,18 +103,34 @@ export const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddl
     };
 
     try {
+      // Fetch model configs for cost calculation (best-effort, non-blocking)
+      let modelConfigs: Record<string, import("@core").ModelConfig> | undefined;
+      try {
+        modelConfigs = await LLMManager.getModelConfigs();
+      } catch {
+        // Config fetch failed — persist without costs, Rails will calculate later
+      }
+
       await Promise.all([
         persistTrace(
           { chatId, threadId: ctx.threadId, runId, graphName: ctx.graphName || "unknown" },
           messages,
           usageSummary
         ),
-        persistUsage(records, {
-          chatId,
-          threadId: ctx.threadId,
-          graphName: ctx.graphName || "unknown",
-        }),
+        persistUsage(
+          records,
+          {
+            chatId,
+            threadId: ctx.threadId,
+            graphName: ctx.graphName || "unknown",
+          },
+          modelConfigs
+        ),
       ]);
+
+      console.log(
+        `[usageTrackingMiddleware] Persisted: ${records.length} records, ${messages.length} messages, chatId=${chatId}, runId=${runId}`
+      );
 
       notifyRails(runId);
     } catch (error) {
