@@ -29,16 +29,19 @@ Keep responses concise. No lengthy explanations.`;
 
 export async function createLightEditAgent(
   state: MinimalCodingAgentState,
-  existingBackend?: WebsiteFilesBackend
+  options?: {
+    backend?: WebsiteFilesBackend;
+    systemPrompt?: string;
+  }
 ) {
-  const backend = existingBackend ?? (await getCodingAgentBackend(state));
+  const backend = options?.backend ?? (await getCodingAgentBackend(state));
   const llm = await getLLM({ skill: "coding", speed: "blazing", cost: "paid", maxTier: 3 });
   const middlewares: AgentMiddleware[] = [createPromptCachingMiddleware(), toolRetryMiddleware()];
 
   return createDeepAgent({
     model: llm as any,
     name: "light-edit-agent",
-    systemPrompt: LIGHT_EDIT_SYSTEM_PROMPT,
+    systemPrompt: options?.systemPrompt ?? LIGHT_EDIT_SYSTEM_PROMPT,
     backend: () => backend as any,
     subagents: [],
     tools: [],

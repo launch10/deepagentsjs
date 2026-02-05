@@ -60,21 +60,9 @@ const selectAgent = async (state: WebsiteGraphState) => {
         : "complex edit";
     const route = await classifyEdit(userText);
     console.log(`Edit classified as: ${route}`);
-    console.log(`Edit classified as: ${route}`);
-    console.log(`Edit classified as: ${route}`);
-    console.log(`Edit classified as: ${route}`);
-    console.log(`Edit classified as: ${route}`);
-    console.log(`Edit classified as: ${route}`);
-    console.log(`Edit classified as: ${route}`);
-    console.log(`Edit classified as: ${route}`);
-    console.log(`Edit classified as: ${route}`);
-    console.log(`Edit classified as: ${route}`);
     agent =
       route === "simple"
-        ? await createLightEditAgent(
-            { ...state, isFirstMessage },
-            Object.keys(state.files || {})
-          )
+        ? await createLightEditAgent({ ...state, isFirstMessage })
         : await createCodingAgent({ ...state, isFirstMessage });
   }
   return agent;

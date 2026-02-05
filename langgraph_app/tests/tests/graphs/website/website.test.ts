@@ -244,7 +244,7 @@ describe("Website Builder", () => {
       expect(originalUsageRecords.length).toEqual(0);
 
       const editResponse = WebsiteAPI.stream({
-        messages: [{ role: "user", content: "Let's make the hero emo and angsty" }],
+        messages: [{ role: "user", content: "Let's make the hero scary like halloween" }],
         threadId,
         state: {
           websiteId,
@@ -253,7 +253,7 @@ describe("Website Builder", () => {
           projectId: website.projectId ?? undefined,
           jwt: "test-jwt",
           messages: [
-            new HumanMessage("Let's make the hero emo and angsty"),
+            new HumanMessage("Let's make the hero scary like halloween"),
           ],
         },
       });

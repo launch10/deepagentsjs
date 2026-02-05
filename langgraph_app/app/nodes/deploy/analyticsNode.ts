@@ -78,8 +78,7 @@ async function instrumentFile(
   const prompt = await buildInstrumentationPrompt(state, config);
   const agent = await createLightEditAgent(
     { ...state, isFirstMessage: false },
-    prompt,
-    backend
+    { backend, systemPrompt: prompt }
   );
 
   // Generate a unique thread_id for this agent invocation

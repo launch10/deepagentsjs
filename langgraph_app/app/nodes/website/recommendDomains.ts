@@ -38,6 +38,11 @@ export const domainRecommendationsNode = NodeMiddleware.use(
       return {};
     }
 
+    if (state.messages.length > 0) {
+      console.log("[domainRecommendations] Skipping - messages already exist");
+      return {};
+    }
+
     if (!state.websiteId) {
       console.log("[domainRecommendations] Skipping - no websiteId");
       return {};
