@@ -244,7 +244,7 @@ describe("Website Builder", () => {
       expect(originalUsageRecords.length).toEqual(0);
 
       const editResponse = WebsiteAPI.stream({
-        messages: [{ role: "user", content: "Let's make the hero scary like halloween" }],
+        messages: [{ role: "user", content: "Let's make the hero blue" }],
         threadId,
         state: {
           websiteId,
@@ -253,7 +253,7 @@ describe("Website Builder", () => {
           projectId: website.projectId ?? undefined,
           jwt: "test-jwt",
           messages: [
-            new HumanMessage("Let's make the hero scary like halloween"),
+            new HumanMessage("Let's make the hero blue"),
           ],
         },
       });
@@ -284,7 +284,6 @@ describe("Website Builder", () => {
       const heroFile = Object.entries(editState.files).find(
         ([path]) => path.toLowerCase().includes("hero")
       );
-      debugger;
       if (heroFile) {
         const heroContent = (heroFile[1] as Website.File.File).content;
         console.log(`Hero file found: ${heroFile[0]}`);

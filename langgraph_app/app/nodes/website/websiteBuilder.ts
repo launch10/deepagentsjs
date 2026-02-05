@@ -43,29 +43,28 @@ const cachedResponse = async (state: WebsiteGraphState) => {
   };
 };
 
-const selectAgent = async (state: WebsiteGraphState) => {
+const selectAgent = async (state: WebsiteGraphState): Promise<{ agent: any; isLightEdit: boolean }> => {
   const isFirstMessage = state.messages.length === 0;
 
   // Route: create flow or programmatic bugfix → full Sonnet agent
   //        simple edits (color, text, spacing) → light Haiku agent
   //        complex edits (new sections, bugs, restructure) → full Sonnet agent
-  let agent;
   if (isFirstMessage || (state.consoleErrors && state.consoleErrors.length > 0)) {
-    agent = await createCodingAgent({ ...state, isFirstMessage });
-  } else {
-    const lastMessage = state.messages.at(-1);
-    const userText =
-      typeof lastMessage?.content === "string"
-        ? lastMessage.content
-        : "complex edit";
-    const route = await classifyEdit(userText);
-    console.log(`Edit classified as: ${route}`);
-    agent =
-      route === "simple"
-        ? await createLightEditAgent({ ...state, isFirstMessage })
-        : await createCodingAgent({ ...state, isFirstMessage });
+    return { agent: await createCodingAgent({ ...state, isFirstMessage }), isLightEdit: false };
   }
-  return agent;
+
+  const lastMessage = state.messages.at(-1);
+  const userText =
+    typeof lastMessage?.content === "string"
+      ? lastMessage.content
+      : "complex edit";
+  const route = classifyEdit(userText);
+  console.log(`Edit classified as: ${route}`);
+
+  if (route === "simple") {
+    return { agent: await createLightEditAgent({ ...state, isFirstMessage }), isLightEdit: true };
+  }
+  return { agent: await createCodingAgent({ ...state, isFirstMessage }), isLightEdit: false };
 };
 
 const buildContext = async (state: WebsiteGraphState) => {
@@ -108,12 +107,12 @@ export const websiteBuilderNode = NodeMiddleware.use(
       return await cachedResponse(state);
     }
 
-    const agent = await selectAgent(state);
+    const { agent, isLightEdit } = await selectAgent(state);
     const messages = await buildContext(state);
 
     const result = await agent.invoke({ messages }, {
         ...config,
-        recursionLimit: 150,
+        recursionLimit: isLightEdit ? 20 : 150,
       }
     );
 
