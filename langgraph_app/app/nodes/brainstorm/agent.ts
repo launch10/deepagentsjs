@@ -154,6 +154,12 @@ export const brainstormAgent = NodeMiddleware.use(
     const llm = (await getLLM()).withConfig({ tags: ["notify"] });
     const tools = [saveAnswersTool, finishedTool, queryUploadsTool];
 
+    console.log(`running agent....`)
+    console.log(`running agent....`)
+    console.log(`running agent....`)
+    console.log(`running agent....`)
+    console.log(`running agent....`)
+    console.log(`running agent....`)
     const agent = await createAgent({
       model: llm,
       tools,
@@ -167,6 +173,7 @@ export const brainstormAgent = NodeMiddleware.use(
     }
 
     const [message, updates] = await BrainstormBridge.toStructuredMessage(lastMessage);
+    console.log(`result: ${JSON.stringify(result, null, 2)}`)
 
     // Get updated next steps after agent processing
     const { memories, remainingTopics, currentTopic, placeholderText, availableCommands } =

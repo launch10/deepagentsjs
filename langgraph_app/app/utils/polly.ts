@@ -182,6 +182,9 @@ class PollyManager {
     // Passthrough to Rails on whatever port it's running (from config/services.sh)
     const railsPort = process.env.RAILS_PORT || '3000';
     server.any(`http://localhost:${railsPort}/*`).passthrough();
+
+    // Passthrough LangSmith tracing so Polly doesn't intercept trace API calls
+    server.any(/api\.smith\.langchain\.com/).passthrough();
   }
 
   private static configureLlms() {

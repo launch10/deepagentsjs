@@ -3,7 +3,8 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { AIMessage } from "@langchain/core/messages";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 import { NodeMiddleware } from "@middleware";
-import { createCodingAgent } from "@nodes";
+import { createCodingAgent, createLightEditAgent } from "@nodes";
+import { classifyEdit } from "./classifyEdit";
 import { createContextMessage } from "langgraph-ai-sdk";
 import { isCacheModeEnabled } from "./cacheMode";
 import { getSchedulingToolMinorEditFiles } from "@cache";
@@ -24,6 +25,74 @@ function getCachedResponse(): {
   };
 }
 
+const cachedResponse = async (state: WebsiteGraphState) => {
+  const { files, message } = getCachedResponse();
+
+  const rawMessage = new AIMessage({
+    content: message,
+    id: `cache-mode-create-${Date.now()}`,
+  });
+
+  const [aiMessage] = await toStructuredMessage(rawMessage);
+  const messages = (state.messages || []).length === 0 ? [aiMessage] : state.messages;
+
+  return {
+    messages,
+    files,
+    status: "completed" as const,
+  };
+};
+
+const selectAgent = async (state: WebsiteGraphState) => {
+  const isFirstMessage = state.messages.length === 0;
+
+  // Route: create flow or programmatic bugfix → full Sonnet agent
+  //        simple edits (color, text, spacing) → light Haiku agent
+  //        complex edits (new sections, bugs, restructure) → full Sonnet agent
+  let agent;
+  if (isFirstMessage || (state.consoleErrors && state.consoleErrors.length > 0)) {
+    agent = await createCodingAgent({ ...state, isFirstMessage });
+  } else {
+    const lastMessage = state.messages.at(-1);
+    const userText =
+      typeof lastMessage?.content === "string"
+        ? lastMessage.content
+        : "complex edit";
+    const route = await classifyEdit(userText);
+    console.log(`Edit classified as: ${route}`);
+    agent =
+      route === "simple"
+        ? await createLightEditAgent({ ...state, isFirstMessage })
+        : await createCodingAgent({ ...state, isFirstMessage });
+  }
+  return agent;
+};
+
+const buildContext = async (state: WebsiteGraphState) => {
+  const isFirstMessage = state.messages.length === 0;
+
+  // Inject context events (brainstorm.finished, images.created, images.deleted)
+  // This runs within AsyncLocalStorage context, preserving Polly.js caching
+  // For the first message (create flow), this will include brainstorm context from events
+  const contextMessages =
+    state.projectId && state.jwt
+      ? await injectAgentContext({
+          graphName: "website",
+          projectId: state.projectId,
+          jwt: state.jwt,
+          messages: state.messages || [],
+        })
+      : state.messages || [];
+
+  // For create flow, add instruction to create a landing page
+  // Brainstorm context and images come from events via injectAgentContext
+  const instructions = isFirstMessage
+    ? [createContextMessage("Create a landing page for this business")]
+    : []; // For edits, just use the user's message directly
+
+  return [...contextMessages, ...instructions];
+};
+
 export const websiteBuilderNode = NodeMiddleware.use(
   {},
   async (
@@ -36,50 +105,13 @@ export const websiteBuilderNode = NodeMiddleware.use(
 
     // In cache mode, return cached files instead of running the agent
     if (isCacheModeEnabled()) {
-      const { files, message } = getCachedResponse();
-
-      const rawMessage = new AIMessage({
-        content: message,
-        id: `cache-mode-create-${Date.now()}`,
-      });
-
-      const [aiMessage] = await toStructuredMessage(rawMessage);
-      const messages = (state.messages || []).length === 0 ? [aiMessage] : state.messages;
-
-      return {
-        messages,
-        files,
-        status: "completed",
-      };
+      return await cachedResponse(state);
     }
 
-    const isFirstMessage = state.messages.length === 0;
-    const agent = await createCodingAgent({ ...state, isFirstMessage });
+    const agent = await selectAgent(state);
+    const messages = await buildContext(state);
 
-    // Inject context events (brainstorm.finished, images.created, images.deleted)
-    // This runs within AsyncLocalStorage context, preserving Polly.js caching
-    // For the first message (create flow), this will include brainstorm context from events
-    const contextMessages =
-      state.projectId && state.jwt
-        ? await injectAgentContext({
-            graphName: "website",
-            projectId: state.projectId,
-            jwt: state.jwt,
-            messages: state.messages || [],
-          })
-        : state.messages || [];
-
-    // For create flow, add instruction to create a landing page
-    // Brainstorm context and images come from events via injectAgentContext
-    const instructions = isFirstMessage
-      ? [createContextMessage("Create a landing page for this business")]
-      : []; // For edits, just use the user's message directly
-
-    const result = await agent.invoke(
-      {
-        messages: [...contextMessages, ...instructions],
-      },
-      {
+    const result = await agent.invoke({ messages }, {
         ...config,
         recursionLimit: 150,
       }
@@ -94,7 +126,7 @@ export const websiteBuilderNode = NodeMiddleware.use(
 
     return {
       messages: structuredMessage ? [structuredMessage] : [],
-      status: "completed",
+      status: "completed" as const,
     };
   }
 );

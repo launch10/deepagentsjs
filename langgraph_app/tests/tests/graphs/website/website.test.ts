@@ -254,7 +254,7 @@ describe("Website Builder", () => {
       const createUsageCount = usageRecords.length;
 
       const editResponse = WebsiteAPI.stream({
-        messages: [{ role: "user", content: "Can the hero be pink?" }],
+        messages: [{ role: "user", content: "Can the hero be green?" }],
         threadId,
         state: {
           websiteId,
@@ -264,7 +264,7 @@ describe("Website Builder", () => {
           jwt: "test-jwt",
           messages: [
             ...state.messages,
-            new HumanMessage("Can the hero be pink?"),
+            new HumanMessage("Can the hero be green?"),
           ],
         },
       });
@@ -285,10 +285,18 @@ describe("Website Builder", () => {
       // Edit should have generated some LLM calls
       expect(editUsageRecords.length).toBeGreaterThan(0);
 
+      // Light edit should cost under 2 cents (generous buffer over $0.009 target)
+      // Includes ~$0.0002 for classification + ~$0.005-0.009 for the edit itself
+      const editCost = editUsageRecords.reduce((sum, r) => sum + (r.costMillicredits ?? 0), 0);
+      expect(editCost / 100_000).toBeLessThan(0.02);
+      // Should be 2-4 LLM calls (1 classifier + 1-3 light agent calls)
+      expect(editUsageRecords.length).toBeLessThanOrEqual(4);
+
       // Verify hero file was updated
       const heroFile = Object.entries(editState.files).find(
         ([path]) => path.toLowerCase().includes("hero")
       );
+      debugger;
       if (heroFile) {
         const heroContent = (heroFile[1] as Website.File.File).content;
         console.log(`Hero file found: ${heroFile[0]}`);

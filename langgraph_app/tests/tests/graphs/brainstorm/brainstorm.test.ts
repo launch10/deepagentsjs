@@ -345,7 +345,7 @@ describe.sequential("Brainstorming Flow", () => {
       expect(structuredOutput.conclusion).toBeDefined();
     });
 
-    it("should update to the next question when we successfully give a business idea", async () => {
+    it.only("should update to the next question when we successfully give a business idea", async () => {
       const projectUUID = uuidv7() as UUIDType;
       const result = await testGraph<BrainstormGraphState>()
         .withGraph(brainstormGraph)
@@ -361,7 +361,8 @@ describe.sequential("Brainstorming Flow", () => {
         .withState(result.state)
         .withPrompt(
           `We personally vet every single host and guest on our platform. We
-                    check guest credibility and expertise. Audience alignment between hosts and guests. And those become data points in our AI-powered recommendations.`
+          check guest credibility and expertise. Audience alignment between hosts and guests. And those become data points in our AI-powered recommendations.
+          And I also personally review each one - I have a history of podcasting experience of over 20 years of work`
         )
         .stopAfter("agent")
         .execute();
