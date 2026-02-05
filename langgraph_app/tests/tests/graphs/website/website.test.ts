@@ -120,7 +120,6 @@ describe("Website Builder", () => {
     }, 60000);
 
     it("generates a complete landing page with required sections", async () => {
-
       // Use WebsiteAPI.stream to go through the bridge with usageTrackingMiddleware
       const response = WebsiteAPI.stream({
         messages: [{ role: "user", content: "howdy big guy, let's make the landing page" }],
@@ -199,7 +198,9 @@ describe("Website Builder", () => {
 
       // ---- Message trimming assertions ----
       // Outer graph should only have user-visible messages (human + AI), not 40+ internal agent messages
-      const humanMessages = state.messages.filter((m: any) => m._getType?.() === "human" || m.type === "human");
+      const humanMessages = state.messages.filter(
+        (m: any) => m._getType?.() === "human" || m.type === "human"
+      );
       const aiMessages = state.messages.filter(isAIMessage);
       console.log(`\n=== Message Count ===`);
       console.log(`Total messages in state: ${state.messages.length}`);
@@ -211,7 +212,6 @@ describe("Website Builder", () => {
       expect(state.messages.length).toBeLessThanOrEqual(10);
 
       await saveExample(websiteId, "scheduling-tool"); // So we can see the result
-
     }, 500000);
   });
 
@@ -244,7 +244,12 @@ describe("Website Builder", () => {
       expect(originalUsageRecords.length).toEqual(0);
 
       const editResponse = WebsiteAPI.stream({
-        messages: [{ role: "user", content: "Let's make the hero blue" }],
+        messages: [
+          {
+            role: "user",
+            content: "Let's make the hero visually more like the features section, please",
+          },
+        ],
         threadId,
         state: {
           websiteId,
@@ -253,7 +258,7 @@ describe("Website Builder", () => {
           projectId: website.projectId ?? undefined,
           jwt: "test-jwt",
           messages: [
-            new HumanMessage("Let's make the hero blue"),
+            new HumanMessage("Let's make the hero visually more like the features section, please"),
           ],
         },
       });
@@ -281,21 +286,22 @@ describe("Website Builder", () => {
       expect(usageRecords.length).toBeLessThanOrEqual(4);
 
       // Verify hero file was updated
-      const heroFile = Object.entries(editState.files).find(
-        ([path]) => path.toLowerCase().includes("hero")
+      const heroFile = Object.entries(editState.files).find(([path]) =>
+        path.toLowerCase().includes("hero")
       );
       if (heroFile) {
         const heroContent = (heroFile[1] as Website.File.File).content;
         console.log(`Hero file found: ${heroFile[0]}`);
-        console.log(`Contains new headline: ${heroContent.includes("Transform Your Business Today")}`);
+        console.log(
+          `Contains new headline: ${heroContent.includes("Transform Your Business Today")}`
+        );
       }
 
       // Messages should still be trimmed after edit
       console.log(`Messages after edit: ${editState.messages.length}`);
       expect(editState.messages.length).toBeLessThanOrEqual(15);
-    })
-
-  })
+    });
+  });
 
   describe("Quick Actions", () => {
     describe("Change theme", () => {
@@ -539,7 +545,10 @@ describe("Website Builder", () => {
         });
 
         // Use WebsiteAPI to stream - this goes through the bridge with context middleware
-        const userMessage = { role: "user", content: "Add these new images to my landing page, please" };
+        const userMessage = {
+          role: "user",
+          content: "Add these new images to my landing page, please",
+        };
         const response = WebsiteAPI.stream({
           messages: [userMessage],
           threadId,

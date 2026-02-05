@@ -3,7 +3,7 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { AIMessage } from "@langchain/core/messages";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 import { NodeMiddleware } from "@middleware";
-import { createCodingAgent, createLightEditAgent } from "@nodes";
+import { createCodingAgent, createLightEditAgent, createSuperlightEditAgent } from "@nodes";
 import { classifyEdit } from "./classifyEdit";
 import { createContextMessage } from "langgraph-ai-sdk";
 import { isCacheModeEnabled } from "./cacheMode";
@@ -43,7 +43,9 @@ const cachedResponse = async (state: WebsiteGraphState) => {
   };
 };
 
-const selectAgent = async (state: WebsiteGraphState): Promise<{ agent: any; isLightEdit: boolean }> => {
+const selectAgent = async (
+  state: WebsiteGraphState
+): Promise<{ agent: any; isLightEdit: boolean }> => {
   const isFirstMessage = state.messages.length === 0;
 
   // Route: create flow or programmatic bugfix → full Sonnet agent
@@ -54,15 +56,15 @@ const selectAgent = async (state: WebsiteGraphState): Promise<{ agent: any; isLi
   }
 
   const lastMessage = state.messages.at(-1);
-  const userText =
-    typeof lastMessage?.content === "string"
-      ? lastMessage.content
-      : "complex edit";
+  const userText = typeof lastMessage?.content === "string" ? lastMessage.content : "complex edit";
   const route = classifyEdit(userText);
   console.log(`Edit classified as: ${route}`);
 
   if (route === "simple") {
-    return { agent: await createLightEditAgent({ ...state, isFirstMessage }), isLightEdit: true };
+    return {
+      agent: await createSuperlightEditAgent({ ...state, isFirstMessage }),
+      isLightEdit: true,
+    };
   }
   return { agent: await createCodingAgent({ ...state, isFirstMessage }), isLightEdit: false };
 };
@@ -110,18 +112,18 @@ export const websiteBuilderNode = NodeMiddleware.use(
     const { agent, isLightEdit } = await selectAgent(state);
     const messages = await buildContext(state);
 
-    const result = await agent.invoke({ messages }, {
+    const result = await agent.invoke(
+      { messages },
+      {
         ...config,
-        recursionLimit: isLightEdit ? 20 : 150,
+        recursionLimit: isLightEdit ? 35 : 150,
       }
     );
 
     // Only return user-visible messages to the outer graph.
     // The deep agent maintains its own checkpoint with full internal context.
     const lastAI = lastAIMessage(result);
-    const [structuredMessage] = lastAI
-      ? await toStructuredMessage(lastAI)
-      : [undefined];
+    const [structuredMessage] = lastAI ? await toStructuredMessage(lastAI) : [undefined];
 
     return {
       messages: structuredMessage ? [structuredMessage] : [],
