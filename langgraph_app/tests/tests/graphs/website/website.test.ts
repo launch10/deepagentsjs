@@ -77,58 +77,7 @@ const assertMessageContent = async (result: { state: WebsiteGraphState }, websit
 describe("Website Builder", () => {
   let websiteId: number;
   let website: DBTypes.WebsiteType;
-  let themeColors: string[];
-
-  beforeEach(async () => {
-    // website_step snapshot includes:
-    // - brainstorm with idea, audience, solution, social_proof
-    // - theme assigned to website (with typography recommendations)
-    // - uploads: 1 logo + 3 images associated with website
-    await DatabaseSnapshotter.restoreSnapshot("website_step");
-
-    const [websiteRow] = await db.select().from(websites).limit(1);
-
-    if (!websiteRow || !websiteRow.name) {
-      throw new Error("No website found in snapshot");
-    }
-
-    websiteId = websiteRow.id;
-    website = websiteRow;
-
-    // Get theme colors for assertions
-    if (websiteRow.themeId) {
-      const [theme] = await db
-        .select()
-        .from(themes)
-        .where(eq(themes.id, websiteRow.themeId))
-        .limit(1);
-
-      if (theme?.colors && Array.isArray(theme.colors)) {
-        themeColors = theme.colors as string[];
-      }
-    }
-
-    // Verify brainstorm exists
-    const [brainstorm] = await db
-      .select()
-      .from(brainstorms)
-      .where(eq(brainstorms.websiteId, websiteId))
-      .limit(1);
-
-    if (!brainstorm) {
-      throw new Error("No brainstorm found for website");
-    }
-
-    // Verify uploads exist
-    const uploadCount = await db
-      .select()
-      .from(websiteUploads)
-      .where(eq(websiteUploads.websiteId, websiteId));
-
-    if (uploadCount.length === 0) {
-      throw new Error("No uploads found for website");
-    }
-  }, 60000);
+  let threadId: ThreadIDType;
 
   afterEach(async () => {
     if (websiteId) {
@@ -141,7 +90,21 @@ describe("Website Builder", () => {
   });
 
   describe("Page Generation", () => {
-    it.only("generates a complete landing page with required sections", async () => {
+    beforeEach(async () => {
+      // website_step snapshot includes:
+      // - brainstorm with idea, audience, solution, social_proof
+      // - theme assigned to website (with typography recommendations)
+      // - uploads: 1 logo + 3 images associated with website
+      await DatabaseSnapshotter.restoreSnapshot("website_step");
+
+      const [website] = await db.select().from(websites).limit(1);
+
+      if (!website || !website.name) {
+        throw new Error("No website found in snapshot");
+      }
+
+      websiteId = website.id;
+
       // Load the chat's threadId from the snapshot so the graph state matches the DB
       const [existingChat] = await db
         .select()
@@ -153,7 +116,10 @@ describe("Website Builder", () => {
         throw new Error("No chat with threadId found in snapshot for website");
       }
 
-      const threadId = existingChat.threadId as ThreadIDType;
+      threadId = existingChat.threadId as ThreadIDType;
+    }, 60000);
+
+    it("generates a complete landing page with required sections", async () => {
 
       // Use WebsiteAPI.stream to go through the bridge with usageTrackingMiddleware
       const response = WebsiteAPI.stream({
@@ -197,8 +163,6 @@ describe("Website Builder", () => {
         .select()
         .from(websiteFiles)
         .where(eq(websiteFiles.websiteId, websiteId));
-
-      const filePaths = generatedFiles.map((f) => f.path);
 
       // Should generate multiple component files in src/components
       const componentFiles = generatedFiles.filter((f) => f.path?.includes("src/components"));
@@ -248,13 +212,39 @@ describe("Website Builder", () => {
 
       await saveExample(websiteId, "scheduling-tool"); // So we can see the result
 
-      // ========================================
-      // SECOND RUN: Edit the hero headline
-      // ========================================
-      const createUsageCount = usageRecords.length;
+    }, 500000);
+  });
+
+  describe("Editing page", () => {
+    beforeEach(async () => {
+      await DatabaseSnapshotter.restoreSnapshot("website_generated");
+      const [websiteRow] = await db.select().from(websites).limit(1);
+      website = websiteRow!;
+      if (!website) {
+        throw new Error("No website found in snapshot");
+      }
+      websiteId = website.id;
+
+      // Load the chat's threadId from the snapshot so the graph state matches the DB
+      const [existingChat] = await db
+        .select()
+        .from(chats)
+        .where(and(eq(chats.contextableId, websiteId), eq(chats.contextableType, "Website")))
+        .limit(1);
+
+      if (!existingChat?.threadId) {
+        throw new Error("No chat with threadId found in snapshot for website");
+      }
+
+      threadId = existingChat.threadId as ThreadIDType;
+    }, 60000);
+
+    it.only("edits an existing page cost-effectively", async () => {
+      const originalUsageRecords = await db.select().from(llmUsage);
+      expect(originalUsageRecords.length).toEqual(0);
 
       const editResponse = WebsiteAPI.stream({
-        messages: [{ role: "user", content: "Can the hero be green?" }],
+        messages: [{ role: "user", content: "Let's make the hero emo and angsty" }],
         threadId,
         state: {
           websiteId,
@@ -263,8 +253,7 @@ describe("Website Builder", () => {
           projectId: website.projectId ?? undefined,
           jwt: "test-jwt",
           messages: [
-            ...state.messages,
-            new HumanMessage("Can the hero be green?"),
+            new HumanMessage("Let's make the hero emo and angsty"),
           ],
         },
       });
@@ -277,20 +266,19 @@ describe("Website Builder", () => {
       expect(editState.status).toBe("completed");
 
       // ---- Edit cost assertions ----
-      const allUsageRecords = await db.select().from(llmUsage);
-      const editUsageRecords = allUsageRecords.slice(createUsageCount);
+      const usageRecords = await db.select().from(llmUsage);
 
-      logCostSummary("Hero Edit Cost Summary", editUsageRecords);
+      logCostSummary("Hero Edit Cost Summary", usageRecords);
 
       // Edit should have generated some LLM calls
-      expect(editUsageRecords.length).toBeGreaterThan(0);
+      expect(usageRecords.length).toBeGreaterThan(0);
 
       // Light edit should cost under 2 cents (generous buffer over $0.009 target)
       // Includes ~$0.0002 for classification + ~$0.005-0.009 for the edit itself
-      const editCost = editUsageRecords.reduce((sum, r) => sum + (r.costMillicredits ?? 0), 0);
+      const editCost = usageRecords.reduce((sum, r) => sum + (r.costMillicredits ?? 0), 0);
       expect(editCost / 100_000).toBeLessThan(0.02);
       // Should be 2-4 LLM calls (1 classifier + 1-3 light agent calls)
-      expect(editUsageRecords.length).toBeLessThanOrEqual(4);
+      expect(usageRecords.length).toBeLessThanOrEqual(4);
 
       // Verify hero file was updated
       const heroFile = Object.entries(editState.files).find(
@@ -306,8 +294,9 @@ describe("Website Builder", () => {
       // Messages should still be trimmed after edit
       console.log(`Messages after edit: ${editState.messages.length}`);
       expect(editState.messages.length).toBeLessThanOrEqual(15);
-    }, 500000);
-  });
+    })
+
+  })
 
   describe("Quick Actions", () => {
     describe("Change theme", () => {

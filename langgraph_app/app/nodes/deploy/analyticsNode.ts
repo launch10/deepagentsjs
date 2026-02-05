@@ -1,7 +1,7 @@
 import type { DeployGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { Deploy, Task } from "@types";
-import { createCodingAgent, getCodingAgentBackend } from "@nodes";
+import { createLightEditAgent, getCodingAgentBackend } from "@nodes";
 import type { WebsiteFilesBackend } from "@services";
 import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
 import { db, websiteFiles, eq, and, like } from "@db";
@@ -76,7 +76,7 @@ async function instrumentFile(
   config?: LangGraphRunnableConfig
 ): Promise<void> {
   const prompt = await buildInstrumentationPrompt(state, config);
-  const agent = await createCodingAgent(
+  const agent = await createLightEditAgent(
     { ...state, isFirstMessage: false },
     prompt,
     backend

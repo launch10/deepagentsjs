@@ -359,7 +359,7 @@ module Database
 
         # Raise an error or return a failed result object
         raise CommandError.new(
-          "Database command failed with status #{status.exitstatus}.",
+          "Database command failed with status #{status.exitstatus}.\nCommand: #{command}\nStderr: #{stderr}\nStdout: #{stdout}",
           status: status,
           stderr: stderr
         )
