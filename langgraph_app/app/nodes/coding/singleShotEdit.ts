@@ -6,7 +6,7 @@ import { toStructuredMessage } from "langgraph-ai-sdk";
 import { executeTextEditorCommand, type TextEditorInput } from "@tools";
 import { getCodingAgentBackend, getTheme, type MinimalCodingAgentState } from "./agent";
 import { buildFileTree, preReadFiles } from "./fileContext";
-import { formatTypographyPrompt, type CodingPromptState } from "@prompts";
+import type { CodingPromptState } from "@prompts";
 import type { WebsiteFilesBackend } from "@services";
 
 /**
@@ -81,100 +81,30 @@ ${fileTree}`;
 function buildDesignGuidance(theme?: CodingPromptState["theme"]): string {
   const sections: string[] = [];
 
-  // Theme colors — most important for edits that touch colors/backgrounds
+  // Theme colors — essential for color/background edits
   sections.push(`## Theme Colors (shadcn)
 
-Use semantic color classes. Each role has a background + matching text:
+Use semantic color classes:
 | Element | Background | Text on it |
 |---------|-----------|------------|
 | Page | bg-background | text-foreground |
 | Primary (hero/CTAs) | bg-primary | text-primary-foreground |
 | Secondary (buttons) | bg-secondary | text-secondary-foreground |
 | Muted/subtle | bg-muted | text-muted-foreground |
-| Accent (badges) | bg-accent | text-accent-foreground |
 | Cards | bg-card | text-card-foreground |
 
-Section backgrounds: ONLY use bg-background, bg-muted, or bg-primary for full-width sections. NEVER bg-secondary, bg-accent, or bg-card for sections.
-Page rhythm: Hero=bg-primary → Features=bg-muted → Content=bg-background → CTA=bg-primary.
-Cards on colored sections: use bg-card or bg-background for the card to create contrast.`);
+Section backgrounds: ONLY bg-background, bg-muted, or bg-primary. Never bg-secondary/bg-accent/bg-card for sections.`);
 
   // CSS variable values — so the LLM knows what colors actually resolve to
   if (theme?.semanticVariables) {
     const vars = Object.entries(theme.semanticVariables)
       .map(([key, value]) => `  ${key}: ${value}`)
       .join("\n");
-    sections.push(`## Current Theme CSS Variables (HSL values)\n${vars}`);
+    sections.push(`## CSS Variables (HSL)\n${vars}`);
   }
 
-  // Typography recommendations — theme-specific contrast guidance
-  if (theme?.typography_recommendations) {
-    sections.push(formatTypographyPrompt(theme.typography_recommendations, theme.colors));
-  }
-
-  // Typography sizes and spacing — common edit targets
-  sections.push(`## Typography & Spacing
-
-Headlines: Hero text-4xl md:text-5xl lg:text-7xl font-bold. Sections text-3xl md:text-4xl lg:text-5xl.
-Body: text-base or text-lg. Muted text uses text-muted-foreground.
-Section padding: py-16 md:py-20 lg:py-24. Element gaps: gap-4 md:gap-6 lg:gap-8.`);
-
-  // Hover & animation patterns — edits often add/modify these
-  sections.push(`## Hover & Transitions
-
-Buttons: hover:scale-105 transition-all duration-200. Cards: hover:shadow-lg hover:-translate-y-1.
-Use transition-all duration-200 for smooth interactions. Keep durations 200-400ms.`);
-
-  // Full design philosophy — prompt-cached, so no marginal cost after first call.
-  // This is the same rich guidance the full coding agent gets.
-  sections.push(`## Design Philosophy
-
-This section guides creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics.
-
-### Design Thinking
-
-Before making edits, understand the context and commit to a BOLD aesthetic direction:
-
-- **Purpose**: What problem does this interface solve? Who uses it?
-- **Tone**: Maintain the existing aesthetic: brutally minimal, maximalist chaos, retro-futuristic, organic/natural, luxury/refined, playful/toy-like, editorial/magazine, brutalist/raw, art deco/geometric, soft/pastel, industrial/utilitarian, etc. Every edit should REINFORCE the existing design direction, not dilute it.
-- **Differentiation**: What makes this UNFORGETTABLE? What's the one thing someone will remember? Every edit should maintain or improve that.
-
-**CRITICAL**: Execute edits with precision. Bold maximalism and refined minimalism both work — the key is intentionality, not intensity.
-
-Every edit should result in code that is:
-- Visually striking and memorable
-- Cohesive with the page's existing aesthetic point-of-view
-- Meticulously refined in every detail
-
-### Frontend Aesthetics Guidelines
-
-- **Typography**: NEVER use Inter, Roboto, Arial, or system fonts. Maintain the page's distinctive, characterful font choices. Pair display fonts with refined body fonts.
-- **Color & Theme**: Use CSS variable classes (bg-primary, text-foreground, etc.). Dominant colors with sharp accents outperform timid, evenly-distributed palettes.
-- **Motion**: Use animations for micro-interactions. CSS-only transitions preferred. Focus on high-impact moments: staggered reveals (animation-delay), scroll-triggering, hover states that surprise. Keep durations 200-400ms.
-- **Spatial Composition**: Unexpected layouts. Asymmetry. Overlap. Grid-breaking elements. Generous negative space OR controlled density.
-- **Backgrounds & Visual Details**: Create atmosphere — gradient meshes, noise textures, geometric patterns, layered transparencies, dramatic shadows, decorative borders, grain overlays.
-
-NEVER produce generic AI aesthetics: overused font families, cliched purple gradients on white, predictable layouts, cookie-cutter design. Every edit should feel genuinely designed for the context.
-
-### Edit Quality Checklist
-
-Before finishing, verify:
-- [ ] Hero has bg-primary OR dramatic gradient, headline text-4xl+ (ideally text-5xl to text-7xl)
-- [ ] Section backgrounds alternate (bg-primary, bg-muted, bg-background) — never all bg-background
-- [ ] Cards have depth: bg-card on colored sections, rounded-2xl+, hover effects
-- [ ] Generous whitespace: section padding py-16+, element gaps gap-4+
-- [ ] Interactive elements respond: buttons hover:scale-105, cards hover:shadow-lg
-- [ ] The "one memorable thing" still exists — something a user remembers after 3 seconds
-
-Red flags to fix if you see them:
-- All sections bg-background (flat). Hero text-2xl or smaller (weak). Section padding py-12 or less (cramped).
-- No hover effects (static). Cards invisible against section background. Generic CTAs like "Get Started".`);
-
-  // Tracking — condensed version of the full tracking prompt
-  sections.push(`## Tracking (L10)
-
-Import: \`import { L10 } from '@/lib/tracking'\`
-Simple signup: \`L10.createLead(email).then(() => setStatus('success')).catch((e) => setError(e.message))\`
-Tiered pricing: \`L10.createLead(email, { value: tierPrice })\`
+  // Tracking — never remove tracking calls
+  sections.push(`## Tracking
 NEVER remove L10.createLead() calls or tracking imports.`);
 
   return sections.join("\n\n");
@@ -296,45 +226,49 @@ export async function singleShotEdit(
   // Filter out "view" calls — all files are pre-loaded, view is a wasted call.
   // Only apply actual mutations (str_replace, create, insert).
   const editCalls = toolCalls.filter((tc: any) => (tc.args as any)?.command !== "view");
+  const hadViewOnly = editCalls.length === 0 && toolCalls.length > 0;
 
-  if (editCalls.length === 0) {
-    // LLM only called view (no actual edits) — return text response
-    getLogger().warn("Single-shot edit: LLM only used view commands, no edits applied");
-    const [structuredMessage] = await toStructuredMessage(response);
-    return { messages: [structuredMessage], status: "completed" };
+  // Apply edits (if any). Successful edits are applied to the backend immediately.
+  let successCount = 0;
+  let errors: string[] = [];
+
+  if (editCalls.length > 0) {
+    const result = await applyEdits(backend, editCalls);
+    successCount = result.successCount;
+    errors = result.errors;
+
+    if (errors.length > 0) {
+      getLogger().warn({ errorCount: errors.length, errors }, "Single-shot edit had failed tool calls");
+      rollbar.error(new Error(`Single-shot edit failures: ${errors.length}/${editCalls.length}`), {
+        errors: errors.join("; "),
+        successCount,
+        totalEdits: editCalls.length,
+      });
+    }
   }
 
-  // Apply edits. Successful edits are applied to the backend immediately.
-  // If ALL edits fail, retry once with error context so the LLM can pick better anchors.
-  const { successCount, errors } = await applyEdits(backend, editCalls);
+  // Retry when ALL edits failed or LLM only called view (no actual mutations).
+  // Partial success means some edits already modified the backend — don't retry.
+  if (successCount === 0 && (errors.length > 0 || hadViewOnly)) {
+    const retryReason = hadViewOnly
+      ? "You used the view command, but all files are already pre-loaded in the system prompt above. Do NOT call view. Use str_replace to make your edits directly."
+      : `Your edits failed with these errors:\n${errors.map((e, i) => `${i + 1}. ${e}`).join("\n")}`;
 
-  if (errors.length > 0) {
-    getLogger().warn({ errorCount: errors.length, errors }, "Single-shot edit had failed tool calls");
-    rollbar.error(new Error(`Single-shot edit failures: ${errors.length}/${editCalls.length}`), {
-      errors: errors.join("; "),
-      successCount,
-      totalEdits: editCalls.length,
-    });
-  }
-
-  // Only retry when ALL edits failed — partial success means some edits already
-  // modified the backend, and retrying could produce conflicting changes.
-  if (successCount === 0 && errors.length > 0) {
-    getLogger().info("All edits failed, retrying with error context");
+    getLogger().info({ hadViewOnly, errorCount: errors.length }, "All edits failed, retrying with feedback");
 
     const retryResult = await retryWithErrorContext(
       backend,
       modelWithTools,
       invokeMessages,
-      editCalls,
-      errors
+      editCalls.length > 0 ? editCalls : toolCalls,
+      [retryReason]
     );
 
     if (retryResult) {
       return retryResult;
     }
 
-    // Retry also failed completely — signal escalation
+    // Retry also failed completely — signal escalation to full agent
     const failMessage = new AIMessage({
       content: "I attempted to make the changes but encountered errors applying the edits. Could you try rephrasing your request?",
     });
@@ -413,11 +347,13 @@ async function retryWithErrorContext(
     }
   }
 
-  const retryMessage = new HumanMessage(
-    `Your previous edits failed with these errors:\n${errors.map((e, i) => `${i + 1}. ${e}`).join("\n")}\n\n` +
-      `Here are the current file contents — use these to pick correct anchors:\n\n${fileContents.join("\n\n")}\n\n` +
-      `Please try again with corrected str_replace anchors.`
-  );
+  const retryParts = [errors.map((e, i) => `${i + 1}. ${e}`).join("\n")];
+  if (fileContents.length > 0) {
+    retryParts.push(`Here are the current file contents — use these to pick correct anchors:\n\n${fileContents.join("\n\n")}`);
+  }
+  retryParts.push("Use str_replace to make your edits. Do NOT call view.");
+
+  const retryMessage = new HumanMessage(retryParts.join("\n\n"));
 
   try {
     const retryResponse = await model.invoke([...originalMessages, retryMessage]);
@@ -427,9 +363,9 @@ async function retryWithErrorContext(
     );
 
     if (retryEditCalls.length === 0) {
-      // LLM gave up or only responded with text
-      const [msg] = await toStructuredMessage(retryResponse);
-      return { messages: [msg], status: "completed" };
+      // LLM gave up or only called view again — signal failure for escalation
+      getLogger().warn("Single-shot retry produced no edit calls");
+      return null;
     }
 
     const { successCount: retrySuccessCount, errors: retryErrors } = await applyEdits(

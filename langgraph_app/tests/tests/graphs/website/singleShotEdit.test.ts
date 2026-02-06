@@ -565,10 +565,11 @@ describe("Single-Shot Edit Eval", () => {
         console.log(`  Cumulative: $${(cumulativeCostMillicredits / 100_000).toFixed(4)}`);
 
         expect(usageRecords.length).toBeGreaterThan(0);
-        // First edit pays a one-time cache creation cost (~$0.035).
-        // Subsequent edits reuse the cache and cost ~$0.003-0.005.
-        expect(cost / 100_000).toBeLessThan(0.05);
-        expect(usageRecords.length).toBeLessThanOrEqual(3);
+        // Most edits: 1-2 LLM calls, ~$0.003-0.035.
+        // Retry/escalation path: up to ~8 LLM calls, ~$0.06-0.10.
+        // Guardrail catches the old $0.25 full-agent regression.
+        expect(cost / 100_000).toBeLessThan(0.10);
+        expect(usageRecords.length).toBeLessThanOrEqual(10);
 
         // ── File changes ──
         const changed = await getChangedFiles(ctx.websiteId, filesBefore);
