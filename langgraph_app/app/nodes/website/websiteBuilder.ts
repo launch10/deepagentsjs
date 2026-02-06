@@ -3,13 +3,14 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { AIMessage } from "@langchain/core/messages";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 import { NodeMiddleware } from "@middleware";
-import { createCodingAgent, createLightEditAgent, createSuperlightEditAgent } from "@nodes";
-import { classifyEdit } from "./classifyEdit";
+import { createCodingAgent, singleShotEdit, classifyEditWithLLM } from "@nodes";
+import { buildFileTree } from "@nodes";
 import { createContextMessage } from "langgraph-ai-sdk";
 import { isCacheModeEnabled } from "./cacheMode";
 import { getSchedulingToolMinorEditFiles } from "@cache";
 import { lastAIMessage, type Website } from "@types";
 import { injectAgentContext } from "@api/middleware";
+import { getCodingAgentBackend } from "@nodes";
 
 /**
  * Get cached response for cache mode.
@@ -43,30 +44,33 @@ const cachedResponse = async (state: WebsiteGraphState) => {
   };
 };
 
-const selectAgent = async (
-  state: WebsiteGraphState
-): Promise<{ agent: any; isLightEdit: boolean }> => {
+/**
+ * Determine if this request needs the full agent or can use single-shot.
+ *
+ * - First message (create flow) → always full agent
+ * - Console errors (bugfix) → always full agent
+ * - Otherwise → cheap LLM classifier decides
+ */
+const shouldUseSingleShot = async (state: WebsiteGraphState): Promise<boolean> => {
   const isFirstMessage = state.messages.length === 0;
 
-  // Route: create flow or programmatic bugfix → full Sonnet agent
-  //        simple edits (color, text, spacing) → light Haiku agent
-  //        complex edits (new sections, bugs, restructure) → full Sonnet agent
+  // Create flow or bugfix → full agent, no question
   if (isFirstMessage || (state.consoleErrors && state.consoleErrors.length > 0)) {
-    return { agent: await createCodingAgent({ ...state, isFirstMessage }), isLightEdit: false };
+    return false;
   }
 
+  // Use cheap LLM to classify: does this need many files / lots of changes?
   const lastMessage = state.messages.at(-1);
-  const userText = typeof lastMessage?.content === "string" ? lastMessage.content : "complex edit";
-  const route = classifyEdit(userText);
+  const userText = typeof lastMessage?.content === "string" ? lastMessage.content : "";
+
+  // Get file tree for the classifier (lightweight — just paths, no contents)
+  const backend = await getCodingAgentBackend(state);
+  const { tree } = await buildFileTree(backend);
+
+  const route = await classifyEditWithLLM(userText, tree);
   console.log(`Edit classified as: ${route}`);
 
-  if (route === "simple") {
-    return {
-      agent: await createSuperlightEditAgent({ ...state, isFirstMessage }),
-      isLightEdit: true,
-    };
-  }
-  return { agent: await createCodingAgent({ ...state, isFirstMessage }), isLightEdit: false };
+  return route === "simple";
 };
 
 const buildContext = async (state: WebsiteGraphState) => {
@@ -109,14 +113,24 @@ export const websiteBuilderNode = NodeMiddleware.use(
       return await cachedResponse(state);
     }
 
-    const { agent, isLightEdit } = await selectAgent(state);
     const messages = await buildContext(state);
+    const useSingleShot = await shouldUseSingleShot(state);
+
+    if (useSingleShot) {
+      console.log("Using single-shot edit path");
+      return await singleShotEdit(state, messages);
+    }
+
+    // Full agent path: create flow, bugfix, or complex edits
+    console.log("Using full agent path");
+    const isFirstMessage = state.messages.length === 0;
+    const agent = await createCodingAgent({ ...state, isFirstMessage });
 
     const result = await agent.invoke(
       { messages },
       {
         ...config,
-        recursionLimit: isLightEdit ? 35 : 150,
+        recursionLimit: 150,
       }
     );
 

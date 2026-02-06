@@ -63,7 +63,7 @@ function detectTargetFiles(userMessage: string, filePaths: string[]): string[] {
 /**
  * Build the file tree string from globInfo results.
  */
-async function buildFileTree(backend: WebsiteFilesBackend): Promise<{
+export async function buildFileTree(backend: WebsiteFilesBackend): Promise<{
   tree: string;
   allPaths: string[];
 }> {
@@ -81,7 +81,10 @@ async function buildFileTree(backend: WebsiteFilesBackend): Promise<{
 /**
  * Pre-read target files and format them for the system prompt.
  */
-async function preReadFiles(backend: WebsiteFilesBackend, filePaths: string[]): Promise<string> {
+export async function preReadFiles(
+  backend: WebsiteFilesBackend,
+  filePaths: string[]
+): Promise<string> {
   const sections: string[] = [];
   for (const fp of filePaths) {
     try {
@@ -145,8 +148,8 @@ export async function createSuperlightEditAgent(
   const textEditorMiddleware = createTextEditorMiddleware(() => backend);
 
   const middlewares: AgentMiddleware[] = [
-    createPromptCachingMiddleware(),
     textEditorMiddleware as any,
+    createPromptCachingMiddleware(),
   ];
 
   return createAgent({
