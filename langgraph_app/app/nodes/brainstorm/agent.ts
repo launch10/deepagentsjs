@@ -19,6 +19,7 @@ const middlewareStateSchema = z.object({
   brainstormId: z.number(),
   websiteId: z.number(),
   projectId: z.number(),
+  threadId: z.string().optional(),
   currentTopic: z.string().optional(),
   skippedTopics: z.array(z.string()).optional(),
   redirect: z.string().optional(),
@@ -151,7 +152,7 @@ export const brainstormAgent = NodeMiddleware.use(
       lastSeenMode: state.brainstormMode,
     };
 
-    const llm = (await getLLM()).withConfig({ tags: ["notify"] });
+    const llm = (await getLLM({maxTier: 2})).withConfig({ tags: ["notify"] });
     const tools = [saveAnswersTool, finishedTool, queryUploadsTool];
 
     const agent = await createAgent({

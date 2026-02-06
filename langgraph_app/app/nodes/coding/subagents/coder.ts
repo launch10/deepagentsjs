@@ -1,7 +1,7 @@
 import type { SubAgent } from "deepagents";
 import type { CodingPromptState } from "@prompts";
 import { buildStaticContextPrompt } from "@prompts";
-import { createPromptCachingMiddleware } from "@core";
+import { createPromptCachingMiddleware, createToolErrorSurfacingMiddleware } from "@core";
 
 /**
  * Build the coder subagent with dynamic context from the parent agent's state.
@@ -16,6 +16,6 @@ export const buildCoderSubAgent = async (state: CodingPromptState): Promise<SubA
     description:
       "Expert React/TypeScript developer for implementing landing page components. Use this agent to create or modify specific components with provided copy and specifications. Provide: the component name, file path, the copy/content to use, and any specific requirements.",
     systemPrompt,
-    middleware: [createPromptCachingMiddleware()],
+    middleware: [createToolErrorSurfacingMiddleware(), createPromptCachingMiddleware()],
   };
 };

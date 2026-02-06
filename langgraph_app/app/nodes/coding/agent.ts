@@ -1,7 +1,7 @@
 import { db, websites, eq } from "@db";
 import { Website } from "@types";
 import { createDeepAgent, createSettings } from "deepagents";
-import { getLLM, getLLMFallbacks, createPromptCachingMiddleware, getLogger } from "@core";
+import { getLLM, getLLMFallbacks, createPromptCachingMiddleware, createToolErrorSurfacingMiddleware, getLogger } from "@core";
 import { WebsiteFilesBackend } from "@services";
 import { SearchIconsTool } from "@tools";
 import { buildCoderSubAgent } from "./subagents";
@@ -41,7 +41,10 @@ const getMiddlewares = (): AgentMiddleware[] => {
   // deepagents' createDeepAgent() includes summarizationMiddleware internally
   // (trigger: 170K tokens, keep: 6 messages). Upstream compaction in the
   // website graph's compactConversation node handles conversation-level summarization.
-  return [createPromptCachingMiddleware()];
+  // toolErrorSurfacing MUST be first — it wraps the outermost layer of the
+  // wrapToolCall chain so that tool errors are returned as ToolMessages instead
+  // of crashing the agent as MiddlewareErrors.
+  return [createToolErrorSurfacingMiddleware(), createPromptCachingMiddleware()];
 };
 
 export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
