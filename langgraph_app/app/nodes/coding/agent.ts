@@ -1,7 +1,7 @@
 import { db, websites, eq } from "@db";
 import { Website } from "@types";
 import { createDeepAgent, createSettings } from "deepagents";
-import { getLLM, getLLMFallbacks, createPromptCachingMiddleware } from "@core";
+import { getLLM, getLLMFallbacks, createPromptCachingMiddleware, getLogger } from "@core";
 import { WebsiteFilesBackend } from "@services";
 import { SearchIconsTool } from "@tools";
 import { buildCoderSubAgent } from "./subagents";
@@ -12,6 +12,12 @@ import {
 } from "langchain";
 import { buildCodingPrompt, type CodingPromptState } from "@prompts";
 import { ThemeAPIService } from "@rails_api";
+import { singleShotEdit, classifyEditWithLLM } from "./singleShotEdit";
+import { buildFileTree } from "./fileContext";
+import type { BaseMessage } from "@langchain/core/messages";
+import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+import { toStructuredMessage } from "langgraph-ai-sdk";
+import { lastAIMessage } from "@types";
 
 export type MinimalCodingAgentState = {
   websiteId?: number;
@@ -19,6 +25,17 @@ export type MinimalCodingAgentState = {
   theme?: CodingPromptState["theme"];
   errors?: string;
   isFirstMessage?: boolean;
+};
+
+export type EditRoute = "auto" | "single-shot" | "full";
+
+export type CodingAgentOptions = {
+  messages: BaseMessage[];
+  systemPrompt?: string;
+  existingBackend?: WebsiteFilesBackend;
+  config?: LangGraphRunnableConfig;
+  recursionLimit?: number;
+  route?: EditRoute;
 };
 
 const getMiddlewares = (): AgentMiddleware[] => {
@@ -83,7 +100,11 @@ export const getTheme = async (
   return undefined;
 };
 
-export async function createCodingAgent(
+/**
+ * Internal: build the full multi-turn coding agent with subagents + search icons.
+ * This is the heavyweight path — Sonnet model, ~$0.10-0.50 per invocation.
+ */
+async function buildFullCodingAgent(
   state: MinimalCodingAgentState,
   systemPrompt?: string,
   existingBackend?: WebsiteFilesBackend
@@ -126,4 +147,120 @@ export async function createCodingAgent(
     tools: [new SearchIconsTool()],
     middleware: middlewares as any,
   });
+}
+
+/**
+ * Determine the edit route when route is "auto".
+ *
+ * - First message (create flow) → full (needs exploration + subagents)
+ * - Errors present → full (debugging needs tool loops)
+ * - Custom systemPrompt → full (single-shot has its own prompt)
+ * - Otherwise → classifier decides "simple" → single-shot, "complex" → full
+ *
+ * Returns the resolved route and, when single-shot is chosen, the backend
+ * (to avoid recreating it in singleShotEdit).
+ */
+async function resolveRoute(
+  state: MinimalCodingAgentState,
+  options: CodingAgentOptions
+): Promise<{ route: "single-shot" | "full"; backend?: WebsiteFilesBackend }> {
+  // Create flow or bugfix → full agent, no question
+  if (state.isFirstMessage) {
+    return { route: "full" };
+  }
+
+  if (state.errors) {
+    return { route: "full" };
+  }
+
+  // Custom system prompt means the caller has specialized behavior (SEO, bugfix, etc.)
+  // that doesn't fit single-shot's own prompt
+  if (options.systemPrompt) {
+    return { route: "full" };
+  }
+
+  // Classify with cheap LLM
+  const lastMessage = options.messages.at(-1);
+  const userText = typeof lastMessage?.content === "string" ? lastMessage.content : "";
+
+  const backend = options.existingBackend ?? (await getCodingAgentBackend(state));
+  const { tree } = await buildFileTree(backend);
+
+  const classification = await classifyEditWithLLM(userText, tree);
+  getLogger().info({ route: classification }, "Edit classified");
+
+  if (classification === "simple") {
+    return { route: "single-shot", backend };
+  }
+  return { route: "full" };
+}
+
+/**
+ * Unified entry point for all website code edits.
+ *
+ * Routes to the appropriate execution strategy:
+ * - "single-shot": Pre-loads all files, one Haiku call with native text_editor (~$0.005)
+ * - "full": Multi-turn Sonnet agent with subagents + search icons (~$0.10-0.50)
+ * - "auto" (default): Cheap classifier decides between single-shot and full
+ *
+ * All callers get intelligent dispatch for free — no need to wire up routing externally.
+ */
+export async function createCodingAgent(
+  state: MinimalCodingAgentState,
+  options: CodingAgentOptions
+): Promise<{ messages: BaseMessage[]; status: "completed" }> {
+  if (state.isFirstMessage === undefined) {
+    throw new Error(
+      "isFirstMessage is required - explicitly set to true (create) or false (edit/bugfix)"
+    );
+  }
+
+  const requestedRoute = options.route ?? "auto";
+
+  // Resolve route
+  let resolvedRoute: "single-shot" | "full";
+  let backend: WebsiteFilesBackend | undefined = options.existingBackend;
+
+  if (requestedRoute === "auto") {
+    const result = await resolveRoute(state, options);
+    resolvedRoute = result.route;
+    if (result.backend) backend = result.backend;
+  } else {
+    resolvedRoute = requestedRoute;
+  }
+
+  // Dispatch: single-shot path
+  if (resolvedRoute === "single-shot") {
+    getLogger().info("Using single-shot edit path");
+    const result = await singleShotEdit(state, options.messages, backend);
+
+    if (!result.allFailed) {
+      return { messages: result.messages, status: "completed" };
+    }
+
+    // Total failure after retry — escalate to full agent
+    getLogger().warn("Single-shot failed after retry, escalating to full agent");
+    resolvedRoute = "full";
+  }
+
+  // Dispatch: full agent path
+  getLogger().info("Using full agent path");
+  const agent = await buildFullCodingAgent(state, options.systemPrompt, backend);
+
+  const result = await agent.invoke(
+    { messages: options.messages },
+    {
+      ...options.config,
+      recursionLimit: options.recursionLimit ?? 150,
+    }
+  );
+
+  // Extract the last AI message for the caller
+  const lastAI = lastAIMessage(result);
+  const [structuredMessage] = lastAI ? await toStructuredMessage(lastAI) : [undefined];
+
+  return {
+    messages: structuredMessage ? [structuredMessage] : [],
+    status: "completed" as const,
+  };
 }

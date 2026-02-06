@@ -239,7 +239,7 @@ describe("Website Builder", () => {
       threadId = existingChat.threadId as ThreadIDType;
     }, 60000);
 
-    it.only("edits an existing page cost-effectively", async () => {
+    it("edits an existing page cost-effectively", async () => {
       const originalUsageRecords = await db.select().from(llmUsage);
       expect(originalUsageRecords.length).toEqual(0);
 

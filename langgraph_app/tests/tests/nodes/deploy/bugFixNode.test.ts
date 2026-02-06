@@ -1,19 +1,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { bugFixNode } from "@nodes";
 import type { DeployGraphState } from "@annotation";
 import type { Task } from "@types";
 
-// Mock createCodingAgent
-vi.mock("@nodes", async () => {
-  const actual = await vi.importActual("@nodes");
+// Mock the coding agent module directly — bugFixNode.ts imports createCodingAgent from @nodes
+// which re-exports from coding/agent.ts. Mocking the source module ensures the live binding
+// in bugFixNode picks up the mock.
+vi.mock("../../app/nodes/coding/agent", async () => {
+  const actual = await vi.importActual("../../app/nodes/coding/agent");
   return {
     ...actual,
     createCodingAgent: vi.fn(),
   };
 });
 
-import { createCodingAgent } from "@nodes";
+import { bugFixNode } from "../../app/nodes/deploy/bugFixNode";
+import { createCodingAgent } from "../../app/nodes/coding/agent";
 
 const mockCreateCodingAgent = vi.mocked(createCodingAgent);
 
@@ -149,10 +151,7 @@ describe("bugFixNode", () => {
    */
   describe("Successful bug fix", () => {
     it("marks FixingBugs task as completed on success", async () => {
-      const mockAgent = {
-        invoke: vi.fn().mockResolvedValue({}),
-      };
-      mockCreateCodingAgent.mockResolvedValue(mockAgent as any);
+      mockCreateCodingAgent.mockResolvedValue({ messages: [], status: "completed" });
 
       const state: Partial<DeployGraphState> = {
         websiteId: 1,
@@ -179,12 +178,16 @@ describe("bugFixNode", () => {
         {} as LangGraphRunnableConfig
       )) as Partial<DeployGraphState>;
 
-      // Verify coding agent was called with correct websiteId and jwt
+      // Verify coding agent was called with correct state and options
       expect(mockCreateCodingAgent).toHaveBeenCalledWith(
         { websiteId: 1, jwt: "test-jwt", isFirstMessage: false },
-        expect.any(String) // System prompt is dynamically generated
+        expect.objectContaining({
+          messages: expect.any(Array),
+          systemPrompt: expect.any(String),
+          route: "full",
+          recursionLimit: 100,
+        })
       );
-      expect(mockAgent.invoke).toHaveBeenCalled();
 
       // Should mark FixingBugs as completed and increment validation retryCount
       const bugFixTask = result.tasks?.find((t: Task.Task) => t.name === "FixingBugs");
@@ -195,10 +198,7 @@ describe("bugFixNode", () => {
     });
 
     it("increments retryCount on RuntimeValidation task", async () => {
-      const mockAgent = {
-        invoke: vi.fn().mockResolvedValue({}),
-      };
-      mockCreateCodingAgent.mockResolvedValue(mockAgent as any);
+      mockCreateCodingAgent.mockResolvedValue({ messages: [], status: "completed" });
 
       const state: Partial<DeployGraphState> = {
         websiteId: 1,
@@ -239,10 +239,7 @@ describe("bugFixNode", () => {
    */
   describe("Agent failure handling", () => {
     it("marks FixingBugs task as failed when agent throws", async () => {
-      const mockAgent = {
-        invoke: vi.fn().mockRejectedValue(new Error("Agent failed to fix the code")),
-      };
-      mockCreateCodingAgent.mockResolvedValue(mockAgent as any);
+      mockCreateCodingAgent.mockRejectedValue(new Error("Agent failed to fix the code"));
 
       const state: Partial<DeployGraphState> = {
         websiteId: 1,
@@ -279,10 +276,7 @@ describe("bugFixNode", () => {
     });
 
     it("increments retryCount even on failure to prevent infinite loops", async () => {
-      const mockAgent = {
-        invoke: vi.fn().mockRejectedValue(new Error("Agent failed")),
-      };
-      mockCreateCodingAgent.mockResolvedValue(mockAgent as any);
+      mockCreateCodingAgent.mockRejectedValue(new Error("Agent failed"));
 
       const state: Partial<DeployGraphState> = {
         websiteId: 1,
@@ -315,10 +309,7 @@ describe("bugFixNode", () => {
     });
 
     it("preserves error message from non-Error thrown values", async () => {
-      const mockAgent = {
-        invoke: vi.fn().mockRejectedValue("String error message"),
-      };
-      mockCreateCodingAgent.mockResolvedValue(mockAgent as any);
+      mockCreateCodingAgent.mockRejectedValue("String error message");
 
       const state: Partial<DeployGraphState> = {
         websiteId: 1,
@@ -351,10 +342,7 @@ describe("bugFixNode", () => {
     });
 
     it("does not swallow errors silently by returning empty object", async () => {
-      const mockAgent = {
-        invoke: vi.fn().mockRejectedValue(new Error("Critical failure")),
-      };
-      mockCreateCodingAgent.mockResolvedValue(mockAgent as any);
+      mockCreateCodingAgent.mockRejectedValue(new Error("Critical failure"));
 
       const state: Partial<DeployGraphState> = {
         websiteId: 1,

@@ -1,7 +1,8 @@
 import type { DeployGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+import { HumanMessage } from "@langchain/core/messages";
 import { Deploy, Task } from "@types";
-import { createLightEditAgent, getCodingAgentBackend } from "@nodes";
+import { singleShotEdit, getCodingAgentBackend } from "@nodes";
 import type { WebsiteFilesBackend } from "@services";
 import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
 import { db, websiteFiles, eq, and, like } from "@db";
@@ -68,38 +69,22 @@ function needsInstrumentation(content: string): boolean {
 }
 
 /**
- * Instrument a single file using a coding agent
+ * Instrument files using singleShotEdit — all files needing work are passed
+ * in a single request since singleShotEdit pre-loads all src/ files anyway.
  */
-async function instrumentFile(
+async function instrumentFiles(
   state: DeployGraphState,
-  file: FileToInstrument,
+  files: FileToInstrument[],
   backend: WebsiteFilesBackend,
   config?: LangGraphRunnableConfig
 ): Promise<void> {
   const prompt = await buildInstrumentationPrompt(state, config);
-  const agent = await createLightEditAgent(
+  const filePaths = files.map((f) => f.path).join(", ");
+
+  await singleShotEdit(
     { ...state, isFirstMessage: false },
-    { backend, systemPrompt: prompt }
-  );
-
-  // Generate a unique thread_id for this agent invocation
-  const threadId = `analytics-${state.websiteId}-${file.path.replace(/\//g, "-")}-${Date.now()}`;
-
-  await agent.invoke(
-    {
-      messages: [
-        {
-          role: "user",
-          content: `Instrument this file with L10.createLead(): ${file.path}`,
-        },
-      ],
-    },
-    {
-      recursionLimit: 75,
-      configurable: {
-        thread_id: threadId,
-      },
-    }
+    [new HumanMessage(`${prompt}\n\nInstrument these files with L10.createLead(): ${filePaths}`)],
+    backend
   );
 }
 
@@ -148,16 +133,13 @@ async function instrumentAnalytics(
     "Found files needing instrumentation"
   );
 
-  // Create backend once and share it with all agents
+  // Create backend once — singleShotEdit pre-loads all src/ files, so one call handles all files
   const backend = await getCodingAgentBackend({
     websiteId: state.websiteId,
     jwt: state.jwt,
   });
 
-  // Instrument all files in parallel - each agent shares the same backend
-  await Promise.all(
-    filesNeedingWork.map((file) => instrumentFile(state, file, backend, config))
-  );
+  await instrumentFiles(state, filesNeedingWork, backend, config);
 
   getLogger().info({ fileCount: filesNeedingWork.length }, "Instrumented files");
   return "FIXED";

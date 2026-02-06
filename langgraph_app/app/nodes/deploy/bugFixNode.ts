@@ -53,23 +53,17 @@ async function runBugFix(
   const systemPrompt = await buildBugFixPrompt(promptState, config);
 
   try {
-    // Compile and invoke codingAgentGraph as subgraph
-    const agent = await createCodingAgent(
+    await createCodingAgent(
       { websiteId: state.websiteId, jwt: state.jwt, isFirstMessage: false },
-      systemPrompt
-    );
-
-    // This will update the files in the database, or throw an error
-    await agent.invoke(
       {
         messages: [
           new HumanMessage(
             `Please analyze the errors and resolve them so my site runs successfully.`
           ),
         ],
-      },
-      {
-        ...config,
+        systemPrompt,
+        route: "full",
+        config,
         recursionLimit: 100,
       }
     );

@@ -346,10 +346,9 @@ describe.sequential.skip("Deploy Graph Tests", () => {
       describe("When YES deploying website", async () => {
         it("proceeds to Analytics after both GoogleConnect and GoogleVerify complete", async () => {
           // Mock createCodingAgent to skip actual LLM calls - just return immediately
-          const mockAgent = { invoke: vi.fn().mockResolvedValue({ messages: [] }) };
           const createCodingAgentSpy = vi
             .spyOn(await import("@nodes"), "createCodingAgent")
-            .mockResolvedValue(mockAgent as any);
+            .mockResolvedValue({ messages: [], status: "completed" } as any);
 
           // Mock: Google connected, invite accepted
           mockGoogleAPIService.mockImplementation(

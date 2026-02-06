@@ -80,7 +80,7 @@ import type { WebsiteFilesBackend } from "@services";
 
 function makeFakeBackend(): WebsiteFilesBackend {
   return {
-    read: vi.fn(),
+    read: vi.fn().mockResolvedValue("// file content"),
     write: vi.fn(),
     edit: vi.fn(),
     cleanup: vi.fn(),
@@ -142,15 +142,18 @@ describe("singleShotEdit error handling", () => {
     expect(content).not.toContain("could not be applied");
   });
 
-  it("surfaces error message when ALL edits fail", async () => {
+  it("retries when ALL edits fail, and succeeds on retry", async () => {
     const backend = makeFakeBackend();
-    mockInvoke.mockResolvedValue(
-      makeLLMResponseWithToolCalls("I've made the changes.", 3)
-    );
+    // First call: all fail. Second call (retry): succeeds.
+    mockInvoke
+      .mockResolvedValueOnce(makeLLMResponseWithToolCalls("I've made the changes.", 2))
+      .mockResolvedValueOnce(makeLLMResponseWithToolCalls("Fixed the headline.", 1));
     mockExecuteTextEditorCommand
+      // First attempt: both fail
       .mockResolvedValueOnce("Error: No match found for replacement.")
       .mockResolvedValueOnce("Error: Found multiple matches for replacement text.")
-      .mockResolvedValueOnce("Error: File not found: /src/components/Hero.tsx");
+      // Retry attempt: succeeds
+      .mockResolvedValueOnce("Successfully replaced text at exactly one location.");
 
     const result = await singleShotEdit(
       baseState,
@@ -159,10 +162,38 @@ describe("singleShotEdit error handling", () => {
     );
 
     expect(result.status).toBe("completed");
+    expect(result.allFailed).toBeUndefined();
+    // LLM was invoked twice (initial + retry)
+    expect(mockInvoke).toHaveBeenCalledTimes(2);
     const content =
       typeof result.messages[0]?.content === "string" ? result.messages[0]?.content : "";
-    // Should replace with error-appropriate message, NOT the LLM's optimistic text
-    expect(content).not.toContain("I've made the changes");
+    expect(content).toContain("Fixed the headline");
+  });
+
+  it("sets allFailed when ALL edits fail even after retry", async () => {
+    const backend = makeFakeBackend();
+    // Both calls fail completely
+    mockInvoke
+      .mockResolvedValueOnce(makeLLMResponseWithToolCalls("I've made the changes.", 2))
+      .mockResolvedValueOnce(makeLLMResponseWithToolCalls("Trying again.", 1));
+    mockExecuteTextEditorCommand
+      // First attempt: both fail
+      .mockResolvedValueOnce("Error: No match found for replacement.")
+      .mockResolvedValueOnce("Error: No match found for replacement.")
+      // Retry attempt: also fails
+      .mockResolvedValueOnce("Error: No match found for replacement.");
+
+    const result = await singleShotEdit(
+      baseState,
+      [new HumanMessage("Change the headline")],
+      backend
+    );
+
+    expect(result.status).toBe("completed");
+    expect(result.allFailed).toBe(true);
+    expect(mockInvoke).toHaveBeenCalledTimes(2);
+    const content =
+      typeof result.messages[0]?.content === "string" ? result.messages[0]?.content : "";
     expect(content).toContain("encountered errors");
   });
 
@@ -193,12 +224,14 @@ describe("singleShotEdit error handling", () => {
 
   it("reports errors to rollbar when edits fail", async () => {
     const backend = makeFakeBackend();
-    mockInvoke.mockResolvedValue(
-      makeLLMResponseWithToolCalls("I've made the changes.", 2)
-    );
+    // First call fails, retry also fails
+    mockInvoke
+      .mockResolvedValueOnce(makeLLMResponseWithToolCalls("I've made the changes.", 2))
+      .mockResolvedValueOnce(makeLLMResponseWithToolCalls("Trying again.", 1));
     mockExecuteTextEditorCommand
       .mockResolvedValueOnce("Error: No match found for replacement.")
-      .mockResolvedValueOnce("Error: File not found.");
+      .mockResolvedValueOnce("Error: File not found.")
+      .mockResolvedValueOnce("Error: No match found for replacement.");
 
     await singleShotEdit(
       baseState,
@@ -207,5 +240,54 @@ describe("singleShotEdit error handling", () => {
     );
 
     expect(mockRollbarError).toHaveBeenCalled();
+  });
+
+  it("does NOT retry when SOME edits succeed (partial failure)", async () => {
+    const backend = makeFakeBackend();
+    mockInvoke.mockResolvedValue(
+      makeLLMResponseWithToolCalls("I've updated the hero section.", 3)
+    );
+    mockExecuteTextEditorCommand
+      .mockResolvedValueOnce("Successfully replaced text at exactly one location.")
+      .mockResolvedValueOnce("Error: No match found for replacement.")
+      .mockResolvedValueOnce("Successfully replaced text at exactly one location.");
+
+    const result = await singleShotEdit(
+      baseState,
+      [new HumanMessage("Update the hero section")],
+      backend
+    );
+
+    // Only one LLM call — no retry for partial failure
+    expect(mockInvoke).toHaveBeenCalledTimes(1);
+    expect(result.allFailed).toBeUndefined();
+  });
+
+  it("reads failed file contents for retry context", async () => {
+    const backend = makeFakeBackend();
+    (backend.read as ReturnType<typeof vi.fn>).mockResolvedValue("const Hero = () => <h1>Hello</h1>;");
+
+    // First call fails, retry succeeds
+    mockInvoke
+      .mockResolvedValueOnce(makeLLMResponseWithToolCalls("Initial attempt.", 1))
+      .mockResolvedValueOnce(makeLLMResponseWithToolCalls("Fixed it.", 1));
+    mockExecuteTextEditorCommand
+      .mockResolvedValueOnce("Error: No match found for replacement.")
+      .mockResolvedValueOnce("Successfully replaced text at exactly one location.");
+
+    await singleShotEdit(
+      baseState,
+      [new HumanMessage("Change the headline")],
+      backend
+    );
+
+    // Backend.read should have been called to get current file contents for retry
+    expect(backend.read).toHaveBeenCalledWith("/src/components/Hero.tsx");
+    // Retry message should include error context
+    const retryInvokeArgs = mockInvoke.mock.calls[1]?.[0] as any[];
+    expect(retryInvokeArgs).toBeDefined();
+    const lastMsg = retryInvokeArgs[retryInvokeArgs.length - 1];
+    expect(lastMsg.content).toContain("previous edits failed");
+    expect(lastMsg.content).toContain("Hello");
   });
 });

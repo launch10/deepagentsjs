@@ -8,6 +8,7 @@ import { ContextAPIService } from "@rails_api";
 import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
 import { db, websiteFiles, eq, and } from "@db";
 import { getLogger } from "@core";
+import { HumanMessage } from "@langchain/core/messages";
 
 const TASK_NAME: Deploy.TaskName = "OptimizingSEO";
 
@@ -241,25 +242,17 @@ async function runSeoOptimization(
     }
 
     const systemPrompt = await buildSystemPrompt(state, config!);
-
-    const agent = await createCodingAgent(
-      {
-        ...state,
-        isFirstMessage: false,
-      },
-      systemPrompt
-    );
-
     const userMessage = await buildUserMessage(state);
 
-    await agent.invoke({
-      messages: [
-        {
-          role: "user",
-          content: userMessage,
-        },
-      ],
-    });
+    await createCodingAgent(
+      { ...state, isFirstMessage: false },
+      {
+        messages: [new HumanMessage(userMessage)],
+        systemPrompt,
+        route: "full",
+        config,
+      }
+    );
 
     return withPhases(
       state,

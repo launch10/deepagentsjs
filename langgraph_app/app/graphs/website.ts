@@ -56,9 +56,9 @@ const improveCopySubgraph = new StateGraph(WebsiteAnnotation)
  * - Both converge at cleanupFilesystem (or cleanupState in cache mode)
  * - Includes cacheMode as internal optimization
  */
-const routeFromRecommendDomains = (): string => {
-  if (isCacheModeEnabled()) {
-    return "skipToEnd"; // In cache mode, domain recs go directly to END (files already cached)
+const routeFromRecommendDomains = (state: { messages?: unknown[] }): string => {
+  if (isCacheModeEnabled(state)) {
+    return "skipToEnd"; // In cache mode (create only), domain recs go directly to END (files already cached)
   }
   return "cleanupFilesystem";
 };
@@ -72,8 +72,8 @@ const websiteBuilderSubgraph = new StateGraph(WebsiteAnnotation)
   .addNode("syncFiles", syncFilesNode)
   .addNode("skipToEnd", () => ({})) // No-op node for cache mode domain recs path
 
-  // START routes based on cache mode
-  .addConditionalEdges(START, () => (isCacheModeEnabled() ? "cacheMode" : "buildContext"), {
+  // START routes based on cache mode (create only)
+  .addConditionalEdges(START, (state) => (isCacheModeEnabled(state) ? "cacheMode" : "buildContext"), {
     cacheMode: "buildContext", // Even in cache mode, we go through buildContext
     buildContext: "buildContext",
   })

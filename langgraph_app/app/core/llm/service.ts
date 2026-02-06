@@ -108,6 +108,7 @@ class LLMService {
       apiKey: apiKey ?? undefined,
       model: modelCard,
       temperature,
+      maxTokens: 4096, // Override @langchain/anthropic default of 2048 to prevent truncated file writes
     } as any);
 
     // WORKAROUND: @langchain/anthropic bug where topP/topK default to -1 for newer models

@@ -124,6 +124,21 @@ Section padding: py-16 md:py-20 lg:py-24. Element gaps: gap-4 md:gap-6 lg:gap-8.
 Buttons: hover:scale-105 transition-all duration-200. Cards: hover:shadow-lg hover:-translate-y-1.
 Use transition-all duration-200 for smooth interactions. Keep durations 200-400ms.`);
 
+  // Condensed design philosophy — ensures edits maintain design quality
+  sections.push(`## Design Philosophy
+
+Make edits that are visually distinctive and intentional. Avoid generic "AI slop":
+- NEVER use Inter, Roboto, Arial, or system fonts. Use distinctive, characterful fonts.
+- NEVER default to purple gradients on white, or predictable cookie-cutter patterns.
+- When adding visual elements, create atmosphere: gradients, textures, dramatic shadows, layered effects.
+- Hero should use bg-primary or dramatic gradient with text-4xl+ headlines.
+- Section backgrounds should alternate (bg-primary, bg-muted, bg-background) — never all bg-background.
+- Every edit should maintain or improve the "one memorable thing" — something a user remembers after 3 seconds.
+
+Red flags to fix if you see them:
+- All sections bg-background (flat). Hero text-2xl or smaller (weak). Section padding py-12 or less (cramped).
+- No hover effects (static). Cards invisible against section background. Generic CTAs like "Get Started".`);
+
   // Tracking — condensed version of the full tracking prompt
   sections.push(`## Tracking (L10)
 
@@ -196,13 +211,14 @@ ${preReadContent}`;
  * Accepts an optional pre-created backend to avoid duplicate DB queries when the
  * caller (websiteBuilder) already created one for classification.
  *
- * Returns { messages, status } compatible with WebsiteGraphState.
+ * Returns { messages, status, allFailed } compatible with WebsiteGraphState.
+ * `allFailed` is true when all edits failed even after retry — caller can escalate.
  */
 export async function singleShotEdit(
   state: MinimalCodingAgentState & { messages?: BaseMessage[] },
   contextMessages: BaseMessage[],
   existingBackend?: WebsiteFilesBackend
-): Promise<{ messages: BaseMessage[]; status: "completed" }> {
+): Promise<{ messages: BaseMessage[]; status: "completed"; allFailed?: boolean }> {
   const backend = existingBackend ?? (await getCodingAgentBackend(state));
 
   // Pre-load source files into context: page components, pages, app root, CSS, libs.
@@ -258,9 +274,70 @@ export async function singleShotEdit(
     return { messages: [structuredMessage], status: "completed" };
   }
 
-  // Apply edits — no retry on failure. Successful edits are already applied
-  // to the backend (which syncs to Rails on each write). Failed str_replace
-  // calls mean the LLM picked the wrong anchor; retrying the same input won't help.
+  // Apply edits. Successful edits are applied to the backend immediately.
+  // If ALL edits fail, retry once with error context so the LLM can pick better anchors.
+  const { successCount, errors } = await applyEdits(backend, editCalls);
+
+  if (errors.length > 0) {
+    getLogger().warn({ errorCount: errors.length, errors }, "Single-shot edit had failed tool calls");
+    rollbar.error(new Error(`Single-shot edit failures: ${errors.length}/${editCalls.length}`), {
+      errors: errors.join("; "),
+      successCount,
+      totalEdits: editCalls.length,
+    });
+  }
+
+  // Only retry when ALL edits failed — partial success means some edits already
+  // modified the backend, and retrying could produce conflicting changes.
+  if (successCount === 0 && errors.length > 0) {
+    getLogger().info("All edits failed, retrying with error context");
+
+    const retryResult = await retryWithErrorContext(
+      backend,
+      modelWithTools,
+      invokeMessages,
+      editCalls,
+      errors
+    );
+
+    if (retryResult) {
+      return retryResult;
+    }
+
+    // Retry also failed completely — signal escalation
+    const failMessage = new AIMessage({
+      content: "I attempted to make the changes but encountered errors applying the edits. Could you try rephrasing your request?",
+    });
+    const [failStructured] = await toStructuredMessage(failMessage);
+    return { messages: [failStructured], status: "completed", allFailed: true };
+  }
+
+  // Build user-facing message based on edit outcomes
+  const textContent = extractTextContent(response);
+  let messageContent: string;
+
+  if (errors.length > 0) {
+    // SOME edits failed — append a warning to the LLM's text
+    messageContent =
+      (textContent || "I've made the requested changes.") +
+      "\n\nNote: some edits could not be applied. You may want to verify the changes.";
+  } else {
+    // All edits succeeded — use original LLM text
+    messageContent = textContent || "I've made the requested changes.";
+  }
+
+  const finalMessage = new AIMessage({ content: messageContent });
+  const [structuredMessage] = await toStructuredMessage(finalMessage);
+  return { messages: [structuredMessage], status: "completed" };
+}
+
+/**
+ * Apply tool call edits to the backend, collecting successes and errors.
+ */
+async function applyEdits(
+  backend: WebsiteFilesBackend,
+  editCalls: Array<{ args: unknown }>
+): Promise<{ successCount: number; errors: string[] }> {
   const errors: string[] = [];
   let successCount = 0;
   for (const toolCall of editCalls) {
@@ -274,37 +351,82 @@ export async function singleShotEdit(
       successCount++;
     }
   }
+  return { successCount, errors };
+}
 
-  if (errors.length > 0) {
-    getLogger().warn({ errorCount: errors.length, errors }, "Single-shot edit had failed tool calls");
-    rollbar.error(new Error(`Single-shot edit failures: ${errors.length}/${editCalls.length}`), {
-      errors: errors.join("; "),
-      successCount,
-      totalEdits: editCalls.length,
-    });
+/**
+ * Retry failed edits by re-invoking the LLM with error context and current file contents.
+ * Returns a successful result if the retry produces any successful edits, or null if retry
+ * also fails completely.
+ */
+async function retryWithErrorContext(
+  backend: WebsiteFilesBackend,
+  model: any,
+  originalMessages: BaseMessage[],
+  failedCalls: Array<{ args: unknown }>,
+  errors: string[]
+): Promise<{ messages: BaseMessage[]; status: "completed" } | null> {
+  // Collect unique file paths from failed edits and re-read their current contents
+  const failedPaths = [
+    ...new Set(failedCalls.map((tc) => (tc.args as any)?.path).filter(Boolean)),
+  ];
+
+  const fileContents: string[] = [];
+  for (const filePath of failedPaths) {
+    try {
+      const content = await backend.read(filePath);
+      if (content) {
+        fileContents.push(`### ${filePath}\n\`\`\`\n${content}\n\`\`\``);
+      }
+    } catch {
+      // File may not exist — skip
+    }
   }
 
-  // Build user-facing message based on edit outcomes
-  const textContent = extractTextContent(response);
-  let messageContent: string;
+  const retryMessage = new HumanMessage(
+    `Your previous edits failed with these errors:\n${errors.map((e, i) => `${i + 1}. ${e}`).join("\n")}\n\n` +
+      `Here are the current file contents — use these to pick correct anchors:\n\n${fileContents.join("\n\n")}\n\n` +
+      `Please try again with corrected str_replace anchors.`
+  );
 
-  if (successCount === 0 && errors.length > 0) {
-    // ALL edits failed — don't show the LLM's optimistic text
-    messageContent =
-      "I attempted to make the changes but encountered errors applying the edits. Could you try rephrasing your request?";
-  } else if (errors.length > 0) {
-    // SOME edits failed — append a warning to the LLM's text
-    messageContent =
-      (textContent || "I've made the requested changes.") +
-      "\n\nNote: some edits could not be applied. You may want to verify the changes.";
-  } else {
-    // All edits succeeded — use original LLM text
-    messageContent = textContent || "I've made the requested changes.";
+  try {
+    const retryResponse = await model.invoke([...originalMessages, retryMessage]);
+    const retryToolCalls = retryResponse.tool_calls ?? [];
+    const retryEditCalls = retryToolCalls.filter(
+      (tc: any) => (tc.args as any)?.command !== "view"
+    );
+
+    if (retryEditCalls.length === 0) {
+      // LLM gave up or only responded with text
+      const [msg] = await toStructuredMessage(retryResponse);
+      return { messages: [msg], status: "completed" };
+    }
+
+    const { successCount: retrySuccessCount, errors: retryErrors } = await applyEdits(
+      backend,
+      retryEditCalls
+    );
+
+    if (retrySuccessCount === 0) {
+      // Retry also failed completely
+      getLogger().warn({ retryErrors }, "Single-shot retry also failed completely");
+      return null;
+    }
+
+    // At least some retry edits succeeded
+    const retryText = extractTextContent(retryResponse);
+    let messageContent = retryText || "I've made the requested changes.";
+    if (retryErrors.length > 0) {
+      messageContent += "\n\nNote: some edits could not be applied. You may want to verify the changes.";
+    }
+
+    const finalMessage = new AIMessage({ content: messageContent });
+    const [structuredMessage] = await toStructuredMessage(finalMessage);
+    return { messages: [structuredMessage], status: "completed" };
+  } catch (e) {
+    getLogger().warn({ err: e }, "Single-shot retry LLM call failed");
+    return null;
   }
-
-  const finalMessage = new AIMessage({ content: messageContent });
-  const [structuredMessage] = await toStructuredMessage(finalMessage);
-  return { messages: [structuredMessage], status: "completed" };
 }
 
 /**

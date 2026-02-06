@@ -3,16 +3,14 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { AIMessage } from "@langchain/core/messages";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 import { NodeMiddleware } from "@middleware";
-import { createCodingAgent, singleShotEdit, classifyEditWithLLM } from "@nodes";
-import { buildFileTree, getCodingAgentBackend } from "@nodes";
+import { createCodingAgent } from "@nodes";
 import { createContextMessage } from "langgraph-ai-sdk";
 import { isCacheModeEnabled } from "./cacheMode";
 import { prepareContextWindow } from "./contextWindow";
 import { getSchedulingToolMinorEditFiles } from "@cache";
-import { lastAIMessage, type Website } from "@types";
+import type { Website } from "@types";
 import { injectAgentContext } from "@api/middleware";
 import { getLogger } from "@core";
-import type { WebsiteFilesBackend } from "@services";
 
 /**
  * Get cached response for cache mode.
@@ -44,42 +42,6 @@ const cachedResponse = async (state: WebsiteGraphState) => {
     files,
     status: "completed" as const,
   };
-};
-
-/**
- * Determine if this request needs the full agent or can use single-shot.
- * Returns the backend if single-shot is chosen (to avoid recreating it).
- *
- * - First message (create flow) → always full agent
- * - Console errors (bugfix) → always full agent
- * - Otherwise → cheap LLM classifier decides
- */
-const classifyRoute = async (
-  state: WebsiteGraphState
-): Promise<{ useSingleShot: false } | { useSingleShot: true; backend: WebsiteFilesBackend }> => {
-  const isFirstMessage = state.messages.length === 0;
-
-  // Create flow or bugfix → full agent, no question
-  if (isFirstMessage || (state.consoleErrors && state.consoleErrors.length > 0)) {
-    return { useSingleShot: false };
-  }
-
-  // Use cheap LLM to classify: does this need many files / lots of changes?
-  const lastMessage = state.messages.at(-1);
-  const userText = typeof lastMessage?.content === "string" ? lastMessage.content : "";
-
-  // Get file tree for the classifier (lightweight — just paths, no contents)
-  // Keep the backend so singleShotEdit can reuse it (avoids duplicate DB query)
-  const backend = await getCodingAgentBackend(state);
-  const { tree } = await buildFileTree(backend);
-
-  const route = await classifyEditWithLLM(userText, tree);
-  getLogger().info({ route }, "Edit classified");
-
-  if (route === "simple") {
-    return { useSingleShot: true, backend };
-  }
-  return { useSingleShot: false };
 };
 
 const buildContext = async (state: WebsiteGraphState) => {
@@ -125,40 +87,28 @@ export const websiteBuilderNode = NodeMiddleware.use(
       throw new Error("websiteId and jwt are required");
     }
 
-    // In cache mode, return cached files instead of running the agent
-    if (isCacheModeEnabled()) {
+    // In cache mode (create only), return cached files instead of running the agent
+    if (isCacheModeEnabled(state)) {
       return await cachedResponse(state);
     }
 
-    const messages = await buildContext(state);
-    const routeResult = await classifyRoute(state);
-
-    if (routeResult.useSingleShot) {
-      getLogger().info("Using single-shot edit path");
-      return await singleShotEdit(state, messages, routeResult.backend);
-    }
-
-    // Full agent path: create flow, bugfix, or complex edits
-    getLogger().info("Using full agent path");
     const isFirstMessage = state.messages.length === 0;
-    const agent = await createCodingAgent({ ...state, isFirstMessage });
+    const messages = await buildContext(state);
 
-    const result = await agent.invoke(
-      { messages },
-      {
-        ...config,
-        recursionLimit: 150,
-      }
+    const result = await createCodingAgent(
+      { ...state, isFirstMessage },
+      { messages, config }
     );
 
-    // Only return user-visible messages to the outer graph.
-    // The deep agent maintains its own checkpoint with full internal context.
-    const lastAI = lastAIMessage(result);
-    const [structuredMessage] = lastAI ? await toStructuredMessage(lastAI) : [undefined];
+    // TODO: Visual Feedback Loop (post-MVP)
+    // After the create flow completes, add a visual validation step:
+    // 1. Take a screenshot of the generated page (via browserPool/puppeteer)
+    // 2. Run a cheap vision model call: "Score this landing page 1-10 on visual quality.
+    //    List top 3 issues if score < 7."
+    // 3. If score < 7, inject the issues as a follow-up edit through singleShotEdit
+    // 4. This creates a self-correcting loop: create → screenshot → evaluate → fix
+    // Only applies to create flow (isFirstMessage), not edits.
 
-    return {
-      messages: structuredMessage ? [structuredMessage] : [],
-      status: "completed" as const,
-    };
+    return result;
   }
 );
