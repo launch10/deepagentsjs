@@ -1,5 +1,7 @@
 import { Redis } from "ioredis";
-import { env } from "@core";
+import { env, getLogger } from "@core";
+
+const log = getLogger({ component: "RedisConnection" });
 
 export const createRedisConnection = () => {
   const connection = new Redis(env.REDIS_URL, {
@@ -8,7 +10,7 @@ export const createRedisConnection = () => {
   });
 
   connection.config("SET", "maxmemory-policy", "noeviction").catch((err) => {
-    console.error("Failed to set Redis eviction policy:", err);
+    log.error({ err }, "Failed to set Redis eviction policy");
   });
 
   return connection;

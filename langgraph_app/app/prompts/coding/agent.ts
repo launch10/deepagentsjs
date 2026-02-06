@@ -28,6 +28,7 @@ import {
   linksPrompt,
   imagesPrompt,
   fontAndResponsivePrompt,
+  designPhilosophyPrompt,
   designChecklistPrompt,
   iconsPrompt,
   type CodingPromptState,
@@ -59,6 +60,7 @@ export const buildStaticContextPrompt = async (
     animations,
     fontAndResponsive,
     environment,
+    designPhilosophy,
     designChecklist,
   ] = await Promise.all([
     userGoalPrompt(state, config),
@@ -74,6 +76,7 @@ export const buildStaticContextPrompt = async (
     animationsPrompt(state, config),
     fontAndResponsivePrompt(state, config),
     environmentPrompt(state, config),
+    designPhilosophyPrompt(state, config),
     designChecklistPrompt(state, config),
   ]);
 
@@ -105,6 +108,8 @@ ${animations}
 ${fontAndResponsive}
 
 ${environment}
+
+${designPhilosophy}
 
 ${designChecklist}
 `.trim();

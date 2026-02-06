@@ -3,6 +3,7 @@ import { writeFile, mkdir, rm } from "fs/promises";
 import { join, dirname } from "path";
 import { tmpdir } from "os";
 import { existsSync } from "fs";
+import { getLogger } from "@core";
 
 /**
  * Exports website files from database to an isolated directory
@@ -35,7 +36,7 @@ export class FileExporter implements AsyncDisposable {
         } catch (err: any) {
           retries--;
           if (retries === 0) {
-            console.warn(`Warning: Could not fully clean up ${this.outputDir}: ${err.message}`);
+            getLogger({ component: "FileExporter" }).warn({ outputDir: this.outputDir, err }, "Could not fully clean up output directory");
             // Don't throw - we don't want cleanup failures to break tests
           } else {
             await new Promise((resolve) => setTimeout(resolve, 500));
@@ -43,7 +44,7 @@ export class FileExporter implements AsyncDisposable {
         }
       }
     } catch (err) {
-      console.warn(`Warning: Error during cleanup of ${this.outputDir}:`, err);
+      getLogger({ component: "FileExporter" }).warn({ outputDir: this.outputDir, err }, "Error during cleanup");
     }
   }
 
@@ -51,7 +52,8 @@ export class FileExporter implements AsyncDisposable {
    * Export all files for a website to the output directory
    */
   async export(): Promise<string> {
-    console.log(`Exporting website ${this.websiteId} to ${this.outputDir}`);
+    const log = getLogger({ component: "FileExporter" });
+    log.info({ websiteId: this.websiteId, outputDir: this.outputDir }, "Exporting website files");
 
     // Get all files for this website
     const files = await db.select().from(codeFiles).where(eq(codeFiles.websiteId, this.websiteId));
@@ -77,10 +79,10 @@ export class FileExporter implements AsyncDisposable {
 
       // Write file content
       await writeFile(filePath, file.content || "");
-      console.log(`  ✓ Exported ${file.path}`);
+      log.debug({ filePath: file.path }, "Exported file");
     }
 
-    console.log(`Exported ${files.length} files to ${this.outputDir}`);
+    log.info({ fileCount: files.length, outputDir: this.outputDir }, "Export complete");
     return this.outputDir;
   }
 

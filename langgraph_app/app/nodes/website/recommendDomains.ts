@@ -1,7 +1,7 @@
 import { type WebsiteGraphState } from "@annotation";
 import { NodeMiddleware } from "@middleware";
 import { DomainContextAPIService, ContextAPIService, type DomainWithWebsite } from "@rails_api";
-import { getLLM } from "@core";
+import { getLLM, getLogger } from "@core";
 import type { Website } from "@types";
 import {
   buildDomainRecommendationsPrompt,
@@ -34,34 +34,34 @@ export const domainRecommendationsNode = NodeMiddleware.use(
   async (state: WebsiteGraphState): Promise<Partial<WebsiteGraphState>> => {
     // Idempotent: skip if already computed
     if (state.domainRecommendations) {
-      console.log("[domainRecommendations] Skipping - already computed");
+      getLogger({ component: "domainRecommendations" }).debug("Skipping - already computed");
       return {};
     }
 
     if (state.messages.length > 0) {
-      console.log("[domainRecommendations] Skipping - messages already exist");
+      getLogger({ component: "domainRecommendations" }).debug("Skipping - messages already exist");
       return {};
     }
 
     if (!state.websiteId) {
-      console.log("[domainRecommendations] Skipping - no websiteId");
+      getLogger({ component: "domainRecommendations" }).debug("Skipping - no websiteId");
       return {};
     }
 
     if (!state.jwt) {
-      console.log("[domainRecommendations] Skipping - no jwt");
+      getLogger({ component: "domainRecommendations" }).debug("Skipping - no jwt");
       return {};
     }
 
     try {
-      console.log("[domainRecommendations] Starting domain recommendations");
+      getLogger({ component: "domainRecommendations" }).info("Starting domain recommendations");
 
       // Fetch brainstorm context from Rails
       const contextAPI = new ContextAPIService({ jwt: state.jwt });
       const context = await contextAPI.get(state.websiteId);
 
       if (!context.brainstorm?.idea) {
-        console.log("[domainRecommendations] Skipping - no brainstorm context");
+        getLogger({ component: "domainRecommendations" }).debug("Skipping - no brainstorm context");
         return {};
       }
 
@@ -116,10 +116,10 @@ export const domainRecommendationsNode = NodeMiddleware.use(
         hasCredits
       );
 
-      console.log("[domainRecommendations] Completed - state:", recommendations.state);
+      getLogger({ component: "domainRecommendations" }).info({ state: recommendations.state }, "Completed domain recommendations");
       return { domainRecommendations: recommendations };
     } catch (error) {
-      console.error("[domainRecommendations] Error:", error);
+      getLogger({ component: "domainRecommendations" }).error({ err: error }, "Domain recommendations error");
       // On error, return fallback recommendations
       const fallback = getFallbackRecommendations("my-site", []);
       return { domainRecommendations: fallback };

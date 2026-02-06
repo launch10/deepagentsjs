@@ -31,7 +31,7 @@ export async function createLightEditAgent(
   }
 ) {
   const backend = options?.backend ?? (await getCodingAgentBackend(state));
-  const llm = await getLLM({ skill: "coding", speed: "blazing", cost: "paid", maxTier: 3 });
+  const llm = (await getLLM({ skill: "coding", speed: "blazing", cost: "paid", maxTier: 3 })).withConfig({ tags: ["notify"] });
   // We don't use toolRetryMiddleware - when an edit fails, it can't be retried (applying the same edit again just wastes time and money)
   const middlewares: AgentMiddleware[] = [createPromptCachingMiddleware()];
 

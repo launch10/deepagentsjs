@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import { env } from "./env";
+import { getLogger } from "./logger/context";
 
 export const pool: Pool = (() => {
   const postgresUri = env.DATABASE_URL;
@@ -16,7 +17,7 @@ export const pool: Pool = (() => {
   });
 
   newPool.on("error", (err) => {
-    console.error("Unexpected pool error:", err);
+    getLogger({ component: "postgres" }).error({ err }, "Unexpected pool error");
   });
 
   return newPool;

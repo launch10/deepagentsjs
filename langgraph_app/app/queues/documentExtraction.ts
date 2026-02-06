@@ -1,5 +1,8 @@
 import { Queue } from "bullmq";
+import { getLogger } from "@core";
 import { queueConnection } from "./connection";
+
+const log = getLogger({ component: "DocumentExtractionQueue" });
 
 export interface DocumentExtractionJobData {
   job_run_id: number;
@@ -30,5 +33,5 @@ export const documentExtractionQueue = new Queue<DocumentExtractionJobData>("doc
 });
 
 documentExtractionQueue.on("error", (error) => {
-  console.error("[DocumentExtractionQueue] Error:", error);
+  log.error({ err: error }, "Queue error");
 });

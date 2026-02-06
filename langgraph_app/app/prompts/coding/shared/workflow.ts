@@ -8,18 +8,17 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 const createWorkflow = `
 ## Workflow
 1. **Greet**: Start with a brief, personalized message acknowledging what you're about to build. Reference the user's idea or audience from the brainstorm to show you understand their vision (1-2 sentences max).
-2. **Plan**: Break down into sections (e.g. Hero, Features, Pricing, Social Proof, CTA, Footer) based on page needs
-3. **Draft copy**: Use the copywriter subagent to draft all section copy at once
-4. **Assign images**: Place user-provided images appropriately
-5. **CRITICAL - Divide and conquer IN PARALLEL**:
+2. **Plan**: Break down into sections (e.g. Hero, Features, Pricing, Social Proof, CTA, Footer) based on page needs. Draft compelling copy for each section based on the brainstorm context.
+3. **Assign images**: Place user-provided images appropriately
+4. **CRITICAL - Divide and conquer IN PARALLEL**:
    - Launch ALL coder subagents in ONE SINGLE MESSAGE
    - DO NOT wait for one component to finish before starting the next
    - Each task() call in the SAME message runs in parallel
    - Example: ONE message with task(Hero) + task(Features) + task(Pricing) + task(Footer)
    - WRONG: Send task(Hero), wait, send task(Features), wait...
    - This step should be ONE message with 4-6 parallel task() calls
-6. **Assemble**: Create /src/pages/IndexPage.tsx (and optionally PricingPage.tsx) to assemble the components
-7. **Track**: Implement L10.createLead() based on conversion type (tiered pricing vs. simple waitlist)
+5. **Assemble**: Create /src/pages/IndexPage.tsx (and optionally PricingPage.tsx) to assemble the components
+6. **Track**: Implement L10.createLead() based on conversion type (tiered pricing vs. simple waitlist)
 `;
 
 const editWorkflow = `

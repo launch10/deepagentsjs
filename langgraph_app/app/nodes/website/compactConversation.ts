@@ -17,7 +17,9 @@ import {
 import { isContextMessage } from "langgraph-ai-sdk";
 import { getLLM } from "@core";
 import { NodeMiddleware } from "@middleware";
-import type { WebsiteGraphState } from "@annotation";
+
+/** Minimal state shape — any graph extending BaseAnnotation satisfies this. */
+type HasMessages = { messages: BaseMessage[] };
 
 export interface CompactConversationOptions {
   /** Trigger compaction when non-context messages exceed this count. Default: 12 */
@@ -35,15 +37,22 @@ const DEFAULTS: Required<CompactConversationOptions> = {
 };
 
 /**
- * Graph node wrapper for the website graph.
- * Other graphs can create their own node wrappers using compactConversation() directly.
+ * Create a compaction node for any graph that has `messages` in its state.
+ * Works with website, brainstorm, ads, or any graph extending BaseAnnotation.
  */
-export const compactConversationNode = NodeMiddleware.use(
-  {},
-  async (state: WebsiteGraphState): Promise<Partial<WebsiteGraphState>> => {
-    return compactConversation(state.messages);
-  }
-);
+export function createCompactConversationNode(
+  options?: CompactConversationOptions
+) {
+  return NodeMiddleware.use(
+    {},
+    async (state: HasMessages) => {
+      return compactConversation(state.messages, options);
+    }
+  );
+}
+
+/** Pre-built node for the website graph (default options). */
+export const compactConversationNode = createCompactConversationNode();
 
 /**
  * Compact a message array by summarizing old messages.

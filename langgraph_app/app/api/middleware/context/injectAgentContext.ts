@@ -21,6 +21,7 @@ import { HumanMessage, AIMessage, type BaseMessage } from "@langchain/core/messa
 import { getSubscribedEventTypes, type SubscribableGraph } from "./subscriptions";
 import { summarizeEvents, type SummarizedEvent, type ContentBlock } from "./summarization";
 import { ContextEventsAPIService } from "@rails_api";
+import { getLogger } from "@core";
 
 interface InjectAgentContextParams {
   /** Graph name for event subscriptions */
@@ -108,7 +109,7 @@ export async function injectAgentContext({
       since: lastAiTime?.toISOString(),
     });
   } catch (error) {
-    console.warn("[injectAgentContext] Failed to fetch events:", error);
+    getLogger({ component: "injectAgentContext" }).warn({ err: error }, "Failed to fetch events");
     return messages;
   }
 

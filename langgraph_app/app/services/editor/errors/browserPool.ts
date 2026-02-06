@@ -1,4 +1,5 @@
 import { chromium, type Browser, type BrowserContext } from "playwright";
+import { getLogger } from "@core";
 
 /**
  * Singleton browser pool with lazy initialization and bounded concurrency.
@@ -43,8 +44,9 @@ class BrowserPool {
 
     // Auto-release after timeout to prevent resource leaks
     const timer = setTimeout(() => {
-      console.warn(
-        `Browser context held for ${BrowserPool.CONTEXT_TIMEOUT_MS}ms, force-releasing`
+      getLogger({ component: "BrowserPool" }).warn(
+        { timeoutMs: BrowserPool.CONTEXT_TIMEOUT_MS },
+        "Browser context held too long, force-releasing"
       );
       this.releaseContext(context);
     }, BrowserPool.CONTEXT_TIMEOUT_MS);
@@ -72,7 +74,7 @@ class BrowserPool {
     try {
       await context.close();
     } catch (error) {
-      console.error("Failed to close browser context:", error);
+      getLogger({ component: "BrowserPool" }).error({ err: error }, "Failed to close browser context");
     } finally {
       this.activeContexts--;
       // Wake up next waiter
@@ -97,7 +99,7 @@ class BrowserPool {
       await this.browser.close();
       this.browser = null;
       this.browserPromise = null;
-      console.log("Browser pool shut down");
+      getLogger({ component: "BrowserPool" }).info("Browser pool shut down");
     }
   }
 
@@ -108,7 +110,7 @@ class BrowserPool {
   private async ensureBrowser(): Promise<Browser> {
     // Check if browser crashed
     if (this.browser && !this.browser.isConnected()) {
-      console.warn("Browser disconnected, relaunching...");
+      getLogger({ component: "BrowserPool" }).warn("Browser disconnected, relaunching");
       this.browser = null;
       this.browserPromise = null;
     }
@@ -120,7 +122,7 @@ class BrowserPool {
 
     // Race condition protection: share launch promise
     if (!this.browserPromise) {
-      console.log("Launching browser pool...");
+      getLogger({ component: "BrowserPool" }).info("Launching browser pool");
       this.browserPromise = chromium.launch({
         headless: true,
         args: ["--no-sandbox", "--disable-setuid-sandbox"],

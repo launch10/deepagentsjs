@@ -5,7 +5,7 @@ import { getLLM, rollbar, getLogger } from "@core";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 import { executeTextEditorCommand, type TextEditorInput } from "@tools";
 import { getCodingAgentBackend, getTheme, type MinimalCodingAgentState } from "./agent";
-import { buildFileTree, preReadFiles } from "./superlightEditAgent";
+import { buildFileTree, preReadFiles } from "./fileContext";
 import { formatTypographyPrompt, type CodingPromptState } from "@prompts";
 import type { WebsiteFilesBackend } from "@services";
 
@@ -224,10 +224,12 @@ export async function singleShotEdit(
   // Get LLM with usage tracking
   const llm = await getLLM({ skill: "coding", speed: "blazing", cost: "paid", maxTier: 3 });
 
-  // Pass native text editor tool via withConfig — this flows through to
+  // Pass native text editor tool and notify tag via withConfig — this flows through to
   // ChatAnthropic.invocationParams() which calls formatStructuredToolToAnthropic().
   // Using withConfig preserves configFactories (usage tracking) from getLLM().
+  // The "notify" tag enables RawMessageHandler to stream tokens to the frontend.
   const modelWithTools = (llm as any).withConfig({
+    tags: ["notify"],
     tools: [NATIVE_TEXT_EDITOR_TOOL],
   });
 

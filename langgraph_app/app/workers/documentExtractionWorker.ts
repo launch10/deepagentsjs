@@ -4,7 +4,7 @@ import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { createRedisConnection } from "../queues/connection";
 import type { DocumentExtractionJobData } from "../queues/documentExtraction";
 import { WebhookService } from "../services/webhooks";
-import { getLLM } from "@core";
+import { getLLM, getLogger } from "@core";
 import { withStructuredResponse } from "@utils";
 import { structuredOutputPrompt } from "@prompts";
 
@@ -100,12 +100,13 @@ function deduplicateQAPairs(pairs: QAPair[]): QAPair[] {
 async function processDocumentExtraction(job: Job<DocumentExtractionJobData>) {
   const { job_run_id, document_id, content, metadata } = job.data;
 
-  console.log(`[Worker] Processing document ${document_id}`);
+  const log = getLogger({ component: "DocumentExtractionWorker" });
+  log.info({ documentId: document_id }, "Processing document");
 
   const schemaPrompt = await structuredOutputPrompt({ schema: qaExtractionSchema });
   const chunks = await splitContent(content);
 
-  console.log(`[Worker] Split into ${chunks.length} chunks, processing in parallel`);
+  log.info({ chunkCount: chunks.length }, "Split into chunks, processing in parallel");
 
   const results = await Promise.allSettled(
     chunks.map((chunk, i) => extractQAFromChunk(chunk, i, chunks.length, schemaPrompt, metadata))
@@ -117,11 +118,11 @@ async function processDocumentExtraction(job: Job<DocumentExtractionJobData>) {
 
   const failedCount = results.filter((r) => r.status === "rejected").length;
   if (failedCount > 0) {
-    console.warn(`[Worker] ${failedCount}/${chunks.length} chunks failed`);
+    log.warn({ failedCount, totalChunks: chunks.length }, "Some chunks failed extraction");
   }
 
   const dedupedPairs = deduplicateQAPairs(successfulPairs);
-  console.log(`[Worker] Extracted ${dedupedPairs.length} unique Q&A pairs`);
+  log.info({ pairCount: dedupedPairs.length }, "Extracted unique Q&A pairs");
 
   await WebhookService.sendWebhook({
     job_run_id,
@@ -134,6 +135,7 @@ async function processDocumentExtraction(job: Job<DocumentExtractionJobData>) {
 }
 
 const connection = createRedisConnection();
+const workerLog = getLogger({ component: "DocumentExtractionWorker" });
 
 export const documentExtractionWorker = new Worker<DocumentExtractionJobData>(
   "document-extraction",
@@ -146,11 +148,11 @@ export const documentExtractionWorker = new Worker<DocumentExtractionJobData>(
 );
 
 documentExtractionWorker.on("completed", (job) => {
-  console.log(`[Worker] Job ${job.id} completed`);
+  workerLog.info({ jobId: job.id }, "Job completed");
 });
 
 documentExtractionWorker.on("failed", async (job, err) => {
-  console.error(`[Worker] Job ${job?.id} failed:`, err.message);
+  workerLog.error({ jobId: job?.id, err }, "Job failed");
 
   if (job && job.attemptsMade >= (job.opts.attempts || 1)) {
     await WebhookService.sendWebhook({
@@ -163,19 +165,19 @@ documentExtractionWorker.on("failed", async (job, err) => {
 });
 
 documentExtractionWorker.on("error", (err) => {
-  console.error("[Worker] Error:", err);
+  workerLog.error({ err }, "Worker error");
 });
 
 process.on("SIGINT", async () => {
-  console.log("[Worker] Shutting down...");
+  workerLog.info("Shutting down");
   await documentExtractionWorker.close();
   process.exit(0);
 });
 
 process.on("SIGTERM", async () => {
-  console.log("[Worker] Shutting down...");
+  workerLog.info("Shutting down");
   await documentExtractionWorker.close();
   process.exit(0);
 });
 
-console.log("[Worker] Document extraction worker started");
+workerLog.info("Document extraction worker started");

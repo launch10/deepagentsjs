@@ -4,7 +4,7 @@ import { createDeepAgent, createSettings } from "deepagents";
 import { getLLM, getLLMFallbacks, createPromptCachingMiddleware } from "@core";
 import { WebsiteFilesBackend } from "@services";
 import { SearchIconsTool } from "@tools";
-import { copywriterSubAgent, buildCoderSubAgent } from "./subagents";
+import { buildCoderSubAgent } from "./subagents";
 import { checkpointer } from "@core";
 import {
   modelFallbackMiddleware as modelFallbackMiddlewareBuilder,
@@ -95,7 +95,7 @@ export async function createCodingAgent(
   }
 
   const backend = existingBackend ?? (await getCodingAgentBackend(state));
-  const llm = await getLLM({ skill: "coding", speed: "slow", cost: "paid" });
+  const llm = (await getLLM({ skill: "coding", speed: "slow", cost: "paid" })).withConfig({ tags: ["notify"] });
   const middlewares = getMiddlewares();
 
   // Build prompt state for async prompt generation
@@ -122,7 +122,6 @@ export async function createCodingAgent(
     name: "coding-agent",
     systemPrompt: finalSystemPrompt,
     backend: () => backend as any,
-    // subagents: [copywriterSubAgent, coderSubAgent],
     subagents: [coderSubAgent],
     tools: [new SearchIconsTool()],
     middleware: middlewares as any,

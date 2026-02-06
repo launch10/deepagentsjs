@@ -24,20 +24,22 @@ export async function buildFileTree(backend: WebsiteFilesBackend): Promise<{
 }
 
 /**
- * Pre-read target files and format them for the system prompt.
+ * Pre-read target files in parallel and format them for the system prompt.
  */
 export async function preReadFiles(
   backend: WebsiteFilesBackend,
   filePaths: string[]
 ): Promise<string> {
-  const sections: string[] = [];
-  for (const fp of filePaths) {
-    try {
-      const content = await backend.read(fp);
-      sections.push(`### ${fp}\n\`\`\`tsx\n${content}\n\`\`\``);
-    } catch {
-      // File may not exist; skip silently
-    }
-  }
-  return sections.join("\n\n");
+  const results = await Promise.all(
+    filePaths.map(async (fp) => {
+      try {
+        const content = await backend.read(fp);
+        return `### ${fp}\n\`\`\`tsx\n${content}\n\`\`\``;
+      } catch {
+        // File may not exist; skip silently
+        return null;
+      }
+    })
+  );
+  return results.filter(Boolean).join("\n\n");
 }

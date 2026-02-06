@@ -51,9 +51,8 @@ vi.mock("langgraph-ai-sdk", async (importOriginal) => {
   };
 });
 
-// Mock superlightEditAgent (buildFileTree/preReadFiles) directly since
-// singleShotEdit imports them from that file
-vi.mock("../../../../app/nodes/coding/superlightEditAgent", async (importOriginal) => {
+// Mock fileContext (buildFileTree/preReadFiles) — singleShotEdit imports from this file
+vi.mock("../../../../app/nodes/coding/fileContext", async (importOriginal) => {
   const original = (await importOriginal()) as Record<string, unknown>;
   return {
     ...original,

@@ -13,7 +13,7 @@
 import type { Context, Next } from "hono";
 import type { AuthContext } from "./auth";
 import { checkCredits, CreditCheckError, type CreditCheckResult } from "@core/billing";
-import { env } from "@core";
+import { env, getLogger } from "@core";
 
 /**
  * Credit state set by the middleware, available via c.get("creditState").
@@ -37,7 +37,7 @@ export const creditCheckMiddleware = async (c: Context, next: Next) => {
   const auth = c.get("auth") as AuthContext | undefined;
 
   if (!auth) {
-    console.error("[creditCheckMiddleware] No auth context - must run after authMiddleware");
+    getLogger({ component: "creditCheck" }).error("No auth context — must run after authMiddleware");
     return c.json({ error: "Internal server error" }, 500);
   }
 
@@ -76,7 +76,7 @@ export const creditCheckMiddleware = async (c: Context, next: Next) => {
   } catch (error) {
     // Fail closed - block request if credit check fails
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("[creditCheckMiddleware] Credit check failed, blocking request:", message);
+    getLogger({ component: "creditCheck" }).error({ err: error }, "Credit check failed, blocking request");
 
     return c.json(
       {

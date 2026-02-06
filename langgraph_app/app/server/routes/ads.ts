@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { type AuthContext, streamMiddleware, readOnlyMiddleware, getCreditState } from "@server/middleware";
 import { validateThreadOrError } from "../middleware/threadValidation";
 import { AdsAPI } from "@api";
+import { getLogger } from "@core";
 
 type Variables = {
   auth: AuthContext;
@@ -40,7 +41,7 @@ adsRoutes.post("/stream", ...streamMiddleware, async (c) => {
       },
     });
   } catch (error) {
-    console.error("AdsAPI.stream error:", error);
+    getLogger().error({ err: error }, "AdsAPI.stream error");
     return c.json({ error: "Stream failed", details: String(error) }, 500);
   }
 });

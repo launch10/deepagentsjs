@@ -3,7 +3,7 @@ import { OpenAIEmbeddings } from "@langchain/openai";
 import { db } from "@db";
 import { documentChunks, documents } from "app/db/schema";
 import { CohereRerankService, type RerankDocument } from "../core/cohereRerankService";
-import { env } from "@core";
+import { env, getLogger } from "@core";
 
 export interface FAQSearchOptions {
   topK?: number;
@@ -34,7 +34,7 @@ export class FAQSearchService {
       throw new Error("OPENAI_API_KEY is required");
     }
     if (!env.COHERE_API_KEY) {
-      console.warn("COHERE_API_KEY is not set. Reranking will be disabled.");
+      getLogger().warn("COHERE_API_KEY is not set, reranking will be disabled");
     }
 
     this.embeddingModel = new OpenAIEmbeddings({

@@ -1,5 +1,6 @@
 import { Redis } from "ioredis";
 import { JsonPlusSerializer } from "./serde/jsonplus";
+import { getLogger } from "@core";
 
 export class RedisCache<V = unknown> {
   private readonly client: Redis;
@@ -35,11 +36,11 @@ export class RedisCache<V = unknown> {
             const value = await this.serde.loadsTyped(cached.enc, valData);
             foundValues.push({ key, value });
           } catch (e) {
-            console.error(`Failed to deserialize value for key ${key}:`, e);
+            getLogger({ component: "RedisCache" }).error({ err: e, key }, "Failed to deserialize value");
           }
         }
       } catch (error) {
-        console.error(`Error fetching key ${key} from Redis:`, error);
+        getLogger({ component: "RedisCache" }).error({ err: error, key }, "Error fetching key from Redis");
       }
     }
 
@@ -59,7 +60,7 @@ export class RedisCache<V = unknown> {
           await this.client.expire(key, ttl);
         }
       } catch (error) {
-        console.error(`Error setting key ${key} in Redis:`, error);
+        getLogger({ component: "RedisCache" }).error({ err: error, key }, "Error setting key in Redis");
       }
     }
   }

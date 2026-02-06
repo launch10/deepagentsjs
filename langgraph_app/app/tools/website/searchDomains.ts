@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { tool } from "@langchain/core/tools";
 import { DomainsAPIService, type SearchDomainsResponse } from "@rails_api";
+import { getLogger } from "@core";
 
 const PLATFORM_DOMAIN_SUFFIX = ".launch10.site";
 
@@ -32,7 +33,7 @@ export const createSearchDomainsTool = (jwt: string) =>
   tool(
     async (input): Promise<string> => {
       const { subdomains } = input;
-      console.log("[search_domains] Called with subdomains:", subdomains);
+      getLogger().debug({ subdomains }, "search_domains called");
 
       // Convert subdomains to full domain names
       const candidates = subdomains.map((s) => `${s}${PLATFORM_DOMAIN_SUFFIX}`);
@@ -52,7 +53,7 @@ export const createSearchDomainsTool = (jwt: string) =>
           credits: response.platform_subdomain_credits,
         };
 
-        console.log("[search_domains] Results:", JSON.stringify(result, null, 2));
+        getLogger().debug({ result }, "search_domains results");
         return JSON.stringify(result);
       } catch (error) {
         const result: SearchDomainsResult = {

@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from "fs";
 import { join, dirname, relative } from "path";
 import { db, websiteFiles, eq } from "@db";
+import { getLogger } from "@core";
 export interface ScenarioConfig {
   websiteName: string;
   snapshotName: string;
@@ -94,7 +95,8 @@ export class ScenarioSaver {
    * Save the scenario to filesystem
    */
   async save(description?: string): Promise<void> {
-    console.log(`\n💾 Saving scenario: ${this.scenarioName}`);
+    const log = getLogger({ component: "ScenarioSaver" });
+    log.info({ scenario: this.scenarioName }, "Saving scenario");
 
     // Create directories
     if (!existsSync(this.scenarioDir)) {
@@ -115,7 +117,7 @@ export class ScenarioSaver {
     };
 
     writeFileSync(this.configPath, JSON.stringify(config, null, 2));
-    console.log(`   ✅ Saved config.json`);
+    log.debug({ path: this.configPath }, "Saved config.json");
 
     // Generate and save modifications
     const modifications = await this.generateModifications();
@@ -131,10 +133,10 @@ export class ScenarioSaver {
       }
 
       writeFileSync(modPath, JSON.stringify(entry, null, 2));
-      console.log(`   ✅ Saved modifications for ${entry.path}`);
+      log.debug({ filePath: entry.path }, "Saved modifications");
     }
 
-    console.log(`✅ Scenario saved to: ${this.scenarioDir}`);
+    log.info({ scenarioDir: this.scenarioDir }, "Scenario saved");
   }
 
   /**

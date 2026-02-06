@@ -1,5 +1,7 @@
-import { env } from "@core";
+import { env, getLogger } from "@core";
 import crypto from "crypto";
+
+const log = getLogger({ component: "WebhookService" });
 
 export interface WebhookPayload {
   job_run_id: number;
@@ -23,7 +25,7 @@ export class WebhookService {
     const body = JSON.stringify(payload);
     const signature = this.generateSignature(body);
 
-    console.log(`[WebhookService] Sending webhook to ${url}`);
+    log.info({ url }, "Sending webhook");
 
     const response = await fetch(url, {
       method: "POST",
@@ -39,7 +41,7 @@ export class WebhookService {
       throw new Error(`Webhook failed: ${response.status} ${text}`);
     }
 
-    console.log(`[WebhookService] Webhook sent successfully for job_run ${payload.job_run_id}`);
+    log.info({ jobRunId: payload.job_run_id }, "Webhook sent successfully");
   }
 
   private static generateSignature(payload: string): string {

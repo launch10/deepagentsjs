@@ -7,6 +7,7 @@ import { db, websiteFiles, websites, eq, sql } from "@db";
 import { Website, type ConsoleError, type CombinedErrors } from "@types";
 import { loadScenarioConfig, loadScenarioModifications } from "./scenarioSaver";
 import { withTimestamps } from "@db";
+import { getLogger } from "@core";
 
 type WebsiteFileType = {
   path: string;
@@ -77,7 +78,7 @@ export class ScenarioRunner {
 
   private log(message: string): void {
     if (this.shouldLog) {
-      console.log(message);
+      getLogger({ component: "ScenarioRunner" }).debug({ scenario: this.scenario }, message);
     }
   }
 

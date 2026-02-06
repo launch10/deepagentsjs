@@ -16,7 +16,7 @@
  */
 import type { CoreGraphState } from "@types";
 import { getUsageContext, deriveCreditStatus } from "@core/billing";
-import { LLMManager, calculateRunCost } from "@core";
+import { LLMManager, calculateRunCost, getLogger } from "@core";
 
 /**
  * Calculate credit status based on pre-run balance and usage during the run.
@@ -61,20 +61,14 @@ export async function calculateCreditStatusNode(
 
     return { creditStatus };
   } catch (error) {
-    // Log error with details about which models were used
-    console.warn("[calculateCreditStatusNode] Failed to calculate credit status:", error);
-
-    // Log the usage records to help debug which LLM is causing issues
-    console.warn(
-      "[calculateCreditStatusNode] Usage records that caused the error:",
-      usageContext.records.map((r) => ({
-        model: r.model,
-        langchainRunId: r.langchainRunId,
-        tags: r.tags,
-        inputTokens: r.inputTokens,
-        outputTokens: r.outputTokens,
-      }))
-    );
+    const usageRecordSummary = usageContext.records.map((r) => ({
+      model: r.model,
+      langchainRunId: r.langchainRunId,
+      tags: r.tags,
+      inputTokens: r.inputTokens,
+      outputTokens: r.outputTokens,
+    }));
+    getLogger({ component: "calculateCreditStatus" }).warn({ err: error, usageRecords: usageRecordSummary }, "Failed to calculate credit status");
     return {};
   }
 }

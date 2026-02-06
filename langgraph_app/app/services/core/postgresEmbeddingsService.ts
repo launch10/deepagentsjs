@@ -5,6 +5,7 @@ import { openai } from "@ai-sdk/openai";
 import { eq, gte, ilike, sql, and, or, getTableName, desc } from "drizzle-orm";
 import type { DB } from "app/db";
 import { env } from "@app";
+import { getLogger } from "@core";
 import { CohereRerankService, type RerankDocument } from "./cohereRerankService";
 
 import { pgTable, type PgColumn, type PgTableFn, type AnyPgColumn } from "drizzle-orm/pg-core";
@@ -150,7 +151,7 @@ export class PostgresEmbeddingsService {
 
       return documents;
     } catch (error) {
-      console.error(`Error storing embeddings in ${this.tableName}:`, error);
+      getLogger().error({ err: error, table: this.tableName }, "Error storing embeddings");
       throw error;
     }
   }
@@ -455,7 +456,7 @@ export class PostgresEmbeddingsService {
 
       return results;
     } catch (error) {
-      console.error(`Error in multi-query search for ${this.tableName}:`, error);
+      getLogger().error({ err: error, table: this.tableName }, "Error in multi-query search");
       throw error;
     }
   }
@@ -482,7 +483,7 @@ export class PostgresEmbeddingsService {
       }
       return existingKeys;
     } catch (error) {
-      console.error("Error fetching existing document IDs from iconEmbeddings table:", error);
+      getLogger().error({ err: error, table: this.tableName }, "Error fetching existing document IDs");
       throw error;
     }
   }

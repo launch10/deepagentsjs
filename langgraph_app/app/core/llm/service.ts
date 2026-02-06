@@ -6,6 +6,7 @@ import { ChatOllama } from "@langchain/ollama";
 import { env } from "@app";
 import { cache } from "@core";
 import { rollbar } from "../errors";
+import { getLogger } from "../logger";
 import { createRailsApiClient } from "@rails_api";
 import { hasValidCostConfig } from "./cost";
 import { LLMTestResponder } from "./test";
@@ -146,9 +147,7 @@ class LLMService {
         `No available model for ${skill}/${speed}/${cost} at ${usagePercent}% usage${tierMsg}`
       );
     }
-    console.log(
-      `Using model tier ${modelWithConfig.config.price_tier} model: ${modelWithConfig.config.model_card}`
-    );
+    getLogger({ component: "LLMService" }).debug({ priceTier: modelWithConfig.config.price_tier, modelCard: modelWithConfig.config.model_card }, "Using model");
     return {
       model: modelWithConfig.model,
       modelCard: modelWithConfig.config.model_card ?? "unknown",
@@ -224,9 +223,7 @@ class LLMService {
       // Fallback: find the cheapest enabled model with valid cost config across all models
       const fallback = this.findCheapestFallback(config);
       if (fallback) {
-        console.warn(
-          `No models matched ${skill}/${speed}/${cost} preferences — falling back to cheapest model: ${fallback.config.model_card}`
-        );
+        getLogger({ component: "LLMService" }).warn({ skill, speed, cost, fallback: fallback.config.model_card }, "No models matched preferences — falling back to cheapest");
         return [fallback];
       }
 

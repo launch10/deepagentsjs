@@ -17,6 +17,7 @@ import micromatch from "micromatch";
 import { WebsiteFilesAPIService } from "@rails_api";
 import { RedisLock } from "@ext";
 import { appendFileSync, mkdirSync } from "fs";
+import { getLogger } from "@core";
 
 // Debug file logger for tracing read/write/edit operations
 const DEBUG_LOG_PATH = "/tmp/website_files_backend.log";
@@ -115,12 +116,12 @@ export class WebsiteFilesBackend implements BackendProtocol {
   }
 
   async lsInfo(path: string): Promise<FileInfo[]> {
-    console.log("lsInfo", path);
+    getLogger({ component: "WebsiteFilesBackend" }).debug({ path }, "lsInfo");
     return this.fs.lsInfo(path);
   }
 
   async read(filePath: string, offset: number = 0, limit: number = 2000): Promise<string> {
-    console.log("read", filePath, offset, limit);
+    getLogger({ component: "WebsiteFilesBackend" }).debug({ filePath, offset, limit }, "read");
 
     // Return raw content without line numbers to avoid confusing the agent
     // The default fs.read() adds line numbers which can cause issues when
@@ -153,12 +154,12 @@ export class WebsiteFilesBackend implements BackendProtocol {
   }
 
   async readRaw(filePath: string): Promise<FileData> {
-    console.log("readRaw", filePath);
+    getLogger({ component: "WebsiteFilesBackend" }).debug({ filePath }, "readRaw");
     return this.fs.readRaw(filePath);
   }
 
   async globInfo(pattern: string, path: string = "/"): Promise<FileInfo[]> {
-    console.log("globInfo", pattern, path);
+    getLogger({ component: "WebsiteFilesBackend" }).debug({ pattern, path }, "globInfo");
     return this.fs.globInfo(pattern, path);
   }
 
@@ -167,7 +168,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
     pathPrefix: string = "/",
     glob: string | null = null
   ): Promise<GrepMatch[] | string> {
-    console.log("grepRaw", pattern, pathPrefix, glob);
+    getLogger({ component: "WebsiteFilesBackend" }).debug({ pattern, pathPrefix, glob }, "grepRaw");
     try {
       const regex = new RegExp(pattern);
       const tsQuery = this.regexToTsQuery(pattern);
@@ -235,7 +236,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
   }
 
   async write(filePath: string, content: string): Promise<WriteResult> {
-    console.log("write", filePath, content);
+    getLogger({ component: "WebsiteFilesBackend" }).debug({ filePath, contentLength: content.length }, "write");
     const lockKey = `file:${this.getWebsiteId()}:${filePath}`;
 
     debugLog(this.website.id, "WRITE_START", {
@@ -309,7 +310,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
     newString: string,
     replaceAll: boolean = false
   ): Promise<EditResult> {
-    console.log("edit", filePath, oldString, newString, replaceAll);
+    getLogger({ component: "WebsiteFilesBackend" }).debug({ filePath, oldStringLength: oldString.length, newStringLength: newString.length, replaceAll }, "edit");
 
     debugLog(this.website.id, "EDIT_START", {
       filePath,
@@ -326,35 +327,23 @@ export class WebsiteFilesBackend implements BackendProtocol {
 
       const fsResult = await this.fs.edit(filePath, oldString, newString, replaceAll);
       if (fsResult.error) {
-        // Enhanced error logging for debugging edit failures (using console.log for vitest stdout)
-        console.log(`\n${"=".repeat(80)}`);
-        console.log(`EDIT FAILED: ${filePath}`);
-        console.log(`Error: ${fsResult.error}`);
-        console.log(`${"=".repeat(80)}`);
-        console.log(`Old string being searched (${oldString.length} chars):`);
-        console.log(`---BEGIN OLD STRING---`);
-        console.log(oldString);
-        console.log(`---END OLD STRING---`);
+        // Enhanced error logging for debugging edit failures
+        const editLog = getLogger({ component: "WebsiteFilesBackend" });
+        editLog.warn({ filePath, error: fsResult.error, oldStringLength: oldString.length, oldStringPreview: oldString.slice(0, 200) }, "Edit failed");
 
         // Try to read current file content to help debug
         try {
           const currentContent = await this.fs.read(filePath, 0, 5000);
-          console.log(`\nCurrent file content (first 5000 chars):`);
-          console.log(`---BEGIN FILE CONTENT---`);
-          console.log(currentContent);
-          console.log(`---END FILE CONTENT---`);
 
           // Check if it's a whitespace/newline issue
           const oldStringNormalized = oldString.replace(/\r\n/g, "\n").replace(/\s+/g, " ");
           const contentNormalized = currentContent.replace(/\r\n/g, "\n").replace(/\s+/g, " ");
           if (contentNormalized.includes(oldStringNormalized)) {
-            console.log(`\n⚠️  WHITESPACE MISMATCH DETECTED!`);
-            console.log(`The content exists but whitespace differs.`);
+            editLog.warn({ filePath }, "Whitespace mismatch detected - content exists but whitespace differs");
           }
         } catch (readError) {
-          console.log(`Could not read file for debugging: ${readError}`);
+          editLog.debug({ filePath, err: readError }, "Could not read file for debugging");
         }
-        console.log(`${"=".repeat(80)}\n`);
 
         debugLog(this.website.id, "EDIT_FS_FAILED", {
           filePath,

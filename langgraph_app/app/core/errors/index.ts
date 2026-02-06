@@ -1,10 +1,11 @@
 import { rollbar } from "./rollbar";
 import { ReporterRegistry } from "./reporterRegistry";
 import { env } from "@app";
+import { getLogger } from "../logger/context";
 
 const devLogger = (e: unknown) => {
   if (env.NODE_ENV === "test" || env.NODE_ENV === "development") {
-    console.error("[Launch10 Error]", e);
+    getLogger({ component: "ErrorReporter" }).error({ err: e }, "Unhandled error");
   }
 };
 

@@ -1,7 +1,9 @@
+import { getLogger } from "../logger/context";
+
 type ReportingFn = (error: Error) => void;
 
 const preconfiguredReporters: Record<string, ReportingFn> = {
-  console: (error) => console.error(error),
+  console: (error) => getLogger({ component: "ErrorReporter" }).error({ err: error }, error.message),
 };
 export class ReporterRegistry<TRegistered extends string = never> {
   reporters: Record<TRegistered, ReportingFn> = {} as Record<TRegistered, ReportingFn>;
