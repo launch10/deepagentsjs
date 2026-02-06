@@ -265,6 +265,7 @@ const restartChatFrom = async (
   // create state
   const state = {
     ...partialState,
+    threadId,
     memories: savedMemories,
     messages: finalMessages,
     currentTopic: topic,

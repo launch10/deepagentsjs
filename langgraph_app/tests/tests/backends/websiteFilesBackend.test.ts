@@ -71,9 +71,11 @@ describe("WebsiteFilesBackend", () => {
       expect(content).toContain('"name"');
     });
 
-    it("throws error for non-existent file", async () => {
-      // readRaw throws ENOENT for missing files
-      await expect(backend.read("/nonexistent.ts")).rejects.toThrow("ENOENT");
+    it("returns error string for non-existent file", async () => {
+      // read() catches errors and returns an error string (matches deepagents behavior)
+      const result = await backend.read("/nonexistent.ts");
+      expect(result).toContain("Error:");
+      expect(result).toContain("ENOENT");
     });
   });
 

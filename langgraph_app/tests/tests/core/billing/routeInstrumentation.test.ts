@@ -21,21 +21,25 @@ describe.sequential("Route Instrumentation Audit - BILLING CRITICAL", () => {
   const annotationDir = path.join(process.cwd(), "app/annotation");
 
   /**
-   * Check if the middleware file has usage tracking properly configured.
+   * Check if the middleware files have usage tracking properly configured.
+   * usageTracking.ts defines the middleware; appBridge.ts wires it into createAppBridge.
    */
   function middlewareHasTracking(): boolean {
-    const middlewarePath = path.join(apiDir, "middleware", "usageTracking.ts");
-    if (!fs.existsSync(middlewarePath)) {
+    const trackingPath = path.join(apiDir, "middleware", "usageTracking.ts");
+    const bridgePath = path.join(apiDir, "middleware", "appBridge.ts");
+    if (!fs.existsSync(trackingPath) || !fs.existsSync(bridgePath)) {
       return false;
     }
-    const content = fs.readFileSync(middlewarePath, "utf-8");
+    const trackingContent = fs.readFileSync(trackingPath, "utf-8");
+    const bridgeContent = fs.readFileSync(bridgePath, "utf-8");
     return (
-      content.includes("usageTrackingMiddleware") &&
-      content.includes("createStorageMiddleware") &&
-      content.includes("usageStorage") &&
-      content.includes("persistTrace") &&
-      content.includes("persistUsage") &&
-      content.includes("createAppBridge")
+      trackingContent.includes("usageTrackingMiddleware") &&
+      trackingContent.includes("createStorageMiddleware") &&
+      trackingContent.includes("usageStorage") &&
+      trackingContent.includes("persistTrace") &&
+      trackingContent.includes("persistUsage") &&
+      bridgeContent.includes("createAppBridge") &&
+      bridgeContent.includes("usageTrackingMiddleware")
     );
   }
 

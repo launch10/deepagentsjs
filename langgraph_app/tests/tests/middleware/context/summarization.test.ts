@@ -11,7 +11,7 @@ describe("summarizeEvents", () => {
   });
 
   describe("images summarizer", () => {
-    it("summarizes single image upload with filename", () => {
+    it("summarizes single image upload with multimodal content", () => {
       const events: ContextEvent[] = [
         {
           id: 1,
@@ -25,11 +25,16 @@ describe("summarizeEvents", () => {
 
       expect(result).toHaveLength(1);
       expect(result[0]!.event_type).toBe("images");
-      expect(result[0]!.message).toBe("I uploaded hero.jpg");
+      expect(result[0]!.content).toHaveLength(2);
+      expect(result[0]!.content![0]).toEqual({ type: "text", text: "I uploaded 1 image: hero.jpg" });
+      expect(result[0]!.content![1]).toEqual({
+        type: "image_url",
+        image_url: { url: "https://example.com/hero.jpg" },
+      });
       expect(result[0]!.created_at).toBe("2026-02-03T12:00:00Z");
     });
 
-    it("summarizes multiple image uploads with filenames when 3 or fewer", () => {
+    it("summarizes multiple image uploads with filenames", () => {
       const events: ContextEvent[] = [
         {
           id: 1,
@@ -54,11 +59,14 @@ describe("summarizeEvents", () => {
       const result = summarizeEvents(events);
 
       expect(result).toHaveLength(1);
-      expect(result[0]!.message).toBe("I uploaded hero.jpg, product.png, logo.svg");
+      expect(result[0]!.content![0]).toEqual({
+        type: "text",
+        text: "I uploaded 3 images: hero.jpg, product.png, logo.svg",
+      });
       expect(result[0]!.created_at).toBe("2026-02-03T12:02:00Z");
     });
 
-    it("summarizes more than 3 image uploads with count", () => {
+    it("summarizes more than 3 image uploads with count and filenames", () => {
       const events: ContextEvent[] = [
         {
           id: 1,
@@ -89,7 +97,10 @@ describe("summarizeEvents", () => {
       const result = summarizeEvents(events);
 
       expect(result).toHaveLength(1);
-      expect(result[0]!.message).toBe("I uploaded 4 images");
+      expect(result[0]!.content![0]).toEqual({
+        type: "text",
+        text: "I uploaded 4 images: a.jpg, b.jpg, c.jpg, d.jpg",
+      });
     });
 
     it("summarizes single image deletion", () => {
@@ -105,7 +116,10 @@ describe("summarizeEvents", () => {
       const result = summarizeEvents(events);
 
       expect(result).toHaveLength(1);
-      expect(result[0]!.message).toBe("I deleted 1 image");
+      expect(result[0]!.content![0]).toEqual({
+        type: "text",
+        text: "I deleted 1 image: old.jpg. Please remove any references to these files.",
+      });
     });
 
     it("summarizes multiple image deletions", () => {
@@ -133,7 +147,10 @@ describe("summarizeEvents", () => {
       const result = summarizeEvents(events);
 
       expect(result).toHaveLength(1);
-      expect(result[0]!.message).toBe("I deleted 3 images");
+      expect(result[0]!.content![0]).toEqual({
+        type: "text",
+        text: "I deleted 3 images: a.jpg, b.jpg, c.jpg. Please remove any references to these files.",
+      });
     });
 
     it("combines uploads and deletions in same summary", () => {
@@ -161,7 +178,16 @@ describe("summarizeEvents", () => {
       const result = summarizeEvents(events);
 
       expect(result).toHaveLength(1);
-      expect(result[0]!.message).toBe("I uploaded new1.jpg, new2.jpg and deleted 1 image");
+      // Two content blocks: one for uploads, one for deletions
+      expect(result[0]!.content).toHaveLength(2);
+      expect(result[0]!.content![0]).toEqual({
+        type: "text",
+        text: "I uploaded 2 images: new1.jpg, new2.jpg",
+      });
+      expect(result[0]!.content![1]).toEqual({
+        type: "text",
+        text: "I deleted 1 image: old.jpg. Please remove any references to these files.",
+      });
     });
 
     it("handles many uploads with deletions", () => {
@@ -207,7 +233,16 @@ describe("summarizeEvents", () => {
       const result = summarizeEvents(events);
 
       expect(result).toHaveLength(1);
-      expect(result[0]!.message).toBe("I uploaded 4 images and deleted 2 images");
+      // Two content blocks: one for uploads, one for deletions
+      expect(result[0]!.content).toHaveLength(2);
+      expect(result[0]!.content![0]).toEqual({
+        type: "text",
+        text: "I uploaded 4 images: a.jpg, b.jpg, c.jpg, d.jpg",
+      });
+      expect(result[0]!.content![1]).toEqual({
+        type: "text",
+        text: "I deleted 2 images: old1.jpg, old2.jpg. Please remove any references to these files.",
+      });
     });
   });
 

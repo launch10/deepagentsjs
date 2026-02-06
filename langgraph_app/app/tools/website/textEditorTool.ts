@@ -92,12 +92,10 @@ async function handleCreate(
   backend: WebsiteFilesBackend,
   input: { path: string; file_text: string }
 ): Promise<string> {
-  // Check if file exists by trying to read it
-  try {
-    await backend.read(input.path);
+  // Check if file exists — read() returns "Error: ..." for missing files
+  const existing = await backend.read(input.path);
+  if (!existing.startsWith("Error:")) {
     return `Error: File already exists at ${input.path}. Use str_replace to modify it.`;
-  } catch {
-    // File doesn't exist — good, we can create it
   }
 
   const result = await backend.write(input.path, input.file_text);
@@ -111,22 +109,21 @@ async function handleInsert(
   backend: WebsiteFilesBackend,
   input: { path: string; insert_line: number; new_str: string }
 ): Promise<string> {
-  try {
-    const content = await backend.read(input.path);
-    const lines = content.split("\n");
-    const insertIdx = input.insert_line; // 0 = before first line, N = after line N
-
-    lines.splice(insertIdx, 0, input.new_str);
-    const newContent = lines.join("\n");
-
-    // Use write to replace full content (backend.write handles existing files)
-    const result = await backend.write(input.path, newContent);
-    if (result.error) {
-      return `Error: ${result.error}`;
-    }
-    return `Inserted text after line ${input.insert_line} in ${input.path}.`;
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return `Error: File not found: ${input.path} (${msg})`;
+  const content = await backend.read(input.path);
+  if (content.startsWith("Error:")) {
+    return `Error: File not found: ${input.path}`;
   }
+
+  const lines = content.split("\n");
+  const insertIdx = input.insert_line; // 0 = before first line, N = after line N
+
+  lines.splice(insertIdx, 0, input.new_str);
+  const newContent = lines.join("\n");
+
+  // Use write to replace full content (backend.write handles existing files)
+  const result = await backend.write(input.path, newContent);
+  if (result.error) {
+    return `Error: ${result.error}`;
+  }
+  return `Inserted text after line ${input.insert_line} in ${input.path}.`;
 }

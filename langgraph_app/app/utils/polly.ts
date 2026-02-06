@@ -3,6 +3,7 @@ import NodeHttpAdapter from "@pollyjs/adapter-node-http";
 import FetchAdapter from "@pollyjs/adapter-fetch";
 import FSPersister from "@pollyjs/persister-fs";
 import path from "path";
+import * as fs from "fs";
 
 // Register Polly adapters and persisters once globally
 Polly.register(NodeHttpAdapter);
@@ -209,9 +210,38 @@ class PollyManager {
     });
   }
 
+  /**
+   * Detect poisoned API responses that should never be persisted to recordings.
+   * These are transient errors (billing issues, bad model names) that would
+   * permanently break test playback if saved.
+   */
+  private static isPoisonedResponse(recording: any): boolean {
+    const status = recording.response?.status;
+    const body = recording.response?.content?.text || "";
+
+    // Credit balance exhausted — transient billing error
+    if (status === 400 && body.includes("credit balance is too low")) return true;
+
+    // Bad model name (e.g. "model: sonnet" instead of full model ID)
+    if (status === 404 && body.includes('"model:')) return true;
+
+    // Rate limited — transient, should retry not persist
+    if (status === 429) return true;
+
+    return false;
+  }
+
   private static configureHeaders() {
     const { server } = PollyManager.polly!;
     server.any().on("beforePersist", (req: any, recording: any) => {
+      // Drop poisoned responses so they never get saved to HAR files.
+      // Polly will treat these as missing on next run and re-record them.
+      if (PollyManager.isPoisonedResponse(recording)) {
+        // Setting the response to undefined causes Polly to skip persisting this entry
+        recording.response = undefined;
+        return;
+      }
+
       const headersToIgnore = [
         "x-api-key",
         "authorization",

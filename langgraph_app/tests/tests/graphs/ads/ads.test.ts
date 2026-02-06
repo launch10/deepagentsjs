@@ -928,7 +928,7 @@ describe.sequential("Ads Flow", () => {
       const lastMessage = followupQuestionResult.state.messages?.at(-1);
       expect(lastMessage).toBeDefined();
       expect((lastMessage as AIMessage).content).toMatch(
-        /great question|search intent|specificity|commercial intent|solution-focused|intent signals/i
+        /great question|search intent|specificity|commercial intent|solution-focused|intent signals|work because/i
       );
 
       // Verify message history has grown

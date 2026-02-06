@@ -17,7 +17,7 @@ import { Annotation, StateGraph, END, MemorySaver } from "@langchain/langgraph";
 import { db, eq, chats, projects } from "@db";
 import { DatabaseSnapshotter } from "@services";
 import { consumeStream, appScenario } from "@support";
-import { createAppBridge } from "@api/middleware";
+import { createAppBridge, injectAgentContext } from "@api/middleware";
 import { NodeMiddleware } from "@middleware";
 
 // ============================================================================
@@ -55,10 +55,21 @@ const ContextTestBridge = createAppBridge({
   stateAnnotation: ContextTestAnnotation,
 });
 
-// Simple node that captures messages and returns a response
+// Simple node that injects context (like real nodes do) and captures messages
 const captureNode = NodeMiddleware.use({}, (async (state: ContextTestState) => {
+  // Inject context at node level (same pattern as websiteBuilder, improveCopy, etc.)
+  const messagesWithContext =
+    state.projectId && state.jwt
+      ? await injectAgentContext({
+          graphName: "website",
+          projectId: state.projectId,
+          jwt: state.jwt,
+          messages: state.messages,
+        })
+      : state.messages;
+
   return {
-    capturedMessages: [...state.messages],
+    capturedMessages: [...messagesWithContext],
     messages: [new AIMessage("Test response")],
   };
 }) as any);
@@ -226,6 +237,8 @@ describe("Context Engineering Middleware", () => {
 
   describe("No Events", () => {
     it("does not inject context when no events exist", async () => {
+      // Use a project ID with no events to guarantee clean state
+      const emptyProjectId = 99999;
       const userMessage = new HumanMessage("Hello");
       const response = await ContextTestAPI.stream({
         messages: [userMessage],
@@ -233,7 +246,7 @@ describe("Context Engineering Middleware", () => {
         state: {
           threadId: testThreadId,
           jwt: "test-jwt",
-          projectId: testProjectId,
+          projectId: emptyProjectId,
           messages: [userMessage],
         },
       });

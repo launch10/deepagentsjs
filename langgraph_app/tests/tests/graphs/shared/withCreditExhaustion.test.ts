@@ -3,10 +3,14 @@ import { StateGraph, START, END, Annotation } from "@langchain/langgraph";
 import { withCreditExhaustion } from "@graphs";
 import type { CreditStatus } from "@types";
 
-// Mock the calculateCreditStatusNode
-vi.mock("@nodes", () => ({
-  calculateCreditStatusNode: vi.fn().mockResolvedValue({ creditStatus: { justExhausted: false } }),
-}));
+// Mock only calculateCreditStatusNode — preserve all other exports
+vi.mock("@nodes", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@nodes")>();
+  return {
+    ...actual,
+    calculateCreditStatusNode: vi.fn().mockResolvedValue({ creditStatus: { justExhausted: false } }),
+  };
+});
 
 import { calculateCreditStatusNode } from "@nodes";
 

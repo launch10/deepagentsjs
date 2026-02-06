@@ -15,17 +15,17 @@
 process.env.CACHE_MODE = "false";
 
 import readline from "readline/promises";
-import { chromium, type Browser, type Page } from "playwright";
+import { execSync } from "child_process";
+import { chromium, type Browser } from "playwright";
 import { HumanMessage } from "@langchain/core/messages";
 import { db, websites, chats, websiteFiles, llmUsage, eq, and } from "@db";
 import { consumeStream } from "@tests/support/helpers/stream";
 import { logCostSummary } from "@tests/support/helpers/costSummary";
-import { DatabaseSnapshotter, startWebsiteEditor, type WebsiteEditorOptions } from "@services";
 import { WebsiteAPI } from "@api";
 import type { ThreadIDType } from "@types";
 import { disablePolly } from "@utils";
-import { join } from "path";
-import { mkdirSync, writeFileSync } from "fs";
+import { join, dirname } from "path";
+import { mkdirSync, writeFileSync, existsSync, readdirSync } from "fs";
 import {
   DesignQualityScorer,
   PersuasivenessScorer,
@@ -41,6 +41,84 @@ disablePolly();
 type WebsiteEvalInput =
   | { type: "create"; userMessage: string; label: string }
   | { type: "edit"; userMessage: string; label: string };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Direct database snapshot restoration (no Rails required)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SNAPSHOT_DIR = join(process.cwd(), "..", "rails_app", "test", "fixtures", "database", "snapshots");
+
+// Excluded tables (same as Rails)
+const EXCLUDED_TABLES = [
+  "ar_internal_metadata",
+  "schema_migrations",
+  "geo_target_constants",
+  "icon_embeddings",
+];
+
+function getDbConfig() {
+  // Read from environment or use defaults for test database
+  const instance = process.env.LAUNCH10_INSTANCE || "launch3";
+  return {
+    database: process.env.PGDATABASE || `${instance}_test`,
+    username: process.env.PGUSER || process.env.USER || "postgres",
+    host: process.env.PGHOST || "localhost",
+    port: process.env.PGPORT || "5432",
+    password: process.env.PGPASSWORD || "",
+  };
+}
+
+function truncateDatabase() {
+  const config = getDbConfig();
+  const env = { ...process.env, PGPASSWORD: config.password };
+
+  // Get all tables except excluded ones
+  const tablesResult = execSync(
+    `psql -U ${config.username} -h ${config.host} -p ${config.port} -d ${config.database} -t -c "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"`,
+    { env, encoding: "utf-8" }
+  );
+
+  const allTables = tablesResult
+    .split("\n")
+    .map((t) => t.trim())
+    .filter((t) => t && !EXCLUDED_TABLES.includes(t));
+
+  if (allTables.length === 0) return;
+
+  // Truncate with CASCADE
+  const truncateSQL = `TRUNCATE TABLE ${allTables.join(", ")} RESTART IDENTITY CASCADE`;
+  execSync(
+    `psql -U ${config.username} -h ${config.host} -p ${config.port} -d ${config.database} -c "${truncateSQL}"`,
+    { env, stdio: "pipe" }
+  );
+}
+
+function restoreSnapshotDirect(name: string) {
+  const snapshotPath = join(SNAPSHOT_DIR, `${name.replace(/-/g, "_")}.sql`);
+
+  if (!existsSync(snapshotPath)) {
+    throw new Error(`Snapshot '${name}' not found at ${snapshotPath}`);
+  }
+
+  const config = getDbConfig();
+  const env = { ...process.env, PGPASSWORD: config.password };
+
+  // Truncate first
+  truncateDatabase();
+
+  // Restore from snapshot
+  execSync(
+    `psql -U ${config.username} -h ${config.host} -p ${config.port} -d ${config.database} -v ON_ERROR_STOP=1 -f "${snapshotPath}"`,
+    { env, stdio: "pipe" }
+  );
+}
+
+function listSnapshots(): string[] {
+  if (!existsSync(SNAPSHOT_DIR)) return [];
+  return readdirSync(SNAPSHOT_DIR)
+    .filter((f) => f.endsWith(".sql"))
+    .map((f) => f.replace(".sql", ""));
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test case definitions (same as website.eval.ts)
@@ -144,7 +222,7 @@ function extractSourceCode(files: Record<string, any>): string {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Visual capture using website editor
+// Visual capture using dev server
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface VisualResult {
@@ -173,13 +251,13 @@ async function captureVisual(
   // Write all files
   for (const [filePath, file] of Object.entries(files)) {
     const fullPath = join(tempDir, filePath);
-    const dir = fullPath.substring(0, fullPath.lastIndexOf("/"));
+    const dir = dirname(fullPath);
     mkdirSync(dir, { recursive: true });
     writeFileSync(fullPath, file.content);
   }
 
   // Start dev server and capture screenshot
-  const { WebsiteRunner } = await import("@services/editor/core/websiteRunner");
+  const { WebsiteRunner } = await import("../app/services/editor/core/websiteRunner");
   const port = 5199 + Math.floor(Math.random() * 100);
   const runner = new WebsiteRunner(tempDir, port);
 
@@ -225,10 +303,10 @@ async function runVisualDebug(testCase: WebsiteEvalInput) {
   const browser = await chromium.launch({ headless: true });
 
   try {
-    // Restore appropriate snapshot
+    // Restore appropriate snapshot (direct psql, no Rails needed)
     const snapshot = testCase.type === "create" ? "website_step" : "website_generated";
     console.log(`📦 Restoring snapshot: ${snapshot}`);
-    await DatabaseSnapshotter.restoreSnapshot(snapshot);
+    restoreSnapshotDirect(snapshot);
 
     // Capture BEFORE state (only for edits - creates start from empty)
     let beforeResult: VisualResult | null = null;
@@ -331,6 +409,11 @@ async function main() {
       console.log(`  ${i + 1}. [${tc.type}] ${tc.label}`);
       console.log(`     "${tc.userMessage.substring(0, 60)}${tc.userMessage.length > 60 ? "..." : ""}"\n`);
     });
+
+    console.log("\n📦 Available snapshots:");
+    const snapshots = listSnapshots();
+    snapshots.forEach((s) => console.log(`  - ${s}`));
+
     process.exit(0);
   }
 
