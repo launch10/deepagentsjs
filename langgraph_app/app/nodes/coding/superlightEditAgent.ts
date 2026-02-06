@@ -1,8 +1,8 @@
-import { createAgent, toolRetryMiddleware } from "langchain";
-import { createFilesystemMiddleware } from "deepagents";
+import { createAgent } from "langchain";
 import { getLLM, createPromptCachingMiddleware } from "@core";
 import { WebsiteFilesBackend } from "@services";
 import { type AgentMiddleware } from "langchain";
+import { createTextEditorMiddleware } from "@tools";
 import { getCodingAgentBackend, type MinimalCodingAgentState } from "./agent";
 
 /**
@@ -101,19 +101,15 @@ function buildSystemPrompt(fileTree: string, preReadContent: string): string {
 1. Preserve tracking: Never remove L10.createLead() calls or tracking imports.
 2. Preserve theme colors: Use CSS variable classes (bg-primary, text-foreground, etc.) — never hardcode hex values unless the user explicitly asks for a specific color.
 3. Preserve imports: Keep existing imports unless explicitly asked to remove them.
-4. Minimal edits: Use edit_file to replace only the lines that change. Use write_file only when rewriting most of the file.
-
-## Tools
-- edit_file: Replace a specific string in a file (PREFERRED for changes)
-- write_file: Write the complete file (only when most lines change)
-- read_file: Read a file if you need more context beyond what's pre-loaded below
+4. Minimal edits: Use str_replace to change only the lines that differ. Pick small, unique anchors.
 
 ## Workflow
 1. Review the pre-loaded file(s) below
-2. Make the requested changes using edit_file (or write_file if rewriting most of the file)
-3. Briefly confirm what you changed
+2. Use str_replace with small, unique old_str values to make targeted changes
+3. Use view only if you need more context beyond what's pre-loaded
+4. Briefly confirm what you changed
 
-Keep responses concise. No lengthy explanations. Do NOT use ls or glob — the file tree is below.
+Keep responses concise. No lengthy explanations. The file tree and target files are below.
 
 ## Project File Tree
 ${fileTree}
@@ -146,15 +142,11 @@ export async function createSuperlightEditAgent(
     systemPrompt = buildSystemPrompt(tree, preReadContent);
   }
 
-  const fsMiddleware = createFilesystemMiddleware({
-    backend: () => backend,
-    systemPrompt: null, // Suppress the default FS middleware system prompt
-  });
+  const textEditorMiddleware = createTextEditorMiddleware(() => backend);
 
   const middlewares: AgentMiddleware[] = [
     createPromptCachingMiddleware(),
-    toolRetryMiddleware(),
-    fsMiddleware as any,
+    textEditorMiddleware as any,
   ];
 
   return createAgent({
