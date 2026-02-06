@@ -124,16 +124,46 @@ Section padding: py-16 md:py-20 lg:py-24. Element gaps: gap-4 md:gap-6 lg:gap-8.
 Buttons: hover:scale-105 transition-all duration-200. Cards: hover:shadow-lg hover:-translate-y-1.
 Use transition-all duration-200 for smooth interactions. Keep durations 200-400ms.`);
 
-  // Condensed design philosophy — ensures edits maintain design quality
+  // Full design philosophy — prompt-cached, so no marginal cost after first call.
+  // This is the same rich guidance the full coding agent gets.
   sections.push(`## Design Philosophy
 
-Make edits that are visually distinctive and intentional. Avoid generic "AI slop":
-- NEVER use Inter, Roboto, Arial, or system fonts. Use distinctive, characterful fonts.
-- NEVER default to purple gradients on white, or predictable cookie-cutter patterns.
-- When adding visual elements, create atmosphere: gradients, textures, dramatic shadows, layered effects.
-- Hero should use bg-primary or dramatic gradient with text-4xl+ headlines.
-- Section backgrounds should alternate (bg-primary, bg-muted, bg-background) — never all bg-background.
-- Every edit should maintain or improve the "one memorable thing" — something a user remembers after 3 seconds.
+This section guides creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics.
+
+### Design Thinking
+
+Before making edits, understand the context and commit to a BOLD aesthetic direction:
+
+- **Purpose**: What problem does this interface solve? Who uses it?
+- **Tone**: Maintain the existing aesthetic: brutally minimal, maximalist chaos, retro-futuristic, organic/natural, luxury/refined, playful/toy-like, editorial/magazine, brutalist/raw, art deco/geometric, soft/pastel, industrial/utilitarian, etc. Every edit should REINFORCE the existing design direction, not dilute it.
+- **Differentiation**: What makes this UNFORGETTABLE? What's the one thing someone will remember? Every edit should maintain or improve that.
+
+**CRITICAL**: Execute edits with precision. Bold maximalism and refined minimalism both work — the key is intentionality, not intensity.
+
+Every edit should result in code that is:
+- Visually striking and memorable
+- Cohesive with the page's existing aesthetic point-of-view
+- Meticulously refined in every detail
+
+### Frontend Aesthetics Guidelines
+
+- **Typography**: NEVER use Inter, Roboto, Arial, or system fonts. Maintain the page's distinctive, characterful font choices. Pair display fonts with refined body fonts.
+- **Color & Theme**: Use CSS variable classes (bg-primary, text-foreground, etc.). Dominant colors with sharp accents outperform timid, evenly-distributed palettes.
+- **Motion**: Use animations for micro-interactions. CSS-only transitions preferred. Focus on high-impact moments: staggered reveals (animation-delay), scroll-triggering, hover states that surprise. Keep durations 200-400ms.
+- **Spatial Composition**: Unexpected layouts. Asymmetry. Overlap. Grid-breaking elements. Generous negative space OR controlled density.
+- **Backgrounds & Visual Details**: Create atmosphere — gradient meshes, noise textures, geometric patterns, layered transparencies, dramatic shadows, decorative borders, grain overlays.
+
+NEVER produce generic AI aesthetics: overused font families, cliched purple gradients on white, predictable layouts, cookie-cutter design. Every edit should feel genuinely designed for the context.
+
+### Edit Quality Checklist
+
+Before finishing, verify:
+- [ ] Hero has bg-primary OR dramatic gradient, headline text-4xl+ (ideally text-5xl to text-7xl)
+- [ ] Section backgrounds alternate (bg-primary, bg-muted, bg-background) — never all bg-background
+- [ ] Cards have depth: bg-card on colored sections, rounded-2xl+, hover effects
+- [ ] Generous whitespace: section padding py-16+, element gaps gap-4+
+- [ ] Interactive elements respond: buttons hover:scale-105, cards hover:shadow-lg
+- [ ] The "one memorable thing" still exists — something a user remembers after 3 seconds
 
 Red flags to fix if you see them:
 - All sections bg-background (flat). Hero text-2xl or smaller (weak). Section padding py-12 or less (cramped).
@@ -238,7 +268,7 @@ export async function singleShotEdit(
   const systemMessage = buildSingleShotSystemMessage(tree, preReadContent, theme);
 
   // Get LLM with usage tracking
-  const llm = await getLLM({ skill: "coding", speed: "blazing", cost: "paid", maxTier: 3 });
+  const llm = await getLLM({ skill: "coding", speed: "blazing", cost: "paid", maxTier: 2 });
 
   // Pass native text editor tool and notify tag via withConfig — this flows through to
   // ChatAnthropic.invocationParams() which calls formatStructuredToolToAnthropic().

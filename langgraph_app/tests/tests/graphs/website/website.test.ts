@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { HumanMessage } from "@langchain/core/messages";
+import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import {
   db,
   Types as DBTypes,
@@ -29,24 +29,42 @@ const websiteGraph = uncompiledGraph.compile({
   name: "website",
 });
 
-const assertMessageContent = async (result: { state: WebsiteGraphState }, websiteId: number) => {
-  // Find the first AI message (the agent's reply)
-  const firstAIMessage = result.state.messages.find(isAIMessage);
-  expect(firstAIMessage).toBeDefined();
-
-  // The AI should reply with text content (not just tool calls)
-  let textContent: string | undefined;
-  if (typeof firstAIMessage?.content === "string") {
-    textContent = firstAIMessage.content;
-  } else if (Array.isArray(firstAIMessage?.content)) {
-    const textBlock = firstAIMessage.content.find((c: any) => c.type === "text");
-    textContent = textBlock?.text as string | undefined;
+/** Extract the text content from an AI message (handles string or content-block arrays). */
+const extractText = (msg: AIMessage): string | undefined => {
+  if (typeof msg.content === "string") return msg.content;
+  if (Array.isArray(msg.content)) {
+    const textBlock = msg.content.find((c: any) => c.type === "text");
+    return textBlock?.text as string | undefined;
   }
+  return undefined;
+};
 
-  expect(textContent).toBeDefined();
-  expect(textContent!.length).toBeGreaterThan(20); // Should be a real message, not empty
+/**
+ * Assert the create flow returned both a greeting (first AI message) and a
+ * summary (last AI message), and that the greeting references brainstorm context.
+ */
+const assertCreateFlowMessages = async (state: WebsiteGraphState, websiteId: number) => {
+  const aiMessages = state.messages.filter(isAIMessage);
 
-  // The reply should reference something from the brainstorm context
+  // Create flow should persist 2 AI messages: greeting + summary
+  expect(aiMessages.length).toBe(2);
+
+  const greeting = aiMessages[0]!;
+  const summary = aiMessages[1]!;
+
+  // Both messages should have meaningful text content
+  const greetingText = extractText(greeting);
+  const summaryText = extractText(summary);
+
+  expect(greetingText).toBeDefined();
+  expect(greetingText!.length).toBeGreaterThan(20);
+  expect(summaryText).toBeDefined();
+  expect(summaryText!.length).toBeGreaterThan(20);
+
+  console.log(`Greeting preview: ${greetingText?.slice(0, 200)}...`);
+  console.log(`Summary preview: ${summaryText?.slice(0, 200)}...`);
+
+  // The greeting should reference something from the brainstorm context
   // (idea, audience, or solution) to show it's personalized
   const brainstormResults = await db
     .select()
@@ -56,20 +74,32 @@ const assertMessageContent = async (result: { state: WebsiteGraphState }, websit
   const brainstorm = brainstormResults[0];
   expect(brainstorm).toBeDefined();
 
-  const replyLower = textContent!.toLowerCase();
+  const greetingLower = greetingText!.toLowerCase();
   const ideaWords = brainstorm!.idea?.toLowerCase().split(/\s+/) || [];
   const audienceWords = brainstorm!.audience?.toLowerCase().split(/\s+/) || [];
 
-  // Check if reply contains any significant words from brainstorm
-  // (filtering out common words)
   const significantWords = [...ideaWords, ...audienceWords]
-    .filter((w) => w.length > 4) // Skip short/common words
-    .slice(0, 10); // Check first 10 significant words
+    .filter((w) => w.length > 4)
+    .slice(0, 10);
 
-  const containsBrainstormContext = significantWords.some((word) => replyLower.includes(word));
-
-  console.log(`AI response preview: ${textContent?.slice(0, 200)}...`);
+  const containsBrainstormContext = significantWords.some((word) => greetingLower.includes(word));
   expect(containsBrainstormContext).toBe(true);
+};
+
+/**
+ * Assert the edit flow produced a meaningful AI response.
+ * The last AI message should acknowledge the edit with real text content.
+ */
+const assertEditFlowMessages = (state: WebsiteGraphState) => {
+  const aiMessages = state.messages.filter(isAIMessage);
+  expect(aiMessages.length).toBeGreaterThanOrEqual(1);
+
+  const lastAI = aiMessages.at(-1)!;
+  const text = extractText(lastAI);
+  expect(text).toBeDefined();
+  expect(text!.length).toBeGreaterThan(10);
+
+  console.log(`Edit response preview: ${text?.slice(0, 200)}...`);
 };
 
 // describe.sequential
@@ -194,7 +224,7 @@ describe("Website Builder", () => {
       expect(chat).toBeDefined();
       expect(chat?.threadId).toEqual(state.threadId);
 
-      await assertMessageContent({ state }, websiteId);
+      await assertCreateFlowMessages(state, websiteId);
 
       // ---- Message trimming assertions ----
       // Outer graph should only have user-visible messages (human + AI), not 40+ internal agent messages
@@ -209,6 +239,7 @@ describe("Website Builder", () => {
       console.log(`====================\n`);
 
       // Should be a small number of user-visible messages, not 40+ internal ones
+      // Create flow: 1 human + 2 AI (greeting + summary) + context messages
       expect(state.messages.length).toBeLessThanOrEqual(10);
 
       await saveExample(websiteId, "scheduling-tool"); // So we can see the result
@@ -296,6 +327,9 @@ describe("Website Builder", () => {
           `Contains new headline: ${heroContent.includes("Transform Your Business Today")}`
         );
       }
+
+      // ---- Edit message assertions ----
+      assertEditFlowMessages(editState);
 
       // Messages should still be trimmed after edit
       console.log(`Messages after edit: ${editState.messages.length}`);

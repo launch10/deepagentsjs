@@ -17,7 +17,6 @@ import { buildFileTree } from "./fileContext";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { toStructuredMessage } from "langgraph-ai-sdk";
-import { lastAIMessage } from "@types";
 
 export type MinimalCodingAgentState = {
   websiteId?: number;
@@ -255,12 +254,26 @@ export async function createCodingAgent(
     }
   );
 
-  // Extract the last AI message for the caller
-  const lastAI = lastAIMessage(result);
-  const [structuredMessage] = lastAI ? await toStructuredMessage(lastAI) : [undefined];
+  // Extract the first and last AI messages for the caller.
+  // The first AI message is the personalized greeting (create flow) or initial response,
+  // and the last is the final summary. Persisting both preserves the conversational feel on reload.
+  const aiMessages = result.messages.filter(
+    (msg: BaseMessage) => msg._getType() === "ai"
+  );
+  const firstAI = aiMessages.at(0);
+  const lastAI = aiMessages.at(-1);
+
+  // Deduplicate if only one AI message (first === last)
+  const userFacing: BaseMessage[] = firstAI && lastAI && firstAI !== lastAI
+    ? [firstAI, lastAI]
+    : [firstAI ?? lastAI].filter((m): m is BaseMessage => !!m);
+
+  const structuredMessages = (
+    await Promise.all(userFacing.map((msg) => toStructuredMessage(msg)))
+  ).map(([m]) => m).filter(Boolean);
 
   return {
-    messages: structuredMessage ? [structuredMessage] : [],
+    messages: structuredMessages as BaseMessage[],
     status: "completed" as const,
   };
 }

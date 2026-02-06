@@ -97,7 +97,11 @@ export const websiteBuilderNode = NodeMiddleware.use(
 
     const result = await createCodingAgent(
       { ...state, isFirstMessage },
-      { messages, config }
+      {
+        messages,
+        config,
+        recursionLimit: isFirstMessage ? 150 : 50,
+      }
     );
 
     // TODO: Visual Feedback Loop (post-MVP)

@@ -4,6 +4,7 @@ import { HumanMessage } from "@langchain/core/messages";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
 import { type ImproveCopyStyle, isImproveCopyIntent } from "@types";
+import { injectAgentContext } from "@api/middleware";
 
 /**
  * Get the prompt for the given improve_copy style.
@@ -74,10 +75,21 @@ export const improveCopyNode = NodeMiddleware.use(
 
     const prompt = getImproveCopyPrompt(style);
 
+    // Inject brainstorm.finished context so Haiku knows the brand voice
+    const messagesWithContext =
+      state.projectId && state.jwt
+        ? await injectAgentContext({
+            graphName: "website",
+            projectId: state.projectId,
+            jwt: state.jwt,
+            messages: [...(state.messages || []), new HumanMessage(prompt)],
+          })
+        : [...(state.messages || []), new HumanMessage(prompt)];
+
     return await createCodingAgent(
       { ...state, isFirstMessage: false },
       {
-        messages: [...(state.messages || []), new HumanMessage(prompt)],
+        messages: messagesWithContext,
         route: "single-shot",
       }
     );
