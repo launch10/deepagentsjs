@@ -345,7 +345,7 @@ describe.sequential("Brainstorming Flow", () => {
       expect(structuredOutput.conclusion).toBeDefined();
     });
 
-    it.only("should update to the next question when we successfully give a business idea", async () => {
+    it("should update to the next question when we successfully give a business idea", async () => {
       const projectUUID = uuidv7() as UUIDType;
       const result = await testGraph<BrainstormGraphState>()
         .withGraph(brainstormGraph)
