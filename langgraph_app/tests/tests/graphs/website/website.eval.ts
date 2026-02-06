@@ -10,24 +10,33 @@
  * - Landing Page Completeness (programmatic): Structural requirements, tracking, responsiveness
  * - Copy Persuasiveness (LLM-as-judge): Value prop, urgency, CTA effectiveness
  *
- * Cost budget: ~$5-8 total (5 creates × ~$0.80 + 3 edits × ~$0.01 + scorer calls)
+ * Cost budget: ~$5-8 total (5 creates × ~$0.80 + 3 edits × ~$0.10 + scorer calls)
+ *
+ * Uses WebsiteAPI.stream() (same pipeline as production) for proper cost accounting
+ * via usageTrackingMiddleware.
+ *
+ * ARCHITECTURE NOTE: evalite forces `it.concurrent` with a per-task timeout. Our tasks
+ * need sequential DB snapshot restores and take 2-5 min each. To avoid timeout issues,
+ * we pre-compute ALL results in `data()` (which runs sequentially before tasks launch),
+ * then `task()` just looks up the pre-computed result — instant, no timeout risk.
  *
  * Usage:
  *   cd langgraph_app
  *   pnpm eval
  */
+
+// Ensure CACHE_MODE is off before any module loads env.ts.
+// env.ts reads process.env at import time, so this must come first.
+process.env.CACHE_MODE = "false";
+
 import { evalite } from "evalite";
 import { HumanMessage } from "@langchain/core/messages";
 import { db, websites, chats, websiteFiles, llmUsage, eq, and } from "@db";
 import { consumeStream, logCostSummary } from "@support";
 import { DatabaseSnapshotter } from "@services";
 import { WebsiteAPI } from "@api";
-import { getCodingAgentBackend } from "@nodes";
-import { websiteGraph as uncompiledGraph } from "@graphs";
-import { graphParams } from "@core";
-import { Website, isAIMessage, type ThreadIDType } from "@types";
+import type { ThreadIDType } from "@types";
 import { disablePolly } from "@utils";
-import type { WebsiteGraphState } from "@annotation";
 import {
   DesignQualityScorer,
   PersuasivenessScorer,
@@ -35,8 +44,6 @@ import {
 } from "@tests/support/evals";
 
 disablePolly();
-
-const websiteGraph = uncompiledGraph.compile({ ...graphParams, name: "website" });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -94,30 +101,27 @@ function extractSourceCode(files: Record<string, any>): string {
     .join("\n\n");
 }
 
-function extractAIResponse(state: WebsiteGraphState): string {
-  const aiMessages = state.messages.filter(isAIMessage);
-  const last = aiMessages.at(-1);
-  if (!last) return "";
-  if (typeof last.content === "string") return last.content;
-  if (Array.isArray(last.content)) {
-    return last.content
-      .filter((b: any) => b.type === "text")
-      .map((b: any) => b.text)
-      .join("\n");
+async function collectFiles(websiteId: number): Promise<Record<string, { content: string }>> {
+  const dbFiles = await db
+    .select()
+    .from(websiteFiles)
+    .where(eq(websiteFiles.websiteId, websiteId));
+  const fileMap: Record<string, { content: string }> = {};
+  for (const f of dbFiles) {
+    if (f.path) fileMap[f.path] = { content: f.content };
   }
-  return "";
+  return fileMap;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Task runners
+// Task runners — use WebsiteAPI.stream() for proper cost accounting via
+// usageTrackingMiddleware (same pipeline as production)
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function runCreate(input: { userMessage: string; label: string }): Promise<WebsiteEvalOutput> {
-  // Each create needs a fresh snapshot
   await DatabaseSnapshotter.restoreSnapshot("website_step");
   const ctx = await getTestContext();
 
-  // Clear any prior LLM usage records for clean cost tracking
   await db.delete(llmUsage);
 
   const response = WebsiteAPI.stream({
@@ -132,34 +136,13 @@ async function runCreate(input: { userMessage: string; label: string }): Promise
       messages: [new HumanMessage(input.userMessage)],
     },
   });
-  await consumeStream(response);
+  const streamOutput = await consumeStream(response);
 
-  // Read final state from checkpoint
-  const checkpoint = await websiteGraph.getState({ configurable: { thread_id: ctx.threadId } });
-  const state = checkpoint.values as WebsiteGraphState;
-
-  // Cost tracking
   const usageRecords = await db.select().from(llmUsage);
   const costMillicredits = usageRecords.reduce((sum, r) => sum + (r.costMillicredits ?? 0), 0);
   logCostSummary(`Create [${input.label}]`, usageRecords);
 
-  // Build structured files from DB (state.files may have binary/non-source entries)
-  const dbFiles = await db
-    .select()
-    .from(websiteFiles)
-    .where(eq(websiteFiles.websiteId, ctx.websiteId));
-  const fileMap: Record<string, { content: string }> = {};
-  for (const f of dbFiles) {
-    if (f.path) fileMap[f.path] = { content: f.content };
-  }
-
-  // Cleanup backend
-  try {
-    const backend = await getCodingAgentBackend({ websiteId: ctx.websiteId, jwt: "test-jwt" });
-    await backend.cleanup();
-  } catch {
-    // Non-critical
-  }
+  const fileMap = await collectFiles(ctx.websiteId);
 
   return {
     type: "create",
@@ -167,13 +150,12 @@ async function runCreate(input: { userMessage: string; label: string }): Promise
     userMessage: input.userMessage,
     allSourceCode: extractSourceCode(fileMap),
     files: fileMap,
-    aiResponse: extractAIResponse(state),
+    aiResponse: streamOutput,
     costDollars: costMillicredits / 100_000,
   };
 }
 
 async function runEdit(input: { userMessage: string; label: string }): Promise<WebsiteEvalOutput> {
-  // Each edit needs a fresh generated website
   await DatabaseSnapshotter.restoreSnapshot("website_generated");
   const ctx = await getTestContext();
 
@@ -191,30 +173,13 @@ async function runEdit(input: { userMessage: string; label: string }): Promise<W
       messages: [new HumanMessage(input.userMessage)],
     },
   });
-  await consumeStream(response);
-
-  const checkpoint = await websiteGraph.getState({ configurable: { thread_id: ctx.threadId } });
-  const state = checkpoint.values as WebsiteGraphState;
+  const streamOutput = await consumeStream(response);
 
   const usageRecords = await db.select().from(llmUsage);
   const costMillicredits = usageRecords.reduce((sum, r) => sum + (r.costMillicredits ?? 0), 0);
   logCostSummary(`Edit [${input.label}]`, usageRecords);
 
-  const dbFiles = await db
-    .select()
-    .from(websiteFiles)
-    .where(eq(websiteFiles.websiteId, ctx.websiteId));
-  const fileMap: Record<string, { content: string }> = {};
-  for (const f of dbFiles) {
-    if (f.path) fileMap[f.path] = { content: f.content };
-  }
-
-  try {
-    const backend = await getCodingAgentBackend({ websiteId: ctx.websiteId, jwt: "test-jwt" });
-    await backend.cleanup();
-  } catch {
-    // Non-critical
-  }
+  const fileMap = await collectFiles(ctx.websiteId);
 
   return {
     type: "edit",
@@ -222,10 +187,73 @@ async function runEdit(input: { userMessage: string; label: string }): Promise<W
     userMessage: input.userMessage,
     allSourceCode: extractSourceCode(fileMap),
     files: fileMap,
-    aiResponse: extractAIResponse(state),
+    aiResponse: streamOutput,
     costDollars: costMillicredits / 100_000,
   };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Pre-computed results map — populated in data(), looked up in task()
+// ─────────────────────────────────────────────────────────────────────────────
+
+const preComputedResults = new Map<string, WebsiteEvalOutput>();
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test case definitions
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TEST_CASES: WebsiteEvalInput[] = [
+  // ── CREATE FLOW ──
+  // These test whether the agent produces quality pages across different
+  // stylistic directions, all using the same brainstorm context.
+  {
+    type: "create",
+    userMessage: "Create a landing page for this business",
+    label: "default-create",
+  },
+  {
+    type: "create",
+    userMessage:
+      "Create a bold, dark-themed landing page with dramatic visuals and a strong call to action",
+    label: "dark-dramatic",
+  },
+  {
+    type: "create",
+    userMessage:
+      "Create a clean, minimalist landing page — let the whitespace breathe and keep it elegant",
+    label: "minimalist-clean",
+  },
+  {
+    type: "create",
+    userMessage:
+      "Create a landing page that emphasizes social proof and trust — put testimonials and credibility front and center",
+    label: "social-proof-focused",
+  },
+  {
+    type: "create",
+    userMessage:
+      "Create a high-energy, conversion-focused landing page with urgency and a clear value proposition above the fold",
+    label: "conversion-focused",
+  },
+
+  // ── EDIT FLOW (single-shot path) ──
+  // These test whether design-sensitive edits through single-shot produce quality results.
+  {
+    type: "edit",
+    userMessage: "Make the hero section more dramatic and eye-catching",
+    label: "edit-hero-dramatic",
+  },
+  {
+    type: "edit",
+    userMessage: "The features section looks generic, make it more visually interesting",
+    label: "edit-features-visual",
+  },
+  {
+    type: "edit",
+    userMessage: "Improve the overall visual hierarchy — make the page flow better from top to bottom",
+    label: "edit-visual-hierarchy",
+  },
+];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Eval definition
@@ -233,82 +261,35 @@ async function runEdit(input: { userMessage: string; label: string }): Promise<W
 
 evalite("Website Agent", {
   data: async () => {
-    return [
-      // ── CREATE FLOW ──
-      // These test whether the agent produces quality pages across different
-      // stylistic directions, all using the same brainstorm context.
-      {
-        input: {
-          type: "create" as const,
-          userMessage: "Create a landing page for this business",
-          label: "default-create",
-        },
-      },
-      {
-        input: {
-          type: "create" as const,
-          userMessage:
-            "Create a bold, dark-themed landing page with dramatic visuals and a strong call to action",
-          label: "dark-dramatic",
-        },
-      },
-      {
-        input: {
-          type: "create" as const,
-          userMessage:
-            "Create a clean, minimalist landing page — let the whitespace breathe and keep it elegant",
-          label: "minimalist-clean",
-        },
-      },
-      {
-        input: {
-          type: "create" as const,
-          userMessage:
-            "Create a landing page that emphasizes social proof and trust — put testimonials and credibility front and center",
-          label: "social-proof-focused",
-        },
-      },
-      {
-        input: {
-          type: "create" as const,
-          userMessage:
-            "Create a high-energy, conversion-focused landing page with urgency and a clear value proposition above the fold",
-          label: "conversion-focused",
-        },
-      },
+    // Pre-compute ALL results sequentially here.
+    // evalite forces it.concurrent on tasks with a per-task timeout, but data()
+    // runs to completion before tasks launch — no timeout or concurrency issues.
+    for (const input of TEST_CASES) {
+      console.log(`\n${"=".repeat(60)}`);
+      console.log(`Running: ${input.type} [${input.label}]`);
+      console.log(`${"=".repeat(60)}`);
 
-      // ── EDIT FLOW (single-shot path) ──
-      // These test whether design-sensitive edits through single-shot produce quality results.
-      {
-        input: {
-          type: "edit" as const,
-          userMessage: "Make the hero section more dramatic and eye-catching",
-          label: "edit-hero-dramatic",
-        },
-      },
-      {
-        input: {
-          type: "edit" as const,
-          userMessage: "The features section looks generic, make it more visually interesting",
-          label: "edit-features-visual",
-        },
-      },
-      {
-        input: {
-          type: "edit" as const,
-          userMessage: "Improve the overall visual hierarchy — make the page flow better from top to bottom",
-          label: "edit-visual-hierarchy",
-        },
-      },
-    ];
+      const result =
+        input.type === "create"
+          ? await runCreate(input)
+          : await runEdit(input);
+
+      preComputedResults.set(input.label, result);
+
+      console.log(`Completed: ${input.label} — cost: $${result.costDollars.toFixed(4)}`);
+      console.log(`Files: ${Object.keys(result.files).length}, Source length: ${result.allSourceCode.length}`);
+    }
+
+    return TEST_CASES.map((input) => ({ input }));
   },
 
   task: async (input: WebsiteEvalInput): Promise<WebsiteEvalOutput> => {
-    if (input.type === "create") {
-      return await runCreate(input);
-    } else {
-      return await runEdit(input);
+    // All heavy work was done in data(). Just look up the pre-computed result.
+    const result = preComputedResults.get(input.label);
+    if (!result) {
+      throw new Error(`No pre-computed result for "${input.label}" — data() may have failed`);
     }
+    return result;
   },
 
   scorers: [

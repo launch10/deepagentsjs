@@ -51,10 +51,15 @@ interface FileToInstrument {
 }
 
 /**
- * Check if a file needs L10 instrumentation
- * Returns true if file has email capture but no L10.createLead
+ * Check if a file needs L10 instrumentation.
+ * Returns true if file has email/form capture patterns but no L10.createLead.
+ *
+ * Detection covers: type="email" inputs, setEmail state, <form elements,
+ * onSubmit/handleSubmit handlers, and useForm() hooks.
+ * Better to have a false positive (agent checks and decides no email capture)
+ * than a false negative (no tracking deployed).
  */
-function needsInstrumentation(content: string): boolean {
+export function needsInstrumentation(content: string): boolean {
   const hasEmailInput =
     content.includes('type="email"') ||
     content.includes("type='email'") ||
@@ -62,7 +67,11 @@ function needsInstrumentation(content: string): boolean {
     content.includes("type={'email'}");
 
   const hasEmailState = /setEmail\s*\(/i.test(content);
-  const hasEmailCapture = hasEmailInput || hasEmailState;
+  const hasFormElement = content.includes("<form");
+  const hasSubmitHandler = /onSubmit|handleSubmit/i.test(content);
+  const hasFormHook = /useForm\s*\(/i.test(content);
+
+  const hasEmailCapture = hasEmailInput || hasEmailState || hasFormElement || hasSubmitHandler || hasFormHook;
   const hasL10 = content.includes("L10.createLead");
 
   return hasEmailCapture && !hasL10;
@@ -140,6 +149,22 @@ async function instrumentAnalytics(
   });
 
   await instrumentFiles(state, filesNeedingWork, backend, config);
+
+  // Post-edit verification: re-read files and confirm L10.createLead was added
+  const missingFiles: string[] = [];
+  for (const file of filesNeedingWork) {
+    const updatedContent = await backend.read(file.path);
+    if (!updatedContent || !updatedContent.includes("L10.createLead")) {
+      missingFiles.push(file.path);
+    }
+  }
+
+  if (missingFiles.length > 0) {
+    getLogger().warn({ missingFiles }, "L10.createLead not found after instrumentation");
+    throw new Error(
+      `L10.createLead was not added to: ${missingFiles.join(", ")}. Analytics tracking may be missing.`
+    );
+  }
 
   getLogger().info({ fileCount: filesNeedingWork.length }, "Instrumented files");
   return "FIXED";

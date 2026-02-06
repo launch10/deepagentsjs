@@ -14,7 +14,7 @@ import { buildCodingPrompt, type CodingPromptState } from "@prompts";
 import { ThemeAPIService } from "@rails_api";
 import { singleShotEdit, classifyEditWithLLM } from "./singleShotEdit";
 import { buildFileTree } from "./fileContext";
-import type { BaseMessage } from "@langchain/core/messages";
+import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 
@@ -218,6 +218,7 @@ export async function createCodingAgent(
 
   // Resolve route
   let resolvedRoute: "single-shot" | "full";
+  let escalated = false;
   let backend: WebsiteFilesBackend | undefined = options.existingBackend;
 
   if (requestedRoute === "auto") {
@@ -239,6 +240,7 @@ export async function createCodingAgent(
 
     // Total failure after retry — escalate to full agent
     getLogger().warn("Single-shot failed after retry, escalating to full agent");
+    escalated = true;
     resolvedRoute = "full";
   }
 
@@ -271,6 +273,16 @@ export async function createCodingAgent(
   const structuredMessages = (
     await Promise.all(userFacing.map((msg) => toStructuredMessage(msg)))
   ).map(([m]) => m).filter(Boolean);
+
+  // When escalating from single-shot, prepend a brief note so the user
+  // understands why the response took longer than a typical quick edit.
+  if (escalated) {
+    const escalationMsg = new AIMessage({
+      content: "This change needs a bit more work — taking a closer look...",
+    });
+    const [structured] = await toStructuredMessage(escalationMsg);
+    structuredMessages.unshift(structured);
+  }
 
   return {
     messages: structuredMessages as BaseMessage[],

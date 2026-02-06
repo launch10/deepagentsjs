@@ -75,8 +75,26 @@ trap cleanup_on_exit EXIT
 
 # Run vitest
 cd "$SCRIPT_DIR/.."
-if $WATCH; then
-  exec pnpm vitest "${VITEST_ARGS[@]}" tests/tests --no-file-parallelism
+
+# Only append the default test directory when no test file was specified.
+# Otherwise vitest matches ALL files via the "tests/tests" glob in addition
+# to the specific file, running the entire suite.
+has_test_file=false
+for arg in "${VITEST_ARGS[@]}"; do
+  if [[ "$arg" == *.test.ts || "$arg" == *.spec.ts || "$arg" == tests/* ]]; then
+    has_test_file=true
+    break
+  fi
+done
+
+if $has_test_file; then
+  PATHS=()
 else
-  exec pnpm vitest run "${VITEST_ARGS[@]}" tests/tests --no-file-parallelism
+  PATHS=(tests/tests)
+fi
+
+if $WATCH; then
+  exec pnpm vitest "${VITEST_ARGS[@]}" "${PATHS[@]}" --no-file-parallelism
+else
+  exec pnpm vitest run "${VITEST_ARGS[@]}" "${PATHS[@]}" --no-file-parallelism
 fi

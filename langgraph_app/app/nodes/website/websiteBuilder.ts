@@ -44,8 +44,16 @@ const cachedResponse = async (state: WebsiteGraphState) => {
   };
 };
 
+/**
+ * Create flow = no AI messages yet. Handles both:
+ * - Production: 0 messages in state
+ * - Eval/test: 1 HumanMessage passed for input control
+ */
+const isCreateFlow = (messages: WebsiteGraphState["messages"]) =>
+  !messages.some((m) => m._getType() === "ai");
+
 const buildContext = async (state: WebsiteGraphState) => {
-  const isFirstMessage = state.messages.length === 0;
+  const isFirstMessage = isCreateFlow(state.messages);
 
   // Inject context events (brainstorm.finished, images.created, images.deleted)
   // This runs within AsyncLocalStorage context, preserving Polly.js caching
@@ -88,11 +96,13 @@ export const websiteBuilderNode = NodeMiddleware.use(
     }
 
     // In cache mode (create only), return cached files instead of running the agent
-    if (isCacheModeEnabled(state)) {
+    const cacheEnabled = isCacheModeEnabled(state);
+    const isFirstMessage = isCreateFlow(state.messages);
+
+    if (cacheEnabled) {
       return await cachedResponse(state);
     }
 
-    const isFirstMessage = state.messages.length === 0;
     const messages = await buildContext(state);
 
     const result = await createCodingAgent(

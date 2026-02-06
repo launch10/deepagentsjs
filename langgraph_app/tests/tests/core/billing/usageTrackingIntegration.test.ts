@@ -494,7 +494,7 @@ describe.sequential("Usage Tracking Integration - Real Middleware", () => {
       }
     });
 
-    it.only("MUST track multiple iterations of deep agent tool loop", async () => {
+    it("MUST track multiple iterations of deep agent tool loop", async () => {
       const response = await UsageTestAPI.stream({
         messages: [new HumanMessage("What is the weather in San Francisco?")],
         threadId: testThreadId,

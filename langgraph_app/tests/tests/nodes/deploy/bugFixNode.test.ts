@@ -3,19 +3,17 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import type { DeployGraphState } from "@annotation";
 import type { Task } from "@types";
 
-// Mock the coding agent module directly — bugFixNode.ts imports createCodingAgent from @nodes
-// which re-exports from coding/agent.ts. Mocking the source module ensures the live binding
-// in bugFixNode picks up the mock.
-vi.mock("../../app/nodes/coding/agent", async () => {
-  const actual = await vi.importActual("../../app/nodes/coding/agent");
+// Mock the coding agent module — bugFixNode.ts imports createCodingAgent from @nodes
+// which re-exports from coding/agent.ts.
+vi.mock("@nodes", async () => {
+  const actual = await vi.importActual("@nodes");
   return {
     ...actual,
     createCodingAgent: vi.fn(),
   };
 });
 
-import { bugFixNode } from "../../app/nodes/deploy/bugFixNode";
-import { createCodingAgent } from "../../app/nodes/coding/agent";
+import { bugFixNode, createCodingAgent } from "@nodes";
 
 const mockCreateCodingAgent = vi.mocked(createCodingAgent);
 
@@ -339,6 +337,41 @@ describe("bugFixNode", () => {
       const bugFixTask = result.tasks?.find((t: Task.Task) => t.name === "FixingBugs");
       expect(bugFixTask?.status).toBe("failed");
       expect(bugFixTask?.error).toBe("Unknown error");
+    });
+
+    it("skips bug fix when retryCount exceeds max retries", async () => {
+      const state: Partial<DeployGraphState> = {
+        websiteId: 1,
+        jwt: "test-jwt",
+        tasks: [
+          {
+            id: "uuid-val",
+            name: "RuntimeValidation",
+            status: "failed",
+            retryCount: 2,
+            error: "Persistent error",
+          } as Task.Task,
+          {
+            id: "uuid-fix",
+            name: "FixingBugs",
+            status: "pending",
+            retryCount: 0,
+          } as Task.Task,
+        ],
+      };
+
+      const result = (await bugFixNode(
+        state as DeployGraphState,
+        {} as LangGraphRunnableConfig
+      )) as Partial<DeployGraphState>;
+
+      // Should NOT call the coding agent — retries exhausted
+      expect(mockCreateCodingAgent).not.toHaveBeenCalled();
+
+      // Should mark FixingBugs as failed with a descriptive error
+      const bugFixTask = result.tasks?.find((t: Task.Task) => t.name === "FixingBugs");
+      expect(bugFixTask?.status).toBe("failed");
+      expect(bugFixTask?.error).toContain("Max bug fix retries");
     });
 
     it("does not swallow errors silently by returning empty object", async () => {

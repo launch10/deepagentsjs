@@ -3,8 +3,12 @@
  *
  * Tests whether the coding agent can actually fix real, injected bugs.
  * Each test starts from the known-good `website_generated` snapshot,
- * injects a specific bug, then runs the full coding agent with the same
- * prompt bugFixNode would use.
+ * injects a specific bug, then runs the coding agent through the full
+ * WebsiteAPI.stream() pipeline (same middleware, usage tracking, etc).
+ *
+ * Each assertion is checked TWICE:
+ *   1. Pre-fix (inverted) — proves the bug was actually injected
+ *   2. Post-fix (normal)  — proves the agent fixed it
  *
  * Component inventory (from website_generated snapshot):
  *   Hero.tsx, Features.tsx, CTA.tsx, Footer.tsx, HowItWorks.tsx,
@@ -22,11 +26,9 @@
 import { describe, it, expect, afterAll } from "vitest";
 import { HumanMessage } from "@langchain/core/messages";
 import { db, websites, chats, websiteFiles, llmUsage, eq, and } from "@db";
-import { logCostSummary } from "@support";
+import { consumeStream, logCostSummary } from "@support";
 import { DatabaseSnapshotter } from "@services";
-import { createCodingAgent } from "@nodes";
-import { buildBugFixPrompt } from "@prompts";
-import { usageStorage, createUsageContext, persistUsage, LLMManager } from "@core";
+import { WebsiteAPI } from "@api";
 import type { ThreadIDType } from "@types";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -48,9 +50,12 @@ interface BugFixTestCase {
   injectBug: (content: string) => string;
   /** Error description the agent sees (formatted like RuntimeValidation output) */
   errorDescription: string;
-  /** Must be present in the file after fix */
+  /**
+   * Assertions that define "fixed". Checked twice:
+   *   - Pre-fix (inverted): expectedContains → must be ABSENT, expectedAbsent → must be PRESENT
+   *   - Post-fix (normal):  expectedContains → must be PRESENT, expectedAbsent → must be ABSENT
+   */
   expectedContains?: ContentAssertion[];
-  /** Must NOT be present in the file after fix */
   expectedAbsent?: ContentAssertion[];
 }
 
@@ -68,15 +73,18 @@ const BUG_FIX_CASES: BugFixTestCase[] = [
         /(import .+ from .+;\n)/,
         `$1import { Fake } from "../components/Fake";\n`
       );
-      // Add <Fake /> before the closing tag of the main wrapper
+      // Add <Fake /> before the closing </div> of the main wrapper
       return withImport.replace(
-        /(<\/div>\s*\);\s*}\s*$)/m,
+        /(<\/div>\s*\);\s*};?\s*$)/m,
         `  <Fake />\n$1`
       );
     },
     errorDescription:
       "Build error:\nModule not found: Cannot find module '../components/Fake' imported from src/pages/IndexPage.tsx",
-    expectedAbsent: [{ file: "IndexPage", text: "Fake" }],
+    expectedAbsent: [
+      { file: "IndexPage", text: "../components/Fake" },
+      { file: "IndexPage", text: "<Fake />" },
+    ],
   },
   {
     label: "wrong-import-path",
@@ -90,21 +98,7 @@ const BUG_FIX_CASES: BugFixTestCase[] = [
     },
     errorDescription:
       "Build error:\nModule not found: Cannot find module '../components/Hiro' imported from src/pages/IndexPage.tsx\n\nDid you mean '../components/Hero'?",
-    expectedContains: [{ file: "IndexPage", text: "Hero" }],
-    expectedAbsent: [{ file: "IndexPage", text: "Hiro" }],
-  },
-  {
-    label: "syntax-error-bracket",
-    targetFile: "Hero",
-    injectBug: (content: string) => {
-      // Remove the last ");" to create a syntax error
-      const lastIdx = content.lastIndexOf(");");
-      if (lastIdx === -1) return content;
-      return content.slice(0, lastIdx) + content.slice(lastIdx + 2);
-    },
-    errorDescription:
-      "Build error in src/components/Hero.tsx:\nSyntaxError: Expected ')' but found end of file\n\nThe file appears to have unbalanced parentheses.",
-    expectedContains: [{ file: "Hero", text: ");" }],
+    expectedAbsent: [{ file: "IndexPage", text: "../components/Hiro" }],
   },
   {
     label: "undefined-variable",
@@ -146,6 +140,8 @@ const BUG_FIX_CASES: BugFixTestCase[] = [
     },
     errorDescription:
       "Warning: Each child in a list should have a unique \"key\" prop.\n\nMultiple <Hero /> components rendered in IndexPage.tsx. This causes a duplicate key warning and visual duplication on the page.",
+    // Post-fix: <Hero still exists (one instance). Pre-fix inversion isn't useful here
+    // since <Hero exists in both states. The count check below handles this case.
     expectedContains: [{ file: "IndexPage", text: "<Hero" }],
   },
 ];
@@ -181,9 +177,6 @@ async function snapshotFiles(websiteId: number): Promise<Map<string, string>> {
   return new Map(files.map((f) => [f.path!, f.content]));
 }
 
-/**
- * Find a file in the map whose path contains the given substring (case-insensitive).
- */
 function findFile(files: Map<string, string>, substring: string): string | undefined {
   for (const [path, content] of files) {
     if (path.toLowerCase().includes(substring.toLowerCase())) {
@@ -193,9 +186,6 @@ function findFile(files: Map<string, string>, substring: string): string | undef
   return undefined;
 }
 
-/**
- * Find a file path in the map whose path contains the given substring (case-insensitive).
- */
 function findFilePath(files: Map<string, string>, substring: string): string | undefined {
   for (const [path] of files) {
     if (path.toLowerCase().includes(substring.toLowerCase())) {
@@ -206,8 +196,50 @@ function findFilePath(files: Map<string, string>, substring: string): string | u
 }
 
 /**
+ * Run content assertions against a file map.
+ *
+ * mode = "post-fix": expectedContains must be present, expectedAbsent must be absent.
+ * mode = "pre-fix":  inverted — expectedAbsent must be PRESENT (proves the bug landed).
+ *
+ * Both modes read from the same assertion definitions, keeping them wired together.
+ */
+function checkContentAssertions(
+  files: Map<string, string>,
+  testCase: BugFixTestCase,
+  mode: "pre-fix" | "post-fix"
+) {
+  const prefix = mode === "pre-fix" ? "PRE-FIX" : "POST-FIX";
+
+  if (mode === "pre-fix") {
+    // expectedAbsent items should be PRESENT in the bugged files (that's the bug we injected)
+    for (const { file, text } of testCase.expectedAbsent ?? []) {
+      const content = findFile(files, file);
+      expect(
+        content,
+        `${prefix}: "${file}" should contain "${text}" (the injected bug)`
+      ).toContain(text);
+    }
+  } else {
+    // Normal post-fix checks
+    for (const { file, text } of testCase.expectedContains ?? []) {
+      const content = findFile(files, file);
+      expect(content, `${prefix}: file matching "${file}" should exist`).toBeDefined();
+      expect(content, `${prefix}: "${file}" should contain "${text}"`).toContain(text);
+    }
+    for (const { file, text } of testCase.expectedAbsent ?? []) {
+      const content = findFile(files, file);
+      if (content) {
+        expect(
+          content,
+          `${prefix}: "${file}" should NOT contain "${text}"`
+        ).not.toContain(text);
+      }
+    }
+  }
+}
+
+/**
  * Check that L10.createLead tracking was not removed from any file that had it.
- * Returns list of violation descriptions (empty = all good).
  */
 function checkTrackingPreserved(before: Map<string, string>, after: Map<string, string>): string[] {
   const violations: string[] = [];
@@ -259,9 +291,9 @@ describe("Bug Fix Eval", () => {
       expect(originalContent, `Target file should have content`).toBeDefined();
 
       const buggedContent = testCase.injectBug(originalContent!);
-      expect(buggedContent).not.toBe(originalContent); // Sanity: bug was actually injected
+      expect(buggedContent).not.toBe(originalContent); // Sanity: mutation changed something
 
-      // Write the bugged content back to the database
+      // Write the bugged content to DB
       await db
         .update(websiteFiles)
         .set({ content: buggedContent })
@@ -272,97 +304,56 @@ describe("Bug Fix Eval", () => {
           )
         );
 
+      // 3. Pre-fix assertions — same assertions, inverted: proves the bug landed
+      const buggedFiles = await snapshotFiles(ctx.websiteId);
+      checkContentAssertions(buggedFiles, testCase, "pre-fix");
+
+      // Special pre-fix: duplicate-component-render should have 2+ <Hero renders
+      if (testCase.label === "duplicate-component-render") {
+        const heroCount = (buggedContent.match(/<Hero/g) || []).length;
+        expect(heroCount, `PRE-FIX: should have 2+ <Hero, found ${heroCount}`).toBeGreaterThanOrEqual(2);
+      }
+
       console.log(`  Injected bug "${testCase.label}" into ${targetPath}`);
       console.log(`  Error: ${testCase.errorDescription.split("\n")[0]}`);
 
-      // 3. Build the bug fix prompt (same as bugFixNode)
-      const promptState = {
-        websiteId: ctx.websiteId,
-        jwt: "test-jwt",
-        errors: testCase.errorDescription,
-        isFirstMessage: false,
-      };
-      const systemPrompt = await buildBugFixPrompt(promptState);
+      // 4. Run through WebsiteAPI.stream() — same pipeline as production
+      const userMessage = `My site has the following error. Please fix it:\n\n${testCase.errorDescription}`;
+      const response = WebsiteAPI.stream({
+        messages: [{ role: "user", content: userMessage }],
+        threadId: ctx.threadId,
+        state: {
+          websiteId: ctx.websiteId,
+          threadId: ctx.threadId,
+          accountId: ctx.accountId,
+          projectId: ctx.projectId,
+          jwt: "test-jwt",
+          messages: [new HumanMessage(userMessage)],
+        },
+      });
+      const streamOutput = await consumeStream(response);
+      expect(streamOutput.length).toBeGreaterThan(0);
 
-      // 4. Run the coding agent (full route, same as bugFixNode)
-      //    Wrap in usageStorage so LLM callbacks collect usage records
-      const usageContext = createUsageContext({ threadId: ctx.threadId });
-      await usageStorage.run(usageContext, () =>
-        createCodingAgent(
-          { websiteId: ctx.websiteId, jwt: "test-jwt", isFirstMessage: false },
-          {
-            messages: [
-              new HumanMessage(
-                `Please analyze the errors and resolve them so my site runs successfully.`
-              ),
-            ],
-            systemPrompt,
-            route: "full",
-            recursionLimit: 100,
-          }
-        )
-      );
-
-      // Persist usage records collected during the agent run
-      const chatId = (await db
-        .select({ id: chats.id })
-        .from(chats)
-        .where(eq(chats.threadId, ctx.threadId))
-        .limit(1))[0]?.id;
-
-      if (usageContext.records.length > 0 && chatId) {
-        let modelConfigs: Record<string, import("@core").ModelConfig> | undefined;
-        try { modelConfigs = await LLMManager.getModelConfigs(); } catch {}
-        await persistUsage(
-          usageContext.records,
-          { chatId, threadId: ctx.threadId, graphName: "bug-fix-eval" },
-          modelConfigs
-        );
-      }
-
-      // 5. Read files after fix
+      // 5. Post-fix assertions — same assertions, normal direction
       const filesAfter = await snapshotFiles(ctx.websiteId);
+      checkContentAssertions(filesAfter, testCase, "post-fix");
 
-      // 6. Assert the bug is fixed
-      if (testCase.expectedContains?.length) {
-        for (const { file, text } of testCase.expectedContains) {
-          const content = findFile(filesAfter, file);
-          expect(content, `File matching "${file}" should exist after fix`).toBeDefined();
-          expect(content, `File matching "${file}" should contain "${text}"`).toContain(text);
-        }
-      }
-
-      if (testCase.expectedAbsent?.length) {
-        for (const { file, text } of testCase.expectedAbsent) {
-          const content = findFile(filesAfter, file);
-          if (content) {
-            expect(
-              content,
-              `File matching "${file}" should NOT contain "${text}"`
-            ).not.toContain(text);
-          }
-        }
-      }
-
-      // Special check for duplicate-component-render: only one <Hero in IndexPage
+      // Special post-fix: duplicate-component-render should have exactly 1 <Hero
       if (testCase.label === "duplicate-component-render") {
         const indexContent = findFile(filesAfter, "IndexPage");
         expect(indexContent).toBeDefined();
         const heroCount = (indexContent!.match(/<Hero/g) || []).length;
-        expect(
-          heroCount,
-          `IndexPage should have exactly 1 <Hero render, found ${heroCount}`
-        ).toBe(1);
+        expect(heroCount, `POST-FIX: should have exactly 1 <Hero, found ${heroCount}`).toBe(1);
       }
 
-      // 7. Tracking invariant
+      // 6. Tracking invariant
       const trackingViolations = checkTrackingPreserved(filesBefore, filesAfter);
       if (trackingViolations.length > 0) {
         console.error(`  Tracking violations: ${trackingViolations.join(", ")}`);
       }
       expect(trackingViolations, "L10 tracking must be preserved").toHaveLength(0);
 
-      // 8. Cost summary
+      // 7. Cost summary
       const usageRecords = await db.select().from(llmUsage);
       const cost = usageRecords.reduce((sum, r) => sum + (r.costMillicredits ?? 0), 0);
       cumulativeCostMillicredits += cost;

@@ -6,14 +6,32 @@ import { env } from "@core";
 import { usageTracker } from "../billing";
 
 /**
- * Custom RunnableBinding that properly forwards withStructuredOutput to the bound model.
- * This ensures that usage tracking is preserved when using structured output.
+ * Custom RunnableBinding that preserves configFactories through all transformations.
+ *
+ * The base RunnableBinding.withConfig() does NOT carry over configFactories, which
+ * means any .withConfig() call after getLLM() would silently strip the usage tracking
+ * callback factory. This subclass overrides withConfig (and withStructuredOutput) to
+ * always preserve configFactories.
  */
 class StructuredOutputRunnableBinding<
   RunInput,
   RunOutput,
   CallOptions extends RunnableConfig = RunnableConfig,
 > extends RunnableBinding<RunInput, RunOutput, CallOptions> {
+  /**
+   * Override withConfig to preserve configFactories.
+   * The base RunnableBinding.withConfig() creates a new binding without configFactories,
+   * which drops our usage tracking callback factory.
+   */
+  override withConfig(config: RunnableConfig): StructuredOutputRunnableBinding<RunInput, RunOutput, CallOptions> {
+    return new StructuredOutputRunnableBinding({
+      bound: this.bound,
+      kwargs: this.kwargs,
+      config: { ...this.config, ...config },
+      configFactories: this.configFactories,
+    });
+  }
+
   /**
    * Forward withStructuredOutput to the bound model, preserving the RunnableBinding wrapper.
    */

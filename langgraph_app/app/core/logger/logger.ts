@@ -15,7 +15,7 @@ function createLogger(): pino.Logger {
   const isDev = NODE_ENV === "development";
 
   return pino({
-    level: isTest ? "silent" : isDev ? "debug" : "info",
+    level: process.env.LOG_LEVEL || (isTest ? "silent" : isDev ? "debug" : "info"),
     redact: {
       paths: ["jwt", "authorization", "token", "*.jwt", "*.authorization", "*.token"],
       censor: "[REDACTED]",

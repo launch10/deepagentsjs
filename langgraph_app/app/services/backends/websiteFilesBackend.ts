@@ -9,7 +9,7 @@ import type {
   WriteResult,
 } from "deepagents";
 import { FilesystemBackend } from "deepagents";
-import { db, codeFiles, eq, and, sql, Types as DBTypes, type DB } from "@db";
+import { db, codeFiles, templateFiles, websites, eq, and, sql, Types as DBTypes, type DB } from "@db";
 import * as fs from "fs/promises";
 import * as path from "path";
 import _ from "lodash";
@@ -85,13 +85,27 @@ export class WebsiteFilesBackend implements BackendProtocol {
   async hydrate(): Promise<void> {
     debugLog(this.website.id, "HYDRATE_START", { rootDir: this.rootDir });
 
-    const files = await this.database
+    let files = await this.database
       .select({
         path: codeFiles.path,
         content: codeFiles.content,
       })
       .from(codeFiles)
       .where(eq(codeFiles.websiteId, this.getWebsiteId()));
+
+    // Fall back to template files if no code files exist yet (create flow)
+    if (files.length === 0 && this.website.templateId) {
+      debugLog(this.website.id, "HYDRATE_FALLING_BACK_TO_TEMPLATE", {
+        templateId: this.website.templateId,
+      });
+      files = await this.database
+        .select({
+          path: templateFiles.path,
+          content: templateFiles.content,
+        })
+        .from(templateFiles)
+        .where(eq(templateFiles.templateId, this.website.templateId));
+    }
 
     debugLog(this.website.id, "HYDRATE_FILES_LOADED", {
       fileCount: files.length,
@@ -126,7 +140,16 @@ export class WebsiteFilesBackend implements BackendProtocol {
     // Return raw content without line numbers to avoid confusing the agent
     // The default fs.read() adds line numbers which can cause issues when
     // agents try to match content for edits or writes
-    const fileData = await this.fs.readRaw(filePath);
+    let fileData;
+    try {
+      fileData = await this.fs.readRaw(filePath);
+    } catch (e) {
+      // readRaw throws on missing files/directories — return error string
+      // instead of crashing the graph (matches deepagents' read() behavior)
+      const msg = e instanceof Error ? e.message : String(e);
+      debugLog(this.website.id, "READ_ERROR", { filePath, error: msg });
+      return `Error: ${msg}`;
+    }
     const rawContent = Array.isArray(fileData.content)
       ? fileData.content.join("\n")
       : String(fileData.content);
@@ -288,6 +311,14 @@ export class WebsiteFilesBackend implements BackendProtocol {
       });
 
       if (fsResult.error) return fsResult;
+
+      // Skip Rails API call for empty files (e.g. .gitkeep) — Rails rejects
+      // "Each file must have path and content" for empty content, and these
+      // placeholder files don't need to be persisted server-side.
+      if (!content) {
+        debugLog(this.website.id, "WRITE_SKIP_API_EMPTY", { filePath });
+        return { path: filePath, filesUpdate: null };
+      }
 
       const service = new WebsiteFilesAPIService({ jwt: this.jwt });
       await service.write({

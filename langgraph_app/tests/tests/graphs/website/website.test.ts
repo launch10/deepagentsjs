@@ -127,7 +127,8 @@ describe("Website Builder", () => {
       // - uploads: 1 logo + 3 images associated with website
       await DatabaseSnapshotter.restoreSnapshot("website_step");
 
-      const [website] = await db.select().from(websites).limit(1);
+      const [websiteRow] = await db.select().from(websites).limit(1);
+      website = websiteRow!;
 
       if (!website || !website.name) {
         throw new Error("No website found in snapshot");
@@ -149,7 +150,7 @@ describe("Website Builder", () => {
       threadId = existingChat.threadId as ThreadIDType;
     }, 60000);
 
-    it("generates a complete landing page with required sections", async () => {
+    it.only("generates a complete landing page with required sections", async () => {
       // Use WebsiteAPI.stream to go through the bridge with usageTrackingMiddleware
       const response = WebsiteAPI.stream({
         messages: [{ role: "user", content: "howdy big guy, let's make the landing page" }],

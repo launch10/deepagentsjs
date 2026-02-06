@@ -8,6 +8,7 @@ import { buildBugFixPrompt } from "@prompts";
 import { type TaskRunner, registerTask, isTaskFailed, isTaskDone } from "./taskRunner";
 
 const TASK_NAME: Deploy.TaskName = "FixingBugs";
+const MAX_BUG_FIX_RETRIES = 2;
 
 /**
  * Fix With Coding Agent - Raw Function
@@ -32,6 +33,20 @@ async function runBugFix(
     return {};
   }
 
+  const fixTask = Task.findTask(state.tasks, TASK_NAME);
+
+  if (failedTask.retryCount >= MAX_BUG_FIX_RETRIES) {
+    return {
+      tasks: [
+        {
+          ...fixTask,
+          status: "failed",
+          error: `Max bug fix retries (${MAX_BUG_FIX_RETRIES}) exceeded`,
+        } as Task.Task,
+      ],
+    };
+  }
+
   if (!state.websiteId || !state.jwt) {
     throw new Error("websiteId and jwt are required");
   }
@@ -39,8 +54,6 @@ async function runBugFix(
   if (!failedTask.error) {
     throw new Error("Validation error is required");
   }
-
-  const fixTask = Task.findTask(state.tasks, TASK_NAME);
 
   // Build prompt with errors in state for consistent async pattern
   // Bug fixes are always edits (isFirstMessage: false) with errors present
