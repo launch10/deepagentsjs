@@ -4,13 +4,13 @@ import { AIMessage } from "@langchain/core/messages";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent, singleShotEdit, classifyEditWithLLM } from "@nodes";
-import { buildFileTree } from "@nodes";
+import { buildFileTree, getCodingAgentBackend } from "@nodes";
 import { createContextMessage } from "langgraph-ai-sdk";
 import { isCacheModeEnabled } from "./cacheMode";
 import { getSchedulingToolMinorEditFiles } from "@cache";
 import { lastAIMessage, type Website } from "@types";
 import { injectAgentContext } from "@api/middleware";
-import { getCodingAgentBackend } from "@nodes";
+import type { WebsiteFilesBackend } from "@services";
 
 /**
  * Get cached response for cache mode.
@@ -46,17 +46,20 @@ const cachedResponse = async (state: WebsiteGraphState) => {
 
 /**
  * Determine if this request needs the full agent or can use single-shot.
+ * Returns the backend if single-shot is chosen (to avoid recreating it).
  *
  * - First message (create flow) → always full agent
  * - Console errors (bugfix) → always full agent
  * - Otherwise → cheap LLM classifier decides
  */
-const shouldUseSingleShot = async (state: WebsiteGraphState): Promise<boolean> => {
+const classifyRoute = async (
+  state: WebsiteGraphState
+): Promise<{ useSingleShot: false } | { useSingleShot: true; backend: WebsiteFilesBackend }> => {
   const isFirstMessage = state.messages.length === 0;
 
   // Create flow or bugfix → full agent, no question
   if (isFirstMessage || (state.consoleErrors && state.consoleErrors.length > 0)) {
-    return false;
+    return { useSingleShot: false };
   }
 
   // Use cheap LLM to classify: does this need many files / lots of changes?
@@ -64,13 +67,17 @@ const shouldUseSingleShot = async (state: WebsiteGraphState): Promise<boolean> =
   const userText = typeof lastMessage?.content === "string" ? lastMessage.content : "";
 
   // Get file tree for the classifier (lightweight — just paths, no contents)
+  // Keep the backend so singleShotEdit can reuse it (avoids duplicate DB query)
   const backend = await getCodingAgentBackend(state);
   const { tree } = await buildFileTree(backend);
 
   const route = await classifyEditWithLLM(userText, tree);
   console.log(`Edit classified as: ${route}`);
 
-  return route === "simple";
+  if (route === "simple") {
+    return { useSingleShot: true, backend };
+  }
+  return { useSingleShot: false };
 };
 
 const buildContext = async (state: WebsiteGraphState) => {
@@ -114,11 +121,11 @@ export const websiteBuilderNode = NodeMiddleware.use(
     }
 
     const messages = await buildContext(state);
-    const useSingleShot = await shouldUseSingleShot(state);
+    const routeResult = await classifyRoute(state);
 
-    if (useSingleShot) {
+    if (routeResult.useSingleShot) {
       console.log("Using single-shot edit path");
-      return await singleShotEdit(state, messages);
+      return await singleShotEdit(state, messages, routeResult.backend);
     }
 
     // Full agent path: create flow, bugfix, or complex edits

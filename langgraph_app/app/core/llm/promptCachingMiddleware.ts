@@ -26,28 +26,7 @@
 import { createMiddleware, SystemMessage, type AgentMiddleware } from "langchain";
 import { toJsonSchema } from "@langchain/core/utils/json_schema";
 import { isInteropZodSchema } from "@langchain/core/utils/types";
-
-function isAnthropicModel(model: any): boolean {
-  if (!model) return false;
-  const name: string | undefined = model.getName?.();
-  if (name === "ChatAnthropic") return true;
-  if (name === "ConfigurableModel") {
-    if (model._defaultConfig?.modelProvider === "anthropic") return true;
-    if (
-      typeof model._defaultConfig?.model === "string" &&
-      model._defaultConfig.model.startsWith("claude")
-    )
-      return true;
-    for (const instance of model._modelInstanceCache?.values?.() ?? []) {
-      if (isAnthropicModel(instance)) return true;
-    }
-    return false;
-  }
-  // RunnableBinding / StructuredOutputRunnableBinding — unwrap
-  if (model.bound) return isAnthropicModel(model.bound);
-  if (model.first) return isAnthropicModel(model.first);
-  return false;
-}
+import { isAnthropicModel } from "./isAnthropicModel";
 
 const cacheBreakpoint = (ttl: string) => ({ type: "ephemeral" as const, ttl });
 

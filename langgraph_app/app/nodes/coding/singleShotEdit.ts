@@ -1,5 +1,4 @@
 import { AIMessage } from "@langchain/core/messages";
-import { ToolMessage } from "@langchain/core/messages";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import type { BaseMessage } from "@langchain/core/messages";
 import { getLLM } from "@core";
@@ -10,11 +9,14 @@ import { buildFileTree, preReadFiles } from "./superlightEditAgent";
 import type { WebsiteFilesBackend } from "@services";
 
 /**
- * Native text editor tool definition for bindTools.
+ * Native text editor tool definition with prompt caching.
+ * The cache_control breakpoint on the tool caches system prompt + tool definition
+ * together, matching the 3-tier caching in promptCachingMiddleware.
  */
 const NATIVE_TEXT_EDITOR_TOOL = {
-  type: "text_editor_20250429" as const,
+  type: "text_editor_20250728" as const,
   name: "str_replace_based_edit_tool" as const,
+  cache_control: { type: "ephemeral" as const },
 };
 
 /**
@@ -70,8 +72,16 @@ ${fileTree}`;
   }
 }
 
-function buildSingleShotPrompt(fileTree: string, preReadContent: string): string {
-  return `You are an expert React/TypeScript developer editing landing page components.
+/**
+ * Build the system prompt with cache_control breakpoint on the last content block.
+ * Since we call .invoke() directly (no agent loop), the promptCachingMiddleware
+ * doesn't apply. We add cache breakpoints manually so the ~28K system prompt
+ * is cached across edits to the same website.
+ */
+function buildSingleShotSystemMessage(fileTree: string, preReadContent: string): SystemMessage {
+  const text = `You are an expert React/TypeScript developer. You will make edits to landing page components in a SINGLE response.
+
+CRITICAL: This is a single-shot edit. You get ONE response. All file contents are pre-loaded below — do NOT use the "view" command. Go straight to str_replace edits.
 
 ## Rules
 1. Preserve tracking: Never remove L10.createLead() calls or tracking imports.
@@ -80,51 +90,63 @@ function buildSingleShotPrompt(fileTree: string, preReadContent: string): string
 4. Minimal edits: Use str_replace to change only the lines that differ. Pick small, unique anchors.
 
 ## Workflow
-1. Review the pre-loaded files below — all component source is included
+1. All component source code is already loaded below — read it directly, do NOT call view
 2. Identify which file(s) to edit based on the user's request
-3. Use str_replace_based_edit_tool with small, unique old_str values to make targeted changes
-4. Briefly confirm what you changed
-
-Keep responses concise. No lengthy explanations.
+3. Use str_replace_based_edit_tool with command "str_replace" to make targeted changes
+4. Write a brief (1-2 sentence) confirmation of what you changed
 
 ## Project File Tree
 ${fileTree}
 
-## All Component Files
+## All Component Files (pre-loaded — do NOT use view)
 ${preReadContent}`;
+
+  return new SystemMessage({
+    content: [
+      {
+        type: "text",
+        text,
+        cache_control: { type: "ephemeral" as const },
+      },
+    ],
+  });
 }
 
 /**
  * Single-shot edit: pre-load all files, make one LLM call with native text editor tool,
- * apply edits directly. One retry round if str_replace fails.
+ * apply edits directly. No retry on invalid input — successful edits are already applied.
+ *
+ * Accepts an optional pre-created backend to avoid duplicate DB queries when the
+ * caller (websiteBuilder) already created one for classification.
  *
  * Returns { messages, status } compatible with WebsiteGraphState.
  */
 export async function singleShotEdit(
   state: MinimalCodingAgentState & { messages?: BaseMessage[] },
-  contextMessages: BaseMessage[]
+  contextMessages: BaseMessage[],
+  existingBackend?: WebsiteFilesBackend
 ): Promise<{ messages: BaseMessage[]; status: "completed" }> {
-  const backend = await getCodingAgentBackend(state);
+  const backend = existingBackend ?? (await getCodingAgentBackend(state));
 
   // Pre-load all component files into context
   const { tree, allPaths } = await buildFileTree(backend);
   const componentPaths = allPaths.filter((p) => p.includes("src/components/"));
   const preReadContent = await preReadFiles(backend, componentPaths);
 
-  const systemPrompt = buildSingleShotPrompt(tree, preReadContent);
+  const systemMessage = buildSingleShotSystemMessage(tree, preReadContent);
 
   // Get LLM with usage tracking
   const llm = await getLLM({ skill: "coding", speed: "blazing", cost: "paid", maxTier: 3 });
 
-  // Pass native text editor tool via invoke config — this flows through to
+  // Pass native text editor tool via withConfig — this flows through to
   // ChatAnthropic.invocationParams() which calls formatStructuredToolToAnthropic().
   // Using withConfig preserves configFactories (usage tracking) from getLLM().
   const modelWithTools = (llm as any).withConfig({
     tools: [NATIVE_TEXT_EDITOR_TOOL],
   });
 
-  // Round 1: Single-shot edit
-  const invokeMessages: BaseMessage[] = [new SystemMessage(systemPrompt), ...contextMessages];
+  // Single-shot: one LLM call, apply all edits
+  const invokeMessages: BaseMessage[] = [systemMessage, ...contextMessages];
 
   const response = await modelWithTools.invoke(invokeMessages);
   const toolCalls = response.tool_calls ?? [];
@@ -135,69 +157,42 @@ export async function singleShotEdit(
     return { messages: [structuredMessage], status: "completed" };
   }
 
-  // Apply edits and collect results
-  const { toolMessages, hasErrors } = await applyEdits(backend, response, toolCalls);
+  // Filter out "view" calls — all files are pre-loaded, view is a wasted call.
+  // Only apply actual mutations (str_replace, create, insert).
+  const editCalls = toolCalls.filter((tc: any) => (tc.args as any)?.command !== "view");
 
-  // Round 2: One retry if any edits failed
-  if (hasErrors) {
-    const retryMessages: BaseMessage[] = [...invokeMessages, response, ...toolMessages];
-
-    const retryResponse = await modelWithTools.invoke(retryMessages);
-    const retryToolCalls = retryResponse.tool_calls ?? [];
-
-    if (retryToolCalls.length > 0) {
-      await applyEdits(backend, retryResponse, retryToolCalls);
-    }
-
-    // Use the retry response as the final message
-    const textContent = extractTextContent(retryResponse);
-    const finalMessage = new AIMessage({
-      content: textContent || "I've made the requested changes.",
-    });
-    const [structuredMessage] = await toStructuredMessage(finalMessage);
+  if (editCalls.length === 0) {
+    // LLM only called view (no actual edits) — return text response
+    console.warn("Single-shot edit: LLM only used view commands, no edits applied");
+    const [structuredMessage] = await toStructuredMessage(response);
     return { messages: [structuredMessage], status: "completed" };
   }
 
-  // Success — return the text portion of the response
+  // Apply edits — no retry on failure. Successful edits are already applied
+  // to the backend (which syncs to Rails on each write). Failed str_replace
+  // calls mean the LLM picked the wrong anchor; retrying the same input won't help.
+  const errors: string[] = [];
+  for (const toolCall of editCalls) {
+    const result = await executeTextEditorCommand(
+      backend,
+      toolCall.args as unknown as TextEditorInput
+    );
+    if (result.startsWith("Error:")) {
+      errors.push(result);
+    }
+  }
+
+  if (errors.length > 0) {
+    console.warn(`Single-shot edit had ${errors.length} failed tool call(s):`, errors);
+  }
+
+  // Return the text portion of the response as the user-facing message
   const textContent = extractTextContent(response);
   const finalMessage = new AIMessage({
     content: textContent || "I've made the requested changes.",
   });
   const [structuredMessage] = await toStructuredMessage(finalMessage);
   return { messages: [structuredMessage], status: "completed" };
-}
-
-/**
- * Apply tool call edits via executeTextEditorCommand.
- * Returns ToolMessages for each call and whether any errors occurred.
- */
-async function applyEdits(
-  backend: WebsiteFilesBackend,
-  aiMessage: AIMessage,
-  toolCalls: Array<{ id?: string; name: string; args: Record<string, unknown> }>
-): Promise<{ toolMessages: ToolMessage[]; hasErrors: boolean }> {
-  const toolMessages: ToolMessage[] = [];
-  let hasErrors = false;
-
-  for (const toolCall of toolCalls) {
-    const result = await executeTextEditorCommand(
-      backend,
-      toolCall.args as unknown as TextEditorInput
-    );
-
-    if (result.startsWith("Error:")) {
-      hasErrors = true;
-    }
-
-    toolMessages.push(
-      new ToolMessage({
-        content: result,
-        tool_call_id: toolCall.id ?? `tool-${Date.now()}`,
-      })
-    );
-  }
-
-  return { toolMessages, hasErrors };
 }
 
 /**
