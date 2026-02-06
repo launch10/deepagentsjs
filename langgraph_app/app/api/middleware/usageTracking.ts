@@ -18,6 +18,7 @@ import {
   calculateRunCost,
   deriveCreditStatus,
   LLMManager,
+  getLogger,
   type UsageContext,
   type UsageSummary,
 } from "@core";
@@ -77,22 +78,17 @@ export const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddl
   async onComplete(ctx, usageContext) {
     const { records, messages, runId, accountId, preRunCreditsRemaining } = usageContext;
 
-    console.log(
-      `[usageTrackingMiddleware] onComplete fired: runId=${runId} records=${records.length} messages=${messages.length} threadId=${ctx.threadId}`
-    );
+    const log = getLogger({ component: "usageTracking" });
+    log.info({ runId, recordCount: records.length, messageCount: messages.length, threadId: ctx.threadId }, "onComplete fired");
 
     if (records.length === 0 && messages.length === 0) {
-      console.warn(
-        `[usageTrackingMiddleware] onComplete: zero records AND zero messages — nothing to persist. runId=${runId}`
-      );
+      log.warn({ runId }, "Zero records AND zero messages — nothing to persist");
       return;
     }
 
     const chatId = await getChatIdFromThread(ctx.threadId);
     if (!chatId) {
-      console.warn(
-        `[usageTrackingMiddleware] No chat found for threadId ${ctx.threadId}, skipping billing. ${records.length} usage records LOST.`
-      );
+      log.warn({ threadId: ctx.threadId, recordCount: records.length }, "No chat found for threadId, skipping billing — usage records LOST");
       return;
     }
 
@@ -128,13 +124,11 @@ export const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddl
         ),
       ]);
 
-      console.log(
-        `[usageTrackingMiddleware] Persisted: ${records.length} records, ${messages.length} messages, chatId=${chatId}, runId=${runId}`
-      );
+      log.info({ recordCount: records.length, messageCount: messages.length, chatId, runId }, "Persisted usage");
 
       notifyRails(runId);
     } catch (error) {
-      console.error("[usageTrackingMiddleware] Failed to persist:", error);
+      log.error({ err: error, runId, chatId }, "Failed to persist usage");
     }
   },
 });

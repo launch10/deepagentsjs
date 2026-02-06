@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { createHmac, timingSafeEqual } from "crypto";
 import { deployGraph } from "@graphs";
-import { graphParams, env } from "@core";
+import { graphParams, env, getLogger } from "@core";
 import { Task } from "@types";
 export interface JobRunCallbackPayload {
   job_run_id: number;
@@ -32,7 +32,7 @@ export const jobRunCallback = async (payload: JobRunCallbackPayload): Promise<bo
   });
 
   if (!currentState?.values) {
-    console.error(`[jobRunCallback] Thread ${payload.thread_id} not found`);
+    getLogger({ component: "jobRunCallback" }).error({ threadId: payload.thread_id }, "Thread not found");
     return false
   }
 
@@ -40,7 +40,7 @@ export const jobRunCallback = async (payload: JobRunCallbackPayload): Promise<bo
   const task = tasks.find((t) => t.jobId === payload.job_run_id);
 
   if (!task) {
-    console.error(`[jobRunCallback] Task with jobId ${payload.job_run_id} not found`);
+    getLogger({ component: "jobRunCallback" }).error({ jobId: payload.job_run_id }, "Task not found");
     return false;
   }
 
@@ -80,7 +80,7 @@ jobRunCallbackRoutes.post("/webhooks/job_run_callback", async (c) => {
 
     return c.json({ success });
   } catch (error) {
-    console.error("[jobRunCallback] Failed to update state:", error);
+    getLogger({ component: "jobRunCallback" }).error({ err: error }, "Failed to update state");
     return c.json({ error: "Failed to update state" }, 500);
   }
 });
@@ -88,14 +88,14 @@ jobRunCallbackRoutes.post("/webhooks/job_run_callback", async (c) => {
 function verifySignature(body: string, signature: string | undefined): boolean {
   if (!signature) return false;
   if (!env.JWT_SECRET) {
-    console.error("[verifySignature] JWT_SECRET is not configured");
+    getLogger({ component: "jobRunCallback" }).error("JWT_SECRET is not configured");
     return false;
   }
   const expected = createHmac("sha256", env.JWT_SECRET).update(body).digest("hex");
   try {
     return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
   } catch (e) {
-    console.error("[verifySignature] Comparison failed:", e);
+    getLogger({ component: "jobRunCallback" }).error({ err: e }, "Signature comparison failed");
     return false;
   }
 }

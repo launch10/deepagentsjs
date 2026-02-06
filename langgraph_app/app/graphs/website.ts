@@ -13,6 +13,7 @@ import { WebsiteAnnotation } from "@annotation";
 import {
   buildContext,
   websiteBuilderNode,
+  compactConversationNode,
   cleanupFilesystemNode,
   syncFilesNode,
   improveCopyNode,
@@ -65,6 +66,7 @@ const routeFromRecommendDomains = (): string => {
 const websiteBuilderSubgraph = new StateGraph(WebsiteAnnotation)
   .addNode("buildContext", buildContext)
   .addNode("websiteBuilder", websiteBuilderNode)
+  .addNode("compactConversation", compactConversationNode)
   .addNode("recommendDomains", domainRecommendationsNode)
   .addNode("cleanupFilesystem", cleanupFilesystemNode)
   .addNode("syncFiles", syncFilesNode)
@@ -80,8 +82,9 @@ const websiteBuilderSubgraph = new StateGraph(WebsiteAnnotation)
   .addEdge("buildContext", "websiteBuilder")
   .addEdge("buildContext", "recommendDomains")
 
-  // websiteBuilder always goes to cleanupFilesystem
-  .addEdge("websiteBuilder", "cleanupFilesystem")
+  // websiteBuilder → compactConversation → cleanupFilesystem
+  .addEdge("websiteBuilder", "compactConversation")
+  .addEdge("compactConversation", "cleanupFilesystem")
 
   // recommendDomains routes based on mode
   .addConditionalEdges("recommendDomains", routeFromRecommendDomains, {

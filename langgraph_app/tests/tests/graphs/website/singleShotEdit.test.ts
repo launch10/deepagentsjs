@@ -35,6 +35,13 @@ import type { WebsiteGraphState } from "@annotation";
 // Test case definitions
 // ─────────────────────────────────────────────────────────────────────────────
 
+interface ContentAssertion {
+  /** Substring to match against file path (e.g. "Hero", "IndexPage") */
+  file: string;
+  /** Text that should (or should not) be present in the file content */
+  text: string;
+}
+
 interface EditTestCase {
   prompt: string;
   label: string;
@@ -45,6 +52,10 @@ interface EditTestCase {
    * Footer.tsx, HowItWorks.tsx, Problem.tsx, SocialProof.tsx, App.tsx
    */
   expectedTargets?: string[];
+  /** Strings expected in target files AFTER the edit (quality check) */
+  expectedContains?: ContentAssertion[];
+  /** Strings that should NOT appear in target files AFTER the edit */
+  expectedAbsent?: ContentAssertion[];
 }
 
 // ── SIMPLE edits ────────────────────────────────────────────────────────────
@@ -56,6 +67,7 @@ const SIMPLE_EDITS: EditTestCase[] = [
     label: "hero-headline-text",
     expectedRoute: "simple",
     expectedTargets: ["Hero"],
+    expectedContains: [{ file: "Hero", text: "Start Your Journey Today" }],
   },
   {
     prompt: "Make the hero section taller with more padding",
@@ -68,6 +80,7 @@ const SIMPLE_EDITS: EditTestCase[] = [
     label: "hero-shadow",
     expectedRoute: "simple",
     expectedTargets: ["Hero"],
+    expectedContains: [{ file: "Hero", text: "shadow" }],
   },
   {
     prompt: "Remove the background image from the hero",
@@ -100,6 +113,7 @@ const SIMPLE_EDITS: EditTestCase[] = [
     label: "features-center",
     expectedRoute: "simple",
     expectedTargets: ["Features"],
+    expectedContains: [{ file: "Features", text: "center" }],
   },
   {
     prompt: "Reduce the gap between the features cards",
@@ -126,6 +140,7 @@ const SIMPLE_EDITS: EditTestCase[] = [
     label: "cta-button-text",
     expectedRoute: "simple",
     expectedTargets: ["CTA"],
+    expectedContains: [{ file: "CTA", text: "Join the Waitlist" }],
   },
   {
     prompt: "Make the CTA button red",
@@ -146,6 +161,7 @@ const SIMPLE_EDITS: EditTestCase[] = [
     label: "footer-year",
     expectedRoute: "simple",
     expectedTargets: ["Footer"],
+    expectedContains: [{ file: "Footer", text: "2026" }],
   },
   {
     prompt: "Make the footer background darker",
@@ -174,6 +190,7 @@ const SIMPLE_EDITS: EditTestCase[] = [
     label: "problem-heading",
     expectedRoute: "simple",
     expectedTargets: ["Problem"],
+    expectedContains: [{ file: "Problem", text: "The Real Cost of Bad Scheduling" }],
   },
 
   // ── SocialProof-targeted ──
@@ -208,12 +225,14 @@ const SIMPLE_EDITS: EditTestCase[] = [
     label: "cross-hide-socialproof",
     expectedRoute: "simple",
     expectedTargets: ["IndexPage"],
+    expectedAbsent: [{ file: "IndexPage", text: "<SocialProof" }],
   },
   {
     prompt: "Remove the problem section from the page",
     label: "cross-remove-problem",
     expectedRoute: "simple",
     expectedTargets: ["IndexPage"],
+    expectedAbsent: [{ file: "IndexPage", text: "<Problem" }],
   },
 ];
 
@@ -347,6 +366,41 @@ async function getChangedFiles(websiteId: number, before: Map<string, string>): 
   return changed;
 }
 
+/**
+ * Find a file in the map whose path contains the given substring (case-insensitive).
+ */
+function findFile(files: Map<string, string>, substring: string): string | undefined {
+  for (const [path, content] of files) {
+    if (path.toLowerCase().includes(substring.toLowerCase())) {
+      return content;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Check that L10.createLead tracking was not removed from any file that had it.
+ * Returns list of violation descriptions (empty = all good).
+ */
+function checkTrackingPreserved(before: Map<string, string>, after: Map<string, string>): string[] {
+  const violations: string[] = [];
+  for (const [path, content] of before) {
+    if (content.includes("L10.createLead")) {
+      const afterContent = after.get(path);
+      if (afterContent && !afterContent.includes("L10.createLead")) {
+        violations.push(`L10.createLead removed from ${path}`);
+      }
+    }
+    if (content.includes("from '@/lib/tracking'") || content.includes('from "@/lib/tracking"')) {
+      const afterContent = after.get(path);
+      if (afterContent && !afterContent.includes("tracking")) {
+        violations.push(`Tracking import removed from ${path}`);
+      }
+    }
+  }
+  return violations;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tests
 // ─────────────────────────────────────────────────────────────────────────────
@@ -451,6 +505,8 @@ describe("Single-Shot Edit Eval", () => {
   //   3. ≤3 LLM calls
   //   4. At least one file modified
   //   5. Correct file(s) modified (warns if wrong target)
+  //   6. Content assertions: expected text present/absent in target files
+  //   7. Invariant: L10.createLead tracking never removed
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   describe("Single-shot execution", () => {
     let ctx: Awaited<ReturnType<typeof getTestContext>>;
@@ -521,6 +577,35 @@ describe("Single-Shot Edit Eval", () => {
             }
           }
         }
+
+        // ── Content quality assertions ──
+        const filesAfter = await snapshotFiles(ctx.websiteId);
+
+        if (testCase.expectedContains?.length) {
+          for (const { file, text } of testCase.expectedContains) {
+            const content = findFile(filesAfter, file);
+            expect(content, `File matching "${file}" should exist`).toBeDefined();
+            expect(content, `File matching "${file}" should contain "${text}"`).toContain(text);
+          }
+        }
+
+        if (testCase.expectedAbsent?.length) {
+          for (const { file, text } of testCase.expectedAbsent) {
+            const content = findFile(filesAfter, file);
+            if (content) {
+              expect(content, `File matching "${file}" should NOT contain "${text}"`).not.toContain(
+                text
+              );
+            }
+          }
+        }
+
+        // ── Invariant: tracking never removed ──
+        const trackingViolations = checkTrackingPreserved(filesBefore, filesAfter);
+        if (trackingViolations.length > 0) {
+          console.error(`  ❌ Tracking violations: ${trackingViolations.join(", ")}`);
+        }
+        expect(trackingViolations, "L10 tracking must be preserved").toHaveLength(0);
       }, 120000);
     }
   });

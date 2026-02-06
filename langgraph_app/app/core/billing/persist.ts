@@ -15,6 +15,7 @@ import type {
   SerializedMessage,
 } from "./types";
 import { calculateCost } from "../llm/cost";
+import { getLogger } from "../logger";
 import type { ModelConfig } from "../llm/types";
 
 const MAX_RETRIES = 3;
@@ -79,7 +80,8 @@ export async function persistUsage(
   modelConfigs?: Record<string, ModelConfig>
 ): Promise<void> {
   if (records.length === 0) return;
-  console.log(`[persistUsage] Persisting ${records.length} records`);
+  const log = getLogger({ component: "persistUsage" });
+  log.debug({ recordCount: records.length }, "Persisting usage records");
 
   const rows = prepareUsageRecordsForInsert(records, context, modelConfigs).map((row) => ({
     ...row,
@@ -92,11 +94,11 @@ export async function persistUsage(
       return;
     } catch (error) {
       if (attempt === MAX_RETRIES) {
-        console.error(`[persistUsage] Failed after ${MAX_RETRIES} attempts:`, error);
+        log.error({ err: error, attempts: MAX_RETRIES }, "Failed to persist usage after retries");
         throw error;
       }
       const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
-      console.warn(`[persistUsage] Attempt ${attempt} failed, retrying in ${delay}ms`);
+      log.warn({ attempt, delayMs: delay }, "Persist attempt failed, retrying");
       await sleep(delay);
     }
   }

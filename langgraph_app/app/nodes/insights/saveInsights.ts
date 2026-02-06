@@ -2,6 +2,7 @@ import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { type InsightsGraphState } from "@annotation";
 import { DashboardInsightsAPIService } from "@services";
+import { getLogger } from "@core";
 
 /**
  * Node that saves generated insights back to Rails.
@@ -22,7 +23,7 @@ export const saveInsightsNode = NodeMiddleware.use(
     if (!state.jwt) {
       // No JWT means we can't save, but insights were generated successfully.
       // This is expected in test environments or when calling the API directly.
-      console.warn("No JWT token provided for saving insights - skipping save");
+      getLogger().warn("No JWT token provided for saving insights, skipping save");
       return {};
     }
 
@@ -39,7 +40,7 @@ export const saveInsightsNode = NodeMiddleware.use(
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error saving insights";
-      console.error("Error saving insights:", errorMessage);
+      getLogger().error({ err: error }, "Error saving insights");
 
       // Don't overwrite insights on save failure - they're still valid
       // Just log the error

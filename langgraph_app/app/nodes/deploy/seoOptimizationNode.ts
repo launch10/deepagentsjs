@@ -7,6 +7,7 @@ import { codingToolsPrompt, environmentPrompt } from "@prompts";
 import { ContextAPIService } from "@rails_api";
 import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
 import { db, websiteFiles, eq, and } from "@db";
+import { getLogger } from "@core";
 
 const TASK_NAME: Deploy.TaskName = "OptimizingSEO";
 
@@ -48,7 +49,7 @@ async function isSEOAlreadyDone(state: DeployGraphState): Promise<boolean> {
   const isDone = presentCount >= 5;
 
   if (isDone) {
-    console.log(`[SEO] Already optimized (${presentCount}/7 elements present)`);
+    getLogger().info({ presentCount, totalChecks: 7 }, "SEO already optimized");
   }
 
   return isDone;
@@ -171,7 +172,7 @@ async function fetchSEOContext(state: DeployGraphState) {
       images,
     };
   } catch (error) {
-    console.warn("Failed to fetch SEO context:", error);
+    getLogger().warn({ err: error }, "Failed to fetch SEO context");
     return { brainstorm: null, images: [] };
   }
 }
@@ -232,7 +233,7 @@ async function runSeoOptimization(
   try {
     // Check if SEO is already done - skip the agent if so
     if (await isSEOAlreadyDone(state)) {
-      console.log("[SEO] Skipping agent - index.html already has sufficient SEO optimization");
+      getLogger().info("Skipping SEO agent, index.html already has sufficient optimization");
       return withPhases(
         state,
         [{ ...task, status: "completed" } as Task.Task]

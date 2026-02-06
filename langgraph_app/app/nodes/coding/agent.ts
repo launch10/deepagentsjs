@@ -8,7 +8,6 @@ import { copywriterSubAgent, buildCoderSubAgent } from "./subagents";
 import { checkpointer } from "@core";
 import {
   modelFallbackMiddleware as modelFallbackMiddlewareBuilder,
-  summarizationMiddleware as summarizationMiddlewareBuilder,
   type AgentMiddleware,
 } from "langchain";
 import { buildCodingPrompt, type CodingPromptState } from "@prompts";
@@ -23,15 +22,9 @@ export type MinimalCodingAgentState = {
 };
 
 const getMiddlewares = (): AgentMiddleware[] => {
-  // const fallbacks = getLLMFallbacks("coding", "slow", "paid");
-  // const modelFallbackMiddleware = modelFallbackMiddlewareBuilder(...fallbacks);
-  // TODO: We get error: SummarizationMiddleware is defined multiple times... is it defined inside deepagents lib?
-  // const summarizationMiddleware = summarizationMiddlewareBuilder({
-  //   model: getLLM("reasoning", "fast", "paid"),
-  //   trigger: { fraction: 0.7 },
-  //   keep: { messages: 15 },
-  // });
-
+  // deepagents' createDeepAgent() includes summarizationMiddleware internally
+  // (trigger: 170K tokens, keep: 6 messages). Upstream compaction in the
+  // website graph's compactConversation node handles conversation-level summarization.
   return [createPromptCachingMiddleware()];
 };
 
@@ -124,8 +117,6 @@ export async function createCodingAgent(
     systemPrompt ? Promise.resolve(systemPrompt) : buildCodingPrompt(promptState),
     buildCoderSubAgent(promptState),
   ]);
-  console.log("finalSystemPrompt", finalSystemPrompt);
-
   return createDeepAgent({
     model: llm as any,
     name: "coding-agent",

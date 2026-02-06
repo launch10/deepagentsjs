@@ -1,7 +1,7 @@
 import { AIMessage } from "@langchain/core/messages";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import type { BaseMessage } from "@langchain/core/messages";
-import { getLLM } from "@core";
+import { getLLM, rollbar, getLogger } from "@core";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 import { executeTextEditorCommand, type TextEditorInput } from "@tools";
 import { getCodingAgentBackend, getTheme, type MinimalCodingAgentState } from "./agent";
@@ -68,7 +68,7 @@ ${fileTree}`;
     return content === "simple" ? "simple" : "complex";
   } catch (e) {
     // On failure, default to complex (safer to overshoot)
-    console.warn("Edit classifier failed, defaulting to complex:", e);
+    getLogger().warn({ err: e }, "Edit classifier failed, defaulting to complex");
     return "complex";
   }
 }
@@ -211,10 +211,15 @@ export async function singleShotEdit(
   const sourcePaths = allPaths.filter(
     (p) => p.includes("src/") && !p.includes("/components/ui/") && /\.(tsx?|css)$/.test(p)
   );
-  console.log(`Pre-loading ${sourcePaths.length} source files`);
-  const preReadContent = await preReadFiles(backend, sourcePaths);
 
-  const systemMessage = buildSingleShotSystemMessage(tree, preReadContent);
+  // Fetch theme for design guidance (CSS variables, typography) — parallelize with file reads
+  const [preReadContent, theme] = await Promise.all([
+    preReadFiles(backend, sourcePaths),
+    state.theme ? Promise.resolve(state.theme) : getTheme(state),
+  ]);
+  getLogger().debug({ sourceFileCount: sourcePaths.length, theme: theme?.name ?? "none" }, "Pre-loading source files");
+
+  const systemMessage = buildSingleShotSystemMessage(tree, preReadContent, theme);
 
   // Get LLM with usage tracking
   const llm = await getLLM({ skill: "coding", speed: "blazing", cost: "paid", maxTier: 3 });
@@ -232,7 +237,7 @@ export async function singleShotEdit(
   const response = await modelWithTools.invoke(invokeMessages);
   const toolCalls = response.tool_calls ?? [];
 
-  console.log(`Single-shot: ${toolCalls.length} tool call(s)`);
+  getLogger().debug({ toolCallCount: toolCalls.length }, "Single-shot tool calls");
 
   if (toolCalls.length === 0) {
     // No tool calls — LLM just responded with text
@@ -246,7 +251,7 @@ export async function singleShotEdit(
 
   if (editCalls.length === 0) {
     // LLM only called view (no actual edits) — return text response
-    console.warn("Single-shot edit: LLM only used view commands, no edits applied");
+    getLogger().warn("Single-shot edit: LLM only used view commands, no edits applied");
     const [structuredMessage] = await toStructuredMessage(response);
     return { messages: [structuredMessage], status: "completed" };
   }
@@ -255,6 +260,7 @@ export async function singleShotEdit(
   // to the backend (which syncs to Rails on each write). Failed str_replace
   // calls mean the LLM picked the wrong anchor; retrying the same input won't help.
   const errors: string[] = [];
+  let successCount = 0;
   for (const toolCall of editCalls) {
     const result = await executeTextEditorCommand(
       backend,
@@ -262,18 +268,39 @@ export async function singleShotEdit(
     );
     if (result.startsWith("Error:")) {
       errors.push(result);
+    } else {
+      successCount++;
     }
   }
 
   if (errors.length > 0) {
-    console.warn(`Single-shot edit had ${errors.length} failed tool call(s):`, errors);
+    getLogger().warn({ errorCount: errors.length, errors }, "Single-shot edit had failed tool calls");
+    rollbar.error(new Error(`Single-shot edit failures: ${errors.length}/${editCalls.length}`), {
+      errors: errors.join("; "),
+      successCount,
+      totalEdits: editCalls.length,
+    });
   }
 
-  // Return the text portion of the response as the user-facing message
+  // Build user-facing message based on edit outcomes
   const textContent = extractTextContent(response);
-  const finalMessage = new AIMessage({
-    content: textContent || "I've made the requested changes.",
-  });
+  let messageContent: string;
+
+  if (successCount === 0 && errors.length > 0) {
+    // ALL edits failed — don't show the LLM's optimistic text
+    messageContent =
+      "I attempted to make the changes but encountered errors applying the edits. Could you try rephrasing your request?";
+  } else if (errors.length > 0) {
+    // SOME edits failed — append a warning to the LLM's text
+    messageContent =
+      (textContent || "I've made the requested changes.") +
+      "\n\nNote: some edits could not be applied. You may want to verify the changes.";
+  } else {
+    // All edits succeeded — use original LLM text
+    messageContent = textContent || "I've made the requested changes.";
+  }
+
+  const finalMessage = new AIMessage({ content: messageContent });
   const [structuredMessage] = await toStructuredMessage(finalMessage);
   return { messages: [structuredMessage], status: "completed" };
 }

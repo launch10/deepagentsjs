@@ -9,6 +9,7 @@ import type { Serialized } from "@langchain/core/load/serializable";
 import type { LLMResult } from "@langchain/core/outputs";
 import type { AIMessage, BaseMessage } from "@langchain/core/messages";
 import { getUsageContext } from "./storage";
+import { getLogger } from "../logger";
 import type { UsageRecord } from "./types";
 
 class UsageTrackingCallbackHandler extends BaseCallbackHandler {
@@ -31,9 +32,7 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
   ): Promise<void> {
     const context = getUsageContext();
     if (!context) {
-      console.warn(
-        `[UsageTracker] handleChatModelStart: no usage context (runId=${runId}). This LLM call will NOT be tracked.`
-      );
+      getLogger({ component: "UsageTracker" }).warn({ runId }, "handleChatModelStart: no usage context — LLM call will NOT be tracked");
       return;
     }
 
@@ -66,9 +65,7 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
   ): Promise<void> {
     const context = getUsageContext();
     if (!context) {
-      console.warn(
-        `[UsageTracker] handleLLMEnd: no usage context (runId=${llmCallId}). Usage record lost.`
-      );
+      getLogger({ component: "UsageTracker" }).warn({ runId: llmCallId }, "handleLLMEnd: no usage context — usage record lost");
       return;
     }
 
@@ -100,13 +97,9 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
             storedMetadata
           );
           context.records.push(record);
-          console.log(
-            `[UsageTracker] Recorded: model=${record.model} input=${record.inputTokens} output=${record.outputTokens} (total records: ${context.records.length})`
-          );
+          getLogger({ component: "UsageTracker" }).debug({ model: record.model, inputTokens: record.inputTokens, outputTokens: record.outputTokens, totalRecords: context.records.length }, "Recorded usage");
         } else {
-          console.warn(
-            `[UsageTracker] handleLLMEnd: message has no usage_metadata (runId=${llmCallId})`
-          );
+          getLogger({ component: "UsageTracker" }).warn({ runId: llmCallId }, "handleLLMEnd: message has no usage_metadata");
         }
       }
     }
@@ -165,19 +158,9 @@ class UsageTrackingCallbackHandler extends BaseCallbackHandler {
 
     // Warn early when model is unknown to help debug cost calculation errors
     if (model === "unknown") {
-      console.warn(
-        "[UsageTracker] Unknown model detected. response_metadata:",
-        JSON.stringify(responseMeta, null, 2),
-        "llmOutput:",
-        JSON.stringify(llmOutput, null, 2),
-        "storedMetadata:",
-        JSON.stringify(storedMetadata, null, 2),
-        "configMetadata:",
-        JSON.stringify(configMetadata, null, 2),
-        "langchainRunId:",
-        langchainRunId,
-        "tags:",
-        tags
+      getLogger({ component: "UsageTracker" }).warn(
+        { langchainRunId, tags, responseMeta, storedMetadata, configMetadata },
+        "Unknown model detected — cost calculation may fail"
       );
     }
 

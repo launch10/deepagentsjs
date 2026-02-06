@@ -7,6 +7,7 @@ import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
 import { db, websiteFiles, eq, and, like } from "@db";
 import { trackingPrompt } from "@prompts";
 import { NodeMiddleware } from "@middleware";
+import { getLogger } from "@core";
 
 const TASK_NAME = "AddingAnalytics" as const;
 
@@ -138,13 +139,13 @@ async function instrumentAnalytics(
   );
 
   if (filesNeedingWork.length === 0) {
-    console.log("[Analytics] All files already instrumented or no email forms found");
+    getLogger().info("All files already instrumented or no email forms found");
     return "CONFIRMED";
   }
 
-  console.log(
-    `[Analytics] Found ${filesNeedingWork.length} files needing instrumentation:`,
-    filesNeedingWork.map((f) => f.path)
+  getLogger().info(
+    { fileCount: filesNeedingWork.length, files: filesNeedingWork.map((f) => f.path) },
+    "Found files needing instrumentation"
   );
 
   // Create backend once and share it with all agents
@@ -158,7 +159,7 @@ async function instrumentAnalytics(
     filesNeedingWork.map((file) => instrumentFile(state, file, backend, config))
   );
 
-  console.log(`[Analytics] Instrumented ${filesNeedingWork.length} files`);
+  getLogger().info({ fileCount: filesNeedingWork.length }, "Instrumented files");
   return "FIXED";
 }
 
@@ -202,7 +203,7 @@ export const analyticsTaskRunner: TaskRunner = {
 
     try {
       const result = await instrumentAnalytics(state, config);
-      console.log(`[Analytics] Task completed with result: ${result}`);
+      getLogger().info({ result }, "Analytics task completed");
 
       return {
         tasks: [
@@ -215,7 +216,7 @@ export const analyticsTaskRunner: TaskRunner = {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      console.error(`[Analytics] Task failed:`, errorMessage);
+      getLogger().error({ err: error }, "Analytics task failed");
 
       return {
         tasks: [

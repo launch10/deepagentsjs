@@ -1,5 +1,5 @@
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLLM } from "@core";
+import { getLLM, getLogger } from "@core";
 import { NodeMiddleware } from "@middleware";
 import { Insights } from "@types";
 import { type InsightsGraphState } from "@annotation";
@@ -271,7 +271,7 @@ function validateInsightIntents(
 
   if (hasGoodMetrics && !hasPositive) {
     // The LLM failed to include a positive - we'll log this but not fail
-    console.warn("Insights validation: Expected at least one positive insight given the metrics");
+    getLogger().warn("Insights validation: expected at least one positive insight given the metrics");
   }
 }
 
@@ -371,7 +371,7 @@ export const generateInsightsNode = NodeMiddleware.use(
       };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error generating insights";
-      console.error("Error generating insights:", errorMessage);
+      getLogger().error({ err }, "Error generating insights");
 
       return {
         error: { message: errorMessage, node: "generateInsights" },

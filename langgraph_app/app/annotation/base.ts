@@ -42,7 +42,10 @@ function timestampedMessagesReducer(
 }
 
 export const BaseAnnotation = Annotation.Root({
-  threadId: Annotation<ThreadIDType | undefined>(),
+  threadId: Annotation<ThreadIDType | undefined>({
+    default: () => undefined,
+    reducer: (current, next) => next ?? current,
+  }),
 
   error: Annotation<ErrorStateType | undefined>({
     default: () => undefined,

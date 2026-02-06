@@ -6,6 +6,7 @@
  * Rails has a backup polling job, so failures are logged but don't block.
  */
 import { createRailsApiClient } from "@rails_api";
+import { getLogger } from "../logger";
 
 /**
  * Notify Rails that usage records are ready to be charged.
@@ -20,9 +21,9 @@ export async function notifyRails(runId: string): Promise<void> {
     });
 
     if (response.error) {
-      console.warn(`[notifyRails] Error for runId ${runId}:`, response.error);
+      getLogger({ component: "notifyRails" }).warn({ runId, error: response.error }, "Rails notification error");
     }
   } catch (error) {
-    console.warn(`[notifyRails] Failed for runId ${runId}:`, error);
+    getLogger({ component: "notifyRails" }).warn({ runId, err: error }, "Rails notification failed");
   }
 }

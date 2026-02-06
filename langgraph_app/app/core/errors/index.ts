@@ -4,8 +4,7 @@ import { env } from "@app";
 
 const devLogger = (e: unknown) => {
   if (env.NODE_ENV === "test" || env.NODE_ENV === "development") {
-    console.log(`ERROR!!!`);
-    console.log(e);
+    console.error("[Launch10 Error]", e);
   }
 };
 

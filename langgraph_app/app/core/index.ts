@@ -7,3 +7,4 @@ export * from "./postgres";
 export * from "./graphParams";
 export * from "./env";
 export * from "./billing";
+export * from "./logger";

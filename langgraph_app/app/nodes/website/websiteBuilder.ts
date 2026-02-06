@@ -7,9 +7,11 @@ import { createCodingAgent, singleShotEdit, classifyEditWithLLM } from "@nodes";
 import { buildFileTree, getCodingAgentBackend } from "@nodes";
 import { createContextMessage } from "langgraph-ai-sdk";
 import { isCacheModeEnabled } from "./cacheMode";
+import { prepareContextWindow } from "./contextWindow";
 import { getSchedulingToolMinorEditFiles } from "@cache";
 import { lastAIMessage, type Website } from "@types";
 import { injectAgentContext } from "@api/middleware";
+import { getLogger } from "@core";
 import type { WebsiteFilesBackend } from "@services";
 
 /**
@@ -72,7 +74,7 @@ const classifyRoute = async (
   const { tree } = await buildFileTree(backend);
 
   const route = await classifyEditWithLLM(userText, tree);
-  console.log(`Edit classified as: ${route}`);
+  getLogger().info({ route }, "Edit classified");
 
   if (route === "simple") {
     return { useSingleShot: true, backend };
@@ -102,7 +104,15 @@ const buildContext = async (state: WebsiteGraphState) => {
     ? [createContextMessage("Create a landing page for this business")]
     : []; // For edits, just use the user's message directly
 
-  return [...contextMessages, ...instructions];
+  const allMessages = [...contextMessages, ...instructions];
+
+  // Window for edit turns as a safety net (caps first-call token count).
+  // compactConversation handles long-term summarization in the graph state.
+  if (!isFirstMessage) {
+    return prepareContextWindow(allMessages, { maxTurnPairs: 10, maxChars: 40_000 });
+  }
+
+  return allMessages;
 };
 
 export const websiteBuilderNode = NodeMiddleware.use(
@@ -124,12 +134,12 @@ export const websiteBuilderNode = NodeMiddleware.use(
     const routeResult = await classifyRoute(state);
 
     if (routeResult.useSingleShot) {
-      console.log("Using single-shot edit path");
+      getLogger().info("Using single-shot edit path");
       return await singleShotEdit(state, messages, routeResult.backend);
     }
 
     // Full agent path: create flow, bugfix, or complex edits
-    console.log("Using full agent path");
+    getLogger().info("Using full agent path");
     const isFirstMessage = state.messages.length === 0;
     const agent = await createCodingAgent({ ...state, isFirstMessage });
 
