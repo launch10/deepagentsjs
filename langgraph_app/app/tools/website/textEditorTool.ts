@@ -69,6 +69,9 @@ async function handleStrReplace(
   backend: WebsiteFilesBackend,
   input: { path: string; old_str: string; new_str: string }
 ): Promise<string> {
+  if (input.old_str == null || input.new_str == null) {
+    return `Error: str_replace requires both old_str and new_str parameters.`;
+  }
   const result = await backend.edit(input.path, input.old_str, input.new_str);
 
   if (result.error) {

@@ -81,7 +81,14 @@ ${fileTree}`;
 function buildSingleShotSystemMessage(fileTree: string, preReadContent: string): SystemMessage {
   const text = `You are an expert React/TypeScript developer. You will make edits to landing page components in a SINGLE response.
 
-CRITICAL: This is a single-shot edit. You get ONE response. All file contents are pre-loaded below — do NOT use the "view" command. Go straight to str_replace edits.
+CRITICAL RULES:
+- This is a single-shot edit. You get ONE response.
+- All file contents are pre-loaded below — NEVER use the "view" command. Go straight to str_replace edits.
+- ONLY edit files listed in the file tree below. NEVER guess or invent file paths that don't appear in the tree.
+
+## File Structure
+- **src/pages/IndexPage.tsx** (or src/App.tsx if no pages/ dir) is the PAGE COMPOSITION ROOT — it imports and renders all section components. For layout changes that affect the page structure (reordering sections, hiding/removing sections, adding spacing between sections), edit the composition root.
+- **src/components/*.tsx** are individual section components (Hero, Features, CTA, etc.). For changes within a specific section (text, colors, styles), edit that component file directly.
 
 ## Rules
 1. Preserve tracking: Never remove L10.createLead() calls or tracking imports.
@@ -90,7 +97,7 @@ CRITICAL: This is a single-shot edit. You get ONE response. All file contents ar
 4. Minimal edits: Use str_replace to change only the lines that differ. Pick small, unique anchors.
 
 ## Workflow
-1. All component source code is already loaded below — read it directly, do NOT call view
+1. All source files are pre-loaded below — read them directly, do NOT call view
 2. Identify which file(s) to edit based on the user's request
 3. Use str_replace_based_edit_tool with command "str_replace" to make targeted changes
 4. Write a brief (1-2 sentence) confirmation of what you changed
@@ -98,7 +105,7 @@ CRITICAL: This is a single-shot edit. You get ONE response. All file contents ar
 ## Project File Tree
 ${fileTree}
 
-## All Component Files (pre-loaded — do NOT use view)
+## All Source Files (pre-loaded — do NOT use view)
 ${preReadContent}`;
 
   return new SystemMessage({
@@ -128,10 +135,14 @@ export async function singleShotEdit(
 ): Promise<{ messages: BaseMessage[]; status: "completed" }> {
   const backend = existingBackend ?? (await getCodingAgentBackend(state));
 
-  // Pre-load all component files into context
+  // Pre-load source files into context: page components, pages, app root, CSS, libs.
+  // Exclude ui/ library components (shadcn) — rarely edited and adds ~15K tokens of noise.
   const { tree, allPaths } = await buildFileTree(backend);
-  const componentPaths = allPaths.filter((p) => p.includes("src/components/"));
-  const preReadContent = await preReadFiles(backend, componentPaths);
+  const sourcePaths = allPaths.filter(
+    (p) => p.includes("src/") && !p.includes("/components/ui/") && /\.(tsx?|css)$/.test(p)
+  );
+  console.log(`Pre-loading ${sourcePaths.length} source files`);
+  const preReadContent = await preReadFiles(backend, sourcePaths);
 
   const systemMessage = buildSingleShotSystemMessage(tree, preReadContent);
 
@@ -150,6 +161,8 @@ export async function singleShotEdit(
 
   const response = await modelWithTools.invoke(invokeMessages);
   const toolCalls = response.tool_calls ?? [];
+
+  console.log(`Single-shot: ${toolCalls.length} tool call(s)`);
 
   if (toolCalls.length === 0) {
     // No tool calls — LLM just responded with text
