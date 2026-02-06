@@ -4,8 +4,9 @@ import type { BaseMessage } from "@langchain/core/messages";
 import { getLLM } from "@core";
 import { toStructuredMessage } from "langgraph-ai-sdk";
 import { executeTextEditorCommand, type TextEditorInput } from "@tools";
-import { getCodingAgentBackend, type MinimalCodingAgentState } from "./agent";
+import { getCodingAgentBackend, getTheme, type MinimalCodingAgentState } from "./agent";
 import { buildFileTree, preReadFiles } from "./superlightEditAgent";
+import { formatTypographyPrompt, type CodingPromptState } from "@prompts";
 import type { WebsiteFilesBackend } from "@services";
 
 /**
@@ -42,10 +43,10 @@ SIMPLE edits: Targeted changes to 1-3 existing files. Examples:
 - Showing/hiding elements
 - Minor layout adjustments within a component
 - Style tweaks (backgrounds, borders, shadows)
+- Reordering, swapping, hiding, or removing existing sections (just editing the composition root)
 
 COMPLEX edits: Structural changes or multi-file work. Examples:
-- Adding new sections or components
-- Reorganizing page structure
+- Adding NEW sections or components that don't exist yet
 - Adding interactivity, forms, or logic
 - Redesigning or rebuilding a section from scratch
 - Changes that affect many files at once ("make the whole page darker")
@@ -73,13 +74,81 @@ ${fileTree}`;
 }
 
 /**
+ * Build condensed design guidance for the single-shot prompt.
+ * Includes the most impactful subset of the full coding agent's design context:
+ * theme colors, typography hierarchy, hover/animation patterns, and CSS variables.
+ */
+function buildDesignGuidance(theme?: CodingPromptState["theme"]): string {
+  const sections: string[] = [];
+
+  // Theme colors — most important for edits that touch colors/backgrounds
+  sections.push(`## Theme Colors (shadcn)
+
+Use semantic color classes. Each role has a background + matching text:
+| Element | Background | Text on it |
+|---------|-----------|------------|
+| Page | bg-background | text-foreground |
+| Primary (hero/CTAs) | bg-primary | text-primary-foreground |
+| Secondary (buttons) | bg-secondary | text-secondary-foreground |
+| Muted/subtle | bg-muted | text-muted-foreground |
+| Accent (badges) | bg-accent | text-accent-foreground |
+| Cards | bg-card | text-card-foreground |
+
+Section backgrounds: ONLY use bg-background, bg-muted, or bg-primary for full-width sections. NEVER bg-secondary, bg-accent, or bg-card for sections.
+Page rhythm: Hero=bg-primary → Features=bg-muted → Content=bg-background → CTA=bg-primary.
+Cards on colored sections: use bg-card or bg-background for the card to create contrast.`);
+
+  // CSS variable values — so the LLM knows what colors actually resolve to
+  if (theme?.semanticVariables) {
+    const vars = Object.entries(theme.semanticVariables)
+      .map(([key, value]) => `  ${key}: ${value}`)
+      .join("\n");
+    sections.push(`## Current Theme CSS Variables (HSL values)\n${vars}`);
+  }
+
+  // Typography recommendations — theme-specific contrast guidance
+  if (theme?.typography_recommendations) {
+    sections.push(formatTypographyPrompt(theme.typography_recommendations, theme.colors));
+  }
+
+  // Typography sizes and spacing — common edit targets
+  sections.push(`## Typography & Spacing
+
+Headlines: Hero text-4xl md:text-5xl lg:text-7xl font-bold. Sections text-3xl md:text-4xl lg:text-5xl.
+Body: text-base or text-lg. Muted text uses text-muted-foreground.
+Section padding: py-16 md:py-20 lg:py-24. Element gaps: gap-4 md:gap-6 lg:gap-8.`);
+
+  // Hover & animation patterns — edits often add/modify these
+  sections.push(`## Hover & Transitions
+
+Buttons: hover:scale-105 transition-all duration-200. Cards: hover:shadow-lg hover:-translate-y-1.
+Use transition-all duration-200 for smooth interactions. Keep durations 200-400ms.`);
+
+  // Tracking — condensed version of the full tracking prompt
+  sections.push(`## Tracking (L10)
+
+Import: \`import { L10 } from '@/lib/tracking'\`
+Simple signup: \`L10.createLead(email).then(() => setStatus('success')).catch((e) => setError(e.message))\`
+Tiered pricing: \`L10.createLead(email, { value: tierPrice })\`
+NEVER remove L10.createLead() calls or tracking imports.`);
+
+  return sections.join("\n\n");
+}
+
+/**
  * Build the system prompt with cache_control breakpoint on the last content block.
  * Since we call .invoke() directly (no agent loop), the promptCachingMiddleware
  * doesn't apply. We add cache breakpoints manually so the ~28K system prompt
  * is cached across edits to the same website.
  */
-function buildSingleShotSystemMessage(fileTree: string, preReadContent: string): SystemMessage {
-  const text = `You are an expert React/TypeScript developer. You will make edits to landing page components in a SINGLE response.
+function buildSingleShotSystemMessage(
+  fileTree: string,
+  preReadContent: string,
+  theme?: CodingPromptState["theme"]
+): SystemMessage {
+  const designGuidance = buildDesignGuidance(theme);
+
+  const text = `You are an expert landing page developer with great design taste. You make edits to React/TypeScript landing page components in a SINGLE response.
 
 CRITICAL RULES:
 - This is a single-shot edit. You get ONE response.
@@ -91,10 +160,11 @@ CRITICAL RULES:
 - **src/components/*.tsx** are individual section components (Hero, Features, CTA, etc.). For changes within a specific section (text, colors, styles), edit that component file directly.
 
 ## Rules
-1. Preserve tracking: Never remove L10.createLead() calls or tracking imports.
-2. Preserve theme colors: Use CSS variable classes (bg-primary, text-foreground, etc.) — never hardcode hex values unless the user explicitly asks for a specific color.
-3. Preserve imports: Keep existing imports unless explicitly asked to remove them.
-4. Minimal edits: Use str_replace to change only the lines that differ. Pick small, unique anchors.
+1. Use CSS variable classes (bg-primary, text-foreground, etc.) — never hardcode hex values unless the user explicitly asks for a specific color.
+2. Preserve imports: Keep existing imports unless explicitly asked to remove them.
+3. Minimal edits: Use str_replace to change only the lines that differ. Pick small, unique anchors.
+
+${designGuidance}
 
 ## Workflow
 1. All source files are pre-loaded below — read them directly, do NOT call view

@@ -8,9 +8,9 @@
  *   Hero.tsx, Features.tsx, CTA.tsx, Footer.tsx, HowItWorks.tsx,
  *   Problem.tsx, SocialProof.tsx, App.tsx (composition root)
  *
- * Cost budget: ~$5 total
+ * Cost budget: ~$7 total
  * - Classifier calls: ~$0.0001 each (negligible)
- * - Single-shot edits (Haiku): ~$0.005 each
+ * - Single-shot edits (Haiku): ~$0.005 each (all 25 simple edits executed)
  *
  * Usage:
  *   cd langgraph_app
@@ -436,18 +436,21 @@ describe("Single-Shot Edit Eval", () => {
   });
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // Part 2: Single-Shot Execution
+  // Part 2: Single-Shot Execution (all 25 simple edits)
   //
-  // Runs edits through the full pipeline. Each test restores from snapshot.
+  // Runs ALL simple edits through the full pipeline. Each test restores
+  // from snapshot for isolation.
   //
   // Coverage across ALL real components:
   //   Hero.tsx, Features.tsx, CTA.tsx, Footer.tsx,
-  //   HowItWorks.tsx, Problem.tsx, SocialProof.tsx, App.tsx
+  //   HowItWorks.tsx, Problem.tsx, SocialProof.tsx, IndexPage.tsx
   //
   // Verifies per edit:
-  //   1. Cost under $0.02
-  //   2. ≤3 LLM calls
-  //   3. Correct file(s) modified (warns if wrong target)
+  //   1. Stream returns non-empty chat response
+  //   2. Cost under $0.02
+  //   3. ≤3 LLM calls
+  //   4. At least one file modified
+  //   5. Correct file(s) modified (warns if wrong target)
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   describe("Single-shot execution", () => {
     let ctx: Awaited<ReturnType<typeof getTestContext>>;
@@ -464,7 +467,7 @@ describe("Single-Shot Edit Eval", () => {
       }
     });
 
-    const runEditTest = (testCase: EditTestCase) => {
+    for (const testCase of SIMPLE_EDITS) {
       it(`[${testCase.label}] ${testCase.prompt}`, async () => {
         await DatabaseSnapshotter.restoreSnapshot("website_generated");
         ctx = await getTestContext();
@@ -484,7 +487,10 @@ describe("Single-Shot Edit Eval", () => {
             messages: [new HumanMessage(testCase.prompt)],
           },
         });
-        await consumeStream(response);
+        const streamOutput = await consumeStream(response);
+
+        // ── Chat response ──
+        expect(streamOutput.length).toBeGreaterThan(0);
 
         // ── Cost ──
         const usageRecords = await db.select().from(llmUsage);
@@ -516,33 +522,7 @@ describe("Single-Shot Edit Eval", () => {
           }
         }
       }, 120000);
-    };
-
-    // ── One test per component + cross-cutting ──
-    // Hero
-    runEditTest(SIMPLE_EDITS.find((e) => e.label === "hero-headline-text")!);
-    runEditTest(SIMPLE_EDITS.find((e) => e.label === "hero-padding")!);
-    // Features
-    runEditTest(SIMPLE_EDITS.find((e) => e.label === "features-center")!);
-    runEditTest(SIMPLE_EDITS.find((e) => e.label === "features-bg-darker")!);
-    // CTA
-    runEditTest(SIMPLE_EDITS.find((e) => e.label === "cta-button-text")!);
-    runEditTest(SIMPLE_EDITS.find((e) => e.label === "cta-button-red")!);
-    // Footer
-    runEditTest(SIMPLE_EDITS.find((e) => e.label === "footer-year")!);
-    // HowItWorks
-    runEditTest(SIMPLE_EDITS.find((e) => e.label === "howitworks-step-size")!);
-    // Problem
-    runEditTest(SIMPLE_EDITS.find((e) => e.label === "problem-heading")!);
-    // SocialProof
-    runEditTest(SIMPLE_EDITS.find((e) => e.label === "socialproof-bigger")!);
-    // Cross-cutting (App.tsx)
-    runEditTest(SIMPLE_EDITS.find((e) => e.label === "cross-section-spacing")!);
-    runEditTest(SIMPLE_EDITS.find((e) => e.label === "cross-swap-sections")!);
-    runEditTest(SIMPLE_EDITS.find((e) => e.label === "cross-hide-socialproof")!);
-    // Vague
-    runEditTest(SIMPLE_EDITS.find((e) => e.label === "vague-top-bigger")!);
-    runEditTest(SIMPLE_EDITS.find((e) => e.label === "hero-pop")!);
+    }
   });
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

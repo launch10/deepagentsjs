@@ -7,7 +7,6 @@ import { SearchIconsTool } from "@tools";
 import { copywriterSubAgent, buildCoderSubAgent } from "./subagents";
 import { checkpointer } from "@core";
 import {
-  toolRetryMiddleware,
   modelFallbackMiddleware as modelFallbackMiddlewareBuilder,
   summarizationMiddleware as summarizationMiddlewareBuilder,
   type AgentMiddleware,
@@ -33,7 +32,7 @@ const getMiddlewares = (): AgentMiddleware[] => {
   //   keep: { messages: 15 },
   // });
 
-  return [createPromptCachingMiddleware(), toolRetryMiddleware()];
+  return [createPromptCachingMiddleware()];
 };
 
 export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
@@ -62,7 +61,7 @@ export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
   return backend;
 };
 
-const getTheme = async (
+export const getTheme = async (
   state: MinimalCodingAgentState
 ): Promise<CodingPromptState["theme"] | undefined> => {
   if (!state.websiteId || !state.jwt) {

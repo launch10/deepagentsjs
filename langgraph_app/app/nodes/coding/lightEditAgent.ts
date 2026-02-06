@@ -1,7 +1,7 @@
 import { createDeepAgent } from "deepagents";
 import { getLLM, createPromptCachingMiddleware } from "@core";
 import { WebsiteFilesBackend } from "@services";
-import { toolRetryMiddleware, type AgentMiddleware } from "langchain";
+import { type AgentMiddleware } from "langchain";
 import { getCodingAgentBackend, type MinimalCodingAgentState } from "./agent";
 
 const LIGHT_EDIT_SYSTEM_PROMPT = `You are an expert React/TypeScript developer editing landing page components.
@@ -32,7 +32,8 @@ export async function createLightEditAgent(
 ) {
   const backend = options?.backend ?? (await getCodingAgentBackend(state));
   const llm = await getLLM({ skill: "coding", speed: "blazing", cost: "paid", maxTier: 3 });
-  const middlewares: AgentMiddleware[] = [createPromptCachingMiddleware(), toolRetryMiddleware()];
+  // We don't use toolRetryMiddleware - when an edit fails, it can't be retried (applying the same edit again just wastes time and money)
+  const middlewares: AgentMiddleware[] = [createPromptCachingMiddleware()];
 
   return createDeepAgent({
     model: llm as any,
