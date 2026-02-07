@@ -19,6 +19,34 @@ From an engineering perspective, it is a full-stack application that consists of
 
 The Rails app manages users, authentication, and project metadata. The Langgraph service handles AI-powered landing page generation and updates.
 
+## Documentation
+
+The `docs/` directory at the project root is the canonical reference for how every system works today. **Always check docs/ first** when you need to understand a system before diving into code.
+
+| Directory | What's There |
+|-----------|-------------|
+| [docs/README.md](docs/README.md) | Master index with links to all docs |
+| `docs/architecture/` | Two-service architecture, auth, async patterns |
+| `docs/frontend/` | React + Inertia architecture, components, streaming, state management |
+| `docs/website/` | Coding agent, themes, templates, domains, WebContainers |
+| `docs/deployment/` | Deploy pipeline, Atlas (Cloudflare), firewall |
+| `docs/brainstorm/` | Brainstorm agent flow |
+| `docs/ads/` | Google Ads, account connect, campaign deploy |
+| `docs/analytics/` | Tracking, AI insights |
+| `docs/billing/` | Credits, Stripe, charging, subscriptions (13 docs) |
+| `docs/agent-infrastructure/` | LLM config, cost management, SDK, chat system |
+| `docs/support/` | Help center, FAQ agent |
+| `docs/testing/` | Test stack, snapshots, Playwright, Polly.js, evals |
+| `docs/infrastructure/` | Services/ports, shared DB, background jobs |
+| `docs/decisions/` | Architecture Decision Records (ADRs) |
+| `docs/project-workflow/` | Brainstorm → website → ads lifecycle |
+
+**Knowledge hierarchy:**
+- **docs/** = "How does it work today?" — Current state reference
+- **plans/** = "What do we want to build?" — Forward-looking (archived when implemented)
+- **decisions/** = "Why did we choose this?" — ADR format, append-only
+- **CLAUDE.md** = Agent instructions — Quick-start guide, links to docs/ for depth
+
 ## Design System
 
 Figma files (accessible via Figma MCP):
