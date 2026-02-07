@@ -971,7 +971,7 @@ describe.sequential("Ads Flow", () => {
 
       const toolCall = result.state.messages?.at(-2);
       expect(toolCall).toBeDefined();
-      expect(toolCall?.content).toMatch(/What are .*Details.*/i);
+      expect(toolCall?.content).toMatch(/Q:.*What are/i);
 
       const lastMessage = result.state.messages?.at(-1) as AIMessage;
       const message = getTextData(lastMessage);

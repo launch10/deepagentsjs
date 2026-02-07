@@ -199,9 +199,7 @@ describe("singleShotEdit error handling", () => {
 
   it("appends warning when SOME edits fail", async () => {
     const backend = makeFakeBackend();
-    mockInvoke.mockResolvedValue(
-      makeLLMResponseWithToolCalls("I've updated the hero section.", 3)
-    );
+    mockInvoke.mockResolvedValue(makeLLMResponseWithToolCalls("I've updated the hero section.", 3));
     mockExecuteTextEditorCommand
       .mockResolvedValueOnce("Successfully replaced text at exactly one location.")
       .mockResolvedValueOnce("Error: No match found for replacement.")
@@ -233,20 +231,14 @@ describe("singleShotEdit error handling", () => {
       .mockResolvedValueOnce("Error: File not found.")
       .mockResolvedValueOnce("Error: No match found for replacement.");
 
-    await singleShotEdit(
-      baseState,
-      [new HumanMessage("Change stuff")],
-      backend
-    );
+    await singleShotEdit(baseState, [new HumanMessage("Change stuff")], backend);
 
     expect(mockRollbarError).toHaveBeenCalled();
   });
 
   it("does NOT retry when SOME edits succeed (partial failure)", async () => {
     const backend = makeFakeBackend();
-    mockInvoke.mockResolvedValue(
-      makeLLMResponseWithToolCalls("I've updated the hero section.", 3)
-    );
+    mockInvoke.mockResolvedValue(makeLLMResponseWithToolCalls("I've updated the hero section.", 3));
     mockExecuteTextEditorCommand
       .mockResolvedValueOnce("Successfully replaced text at exactly one location.")
       .mockResolvedValueOnce("Error: No match found for replacement.")
@@ -265,7 +257,9 @@ describe("singleShotEdit error handling", () => {
 
   it("reads failed file contents for retry context", async () => {
     const backend = makeFakeBackend();
-    (backend.read as ReturnType<typeof vi.fn>).mockResolvedValue("const Hero = () => <h1>Hello</h1>;");
+    (backend.read as ReturnType<typeof vi.fn>).mockResolvedValue(
+      "const Hero = () => <h1>Hello</h1>;"
+    );
 
     // First call fails, retry succeeds
     mockInvoke
@@ -275,11 +269,7 @@ describe("singleShotEdit error handling", () => {
       .mockResolvedValueOnce("Error: No match found for replacement.")
       .mockResolvedValueOnce("Successfully replaced text at exactly one location.");
 
-    await singleShotEdit(
-      baseState,
-      [new HumanMessage("Change the headline")],
-      backend
-    );
+    await singleShotEdit(baseState, [new HumanMessage("Change the headline")], backend);
 
     // Backend.read should have been called to get current file contents for retry
     expect(backend.read).toHaveBeenCalledWith("/src/components/Hero.tsx");
@@ -287,7 +277,7 @@ describe("singleShotEdit error handling", () => {
     const retryInvokeArgs = mockInvoke.mock.calls[1]?.[0] as any[];
     expect(retryInvokeArgs).toBeDefined();
     const lastMsg = retryInvokeArgs[retryInvokeArgs.length - 1];
-    expect(lastMsg.content).toContain("previous edits failed");
+    expect(lastMsg.content).toContain("Your edits failed with these errors");
     expect(lastMsg.content).toContain("Hello");
   });
 });

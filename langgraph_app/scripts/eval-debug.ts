@@ -46,7 +46,15 @@ type WebsiteEvalInput =
 // Direct database snapshot restoration (no Rails required)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const SNAPSHOT_DIR = join(process.cwd(), "..", "rails_app", "test", "fixtures", "database", "snapshots");
+const SNAPSHOT_DIR = join(
+  process.cwd(),
+  "..",
+  "rails_app",
+  "test",
+  "fixtures",
+  "database",
+  "snapshots"
+);
 
 // Excluded tables (same as Rails)
 const EXCLUDED_TABLES = [
@@ -200,10 +208,7 @@ async function getTestContext() {
 }
 
 async function collectFiles(websiteId: number): Promise<Record<string, { content: string }>> {
-  const dbFiles = await db
-    .select()
-    .from(websiteFiles)
-    .where(eq(websiteFiles.websiteId, websiteId));
+  const dbFiles = await db.select().from(websiteFiles).where(eq(websiteFiles.websiteId, websiteId));
   const fileMap: Record<string, { content: string }> = {};
   for (const f of dbFiles) {
     if (f.path) fileMap[f.path] = { content: f.content };
@@ -215,7 +220,7 @@ function extractSourceCode(files: Record<string, any>): string {
   return Object.entries(files)
     .filter(([path]) => /\.(tsx?|css)$/.test(path) && path.includes("src/"))
     .map(([path, f]) => {
-      const content = typeof f === "string" ? f : f?.content ?? "";
+      const content = typeof f === "string" ? f : (f?.content ?? "");
       return `### ${path}\n\`\`\`tsx\n${content}\n\`\`\``;
     })
     .join("\n\n");
@@ -407,7 +412,9 @@ async function main() {
     console.log("\n📋 Available test cases:\n");
     TEST_CASES.forEach((tc, i) => {
       console.log(`  ${i + 1}. [${tc.type}] ${tc.label}`);
-      console.log(`     "${tc.userMessage.substring(0, 60)}${tc.userMessage.length > 60 ? "..." : ""}"\n`);
+      console.log(
+        `     "${tc.userMessage.substring(0, 60)}${tc.userMessage.length > 60 ? "..." : ""}"\n`
+      );
     });
 
     console.log("\n📦 Available snapshots:");
@@ -420,7 +427,7 @@ async function main() {
   // Handle specific test case argument
   let selectedCase: WebsiteEvalInput | undefined;
 
-  if (args.length > 0 && !args[0].startsWith("--")) {
+  if (args.length > 0 && args[0] && !args[0].startsWith("--")) {
     const label = args[0];
     selectedCase = TEST_CASES.find((tc) => tc.label === label);
     if (!selectedCase) {

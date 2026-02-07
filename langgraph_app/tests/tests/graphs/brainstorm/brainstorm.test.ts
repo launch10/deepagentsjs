@@ -4,7 +4,7 @@ import { type BrainstormGraphState } from "@state";
 import { DatabaseSnapshotter, BrainstormNextStepsService } from "@services";
 import { brainstormGraph as uncompiledGraph } from "@graphs";
 import { HumanMessage, AIMessage, BaseMessage, ToolMessage } from "@langchain/core/messages";
-import { lastAIMessage, type UUIDType, firstHumanMessage } from "@types";
+import { lastAIMessage, type UUIDType, type ThreadIDType, firstHumanMessage } from "@types";
 import { createBrainstorm } from "@nodes";
 import { saveAnswers } from "@tools";
 import { v7 as uuidv7 } from "uuid";
@@ -190,7 +190,7 @@ const restartChatFrom = async (
 
   const chatHistory = chatMethodMap[topic]();
 
-  const threadId = uuidv7();
+  const threadId = uuidv7() as unknown as ThreadIDType;
   const projectUUID = uuidv7();
   const config = { configurable: { thread_id: threadId } };
   const firstMessage = firstHumanMessage({ messages: chatHistory });

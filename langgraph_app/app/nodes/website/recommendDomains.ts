@@ -116,10 +116,16 @@ export const domainRecommendationsNode = NodeMiddleware.use(
         hasCredits
       );
 
-      getLogger({ component: "domainRecommendations" }).info({ state: recommendations.state }, "Completed domain recommendations");
+      getLogger({ component: "domainRecommendations" }).info(
+        { state: recommendations.state },
+        "Completed domain recommendations"
+      );
       return { domainRecommendations: recommendations };
     } catch (error) {
-      getLogger({ component: "domainRecommendations" }).error({ err: error }, "Domain recommendations error");
+      getLogger({ component: "domainRecommendations" }).error(
+        { err: error },
+        "Domain recommendations error"
+      );
       // On error, return fallback recommendations
       const fallback = getFallbackRecommendations("my-site", []);
       return { domainRecommendations: fallback };
@@ -145,6 +151,10 @@ function convertToRecommendations(
       const path = rec.path?.startsWith("/") ? rec.path : `/${rec.path || ""}`;
       const normalizedPath = path === "/" ? "" : path;
 
+      // Look up existingDomainId from the actual domain data — the LLM can't know DB IDs
+      const matchingDomain =
+        rec.source === "existing" ? existingDomains.find((d) => d.domain === domain) : undefined;
+
       return {
         domain,
         subdomain: rec.subdomain.replace(PLATFORM_DOMAIN_SUFFIX, ""),
@@ -153,7 +163,7 @@ function convertToRecommendations(
         score: rec.score,
         reasoning: rec.reasoning,
         source: rec.source,
-        existingDomainId: rec.existingDomainId,
+        existingDomainId: matchingDomain?.id,
         availability: rec.source === "existing" ? ("existing" as const) : ("available" as const),
       };
     });

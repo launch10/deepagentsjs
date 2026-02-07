@@ -50,7 +50,7 @@ COMPLEX edits: Structural changes or multi-file work. Examples:
 - Adding interactivity, forms, or logic
 - Redesigning or rebuilding a section from scratch
 - Changes that affect many files at once ("make the whole page darker")
-- Bug reports or things that are "broken"
+- Bug reports, complaints about something being "wrong", or visual issues that need investigation (gaps, misalignment, broken layout)
 
 Respond with ONLY the word "simple" or "complex". Nothing else.
 
@@ -193,7 +193,10 @@ export async function singleShotEdit(
     preReadFiles(backend, sourcePaths),
     state.theme ? Promise.resolve(state.theme) : getTheme(state),
   ]);
-  getLogger().debug({ sourceFileCount: sourcePaths.length, theme: theme?.name ?? "none" }, "Pre-loading source files");
+  getLogger().debug(
+    { sourceFileCount: sourcePaths.length, theme: theme?.name ?? "none" },
+    "Pre-loading source files"
+  );
 
   const systemMessage = buildSingleShotSystemMessage(tree, preReadContent, theme);
 
@@ -238,7 +241,10 @@ export async function singleShotEdit(
     errors = result.errors;
 
     if (errors.length > 0) {
-      getLogger().warn({ errorCount: errors.length, errors }, "Single-shot edit had failed tool calls");
+      getLogger().warn(
+        { errorCount: errors.length, errors },
+        "Single-shot edit had failed tool calls"
+      );
       rollbar.error(new Error(`Single-shot edit failures: ${errors.length}/${editCalls.length}`), {
         errors: errors.join("; "),
         successCount,
@@ -254,7 +260,10 @@ export async function singleShotEdit(
       ? "You used the view command, but all files are already pre-loaded in the system prompt above. Do NOT call view. Use str_replace to make your edits directly."
       : `Your edits failed with these errors:\n${errors.map((e, i) => `${i + 1}. ${e}`).join("\n")}`;
 
-    getLogger().info({ hadViewOnly, errorCount: errors.length }, "All edits failed, retrying with feedback");
+    getLogger().info(
+      { hadViewOnly, errorCount: errors.length },
+      "All edits failed, retrying with feedback"
+    );
 
     const retryResult = await retryWithErrorContext(
       backend,
@@ -270,7 +279,8 @@ export async function singleShotEdit(
 
     // Retry also failed completely — signal escalation to full agent
     const failMessage = new AIMessage({
-      content: "I attempted to make the changes but encountered errors applying the edits. Could you try rephrasing your request?",
+      content:
+        "I attempted to make the changes but encountered errors applying the edits. Could you try rephrasing your request?",
     });
     const [failStructured] = await toStructuredMessage(failMessage);
     return { messages: [failStructured], status: "completed", allFailed: true };
@@ -331,9 +341,7 @@ async function retryWithErrorContext(
   errors: string[]
 ): Promise<{ messages: BaseMessage[]; status: "completed" } | null> {
   // Collect unique file paths from failed edits and re-read their current contents
-  const failedPaths = [
-    ...new Set(failedCalls.map((tc) => (tc.args as any)?.path).filter(Boolean)),
-  ];
+  const failedPaths = [...new Set(failedCalls.map((tc) => (tc.args as any)?.path).filter(Boolean))];
 
   const fileContents: string[] = [];
   for (const filePath of failedPaths) {
@@ -349,7 +357,9 @@ async function retryWithErrorContext(
 
   const retryParts = [errors.map((e, i) => `${i + 1}. ${e}`).join("\n")];
   if (fileContents.length > 0) {
-    retryParts.push(`Here are the current file contents — use these to pick correct anchors:\n\n${fileContents.join("\n\n")}`);
+    retryParts.push(
+      `Here are the current file contents — use these to pick correct anchors:\n\n${fileContents.join("\n\n")}`
+    );
   }
   retryParts.push("Use str_replace to make your edits. Do NOT call view.");
 
@@ -358,9 +368,7 @@ async function retryWithErrorContext(
   try {
     const retryResponse = await model.invoke([...originalMessages, retryMessage]);
     const retryToolCalls = retryResponse.tool_calls ?? [];
-    const retryEditCalls = retryToolCalls.filter(
-      (tc: any) => (tc.args as any)?.command !== "view"
-    );
+    const retryEditCalls = retryToolCalls.filter((tc: any) => (tc.args as any)?.command !== "view");
 
     if (retryEditCalls.length === 0) {
       // LLM gave up or only called view again — signal failure for escalation
@@ -383,7 +391,8 @@ async function retryWithErrorContext(
     const retryText = extractTextContent(retryResponse);
     let messageContent = retryText || "I've made the requested changes.";
     if (retryErrors.length > 0) {
-      messageContent += "\n\nNote: some edits could not be applied. You may want to verify the changes.";
+      messageContent +=
+        "\n\nNote: some edits could not be applied. You may want to verify the changes.";
     }
 
     const finalMessage = new AIMessage({ content: messageContent });

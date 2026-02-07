@@ -58,7 +58,7 @@ describe("FAQ Search Tool", () => {
 
     it("should return properly structured results", async () => {
       const faqService = getFAQSearchService();
-      const results = await faqService.search("What are callouts?", {
+      const results = await faqService.search("How do I create headlines?", {
         topK: 5,
         tags: ["ads"],
         status: "live",
