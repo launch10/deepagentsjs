@@ -35,10 +35,6 @@ export const domainRecommendationsOutputSchema = z.object({
       source: z
         .enum(["existing", "suggestion"])
         .describe("Whether this is an existing domain or a new AI suggestion"),
-      existingDomainId: z
-        .number()
-        .optional()
-        .describe("Domain ID for existing domains - use this with search_website_urls tool"),
     })
   ),
   topRecommendation: z
