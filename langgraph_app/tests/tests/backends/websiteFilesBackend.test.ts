@@ -169,7 +169,7 @@ describe("WebsiteFilesBackend", () => {
   });
 
   describe("write", () => {
-    it("writes to filesystem and database", async () => {
+    it("writes to filesystem and persists to database after flush", async () => {
       const testPath = "/src/test-file.ts";
       const testContent = 'export const test = "hello";';
 
@@ -183,6 +183,9 @@ describe("WebsiteFilesBackend", () => {
       );
       expect(fsContent).toBe(testContent);
 
+      // Flush deferred writes to DB
+      await backend.flush();
+
       const dbFiles = await db
         .select()
         .from(websiteFiles)
@@ -195,7 +198,7 @@ describe("WebsiteFilesBackend", () => {
       expect(dbFiles[0]?.shasum).toBeDefined();
     });
 
-    it("updates existing file via edit syncs to database", async () => {
+    it("updates existing file via edit and persists after flush", async () => {
       const testPath = "/src/update-test.ts";
       const initialContent = "const x = 1; const y = 2;";
 
@@ -211,6 +214,9 @@ describe("WebsiteFilesBackend", () => {
       );
       expect(fsContent).toBe("const x = 1; const y = 3;");
 
+      // Flush deferred writes to DB
+      await backend.flush();
+
       const dbFiles = await db
         .select()
         .from(websiteFiles)
@@ -224,7 +230,7 @@ describe("WebsiteFilesBackend", () => {
   });
 
   describe("edit", () => {
-    it("edits file in filesystem and syncs to database", async () => {
+    it("edits file in filesystem and persists to database after flush", async () => {
       const testPath = "/src/edit-test.ts";
       const initialContent = 'const greeting = "hello";';
 
@@ -239,6 +245,9 @@ describe("WebsiteFilesBackend", () => {
         "utf-8"
       );
       expect(fsContent).toBe('const greeting = "world";');
+
+      // Flush deferred writes to DB
+      await backend.flush();
 
       const dbFiles = await db
         .select()
@@ -275,6 +284,220 @@ describe("WebsiteFilesBackend", () => {
 
       const result = await backend.edit(testPath, "notfound", "replacement");
       expect(result.error).toBeDefined();
+    });
+  });
+
+  describe("dirty tracking", () => {
+    it("hasDirtyFiles() is false after hydrate", () => {
+      expect(backend.hasDirtyFiles()).toBe(false);
+      expect(backend.getDirtyPaths()).toEqual([]);
+    });
+
+    it("write() marks file as dirty", async () => {
+      await backend.write("/src/dirty-test.ts", "const x = 1;");
+      expect(backend.hasDirtyFiles()).toBe(true);
+      expect(backend.getDirtyPaths()).toContain("/src/dirty-test.ts");
+    });
+
+    it("edit() marks file as dirty", async () => {
+      // Write a file first, then edit it
+      await backend.write("/src/dirty-edit.ts", "const x = 1;");
+      // Clear dirty state via flush
+      await backend.flush();
+      expect(backend.hasDirtyFiles()).toBe(false);
+
+      await backend.edit("/src/dirty-edit.ts", "const x = 1", "const x = 2");
+      expect(backend.hasDirtyFiles()).toBe(true);
+      expect(backend.getDirtyPaths()).toContain("/src/dirty-edit.ts");
+    });
+
+    it("tracks multiple dirty files", async () => {
+      await backend.write("/src/a.ts", "a");
+      await backend.write("/src/b.ts", "b");
+      await backend.edit("/package.json", '"name"', '"projectName"');
+
+      const dirty = backend.getDirtyPaths();
+      expect(dirty).toHaveLength(3);
+      expect(dirty).toContain("/src/a.ts");
+      expect(dirty).toContain("/src/b.ts");
+      expect(dirty).toContain("/package.json");
+    });
+  });
+
+  describe("deferred writes", () => {
+    it("write() updates FS but does NOT persist to DB", async () => {
+      const testPath = "/src/deferred-write.ts";
+      const testContent = 'export const deferred = "yes";';
+
+      await backend.write(testPath, testContent);
+
+      // FS should have the content
+      const fsContent = await backend.read(testPath);
+      expect(fsContent).toBe(testContent);
+
+      // DB should NOT have it yet
+      const dbFiles = await db
+        .select()
+        .from(websiteFiles)
+        .where(
+          and(eq(websiteFiles.websiteId, websiteId), eq(websiteFiles.path, "src/deferred-write.ts"))
+        );
+      expect(dbFiles.length).toBe(0);
+    });
+
+    it("edit() updates FS but does NOT persist to DB", async () => {
+      // Use a file that exists from the snapshot (already in DB)
+      const files = await backend.globInfo("**/App.tsx");
+      expect(files.length).toBeGreaterThan(0);
+      const filePath = files[0]!.path;
+
+      const originalContent = await backend.read(filePath);
+      expect(originalContent).toBeTruthy();
+
+      // Pick a small unique string to replace
+      const oldStr = "export default";
+      expect(originalContent).toContain(oldStr);
+
+      await backend.edit(filePath, oldStr, "export default /* edited */");
+
+      // FS should have the edit
+      const fsContent = await backend.read(filePath);
+      expect(fsContent).toContain("/* edited */");
+
+      // DB should still have original content (edit not persisted)
+      const normalizedPath = filePath.replace(/^\//, "");
+      const dbFiles = await db
+        .select()
+        .from(websiteFiles)
+        .where(and(eq(websiteFiles.websiteId, websiteId), eq(websiteFiles.path, normalizedPath)));
+
+      // The file may be a template file (not in websiteFiles yet), so check accordingly
+      if (dbFiles.length > 0) {
+        expect(dbFiles[0]?.content).not.toContain("/* edited */");
+      }
+    });
+  });
+
+  describe("flush", () => {
+    it("flush() persists all dirty files to DB", async () => {
+      const testPath = "/src/flush-test.ts";
+      const testContent = 'export const flushed = "yes";';
+
+      await backend.write(testPath, testContent);
+
+      // Before flush: not in DB
+      let dbFiles = await db
+        .select()
+        .from(websiteFiles)
+        .where(
+          and(eq(websiteFiles.websiteId, websiteId), eq(websiteFiles.path, "src/flush-test.ts"))
+        );
+      expect(dbFiles.length).toBe(0);
+
+      // Flush
+      await backend.flush();
+
+      // After flush: in DB
+      dbFiles = await db
+        .select()
+        .from(websiteFiles)
+        .where(
+          and(eq(websiteFiles.websiteId, websiteId), eq(websiteFiles.path, "src/flush-test.ts"))
+        );
+      expect(dbFiles.length).toBe(1);
+      expect(dbFiles[0]?.content).toBe(testContent);
+    });
+
+    it("flush() batches multiple files in one call", async () => {
+      await backend.write("/src/batch-a.ts", "const a = 1;");
+      await backend.write("/src/batch-b.ts", "const b = 2;");
+      await backend.write("/src/batch-c.ts", "const c = 3;");
+
+      await backend.flush();
+
+      const dbFiles = await db
+        .select()
+        .from(websiteFiles)
+        .where(eq(websiteFiles.websiteId, websiteId));
+
+      const paths = dbFiles.map((f) => f.path);
+      expect(paths).toContain("src/batch-a.ts");
+      expect(paths).toContain("src/batch-b.ts");
+      expect(paths).toContain("src/batch-c.ts");
+    });
+
+    it("flush() is idempotent — second call is no-op", async () => {
+      await backend.write("/src/idempotent.ts", "const x = 1;");
+
+      await backend.flush();
+      expect(backend.hasDirtyFiles()).toBe(false);
+
+      // Second flush should do nothing
+      await backend.flush();
+      expect(backend.hasDirtyFiles()).toBe(false);
+
+      // DB should still have exactly one file
+      const dbFiles = await db
+        .select()
+        .from(websiteFiles)
+        .where(
+          and(eq(websiteFiles.websiteId, websiteId), eq(websiteFiles.path, "src/idempotent.ts"))
+        );
+      expect(dbFiles.length).toBe(1);
+    });
+
+    it("flush() sends final content after multiple edits to same file", async () => {
+      const testPath = "/src/multi-edit.ts";
+      await backend.write(testPath, "aaa bbb ccc");
+      await backend.edit(testPath, "aaa", "xxx");
+      await backend.edit(testPath, "bbb", "yyy");
+
+      await backend.flush();
+
+      const dbFiles = await db
+        .select()
+        .from(websiteFiles)
+        .where(
+          and(eq(websiteFiles.websiteId, websiteId), eq(websiteFiles.path, "src/multi-edit.ts"))
+        );
+      expect(dbFiles.length).toBe(1);
+      expect(dbFiles[0]?.content).toBe("xxx yyy ccc");
+    });
+
+    it("flush() clears dirty state", async () => {
+      await backend.write("/src/clear-dirty.ts", "test");
+      expect(backend.hasDirtyFiles()).toBe(true);
+
+      await backend.flush();
+      expect(backend.hasDirtyFiles()).toBe(false);
+      expect(backend.getDirtyPaths()).toEqual([]);
+    });
+
+    it("flush() with no dirty files is a no-op", async () => {
+      expect(backend.hasDirtyFiles()).toBe(false);
+      // Should not throw
+      await backend.flush();
+    });
+  });
+
+  describe("reads see deferred writes", () => {
+    it("read() returns content from deferred write", async () => {
+      await backend.write("/src/read-deferred.ts", "deferred content");
+      const content = await backend.read("/src/read-deferred.ts");
+      expect(content).toBe("deferred content");
+    });
+
+    it("read() returns content after deferred edit", async () => {
+      await backend.write("/src/read-edit.ts", "before edit");
+      await backend.edit("/src/read-edit.ts", "before", "after");
+      const content = await backend.read("/src/read-edit.ts");
+      expect(content).toBe("after edit");
+    });
+
+    it("globInfo() sees new deferred files", async () => {
+      await backend.write("/src/new-glob-file.tsx", "export default () => <div/>;");
+      const files = await backend.globInfo("**/new-glob-file.tsx");
+      expect(files.length).toBe(1);
     });
   });
 

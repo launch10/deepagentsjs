@@ -87,7 +87,7 @@ export const improveCopyNode = NodeMiddleware.use(
         : [...(state.messages || []), new HumanMessage(prompt)];
 
     return await createCodingAgent(
-      { ...state, isFirstMessage: false },
+      { ...state, isCreateFlow: false },
       {
         messages: messagesWithContext,
         route: "single-shot",

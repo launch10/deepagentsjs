@@ -251,6 +251,11 @@ export async function singleShotEdit(
         totalEdits: editCalls.length,
       });
     }
+
+    // Flush deferred writes to DB (only if at least one edit succeeded)
+    if (successCount > 0) {
+      await backend.flush();
+    }
   }
 
   // Retry when ALL edits failed or LLM only called view (no actual mutations).
@@ -386,6 +391,9 @@ async function retryWithErrorContext(
       getLogger().warn({ retryErrors }, "Single-shot retry also failed completely");
       return null;
     }
+
+    // Flush deferred writes to DB
+    await backend.flush();
 
     // At least some retry edits succeeded
     const retryText = extractTextContent(retryResponse);

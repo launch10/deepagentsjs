@@ -70,11 +70,16 @@ class API::V1::WebsiteFilesController < API::BaseController
       render json: {errors: ["Each file must have path and content"]}, status: :unprocessable_entity and return
     end
 
+    # Batch lookup: one query for all existing files by path (avoids N+1)
+    normalized_paths = files_params.map { |f| f[:path].gsub(/^\//, "") }
+    existing_files_by_path = website.website_files
+      .where(path: normalized_paths)
+      .index_by(&:path)
+
     website_files_attributes = files_params.map do |file_param|
-      path = file_param[:path]
       content = file_param[:content]
-      normalized_path = path.gsub(/^\//, "")
-      existing_file = website.website_files.find_by(path: normalized_path)
+      normalized_path = file_param[:path].gsub(/^\//, "")
+      existing_file = existing_files_by_path[normalized_path]
 
       if existing_file
         {id: existing_file.id, path: normalized_path, content: content}

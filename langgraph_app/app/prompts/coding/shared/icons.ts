@@ -8,19 +8,10 @@ export const iconsPrompt: CodingPromptFn = async (
   _state: CodingPromptState,
   _config?: LangGraphRunnableConfig
 ): Promise<string> => `
-    ### Icons - IMPORTANT
+    ### Icons
 
-    **Use the \`searchIcons\` tool to find Lucide React icons.**
+    Use **lucide-react** for all icons. Import by PascalCase name:
+    \`import { ArrowRight, Check, Star } from 'lucide-react'\`
 
-    **NEVER grep or search the codebase for "lucide-react" imports.**
-    - DO NOT: \`grep lucide-react\`
-    - DO NOT: \`grepRaw from.*lucide-react\`
-    - DO NOT: search for existing icon imports
-
-    Instead, call searchIcons with the concepts you need:
-    \`\`\`
-    searchIcons(queries: ["navigation", "settings", "checkmark", "arrow"], limit: 3)
-    \`\`\`
-
-    The tool returns icon names you can import directly: \`import { Menu, Settings, Check, ArrowRight } from 'lucide-react'\`
+    You already know the full Lucide icon library — pick icons directly from your knowledge.
 `;

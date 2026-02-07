@@ -177,7 +177,7 @@ class PollyManager {
     const { server } = PollyManager.polly!;
 
     // Passthrough to Rails on whatever port it's running (from config/services.sh)
-    const railsPort = process.env.RAILS_PORT || '3000';
+    const railsPort = process.env.RAILS_PORT || "3000";
     server.any(`http://localhost:${railsPort}/*path`).passthrough();
 
     // Passthrough hosts that should never be recorded.
@@ -211,24 +211,14 @@ class PollyManager {
   }
 
   /**
-   * Detect poisoned API responses that should never be persisted to recordings.
-   * These are transient errors (billing issues, bad model names) that would
-   * permanently break test playback if saved.
+   * Only persist successful (2xx) responses. Any non-2xx response is transient
+   * (auth errors, rate limits, server errors, bad requests) and would poison
+   * the recording — causing infinite retry loops or permanent test failures.
    */
   private static isPoisonedResponse(recording: any): boolean {
     const status = recording.response?.status;
-    const body = recording.response?.content?.text || "";
-
-    // Credit balance exhausted — transient billing error
-    if (status === 400 && body.includes("credit balance is too low")) return true;
-
-    // Bad model name (e.g. "model: sonnet" instead of full model ID)
-    if (status === 404 && body.includes('"model:')) return true;
-
-    // Rate limited — transient, should retry not persist
-    if (status === 429) return true;
-
-    return false;
+    if (typeof status !== "number") return true;
+    return status < 200 || status >= 300;
   }
 
   private static configureHeaders() {
@@ -304,7 +294,7 @@ class PollyManager {
         },
         keepUnusedRequests: true, // CRITICAL: Keep entries from previous nodes
       },
-      recordIfMissing: true,
+      recordIfMissing: !process.env.CI,
       matchRequestsBy: {
         method: true,
         headers: false,
@@ -313,7 +303,7 @@ class PollyManager {
         order: false,
         url: true,
       },
-      recordFailedRequests: true,
+      recordFailedRequests: false,
       logLevel: "silent",
     });
     PollyManager.configurePassthroughs();

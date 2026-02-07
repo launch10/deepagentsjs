@@ -11,6 +11,7 @@ import { getSchedulingToolMinorEditFiles } from "@cache";
 import type { Website } from "@types";
 import { injectAgentContext } from "@api/middleware";
 import { getLogger } from "@core";
+import { db, websiteFiles, eq } from "@db";
 
 /**
  * Get cached response for cache mode.
@@ -49,11 +50,24 @@ const cachedResponse = async (state: WebsiteGraphState) => {
  * - Production: 0 messages in state
  * - Eval/test: 1 HumanMessage passed for input control
  */
-const isCreateFlow = (messages: WebsiteGraphState["messages"]) =>
-  !messages.some((m) => m._getType() === "ai");
+const isCreateFlow = (state: WebsiteGraphState) => {
+  const messages = state.messages;
+  const anyAgentMessage = !messages.some((m) => m._getType() === "ai");
+
+  return !anyAgentMessage && !anyWebsiteFiles(state);
+};
+
+// Make separate function so short-circuit doesn't have to look it up if any AI message already exist
+const anyWebsiteFiles = (state: WebsiteGraphState) => {
+  return !!db
+    .select()
+    .from(websiteFiles)
+    .where(eq(websiteFiles.websiteId!, state.websiteId!))
+    .limit(1);
+};
 
 const buildContext = async (state: WebsiteGraphState) => {
-  const isFirstMessage = isCreateFlow(state.messages);
+  const isCreate = isCreateFlow(state);
 
   // Inject context events (brainstorm.finished, images.created, images.deleted)
   // This runs within AsyncLocalStorage context, preserving Polly.js caching
@@ -70,7 +84,7 @@ const buildContext = async (state: WebsiteGraphState) => {
 
   // For create flow, add instruction to create a landing page
   // Brainstorm context and images come from events via injectAgentContext
-  const instructions = isFirstMessage
+  const instructions = isCreate
     ? [createContextMessage("Create a landing page for this business")]
     : []; // For edits, just use the user's message directly
 
@@ -78,7 +92,7 @@ const buildContext = async (state: WebsiteGraphState) => {
 
   // Window for edit turns as a safety net (caps first-call token count).
   // compactConversation handles long-term summarization in the graph state.
-  if (!isFirstMessage) {
+  if (!isCreate) {
     return prepareContextWindow(allMessages, { maxTurnPairs: 10, maxChars: 40_000 });
   }
 
@@ -97,7 +111,7 @@ export const websiteBuilderNode = NodeMiddleware.use(
 
     // In cache mode (create only), return cached files instead of running the agent
     const cacheEnabled = isCacheModeEnabled(state);
-    const isFirstMessage = isCreateFlow(state.messages);
+    const isCreate = isCreateFlow(state);
 
     if (cacheEnabled) {
       return await cachedResponse(state);
@@ -106,11 +120,11 @@ export const websiteBuilderNode = NodeMiddleware.use(
     const messages = await buildContext(state);
 
     const result = await createCodingAgent(
-      { ...state, isFirstMessage },
+      { ...state, isCreateFlow: isCreate },
       {
         messages,
         config,
-        recursionLimit: isFirstMessage ? 150 : 50,
+        recursionLimit: isCreate ? 150 : 50,
       }
     );
 
@@ -121,7 +135,7 @@ export const websiteBuilderNode = NodeMiddleware.use(
     //    List top 3 issues if score < 7."
     // 3. If score < 7, inject the issues as a follow-up edit through singleShotEdit
     // 4. This creates a self-correcting loop: create → screenshot → evaluate → fix
-    // Only applies to create flow (isFirstMessage), not edits.
+    // Only applies to create flow (isCreateFlow), not edits.
 
     return result;
   }

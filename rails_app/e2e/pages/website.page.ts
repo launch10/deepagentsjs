@@ -24,6 +24,7 @@ export class WebsitePage {
   readonly changeColorsButton: Locator;
   readonly swapImagesButton: Locator;
   readonly improveCopyButton: Locator;
+  readonly updateImagesButton: Locator;
 
   // Sidebar
   readonly sidebar: Locator;
@@ -38,7 +39,7 @@ export class WebsitePage {
 
     // Chat input elements
     this.chatInput = page.locator('textarea[placeholder*="Ask me for changes"]');
-    this.sendButton = page.locator('button[type="submit"]');
+    this.sendButton = page.getByTestId("website-chat-submit");
 
     // Message list elements
     this.messageList = page.locator('[role="log"]');
@@ -56,6 +57,7 @@ export class WebsitePage {
     this.changeColorsButton = page.locator('button:has-text("Change Colors")');
     this.swapImagesButton = page.locator('button:has-text("Swap Images")');
     this.improveCopyButton = page.locator('button:has-text("Improve Copy")');
+    this.updateImagesButton = page.locator('button:has-text("Update Page with Images")');
 
     // Sidebar
     this.sidebar = page.locator('text="Landing Page Designer"');
@@ -100,9 +102,23 @@ export class WebsitePage {
   }
 
   /**
-   * Send a message in the chat
+   * Send a message in the chat.
+   * Waits for the submit button to be in "send" mode (not "stop" / streaming mode)
+   * before filling and clicking.
    */
   async sendMessage(message: string): Promise<void> {
+    // Wait for the submit button to leave stop/streaming mode
+    await this.page.waitForFunction(
+      () => {
+        const btn = document.querySelector('[data-testid="website-chat-submit"]');
+        return (
+          btn &&
+          btn.getAttribute("aria-label") === "Send message" &&
+          !(btn as HTMLButtonElement).disabled
+        );
+      },
+      { timeout: 30000 }
+    );
     await this.chatInput.fill(message);
     await this.sendButton.click();
   }
@@ -156,6 +172,13 @@ export class WebsitePage {
         await this.improveCopyButton.click();
         break;
     }
+  }
+
+  /**
+   * Click an option in the Improve Copy panel
+   */
+  async clickImproveCopyOption(label: string): Promise<void> {
+    await this.page.locator(`button:has-text("${label}")`).click();
   }
 
   /**

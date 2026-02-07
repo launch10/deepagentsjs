@@ -40,24 +40,35 @@ export const DatabaseSnapshotter = {
    */
   async restoreSnapshot(
     name: string,
-    truncateFirst: boolean = true
+    truncateFirst: boolean = true,
+    maxRetries: number = 3
   ): Promise<DatabaseOperationResult> {
-    const response = await fetch(`${BASE_URL}/test/database/restore_snapshot`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        snapshot: { name, truncate_first: truncateFirst },
-      }),
-    });
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const response = await fetch(`${BASE_URL}/test/database/restore_snapshot`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          snapshot: { name, truncate_first: truncateFirst },
+        }),
+      });
 
-    if (!response.ok) {
+      if (response.ok) {
+        return response.json();
+      }
+
       const error = await response.text();
-      throw new Error(
-        `Failed to restore snapshot '${name}': ${response.status} - ${error}`
-      );
+
+      // Retry on PG deadlock (transient error from concurrent connections)
+      if (attempt < maxRetries && error.includes("DeadlockDetected")) {
+        await new Promise((r) => setTimeout(r, 500 * attempt));
+        continue;
+      }
+
+      throw new Error(`Failed to restore snapshot '${name}': ${response.status} - ${error}`);
     }
 
-    return response.json();
+    // Unreachable, but satisfies TypeScript
+    throw new Error(`Failed to restore snapshot '${name}' after ${maxRetries} retries`);
   },
 
   /**
@@ -71,9 +82,7 @@ export const DatabaseSnapshotter = {
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(
-        `Failed to truncate database: ${response.status} - ${error}`
-      );
+      throw new Error(`Failed to truncate database: ${response.status} - ${error}`);
     }
 
     return response.json();

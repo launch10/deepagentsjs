@@ -56,7 +56,7 @@ export interface CodingPromptState {
    * Whether this is the first user message in the conversation.
    * Determines if we're creating from scratch or editing existing content.
    */
-  isFirstMessage: boolean;
+  isCreateFlow: boolean;
   /**
    * Error context for bug fixing scenarios.
    * Passed via state rather than as a separate parameter for consistency.

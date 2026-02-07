@@ -56,18 +56,18 @@ async function runBugFix(
   }
 
   // Build prompt with errors in state for consistent async pattern
-  // Bug fixes are always edits (isFirstMessage: false) with errors present
+  // Bug fixes are always edits (isCreateFlow: false) with errors present
   const promptState = {
     websiteId: state.websiteId,
     jwt: state.jwt,
     errors: failedTask.error,
-    isFirstMessage: false,
+    isCreateFlow: false,
   };
   const systemPrompt = await buildBugFixPrompt(promptState, config);
 
   try {
     await createCodingAgent(
-      { websiteId: state.websiteId, jwt: state.jwt, isFirstMessage: false },
+      { websiteId: state.websiteId, jwt: state.jwt, isCreateFlow: false },
       {
         messages: [
           new HumanMessage(

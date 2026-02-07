@@ -53,7 +53,7 @@ const workflowIs = (state: CodingPromptState): Workflow => {
   if (state.errors) {
     return "BugFix";
   }
-  if (state.isFirstMessage) {
+  if (state.isCreateFlow) {
     return "Create";
   }
   return "Edit";

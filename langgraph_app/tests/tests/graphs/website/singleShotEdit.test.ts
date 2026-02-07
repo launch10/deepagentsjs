@@ -533,7 +533,7 @@ describe.skipIf(!!process.env.CI)("Single-Shot Edit Eval", () => {
 
         // Include a prior AI message so isCreateFlow() returns false.
         // Without this, the websiteBuilder treats the request as a create flow
-        // (no AI messages → isFirstMessage=true → full agent, not single-shot).
+        // (no AI messages → isCreateFlow=true → full agent, not single-shot).
         const editMessages = [
           new AIMessage("Here's your landing page!"),
           new HumanMessage(testCase.prompt),

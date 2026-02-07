@@ -20,7 +20,7 @@ const buildInstrumentationPrompt = async (
   config?: LangGraphRunnableConfig
 ): Promise<string> => {
   const trackingContext = await trackingPrompt(
-    { websiteId: state.websiteId, jwt: state.jwt, isFirstMessage: false },
+    { websiteId: state.websiteId, jwt: state.jwt, isCreateFlow: false },
     config
   );
 
@@ -71,7 +71,8 @@ export function needsInstrumentation(content: string): boolean {
   const hasSubmitHandler = /onSubmit|handleSubmit/i.test(content);
   const hasFormHook = /useForm\s*\(/i.test(content);
 
-  const hasEmailCapture = hasEmailInput || hasEmailState || hasFormElement || hasSubmitHandler || hasFormHook;
+  const hasEmailCapture =
+    hasEmailInput || hasEmailState || hasFormElement || hasSubmitHandler || hasFormHook;
   const hasL10 = content.includes("L10.createLead");
 
   return hasEmailCapture && !hasL10;
@@ -91,7 +92,7 @@ async function instrumentFiles(
   const filePaths = files.map((f) => f.path).join(", ");
 
   await singleShotEdit(
-    { ...state, isFirstMessage: false },
+    { ...state, isCreateFlow: false },
     [new HumanMessage(`${prompt}\n\nInstrument these files with L10.createLead(): ${filePaths}`)],
     backend
   );
@@ -221,8 +222,7 @@ export const analyticsTaskRunner: TaskRunner = {
         ],
       };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
       getLogger().error({ err: error }, "Analytics task failed");
 
       return {

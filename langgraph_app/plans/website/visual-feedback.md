@@ -10,14 +10,14 @@ Screenshot the generated page server-side via Playwright, score it with a cheap 
 
 ## What Already Exists
 
-| Component | Location | What it does |
-|-----------|----------|-------------|
-| `BrowserPool` | `app/services/editor/errors/browserPool.ts` | Singleton Chromium pool, 20 concurrent contexts, lazy init |
-| `BrowserErrorCapture` | `app/services/editor/errors/browserErrorCapture.ts` | Navigates Playwright to URL, waits for networkidle, captures errors |
-| `WebsiteRunner` | `app/services/editor/core/websiteRunner.ts` | Spawns isolated Vite dev server, port detection, stdout/stderr capture |
-| `FileExporter` | `app/services/editor/core/fileExporter.ts` | Exports code_files from DB to temp directory |
-| `ErrorExporter` | `app/services/editor/errors/errorExporter.ts` | Orchestrates: export files → start Vite → capture browser errors |
-| `createMultimodalContextMessage` | `langgraph-ai-sdk` | Creates HumanMessage with `{ type: "image_url" }` blocks for Claude vision |
+| Component                        | Location                                            | What it does                                                               |
+| -------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------- |
+| `BrowserPool`                    | `app/services/editor/errors/browserPool.ts`         | Singleton Chromium pool, 20 concurrent contexts, lazy init                 |
+| `BrowserErrorCapture`            | `app/services/editor/errors/browserErrorCapture.ts` | Navigates Playwright to URL, waits for networkidle, captures errors        |
+| `WebsiteRunner`                  | `app/services/editor/core/websiteRunner.ts`         | Spawns isolated Vite dev server, port detection, stdout/stderr capture     |
+| `FileExporter`                   | `app/services/editor/core/fileExporter.ts`          | Exports code_files from DB to temp directory                               |
+| `ErrorExporter`                  | `app/services/editor/errors/errorExporter.ts`       | Orchestrates: export files → start Vite → capture browser errors           |
+| `createMultimodalContextMessage` | `langgraph-ai-sdk`                                  | Creates HumanMessage with `{ type: "image_url" }` blocks for Claude vision |
 
 ## New Service: `app/services/editor/screenshot/screenshotService.ts`
 
@@ -52,7 +52,7 @@ export class ScreenshotService implements AsyncDisposable {
       await page.waitForTimeout(2000); // Let animations settle
 
       const screenshot = await page.screenshot({ fullPage: true, type: "png" });
-      const hasErrors = await page.$("vite-error-overlay") !== null;
+      const hasErrors = (await page.$("vite-error-overlay")) !== null;
 
       await page.close();
       return { screenshot, hasErrors };
@@ -62,7 +62,9 @@ export class ScreenshotService implements AsyncDisposable {
     }
   }
 
-  async [Symbol.asyncDispose]() { await this.stop(); }
+  async [Symbol.asyncDispose]() {
+    await this.stop();
+  }
 
   private async stop() {
     if (this.runner) await this.runner.stop();
@@ -89,7 +91,10 @@ List the top 3 most impactful issues to fix (if score < 7).
 Be specific: reference exact sections and what's wrong.`),
     new HumanMessage({
       content: [
-        { type: "image_url", image_url: { url: `data:image/png;base64,${screenshot.toString("base64")}` } },
+        {
+          type: "image_url",
+          image_url: { url: `data:image/png;base64,${screenshot.toString("base64")}` },
+        },
       ],
     }),
   ]);
@@ -104,7 +109,7 @@ After create flow completes, before returning:
 
 ```typescript
 // Visual feedback loop — create flow only
-if (isFirstMessage && state.websiteId) {
+if (isCreateFlow && state.websiteId) {
   try {
     const screenshotService = new ScreenshotService(state.websiteId);
     const { screenshot, hasErrors } = await screenshotService.capture();
@@ -113,9 +118,9 @@ if (isFirstMessage && state.websiteId) {
       const { score, issues } = await scoreDesignQuality(screenshot, state);
 
       if (score < 7 && issues.length > 0) {
-        const fixPrompt = `Fix these design issues:\n${issues.map((i, n) => `${n+1}. ${i}`).join("\n")}`;
+        const fixPrompt = `Fix these design issues:\n${issues.map((i, n) => `${n + 1}. ${i}`).join("\n")}`;
         await createCodingAgent(
-          { ...state, isFirstMessage: false },
+          { ...state, isCreateFlow: false },
           { messages: [...messages, new HumanMessage(fixPrompt)], route: "single-shot" }
         );
       }
@@ -128,12 +133,12 @@ if (isFirstMessage && state.websiteId) {
 
 ## Cost Analysis
 
-| Step | Model | Tokens | Cost |
-|------|-------|--------|------|
-| Screenshot capture | - | - | ~$0 (infra only, ~5s) |
-| Vision scoring | Haiku | ~2K in (image) + ~200 out | ~$0.003 |
-| Fix edit (if needed) | Haiku | ~28K in (cached) + ~500 out | ~$0.005 |
-| **Total per create** | | | **~$0.008** |
+| Step                 | Model | Tokens                      | Cost                  |
+| -------------------- | ----- | --------------------------- | --------------------- |
+| Screenshot capture   | -     | -                           | ~$0 (infra only, ~5s) |
+| Vision scoring       | Haiku | ~2K in (image) + ~200 out   | ~$0.003               |
+| Fix edit (if needed) | Haiku | ~28K in (cached) + ~500 out | ~$0.005               |
+| **Total per create** |       |                             | **~$0.008**           |
 
 ## Why This Approach
 
@@ -147,6 +152,7 @@ if (isFirstMessage && state.websiteId) {
 ## Alternative Considered: WebContainer Screenshots
 
 Could use the frontend's WebContainer + html2canvas or native browser screenshot API. Rejected because:
+
 - Depends on user's browser being open and WebContainer being booted
 - Cross-origin iframe restrictions make screenshots unreliable
 - Server-side Playwright is deterministic and doesn't depend on client state

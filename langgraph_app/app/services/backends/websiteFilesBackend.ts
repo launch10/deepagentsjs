@@ -9,20 +9,33 @@ import type {
   WriteResult,
 } from "deepagents";
 import { FilesystemBackend } from "deepagents";
-import { db, codeFiles, templateFiles, websites, eq, and, sql, Types as DBTypes, type DB } from "@db";
+import {
+  db,
+  codeFiles,
+  templateFiles,
+  websites,
+  eq,
+  and,
+  sql,
+  Types as DBTypes,
+  type DB,
+} from "@db";
 import * as fs from "fs/promises";
 import * as path from "path";
 import _ from "lodash";
 import micromatch from "micromatch";
 import { WebsiteFilesAPIService } from "@rails_api";
-import { RedisLock } from "@ext";
-import { appendFileSync, mkdirSync } from "fs";
+import { appendFileSync } from "fs";
 import { getLogger } from "@core";
 
 // Debug file logger for tracing read/write/edit operations
 const DEBUG_LOG_PATH = "/tmp/website_files_backend.log";
 
-function debugLog(websiteId: number | undefined, operation: string, details: Record<string, unknown>) {
+function debugLog(
+  websiteId: number | undefined,
+  operation: string,
+  details: Record<string, unknown>
+) {
   try {
     const timestamp = new Date().toISOString();
     const logEntry = {
@@ -48,6 +61,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
   private database: DB;
   private rootDir: string;
   private jwt: string;
+  private dirtyPaths: Set<string> = new Set();
 
   constructor(config: CreateBackendParams) {
     this.website = config.website;
@@ -109,7 +123,7 @@ export class WebsiteFilesBackend implements BackendProtocol {
 
     debugLog(this.website.id, "HYDRATE_FILES_LOADED", {
       fileCount: files.length,
-      paths: files.map(f => f.path)
+      paths: files.map((f) => f.path),
     });
 
     await this.cleanup();
@@ -259,8 +273,10 @@ export class WebsiteFilesBackend implements BackendProtocol {
   }
 
   async write(filePath: string, content: string): Promise<WriteResult> {
-    getLogger({ component: "WebsiteFilesBackend" }).debug({ filePath, contentLength: content.length }, "write");
-    const lockKey = `file:${this.getWebsiteId()}:${filePath}`;
+    getLogger({ component: "WebsiteFilesBackend" }).debug(
+      { filePath, contentLength: content.length },
+      "write"
+    );
 
     debugLog(this.website.id, "WRITE_START", {
       filePath,
@@ -269,70 +285,55 @@ export class WebsiteFilesBackend implements BackendProtocol {
       contentPreview: content.slice(0, 200).replace(/\n/g, "\\n"),
     });
 
-    return RedisLock.withLock(lockKey, async () => {
-      debugLog(this.website.id, "WRITE_LOCK_ACQUIRED", { filePath });
+    // Try to write first (for new files)
+    let fsResult = await this.fs.write(filePath, content);
 
-      // Try to write first (for new files)
-      let fsResult = await this.fs.write(filePath, content);
+    // If file already exists, replace its entire content via edit
+    if (fsResult.error?.includes("already exists")) {
+      debugLog(this.website.id, "WRITE_FILE_EXISTS_REPLACING", { filePath });
 
-      // If file already exists, replace its entire content via edit
-      if (fsResult.error?.includes("already exists")) {
-        debugLog(this.website.id, "WRITE_FILE_EXISTS_REPLACING", { filePath });
+      // Read current content to replace it entirely
+      try {
+        const fileData = await this.fs.readRaw(filePath);
+        // FileData.content is string[] (array of lines)
+        const currentContent = Array.isArray(fileData.content)
+          ? fileData.content.join("\n")
+          : String(fileData.content);
 
-        // Read current content to replace it entirely
-        try {
-          const fileData = await this.fs.readRaw(filePath);
-          // FileData.content is string[] (array of lines)
-          const currentContent = Array.isArray(fileData.content)
-            ? fileData.content.join("\n")
-            : String(fileData.content);
-
-          // Replace entire content
-          const editResult = await this.fs.edit(filePath, currentContent, content, false);
-          if (editResult.error) {
-            debugLog(this.website.id, "WRITE_REPLACE_FAILED", {
-              filePath,
-              error: editResult.error,
-            });
-            return { error: editResult.error };
-          }
-
-          fsResult = { path: filePath, filesUpdate: null };
-        } catch (e) {
-          const errorMsg = e instanceof Error ? e.message : String(e);
-          debugLog(this.website.id, "WRITE_REPLACE_ERROR", { filePath, error: errorMsg });
-          return { error: errorMsg };
+        // Replace entire content
+        const editResult = await this.fs.edit(filePath, currentContent, content, false);
+        if (editResult.error) {
+          debugLog(this.website.id, "WRITE_REPLACE_FAILED", {
+            filePath,
+            error: editResult.error,
+          });
+          return { error: editResult.error };
         }
+
+        fsResult = { path: filePath, filesUpdate: null };
+      } catch (e) {
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        debugLog(this.website.id, "WRITE_REPLACE_ERROR", { filePath, error: errorMsg });
+        return { error: errorMsg };
       }
+    }
 
-      debugLog(this.website.id, "WRITE_FS_COMPLETE", {
-        filePath,
-        error: fsResult.error ?? null,
-      });
-
-      if (fsResult.error) return fsResult;
-
-      // Skip Rails API call for empty files (e.g. .gitkeep) — Rails rejects
-      // "Each file must have path and content" for empty content, and these
-      // placeholder files don't need to be persisted server-side.
-      if (!content) {
-        debugLog(this.website.id, "WRITE_SKIP_API_EMPTY", { filePath });
-        return { path: filePath, filesUpdate: null };
-      }
-
-      const service = new WebsiteFilesAPIService({ jwt: this.jwt });
-      await service.write({
-        id: this.getWebsiteId(),
-        files: [{ path: filePath, content }],
-      });
-
-      debugLog(this.website.id, "WRITE_API_COMPLETE", { filePath });
-
-      return {
-        path: filePath,
-        filesUpdate: null,
-      };
+    debugLog(this.website.id, "WRITE_FS_COMPLETE", {
+      filePath,
+      error: fsResult.error ?? null,
     });
+
+    if (fsResult.error) return fsResult;
+
+    // Track dirty file for deferred flush (skip empty files — Rails rejects them)
+    if (content) {
+      this.dirtyPaths.add(filePath);
+    }
+
+    return {
+      path: filePath,
+      filesUpdate: null,
+    };
   }
 
   async edit(
@@ -341,7 +342,15 @@ export class WebsiteFilesBackend implements BackendProtocol {
     newString: string,
     replaceAll: boolean = false
   ): Promise<EditResult> {
-    getLogger({ component: "WebsiteFilesBackend" }).debug({ filePath, oldStringLength: oldString.length, newStringLength: newString.length, replaceAll }, "edit");
+    getLogger({ component: "WebsiteFilesBackend" }).debug(
+      {
+        filePath,
+        oldStringLength: oldString.length,
+        newStringLength: newString.length,
+        replaceAll,
+      },
+      "edit"
+    );
 
     debugLog(this.website.id, "EDIT_START", {
       filePath,
@@ -352,60 +361,141 @@ export class WebsiteFilesBackend implements BackendProtocol {
       replaceAll,
     });
 
-    const lockKey = `file:${this.getWebsiteId()}:${filePath}`;
-    return RedisLock.withLock(lockKey, async () => {
-      debugLog(this.website.id, "EDIT_LOCK_ACQUIRED", { filePath });
-
-      const fsResult = await this.fs.edit(filePath, oldString, newString, replaceAll);
-      if (fsResult.error) {
-        // Enhanced error logging for debugging edit failures
-        const editLog = getLogger({ component: "WebsiteFilesBackend" });
-        editLog.warn({ filePath, error: fsResult.error, oldStringLength: oldString.length, oldStringPreview: oldString.slice(0, 200) }, "Edit failed");
-
-        // Try to read current file content to help debug
-        try {
-          const currentContent = await this.fs.read(filePath, 0, 5000);
-
-          // Check if it's a whitespace/newline issue
-          const oldStringNormalized = oldString.replace(/\r\n/g, "\n").replace(/\s+/g, " ");
-          const contentNormalized = currentContent.replace(/\r\n/g, "\n").replace(/\s+/g, " ");
-          if (contentNormalized.includes(oldStringNormalized)) {
-            editLog.warn({ filePath }, "Whitespace mismatch detected - content exists but whitespace differs");
-          }
-        } catch (readError) {
-          editLog.debug({ filePath, err: readError }, "Could not read file for debugging");
-        }
-
-        debugLog(this.website.id, "EDIT_FS_FAILED", {
+    const fsResult = await this.fs.edit(filePath, oldString, newString, replaceAll);
+    if (fsResult.error) {
+      // Enhanced error logging for debugging edit failures
+      const editLog = getLogger({ component: "WebsiteFilesBackend" });
+      editLog.warn(
+        {
           filePath,
           error: fsResult.error,
-        });
+          oldStringLength: oldString.length,
+          oldStringPreview: oldString.slice(0, 200),
+        },
+        "Edit failed"
+      );
 
-        return fsResult;
+      // Try to read current file content to help debug
+      try {
+        const currentContent = await this.fs.read(filePath, 0, 5000);
+
+        // Check if it's a whitespace/newline issue
+        const oldStringNormalized = oldString.replace(/\r\n/g, "\n").replace(/\s+/g, " ");
+        const contentNormalized = currentContent.replace(/\r\n/g, "\n").replace(/\s+/g, " ");
+        if (contentNormalized.includes(oldStringNormalized)) {
+          editLog.warn(
+            { filePath },
+            "Whitespace mismatch detected - content exists but whitespace differs"
+          );
+        }
+      } catch (readError) {
+        editLog.debug({ filePath, err: readError }, "Could not read file for debugging");
       }
 
-      debugLog(this.website.id, "EDIT_FS_COMPLETE", {
+      debugLog(this.website.id, "EDIT_FS_FAILED", {
         filePath,
-        occurrences: fsResult.occurrences,
+        error: fsResult.error,
       });
 
-      const service = new WebsiteFilesAPIService({ jwt: this.jwt });
-      await service.edit({
-        id: this.getWebsiteId(),
-        path: filePath,
-        oldString,
-        newString,
-        replaceAll,
-      });
+      return fsResult;
+    }
 
-      debugLog(this.website.id, "EDIT_API_COMPLETE", { filePath });
-
-      return {
-        path: filePath,
-        occurrences: fsResult.occurrences,
-        filesUpdate: null,
-      };
+    debugLog(this.website.id, "EDIT_FS_COMPLETE", {
+      filePath,
+      occurrences: fsResult.occurrences,
     });
+
+    // Track dirty file for deferred flush
+    this.dirtyPaths.add(filePath);
+
+    return {
+      path: filePath,
+      occurrences: fsResult.occurrences,
+      filesUpdate: null,
+    };
+  }
+
+  /**
+   * Returns true if any files have been written or edited since the last flush.
+   */
+  hasDirtyFiles(): boolean {
+    return this.dirtyPaths.size > 0;
+  }
+
+  /**
+   * Returns the list of file paths that have been modified since the last flush.
+   */
+  getDirtyPaths(): string[] {
+    return [...this.dirtyPaths];
+  }
+
+  /**
+   * Persist all dirty files to the database in a single batch API call.
+   * Reads final content from the virtual filesystem and sends it via the
+   * write endpoint (which handles both creates and updates).
+   *
+   * Idempotent — calling flush() with no dirty files is a no-op.
+   */
+  async flush(maxRetries: number = 2): Promise<void> {
+    if (this.dirtyPaths.size === 0) {
+      debugLog(this.website.id, "FLUSH_SKIP", { reason: "no dirty paths" });
+      return;
+    }
+
+    const files: Array<{ path: string; content: string }> = [];
+
+    for (const filePath of this.dirtyPaths) {
+      try {
+        const fileData = await this.fs.readRaw(filePath);
+        const content = Array.isArray(fileData.content)
+          ? fileData.content.join("\n")
+          : String(fileData.content);
+
+        // Skip empty files (Rails rejects them)
+        if (!content) continue;
+
+        files.push({ path: filePath, content });
+      } catch (e) {
+        // File was written then later deleted within the same session — skip
+        getLogger({ component: "WebsiteFilesBackend" }).warn(
+          { filePath, err: e },
+          "Skipping dirty file that cannot be read"
+        );
+      }
+    }
+
+    if (files.length === 0) {
+      debugLog(this.website.id, "FLUSH_SKIP", { reason: "all dirty files empty or unreadable" });
+      this.dirtyPaths.clear();
+      return;
+    }
+
+    debugLog(this.website.id, "FLUSH_START", {
+      fileCount: files.length,
+      paths: files.map((f) => f.path),
+    });
+
+    const service = new WebsiteFilesAPIService({ jwt: this.jwt });
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        await service.write({
+          id: this.getWebsiteId(),
+          files,
+        });
+
+        debugLog(this.website.id, "FLUSH_COMPLETE", { fileCount: files.length });
+        this.dirtyPaths.clear();
+        return;
+      } catch (e) {
+        if (attempt === maxRetries) throw e;
+        getLogger({ component: "WebsiteFilesBackend" }).warn(
+          { attempt, err: e },
+          "Flush failed, retrying"
+        );
+        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+      }
+    }
   }
 
   async uploadFiles(files: Array<[string, Uint8Array]>): Promise<FileUploadResponse[]> {

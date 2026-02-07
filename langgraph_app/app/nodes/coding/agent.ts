@@ -1,9 +1,14 @@
 import { db, websites, eq } from "@db";
 import { Website } from "@types";
 import { createDeepAgent, createSettings } from "deepagents";
-import { getLLM, getLLMFallbacks, createPromptCachingMiddleware, createToolErrorSurfacingMiddleware, getLogger } from "@core";
+import {
+  getLLM,
+  getLLMFallbacks,
+  createPromptCachingMiddleware,
+  createToolErrorSurfacingMiddleware,
+  getLogger,
+} from "@core";
 import { WebsiteFilesBackend } from "@services";
-import { SearchIconsTool } from "@tools";
 import { buildCoderSubAgent } from "./subagents";
 import { checkpointer } from "@core";
 import {
@@ -23,7 +28,7 @@ export type MinimalCodingAgentState = {
   jwt?: string;
   theme?: CodingPromptState["theme"];
   errors?: string;
-  isFirstMessage?: boolean;
+  isCreateFlow?: boolean;
 };
 
 export type EditRoute = "auto" | "single-shot" | "full";
@@ -111,14 +116,16 @@ async function buildFullCodingAgent(
   systemPrompt?: string,
   existingBackend?: WebsiteFilesBackend
 ) {
-  if (state.isFirstMessage === undefined) {
+  if (state.isCreateFlow === undefined) {
     throw new Error(
-      "isFirstMessage is required - explicitly set to true (create) or false (edit/bugfix)"
+      "isCreateFlow is required - explicitly set to true (create) or false (edit/bugfix)"
     );
   }
 
   const backend = existingBackend ?? (await getCodingAgentBackend(state));
-  const llm = (await getLLM({ skill: "coding", speed: "slow", cost: "paid" })).withConfig({ tags: ["notify"] });
+  const llm = (await getLLM({ skill: "coding", speed: "slow", cost: "paid" })).withConfig({
+    tags: ["notify"],
+  });
   const middlewares = getMiddlewares();
 
   // Build prompt state for async prompt generation
@@ -127,7 +134,7 @@ async function buildFullCodingAgent(
     jwt: state.jwt,
     theme: state.theme,
     errors: state.errors,
-    isFirstMessage: state.isFirstMessage,
+    isCreateFlow: state.isCreateFlow,
   };
 
   // If no theme in state but we have websiteId, fetch theme from website
@@ -140,15 +147,16 @@ async function buildFullCodingAgent(
     systemPrompt ? Promise.resolve(systemPrompt) : buildCodingPrompt(promptState),
     buildCoderSubAgent(promptState),
   ]);
-  return createDeepAgent({
+  const agent = createDeepAgent({
     model: llm as any,
     name: "coding-agent",
     systemPrompt: finalSystemPrompt,
     backend: () => backend as any,
     subagents: [coderSubAgent],
-    tools: [new SearchIconsTool()],
+    tools: [],
     middleware: middlewares as any,
   });
+  return { agent, backend };
 }
 
 /**
@@ -167,7 +175,7 @@ async function resolveRoute(
   options: CodingAgentOptions
 ): Promise<{ route: "single-shot" | "full"; backend?: WebsiteFilesBackend }> {
   // Create flow or bugfix → full agent, no question
-  if (state.isFirstMessage) {
+  if (state.isCreateFlow) {
     return { route: "full" };
   }
 
@@ -178,6 +186,21 @@ async function resolveRoute(
   // Custom system prompt means the caller has specialized behavior (SEO, bugfix, etc.)
   // that doesn't fit single-shot's own prompt
   if (options.systemPrompt) {
+    return { route: "full" };
+  }
+
+  // Image context (from injectAgentContext) → full agent.
+  // Image swaps touch multiple files (HTML references, imports), so single-shot won't cut it.
+  const hasImageContext = options.messages.some((msg) => {
+    if (Array.isArray(msg.content)) {
+      return msg.content.some((block: any) => block.type === "image_url");
+    }
+    const content = typeof msg.content === "string" ? msg.content : "";
+    return content.includes("[Context]") && content.includes("image");
+  });
+
+  if (hasImageContext) {
+    getLogger().info("Image context detected, routing to full agent");
     return { route: "full" };
   }
 
@@ -211,9 +234,9 @@ export async function createCodingAgent(
   state: MinimalCodingAgentState,
   options: CodingAgentOptions
 ): Promise<{ messages: BaseMessage[]; status: "completed" }> {
-  if (state.isFirstMessage === undefined) {
+  if (state.isCreateFlow === undefined) {
     throw new Error(
-      "isFirstMessage is required - explicitly set to true (create) or false (edit/bugfix)"
+      "isCreateFlow is required - explicitly set to true (create) or false (edit/bugfix)"
     );
   }
 
@@ -249,7 +272,11 @@ export async function createCodingAgent(
 
   // Dispatch: full agent path
   getLogger().info("Using full agent path");
-  const agent = await buildFullCodingAgent(state, options.systemPrompt, backend);
+  const { agent, backend: agentBackend } = await buildFullCodingAgent(
+    state,
+    options.systemPrompt,
+    backend
+  );
 
   const result = await agent.invoke(
     { messages: options.messages },
@@ -259,23 +286,25 @@ export async function createCodingAgent(
     }
   );
 
+  // Flush all deferred writes to DB in one batch
+  await agentBackend.flush();
+
   // Extract the first and last AI messages for the caller.
   // The first AI message is the personalized greeting (create flow) or initial response,
   // and the last is the final summary. Persisting both preserves the conversational feel on reload.
-  const aiMessages = result.messages.filter(
-    (msg: BaseMessage) => msg._getType() === "ai"
-  );
+  const aiMessages = result.messages.filter((msg: BaseMessage) => msg._getType() === "ai");
   const firstAI = aiMessages.at(0);
   const lastAI = aiMessages.at(-1);
 
   // Deduplicate if only one AI message (first === last)
-  const userFacing: BaseMessage[] = firstAI && lastAI && firstAI !== lastAI
-    ? [firstAI, lastAI]
-    : [firstAI ?? lastAI].filter((m): m is BaseMessage => !!m);
+  const userFacing: BaseMessage[] =
+    firstAI && lastAI && firstAI !== lastAI
+      ? [firstAI, lastAI]
+      : [firstAI ?? lastAI].filter((m): m is BaseMessage => !!m);
 
-  const structuredMessages = (
-    await Promise.all(userFacing.map((msg) => toStructuredMessage(msg)))
-  ).map(([m]) => m).filter(Boolean);
+  const structuredMessages = (await Promise.all(userFacing.map((msg) => toStructuredMessage(msg))))
+    .map(([m]) => m)
+    .filter(Boolean);
 
   // When escalating from single-shot, prepend a brief note so the user
   // understands why the response took longer than a typical quick edit.

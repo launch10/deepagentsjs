@@ -108,7 +108,7 @@ class LLMService {
       apiKey: apiKey ?? undefined,
       model: modelCard,
       temperature,
-      maxTokens: 4096, // Override @langchain/anthropic default of 2048 to prevent truncated file writes
+      maxTokens: 8192, // Model max — must fit full component files inside tool call JSON without truncation
     } as any);
 
     // WORKAROUND: @langchain/anthropic bug where topP/topK default to -1 for newer models
@@ -148,7 +148,13 @@ class LLMService {
         `No available model for ${skill}/${speed}/${cost} at ${usagePercent}% usage${tierMsg}`
       );
     }
-    getLogger({ component: "LLMService" }).debug({ priceTier: modelWithConfig.config.price_tier, modelCard: modelWithConfig.config.model_card }, "Using model");
+    getLogger({ component: "LLMService" }).debug(
+      {
+        priceTier: modelWithConfig.config.price_tier,
+        modelCard: modelWithConfig.config.model_card,
+      },
+      "Using model"
+    );
     return {
       model: modelWithConfig.model,
       modelCard: modelWithConfig.config.model_card ?? "unknown",
@@ -224,7 +230,10 @@ class LLMService {
       // Fallback: find the cheapest enabled model with valid cost config across all models
       const fallback = this.findCheapestFallback(config);
       if (fallback) {
-        getLogger({ component: "LLMService" }).warn({ skill, speed, cost, fallback: fallback.config.model_card }, "No models matched preferences — falling back to cheapest");
+        getLogger({ component: "LLMService" }).warn(
+          { skill, speed, cost, fallback: fallback.config.model_card },
+          "No models matched preferences — falling back to cheapest"
+        );
         return [fallback];
       }
 

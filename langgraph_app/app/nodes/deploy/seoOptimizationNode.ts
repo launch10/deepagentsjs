@@ -25,7 +25,8 @@ async function isSEOAlreadyDone(state: DeployGraphState): Promise<boolean> {
 
   // Check for key SEO elements
   const hasTitle = /<title>[^<]+<\/title>/.test(content);
-  const hasMetaDescription = /<meta\s+name=["']description["'][^>]*content=["'][^"']+["']/.test(content) ||
+  const hasMetaDescription =
+    /<meta\s+name=["']description["'][^>]*content=["'][^"']+["']/.test(content) ||
     /<meta\s+content=["'][^"']+["'][^>]*name=["']description["']/.test(content);
   const hasOgTitle = /property=["']og:title["']/.test(content);
   const hasOgDescription = /property=["']og:description["']/.test(content);
@@ -63,12 +64,7 @@ async function getIndexHtmlContent(websiteId: number): Promise<string | null> {
   const result = await db
     .select({ content: websiteFiles.content })
     .from(websiteFiles)
-    .where(
-      and(
-        eq(websiteFiles.websiteId, websiteId),
-        eq(websiteFiles.path, "index.html")
-      )
-    )
+    .where(and(eq(websiteFiles.websiteId, websiteId), eq(websiteFiles.path, "index.html")))
     .limit(1);
 
   return result[0]?.content ?? null;
@@ -78,7 +74,7 @@ async function getIndexHtmlContent(websiteId: number): Promise<string | null> {
  * Build system prompt for SEO optimization AI agent
  */
 const buildSystemPrompt = async (state: DeployGraphState, config: LangGraphRunnableConfig) => {
-  const mergedState = { ...state, isFirstMessage: false };
+  const mergedState = { ...state, isCreateFlow: false };
   const [tools, environment] = await Promise.all([
     codingToolsPrompt(mergedState, config),
     environmentPrompt(mergedState, config),
@@ -206,7 +202,7 @@ const buildUserMessage = async (state: DeployGraphState) => {
     userMessage += `\nFor the favicon, use the [favicon: ...] URL if available.`;
   }
   return userMessage;
-}
+};
 
 /**
  * SEO Optimization Node
@@ -235,17 +231,14 @@ async function runSeoOptimization(
     // Check if SEO is already done - skip the agent if so
     if (await isSEOAlreadyDone(state)) {
       getLogger().info("Skipping SEO agent, index.html already has sufficient optimization");
-      return withPhases(
-        state,
-        [{ ...task, status: "completed" } as Task.Task]
-      );
+      return withPhases(state, [{ ...task, status: "completed" } as Task.Task]);
     }
 
     const systemPrompt = await buildSystemPrompt(state, config!);
     const userMessage = await buildUserMessage(state);
 
     await createCodingAgent(
-      { ...state, isFirstMessage: false },
+      { ...state, isCreateFlow: false },
       {
         messages: [new HumanMessage(userMessage)],
         systemPrompt,
@@ -254,16 +247,12 @@ async function runSeoOptimization(
       }
     );
 
-    return withPhases(
-      state,
-      [{ ...task, status: "completed" } as Task.Task]
-    );
+    return withPhases(state, [{ ...task, status: "completed" } as Task.Task]);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return withPhases(
-      state,
-      [{ ...task, status: "failed", error: `Website ${state.websiteId} not found` } as Task.Task]
-    );
+    return withPhases(state, [
+      { ...task, status: "failed", error: `Website ${state.websiteId} not found` } as Task.Task,
+    ]);
   }
 }
 
@@ -278,7 +267,7 @@ export const seoOptimizationTaskRunner: TaskRunner = {
   },
 
   shouldSkip: (state: DeployGraphState) => {
-    return !Deploy.shouldDeployWebsite(state)
+    return !Deploy.shouldDeployWebsite(state);
   },
 
   run: runSeoOptimization,

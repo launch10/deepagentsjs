@@ -40,26 +40,26 @@ e2e/
 ## TypeScript API
 
 ```typescript
-import { appScenario, appQuery, appFactories, clean, timecop } from './support/on-rails';
-import { DatabaseSnapshotter } from './fixtures/database';
+import { appScenario, appQuery, appFactories, clean, timecop } from "./support/on-rails";
+import { DatabaseSnapshotter } from "./fixtures/database";
 
 // Database snapshots (restores SQL dumps)
-await DatabaseSnapshotter.restoreSnapshot('website_step');
+await DatabaseSnapshotter.restoreSnapshot("website_step");
 
 // Scenarios (pre-built test states)
-await appScenario('fill_subdomain_limit', { email: 'test@example.com' });
-await appScenario('assign_platform_subdomain', { website_id: 1, subdomain: 'my-site', path: '/' });
-await appScenario('set_credits', { email: 'test@example.com', credits: 0 });
+await appScenario("fill_subdomain_limit", { email: "test@example.com" });
+await appScenario("assign_platform_subdomain", { website_id: 1, subdomain: "my-site", path: "/" });
+await appScenario("set_credits", { email: "test@example.com", credits: 0 });
 
 // Queries (data retrieval)
-const project = await appQuery<{ id: number; uuid: string; name: string }>('first_project');
-const website = await appQuery<{ id: number; name: string }>('first_website');
+const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
+const website = await appQuery<{ id: number; name: string }>("first_website");
 
 // FactoryBot (when snapshot doesn't have what you need)
-await appFactories([['create', 'user', { email: 'test@example.com' }]]);
+await appFactories([["create", "user", { email: "test@example.com" }]]);
 
 // Time manipulation
-await timecop.freeze('2024-01-01 12:00:00');
+await timecop.freeze("2024-01-01 12:00:00");
 await timecop.return();
 
 // Clean (use cypress-on-rails clean, not snapshot truncate)
@@ -69,22 +69,22 @@ await clean();
 ## Test Pattern
 
 ```typescript
-test.describe('Feature', () => {
+test.describe("Feature", () => {
   test.beforeEach(async ({ page }) => {
     // 1. Restore snapshot (baseline state)
-    await DatabaseSnapshotter.restoreSnapshot('website_step');
+    await DatabaseSnapshotter.restoreSnapshot("website_step");
 
     // 2. Get references to records
-    const project = await appQuery<{ id: number; uuid: string }>('first_project');
+    const project = await appQuery<{ id: number; uuid: string }>("first_project");
 
     // 3. Layer scenarios on top
-    await appScenario('fill_subdomain_limit', { email: testUser.email });
+    await appScenario("fill_subdomain_limit", { email: testUser.email });
 
     // 4. Login
     await loginUser(page);
   });
 
-  test('does something', async ({ page }) => {
+  test("does something", async ({ page }) => {
     // Test code
   });
 });
@@ -92,14 +92,14 @@ test.describe('Feature', () => {
 
 ## When to Use What
 
-| Need | Use |
-|------|-----|
-| Baseline database state | `DatabaseSnapshotter.restoreSnapshot()` |
-| Modify state for specific test | `appScenario()` |
-| Get record IDs/data | `appQuery()` |
-| Create records not in snapshot | `appFactories()` |
-| Time-based testing | `timecop` |
-| Full truncation (rare) | `clean()` |
+| Need                           | Use                                     |
+| ------------------------------ | --------------------------------------- |
+| Baseline database state        | `DatabaseSnapshotter.restoreSnapshot()` |
+| Modify state for specific test | `appScenario()`                         |
+| Get record IDs/data            | `appQuery()`                            |
+| Create records not in snapshot | `appFactories()`                        |
+| Time-based testing             | `timecop`                               |
+| Full truncation (rare)         | `clean()`                               |
 
 ## Creating New Commands
 
@@ -172,12 +172,12 @@ CypressOnRails::SmartFactoryWrapper.configure(
 
 ## Separation of Concerns
 
-| Component | Purpose | Location |
-|-----------|---------|----------|
+| Component                  | Purpose                             | Location                |
+| -------------------------- | ----------------------------------- | ----------------------- |
 | `Test::DatabaseController` | Database-level ops (snapshots only) | `app/controllers/test/` |
-| App Commands | Test data manipulation | `e2e/app_commands/` |
-| `on-rails.ts` | TypeScript client | `e2e/support/` |
-| `database.ts` | Snapshot operations | `e2e/fixtures/` |
+| App Commands               | Test data manipulation              | `e2e/app_commands/`     |
+| `on-rails.ts`              | TypeScript client                   | `e2e/support/`          |
+| `database.ts`              | Snapshot operations                 | `e2e/fixtures/`         |
 
 The `Test::DatabaseController` was cleaned up to only handle database-level operations. All test data manipulation (setting credits, filling limits, assigning domains) moved to `e2e/app_commands/scenarios/`.
 

@@ -62,6 +62,7 @@ pending_subscriptions
 ### 4. Route
 
 Add to `config/routes.rb`:
+
 ```ruby
 resource :anonymous_checkout, only: [:new], controller: "anonymous_checkouts" do
   get :return, action: :show, as: :return
@@ -136,23 +137,23 @@ Minimal page rendering the Stripe embedded checkout. Reuses existing `subscripti
 
 ## Files Modified
 
-| File | Change |
-|------|--------|
-| `db/migrate/xxx_create_pending_subscriptions.rb` | **New** — migration |
-| `app/models/pending_subscription.rb` | **New** — model |
-| `app/controllers/anonymous_checkouts_controller.rb` | **New** — controller |
-| `app/views/anonymous_checkouts/new.html.erb` | **New** — checkout page |
-| `app/controllers/concerns/pending_subscription_sync.rb` | **New** — shared sync concern |
-| `app/workers/sync_pending_subscription_worker.rb` | **New** — retry/email-match worker |
-| `app/workers/cleanup_pending_subscriptions_worker.rb` | **New** — hourly cleanup |
-| `config/routes.rb` | Add anonymous_checkout route |
-| `app/helpers/subscriptions_helper.rb` | Route anon users to anonymous checkout |
-| `app/controllers/users/registrations_controller.rb` | Include concern, call sync in `sign_up` |
-| `app/controllers/users/sessions_controller.rb` | Include concern, call sync in `after_sign_in_path_for` |
-| `app/controllers/users/omniauth_callbacks_controller.rb` | Include concern, override `after_sign_in_path_for` |
-| `app/webhooks/credits/plan_change_handler.rb` | Soften `raise` to `return` for missing subscriptions |
-| `app/javascript/frontend/pages/Auth/SignUp.tsx` | Add pending subscription banner |
-| `app/javascript/frontend/pages/Auth/SignIn.tsx` | Preserve token in sign-up link |
+| File                                                     | Change                                                 |
+| -------------------------------------------------------- | ------------------------------------------------------ |
+| `db/migrate/xxx_create_pending_subscriptions.rb`         | **New** — migration                                    |
+| `app/models/pending_subscription.rb`                     | **New** — model                                        |
+| `app/controllers/anonymous_checkouts_controller.rb`      | **New** — controller                                   |
+| `app/views/anonymous_checkouts/new.html.erb`             | **New** — checkout page                                |
+| `app/controllers/concerns/pending_subscription_sync.rb`  | **New** — shared sync concern                          |
+| `app/workers/sync_pending_subscription_worker.rb`        | **New** — retry/email-match worker                     |
+| `app/workers/cleanup_pending_subscriptions_worker.rb`    | **New** — hourly cleanup                               |
+| `config/routes.rb`                                       | Add anonymous_checkout route                           |
+| `app/helpers/subscriptions_helper.rb`                    | Route anon users to anonymous checkout                 |
+| `app/controllers/users/registrations_controller.rb`      | Include concern, call sync in `sign_up`                |
+| `app/controllers/users/sessions_controller.rb`           | Include concern, call sync in `after_sign_in_path_for` |
+| `app/controllers/users/omniauth_callbacks_controller.rb` | Include concern, override `after_sign_in_path_for`     |
+| `app/webhooks/credits/plan_change_handler.rb`            | Soften `raise` to `return` for missing subscriptions   |
+| `app/javascript/frontend/pages/Auth/SignUp.tsx`          | Add pending subscription banner                        |
+| `app/javascript/frontend/pages/Auth/SignIn.tsx`          | Preserve token in sign-up link                         |
 
 ## Edge Cases Handled
 
