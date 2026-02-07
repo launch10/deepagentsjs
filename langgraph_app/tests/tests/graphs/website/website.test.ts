@@ -150,7 +150,7 @@ describe("Website Builder", () => {
       threadId = existingChat.threadId as ThreadIDType;
     }, 60000);
 
-    it.only("generates a complete landing page with required sections", async () => {
+    it("generates a complete landing page with required sections", async () => {
       // Use WebsiteAPI.stream to go through the bridge with usageTrackingMiddleware
       const response = WebsiteAPI.stream({
         messages: [{ role: "user", content: "howdy big guy, let's make the landing page" }],

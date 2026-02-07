@@ -2,6 +2,7 @@ require 'rails_helper'
 
 RSpec.describe "Projects", type: :request, inertia: true do
   include Devise::Test::IntegrationHelpers
+  include ActiveSupport::Testing::TimeHelpers
 
   let!(:template) { create(:template) }
   let!(:user) { create(:user) }
@@ -215,11 +216,15 @@ RSpec.describe "Projects", type: :request, inertia: true do
     end
 
     context "with analytics data" do
+      # Freeze time at noon to avoid midnight boundary issues on CI.
+      # The metric date must be "yesterday" or earlier from the service's perspective.
+      around { |example| travel_to(Time.utc(2026, 6, 15, 12, 0, 0)) { example.run } }
+
       before do
         create(:analytics_daily_metric,
           account: account,
           project: project,
-          date: 1.day.ago.to_date,
+          date: Date.new(2026, 6, 12),
           impressions: 1000,
           clicks: 100,
           cost_micros: 10_000_000,

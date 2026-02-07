@@ -405,7 +405,7 @@ function checkTrackingPreserved(before: Map<string, string>, after: Map<string, 
 // Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("Single-Shot Edit Eval", () => {
+describe.skipIf(!!process.env.CI)("Single-Shot Edit Eval", () => {
   afterAll(() => {
     console.log("\n━━━ TOTAL EVAL COST ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     console.log(
@@ -568,7 +568,7 @@ describe("Single-Shot Edit Eval", () => {
         // Most edits: 1-2 LLM calls, ~$0.003-0.035.
         // Retry/escalation path: up to ~8 LLM calls, ~$0.06-0.10.
         // Guardrail catches the old $0.25 full-agent regression.
-        expect(cost / 100_000).toBeLessThan(0.10);
+        expect(cost / 100_000).toBeLessThan(0.1);
         expect(usageRecords.length).toBeLessThanOrEqual(10);
 
         // ── File changes ──

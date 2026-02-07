@@ -74,10 +74,7 @@ const BUG_FIX_CASES: BugFixTestCase[] = [
         `$1import { Fake } from "../components/Fake";\n`
       );
       // Add <Fake /> before the closing </div> of the main wrapper
-      return withImport.replace(
-        /(<\/div>\s*\);\s*};?\s*$)/m,
-        `  <Fake />\n$1`
-      );
+      return withImport.replace(/(<\/div>\s*\);\s*};?\s*$)/m, `  <Fake />\n$1`);
     },
     errorDescription:
       "Build error:\nModule not found: Cannot find module '../components/Fake' imported from src/pages/IndexPage.tsx",
@@ -91,10 +88,7 @@ const BUG_FIX_CASES: BugFixTestCase[] = [
     targetFile: "IndexPage",
     injectBug: (content: string) => {
       // Change Hero import path to a typo
-      return content.replace(
-        /from\s+["'](.+\/Hero)["']/,
-        `from "../components/Hiro"`
-      );
+      return content.replace(/from\s+["'](.+\/Hero)["']/, `from "../components/Hiro"`);
     },
     errorDescription:
       "Build error:\nModule not found: Cannot find module '../components/Hiro' imported from src/pages/IndexPage.tsx\n\nDid you mean '../components/Hero'?",
@@ -105,10 +99,7 @@ const BUG_FIX_CASES: BugFixTestCase[] = [
     targetFile: "Hero",
     injectBug: (content: string) => {
       // Insert {undefinedVar} into the JSX after the first <div
-      return content.replace(
-        /(<div[^>]*>)/,
-        `$1\n        {undefinedVar}`
-      );
+      return content.replace(/(<div[^>]*>)/, `$1\n        {undefinedVar}`);
     },
     errorDescription:
       "Runtime error in src/components/Hero.tsx:\nReferenceError: undefinedVar is not defined\n\nThe variable 'undefinedVar' is referenced in JSX but never declared.",
@@ -119,10 +110,7 @@ const BUG_FIX_CASES: BugFixTestCase[] = [
     targetFile: "Hero",
     injectBug: (content: string) => {
       // Replace a valid className with a broken JSX expression
-      return content.replace(
-        /className="([^"]+)"/,
-        `className={styles.heroWrapper}`
-      );
+      return content.replace(/className="([^"]+)"/, `className={styles.heroWrapper}`);
     },
     errorDescription:
       "Runtime error in src/components/Hero.tsx:\nReferenceError: styles is not defined\n\nThe component references a 'styles' object that was never imported or defined. This appears to be a CSS modules reference but the project uses Tailwind CSS.",
@@ -133,13 +121,10 @@ const BUG_FIX_CASES: BugFixTestCase[] = [
     targetFile: "IndexPage",
     injectBug: (content: string) => {
       // Duplicate the <Hero /> render
-      return content.replace(
-        /(<Hero\s*\/>)/,
-        `$1\n        <Hero />`
-      );
+      return content.replace(/(<Hero\s*\/>)/, `$1\n        <Hero />`);
     },
     errorDescription:
-      "Warning: Each child in a list should have a unique \"key\" prop.\n\nMultiple <Hero /> components rendered in IndexPage.tsx. This causes a duplicate key warning and visual duplication on the page.",
+      'Warning: Each child in a list should have a unique "key" prop.\n\nMultiple <Hero /> components rendered in IndexPage.tsx. This causes a duplicate key warning and visual duplication on the page.',
     // Post-fix: <Hero still exists (one instance). Pre-fix inversion isn't useful here
     // since <Hero exists in both states. The count check below handles this case.
     expectedContains: [{ file: "IndexPage", text: "<Hero" }],
@@ -214,10 +199,9 @@ function checkContentAssertions(
     // expectedAbsent items should be PRESENT in the bugged files (that's the bug we injected)
     for (const { file, text } of testCase.expectedAbsent ?? []) {
       const content = findFile(files, file);
-      expect(
-        content,
-        `${prefix}: "${file}" should contain "${text}" (the injected bug)`
-      ).toContain(text);
+      expect(content, `${prefix}: "${file}" should contain "${text}" (the injected bug)`).toContain(
+        text
+      );
     }
   } else {
     // Normal post-fix checks
@@ -229,10 +213,7 @@ function checkContentAssertions(
     for (const { file, text } of testCase.expectedAbsent ?? []) {
       const content = findFile(files, file);
       if (content) {
-        expect(
-          content,
-          `${prefix}: "${file}" should NOT contain "${text}"`
-        ).not.toContain(text);
+        expect(content, `${prefix}: "${file}" should NOT contain "${text}"`).not.toContain(text);
       }
     }
   }
@@ -264,7 +245,7 @@ function checkTrackingPreserved(before: Map<string, string>, after: Map<string, 
 // Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("Bug Fix Eval", () => {
+describe.skipIf(!!process.env.CI)("Bug Fix Eval", () => {
   afterAll(() => {
     console.log("\n━━━ TOTAL BUG FIX EVAL COST ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     console.log(
@@ -285,7 +266,10 @@ describe("Bug Fix Eval", () => {
 
       // 2. Find and mutate the target file
       const targetPath = findFilePath(filesBefore, testCase.targetFile);
-      expect(targetPath, `Target file matching "${testCase.targetFile}" should exist`).toBeDefined();
+      expect(
+        targetPath,
+        `Target file matching "${testCase.targetFile}" should exist`
+      ).toBeDefined();
 
       const originalContent = filesBefore.get(targetPath!);
       expect(originalContent, `Target file should have content`).toBeDefined();
@@ -297,12 +281,7 @@ describe("Bug Fix Eval", () => {
       await db
         .update(websiteFiles)
         .set({ content: buggedContent })
-        .where(
-          and(
-            eq(websiteFiles.websiteId, ctx.websiteId),
-            eq(websiteFiles.path, targetPath!)
-          )
-        );
+        .where(and(eq(websiteFiles.websiteId, ctx.websiteId), eq(websiteFiles.path, targetPath!)));
 
       // 3. Pre-fix assertions — same assertions, inverted: proves the bug landed
       const buggedFiles = await snapshotFiles(ctx.websiteId);
@@ -311,7 +290,10 @@ describe("Bug Fix Eval", () => {
       // Special pre-fix: duplicate-component-render should have 2+ <Hero renders
       if (testCase.label === "duplicate-component-render") {
         const heroCount = (buggedContent.match(/<Hero/g) || []).length;
-        expect(heroCount, `PRE-FIX: should have 2+ <Hero, found ${heroCount}`).toBeGreaterThanOrEqual(2);
+        expect(
+          heroCount,
+          `PRE-FIX: should have 2+ <Hero, found ${heroCount}`
+        ).toBeGreaterThanOrEqual(2);
       }
 
       console.log(`  Injected bug "${testCase.label}" into ${targetPath}`);
