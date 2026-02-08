@@ -11,7 +11,7 @@ import { getSchedulingToolMinorEditFiles } from "@cache";
 import type { Website } from "@types";
 import { injectAgentContext } from "@api/middleware";
 import { getLogger } from "@core";
-import { db, websiteFiles, eq } from "@db";
+import { db, codeFiles, websiteFiles, eq } from "@db";
 
 /**
  * Get cached response for cache mode.
@@ -46,28 +46,29 @@ const cachedResponse = async (state: WebsiteGraphState) => {
 };
 
 /**
- * Create flow = no AI messages yet. Handles both:
+ * Create flow = no AI messages yet and no existing files. Handles both:
  * - Production: 0 messages in state
  * - Eval/test: 1 HumanMessage passed for input control
  */
-const isCreateFlow = (state: WebsiteGraphState) => {
-  const messages = state.messages;
-  const anyAgentMessage = !messages.some((m) => m._getType() === "ai");
+const isCreateFlow = async (state: WebsiteGraphState) => {
+  const hasAiMessage = state.messages.some((m) => m._getType() === "ai");
+  if (hasAiMessage) return false;
 
-  return !anyAgentMessage && !anyWebsiteFiles(state);
+  const hasFiles = await hasWebsiteFiles(state);
+  return !hasFiles;
 };
 
-// Make separate function so short-circuit doesn't have to look it up if any AI message already exist
-const anyWebsiteFiles = (state: WebsiteGraphState) => {
-  return !!db
+const hasWebsiteFiles = async (state: WebsiteGraphState): Promise<boolean> => {
+  const rows = await db
     .select()
     .from(websiteFiles)
     .where(eq(websiteFiles.websiteId!, state.websiteId!))
     .limit(1);
+  return rows.length > 0;
 };
 
 const buildContext = async (state: WebsiteGraphState) => {
-  const isCreate = isCreateFlow(state);
+  const isCreate = await isCreateFlow(state);
 
   // Inject context events (brainstorm.finished, images.created, images.deleted)
   // This runs within AsyncLocalStorage context, preserving Polly.js caching
@@ -111,14 +112,10 @@ export const websiteBuilderNode = NodeMiddleware.use(
 
     // In cache mode (create only), return cached files instead of running the agent
     const cacheEnabled = isCacheModeEnabled(state);
-    const isCreate = isCreateFlow(state);
+    const isCreate = await isCreateFlow(state);
 
     if (cacheEnabled) {
-      console.log("Cache mode enabled, returning cached files");
-      console.log("Cache mode enabled, returning cached files");
-      console.log("Cache mode enabled, returning cached files");
-      console.log("Cache mode enabled, returning cached files");
-      console.log("Cache mode enabled, returning cached files");
+      getLogger().info("Cache mode enabled, returning cached files");
       return await cachedResponse(state);
     }
 
@@ -129,23 +126,11 @@ export const websiteBuilderNode = NodeMiddleware.use(
     const hasHumanMessage = state.messages.some((m) => m._getType() === "human");
     if (!isCreate && !hasHumanMessage) {
       getLogger().info("No human message in context, skipping websiteBuilder");
-      getLogger().info("No human message in context, skipping websiteBuilder");
-      getLogger().info("No human message in context, skipping websiteBuilder");
-      getLogger().info("No human message in context, skipping websiteBuilder");
-      getLogger().info("No human message in context, skipping websiteBuilder");
-      getLogger().info("No human message in context, skipping websiteBuilder");
-      getLogger().info("No human message in context, skipping websiteBuilder");
       return {};
     }
 
     const messages = await buildContext(state);
 
-    console.log("Runnign agent")
-    console.log("Runnign agent")
-    console.log("Runnign agent")
-    console.log("Runnign agent")
-    console.log("Runnign agent")
-    console.log("Runnign agent")
     const result = await createCodingAgent(
       { ...state, isCreateFlow: isCreate },
       {
@@ -154,13 +139,6 @@ export const websiteBuilderNode = NodeMiddleware.use(
         recursionLimit: isCreate ? 150 : 100,
       }
     );
-    console.log("Agent result:", result.messages.at(-1)?.content);
-    console.log("Agent result:", result.messages.at(-1)?.content);
-    console.log("Agent result:", result.messages.at(-1)?.content);
-    console.log("Agent result:", result.messages.at(-1)?.content);
-    console.log("Agent result:", result.messages.at(-1)?.content);
-    console.log("Agent result:", result.messages.at(-1)?.content);
-    console.log("Agent result:", result.messages.at(-1)?.content);
 
     // TODO: Visual Feedback Loop (post-MVP)
     // After the create flow completes, add a visual validation step:
@@ -171,8 +149,21 @@ export const websiteBuilderNode = NodeMiddleware.use(
     // 4. This creates a self-correcting loop: create → screenshot → evaluate → fix
     // Only applies to create flow (isCreateFlow), not edits.
 
+    // Read files from DB immediately so frontend gets them before compaction/cleanup.
+    // Same pattern as syncFilesNode — uses the codeFiles view (website_files + template_files).
+    const generatedFiles = await db
+      .select()
+      .from(codeFiles)
+      .where(eq(codeFiles.websiteId, state.websiteId!));
+
+    const files = generatedFiles.reduce((acc, file) => {
+      acc[file.path!] = { content: file.content!, created_at: file.createdAt!, modified_at: file.updatedAt! };
+      return acc;
+    }, {} as Website.FileMap);
+
     return {
       ...result,
+      files,
       todos: result.todos ?? [],
     };
   }

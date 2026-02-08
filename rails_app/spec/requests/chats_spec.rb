@@ -9,10 +9,11 @@ RSpec.describe "Chats API", type: :request do
 
   let!(:template) { create(:template) }
   let!(:project1) { create(:project, account: user1_account, name: "User 1 Project") }
-  # Website auto-creates its chat via ChatCreatable
   let!(:website1) { create(:website, account: user1_account, project: project1, template: template) }
+  let!(:website1_chat) { website1.create_website_chat!(thread_id: SecureRandom.uuid) }
   let!(:project2) { create(:project, account: user2_account, name: "User 2 Project") }
   let!(:website2) { create(:website, account: user2_account, project: project2, template: template) }
+  let!(:website2_chat) { website2.create_website_chat!(thread_id: SecureRandom.uuid) }
 
   before do
     ensure_plans_exist
@@ -32,7 +33,7 @@ RSpec.describe "Chats API", type: :request do
 
       parameter name: :validate_params, in: :body, schema: APISchemas::Chat.validate_params_schema
 
-      response '403', 'thread does not exist - requires pre-created chat' do
+      response '200', 'thread does not exist yet - allowed for authenticated user' do
         let(:auth_headers) { auth_headers_for(user1) }
         let(:Authorization) { auth_headers['Authorization'] }
         let(:"X-Signature") { auth_headers['X-Signature'] }
@@ -41,7 +42,7 @@ RSpec.describe "Chats API", type: :request do
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data["valid"]).to be false
+          expect(data["valid"]).to be true
           expect(data["exists"]).to be false
         end
       end
@@ -52,8 +53,7 @@ RSpec.describe "Chats API", type: :request do
         let(:Authorization) { auth_headers['Authorization'] }
         let(:"X-Signature") { auth_headers['X-Signature'] }
         let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-        # Use the auto-created chat from website1
-        let(:validate_params) { {thread_id: website1.chat.thread_id} }
+        let(:validate_params) { {thread_id: website1_chat.thread_id} }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -69,8 +69,8 @@ RSpec.describe "Chats API", type: :request do
         let(:Authorization) { auth_headers['Authorization'] }
         let(:"X-Signature") { auth_headers['X-Signature'] }
         let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
-        # Use the auto-created chat from website2 (belongs to user2)
-        let(:validate_params) { {thread_id: website2.chat.thread_id} }
+        # Chat belongs to user2's account
+        let(:validate_params) { {thread_id: website2_chat.thread_id} }
 
         run_test! do |response|
           data = JSON.parse(response.body)

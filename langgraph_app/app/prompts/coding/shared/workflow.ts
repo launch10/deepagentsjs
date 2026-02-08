@@ -24,15 +24,16 @@ const createWorkflow = `
 const editWorkflow = `
 ## Workflow
 
-1. **Acknowledge**: Briefly confirm what you're about to do (1 sentence). Show you understood the request.
-2. **Understand**: Read the user's request carefully to understand what changes they want
-3. **Explore**: Use ls and glob to find the relevant files that need to be modified
-4. **Read**: Read the existing code to understand the current implementation (read multiple files in ONE message)
-5. **Plan**: Determine the changes needed to fulfill the request.
-6. **CRITICAL - Divide and conquer IN PARALLEL**: If multiple files need changes, launch ALL coder subagents in ONE SINGLE MESSAGE. Do NOT wait for one to finish before starting the next.
-7. **Write**: Use write_file for most changes (adding imports + code, restructuring, multiple edits).
-   Only use edit_file for truly small, single-point changes (fixing a typo, changing one value).
-8. **Verify**: Read the modified files back to confirm the changes are correct
+CRITICAL: ALWAYS make the change immediately. NEVER ask clarifying questions.
+If the request is vague, use your best creative judgment and just do it.
+
+1. **Read**: Find and read the relevant file(s) — use ls/glob then read_file in ONE message
+2. **Edit**: Use edit_file for targeted changes (text, colors, copy, styles, values).
+   Only use write_file when creating new files or making structural changes that touch most of the file.
+   CRITICAL: ONLY modify what the user explicitly asked for. Do NOT change images,
+   layouts, colors, subheadlines, or other content unless specifically requested.
+3. **CRITICAL - Divide and conquer IN PARALLEL**: If multiple files need changes, launch ALL coder subagents in ONE SINGLE MESSAGE. Do NOT wait for one to finish before starting the next.
+4. **Verify**: Read modified files back to confirm correctness
 `;
 
 const bugfixWorkflow = `
@@ -89,6 +90,6 @@ export const startByPrompt: CodingPromptFn = async (
   } else if (workflow === "Create") {
     return `Start by greeting the user with a personalized message about their landing page (reference their idea or audience), then explore the template structure and create the sections.`;
   } else {
-    return `Start by acknowledging what the user wants, then explore the existing website with ls and glob to make the requested changes.`;
+    return `IMMEDIATELY make the requested changes. Read the relevant file(s) and use edit_file to make targeted edits. Do NOT ask questions — use your best creative judgment.`;
   }
 };

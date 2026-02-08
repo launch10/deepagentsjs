@@ -95,7 +95,7 @@ export default function BuildStep() {
         {/* Main content area - no bottom padding so preview extends behind footer */}
         <main className="flex-1 min-h-0 grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%] pt-[2.5%]">
           {/* Left sidebar */}
-          <div>
+          <div className="min-h-0 overflow-hidden">
             <WebsiteSidebar isLoading={isInitialLoading} currentStep={0} />
           </div>
 

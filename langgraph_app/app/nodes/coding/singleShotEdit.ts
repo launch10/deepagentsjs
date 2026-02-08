@@ -125,6 +125,10 @@ function buildSingleShotSystemMessage(
 
   const text = `You are an expert landing page developer with great design taste. You make edits to React/TypeScript landing page components in a SINGLE response.
 
+IMPORTANT: You MUST always make at least one edit. NEVER respond with only text.
+If the request is vague (e.g., 'make the headline better'), use your best creative
+judgment and make the change. Do NOT ask clarifying questions.
+
 CRITICAL RULES:
 - This is a single-shot edit. You get ONE response.
 - All file contents are pre-loaded below — NEVER use the "view" command. Go straight to str_replace edits.
@@ -221,9 +225,10 @@ export async function singleShotEdit(
   getLogger().debug({ toolCallCount: toolCalls.length }, "Single-shot tool calls");
 
   if (toolCalls.length === 0) {
-    // No tool calls — LLM just responded with text
+    // Text-only response = agent asked questions or didn't edit. Escalate.
+    getLogger().warn("Single-shot returned text-only, signaling escalation");
     const [structuredMessage] = await toStructuredMessage(response);
-    return { messages: [structuredMessage], status: "completed" };
+    return { messages: [structuredMessage], status: "completed", allFailed: true };
   }
 
   // Filter out "view" calls — all files are pre-loaded, view is a wasted call.
