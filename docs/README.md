@@ -99,6 +99,7 @@ See [billing/](billing/) — 13 docs covering credits, Stripe, charging, and sub
 | [Services](infrastructure/services.md) | Port allocation, parallel development |
 | [Database](infrastructure/database.md) | Shared DB, Rails-owns-schema |
 | [Background Jobs](infrastructure/background-jobs.md) | Sidekiq, Zhong, worker patterns |
+| [Debugging & Observability](infrastructure/debugging.md) | LangSmith traces, Pino logging, Rollbar, Google Ads instrumentation |
 
 ## Decisions
 

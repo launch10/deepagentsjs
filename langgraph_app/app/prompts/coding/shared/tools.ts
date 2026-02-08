@@ -13,6 +13,7 @@ export const codingToolsPrompt: CodingPromptFn = async (
 1. **Filesystem tools**: ls, read_file, write_file, edit_file, glob, grep
 2. **Subagents** (via task tool):
    - **coder**: Implement React/TypeScript components. Use subagent_type="coder"
+3. **searchIcons**: Search for Lucide React icons by concept. Only needed for unusual or domain-specific icons where common ones don't fit.
 
 ### Parallel Execution - CRITICAL FOR SPEED
 

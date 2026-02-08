@@ -9,6 +9,7 @@ import {
   getLogger,
 } from "@core";
 import { WebsiteFilesBackend } from "@services";
+import { SearchIconsTool } from "@tools";
 import { buildCoderSubAgent } from "./subagents";
 import { checkpointer } from "@core";
 import {
@@ -153,7 +154,7 @@ async function buildFullCodingAgent(
     systemPrompt: finalSystemPrompt,
     backend: () => backend as any,
     subagents: [coderSubAgent],
-    tools: [],
+    tools: [new SearchIconsTool()],
     middleware: middlewares as any,
   });
   return { agent, backend };

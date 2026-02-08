@@ -10,6 +10,7 @@ import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { v7 as uuid } from "uuid";
 import { didSwitchPage, getContextMessage, needsContextMessage, ContextMessages } from "@prompts";
 import { isContextMessage } from "langgraph-ai-sdk";
+import { tool } from "langchain";
 
 const adsGraph = uncompiledGraph.compile({ ...graphParams, name: "ads" });
 

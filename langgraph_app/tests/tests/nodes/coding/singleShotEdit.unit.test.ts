@@ -85,6 +85,7 @@ function makeFakeBackend(): WebsiteFilesBackend {
     edit: vi.fn(),
     cleanup: vi.fn(),
     glob: vi.fn(),
+    flush: vi.fn().mockResolvedValue(undefined),
   } as unknown as WebsiteFilesBackend;
 }
 

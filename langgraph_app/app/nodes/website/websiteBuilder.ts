@@ -124,7 +124,7 @@ export const websiteBuilderNode = NodeMiddleware.use(
       {
         messages,
         config,
-        recursionLimit: isCreate ? 150 : 50,
+        recursionLimit: isCreate ? 150 : 100,
       }
     );
 
