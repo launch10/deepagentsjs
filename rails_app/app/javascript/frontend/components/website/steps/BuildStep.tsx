@@ -16,6 +16,7 @@ import {
 interface WebsitePageProps {
   website?: { id?: number };
   project?: { id?: number; uuid?: string };
+  thread_id?: string;
   [key: string]: unknown;
 }
 
@@ -29,14 +30,17 @@ const websiteLoaderSteps = [{ id: "1", label: "Setting up branding & colors" }];
  * updateState reference changes causing infinite re-renders.
  */
 function useWebsiteInit() {
-  const { website, project } = usePage<WebsitePageProps>().props;
+  const { website, project, thread_id } = usePage<WebsitePageProps>().props;
   const websiteId = website?.id;
   const projectId = project?.id;
 
   const { updateState } = useWebsiteChatActions();
   const isStreaming = useWebsiteChatIsStreaming();
   const chatId = useWebsiteChatState("chatId");
-  const hasInitialized = useRef(!!chatId);
+  // thread_id from page props is available immediately (server-rendered),
+  // while chatId only populates after history loads. Using both prevents
+  // firing updateState on existing chats during the history-loading window.
+  const hasInitialized = useRef(!!chatId || !!thread_id);
 
   const maybeInit = useEffectEvent(() => {
     if (hasInitialized.current) return;
