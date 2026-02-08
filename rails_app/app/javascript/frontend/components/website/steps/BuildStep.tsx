@@ -43,9 +43,11 @@ function useWebsiteInit() {
   const hasInitialized = useRef(!!chatId || !!thread_id);
 
   const maybeInit = useEffectEvent(() => {
+    console.log(`MAYBE INIT: ${websiteId}, ${projectId}`);
     if (hasInitialized.current) return;
     if (isStreaming) return;
     if (!websiteId || !projectId) return;
+    console.log(`yes lets init`)
 
     hasInitialized.current = true;
     // No intent = default flow (website builder)
@@ -61,6 +63,24 @@ function useWebsiteInit() {
 }
 
 /**
+ * Log todos state updates from the langgraph stream.
+ * TEMPORARY: Remove once we've verified the shape and built the UI.
+ */
+function useTodosLogger() {
+  const todos = useWebsiteChatState("todos");
+  const prevRef = useRef(todos);
+
+  useEffect(() => {
+    if (todos !== prevRef.current) {
+      console.log("[TODOS] State update:", JSON.stringify(todos, null, 2));
+      prevRef.current = todos;
+    }
+  }, [todos]);
+
+  return todos;
+}
+
+/**
  * Website Build step - generates the website content
  */
 export default function BuildStep() {
@@ -71,10 +91,16 @@ export default function BuildStep() {
   // Auto-init website generation on first load
   useWebsiteInit();
 
-  // Show loading when:
-  // 1. Loading chat history from server
-  // 2. Sending message
-  const isLoading = isLoadingHistory || isStreaming;
+  // TEMPORARY: Log todos from langgraph stream
+  useTodosLogger();
+
+  // Check if we already have generated files (i.e. past initial generation)
+  const files = useWebsiteChatState("files");
+  const hasFiles = files && Object.keys(files).length > 0;
+
+  // Only show full loading UI for initial generation (no files yet) or history loading.
+  // During edits (hasFiles), keep the chat + preview visible.
+  const isInitialLoading = isLoadingHistory || (isStreaming && !hasFiles);
 
   // Credit integration is automatic via ChatProvider - no manual wiring needed
   return (
@@ -84,12 +110,12 @@ export default function BuildStep() {
         <main className="flex-1 min-h-0 grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%] pt-[2.5%]">
           {/* Left sidebar */}
           <div>
-            <WebsiteSidebar isLoading={isLoading} currentStep={0} />
+            <WebsiteSidebar isLoading={isInitialLoading} currentStep={0} />
           </div>
 
           {/* Preview content - negative margin extends behind footer, overflow clips rounded corners */}
           <div className="min-h-0 -mb-20 overflow-hidden">
-            {isLoading ? (
+            {isInitialLoading ? (
               <div className="border-[#D3D2D0] border rounded-2xl bg-white flex items-center justify-center h-full">
                 <WebsiteLoader steps={websiteLoaderSteps} currentStep={0} />
               </div>
@@ -100,13 +126,13 @@ export default function BuildStep() {
         </main>
 
         {/* Footer - full width background, content aligned with preview */}
-        <PaginationFooter.Root layout="full-bleed" isPending={isLoading} canGoBack={false}>
+        <PaginationFooter.Root layout="full-bleed" isPending={isInitialLoading} canGoBack={false}>
           <PaginationFooter.BackButton />
           <PaginationFooter.Actions>
-            <PaginationFooter.ActionButton disabled={isLoading}>
+            <PaginationFooter.ActionButton disabled={isInitialLoading}>
               Preview
             </PaginationFooter.ActionButton>
-            <PaginationFooter.ContinueButton disabled={isLoading} />
+            <PaginationFooter.ContinueButton disabled={isInitialLoading} />
           </PaginationFooter.Actions>
         </PaginationFooter.Root>
       </div>

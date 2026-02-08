@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { Chat } from "@components/shared/chat/Chat";
 import { useChatMessages, useChatIsStreaming } from "@components/shared/chat/ChatContext";
+import { useWebsiteChatState } from "@hooks/website";
+import type { Todo } from "@shared";
 
 /**
  * Props for the WebsiteChatMessagesView presentation component.
@@ -14,6 +16,8 @@ export interface WebsiteChatMessagesViewProps {
   }>;
   /** Whether the chat is currently streaming a response */
   isStreaming: boolean;
+  /** Optional todos to display inline at the bottom of the message list */
+  todos?: Todo[];
 }
 
 /**
@@ -21,7 +25,7 @@ export interface WebsiteChatMessagesViewProps {
  * Uses Chat compound components for consistent styling.
  * Follows the same pattern as BrainstormMessages.
  */
-export function WebsiteChatMessagesView({ messages, isStreaming }: WebsiteChatMessagesViewProps) {
+export function WebsiteChatMessagesView({ messages, isStreaming, todos }: WebsiteChatMessagesViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,6 +80,9 @@ export function WebsiteChatMessagesView({ messages, isStreaming }: WebsiteChatMe
 
         return null;
       })}
+      {isStreaming && todos && todos.length > 0 && (
+        <Chat.TodoList todos={todos} className="text-xs" />
+      )}
     </Chat.Messages.List>
   );
 }
@@ -87,6 +94,7 @@ export function WebsiteChatMessagesView({ messages, isStreaming }: WebsiteChatMe
 export default function WebsiteChatMessages() {
   const messages = useChatMessages();
   const isStreaming = useChatIsStreaming();
+  const todos = useWebsiteChatState("todos");
 
-  return <WebsiteChatMessagesView messages={messages} isStreaming={isStreaming} />;
+  return <WebsiteChatMessagesView messages={messages} isStreaming={isStreaming} todos={todos} />;
 }

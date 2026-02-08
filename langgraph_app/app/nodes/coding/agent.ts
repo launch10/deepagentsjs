@@ -234,7 +234,7 @@ async function resolveRoute(
 export async function createCodingAgent(
   state: MinimalCodingAgentState,
   options: CodingAgentOptions
-): Promise<{ messages: BaseMessage[]; status: "completed" }> {
+): Promise<{ messages: BaseMessage[]; status: "completed"; todos?: Array<{ content: string; status: "pending" | "in_progress" | "completed" }> }> {
   if (state.isCreateFlow === undefined) {
     throw new Error(
       "isCreateFlow is required - explicitly set to true (create) or false (edit/bugfix)"
@@ -317,8 +317,13 @@ export async function createCodingAgent(
     structuredMessages.unshift(structured);
   }
 
+  // deepagents' todoListMiddleware adds todos to the agent state, but the
+  // MergedAgentState type doesn't reflect it. Access via index signature.
+  const todos = (result as any).todos as Array<{ content: string; status: "pending" | "in_progress" | "completed" }> | undefined;
+
   return {
     messages: structuredMessages as BaseMessage[],
     status: "completed" as const,
+    todos,
   };
 }

@@ -10,8 +10,10 @@ import { prepareContextWindow } from "./contextWindow";
 import { getSchedulingToolMinorEditFiles } from "@cache";
 import type { Website } from "@types";
 import { injectAgentContext } from "@api/middleware";
-import { getLogger } from "@core";
+import { getLogger, env } from "@core";
 import { db, websiteFiles, eq } from "@db";
+import { createDeepAgent } from "deepagents";
+import { getLLM } from "@core";
 
 /**
  * Get cached response for cache mode.
@@ -66,6 +68,51 @@ const anyWebsiteFiles = (state: WebsiteGraphState) => {
     .limit(1);
 };
 
+/**
+ * Cheap test agent for verifying the todos pipeline.
+ * Uses Haiku to create 3 todos, mark each in_progress then completed.
+ * Costs ~$0.001 instead of $0.10-0.50 for the real agent.
+ */
+const runTodosTestAgent = async (
+  config: LangGraphRunnableConfig
+): Promise<Partial<WebsiteGraphState>> => {
+  const llm = (await getLLM({ skill: "coding", speed: "fast", cost: "free" })).withConfig({
+    tags: ["notify"],
+  });
+
+  const agent = createDeepAgent({
+    model: llm as any,
+    name: "todos-test-agent",
+    systemPrompt: `You are a test agent. Your ONLY job is to exercise the write_todos tool.
+
+Do exactly this sequence:
+1. Call write_todos with 3 todos all "pending": "Analyzing your business idea", "Setting up branding & colors", "Building your landing page"
+2. Call write_todos marking the first "in_progress", others still "pending"
+3. Call write_todos marking the first "completed", second "in_progress", third "pending"
+4. Call write_todos marking first two "completed", third "in_progress"
+5. Call write_todos with all three "completed"
+6. Respond with "Done! Todo pipeline test complete."
+
+Do NOT use any other tools. Do NOT create files. Just call write_todos 5 times as described above.`,
+    backend: undefined as any,
+  });
+
+  const result = await agent.invoke(
+    { messages: [] },
+    { ...config, recursionLimit: 50 },
+  );
+
+  const aiMessages = result.messages.filter((msg: any) => msg._getType() === "ai");
+  const lastAI = aiMessages.at(-1);
+  const structured = lastAI ? (await toStructuredMessage(lastAI))[0] : undefined;
+
+  return {
+    messages: structured ? [structured] : [],
+    todos: ((result as any).todos as Array<{ content: string; status: "pending" | "in_progress" | "completed" }>) ?? [],
+    status: "completed" as const,
+  };
+};
+
 const buildContext = async (state: WebsiteGraphState) => {
   const isCreate = isCreateFlow(state);
 
@@ -109,12 +156,28 @@ export const websiteBuilderNode = NodeMiddleware.use(
       throw new Error("websiteId and jwt are required");
     }
 
+    // TODOS_TEST: cheap agent that just exercises the write_todos tool pipeline
+    if (env.TODOS_TEST) {
+      getLogger().info("TODOS_TEST mode: running cheap todos test agent");
+      return await runTodosTestAgent(config);
+    }
+
     // In cache mode (create only), return cached files instead of running the agent
     const cacheEnabled = isCacheModeEnabled(state);
     const isCreate = isCreateFlow(state);
 
     if (cacheEnabled) {
       return await cachedResponse(state);
+    }
+
+    // Guard: if there's no human message in context (e.g., a stateOnly call that
+    // routed to the default path with no intent and no user input), skip the agent.
+    // Without this, the LLM sees only prior AI messages, enters a degenerate
+    // repetition loop, and appends junk to the checkpoint on every page load.
+    const hasHumanMessage = state.messages.some((m) => m._getType() === "human");
+    if (!isCreate && !hasHumanMessage) {
+      getLogger().info("No human message in context, skipping websiteBuilder");
+      return {};
     }
 
     const messages = await buildContext(state);
@@ -137,6 +200,9 @@ export const websiteBuilderNode = NodeMiddleware.use(
     // 4. This creates a self-correcting loop: create → screenshot → evaluate → fix
     // Only applies to create flow (isCreateFlow), not edits.
 
-    return result;
+    return {
+      ...result,
+      todos: result.todos ?? [],
+    };
   }
 );

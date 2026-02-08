@@ -17,9 +17,7 @@ import {
 import { isContextMessage } from "langgraph-ai-sdk";
 import { getLLM } from "@core";
 import { NodeMiddleware } from "@middleware";
-
-/** Minimal state shape — any graph extending BaseAnnotation satisfies this. */
-type HasMessages = { messages: BaseMessage[] };
+import { type CoreGraphState } from "@state";
 
 export interface CompactConversationOptions {
   /** Trigger compaction when non-context messages exceed this count. Default: 12 */
@@ -45,7 +43,7 @@ export function createCompactConversationNode(
 ) {
   return NodeMiddleware.use(
     {},
-    async (state: HasMessages) => {
+    async (state: CoreGraphState) => {
       return compactConversation(state.messages, options);
     }
   );
@@ -121,9 +119,8 @@ export async function compactConversation(
 async function summarizeMessages(messages: BaseMessage[]): Promise<string> {
   const llm = await getLLM({
     skill: "coding",
-    speed: "blazing",
     cost: "paid",
-    maxTier: 5,
+    maxTier: 3,
   });
 
   const formatted = messages

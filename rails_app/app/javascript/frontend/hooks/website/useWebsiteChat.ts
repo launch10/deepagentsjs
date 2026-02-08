@@ -3,6 +3,14 @@ import type { UIMessage } from "ai";
 import type { WebsiteBridgeType, WebsiteGraphState } from "@shared";
 import { syncLanggraphToStore } from "~/stores/useSyncProject";
 import { useChatOptions } from "@hooks/useChatOptions";
+import { useEffect, useRef } from "react";
+import { usePage } from "@inertiajs/react";
+
+interface WebsitePageProps {
+  website?: { id?: number };
+  project?: { id?: number };
+  [key: string]: unknown;
+}
 
 export type WebsiteSnapshot = ChatSnapshot<WebsiteGraphState>;
 
@@ -10,9 +18,30 @@ function useWebsiteChatOptions() {
   return useChatOptions<WebsiteBridgeType>({ apiPath: "api/website/stream" });
 }
 
+/**
+ * Seed websiteId and projectId from page props into the chat's client-side
+ * state so they're always present when sendMessage fires — including
+ * follow-up edits on existing threads.
+ */
+function useSeedPageProps(chat: LanggraphChat<UIMessage, WebsiteGraphState>) {
+  const { website, project } = usePage<WebsitePageProps>().props;
+  const seeded = useRef(false);
+
+  useEffect(() => {
+    if (seeded.current) return;
+    const websiteId = website?.id;
+    const projectId = project?.id;
+    if (!websiteId || !projectId) return;
+
+    seeded.current = true;
+    chat.setState({ websiteId, projectId } as Partial<WebsiteGraphState>);
+  }, [chat, website?.id, project?.id]);
+}
+
 export function useWebsiteChat(): LanggraphChat<UIMessage, WebsiteGraphState> {
   const options = useWebsiteChatOptions();
   const chat = useLanggraph(options, (s) => s.chat);
+  useSeedPageProps(chat);
   syncWebsiteToStore();
 
   return chat;

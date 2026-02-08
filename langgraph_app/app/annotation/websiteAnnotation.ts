@@ -41,6 +41,12 @@ export const WebsiteAnnotation = Annotation.Root({
     default: () => undefined,
     reducer: (current, next) => next ?? current, // Don't overwrite if already set
   }),
+
+  // Todo list for progress tracking (populated by deepagents' write_todos tool)
+  todos: Annotation<Array<{ content: string; status: "pending" | "in_progress" | "completed" }>>({
+    default: () => [],
+    reducer: (current, next) => next, // Full replacement on each update
+  }),
 });
 
 export type WebsiteGraphState = typeof WebsiteAnnotation.State;
