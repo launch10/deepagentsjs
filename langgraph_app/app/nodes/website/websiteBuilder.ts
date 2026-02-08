@@ -114,6 +114,11 @@ export const websiteBuilderNode = NodeMiddleware.use(
     const isCreate = isCreateFlow(state);
 
     if (cacheEnabled) {
+      console.log("Cache mode enabled, returning cached files");
+      console.log("Cache mode enabled, returning cached files");
+      console.log("Cache mode enabled, returning cached files");
+      console.log("Cache mode enabled, returning cached files");
+      console.log("Cache mode enabled, returning cached files");
       return await cachedResponse(state);
     }
 
@@ -124,11 +129,23 @@ export const websiteBuilderNode = NodeMiddleware.use(
     const hasHumanMessage = state.messages.some((m) => m._getType() === "human");
     if (!isCreate && !hasHumanMessage) {
       getLogger().info("No human message in context, skipping websiteBuilder");
+      getLogger().info("No human message in context, skipping websiteBuilder");
+      getLogger().info("No human message in context, skipping websiteBuilder");
+      getLogger().info("No human message in context, skipping websiteBuilder");
+      getLogger().info("No human message in context, skipping websiteBuilder");
+      getLogger().info("No human message in context, skipping websiteBuilder");
+      getLogger().info("No human message in context, skipping websiteBuilder");
       return {};
     }
 
     const messages = await buildContext(state);
 
+    console.log("Runnign agent")
+    console.log("Runnign agent")
+    console.log("Runnign agent")
+    console.log("Runnign agent")
+    console.log("Runnign agent")
+    console.log("Runnign agent")
     const result = await createCodingAgent(
       { ...state, isCreateFlow: isCreate },
       {
@@ -137,6 +154,13 @@ export const websiteBuilderNode = NodeMiddleware.use(
         recursionLimit: isCreate ? 150 : 100,
       }
     );
+    console.log("Agent result:", result.messages.at(-1)?.content);
+    console.log("Agent result:", result.messages.at(-1)?.content);
+    console.log("Agent result:", result.messages.at(-1)?.content);
+    console.log("Agent result:", result.messages.at(-1)?.content);
+    console.log("Agent result:", result.messages.at(-1)?.content);
+    console.log("Agent result:", result.messages.at(-1)?.content);
+    console.log("Agent result:", result.messages.at(-1)?.content);
 
     // TODO: Visual Feedback Loop (post-MVP)
     // After the create flow completes, add a visual validation step:

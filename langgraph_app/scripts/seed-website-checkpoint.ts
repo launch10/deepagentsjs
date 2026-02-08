@@ -20,13 +20,15 @@ import type { Website } from "@types";
 const args = process.argv.slice(2);
 const threadId = args.find((a) => a.startsWith("--thread-id="))?.split("=")[1];
 const websiteId = args.find((a) => a.startsWith("--website-id="))?.split("=")[1];
+const chatId = args.find((a) => a.startsWith("--chat-id="))?.split("=")[1];
 
 if (!threadId || !websiteId) {
-  console.error("Usage: seed-website-checkpoint.ts --thread-id=<uuid> --website-id=<id>");
+  console.error("Usage: seed-website-checkpoint.ts --thread-id=<uuid> --website-id=<id> [--chat-id=<id>]");
   process.exit(1);
 }
 
 const websiteIdNum = parseInt(websiteId, 10);
+const chatIdNum = chatId ? parseInt(chatId, 10) : undefined;
 
 // 1. Read files from DB (same query as syncFilesNode)
 const generatedFiles = await db
@@ -66,6 +68,7 @@ await compiled.updateState(config, {
   files,
   status: "completed",
   websiteId: websiteIdNum,
+  ...(chatIdNum ? { chatId: chatIdNum } : {}),
 });
 
 console.log(`Checkpoint seeded for thread ${threadId}`);

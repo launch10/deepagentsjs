@@ -27,8 +27,8 @@ class WebsiteGenerated < BaseBuilder
     chat = website.create_website_chat!(thread_id: SecureRandom.uuid)
     puts "Created website chat: #{chat.id} (thread: #{chat.thread_id})"
 
-    # Seed Langgraph checkpoint so loadHistory returns valid state
-    seed_langgraph_checkpoint(chat.thread_id, website.id)
+    # Seed Langgraph checkpoint so loadHistory returns valid state (includes chatId)
+    seed_langgraph_checkpoint(chat.thread_id, website.id, chat.id)
 
     puts "Website ID: #{website.id}"
     puts "Total website files: #{website.website_files.count}"
@@ -36,11 +36,11 @@ class WebsiteGenerated < BaseBuilder
 
   private
 
-  def seed_langgraph_checkpoint(thread_id, website_id)
+  def seed_langgraph_checkpoint(thread_id, website_id, chat_id)
     langgraph_dir = Rails.root.join("..", "langgraph_app")
     script = langgraph_dir.join("scripts", "seed-website-checkpoint.ts")
 
-    cmd = "cd #{langgraph_dir} && npx tsx #{script} --thread-id=#{thread_id} --website-id=#{website_id}"
+    cmd = "cd #{langgraph_dir} && npx tsx #{script} --thread-id=#{thread_id} --website-id=#{website_id} --chat-id=#{chat_id}"
     result = system({"NODE_ENV" => "test"}, cmd)
 
     raise "Failed to seed Langgraph checkpoint" unless result

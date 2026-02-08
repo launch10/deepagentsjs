@@ -14,7 +14,7 @@ websiteRoutes.post("/stream", ...streamMiddleware, async (c) => {
   const creditState = getCreditState(c);
   const body = await c.req.json();
 
-  const { threadId, state } = body;
+  const { messages, threadId, state } = body;
   const websiteId = body.websiteId ?? state?.websiteId;
 
   if (!threadId) {
@@ -25,14 +25,14 @@ websiteRoutes.post("/stream", ...streamMiddleware, async (c) => {
     return c.json({ error: "Missing required field: websiteId" }, 400);
   }
 
-  // Validate thread ownership - chat must exist (pre-created via ChatCreatable)
+  // Validate thread ownership (new threads pass — chat created by updateWebsite node)
   const validationError = await validateThreadOrError(c, threadId, auth);
   if (validationError) return validationError;
 
   // Stream with automatic billing via middleware
   // ChatId is looked up from threadId at stream completion
   return WebsiteAPI.stream({
-    messages: [],
+    messages: messages || [],
     threadId,
     state: {
       threadId,
@@ -52,7 +52,7 @@ websiteRoutes.get("/stream", ...readOnlyMiddleware, async (c) => {
     return c.json({ error: "Missing threadId" }, 400);
   }
 
-  // Validate thread ownership - chat must exist (pre-created via ChatCreatable)
+  // Validate thread ownership - chat must exist (created by updateWebsite node)
   const validationError = await validateThreadOrError(c, threadId, auth);
   if (validationError) return validationError;
 
