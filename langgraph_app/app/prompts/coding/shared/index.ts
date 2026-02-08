@@ -19,6 +19,7 @@ export { animationsPrompt } from "./design/animations";
 export { themeColorsPrompt } from "./design/themeColors";
 export { fontAndResponsivePrompt } from "./design/fonts";
 export { imageStrategyPrompt } from "./design/imageStrategy";
+export { designPhilosophyPrompt } from "./design/designPhilosophy";
 export { designChecklistPrompt } from "./design/designChecklist";
 export type {
   CodingPromptState,

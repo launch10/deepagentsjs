@@ -5,3 +5,5 @@ export * from "./cacheMode";
 export * from "./improveCopy";
 export * from "./recommendDomains";
 export * from "./themeHandler";
+export * from "./compactConversation";
+export * from "./contextWindow";

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { tool } from "@langchain/core/tools";
 import { WebsiteUrlsAPIService, type SearchWebsiteUrlsResponse } from "@rails_api";
+import { getLogger } from "@core";
 
 const searchWebsiteUrlsSchema = z.object({
   domainId: z.number().describe("The domain ID to check paths on"),
@@ -32,7 +33,7 @@ export const createSearchWebsiteUrlsTool = (jwt: string) =>
   tool(
     async (input): Promise<string> => {
       const { domainId, candidates } = input;
-      console.log("[search_website_urls] Called with domainId:", domainId, "candidates:", candidates);
+      getLogger().debug({ domainId, candidates }, "search_website_urls called");
 
       try {
         const service = new WebsiteUrlsAPIService({ jwt });
@@ -50,7 +51,7 @@ export const createSearchWebsiteUrlsTool = (jwt: string) =>
           })),
         };
 
-        console.log("[search_website_urls] Results:", JSON.stringify(result, null, 2));
+        getLogger().debug({ result }, "search_website_urls results");
         return JSON.stringify(result);
       } catch (error) {
         const result: SearchWebsiteUrlsResult = {

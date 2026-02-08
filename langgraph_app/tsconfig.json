@@ -49,6 +49,8 @@
       "@ext": ["./app/ext/index.ts"],
       "@factories": ["./tests/factories/index.ts"],
       "@state": ["../shared/state/index.ts"],
+      "@shared/config": ["../shared/config/index.ts"],
+      "@shared/config/*": ["../shared/config/*"],
       "@types": ["../shared/types/index.ts"],
       "@shared/*": ["./app/lib/shared/*"],
       "@helpers": ["../shared/helpers/index.ts"],

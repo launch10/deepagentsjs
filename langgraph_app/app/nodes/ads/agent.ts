@@ -1,7 +1,7 @@
 import { createAgent, createMiddleware } from "langchain";
 import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLLM } from "@core";
+import { getLLM, createPromptCachingMiddleware, getLogger } from "@core";
 import { chooseAdsPrompt, injectAdsContextMessage } from "@prompts";
 import { NodeMiddleware } from "@middleware";
 import { type AdsGraphState } from "@state";
@@ -32,7 +32,7 @@ const dynamicPromptMiddleware = createMiddleware({
   wrapModelCall: async (request, handler) => {
     const state = request.state as unknown as AdsGraphState;
 
-    const systemPrompt = await chooseAdsPrompt(state, request.runtime);
+    const systemPrompt = await chooseAdsPrompt(state, request.runtime as LangGraphRunnableConfig);
 
     return await handler({
       ...request,
@@ -53,7 +53,7 @@ export const adsAgent = NodeMiddleware.use(
     const agent = await createAgent({
       model: llm,
       tools,
-      middleware: [dynamicPromptMiddleware],
+      middleware: [createPromptCachingMiddleware(), dynamicPromptMiddleware],
     });
 
     const stateWithMessages = {
@@ -61,6 +61,7 @@ export const adsAgent = NodeMiddleware.use(
       messages: injectAdsContextMessage(state),
     };
 
+    getLogger().info({ stage: state.stage }, "Running ads agent");
     const result = (await agent.invoke(
       stateWithMessages as any,
       config

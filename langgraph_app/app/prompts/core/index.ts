@@ -1,5 +1,6 @@
 import xmlFormat from "xml-formatter";
 import { processPrompt } from "./process";
+import { getLogger } from "@core";
 
 export async function renderPrompt(
   input: string | Promise<string> | (() => string | Promise<string>)
@@ -129,7 +130,7 @@ function formatPromptContent(content: string): string {
       content = formatted;
     } catch (e) {
       // If XML formatting fails, continue with the content as-is
-      console.warn("XML formatting failed, using original content");
+      getLogger({ component: "renderPrompt" }).warn("XML formatting failed, using original content");
     }
   }
 

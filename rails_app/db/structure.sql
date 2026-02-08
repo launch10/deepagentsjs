@@ -1132,6 +1132,43 @@ ALTER SEQUENCE public.ads_id_seq OWNED BY public.ads.id;
 
 
 --
+-- Name: agent_context_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.agent_context_events (
+    id bigint NOT NULL,
+    account_id bigint NOT NULL,
+    project_id bigint,
+    user_id bigint,
+    eventable_type character varying,
+    eventable_id bigint,
+    event_type character varying NOT NULL,
+    payload jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: agent_context_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.agent_context_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: agent_context_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.agent_context_events_id_seq OWNED BY public.agent_context_events.id;
+
+
+--
 -- Name: ahoy_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4788,6 +4825,13 @@ ALTER TABLE ONLY public.ads_accounts ALTER COLUMN id SET DEFAULT nextval('public
 
 
 --
+-- Name: agent_context_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_context_events ALTER COLUMN id SET DEFAULT nextval('public.agent_context_events_id_seq'::regclass);
+
+
+--
 -- Name: ahoy_events id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5588,6 +5632,14 @@ ALTER TABLE ONLY public.ads_accounts
 
 ALTER TABLE ONLY public.ads
     ADD CONSTRAINT ads_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: agent_context_events agent_context_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.agent_context_events
+    ADD CONSTRAINT agent_context_events_pkey PRIMARY KEY (id);
 
 
 --
@@ -7975,6 +8027,41 @@ CREATE INDEX index_ads_on_platform_settings ON public.ads USING gin (platform_se
 --
 
 CREATE INDEX index_ads_on_status ON public.ads USING btree (status);
+
+
+--
+-- Name: index_agent_context_events_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_context_events_on_account_id ON public.agent_context_events USING btree (account_id);
+
+
+--
+-- Name: index_agent_context_events_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_context_events_on_created_at ON public.agent_context_events USING btree (created_at);
+
+
+--
+-- Name: index_agent_context_events_on_event_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_context_events_on_event_type ON public.agent_context_events USING btree (event_type);
+
+
+--
+-- Name: index_agent_context_events_on_eventable_type_and_eventable_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_context_events_on_eventable_type_and_eventable_id ON public.agent_context_events USING btree (eventable_type, eventable_id);
+
+
+--
+-- Name: index_agent_context_events_on_project_id_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_agent_context_events_on_project_id_and_created_at ON public.agent_context_events USING btree (project_id, created_at);
 
 
 --
@@ -11565,6 +11652,8 @@ SET search_path TO "$user", public;
 INSERT INTO "schema_migrations" (version) VALUES
 ('20260204152455'),
 ('20260202005230'),
+('20260204124042'),
+('20260204014903'),
 ('20260201235035'),
 ('20260201153847'),
 ('20260131154443'),

@@ -1,5 +1,5 @@
 import type { Context } from "hono";
-import { env } from "@core";
+import { env, getLogger } from "@core";
 import { ChatsAPIService } from "@rails_api";
 import type { AuthContext } from "./auth";
 
@@ -78,7 +78,7 @@ export async function validateThreadOrError(
 
     return null; // No error, validation passed
   } catch (error) {
-    console.error("Thread validation error:", error);
+    getLogger().error({ err: error }, "Thread validation error");
     return c.json(
       { error: "Thread validation failed", details: String(error) },
       500

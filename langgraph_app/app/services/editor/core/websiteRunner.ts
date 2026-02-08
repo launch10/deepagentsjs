@@ -2,6 +2,7 @@ import { spawn, ChildProcess } from "child_process";
 import { existsSync } from "fs";
 import { join } from "path";
 import waitOn from "wait-on";
+import { getLogger } from "@core";
 
 /**
  * Runs a website in an isolated directory
@@ -38,7 +39,8 @@ export class WebsiteRunner implements AsyncDisposable {
    * Install dependencies using pnpm
    */
   async install(): Promise<void> {
-    console.log(`Installing dependencies in ${this.projectDir}`);
+    const log = getLogger({ component: "WebsiteRunner" });
+    log.info({ projectDir: this.projectDir }, "Installing dependencies");
 
     // Check if package.json exists
     const packageJsonPath = join(this.projectDir, "package.json");
@@ -55,7 +57,7 @@ export class WebsiteRunner implements AsyncDisposable {
 
       installProcess.on("close", (code) => {
         if (code === 0) {
-          console.log("  ✓ Dependencies installed");
+          getLogger({ component: "WebsiteRunner" }).info("Dependencies installed");
           resolve();
         } else {
           reject(new Error(`pnpm install failed with code ${code}`));
@@ -76,7 +78,8 @@ export class WebsiteRunner implements AsyncDisposable {
    * Start the dev server
    */
   async start(): Promise<void> {
-    console.log(`Starting dev server on port ${this.port}`);
+    const log = getLogger({ component: "WebsiteRunner" });
+    log.info({ port: this.port }, "Starting dev server");
 
     return new Promise((resolve, reject) => {
       this.devServerProcess = spawn("pnpm", ["dev"], {
@@ -101,7 +104,7 @@ export class WebsiteRunner implements AsyncDisposable {
         if (trimmed) {
           this.stdoutLines.push(trimmed);
         }
-        console.log(`  Server: ${trimmed}`);
+        getLogger({ component: "WebsiteRunner" }).debug({ output: trimmed }, "Server stdout");
 
         // Look for the actual port being used
         const portMatch = output.match(/Local:\s+https?:\/\/localhost:(\d+)/);
@@ -123,7 +126,7 @@ export class WebsiteRunner implements AsyncDisposable {
         if (trimmed) {
           this.stderrLines.push(trimmed);
         }
-        console.error(`  Server Error: ${trimmed}`);
+        getLogger({ component: "WebsiteRunner" }).warn({ output: trimmed }, "Server stderr");
       });
 
       this.devServerProcess.on("error", (error) => {
@@ -134,7 +137,7 @@ export class WebsiteRunner implements AsyncDisposable {
       setTimeout(async () => {
         try {
           await this.waitForServer();
-          console.log(`  ✓ Dev server running at ${this.serverUrl}`);
+          getLogger({ component: "WebsiteRunner" }).info({ url: this.serverUrl }, "Dev server running");
           resolve();
         } catch (error) {
           this.stop();
@@ -167,7 +170,7 @@ export class WebsiteRunner implements AsyncDisposable {
       return;
     }
 
-    console.log("Stopping dev server...");
+    getLogger({ component: "WebsiteRunner" }).info("Stopping dev server");
 
     return new Promise((resolve) => {
       const processToKill = this.devServerProcess;
@@ -183,7 +186,7 @@ export class WebsiteRunner implements AsyncDisposable {
         // Clear captured output for fresh start
         this.stdoutLines = [];
         this.stderrLines = [];
-        console.log("  ✓ Dev server stopped");
+        getLogger({ component: "WebsiteRunner" }).info("Dev server stopped");
         resolve();
       };
 

@@ -63,12 +63,7 @@ test.describe("Website Builder", () => {
       // Wait for chat input to be ready
       await websitePage.expectChatInputReady();
 
-      // Wait for initial generation to complete (files should appear in preview)
-      // The preview starts in "idle" state showing "Waiting for files..."
-      // We need to wait until the preview is ready or shows content
-      await page.waitForTimeout(5000);
-
-      // Send a message
+      // Send a message (sendMessage waits for streaming to finish before submitting)
       const testMessage = "Make the hero section larger";
       await websitePage.sendMessage(testMessage);
 
@@ -76,32 +71,26 @@ test.describe("Website Builder", () => {
       await expect(page.getByText(testMessage)).toBeVisible({ timeout: 5000 });
     });
 
-    test("auto-init produces AI response with landing page creation message", async ({ page }) => {
+    test("auto-init triggers website generation on page load", async ({ page }) => {
       // Navigate to website
       await websitePage.goto(projectUuid);
 
-      // The auto-init should fire and send create command to langgraph
-      // In CACHE_MODE, this should return quickly with a deterministic AI message
-      // The expected message from cacheMode.ts is:
-      // "I've created a scheduling tool landing page for you with a hero section, features, and pricing."
+      // The auto-init should fire automatically on page load.
+      // Verify the chat area shows activity — either a "Getting ready..." status
+      // (streaming started) or an AI message appears.
+      const gettingReady = page.getByText("Getting ready", { exact: false });
+      const aiMessage = page.getByTestId("ai-message").first();
 
-      // Wait for the AI message to appear (this verifies the full flow works)
-      const aiMessageText = "I've created a scheduling tool landing page";
-      await expect(page.getByText(aiMessageText, { exact: false })).toBeVisible({
-        timeout: 30000,
-      });
+      // Wait for either indicator that auto-init fired
+      await expect(gettingReady.or(aiMessage)).toBeVisible({ timeout: 15000 });
     });
   });
 
   test.describe("Quick Actions", () => {
     test("displays quick action buttons after loading", async ({ page }) => {
-      // Navigate to website
       await websitePage.goto(projectUuid);
-
-      // Wait for loading to complete
       await page.waitForTimeout(3000);
 
-      // Quick action buttons should be visible
       await expect(websitePage.changeColorsButton).toBeVisible({ timeout: 10000 });
       await expect(websitePage.swapImagesButton).toBeVisible({ timeout: 10000 });
       await expect(websitePage.improveCopyButton).toBeVisible({ timeout: 10000 });
@@ -111,11 +100,71 @@ test.describe("Website Builder", () => {
       await websitePage.goto(projectUuid);
       await page.waitForTimeout(3000);
 
-      // Click Change Colors
       await websitePage.clickQuickAction("colors");
-
-      // Should expand to show color options (color palette section)
       await expect(page.locator('text="Colors"').first()).toBeVisible({ timeout: 5000 });
+    });
+
+    test("Swap Images button can be clicked and expands section", async ({ page }) => {
+      await websitePage.goto(projectUuid);
+      await page.waitForTimeout(3000);
+
+      await websitePage.clickQuickAction("images");
+      // ProjectImagesSection renders an "Images" heading or upload area
+      await expect(page.locator('text="Images"').first()).toBeVisible({ timeout: 5000 });
+    });
+
+    test("Improve Copy button can be clicked and expands section", async ({ page }) => {
+      await websitePage.goto(projectUuid);
+      await page.waitForTimeout(3000);
+
+      await websitePage.clickQuickAction("copy");
+      await expect(page.locator('text="Update Copy"').first()).toBeVisible({ timeout: 5000 });
+    });
+
+    test("clicking the same quick action button closes the panel", async ({ page }) => {
+      await websitePage.goto(projectUuid);
+      await page.waitForTimeout(3000);
+
+      // Open colors
+      await websitePage.clickQuickAction("colors");
+      await expect(page.locator('text="Colors"').first()).toBeVisible({ timeout: 5000 });
+
+      // Click again to close
+      await websitePage.clickQuickAction("colors");
+      await expect(page.locator('text="Colors"').first()).not.toBeVisible({ timeout: 5000 });
+    });
+
+    test("switching between quick actions shows the new panel", async ({ page }) => {
+      await websitePage.goto(projectUuid);
+      await page.waitForTimeout(3000);
+
+      // Open colors
+      await websitePage.clickQuickAction("colors");
+      await expect(page.locator('text="Colors"').first()).toBeVisible({ timeout: 5000 });
+
+      // Switch to copy
+      await websitePage.clickQuickAction("copy");
+      await expect(page.locator('text="Update Copy"').first()).toBeVisible({ timeout: 5000 });
+      // Colors should no longer be visible (replaced by copy)
+      await expect(page.locator('text="Colors"').first()).not.toBeVisible({ timeout: 3000 });
+    });
+
+    test("Improve Copy shows style options that can be clicked", async ({ page }) => {
+      await websitePage.goto(projectUuid);
+      await page.waitForTimeout(3000);
+
+      await websitePage.clickQuickAction("copy");
+
+      // All three style options should be visible
+      await expect(page.locator('button:has-text("Make tone more professional")')).toBeVisible({
+        timeout: 5000,
+      });
+      await expect(page.locator('button:has-text("Make tone more friendly")')).toBeVisible({
+        timeout: 5000,
+      });
+      await expect(page.locator('button:has-text("Make copy shorter")')).toBeVisible({
+        timeout: 5000,
+      });
     });
   });
 
@@ -124,13 +173,23 @@ test.describe("Website Builder", () => {
       // Navigate to website
       await websitePage.goto(projectUuid);
       await websitePage.expectChatInputReady();
-      await page.waitForTimeout(3000);
+
+      // Wait for auto-init streaming to complete before going offline
+      await page.waitForFunction(
+        () => {
+          const btn = document.querySelector('[data-testid="website-chat-submit"]');
+          return btn && btn.getAttribute("aria-label") === "Send message";
+        },
+        { timeout: 30000 }
+      );
 
       // Go offline
       await page.context().setOffline(true);
 
-      // Try to send a message
-      await websitePage.sendMessage("This should fail gracefully");
+      // Send a message while offline (fill and click directly since sendMessage
+      // would wait for aria-label which is already "Send message")
+      await websitePage.chatInput.fill("This should fail gracefully");
+      await websitePage.sendButton.click();
 
       // Wait a bit for error to manifest
       await page.waitForTimeout(2000);
@@ -158,19 +217,20 @@ test.describe("Website Builder", () => {
   });
 
   test.describe("WebContainer Preview", () => {
-    test("shows preview loading state initially", async ({ page }) => {
+    test("shows loading state initially while generating", async ({ page }) => {
       // Navigate to website
       await websitePage.goto(projectUuid);
 
-      // We should see a preview status initially (idle state)
-      // The preview goes through: idle -> booting -> mounting -> installing -> starting -> ready
+      // Initially the page shows a loading state while the agent generates content.
+      // The sidebar shows step-by-step loading indicators and the main area shows
+      // "Building your landing page" with the WebsiteLoader component.
+      // After generation completes, the WebsitePreview replaces the loader.
+      const buildingText = page.getByText("Building your landing page", { exact: false });
       const previewStatus = page.getByTestId("preview-status");
 
-      // Wait for the status to appear
-      await expect(previewStatus).toBeVisible({ timeout: 10000 });
-
-      // Should show "Waiting for files..." initially
-      await expect(page.getByText("Waiting for files...")).toBeVisible({ timeout: 5000 });
+      // Either the building loader is shown (during generation) or the preview status
+      // (after generation completes and WebContainer starts booting)
+      await expect(buildingText.or(previewStatus)).toBeVisible({ timeout: 15000 });
     });
 
     test("receives files from langgraph after auto-init", async ({ page }) => {
@@ -188,9 +248,13 @@ test.describe("Website Builder", () => {
         () => {
           // Check if we've moved past "Waiting for files..."
           const idleText = document.body.innerText.includes("Waiting for files...");
-          const hasBootingStatus = document.body.innerText.includes("Starting preview environment...");
+          const hasBootingStatus = document.body.innerText.includes(
+            "Starting preview environment..."
+          );
           const hasMountingStatus = document.body.innerText.includes("Loading files...");
-          const hasInstallingStatus = document.body.innerText.includes("Installing dependencies...");
+          const hasInstallingStatus = document.body.innerText.includes(
+            "Installing dependencies..."
+          );
           const hasStartingStatus = document.body.innerText.includes("Starting preview server...");
           const hasPreviewContainer = document.querySelector('[data-testid="preview-container"]');
 

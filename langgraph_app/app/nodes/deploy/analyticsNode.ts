@@ -1,12 +1,14 @@
 import type { DeployGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+import { HumanMessage } from "@langchain/core/messages";
 import { Deploy, Task } from "@types";
-import { createCodingAgent, getCodingAgentBackend } from "@nodes";
+import { singleShotEdit, getCodingAgentBackend } from "@nodes";
 import type { WebsiteFilesBackend } from "@services";
 import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
 import { db, websiteFiles, eq, and, like } from "@db";
 import { trackingPrompt } from "@prompts";
 import { NodeMiddleware } from "@middleware";
+import { getLogger } from "@core";
 
 const TASK_NAME = "AddingAnalytics" as const;
 
@@ -18,7 +20,7 @@ const buildInstrumentationPrompt = async (
   config?: LangGraphRunnableConfig
 ): Promise<string> => {
   const trackingContext = await trackingPrompt(
-    { websiteId: state.websiteId, jwt: state.jwt, isFirstMessage: false },
+    { websiteId: state.websiteId, jwt: state.jwt, isCreateFlow: false },
     config
   );
 
@@ -49,10 +51,15 @@ interface FileToInstrument {
 }
 
 /**
- * Check if a file needs L10 instrumentation
- * Returns true if file has email capture but no L10.createLead
+ * Check if a file needs L10 instrumentation.
+ * Returns true if file has email/form capture patterns but no L10.createLead.
+ *
+ * Detection covers: type="email" inputs, setEmail state, <form elements,
+ * onSubmit/handleSubmit handlers, and useForm() hooks.
+ * Better to have a false positive (agent checks and decides no email capture)
+ * than a false negative (no tracking deployed).
  */
-function needsInstrumentation(content: string): boolean {
+export function needsInstrumentation(content: string): boolean {
   const hasEmailInput =
     content.includes('type="email"') ||
     content.includes("type='email'") ||
@@ -60,46 +67,34 @@ function needsInstrumentation(content: string): boolean {
     content.includes("type={'email'}");
 
   const hasEmailState = /setEmail\s*\(/i.test(content);
-  const hasEmailCapture = hasEmailInput || hasEmailState;
+  const hasFormElement = content.includes("<form");
+  const hasSubmitHandler = /onSubmit|handleSubmit/i.test(content);
+  const hasFormHook = /useForm\s*\(/i.test(content);
+
+  const hasEmailCapture =
+    hasEmailInput || hasEmailState || hasFormElement || hasSubmitHandler || hasFormHook;
   const hasL10 = content.includes("L10.createLead");
 
   return hasEmailCapture && !hasL10;
 }
 
 /**
- * Instrument a single file using a coding agent
+ * Instrument files using singleShotEdit — all files needing work are passed
+ * in a single request since singleShotEdit pre-loads all src/ files anyway.
  */
-async function instrumentFile(
+async function instrumentFiles(
   state: DeployGraphState,
-  file: FileToInstrument,
+  files: FileToInstrument[],
   backend: WebsiteFilesBackend,
   config?: LangGraphRunnableConfig
 ): Promise<void> {
   const prompt = await buildInstrumentationPrompt(state, config);
-  const agent = await createCodingAgent(
-    { ...state, isFirstMessage: false },
-    prompt,
+  const filePaths = files.map((f) => f.path).join(", ");
+
+  await singleShotEdit(
+    { ...state, isCreateFlow: false },
+    [new HumanMessage(`${prompt}\n\nInstrument these files with L10.createLead(): ${filePaths}`)],
     backend
-  );
-
-  // Generate a unique thread_id for this agent invocation
-  const threadId = `analytics-${state.websiteId}-${file.path.replace(/\//g, "-")}-${Date.now()}`;
-
-  await agent.invoke(
-    {
-      messages: [
-        {
-          role: "user",
-          content: `Instrument this file with L10.createLead(): ${file.path}`,
-        },
-      ],
-    },
-    {
-      recursionLimit: 75,
-      configurable: {
-        thread_id: threadId,
-      },
-    }
   );
 }
 
@@ -139,27 +134,40 @@ async function instrumentAnalytics(
   );
 
   if (filesNeedingWork.length === 0) {
-    console.log("[Analytics] All files already instrumented or no email forms found");
+    getLogger().info("All files already instrumented or no email forms found");
     return "CONFIRMED";
   }
 
-  console.log(
-    `[Analytics] Found ${filesNeedingWork.length} files needing instrumentation:`,
-    filesNeedingWork.map((f) => f.path)
+  getLogger().info(
+    { fileCount: filesNeedingWork.length, files: filesNeedingWork.map((f) => f.path) },
+    "Found files needing instrumentation"
   );
 
-  // Create backend once and share it with all agents
+  // Create backend once — singleShotEdit pre-loads all src/ files, so one call handles all files
   const backend = await getCodingAgentBackend({
     websiteId: state.websiteId,
     jwt: state.jwt,
   });
 
-  // Instrument all files in parallel - each agent shares the same backend
-  await Promise.all(
-    filesNeedingWork.map((file) => instrumentFile(state, file, backend, config))
-  );
+  await instrumentFiles(state, filesNeedingWork, backend, config);
 
-  console.log(`[Analytics] Instrumented ${filesNeedingWork.length} files`);
+  // Post-edit verification: re-read files and confirm L10.createLead was added
+  const missingFiles: string[] = [];
+  for (const file of filesNeedingWork) {
+    const updatedContent = await backend.read(file.path);
+    if (!updatedContent || !updatedContent.includes("L10.createLead")) {
+      missingFiles.push(file.path);
+    }
+  }
+
+  if (missingFiles.length > 0) {
+    getLogger().warn({ missingFiles }, "L10.createLead not found after instrumentation");
+    throw new Error(
+      `L10.createLead was not added to: ${missingFiles.join(", ")}. Analytics tracking may be missing.`
+    );
+  }
+
+  getLogger().info({ fileCount: filesNeedingWork.length }, "Instrumented files");
   return "FIXED";
 }
 
@@ -203,7 +211,7 @@ export const analyticsTaskRunner: TaskRunner = {
 
     try {
       const result = await instrumentAnalytics(state, config);
-      console.log(`[Analytics] Task completed with result: ${result}`);
+      getLogger().info({ result }, "Analytics task completed");
 
       return {
         tasks: [
@@ -214,9 +222,8 @@ export const analyticsTaskRunner: TaskRunner = {
         ],
       };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      console.error(`[Analytics] Task failed:`, errorMessage);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      getLogger().error({ err: error }, "Analytics task failed");
 
       return {
         tasks: [

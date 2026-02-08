@@ -3,13 +3,12 @@ import { type BrainstormGraphState } from "@state";
 import { getCurrentTaskInput, Command } from "@langchain/langgraph";
 import { tool } from "@langchain/core/tools";
 import { Brainstorm } from "@types";
-import { db, brainstorms as brainstormsTable } from "@db";
-import { withTimestamps, withUpdatedAt } from "@db";
 import { BrainstormNextStepsService } from "@services";
 import { chatHistoryPrompt } from "@prompts";
 import { getLLM } from "@core";
 import { BaseMessage, ToolMessage } from "@langchain/core/messages";
 import { compactObject } from "@utils";
+import { BrainstormAPIService } from "@rails_api";
 
 // Could work on tagging these in a separate model in order to not
 // have so much message history returned from the tool
@@ -140,30 +139,26 @@ export const summarizeMessages = async (
 export const saveAnswers = async (
   memories: Partial<Record<Brainstorm.ConversationalTopicName, string | undefined | null>>,
   websiteId: number,
-  skippedTopics: string[]
+  skippedTopics: string[],
+  threadId: string,
+  jwt: string
 ): Promise<Partial<BrainstormGraphState>> => {
-  const insert = withTimestamps(memories);
-  const update = withUpdatedAt(memories);
-
-  await db
-    .insert(brainstormsTable)
-    .values({
-      ...insert,
-      websiteId,
-    })
-    .onConflictDoUpdate({
-      target: [brainstormsTable.websiteId],
-      set: {
-        ...update,
-      },
-    })
-    .returning();
+  // Use Rails API to update brainstorm - this triggers the TracksAgentContext callback
+  // which creates brainstorm.finished events when all fields are complete
+  const api = new BrainstormAPIService({ jwt });
+  await api.update(threadId, {
+    idea: memories.idea ?? undefined,
+    audience: memories.audience ?? undefined,
+    solution: memories.solution ?? undefined,
+    social_proof: memories.socialProof ?? undefined,
+  });
 
   const updatedMemories = await new BrainstormNextStepsService({
     websiteId,
     skippedTopics: [],
   }).getMemories();
   const memoriesWithValues = compactObject(updatedMemories);
+
   let updatedSkippedTopics = skippedTopics?.filter(
     (topic) => !memoriesWithValues[topic as Brainstorm.TopicName]
   ) as Brainstorm.TopicName[];
@@ -177,7 +172,9 @@ export const saveAnswers = async (
 export const summarizeAndSaveAnswers = async (
   messages: BaseMessage[],
   websiteId: number,
-  skippedTopics: string[]
+  skippedTopics: string[],
+  threadId: string,
+  jwt: string
 ): Promise<Partial<BrainstormGraphState>> => {
   let { memories, messages: taggedMessages } = await summarizeMessages(messages);
   if (!memories) {
@@ -186,7 +183,9 @@ export const summarizeAndSaveAnswers = async (
   const { memories: updatedMemories, skippedTopics: updatedSkippedTopics } = await saveAnswers(
     memories,
     websiteId,
-    skippedTopics
+    skippedTopics,
+    threadId,
+    jwt
   );
 
   return {
@@ -206,11 +205,20 @@ type Answers = z.infer<typeof answersSchema>;
 
 export const saveAnswersTool = tool(
   async (args: { answers?: Answers }, config) => {
-    const websiteId = getCurrentTaskInput<BrainstormGraphState>(config).websiteId;
-    const skippedTopics = getCurrentTaskInput<BrainstormGraphState>(config).skippedTopics || [];
+    const state = getCurrentTaskInput<BrainstormGraphState>(config);
+    const websiteId = state.websiteId;
+    const threadId = state.threadId;
+    const jwt = state.jwt;
+    const skippedTopics = state.skippedTopics || [];
 
     if (!websiteId) {
       throw new Error("websiteId is required");
+    }
+    if (!threadId) {
+      throw new Error("threadId is required");
+    }
+    if (!jwt) {
+      throw new Error("jwt is required");
     }
 
     const toolMessage = new ToolMessage({
@@ -221,8 +229,14 @@ export const saveAnswersTool = tool(
 
     // Model did not provide answers, so summarize the current thread
     if (!args.answers) {
-      const currentMessages = getCurrentTaskInput<BrainstormGraphState>(config).messages;
-      const stateUpdates = await summarizeAndSaveAnswers(currentMessages, websiteId, skippedTopics);
+      const currentMessages = state.messages;
+      const stateUpdates = await summarizeAndSaveAnswers(
+        currentMessages,
+        websiteId,
+        skippedTopics,
+        threadId,
+        jwt
+      );
 
       return new Command({
         update: {
@@ -240,7 +254,7 @@ export const saveAnswersTool = tool(
       {} as Record<Brainstorm.TopicName, string>
     );
 
-    const stateUpdates = await saveAnswers(answersObject, websiteId, skippedTopics);
+    const stateUpdates = await saveAnswers(answersObject, websiteId, skippedTopics, threadId, jwt);
 
     return new Command({
       update: {

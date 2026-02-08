@@ -183,13 +183,28 @@ describe("creditCheckMiddleware", () => {
     });
   });
 
-  describe("error handling (fail open)", () => {
-    it("proceeds when CreditCheckError is thrown", async () => {
+  describe("error handling (fail closed)", () => {
+    it("returns 503 when CreditCheckError is thrown", async () => {
       mockCheckCredits.mockRejectedValue(
         new CreditCheckError("Service unavailable", 503, 123)
       );
 
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      app.use("*", withAuth(123));
+      app.use("*", creditCheckMiddleware);
+      app.get("/test", (c) => c.json({ success: true }));
+
+      const res = await app.request("/test");
+
+      expect(res.status).toBe(503);
+      const json = await res.json();
+      expect(json).toEqual({
+        error: "Unable to verify credits. Please try again.",
+        code: "CREDIT_CHECK_FAILED",
+      });
+    });
+
+    it("returns 503 when generic error is thrown", async () => {
+      mockCheckCredits.mockRejectedValue(new Error("Network error"));
 
       app.use("*", withAuth(123));
       app.use("*", creditCheckMiddleware);
@@ -197,63 +212,34 @@ describe("creditCheckMiddleware", () => {
 
       const res = await app.request("/test");
 
-      expect(res.status).toBe(200);
-      expect(warnSpy).toHaveBeenCalledWith(
-        "[creditCheckMiddleware] Credit check failed, proceeding anyway:",
-        "Service unavailable"
-      );
-
-      warnSpy.mockRestore();
+      expect(res.status).toBe(503);
+      const json = await res.json();
+      expect(json).toEqual({
+        error: "Unable to verify credits. Please try again.",
+        code: "CREDIT_CHECK_FAILED",
+      });
     });
 
-    it("proceeds when generic error is thrown", async () => {
+    it("does not set creditState on error (request is blocked)", async () => {
       mockCheckCredits.mockRejectedValue(new Error("Network error"));
 
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-      app.use("*", withAuth(123));
-      app.use("*", creditCheckMiddleware);
-      app.get("/test", (c) => c.json({ success: true }));
-
-      const res = await app.request("/test");
-
-      expect(res.status).toBe(200);
-      expect(warnSpy).toHaveBeenCalledWith(
-        "[creditCheckMiddleware] Unexpected error, proceeding anyway:",
-        expect.any(Error)
-      );
-
-      warnSpy.mockRestore();
-    });
-
-    it("sets creditState with accountId but undefined balance on error", async () => {
-      mockCheckCredits.mockRejectedValue(new Error("Network error"));
-
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      let capturedState: any;
-
-      app.use("*", withAuth(789));
-      app.use("*", creditCheckMiddleware);
-      app.get("/test", (c) => {
-        capturedState = getCreditState(c);
+      const routeHandler = vi.fn((c: any) => {
         return c.json({ success: true });
       });
 
+      app.use("*", withAuth(789));
+      app.use("*", creditCheckMiddleware);
+      app.get("/test", routeHandler);
+
       await app.request("/test");
 
-      expect(capturedState).toEqual({
-        accountId: 789,
-        preRunCreditsRemaining: undefined,
-      });
-
-      warnSpy.mockRestore();
+      // Route handler never runs when fail-closed
+      expect(routeHandler).not.toHaveBeenCalled();
     });
   });
 
   describe("auth context requirement", () => {
     it("returns 500 when no auth context", async () => {
-      const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-
       app.use("*", creditCheckMiddleware);
       app.get("/test", (c) => c.json({ success: true }));
 
@@ -262,12 +248,6 @@ describe("creditCheckMiddleware", () => {
       expect(res.status).toBe(500);
       const json = await res.json();
       expect(json).toEqual({ error: "Internal server error" });
-
-      expect(errorSpy).toHaveBeenCalledWith(
-        "[creditCheckMiddleware] No auth context - must run after authMiddleware"
-      );
-
-      errorSpy.mockRestore();
     });
   });
 

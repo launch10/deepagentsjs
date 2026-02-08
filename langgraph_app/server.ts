@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
 import { prettyJSON } from "hono/pretty-json";
+import { requestLogger } from "./app/server/middleware/requestLogger";
 import { serve } from "@hono/node-server";
 import { adsRoutes } from "./app/server/routes/ads";
 import { brainstormRoutes } from "./app/server/routes/brainstorm";
@@ -14,10 +14,11 @@ import { jobRunCallbackRoutes } from "./app/server/routes/webhooks/jobRunCallbac
 import { clearLlmCacheRoutes } from "./app/server/routes/webhooks/clearLlmCache";
 import { errorHandler } from "./app/server/middleware/errorHandler";
 import { env } from "./app/core/env";
+import { rootLogger } from "./app/core/logger";
 
 const app = new Hono();
 
-app.use("*", logger());
+app.use("*", requestLogger);
 app.use("*", prettyJSON());
 
 // CORS origins - use RAILS_PORT from config/services.sh for dynamic port support
@@ -68,4 +69,4 @@ serve({
   port,
 });
 
-console.log(`🚀 Hono server running on http://localhost:${port}`);
+rootLogger.info({ port }, "Hono server running");

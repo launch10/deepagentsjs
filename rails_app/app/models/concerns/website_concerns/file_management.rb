@@ -41,14 +41,19 @@ module WebsiteConcerns
       website_files.reload
     end
 
-    # Check if a website_file would be a duplicate of a template_file
-    def duplicate_of_template?(path, content)
+    # Check if a website_file would be a duplicate of a template_file.
+    # Accepts an optional preloaded template_file to avoid N+1 queries.
+    def duplicate_of_template?(path, content, preloaded_template_file = :not_provided)
       return false unless template.present?
 
       # Remove leading slash if present (path setter does this)
       clean_path = path.to_s.gsub(/^\//, "")
 
-      template_file = template_files.find_by(path: clean_path)
+      template_file = if preloaded_template_file == :not_provided
+        template_files.find_by(path: clean_path)
+      else
+        preloaded_template_file
+      end
       return false unless template_file
 
       # Compare using shasum
@@ -77,6 +82,14 @@ module WebsiteConcerns
       # Convert to array format for easier processing
       attrs_array = attributes.is_a?(Hash) ? attributes.values : attributes
 
+      # Batch lookup: preload existing website files by ID (avoids N+1)
+      all_ids = attrs_array.filter_map { |a| a.with_indifferent_access[:id] }
+      existing_by_id = if all_ids.any?
+        website_files.where(id: all_ids).index_by(&:id)
+      else
+        {}
+      end
+
       attrs_array.each do |file_attrs|
         file_attrs = file_attrs.with_indifferent_access
 
@@ -85,7 +98,7 @@ module WebsiteConcerns
 
         # For existing records, we need to check if path is being changed
         if file_attrs[:id].present?
-          website_file = website_files.find_by(id: file_attrs[:id])
+          website_file = existing_by_id[file_attrs[:id].to_i]
           if website_file
             # Use the new path if provided, otherwise current path
             path = file_attrs[:path] || website_file.path
@@ -105,6 +118,21 @@ module WebsiteConcerns
     def filter_duplicate_template_files(attributes)
       return attributes unless template.present?
 
+      attrs_array = attributes.is_a?(Hash) ? attributes.values : attributes
+
+      # Batch preload: template files and website files (avoids N+1)
+      all_paths = attrs_array.filter_map { |a|
+        a.with_indifferent_access[:path]&.to_s&.gsub(/^\//, "")
+      }
+      templates_by_path = template_files.where(path: all_paths).index_by(&:path)
+
+      all_ids = attrs_array.filter_map { |a| a.with_indifferent_access[:id] }
+      existing_by_id = if all_ids.any?
+        website_files.where(id: all_ids).index_by(&:id)
+      else
+        {}
+      end
+
       # Handle both hash and array formats
       if attributes.is_a?(Hash)
         filtered = {}
@@ -116,23 +144,24 @@ module WebsiteConcerns
 
           path = file_attrs[:path]
           content = file_attrs[:content]
+          clean_path = path.to_s.gsub(/^\//, "")
 
           # Check if this file would be identical to a template file
           if file_attrs[:id].present?
             # Existing record - check if it's being updated to match template
-            website_file = website_files.find_by(id: file_attrs[:id])
+            website_file = existing_by_id[file_attrs[:id].to_i]
             if website_file
               # Apply the updates to check
               test_content = content || website_file.content
               test_path = path || website_file.path
 
-              if duplicate_of_template?(test_path, test_content)
+              if duplicate_of_template?(test_path, test_content, templates_by_path[test_path.to_s.gsub(/^\//, "")])
                 # Mark for destruction instead of updating
                 file_attrs[:_destroy] = "1"
               end
             end
             filtered[key] = file_attrs
-          elsif !duplicate_of_template?(path, content)
+          elsif !duplicate_of_template?(path, content, templates_by_path[clean_path])
             # New record - only include if not a duplicate of template
             filtered[key] = file_attrs
           end
@@ -149,24 +178,24 @@ module WebsiteConcerns
 
           path = file_attrs[:path]
           content = file_attrs[:content]
-          path.to_s.gsub(/^\//, "")
+          clean_path = path.to_s.gsub(/^\//, "")
 
           # Check if this file would be identical to a template file
           if file_attrs[:id].present?
             # Existing record - check if it's being updated to match template
-            website_file = website_files.find_by(id: file_attrs[:id])
+            website_file = existing_by_id[file_attrs[:id].to_i]
             if website_file
               # Apply the updates to check
               test_content = content || website_file.content
               test_path = path || website_file.path
 
-              if duplicate_of_template?(test_path, test_content)
+              if duplicate_of_template?(test_path, test_content, templates_by_path[test_path.to_s.gsub(/^\//, "")])
                 # Mark for destruction instead of updating
                 file_attrs[:_destroy] = "1"
               end
             end
             filtered << file_attrs
-          elsif !duplicate_of_template?(path, content)
+          elsif !duplicate_of_template?(path, content, templates_by_path[clean_path])
             # New record - only include if not a duplicate of template
             filtered << file_attrs
           end

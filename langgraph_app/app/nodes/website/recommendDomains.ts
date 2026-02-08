@@ -1,7 +1,7 @@
-import { BrainstormBridge, WebsiteBridge, type WebsiteGraphState } from "@annotation";
+import { type WebsiteGraphState } from "@annotation";
 import { NodeMiddleware } from "@middleware";
-import { DomainContextAPIService, type DomainWithWebsite } from "@rails_api";
-import { getLLM } from "@core";
+import { DomainContextAPIService, ContextAPIService, type DomainWithWebsite } from "@rails_api";
+import { getLLM, getLogger } from "@core";
 import type { Website } from "@types";
 import {
   buildDomainRecommendationsPrompt,
@@ -11,7 +11,6 @@ import {
 } from "@prompts";
 import { createSearchDomainsTool, createSearchWebsiteUrlsTool } from "@tools";
 import { HumanMessage } from "@langchain/core/messages";
-import { lastAIMessage } from "@types";
 import { createAgent } from "langchain";
 import type { DynamicStructuredTool } from "@langchain/core/tools";
 
@@ -35,37 +34,45 @@ export const domainRecommendationsNode = NodeMiddleware.use(
   async (state: WebsiteGraphState): Promise<Partial<WebsiteGraphState>> => {
     // Idempotent: skip if already computed
     if (state.domainRecommendations) {
-      console.log("[domainRecommendations] Skipping - already computed");
+      getLogger({ component: "domainRecommendations" }).debug("Skipping - already computed");
+      return {};
+    }
+
+    if (state.messages.length > 0) {
+      getLogger({ component: "domainRecommendations" }).debug("Skipping - messages already exist");
       return {};
     }
 
     if (!state.websiteId) {
-      console.log("[domainRecommendations] Skipping - no websiteId");
+      getLogger({ component: "domainRecommendations" }).debug("Skipping - no websiteId");
       return {};
     }
 
     if (!state.jwt) {
-      console.log("[domainRecommendations] Skipping - no jwt");
-      return {};
-    }
-    // Need brainstorm context to generate recommendations
-    const brainstorm = state.brainstorm;
-    if (!brainstorm?.idea) {
-      console.log("[domainRecommendations] Skipping - no brainstorm context");
+      getLogger({ component: "domainRecommendations" }).debug("Skipping - no jwt");
       return {};
     }
 
     try {
-      console.log("[domainRecommendations] Starting domain recommendations");
+      getLogger({ component: "domainRecommendations" }).info("Starting domain recommendations");
+
+      // Fetch brainstorm context from Rails
+      const contextAPI = new ContextAPIService({ jwt: state.jwt });
+      const context = await contextAPI.get(state.websiteId);
+
+      if (!context.brainstorm?.idea) {
+        getLogger({ component: "domainRecommendations" }).debug("Skipping - no brainstorm context");
+        return {};
+      }
 
       // Fetch domain context from Rails (existing domains, credits)
-      const contextAPI = new DomainContextAPIService({ jwt: state.jwt });
-      const domainContext = await contextAPI.get(state.websiteId);
+      const domainContextAPI = new DomainContextAPIService({ jwt: state.jwt });
+      const domainContext = await domainContextAPI.get(state.websiteId);
 
       const brainstormContext: BrainstormContext = {
-        idea: brainstorm.idea ?? "",
-        audience: brainstorm.audience ?? "",
-        solution: brainstorm.solution ?? "",
+        idea: context.brainstorm.idea ?? "",
+        audience: context.brainstorm.audience ?? "",
+        solution: context.brainstorm.solution ?? "",
       };
 
       // Build the system prompt with all context
@@ -109,12 +116,18 @@ export const domainRecommendationsNode = NodeMiddleware.use(
         hasCredits
       );
 
-      console.log("[domainRecommendations] Completed - state:", recommendations.state);
+      getLogger({ component: "domainRecommendations" }).info(
+        { state: recommendations.state },
+        "Completed domain recommendations"
+      );
       return { domainRecommendations: recommendations };
     } catch (error) {
-      console.error("[domainRecommendations] Error:", error);
+      getLogger({ component: "domainRecommendations" }).error(
+        { err: error },
+        "Domain recommendations error"
+      );
       // On error, return fallback recommendations
-      const fallback = getFallbackRecommendations(brainstorm.idea ?? "my-site", []);
+      const fallback = getFallbackRecommendations("my-site", []);
       return { domainRecommendations: fallback };
     }
   }
@@ -138,6 +151,10 @@ function convertToRecommendations(
       const path = rec.path?.startsWith("/") ? rec.path : `/${rec.path || ""}`;
       const normalizedPath = path === "/" ? "" : path;
 
+      // Look up existingDomainId from the actual domain data — the LLM can't know DB IDs
+      const matchingDomain =
+        rec.source === "existing" ? existingDomains.find((d) => d.domain === domain) : undefined;
+
       return {
         domain,
         subdomain: rec.subdomain.replace(PLATFORM_DOMAIN_SUFFIX, ""),
@@ -146,7 +163,7 @@ function convertToRecommendations(
         score: rec.score,
         reasoning: rec.reasoning,
         source: rec.source,
-        existingDomainId: rec.existingDomainId,
+        existingDomainId: matchingDomain?.id,
         availability: rec.source === "existing" ? ("existing" as const) : ("available" as const),
       };
     });

@@ -1,6 +1,7 @@
 import { type BrowserContext, type Page, type ConsoleMessage } from "playwright";
 import { type ConsoleError } from "@types";
 import { browserPool } from "./browserPool";
+import { getLogger } from "@core";
 
 /**
  * Captures browser console errors using Playwright
@@ -27,7 +28,8 @@ export class BrowserErrorCapture {
    * Start the browser and navigate to the URL
    */
   async start(): Promise<void> {
-    console.log(`Starting browser for ${this.url}`);
+    const log = getLogger({ component: "BrowserErrorCapture" });
+    log.info({ url: this.url }, "Starting browser");
 
     // Get context from pool (waits if at capacity)
     this.context = await browserPool.getContext();
@@ -52,7 +54,7 @@ export class BrowserErrorCapture {
         stack: error.stack,
         timestamp: new Date(),
       });
-      console.log(`  ✗ Page error: ${error.message}`);
+      log.debug({ error: error.message }, "Page error captured");
     });
 
     // Set up request failure listener
@@ -65,7 +67,7 @@ export class BrowserErrorCapture {
           location: request.url(),
           timestamp: new Date(),
         });
-        console.log(`  ✗ Request failed: ${request.url()}`);
+        log.debug({ url: request.url(), errorText: failure.errorText }, "Request failed");
       }
     });
 
@@ -75,9 +77,9 @@ export class BrowserErrorCapture {
         waitUntil: "networkidle",
         timeout: 30000,
       });
-      console.log(`  ✓ Page loaded: ${this.url}`);
+      log.info({ url: this.url }, "Page loaded");
     } catch (error) {
-      console.error(`  ✗ Failed to load page: ${error}`);
+      log.error({ err: error, url: this.url }, "Failed to load page");
       // Still continue to capture any errors that occurred
     }
 
@@ -140,14 +142,11 @@ export class BrowserErrorCapture {
         };
 
         this.viteOverlayErrors.push(error);
-        console.log(`  ✗ Vite overlay error: ${errorDetails.message}`);
-        if (errorDetails.file) {
-          console.log(`    File: ${errorDetails.file}`);
-        }
+        getLogger({ component: "BrowserErrorCapture" }).debug({ message: errorDetails.message, file: errorDetails.file || undefined }, "Vite overlay error captured");
       }
     } catch (error) {
       // Ignore errors when checking for overlay - it might not exist
-      console.debug(`Failed to check Vite overlay: ${error}`);
+      getLogger({ component: "BrowserErrorCapture" }).debug({ err: error }, "Failed to check Vite overlay");
     }
   }
 
@@ -184,13 +183,9 @@ export class BrowserErrorCapture {
       };
 
       this.errors.push(error);
-      console.log(`  ✗ Console ${type}: ${detailedMessage}`);
-
-      if (location) {
-        console.log(`    at ${error.location}`);
-      }
+      getLogger({ component: "BrowserErrorCapture" }).debug({ type, message: detailedMessage, location: error.location }, "Console error captured");
     } catch (error) {
-      console.error(`Failed to capture console error: ${error}`);
+      getLogger({ component: "BrowserErrorCapture" }).error({ err: error }, "Failed to capture console error");
     }
   }
 
@@ -268,7 +263,7 @@ export class BrowserErrorCapture {
         await page.close();
       }
     } catch (error) {
-      console.error("Error closing page:", error);
+      getLogger({ component: "BrowserErrorCapture" }).error({ err: error }, "Error closing page");
     } finally {
       // ALWAYS release context, even if page.close() failed
       if (context) {
@@ -276,7 +271,7 @@ export class BrowserErrorCapture {
       }
     }
 
-    console.log(`  ✓ Browser context released (captured ${this.errors.length} errors)`);
+    getLogger({ component: "BrowserErrorCapture" }).info({ errorCount: this.errors.length }, "Browser context released");
   }
 
   /**

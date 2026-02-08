@@ -32,6 +32,19 @@ class Brainstorm < ApplicationRecord
   include BrainstormConcerns::Creation
   include BrainstormConcerns::Updating
   include BrainstormConcerns::Serialization
+  include TracksAgentContext
+
+  tracks_agent_context_on_update "brainstorm.finished",
+    payload: ->(b) {
+      {
+        idea: b.idea,
+        audience: b.audience,
+        solution: b.solution,
+        social_proof: b.social_proof,
+        theme_name: b.website&.theme&.name
+      }
+    },
+    if: ->(b) { b.complete? }
 
   def self.chat_type
     "brainstorm"
@@ -43,5 +56,10 @@ class Brainstorm < ApplicationRecord
 
   def project_id
     project.id
+  end
+
+  # Returns true if all four core brainstorm fields are filled in
+  def complete?
+    idea.present? && audience.present? && solution.present? && social_proof.present?
   end
 end

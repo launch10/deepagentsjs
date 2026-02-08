@@ -2,6 +2,7 @@ import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { type InsightsGraphState } from "@annotation";
 import { DashboardInsightsAPIService } from "@services";
+import { getLogger } from "@core";
 
 /**
  * Node that checks freshness and fetches metrics from Rails for insight generation.
@@ -60,7 +61,7 @@ export const fetchMetricsNode = NodeMiddleware.use(
       };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error fetching metrics";
-      console.error("Error fetching metrics:", errorMessage);
+      getLogger().error({ err }, "Error fetching metrics");
 
       return {
         error: { message: errorMessage, node: "fetchMetrics" },

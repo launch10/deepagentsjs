@@ -1,0 +1,12 @@
+{
+  "website": [
+    "images.created",
+    "images.deleted",
+    "brainstorm.finished"
+  ],
+  "brainstorm": [],
+  "ads": [],
+  "insights": [],
+  "deploy": [],
+  "router": []
+}

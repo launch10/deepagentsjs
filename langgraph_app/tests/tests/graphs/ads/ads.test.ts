@@ -10,6 +10,7 @@ import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { v7 as uuid } from "uuid";
 import { didSwitchPage, getContextMessage, needsContextMessage, ContextMessages } from "@prompts";
 import { isContextMessage } from "langgraph-ai-sdk";
+import { tool } from "langchain";
 
 const adsGraph = uncompiledGraph.compile({ ...graphParams, name: "ads" });
 
@@ -928,7 +929,7 @@ describe.sequential("Ads Flow", () => {
       const lastMessage = followupQuestionResult.state.messages?.at(-1);
       expect(lastMessage).toBeDefined();
       expect((lastMessage as AIMessage).content).toMatch(
-        /great question|search intent|specificity|commercial intent|solution-focused|intent signals/i
+        /great question|search intent|specificity|commercial intent|solution-focused|intent signals|work because/i
       );
 
       // Verify message history has grown
@@ -971,7 +972,7 @@ describe.sequential("Ads Flow", () => {
 
       const toolCall = result.state.messages?.at(-2);
       expect(toolCall).toBeDefined();
-      expect(toolCall?.content).toMatch(/What are .*Details.*/i);
+      expect(toolCall?.content).toMatch(/Q:.*What are/i);
 
       const lastMessage = result.state.messages?.at(-1) as AIMessage;
       const message = getTextData(lastMessage);

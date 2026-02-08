@@ -1,9 +1,9 @@
 import type { ErrorHandler } from "hono";
-import { rollbar } from "@core";
+import { rollbar, getLogger } from "@core";
 import { env } from "@core";
 
 export const errorHandler: ErrorHandler = (err, c) => {
-  console.error("Server Error:", err);
+  getLogger().error({ err }, "Server error");
 
   const isDev = env.NODE_ENV === "development";
   const isProd = env.NODE_ENV === "production";

@@ -5,7 +5,7 @@ import * as path from "path";
 import { openai } from "@ai-sdk/openai";
 import { PostgresEmbeddingsService, type Embedding, type PgCacheTable } from "@services";
 import { db } from "app/db";
-import { getLLM } from "@core";
+import { getLLM, getLogger } from "@core";
 import { PromptTemplate } from "@langchain/core/prompts";
 import { iconEmbeddings, iconQueryCaches } from "app/db";
 export interface IconMetadata {
@@ -77,7 +77,7 @@ export class SearchIconsService {
 
             return [name, json];
           } catch (error) {
-            console.warn(`Failed to import metadata for ${name}:`, error);
+            getLogger().warn({ err: error, icon: name }, "Failed to load icon metadata");
             return null; // Return null for failed imports
           }
         })
@@ -95,7 +95,7 @@ export class SearchIconsService {
 
       return result;
     } catch (error) {
-      console.error("Error loading icon metadata:", error);
+      getLogger().error({ err: error }, "Error loading icon metadata");
       throw error;
     }
   }
@@ -179,7 +179,7 @@ export class SearchIconsService {
         }
       }
     } catch (error) {
-      console.error("Error generating embeddings:", error);
+      getLogger().error({ err: error }, "Error generating icon embeddings");
       throw error;
     }
   }
@@ -192,7 +192,7 @@ export class SearchIconsService {
         return acc;
       }, {} as IconToolResult);
     } catch (error) {
-      console.error("Error searching icons:", error);
+      getLogger().error({ err: error }, "Error searching icons via tool call");
       throw error;
     }
   }
@@ -245,7 +245,7 @@ export class SearchIconsService {
 
       return enhancedResults;
     } catch (error) {
-      console.error("Error searching icons:", error);
+      getLogger().error({ err: error }, "Error searching icons");
       throw error;
     }
   }
@@ -272,7 +272,7 @@ export class SearchIconsService {
         icon: icons[match.key as keyof typeof icons],
       }));
     } catch (error) {
-      console.error("Error suggesting alternatives:", error);
+      getLogger().error({ err: error }, "Error suggesting icon alternatives");
       throw error;
     }
   }

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { adminAuthMiddleware } from "../middleware/adminAuth";
 import { documentExtractionQueue } from "../../queues/documentExtraction";
+import { getLogger } from "@core";
 
 export const documentsRoutes = new Hono();
 
@@ -23,7 +24,7 @@ documentsRoutes.post("/extract-faqs", adminAuthMiddleware, async (c) => {
     metadata: metadata || {},
   });
 
-  console.log(`[DocumentsRoute] Enqueued job ${job.id} for document ${document_id}`);
+  getLogger().info({ jobId: job.id, documentId: document_id }, "Enqueued document extraction job");
 
   return c.json({
     status: "queued",

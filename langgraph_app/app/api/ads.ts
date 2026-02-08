@@ -12,7 +12,7 @@ const compiledGraph = adsGraph.compile({
   name: "ads",
 });
 
-export const AdsAPI = AdsBridge.bind(compiledGraph as any);
+export const AdsAPI = AdsBridge.bind(compiledGraph);
 
 // Re-export bridge for nodes that need toStructuredMessage
 export { AdsBridge } from "@annotation";

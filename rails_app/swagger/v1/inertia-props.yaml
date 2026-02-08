@@ -727,6 +727,10 @@ components:
           - plan_credits_allocated
           nullable: true
           description: Credit balance for the current account
+        substep:
+          type: string
+          nullable: true
+          description: Current website substep (build, domain, deploy)
         thread_id:
           type: string
           description: Langgraph thread ID for the conversation

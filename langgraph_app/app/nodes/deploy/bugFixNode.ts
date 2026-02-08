@@ -8,6 +8,7 @@ import { buildBugFixPrompt } from "@prompts";
 import { type TaskRunner, registerTask, isTaskFailed, isTaskDone } from "./taskRunner";
 
 const TASK_NAME: Deploy.TaskName = "FixingBugs";
+const MAX_BUG_FIX_RETRIES = 2;
 
 /**
  * Fix With Coding Agent - Raw Function
@@ -32,6 +33,20 @@ async function runBugFix(
     return {};
   }
 
+  const fixTask = Task.findTask(state.tasks, TASK_NAME);
+
+  if (failedTask.retryCount >= MAX_BUG_FIX_RETRIES) {
+    return {
+      tasks: [
+        {
+          ...fixTask,
+          status: "failed",
+          error: `Max bug fix retries (${MAX_BUG_FIX_RETRIES}) exceeded`,
+        } as Task.Task,
+      ],
+    };
+  }
+
   if (!state.websiteId || !state.jwt) {
     throw new Error("websiteId and jwt are required");
   }
@@ -40,36 +55,28 @@ async function runBugFix(
     throw new Error("Validation error is required");
   }
 
-  const fixTask = Task.findTask(state.tasks, TASK_NAME);
-
   // Build prompt with errors in state for consistent async pattern
-  // Bug fixes are always edits (isFirstMessage: false) with errors present
+  // Bug fixes are always edits (isCreateFlow: false) with errors present
   const promptState = {
     websiteId: state.websiteId,
     jwt: state.jwt,
     errors: failedTask.error,
-    isFirstMessage: false,
+    isCreateFlow: false,
   };
   const systemPrompt = await buildBugFixPrompt(promptState, config);
 
   try {
-    // Compile and invoke codingAgentGraph as subgraph
-    const agent = await createCodingAgent(
-      { websiteId: state.websiteId, jwt: state.jwt, isFirstMessage: false },
-      systemPrompt
-    );
-
-    // This will update the files in the database, or throw an error
-    await agent.invoke(
+    await createCodingAgent(
+      { websiteId: state.websiteId, jwt: state.jwt, isCreateFlow: false },
       {
         messages: [
           new HumanMessage(
             `Please analyze the errors and resolve them so my site runs successfully.`
           ),
         ],
-      },
-      {
-        ...config,
+        systemPrompt,
+        route: "full",
+        config,
         recursionLimit: 100,
       }
     );

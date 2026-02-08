@@ -7,23 +7,8 @@ import { createAppBridge } from "@api/middleware";
 export const WebsiteAnnotation = Annotation.Root({
   ...BaseAnnotation.spec,
 
-  brainstormId: Annotation<PrimaryKeyType | undefined>({
-    default: () => undefined,
-    reducer: (current, next) => next,
-  }),
-
-  brainstorm: Annotation<Brainstorm.MemoriesType>({
-    default: () => ({}),
-    reducer: (current, next) => next,
-  }),
-
   theme: Annotation<Website.ThemeType | undefined>({
     default: () => undefined,
-    reducer: (current, next) => next,
-  }),
-
-  images: Annotation<Website.Image[]>({
-    default: () => [],
     reducer: (current, next) => next,
   }),
 

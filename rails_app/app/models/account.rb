@@ -69,6 +69,7 @@ class Account < ApplicationRecord
   has_many :support_requests, dependent: :destroy
   has_one :dashboard_insight, dependent: :destroy
   has_one :insights_chat, -> { where(chat_type: "insights") }, class_name: "Chat", dependent: :destroy
+  has_many :agent_context_events, dependent: :destroy
 
   scope :personal, -> { where(personal: true) }
   scope :team, -> { where(personal: false) }

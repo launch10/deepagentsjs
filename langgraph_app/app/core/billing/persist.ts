@@ -14,6 +14,9 @@ import type {
   UsageSummary,
   SerializedMessage,
 } from "./types";
+import { calculateCost } from "../llm/cost";
+import { getLogger } from "../logger";
+import type { ModelConfig } from "../llm/types";
 
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 100;
@@ -30,25 +33,41 @@ function sleep(ms: number): Promise<void> {
  * Transform usage records to database row format.
  * Exported for testing.
  */
-export function prepareUsageRecordsForInsert(records: UsageRecord[], context: UsagePersistContext) {
-  return records.map((record) => ({
-    chatId: context.chatId,
-    threadId: context.threadId,
-    runId: record.runId,
-    messageId: record.messageId,
-    langchainRunId: record.langchainRunId,
-    parentLangchainRunId: record.parentLangchainRunId,
-    graphName: context.graphName,
-    modelRaw: record.model,
-    inputTokens: record.inputTokens,
-    outputTokens: record.outputTokens,
-    reasoningTokens: record.reasoningTokens,
-    cacheCreationTokens: record.cacheCreationTokens,
-    cacheReadTokens: record.cacheReadTokens,
-    tags: record.tags,
-    metadata: record.metadata,
-    createdAt: record.timestamp.toISOString(),
-  }));
+export function prepareUsageRecordsForInsert(
+  records: UsageRecord[],
+  context: UsagePersistContext,
+  modelConfigs?: Record<string, ModelConfig>
+) {
+  return records.map((record) => {
+    let costMillicredits: number | null = null;
+    if (modelConfigs) {
+      try {
+        costMillicredits = calculateCost(record, modelConfigs);
+      } catch {
+          // Model not found in configs — leave null, Rails will calculate later
+      }
+    }
+
+    return {
+      chatId: context.chatId,
+      threadId: context.threadId,
+      runId: record.runId,
+      messageId: record.messageId,
+      langchainRunId: record.langchainRunId,
+      parentLangchainRunId: record.parentLangchainRunId,
+      graphName: context.graphName,
+      modelRaw: record.model,
+      inputTokens: record.inputTokens,
+      outputTokens: record.outputTokens,
+      reasoningTokens: record.reasoningTokens,
+      cacheCreationTokens: record.cacheCreationTokens,
+      cacheReadTokens: record.cacheReadTokens,
+      costMillicredits,
+      tags: record.tags,
+      metadata: record.metadata,
+      createdAt: record.timestamp.toISOString(),
+    };
+  });
 }
 
 /**
@@ -57,11 +76,14 @@ export function prepareUsageRecordsForInsert(records: UsageRecord[], context: Us
  */
 export async function persistUsage(
   records: UsageRecord[],
-  context: UsagePersistContext
+  context: UsagePersistContext,
+  modelConfigs?: Record<string, ModelConfig>
 ): Promise<void> {
   if (records.length === 0) return;
+  const log = getLogger({ component: "persistUsage" });
+  log.debug({ recordCount: records.length }, "Persisting usage records");
 
-  const rows = prepareUsageRecordsForInsert(records, context).map((row) => ({
+  const rows = prepareUsageRecordsForInsert(records, context, modelConfigs).map((row) => ({
     ...row,
     updatedAt: row.createdAt,
   }));
@@ -72,11 +94,11 @@ export async function persistUsage(
       return;
     } catch (error) {
       if (attempt === MAX_RETRIES) {
-        console.error(`[persistUsage] Failed after ${MAX_RETRIES} attempts:`, error);
+        log.error({ err: error, attempts: MAX_RETRIES }, "Failed to persist usage after retries");
         throw error;
       }
       const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
-      console.warn(`[persistUsage] Attempt ${attempt} failed, retrying in ${delay}ms`);
+      log.warn({ attempt, delayMs: delay }, "Persist attempt failed, retrying");
       await sleep(delay);
     }
   }

@@ -5,6 +5,9 @@ export {
   unavailableModelFallbackMiddleware,
   isAvailabilityError,
 } from "./unavailableModelFallbackMiddleware";
+export { createPromptCachingMiddleware } from "./promptCachingMiddleware";
+export { createToolErrorSurfacingMiddleware } from "./toolErrorSurfacingMiddleware";
+export { isAnthropicModel } from "./isAnthropicModel";
 export {
   calculateCost,
   calculateRunCost,

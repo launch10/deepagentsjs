@@ -83,13 +83,19 @@ export function ColorPaletteSection({ className, onThemeSelect }: ColorPaletteSe
         name: "Custom Palette",
         colors,
       });
-      // Select the new theme
-      updateThemeMutation.mutate({ themeId: newTheme.id });
+
+      // Use intent flow (Website page) or direct mutation (Brainstorm page)
+      if (onThemeSelect) {
+        onThemeSelect(newTheme.id);
+      } else {
+        updateThemeMutation.mutate({ themeId: newTheme.id });
+      }
+
       setShowCustomPicker(false);
       // Navigate to the first page to show the new palette (it's prepended)
       setCurrentPage(0);
     },
-    [createThemeMutation, updateThemeMutation]
+    [createThemeMutation, updateThemeMutation, onThemeSelect]
   );
 
   if (isLoading) {

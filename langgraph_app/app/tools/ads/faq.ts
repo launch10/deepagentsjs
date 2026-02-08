@@ -8,7 +8,7 @@ export const adsFaqTool = tool(
     const results = await faqService.search(query, {
       topK: 5,
       status: "live",
-      rerankThreshold: 0.15,
+      rerankThreshold: 0.05,
     });
     const context = faqService.formatResultsAsContext(results);
     return context;

@@ -11,6 +11,7 @@ import { promisify } from "util";
 import { loadScenarioConfig, type ScenarioConfig } from "./scenarios";
 import { ScenarioRunner } from "./scenarios";
 import { withTimestamps } from "@db";
+import { getLogger } from "@core";
 
 const execAsync = promisify(exec);
 
@@ -58,11 +59,8 @@ export class WebsiteEditor implements AsyncDisposable {
    * Start the interactive editing session
    */
   async start(): Promise<void> {
-    console.log(`\n🚀 Starting Website Editor`);
-    console.log(`   Website: ${this.websiteName}`);
-    console.log(`   Snapshot: ${this.snapshotName}`);
-    console.log(`   Editor: ${this.editor}`);
-    console.log("=".repeat(60));
+    const log = getLogger({ component: "WebsiteEditor" });
+    log.info({ website: this.websiteName, snapshot: this.snapshotName, editor: this.editor }, "Starting editing session");
 
     try {
       // 1. Restore snapshot
@@ -73,7 +71,7 @@ export class WebsiteEditor implements AsyncDisposable {
 
       // 3. If editing an existing scenario, apply its modifications first
       if (this.existingScenario) {
-        console.log(`\n📝 Applying existing scenario: ${this.existingScenario}`);
+        log.info({ scenario: this.existingScenario }, "Applying existing scenario");
         await this.applyExistingScenario();
       }
 
@@ -96,27 +94,18 @@ export class WebsiteEditor implements AsyncDisposable {
 
       this.isRunning = true;
 
-      console.log("\n" + "=".repeat(60));
-      console.log("📝 Editor is ready!");
-      console.log(`   Dev server: ${this.runner?.getUrl()}`);
-      console.log(`   Local files: ${this.outputDir}`);
-      console.log(`   Save mode: ${this.saveMode}`);
-      if (this.saveMode === "scenario") {
-        console.log(`   Scenario: ${this.scenarioName}`);
-        if (this.existingScenario) {
-          console.log(`   Editing existing scenario: ${this.existingScenario}`);
-        }
-      }
-      console.log("\n💡 Make changes in your editor. They will be synced to the database.");
-      console.log(
-        `   Press Ctrl+C to save ${this.saveMode === "snapshot" ? "snapshot" : "scenario"} and exit.`
-      );
-      console.log("=".repeat(60) + "\n");
+      log.info({
+        devServer: this.runner?.getUrl(),
+        localFiles: this.outputDir,
+        saveMode: this.saveMode,
+        scenario: this.saveMode === "scenario" ? this.scenarioName : undefined,
+        existingScenario: this.existingScenario || undefined,
+      }, "Editor is ready");
 
       // Keep the process alive
       await this.waitForShutdown();
     } catch (error) {
-      console.error("❌ Failed to start editor:", error);
+      log.error({ err: error }, "Failed to start editor");
       await this.cleanup();
       throw error;
     } finally {
@@ -128,9 +117,10 @@ export class WebsiteEditor implements AsyncDisposable {
    * Restore the snapshot
    */
   private async restoreSnapshot(): Promise<void> {
-    console.log(`\n📂 Restoring snapshot: ${this.snapshotName}...`);
+    const log = getLogger({ component: "WebsiteEditor" });
+    log.info({ snapshot: this.snapshotName }, "Restoring snapshot");
     await DatabaseSnapshotter.restoreSnapshot(this.snapshotName);
-    console.log(`✅ Snapshot restored`);
+    log.info({ snapshot: this.snapshotName }, "Snapshot restored");
   }
 
   /**
@@ -139,7 +129,8 @@ export class WebsiteEditor implements AsyncDisposable {
   private async applyExistingScenario(): Promise<void> {
     if (!this.existingScenario) return;
 
-    console.log(`\n📝 Loading existing scenario: ${this.existingScenario}...`);
+    const log = getLogger({ component: "WebsiteEditor" });
+    log.info({ scenario: this.existingScenario }, "Loading existing scenario");
 
     if (!this.scenarioName) {
       throw new Error("Scenario name is required when saving scenario");
@@ -166,7 +157,7 @@ export class WebsiteEditor implements AsyncDisposable {
     // We only need to apply modifications, not run the full scenario
     await runner.setup();
 
-    console.log(`✅ Applied modifications from scenario: ${this.existingScenario}`);
+    log.info({ scenario: this.existingScenario }, "Applied modifications from scenario");
   }
 
   /**
@@ -184,35 +175,38 @@ export class WebsiteEditor implements AsyncDisposable {
     }
 
     this.websiteId = site.id;
-    console.log(`✅ Website loaded: ID ${this.websiteId}`);
+    getLogger({ component: "WebsiteEditor" }).info({ websiteId: this.websiteId }, "Website loaded");
   }
 
   /**
    * Export files to local directory
    */
   private async exportFiles(): Promise<void> {
-    console.log(`\n📤 Exporting website files...`);
+    const log = getLogger({ component: "WebsiteEditor" });
+    log.info("Exporting website files");
     this.exporter = new FileExporter(this.websiteId!);
     this.outputDir = await this.exporter.export();
-    console.log(`✅ Files exported to: ${this.outputDir}`);
+    log.info({ outputDir: this.outputDir }, "Files exported");
   }
 
   /**
    * Start the dev server
    */
   private async startDevServer(): Promise<void> {
-    console.log(`\n🔧 Starting development server...`);
+    const log = getLogger({ component: "WebsiteEditor" });
+    log.info("Starting development server");
     this.runner = new WebsiteRunner(this.outputDir!);
     await this.runner.install();
     await this.runner.start();
-    console.log(`✅ Dev server running at: ${this.runner.getUrl()}`);
+    log.info({ url: this.runner.getUrl() }, "Dev server running");
   }
 
   /**
    * Set up file watcher to sync changes back to database
    */
   private async setupFileWatcher(): Promise<void> {
-    console.log(`\n👁️  Setting up file watcher...`);
+    const log = getLogger({ component: "WebsiteEditor" });
+    log.info("Setting up file watcher");
 
     const srcDir = join(this.outputDir!, "src");
 
@@ -237,16 +231,17 @@ export class WebsiteEditor implements AsyncDisposable {
       await this.handleFileDelete(filePath);
     });
 
-    console.log(`✅ Watching for changes in: ${srcDir}`);
+    log.info({ srcDir }, "Watching for changes");
   }
 
   /**
    * Handle file changes and sync to database
    */
   private async handleFileChange(filePath: string): Promise<void> {
+    const log = getLogger({ component: "WebsiteEditor" });
     try {
       const relativePath = relative(this.outputDir!, filePath);
-      console.log(`\n📝 File changed: ${relativePath}`);
+      log.info({ path: relativePath }, "File changed");
 
       // Read the new content
       const content = readFileSync(filePath, "utf-8");
@@ -263,7 +258,7 @@ export class WebsiteEditor implements AsyncDisposable {
       if (existingFile) {
         // Update existing file
         await db.update(websiteFiles).set({ content }).where(eq(websiteFiles.id, existingFile.id));
-        console.log(`   ✅ Updated in database`);
+        log.debug({ path: relativePath }, "Updated in database");
       } else {
         // Create new file
         await db.insert(websiteFiles).values(
@@ -273,10 +268,10 @@ export class WebsiteEditor implements AsyncDisposable {
             content,
           })
         );
-        console.log(`   ✅ Added to database`);
+        log.debug({ path: relativePath }, "Added to database");
       }
     } catch (error) {
-      console.error(`   ❌ Failed to sync file:`, error);
+      log.error({ err: error }, "Failed to sync file");
     }
   }
 
@@ -284,9 +279,10 @@ export class WebsiteEditor implements AsyncDisposable {
    * Handle file deletion and remove from database
    */
   private async handleFileDelete(filePath: string): Promise<void> {
+    const log = getLogger({ component: "WebsiteEditor" });
     try {
       const relativePath = relative(this.outputDir!, filePath);
-      console.log(`\n🗑️  File deleted: ${relativePath}`);
+      log.info({ path: relativePath }, "File deleted");
 
       // Delete the file from the database
       const result = await db
@@ -295,7 +291,7 @@ export class WebsiteEditor implements AsyncDisposable {
           and(eq(websiteFiles.websiteId, this.websiteId!), eq(websiteFiles.path, relativePath))
         );
 
-      console.log(`   ✅ Removed from database`);
+      log.debug({ path: relativePath }, "Removed from database");
 
       // Track deletion in scenario saver if in scenario mode
       if (this.scenarioSaver) {
@@ -303,7 +299,7 @@ export class WebsiteEditor implements AsyncDisposable {
         this.scenarioSaver.trackModifiedFile(relativePath, "");
       }
     } catch (error) {
-      console.error(`   ❌ Failed to delete file:`, error);
+      log.error({ err: error }, "Failed to delete file");
     }
   }
 
@@ -311,7 +307,8 @@ export class WebsiteEditor implements AsyncDisposable {
    * Open the editor
    */
   private async openEditor(): Promise<void> {
-    console.log(`\n🎨 Opening ${this.editor}...`);
+    const log = getLogger({ component: "WebsiteEditor" });
+    log.info({ editor: this.editor }, "Opening editor");
 
     try {
       // Map common editor names to their CLI commands
@@ -331,10 +328,9 @@ export class WebsiteEditor implements AsyncDisposable {
 
       // Open the output directory in the editor
       await execAsync(`${command} "${this.outputDir}"`);
-      console.log(`✅ Editor opened`);
+      log.info("Editor opened");
     } catch (error) {
-      console.warn(`⚠️  Could not open editor automatically. Please open manually:`);
-      console.log(`   ${this.outputDir}`);
+      log.warn({ outputDir: this.outputDir }, "Could not open editor automatically, please open manually");
     }
   }
 
@@ -345,9 +341,7 @@ export class WebsiteEditor implements AsyncDisposable {
     const shutdown = async (signal: string) => {
       if (!this.isRunning) return;
 
-      console.log(
-        `\n\n📦 Received ${signal}, saving ${this.saveMode === "snapshot" ? "snapshot" : "scenario"} and shutting down...`
-      );
+      getLogger({ component: "WebsiteEditor" }).info({ signal, saveMode: this.saveMode }, "Received signal, saving and shutting down");
       await this.saveAndCleanup();
       process.exit(0);
     };
@@ -371,26 +365,27 @@ export class WebsiteEditor implements AsyncDisposable {
    */
   private async saveAndCleanup(): Promise<void> {
     this.isRunning = false;
+    const log = getLogger({ component: "WebsiteEditor" });
 
     try {
-      console.log(`save mode is... ${this.saveMode}`);
+      log.debug({ saveMode: this.saveMode }, "Save mode");
       if (this.saveMode === "snapshot") {
         // Save the current state as a snapshot
-        console.log(`💾 Saving snapshot: ${this.snapshotName}...`);
+        log.info({ snapshot: this.snapshotName }, "Saving snapshot");
         await DatabaseSnapshotter.createSnapshot(this.snapshotName);
-        console.log(`✅ Snapshot saved`);
+        log.info({ snapshot: this.snapshotName }, "Snapshot saved");
       } else if (this.saveMode === "scenario" && this.scenarioSaver) {
         // Save scenario to filesystem
-        console.log(`💾 Saving scenario: ${this.scenarioName}...`);
+        log.info({ scenario: this.scenarioName }, "Saving scenario");
         // Include information about the original scenario if editing
         const description = this.existingScenario
           ? `Scenario edited from ${this.existingScenario}`
           : `Scenario created from editing session`;
         await this.scenarioSaver.save(description);
-        console.log(`✅ Scenario saved`);
+        log.info({ scenario: this.scenarioName }, "Scenario saved");
       }
     } catch (error) {
-      console.error(`❌ Failed to save:`, error);
+      log.error({ err: error }, "Failed to save");
     }
 
     await this.cleanup();
@@ -400,27 +395,28 @@ export class WebsiteEditor implements AsyncDisposable {
    * Cleanup resources
    */
   private async cleanup(): Promise<void> {
-    console.log(`\n🧹 Cleaning up...`);
+    const log = getLogger({ component: "WebsiteEditor" });
+    log.info("Cleaning up");
 
     // Stop file watcher
     if (this.watcher) {
       await this.watcher.close();
-      console.log(`   ✅ File watcher stopped`);
+      log.debug("File watcher stopped");
     }
 
     // Stop dev server
     if (this.runner) {
       await this.runner[Symbol.asyncDispose]();
-      console.log(`   ✅ Dev server stopped`);
+      log.debug("Dev server stopped");
     }
 
     // Clean up temporary directory
     if (this.exporter) {
       await this.exporter[Symbol.asyncDispose]();
-      console.log(`   ✅ Temporary files cleaned up`);
+      log.debug("Temporary files cleaned up");
     }
 
-    console.log(`✅ Cleanup complete`);
+    log.info("Cleanup complete");
   }
 }
 

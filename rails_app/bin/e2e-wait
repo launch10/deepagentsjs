@@ -4,8 +4,9 @@
 
 set -e
 
-RAILS_URL="http://localhost:3001"
-LANGGRAPH_URL="http://localhost:4001"
+# Use ports from config/services.sh (auto-set by bin/dev-test)
+RAILS_URL="${RAILS_API_URL:-http://localhost:${RAILS_PORT:-3001}}"
+LANGGRAPH_URL="${LANGGRAPH_API_URL:-http://localhost:${LANGGRAPH_PORT:-4001}}"
 MAX_ATTEMPTS=60
 
 echo "[e2e-wait] Waiting for Rails on $RAILS_URL..."

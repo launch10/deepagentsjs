@@ -8,11 +8,7 @@
  * - Extracts accountId and preRunCreditsRemaining from state
  * - Credit status is emitted to frontend via withCreditTracking graph wrapper
  */
-import {
-  createBridgeFactory,
-  createStorageMiddleware,
-  type StreamMiddleware,
-} from "langgraph-ai-sdk";
+import { createStorageMiddleware, type StreamMiddleware } from "langgraph-ai-sdk";
 import {
   usageStorage,
   createUsageContext,
@@ -21,6 +17,8 @@ import {
   notifyRails,
   calculateRunCost,
   deriveCreditStatus,
+  LLMManager,
+  getLogger,
   type UsageContext,
   type UsageSummary,
 } from "@core";
@@ -51,16 +49,17 @@ function extractCreditState(state?: Record<string, unknown>): {
   return {
     accountId: typeof state.accountId === "number" ? state.accountId : undefined,
     preRunCreditsRemaining:
-      typeof state.preRunCreditsRemaining === "number"
-        ? state.preRunCreditsRemaining
-        : undefined,
+      typeof state.preRunCreditsRemaining === "number" ? state.preRunCreditsRemaining : undefined,
   };
 }
 
 /**
  * Middleware that tracks usage and persists billing data.
  */
-const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddleware<any, UsageContext>({
+export const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddleware<
+  any,
+  UsageContext
+>({
   name: "usage-tracking",
   storage: usageStorage,
 
@@ -79,13 +78,17 @@ const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddleware<a
   async onComplete(ctx, usageContext) {
     const { records, messages, runId, accountId, preRunCreditsRemaining } = usageContext;
 
-    if (records.length === 0 && messages.length === 0) return;
+    const log = getLogger({ component: "usageTracking" });
+    log.info({ runId, recordCount: records.length, messageCount: messages.length, threadId: ctx.threadId }, "onComplete fired");
+
+    if (records.length === 0 && messages.length === 0) {
+      log.warn({ runId }, "Zero records AND zero messages — nothing to persist");
+      return;
+    }
 
     const chatId = await getChatIdFromThread(ctx.threadId);
     if (!chatId) {
-      console.warn(
-        `[usageTrackingMiddleware] No chat found for threadId ${ctx.threadId}, skipping billing`
-      );
+      log.warn({ threadId: ctx.threadId, recordCount: records.length }, "No chat found for threadId, skipping billing — usage records LOST");
       return;
     }
 
@@ -96,31 +99,36 @@ const usageTrackingMiddleware: StreamMiddleware<any> = createStorageMiddleware<a
     };
 
     try {
+      // Fetch model configs for cost calculation (best-effort, non-blocking)
+      let modelConfigs: Record<string, import("@core").ModelConfig> | undefined;
+      try {
+        modelConfigs = await LLMManager.getModelConfigs();
+      } catch {
+        // Config fetch failed — persist without costs, Rails will calculate later
+      }
+
       await Promise.all([
         persistTrace(
           { chatId, threadId: ctx.threadId, runId, graphName: ctx.graphName || "unknown" },
           messages,
           usageSummary
         ),
-        persistUsage(records, {
-          chatId,
-          threadId: ctx.threadId,
-          graphName: ctx.graphName || "unknown",
-        }),
+        persistUsage(
+          records,
+          {
+            chatId,
+            threadId: ctx.threadId,
+            graphName: ctx.graphName || "unknown",
+          },
+          modelConfigs
+        ),
       ]);
+
+      log.info({ recordCount: records.length, messageCount: messages.length, chatId, runId }, "Persisted usage");
 
       notifyRails(runId);
     } catch (error) {
-      console.error("[usageTrackingMiddleware] Failed to persist:", error);
+      log.error({ err: error, runId, chatId }, "Failed to persist usage");
     }
   },
-});
-
-/**
- * Bridge factory with usage tracking baked in.
- * All graph APIs use this to get automatic billing.
- *
- */
-export const createAppBridge = createBridgeFactory({
-  middleware: [usageTrackingMiddleware],
 });

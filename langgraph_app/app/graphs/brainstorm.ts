@@ -1,6 +1,11 @@
 import { StateGraph, START, END } from "@langchain/langgraph";
 import { BrainstormAnnotation } from "@annotation";
-import { brainstormAgent, createBrainstorm, handleCommand } from "@nodes";
+import {
+  brainstormAgent,
+  createBrainstorm,
+  handleCommand,
+  createCompactConversationNode,
+} from "@nodes";
 import { withCreditExhaustion } from "./shared";
 
 /**
@@ -14,10 +19,12 @@ export const brainstormGraph = withCreditExhaustion(
     .addNode("createBrainstorm", createBrainstorm)
     .addNode("handleCommand", handleCommand)
     .addNode("brainstormAgent", brainstormAgent)
+    .addNode("compactConversation", createCompactConversationNode())
 
     .addEdge(START, "createBrainstorm")
     .addEdge("createBrainstorm", "handleCommand")
     .addEdge("handleCommand", "brainstormAgent")
-    .addEdge("brainstormAgent", END),
+    .addEdge("brainstormAgent", "compactConversation")
+    .addEdge("compactConversation", END),
   BrainstormAnnotation
 );

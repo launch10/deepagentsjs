@@ -3,6 +3,7 @@ import NodeHttpAdapter from "@pollyjs/adapter-node-http";
 import FetchAdapter from "@pollyjs/adapter-fetch";
 import FSPersister from "@pollyjs/persister-fs";
 import path from "path";
+import * as fs from "fs";
 
 // Register Polly adapters and persisters once globally
 Polly.register(NodeHttpAdapter);
@@ -87,13 +88,9 @@ class PollyManager {
     PollyManager.disabled = false;
   }
 
-  // Define AI/LLM provider patterns that should use node-specific recordings
-  static AI_PROVIDERS = [
-    /127\.0\.0\.1:11434/, // Ollama
-    /api\.anthropic\.com/, // Anthropic
-    /api\.openai\.com/, // OpenAI
-    /generativelanguage\.googleapis\.com/, // Google
-    /api\.groq\.com/, // Groq
+  // Hosts that should always be passed through (never recorded/replayed)
+  static PASSTHROUGH_HOSTS = [
+    "https://api.smith.langchain.com", // LangSmith tracing
   ];
 
   static RECORDINGS_DIR = path.join(process.cwd(), "tests", "recordings");
@@ -176,34 +173,65 @@ class PollyManager {
     server.any().recordingName(nodeName);
   }
 
-  private static configureRails() {
+  private static configurePassthroughs() {
     const { server } = PollyManager.polly!;
 
     // Passthrough to Rails on whatever port it's running (from config/services.sh)
-    const railsPort = process.env.RAILS_PORT || '3000';
-    server.any(`http://localhost:${railsPort}/*`).passthrough();
+    const railsPort = process.env.RAILS_PORT || "3000";
+    server.any(`http://localhost:${railsPort}/*path`).passthrough();
+
+    // Passthrough hosts that should never be recorded.
+    // IMPORTANT: Polly's server.any() does NOT support regex — it uses route-recognizer
+    // for string URL patterns only. Use server.host() for host-based matching.
+    PollyManager.PASSTHROUGH_HOSTS.forEach((host) => {
+      server.host(host, () => {
+        server.any("/*path").passthrough();
+      });
+    });
   }
 
-  private static configureLlms() {
+  private static configureRequestLogging() {
     const { server } = PollyManager.polly!;
-    PollyManager.AI_PROVIDERS.forEach((providerRegex) => {
-      server
-        .any(providerRegex as any) // regex seems to be permitted, not sure why not
-        .configure({
-          matchRequestsBy: {
-            method: true,
-            headers: false, // CRITICAL: Ignore headers for LLM calls
-            body: true,
-            order: false,
-            url: true,
-          },
-        });
+
+    // Log every HTTP request Polly intercepts so we can debug passthrough issues
+    server.any().on("beforeResponse", (req: any) => {
+      const action = req.action?.toUpperCase() || "UNKNOWN";
+      const status = req.response?.statusCode ?? "?";
+      let line = `[Polly ${action}] ${req.method} ${req.url} → ${status}`;
+
+      // For POST/PUT/PATCH, show a truncated body snippet
+      if (req.body && ["POST", "PUT", "PATCH"].includes(req.method)) {
+        const bodyStr = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+        const snippet = bodyStr.length > 200 ? bodyStr.slice(0, 200) + "…" : bodyStr;
+        line += ` body=${snippet}`;
+      }
+
+      console.log(line);
     });
+  }
+
+  /**
+   * Only persist successful (2xx) responses. Any non-2xx response is transient
+   * (auth errors, rate limits, server errors, bad requests) and would poison
+   * the recording — causing infinite retry loops or permanent test failures.
+   */
+  private static isPoisonedResponse(recording: any): boolean {
+    const status = recording.response?.status;
+    if (typeof status !== "number") return true;
+    return status < 200 || status >= 300;
   }
 
   private static configureHeaders() {
     const { server } = PollyManager.polly!;
     server.any().on("beforePersist", (req: any, recording: any) => {
+      // Drop poisoned responses so they never get saved to HAR files.
+      // Polly will treat these as missing on next run and re-record them.
+      if (PollyManager.isPoisonedResponse(recording)) {
+        // Setting the response to undefined causes Polly to skip persisting this entry
+        recording.response = undefined;
+        return;
+      }
+
       const headersToIgnore = [
         "x-api-key",
         "authorization",
@@ -266,7 +294,7 @@ class PollyManager {
         },
         keepUnusedRequests: true, // CRITICAL: Keep entries from previous nodes
       },
-      recordIfMissing: true,
+      recordIfMissing: !process.env.CI,
       matchRequestsBy: {
         method: true,
         headers: false,
@@ -275,11 +303,11 @@ class PollyManager {
         order: false,
         url: true,
       },
-      recordFailedRequests: true,
+      recordFailedRequests: false,
       logLevel: "silent",
     });
-    PollyManager.configureRails();
-    PollyManager.configureLlms();
+    PollyManager.configurePassthroughs();
+    PollyManager.configureRequestLogging();
     PollyManager.configureHeaders();
 
     // --- ALLOW CUSTOM CONFIGURATION BEFORE DEFAULT HANDLERS ---

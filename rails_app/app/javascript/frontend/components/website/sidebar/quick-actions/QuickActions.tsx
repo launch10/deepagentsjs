@@ -1,13 +1,15 @@
 import { useState, useCallback } from "react";
 import { CardHeader, CardTitle, CardDescription } from "@components/ui/card";
 import { Separator } from "@components/ui/separator";
+import { Button } from "@components/ui/button";
 import { AnimatePresence, motion } from "framer-motion";
 import QuickActionButton from "./QuickActionButton";
 import { ColorPaletteSection } from "@components/brainstorm/conversation-page/brand-panel/ColorPaletteSection";
 import { ProjectImagesSection } from "@components/brainstorm/conversation-page/brand-panel/ProjectImagesSection";
 import ImproveCopy from "@components/quick-actions/improve-copy/ImproveCopy";
 import { DocumentTextIcon, PhotoIcon, SwatchIcon } from "@heroicons/react/24/solid";
-import { useWebsiteChatActions } from "@hooks/website/useWebsiteChat";
+import { useWebsiteChatActions, useWebsiteChatIsStreaming } from "@hooks/website/useWebsiteChat";
+import { useProjectImages } from "@api/uploads.hooks";
 
 export type QuickActionType = "colors" | "images" | "copy";
 
@@ -73,7 +75,7 @@ export function QuickActionsView({
             className="overflow-hidden"
           >
             <Separator className="bg-neutral-300" />
-            {settingsContent}
+            <div className="px-5 py-4">{settingsContent}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -83,7 +85,9 @@ export function QuickActionsView({
 
 export default function QuickActions() {
   const [activeAction, setActiveAction] = useState<QuickActionType | null>();
-  const { updateState } = useWebsiteChatActions();
+  const { updateState, sendMessage } = useWebsiteChatActions();
+  const isStreaming = useWebsiteChatIsStreaming();
+  const { data: projectImages } = useProjectImages();
 
   const handleActionClick = (action: QuickActionType) => {
     // Toggle off if clicking the same action, otherwise switch to new action
@@ -106,13 +110,36 @@ export default function QuickActions() {
     [updateState]
   );
 
+  // Send a chat message to update the page with uploaded images
+  const handleApplyImages = useCallback(() => {
+    sendMessage({
+      content:
+        "Update the landing page to use the images I uploaded. Replace placeholder or stock images with my uploaded ones.",
+    });
+  }, [sendMessage]);
+
   // Render settings content based on active action
   const renderSettingsContent = () => {
     switch (activeAction) {
       case "colors":
         return <ColorPaletteSection onThemeSelect={handleThemeSelect} />;
       case "images":
-        return <ProjectImagesSection />;
+        return (
+          <>
+            <ProjectImagesSection />
+            {projectImages && projectImages.length > 0 && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleApplyImages}
+                disabled={isStreaming}
+                className="mt-3 w-full"
+              >
+                Update Page with Images
+              </Button>
+            )}
+          </>
+        );
       case "copy":
         return <ImproveCopy />;
       default:

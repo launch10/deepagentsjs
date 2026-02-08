@@ -1,9 +1,10 @@
 import type { WebsiteGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+import { HumanMessage } from "@langchain/core/messages";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
-import { createContextMessage } from "langgraph-ai-sdk";
 import { type ImproveCopyStyle, isImproveCopyIntent } from "@types";
+import { injectAgentContext } from "@api/middleware";
 
 /**
  * Get the prompt for the given improve_copy style.
@@ -54,13 +55,14 @@ Improve the overall quality of the copy:
 
 /**
  * Node that rewrites the copy on a landing page based on a selected style.
- * Uses the coding agent to analyze existing files and update the text content.
+ * Uses single-shot edit (Haiku + native text_editor) for cost-effective copy rewrites.
+ * All src/ files are pre-loaded — the LLM rewrites copy via str_replace in one call.
  */
 export const improveCopyNode = NodeMiddleware.use(
   {},
   async (
     state: WebsiteGraphState,
-    config: LangGraphRunnableConfig
+    _config: LangGraphRunnableConfig
   ): Promise<Partial<WebsiteGraphState>> => {
     if (!state.websiteId || !state.jwt) {
       throw new Error("websiteId and jwt are required");
@@ -71,22 +73,25 @@ export const improveCopyNode = NodeMiddleware.use(
       ? (state.intent.payload.style as ImproveCopyStyle | undefined)
       : undefined;
 
-    const agent = await createCodingAgent({ ...state, isFirstMessage: false });
     const prompt = getImproveCopyPrompt(style);
 
-    const result = await agent.invoke(
+    // Inject brainstorm.finished context so Haiku knows the brand voice
+    const messagesWithContext =
+      state.projectId && state.jwt
+        ? await injectAgentContext({
+            graphName: "website",
+            projectId: state.projectId,
+            jwt: state.jwt,
+            messages: [...(state.messages || []), new HumanMessage(prompt)],
+          })
+        : [...(state.messages || []), new HumanMessage(prompt)];
+
+    return await createCodingAgent(
+      { ...state, isCreateFlow: false },
       {
-        messages: [...(state.messages || []), createContextMessage(prompt)],
-      },
-      {
-        ...config,
-        recursionLimit: 50,
+        messages: messagesWithContext,
+        route: "single-shot",
       }
     );
-
-    return {
-      messages: result.messages,
-      status: "completed",
-    };
   }
 );

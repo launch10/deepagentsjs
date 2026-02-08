@@ -36,6 +36,15 @@ export default tseslint.config(
       "no-irregular-whitespace": "off",
       "no-prototype-builtins": "off",
       "prefer-const": "off",
+      "no-console": "error",
+    },
+  },
+  {
+    // These files legitimately need console: env.ts runs before logger is initialized,
+    // polly.ts is a test utility, scripts/ are CLI tools, agents/ are generated user projects
+    files: ["app/core/env.ts", "app/utils/polly.ts", "scripts/**/*.ts", "agents/**/*.ts", "agents/**/*.tsx"],
+    rules: {
+      "no-console": "off",
     },
   },
   eslintConfigPrettier

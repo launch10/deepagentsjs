@@ -4,7 +4,7 @@ import { type BrainstormGraphState } from "@state";
 import { DatabaseSnapshotter, BrainstormNextStepsService } from "@services";
 import { brainstormGraph as uncompiledGraph } from "@graphs";
 import { HumanMessage, AIMessage, BaseMessage, ToolMessage } from "@langchain/core/messages";
-import { lastAIMessage, type UUIDType, firstHumanMessage } from "@types";
+import { lastAIMessage, type UUIDType, type ThreadIDType, firstHumanMessage } from "@types";
 import { createBrainstorm } from "@nodes";
 import { saveAnswers } from "@tools";
 import { v7 as uuidv7 } from "uuid";
@@ -190,7 +190,7 @@ const restartChatFrom = async (
 
   const chatHistory = chatMethodMap[topic]();
 
-  const threadId = uuidv7();
+  const threadId = uuidv7() as unknown as ThreadIDType;
   const projectUUID = uuidv7();
   const config = { configurable: { thread_id: threadId } };
   const firstMessage = firstHumanMessage({ messages: chatHistory });
@@ -224,9 +224,10 @@ const restartChatFrom = async (
       .join("\n");
   }
 
-  // Save the pre-defined answers directly to the database
+  // Save the pre-defined answers directly to the database via Rails API
+  // This triggers TracksAgentContext callbacks for brainstorm.finished events
   if (Object.keys(memories).length > 0) {
-    await saveAnswers(memories, partialState.websiteId!, []);
+    await saveAnswers(memories, partialState.websiteId!, [], threadId, "test-jwt");
   }
 
   // Tag messages with topics for proper history tracking
@@ -264,6 +265,7 @@ const restartChatFrom = async (
   // create state
   const state = {
     ...partialState,
+    threadId,
     memories: savedMemories,
     messages: finalMessages,
     currentTopic: topic,
@@ -360,7 +362,8 @@ describe.sequential("Brainstorming Flow", () => {
         .withState(result.state)
         .withPrompt(
           `We personally vet every single host and guest on our platform. We
-                    check guest credibility and expertise. Audience alignment between hosts and guests. And those become data points in our AI-powered recommendations.`
+          check guest credibility and expertise. Audience alignment between hosts and guests. And those become data points in our AI-powered recommendations.
+          And I also personally review each one - I have a history of podcasting experience of over 20 years of work`
         )
         .stopAfter("agent")
         .execute();

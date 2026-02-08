@@ -7,6 +7,8 @@ import { codingToolsPrompt, environmentPrompt } from "@prompts";
 import { ContextAPIService } from "@rails_api";
 import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
 import { db, websiteFiles, eq, and } from "@db";
+import { getLogger } from "@core";
+import { HumanMessage } from "@langchain/core/messages";
 
 const TASK_NAME: Deploy.TaskName = "OptimizingSEO";
 
@@ -23,7 +25,8 @@ async function isSEOAlreadyDone(state: DeployGraphState): Promise<boolean> {
 
   // Check for key SEO elements
   const hasTitle = /<title>[^<]+<\/title>/.test(content);
-  const hasMetaDescription = /<meta\s+name=["']description["'][^>]*content=["'][^"']+["']/.test(content) ||
+  const hasMetaDescription =
+    /<meta\s+name=["']description["'][^>]*content=["'][^"']+["']/.test(content) ||
     /<meta\s+content=["'][^"']+["'][^>]*name=["']description["']/.test(content);
   const hasOgTitle = /property=["']og:title["']/.test(content);
   const hasOgDescription = /property=["']og:description["']/.test(content);
@@ -48,7 +51,7 @@ async function isSEOAlreadyDone(state: DeployGraphState): Promise<boolean> {
   const isDone = presentCount >= 5;
 
   if (isDone) {
-    console.log(`[SEO] Already optimized (${presentCount}/7 elements present)`);
+    getLogger().info({ presentCount, totalChecks: 7 }, "SEO already optimized");
   }
 
   return isDone;
@@ -61,12 +64,7 @@ async function getIndexHtmlContent(websiteId: number): Promise<string | null> {
   const result = await db
     .select({ content: websiteFiles.content })
     .from(websiteFiles)
-    .where(
-      and(
-        eq(websiteFiles.websiteId, websiteId),
-        eq(websiteFiles.path, "index.html")
-      )
-    )
+    .where(and(eq(websiteFiles.websiteId, websiteId), eq(websiteFiles.path, "index.html")))
     .limit(1);
 
   return result[0]?.content ?? null;
@@ -76,7 +74,7 @@ async function getIndexHtmlContent(websiteId: number): Promise<string | null> {
  * Build system prompt for SEO optimization AI agent
  */
 const buildSystemPrompt = async (state: DeployGraphState, config: LangGraphRunnableConfig) => {
-  const mergedState = { ...state, isFirstMessage: false };
+  const mergedState = { ...state, isCreateFlow: false };
   const [tools, environment] = await Promise.all([
     codingToolsPrompt(mergedState, config),
     environmentPrompt(mergedState, config),
@@ -171,7 +169,7 @@ async function fetchSEOContext(state: DeployGraphState) {
       images,
     };
   } catch (error) {
-    console.warn("Failed to fetch SEO context:", error);
+    getLogger().warn({ err: error }, "Failed to fetch SEO context");
     return { brainstorm: null, images: [] };
   }
 }
@@ -204,7 +202,7 @@ const buildUserMessage = async (state: DeployGraphState) => {
     userMessage += `\nFor the favicon, use the [favicon: ...] URL if available.`;
   }
   return userMessage;
-}
+};
 
 /**
  * SEO Optimization Node
@@ -232,44 +230,29 @@ async function runSeoOptimization(
   try {
     // Check if SEO is already done - skip the agent if so
     if (await isSEOAlreadyDone(state)) {
-      console.log("[SEO] Skipping agent - index.html already has sufficient SEO optimization");
-      return withPhases(
-        state,
-        [{ ...task, status: "completed" } as Task.Task]
-      );
+      getLogger().info("Skipping SEO agent, index.html already has sufficient optimization");
+      return withPhases(state, [{ ...task, status: "completed" } as Task.Task]);
     }
 
     const systemPrompt = await buildSystemPrompt(state, config!);
-
-    const agent = await createCodingAgent(
-      {
-        ...state,
-        isFirstMessage: false,
-      },
-      systemPrompt
-    );
-
     const userMessage = await buildUserMessage(state);
 
-    await agent.invoke({
-      messages: [
-        {
-          role: "user",
-          content: userMessage,
-        },
-      ],
-    });
-
-    return withPhases(
-      state,
-      [{ ...task, status: "completed" } as Task.Task]
+    await createCodingAgent(
+      { ...state, isCreateFlow: false },
+      {
+        messages: [new HumanMessage(userMessage)],
+        systemPrompt,
+        route: "full",
+        config,
+      }
     );
+
+    return withPhases(state, [{ ...task, status: "completed" } as Task.Task]);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return withPhases(
-      state,
-      [{ ...task, status: "failed", error: `Website ${state.websiteId} not found` } as Task.Task]
-    );
+    return withPhases(state, [
+      { ...task, status: "failed", error: `Website ${state.websiteId} not found` } as Task.Task,
+    ]);
   }
 }
 
@@ -284,7 +267,7 @@ export const seoOptimizationTaskRunner: TaskRunner = {
   },
 
   shouldSkip: (state: DeployGraphState) => {
-    return !Deploy.shouldDeployWebsite(state)
+    return !Deploy.shouldDeployWebsite(state);
   },
 
   run: runSeoOptimization,

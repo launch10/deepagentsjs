@@ -2,22 +2,31 @@
 
 require "rails_helper"
 
+# Freeze time at noon to avoid midnight boundary issues on CI.
+# All dates in this spec are absolute, making tests fully deterministic.
+FROZEN_TIME = Time.utc(2026, 6, 15, 12, 0, 0)
+FROZEN_TODAY = Date.new(2026, 6, 15)
+
 RSpec.describe Analytics::Metrics::UniqueVisitorsMetric do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:account) { create(:account) }
   let(:project) { create(:project, account: account) }
   let(:website) { create(:website, project: project) }
 
-  subject { described_class.new(account, 7.days.ago.to_date, Date.current) }
+  around { |example| travel_to(FROZEN_TIME) { example.run } }
+
+  subject { described_class.new(account, FROZEN_TODAY - 7, FROZEN_TODAY) }
 
   describe "#time_series" do
     context "with pre-computed historical data" do
       before do
         create(:analytics_daily_metric,
           account: account, project: project,
-          date: 5.days.ago, unique_visitors_count: 50)
+          date: FROZEN_TODAY - 5, unique_visitors_count: 50)
         create(:analytics_daily_metric,
           account: account, project: project,
-          date: 3.days.ago, unique_visitors_count: 75)
+          date: FROZEN_TODAY - 3, unique_visitors_count: 75)
       end
 
       it "returns dates array covering the range" do
@@ -46,10 +55,9 @@ RSpec.describe Analytics::Metrics::UniqueVisitorsMetric do
 
     context "for today's live data" do
       before do
-        # Create visits (sessions) for today
-        create(:ahoy_visit, website: website, started_at: 1.hour.ago)
-        create(:ahoy_visit, website: website, started_at: 2.hours.ago)
-        create(:ahoy_visit, website: website, started_at: 3.hours.ago)
+        create(:ahoy_visit, website: website, started_at: FROZEN_TIME - 1.hour)
+        create(:ahoy_visit, website: website, started_at: FROZEN_TIME - 2.hours)
+        create(:ahoy_visit, website: website, started_at: FROZEN_TIME - 3.hours)
       end
 
       it "counts unique visitors (sessions) for today" do
@@ -62,8 +70,8 @@ RSpec.describe Analytics::Metrics::UniqueVisitorsMetric do
 
       it "does not count visits from other days in today's count" do
         # Add visits from yesterday
-        create(:ahoy_visit, website: website, started_at: 1.day.ago)
-        create(:ahoy_visit, website: website, started_at: 1.day.ago)
+        create(:ahoy_visit, website: website, started_at: FROZEN_TIME - 1.day)
+        create(:ahoy_visit, website: website, started_at: FROZEN_TIME - 1.day)
 
         result = subject.time_series
         project_series = result[:series].find { |s| s[:project_id] == project.id }
@@ -78,11 +86,11 @@ RSpec.describe Analytics::Metrics::UniqueVisitorsMetric do
         # Historical data
         create(:analytics_daily_metric,
           account: account, project: project,
-          date: 2.days.ago, unique_visitors_count: 40)
+          date: FROZEN_TODAY - 2, unique_visitors_count: 40)
 
         # Live data for today
-        create(:ahoy_visit, website: website, started_at: 1.hour.ago)
-        create(:ahoy_visit, website: website, started_at: 2.hours.ago)
+        create(:ahoy_visit, website: website, started_at: FROZEN_TIME - 1.hour)
+        create(:ahoy_visit, website: website, started_at: FROZEN_TIME - 2.hours)
       end
 
       it "shows both historical and live counts" do
@@ -118,10 +126,10 @@ RSpec.describe Analytics::Metrics::UniqueVisitorsMetric do
     it "shows positive trend when this period > last period" do
       # Last period
       create(:analytics_daily_metric, account: account, project: project,
-        date: 10.days.ago, unique_visitors_count: 50)
+        date: FROZEN_TODAY - 10, unique_visitors_count: 50)
       # This period
       create(:analytics_daily_metric, account: account, project: project,
-        date: 2.days.ago, unique_visitors_count: 100)
+        date: FROZEN_TODAY - 2, unique_visitors_count: 100)
 
       result = subject.time_series
 
@@ -132,10 +140,10 @@ RSpec.describe Analytics::Metrics::UniqueVisitorsMetric do
     it "shows negative trend when this period < last period" do
       # Last period
       create(:analytics_daily_metric, account: account, project: project,
-        date: 10.days.ago, unique_visitors_count: 100)
+        date: FROZEN_TODAY - 10, unique_visitors_count: 100)
       # This period
       create(:analytics_daily_metric, account: account, project: project,
-        date: 2.days.ago, unique_visitors_count: 50)
+        date: FROZEN_TODAY - 2, unique_visitors_count: 50)
 
       result = subject.time_series
 

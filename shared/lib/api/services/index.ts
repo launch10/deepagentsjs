@@ -17,3 +17,4 @@ export * from "./chatsAPIService";
 export * from "./creditsAPIService";
 export * from "./dashboardInsightsAPIService";
 export * from "./projectsAPIService";
+export * from "./contextEventsAPIService";

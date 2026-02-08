@@ -109,13 +109,13 @@ describe("Typography Prompt", () => {
 
   describe("typographyPrompt()", () => {
     it("returns empty string when no theme", async () => {
-      const state: CodingPromptState = { jwt: "test", isFirstMessage: true };
+      const state: CodingPromptState = { jwt: "test", isCreateFlow: true };
       const result = await typographyPrompt(state);
       expect(result).toBe("");
     });
 
     it("returns empty string when no jwt", async () => {
-      const state: CodingPromptState = { theme: { id: 1 }, isFirstMessage: true };
+      const state: CodingPromptState = { theme: { id: 1 }, isCreateFlow: true };
       const result = await typographyPrompt(state);
       expect(result).toBe("");
     });
@@ -123,7 +123,7 @@ describe("Typography Prompt", () => {
     it("uses typography_recommendations from state when available", async () => {
       const state: CodingPromptState = {
         jwt: "test",
-        isFirstMessage: true,
+        isCreateFlow: true,
         theme: {
           id: 1,
           colors: palette,

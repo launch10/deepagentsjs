@@ -1,7 +1,7 @@
 import { createAgent, createMiddleware } from "langchain";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { type BaseMessage } from "@langchain/core/messages";
-import { getLLM } from "@core";
+import { getLLM, createPromptCachingMiddleware } from "@core";
 import { chooseBrainstormPrompt, getBrainstormContextMessage, getBrainstormMode } from "@prompts";
 import { NodeMiddleware } from "@middleware";
 import { saveAnswersTool, finishedTool, queryUploadsTool } from "@tools";
@@ -19,6 +19,7 @@ const middlewareStateSchema = z.object({
   brainstormId: z.number(),
   websiteId: z.number(),
   projectId: z.number(),
+  threadId: z.string().optional(),
   currentTopic: z.string().optional(),
   skippedTopics: z.array(z.string()).optional(),
   redirect: z.string().optional(),
@@ -151,13 +152,13 @@ export const brainstormAgent = NodeMiddleware.use(
       lastSeenMode: state.brainstormMode,
     };
 
-    const llm = (await getLLM()).withConfig({ tags: ["notify"] });
+    const llm = (await getLLM({maxTier: 2})).withConfig({ tags: ["notify"] });
     const tools = [saveAnswersTool, finishedTool, queryUploadsTool];
 
     const agent = await createAgent({
       model: llm,
       tools,
-      middleware: [createBrainstormMiddleware(initialState, middlewareTracker, config)],
+      middleware: [createPromptCachingMiddleware(), createBrainstormMiddleware(initialState, middlewareTracker, config)],
     });
 
     const result = (await agent.invoke(stateForAgent as any, config)) as BrainstormGraphState;
@@ -167,7 +168,6 @@ export const brainstormAgent = NodeMiddleware.use(
     }
 
     const [message, updates] = await BrainstormBridge.toStructuredMessage(lastMessage);
-
     // Get updated next steps after agent processing
     const { memories, remainingTopics, currentTopic, placeholderText, availableCommands } =
       await new BrainstormNextStepsService(state).nextSteps();

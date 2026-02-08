@@ -65,6 +65,7 @@
 import { z } from "zod";
 import { StructuredTool } from "@langchain/core/tools";
 import { SearchIconsService, type IconResult } from "@services";
+import { getLogger } from "@core";
 
 const examples = `EXAMPLES:
 Basic UI icons:
@@ -146,7 +147,7 @@ export class SearchIconsTool extends StructuredTool {
 
       return { results };
     } catch (error: any) {
-      console.error("Error searching icons:", error);
+      getLogger().error({ err: error }, "Error searching icons");
       throw new Error(`Failed to search icons: ${error.message}`);
     }
   }

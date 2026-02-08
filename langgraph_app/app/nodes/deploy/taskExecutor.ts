@@ -3,6 +3,7 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { Deploy, Task } from "@types";
 import { TASK_ORDER, getTaskRunner } from "./taskRunner";
 import { NodeMiddleware } from "@middleware";
+import { getLogger } from "@core";
 
 type NextTask = {
   taskName: Deploy.TaskName;
@@ -102,7 +103,7 @@ async function runTaskExecutor(
 
   // No next task
   if (!nextTask) {
-    console.log(`No next task`);
+    getLogger().info("No next task found");
     if (allTasksComplete(state)) {
       return { status: "completed" };
     }
@@ -121,13 +122,13 @@ async function runTaskExecutor(
 
   // Blocking - wait for webhook
   if (nextTask.blocking) {
-    console.log(`Blocking ${nextTask.taskName}`);
+    getLogger().info({ taskName: nextTask.taskName }, "Task is blocking, waiting for webhook");
     return {};
   }
 
   // Should skip - mark as skipped
   if (nextTask.shouldSkip) {
-    console.log(`Skipping ${nextTask.taskName}`);
+    getLogger().info({ taskName: nextTask.taskName }, "Skipping task");
     return {
       tasks: [{ ...Deploy.createTask(nextTask.taskName), status: "skipped" }],
     };
@@ -145,7 +146,7 @@ async function runTaskExecutor(
   // If task doesn't exist or is pending, enqueue it and RETURN
   // (don't run - executor will loop back)
   if (!task || task.status === "pending") {
-    console.log(`Enqueuing ${nextTask.taskName}`);
+    getLogger().info({ taskName: nextTask.taskName }, "Enqueuing task");
     const enqueuedTasks = Deploy.enqueueTask(state.tasks, nextTask.taskName);
     const enqueuedTask = enqueuedTasks.find((t) => t.name === nextTask.taskName)!;
     const phaseResult = withPhases({ tasks: state.tasks }, [enqueuedTask]);
@@ -157,7 +158,7 @@ async function runTaskExecutor(
 
   // Task is running - run it
   try {
-    console.log(`Running ${nextTask.taskName}`);
+    getLogger().info({ taskName: nextTask.taskName }, "Running task");
     const partialGraphState = await runner.run(state, config);
     if (anyTaskFailed(partialGraphState)) {
       const failedTask = getFailedTask(partialGraphState)
@@ -198,15 +199,15 @@ export async function taskExecutorRouter(
   const nextTask = await findNextTask(state);
 
   if (!nextTask) {
-    console.log(`No next task`);
+    getLogger().info("No next task, ending");
     return "end";
   }
   if (nextTask.blocking) {
-    console.log(`Blocking ${nextTask.taskName}`);
+    getLogger().info({ taskName: nextTask.taskName }, "Task blocking, waiting");
     return "wait";
   }
   if (!nextTask.readyToRun && !nextTask.shouldSkip) {
-    console.log(`Not ready to run ${nextTask.taskName}`);
+    getLogger().info({ taskName: nextTask.taskName }, "Task not ready to run, waiting");
     return "wait";
   }
 

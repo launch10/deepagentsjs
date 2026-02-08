@@ -4,6 +4,7 @@ import { db, eq, chats, llmUsage, llmConversationTraces } from "@db";
 import { DatabaseSnapshotter } from "@services";
 import { BrainstormAPI } from "@api";
 import type { ThreadIDType } from "@types";
+import { consumeStream } from "@support";
 
 /**
  * API INTEGRATION TESTS - BILLING CRITICAL
@@ -44,28 +45,6 @@ describe.sequential("API Integration - BILLING CRITICAL", () => {
     await db.delete(llmUsage).where(eq(llmUsage.threadId, testThreadId));
     await db.delete(llmConversationTraces).where(eq(llmConversationTraces.threadId, testThreadId));
   });
-
-  /**
-   * Helper to consume a Response stream to completion.
-   * This triggers the middleware's onComplete callback.
-   */
-  async function consumeStream(response: Response): Promise<string> {
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error("Response has no body");
-    }
-
-    const decoder = new TextDecoder();
-    let result = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      result += decoder.decode(value, { stream: true });
-    }
-
-    return result;
-  }
 
   /**
    * Single comprehensive test that verifies all billing assertions.

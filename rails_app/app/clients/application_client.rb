@@ -66,8 +66,9 @@ class ApplicationClient
   def default_headers
     {
       "Accept" => content_type,
-      "Content-Type" => content_type
-    }.merge(authorization_header)
+      "Content-Type" => content_type,
+      "X-Request-Id" => (Current.request_id if defined?(Current))
+    }.compact.merge(authorization_header)
   end
 
   # Override to customize the content type

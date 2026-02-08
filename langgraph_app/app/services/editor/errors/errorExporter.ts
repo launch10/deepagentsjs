@@ -2,6 +2,7 @@ import { FileExporter } from "../core/fileExporter";
 import { WebsiteRunner } from "../core/websiteRunner";
 import { BrowserErrorCapture } from "./browserErrorCapture";
 import type { ConsoleError, CombinedErrors, HasErrorsOptions } from "@types";
+import { getLogger } from "@core";
 
 /**
  * Patterns to filter out from server errors (noise, not actionable)
@@ -385,27 +386,29 @@ export class ErrorExporter implements AsyncDisposable {
   }
 
   async run(): Promise<CombinedErrors> {
+    const log = getLogger({ component: "ErrorExporter" });
+
     this.exporter = new FileExporter(this.websiteId);
     const outputDir = await this.exporter.export();
 
     this.runner = new WebsiteRunner(outputDir);
     await this.runner.install();
-    console.log(`starting website runner`);
+    log.info({ websiteId: this.websiteId }, "Starting website runner");
     await this.runner.start();
 
     // Capture browser errors
-    console.log(`capturing browser errors...`);
+    log.debug("Capturing browser errors");
     const browserErrors = await this.captureBrowserErrors();
     const viteOverlayErrors = this.errorCapture?.getViteOverlayErrors() || [];
 
     // Get server output
     const serverErrors = this.runner.getStderr();
 
-    console.log(`received browser errors:`, browserErrors);
-    console.log(`received server errors:`, serverErrors);
-    console.log(`received vite overlay errors:`, viteOverlayErrors);
+    log.debug({ browserErrorCount: browserErrors.length }, "Received browser errors");
+    log.debug({ serverErrorCount: serverErrors.length }, "Received server errors");
+    log.debug({ viteOverlayCount: viteOverlayErrors.length }, "Received vite overlay errors");
 
-    console.log(`stopping...`);
+    log.debug("Stopping error exporter");
     await this.stop();
 
     return createCombinedErrors(browserErrors, serverErrors, viteOverlayErrors);

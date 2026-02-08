@@ -4,6 +4,7 @@ import { JobRunAPIService } from "@services";
 import { NodeMiddleware } from "@middleware";
 import { Deploy, Task } from "@types";
 import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
+import { getLogger } from "@core";
 
 const TASK_NAME: Deploy.TaskName = "DeployingCampaign";
 
@@ -109,7 +110,7 @@ export const deployCampaignTaskRunner: TaskRunner = {
 
   isBlocking: (state: DeployGraphState, task: Task.Task) => {
     // Blocking when we have a jobId but no result yet
-    console.log(`isBlocking: ${task.status === "running" && !!task.jobId && !task.result && !task.error}`);
+    getLogger().debug({ taskName: TASK_NAME, isBlocking: task.status === "running" && !!task.jobId && !task.result && !task.error }, "Checking if campaign deploy is blocking");
     return task.status === "running" && !!task.jobId && !task.result && !task.error;
   },
 

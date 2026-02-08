@@ -2,7 +2,10 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { fileURLToPath } from "url";
 import { db, codeFiles, websites, eq } from "@db";
+import { getLogger } from "@core";
 import _ from "lodash";
+
+const log = getLogger({ component: "WebsiteExporter" });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -87,7 +90,7 @@ export class WebsiteExporter {
       writtenFiles.push(file.path);
     }
 
-    console.log(`Exported ${writtenFiles.length} files to ${exportPath}`);
+    log.info({ fileCount: writtenFiles.length, exportPath }, "Exported website files");
 
     return {
       exportPath,

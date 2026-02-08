@@ -8,6 +8,10 @@ import { DatabaseSnapshotter } from "@services";
 import { createAppBridge } from "@api";
 import { getLLM, usageStorage } from "@core";
 import { NodeMiddleware } from "@middleware";
+import { consumeStream } from "@support";
+import { createDeepAgent } from "deepagents";
+import { z } from "zod";
+import { tool } from "@langchain/core/tools";
 
 /**
  * USAGE TRACKING INTEGRATION TESTS - BILLING CRITICAL
@@ -46,7 +50,7 @@ const UsageTestAnnotation = Annotation.Root({
     default: () => "",
     reducer: (_, next) => next,
   }),
-  scenario: Annotation<"direct" | "multi-llm" | "error-after-llm" | "context-check">({
+  scenario: Annotation<"direct" | "multi-llm" | "error-after-llm" | "context-check" | "deep-agent" | "deep-agent-tools">({
     default: () => "direct",
     reducer: (_, next) => next,
   }),
@@ -119,6 +123,54 @@ const contextCheckNode = NodeMiddleware.use({}, (async () => {
 }) as any);
 
 /**
+ * A simple tool for testing the deep agent tool loop.
+ * Returns a static string so the agent must call it and then respond.
+ */
+const getWeatherTool = tool(
+  async ({ city }: { city: string }) => {
+    return `The weather in ${city} is 72°F and sunny.`;
+  },
+  {
+    name: "get_weather",
+    description: "Get the current weather for a city",
+    schema: z.object({
+      city: z.string().describe("The city to get weather for"),
+    }),
+  }
+);
+
+const deepAgentNode = NodeMiddleware.use({}, (async (state: UsageTestState) => {
+  const llm = await getLLM();
+  const agent = createDeepAgent({
+    model: llm as any,
+    name: "usage-test-deep-agent",
+    systemPrompt: "You are a helpful assistant. Answer briefly in one sentence.",
+  });
+
+  const result = await agent.invoke({
+    messages: state.messages,
+  });
+
+  return { messages: result.messages };
+}) as any);
+
+const deepAgentWithToolsNode = NodeMiddleware.use({}, (async (state: UsageTestState) => {
+  const llm = await getLLM();
+  const agent = createDeepAgent({
+    model: llm as any,
+    name: "usage-test-deep-agent-tools",
+    systemPrompt: "You are a helpful assistant. When asked about the weather, always use the get_weather tool. Answer briefly.",
+    tools: [getWeatherTool],
+  });
+
+  const result = await agent.invoke({
+    messages: state.messages,
+  });
+
+  return { messages: result.messages };
+}) as any);
+
+/**
  * Test graph with different scenarios for usage tracking verification
  */
 const usageTestGraph = new StateGraph(UsageTestAnnotation)
@@ -127,6 +179,8 @@ const usageTestGraph = new StateGraph(UsageTestAnnotation)
   .addNode("multiLLM", multiLLMNode)
   .addNode("errorAfterLLM", errorAfterLLMNode)
   .addNode("contextCheck", contextCheckNode)
+  .addNode("deepAgent", deepAgentNode)
+  .addNode("deepAgentWithTools", deepAgentWithToolsNode)
   .addConditionalEdges("router", (state: UsageTestState) => {
     switch (state.scenario) {
       case "direct":
@@ -137,6 +191,10 @@ const usageTestGraph = new StateGraph(UsageTestAnnotation)
         return "errorAfterLLM";
       case "context-check":
         return "contextCheck";
+      case "deep-agent":
+        return "deepAgent";
+      case "deep-agent-tools":
+        return "deepAgentWithTools";
       default:
         return "directLLM";
     }
@@ -145,6 +203,8 @@ const usageTestGraph = new StateGraph(UsageTestAnnotation)
   .addEdge("multiLLM", END)
   .addEdge("errorAfterLLM", END)
   .addEdge("contextCheck", END)
+  .addEdge("deepAgent", END)
+  .addEdge("deepAgentWithTools", END)
   .addEdge("__start__", "router");
 
 // Compile with checkpointer for state management
@@ -180,23 +240,6 @@ describe.sequential("Usage Tracking Integration - Real Middleware", () => {
     await db.delete(llmUsage).where(eq(llmUsage.threadId, testThreadId));
     await db.delete(llmConversationTraces).where(eq(llmConversationTraces.threadId, testThreadId));
   });
-
-  /**
-   * Helper to consume stream and return result
-   */
-  async function consumeStream(response: Response): Promise<string> {
-    const reader = response.body?.getReader();
-    if (!reader) throw new Error("Response has no body");
-
-    const decoder = new TextDecoder();
-    let result = "";
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      result += decoder.decode(value, { stream: true });
-    }
-    return result;
-  }
 
   describe("Multi-turn conversations (no double-counting)", () => {
     it("MUST assign different runIds to each conversation turn", async () => {
@@ -409,6 +452,80 @@ describe.sequential("Usage Tracking Integration - Real Middleware", () => {
 
       // If context wasn't available, the callback handler wouldn't capture usage
       // So the presence of usage records proves context was available
+    });
+  });
+
+  describe("Deep agent usage tracking", () => {
+    it("MUST track LLM calls made by createDeepAgent", async () => {
+      const response = await UsageTestAPI.stream({
+        messages: [new HumanMessage("What is 2 + 2?")],
+        threadId: testThreadId,
+        state: {
+          threadId: testThreadId,
+          jwt: "test-jwt",
+          scenario: "deep-agent" as const,
+        },
+      });
+      await consumeStream(response);
+      await new Promise((r) => setTimeout(r, 500));
+
+      const usageRecords = await db
+        .select()
+        .from(llmUsage)
+        .where(eq(llmUsage.threadId, testThreadId));
+
+      // Deep agent makes at minimum 1 LLM call
+      expect(usageRecords.length).toBeGreaterThanOrEqual(1);
+
+      // All records should have real token counts
+      for (const record of usageRecords) {
+        expect(record.inputTokens).toBeGreaterThan(0);
+        expect(record.outputTokens).toBeGreaterThan(0);
+      }
+
+      // All records should share the same runId
+      const runIds = new Set(usageRecords.map((r) => r.runId));
+      expect(runIds.size).toBe(1);
+
+      // Model should be identified (not "unknown")
+      for (const record of usageRecords) {
+        expect(record.modelRaw).toBeTruthy();
+        expect(record.modelRaw).not.toBe("unknown");
+      }
+    });
+
+    it("MUST track multiple iterations of deep agent tool loop", async () => {
+      const response = await UsageTestAPI.stream({
+        messages: [new HumanMessage("What is the weather in San Francisco?")],
+        threadId: testThreadId,
+        state: {
+          threadId: testThreadId,
+          jwt: "test-jwt",
+          scenario: "deep-agent-tools" as const,
+        },
+      });
+      await consumeStream(response);
+      await new Promise((r) => setTimeout(r, 500));
+
+      const usageRecords = await db
+        .select()
+        .from(llmUsage)
+        .where(eq(llmUsage.threadId, testThreadId));
+
+      const totalCostDollars = usageRecords.reduce((sum, record) => sum + record.costMillicredits!, 0) / 100000.0;
+
+      // Tool loop: at least 2 LLM calls (1 to decide to call tool, 1 to respond with result)
+      expect(usageRecords.length).toBeGreaterThanOrEqual(2);
+
+      // All records should share the same runId
+      const runIds = new Set(usageRecords.map((r) => r.runId));
+      expect(runIds.size).toBe(1);
+
+      // All records should have real token counts
+      for (const record of usageRecords) {
+        expect(record.inputTokens).toBeGreaterThan(0);
+        expect(record.outputTokens).toBeGreaterThan(0);
+      }
     });
   });
 });

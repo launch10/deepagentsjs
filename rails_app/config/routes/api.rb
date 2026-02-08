@@ -67,6 +67,9 @@ namespace :api, defaults: {format: :json} do
       end
     end
 
+    # Agent context events for Langgraph
+    resources :agent_context_events, only: [:index]
+
     # Internal service endpoints for Langgraph billing integration
     post "llm_usage/notify", to: "llm_usage#notify"
     get "credits/check", to: "credits#check"
