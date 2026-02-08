@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from "react";
 import { useWebsitePreview } from "@hooks/website";
 import WebsiteLoader from "@components/website/WebsiteLoader";
 import type { WebContainerStatus } from "@lib/webcontainer";
@@ -61,26 +62,43 @@ function ErrorMessage({ error, onRetry }: ErrorMessageProps) {
  */
 export function WebsitePreview() {
   const { previewUrl, status, error, reload } = useWebsitePreview();
+  const [iframeLoaded, setIframeLoaded] = useState(false);
 
-  // Show loading state while WebContainer is initializing
-  if (status !== "ready" && status !== "error") {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-neutral-50 rounded-2xl border border-neutral-200">
-        <StatusMessage status={status} />
-      </div>
-    );
-  }
+  // Reset iframeLoaded when previewUrl changes (e.g. WebContainer restart)
+  useEffect(() => {
+    setIframeLoaded(false);
+  }, [previewUrl]);
+
+  // Listen for postMessage from the preview iframe signaling content has rendered
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === "preview-ready") {
+        setIframeLoaded(true);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  const handleReload = useCallback(() => {
+    setIframeLoaded(false);
+    reload();
+  }, [reload]);
 
   // Show error state
   if (status === "error") {
     return (
       <div className="w-full h-full flex items-center justify-center bg-neutral-50 rounded-2xl border border-neutral-200">
-        <ErrorMessage error={error || "Unknown error"} onRetry={reload} />
+        <ErrorMessage error={error || "Unknown error"} onRetry={handleReload} />
       </div>
     );
   }
 
-  // Show preview iframe
+  const isReady = status === "ready";
+  const showLoading = !isReady || !iframeLoaded;
+
+  // Show preview iframe (behind loading overlay when not yet loaded)
   return (
     <div
       className="w-full h-full flex flex-col rounded-2xl border border-neutral-200 overflow-hidden"
@@ -99,7 +117,7 @@ export function WebsitePreview() {
           </div>
         </div>
         <button
-          onClick={reload}
+          onClick={handleReload}
           className="p-1 hover:bg-neutral-200 rounded transition-colors"
           title="Reload preview"
         >
@@ -123,9 +141,17 @@ export function WebsitePreview() {
         </button>
       </div>
 
-      {/* Preview iframe */}
-      <div className="flex-1 bg-white">
-        {previewUrl ? (
+      {/* Preview content area */}
+      <div className="flex-1 relative bg-white">
+        {/* Loading overlay - shown until iframe content has loaded */}
+        {showLoading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-50">
+            <StatusMessage status={status} />
+          </div>
+        )}
+
+        {/* Iframe - rendered once ready, loads behind the overlay */}
+        {isReady && previewUrl && (
           <iframe
             src={previewUrl}
             className="w-full h-full border-none"
@@ -133,10 +159,6 @@ export function WebsitePreview() {
             data-testid="preview-iframe"
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
           />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <StatusMessage status="idle" />
-          </div>
         )}
       </div>
     </div>

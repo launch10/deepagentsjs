@@ -82,6 +82,51 @@ export function createStaticSitePackageJson(): FileSystemTree {
 }
 
 /**
+ * Injects a small inline script into index.html that fires a postMessage
+ * to the parent frame when the page content has actually rendered.
+ * This lets WebsitePreview keep the loading overlay until real content is visible,
+ * avoiding the blank flash while Vite compiles modules.
+ */
+const PREVIEW_READINESS_SCRIPT = `<script>
+(function() {
+  var root = document.getElementById('root');
+  if (!root) {
+    window.parent.postMessage({ type: 'preview-ready' }, '*');
+    return;
+  }
+  if (root.children.length > 0) {
+    window.parent.postMessage({ type: 'preview-ready' }, '*');
+    return;
+  }
+  var observer = new MutationObserver(function() {
+    if (root.children.length > 0) {
+      observer.disconnect();
+      window.parent.postMessage({ type: 'preview-ready' }, '*');
+    }
+  });
+  observer.observe(root, { childList: true });
+})();
+</script>`;
+
+export function injectPreviewReadinessScript(fileMap: Website.FileMap): Website.FileMap {
+  const indexKey = "/index.html" in fileMap ? "/index.html" : "index.html" in fileMap ? "index.html" : null;
+  if (!indexKey) return fileMap;
+
+  const indexFile = fileMap[indexKey];
+  if (!indexFile || typeof indexFile.content !== "string") return fileMap;
+
+  const modifiedContent = indexFile.content.replace("</body>", `${PREVIEW_READINESS_SCRIPT}\n</body>`);
+
+  return {
+    ...fileMap,
+    [indexKey]: {
+      ...indexFile,
+      content: modifiedContent,
+    },
+  };
+}
+
+/**
  * Checks if a FileMap contains a package.json file.
  */
 export function hasPackageJson(fileMap: Website.FileMap): boolean {

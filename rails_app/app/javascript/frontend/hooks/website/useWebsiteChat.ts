@@ -3,19 +3,52 @@ import type { UIMessage } from "ai";
 import type { WebsiteBridgeType, WebsiteGraphState } from "@shared";
 import { syncLanggraphToStore } from "~/stores/useSyncProject";
 import { useChatOptions } from "@hooks/useChatOptions";
-import { useEffect, useRef } from "react";
-import { usePage } from "@inertiajs/react";
+import { useCallback, useEffect, useRef } from "react";
+import { usePage, router } from "@inertiajs/react";
 
 interface WebsitePageProps {
   website?: { id?: number };
-  project?: { id?: number };
+  project?: { id?: number; uuid?: string };
+  thread_id?: string;
+  jwt?: string;
+  langgraph_path?: string;
+  root_path?: string;
   [key: string]: unknown;
 }
 
 export type WebsiteSnapshot = ChatSnapshot<WebsiteGraphState>;
 
 function useWebsiteChatOptions() {
-  return useChatOptions<WebsiteBridgeType>({ apiPath: "api/website/stream" });
+  const page = usePage<WebsitePageProps>();
+  const { project, jwt, langgraph_path, root_path } = page.props;
+
+  const onThreadIdAvailable = useCallback(
+    (threadId: string) => {
+      if (!threadId || threadId === "undefined" || threadId === "null") {
+        console.error(
+          "[useWebsiteChat] onThreadIdAvailable called with invalid threadId:",
+          threadId
+        );
+        return;
+      }
+
+      // Update Inertia page props with the new thread_id (URL stays the same)
+      router.push({
+        url: window.location.pathname,
+        component: "Website",
+        props: {
+          ...page.props,
+          thread_id: threadId,
+        },
+      });
+    },
+    [page.props]
+  );
+
+  return useChatOptions<WebsiteBridgeType>({
+    apiPath: "api/website/stream",
+    onThreadIdAvailable,
+  });
 }
 
 /**

@@ -5,6 +5,7 @@ import {
   createStaticSitePackageJson,
   mergeFileSystemTrees,
   hasPackageJson,
+  injectPreviewReadinessScript,
   type WebContainerStatus,
 } from "@lib/webcontainer";
 import { useWebsiteChatState } from "./useWebsiteChat";
@@ -103,13 +104,14 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
           setStatus("mounting");
         }
 
-        // Convert files to FileSystemTree
+        // Inject preview readiness script and convert files to FileSystemTree
         const fileMapTyped = files as Website.FileMap;
-        const fileTree = convertFileMapToFileSystemTree(fileMapTyped);
+        const fileMapWithReadiness = injectPreviewReadinessScript(fileMapTyped);
+        const fileTree = convertFileMapToFileSystemTree(fileMapWithReadiness);
 
         // Only add fallback package.json if files don't include one
         let mergedTree = fileTree;
-        if (!hasPackageJson(fileMapTyped)) {
+        if (!hasPackageJson(fileMapWithReadiness)) {
           const packageJson = createStaticSitePackageJson();
           mergedTree = mergeFileSystemTrees(fileTree, packageJson);
         }

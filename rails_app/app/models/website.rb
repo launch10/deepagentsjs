@@ -29,17 +29,33 @@ class Website < ApplicationRecord
   include WebsiteConcerns::ShasumHashable
   include WebsiteConcerns::FileManagement
   include WebsiteConcerns::ThemeCssInjection
-  include ChatCreatable
   historiographer_mode :snapshot_only
   acts_as_paranoid
   acts_as_tenant :account
 
   belongs_to :project
   has_one :brainstorm, dependent: :destroy
+  has_one :chat, as: :contextable, dependent: :destroy
   belongs_to :account
 
   def self.chat_type
     "website"
+  end
+
+  def thread_id
+    chat&.thread_id
+  end
+
+  def create_website_chat!(thread_id:)
+    return chat if chat.present?
+
+    create_chat!(
+      chat_type: self.class.chat_type,
+      project: project,
+      account: account,
+      thread_id: thread_id,
+      name: project&.name || "Chat"
+    )
   end
   belongs_to :template
   belongs_to :theme, optional: true

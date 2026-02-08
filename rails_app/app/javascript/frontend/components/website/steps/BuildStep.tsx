@@ -63,24 +63,6 @@ function useWebsiteInit() {
 }
 
 /**
- * Log todos state updates from the langgraph stream.
- * TEMPORARY: Remove once we've verified the shape and built the UI.
- */
-function useTodosLogger() {
-  const todos = useWebsiteChatState("todos");
-  const prevRef = useRef(todos);
-
-  useEffect(() => {
-    if (todos !== prevRef.current) {
-      console.log("[TODOS] State update:", JSON.stringify(todos, null, 2));
-      prevRef.current = todos;
-    }
-  }, [todos]);
-
-  return todos;
-}
-
-/**
  * Website Build step - generates the website content
  */
 export default function BuildStep() {
@@ -91,16 +73,20 @@ export default function BuildStep() {
   // Auto-init website generation on first load
   useWebsiteInit();
 
-  // TEMPORARY: Log todos from langgraph stream
-  useTodosLogger();
-
   // Check if we already have generated files (i.e. past initial generation)
   const files = useWebsiteChatState("files");
+  console.log("FILES")
+  console.log(files)
   const hasFiles = files && Object.keys(files).length > 0;
 
-  // Only show full loading UI for initial generation (no files yet) or history loading.
+  // Check if we have todos from the stream (agent has started working)
+  const todos = useWebsiteChatState("todos");
+  const hasTodos = todos && todos.length > 0;
+
+  // Only show full loading UI for initial generation (no files or todos yet) or history loading.
+  // Once todos arrive from the stream, switch to chat view so the inline todo list renders.
   // During edits (hasFiles), keep the chat + preview visible.
-  const isInitialLoading = isLoadingHistory || (isStreaming && !hasFiles);
+  const isInitialLoading = isLoadingHistory || (isStreaming && !hasFiles && !hasTodos);
 
   // Credit integration is automatic via ChatProvider - no manual wiring needed
   return (

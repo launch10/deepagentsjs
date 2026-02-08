@@ -20,6 +20,7 @@ import {
   domainRecommendationsNode,
   themeHandler,
   isCacheModeEnabled,
+  updateWebsite,
 } from "@nodes";
 import { createIntentGraph } from "./shared";
 import type { WebsiteIntent } from "@types";
@@ -32,8 +33,10 @@ import type { WebsiteIntent } from "@types";
  * Theme handler - silent action, no AI messages
  */
 const themeHandlerSubgraph = new StateGraph(WebsiteAnnotation)
+  .addNode("updateWebsite", updateWebsite)
   .addNode("themeHandler", themeHandler)
-  .addEdge(START, "themeHandler")
+  .addEdge(START, "updateWebsite")
+  .addEdge("updateWebsite", "themeHandler")
   .addEdge("themeHandler", END)
   .compile();
 
@@ -41,10 +44,12 @@ const themeHandlerSubgraph = new StateGraph(WebsiteAnnotation)
  * Improve copy - regenerates copy with different style
  */
 const improveCopySubgraph = new StateGraph(WebsiteAnnotation)
+  .addNode("updateWebsite", updateWebsite)
   .addNode("improveCopy", improveCopyNode)
   .addNode("cleanupFilesystem", cleanupFilesystemNode)
   .addNode("syncFiles", syncFilesNode)
-  .addEdge(START, "improveCopy")
+  .addEdge(START, "updateWebsite")
+  .addEdge("updateWebsite", "improveCopy")
   .addEdge("improveCopy", "cleanupFilesystem")
   .addEdge("cleanupFilesystem", "syncFiles")
   .addEdge("syncFiles", END)
@@ -64,6 +69,7 @@ const routeFromRecommendDomains = (state: { messages?: unknown[] }): string => {
 };
 
 const websiteBuilderSubgraph = new StateGraph(WebsiteAnnotation)
+  .addNode("updateWebsite", updateWebsite)
   .addNode("buildContext", buildContext)
   .addNode("websiteBuilder", websiteBuilderNode)
   .addNode("compactConversation", compactConversationNode)
@@ -72,8 +78,9 @@ const websiteBuilderSubgraph = new StateGraph(WebsiteAnnotation)
   .addNode("syncFiles", syncFilesNode)
   .addNode("skipToEnd", () => ({})) // No-op node for cache mode domain recs path
 
-  // START routes based on cache mode (create only)
-  .addConditionalEdges(START, (state) => (isCacheModeEnabled(state) ? "cacheMode" : "buildContext"), {
+  // START → updateWebsite → buildContext (with cache mode routing)
+  .addEdge(START, "updateWebsite")
+  .addConditionalEdges("updateWebsite", (state) => (isCacheModeEnabled(state) ? "cacheMode" : "buildContext"), {
     cacheMode: "buildContext", // Even in cache mode, we go through buildContext
     buildContext: "buildContext",
   })
