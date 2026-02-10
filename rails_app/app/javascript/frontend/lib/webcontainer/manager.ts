@@ -1,5 +1,9 @@
 import { WebContainer } from "@webcontainer/api";
-import type { FileSystemTree } from "@webcontainer/api";
+import type { FileSystemTree, PreviewMessage } from "@webcontainer/api";
+import type { Website } from "@shared";
+import { parseBuildErrors, parsePreviewMessage } from "./errorParsing";
+
+type ConsoleError = Website.Errors.ConsoleError;
 
 export const WORK_DIR_NAME = "project";
 export const WORK_DIR = `/home/${WORK_DIR_NAME}`;
@@ -9,9 +13,10 @@ interface WarmupState {
   depsInstalled: boolean;
   viteRunning: boolean;
   previewUrl: string | null;
+  consoleErrors: ConsoleError[];
 }
 
-type WarmupEventType = "state-change" | "log";
+type WarmupEventType = "state-change" | "log" | "console-errors";
 
 interface WarmupEvent {
   type: WarmupEventType;
@@ -45,6 +50,7 @@ class WebContainerManagerClass {
     depsInstalled: false,
     viteRunning: false,
     previewUrl: null,
+    consoleErrors: [],
   };
 
   /**
@@ -73,8 +79,16 @@ class WebContainerManagerClass {
     try {
       // Step 1: Boot WebContainer
       this.log("[WebContainer] Booting...");
-      this.instance = await WebContainer.boot({ workdirName: WORK_DIR_NAME });
+      this.instance = await WebContainer.boot({
+        workdirName: WORK_DIR_NAME,
+        forwardPreviewErrors: true,
+      });
       this.updateState({ booted: true });
+
+      // Listen for runtime errors from preview iframes
+      this.instance.on("preview-message", (msg: PreviewMessage) => {
+        this.addConsoleError(parsePreviewMessage(msg));
+      });
       this.log(`[WebContainer] Booted in ${(performance.now() - start).toFixed(0)}ms`);
 
       // Step 2: Mount snapshot (required - contains pre-installed node_modules)
@@ -96,7 +110,7 @@ class WebContainerManagerClass {
       this.log("[WebContainer] Starting Vite dev server...");
       const devProc = await this.instance.spawn("npm", ["run", "dev"]);
 
-      // Pipe dev server output
+      // Pipe dev server output and parse for build errors
       devProc.output.pipeTo(
         new WritableStream({
           write: (chunk) => {
@@ -105,6 +119,12 @@ class WebContainerManagerClass {
               if (line.trim()) {
                 this.log(`[vite] ${line}`);
               }
+            }
+
+            // Parse full chunk for build errors (multiline esbuild errors)
+            const errors = parseBuildErrors(chunk);
+            for (const error of errors) {
+              this.addConsoleError(error);
             }
           },
         })
@@ -145,6 +165,9 @@ class WebContainerManagerClass {
     if (!this.instance) {
       throw new Error("WebContainer not initialized");
     }
+
+    // Clear previous errors before mounting new files
+    this.clearConsoleErrors();
 
     // Mount project files (this is fast - just file writes)
     this.log("[WebContainer] Mounting project files...");
@@ -260,11 +283,38 @@ class WebContainerManagerClass {
   }
 
   /**
+   * Get current console errors (build + runtime).
+   * Maps 1:1 to WebsiteAnnotation.consoleErrors on the backend.
+   */
+  getConsoleErrors(): ConsoleError[] {
+    return [...this.state.consoleErrors];
+  }
+
+  /**
+   * Clear console errors — called when new files are mounted (new attempt).
+   */
+  clearConsoleErrors(): void {
+    this.state = { ...this.state, consoleErrors: [] };
+    this.emit({ type: "console-errors", state: this.state });
+  }
+
+  /**
    * Subscribe to state changes
    */
   subscribe(listener: WarmupListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  private addConsoleError(error: ConsoleError) {
+    this.state = {
+      ...this.state,
+      consoleErrors: [...this.state.consoleErrors, error],
+    };
+    if (import.meta.env.DEV) {
+      console.warn(`[WebContainer] Build error:`, error.message, error.file ? `(${error.file})` : "");
+    }
+    this.emit({ type: "console-errors", state: this.state });
   }
 
   private updateState(partial: Partial<WarmupState>) {

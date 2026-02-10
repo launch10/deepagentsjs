@@ -11,10 +11,14 @@ import {
 import { useWebsiteChatState } from "./useWebsiteChat";
 import type { Website } from "@shared";
 
+type ConsoleError = Website.Errors.ConsoleError;
+
 interface UseWebsitePreviewReturn {
   previewUrl: string | null;
   status: WebContainerStatus;
   error: string | null;
+  /** Build + runtime errors from WebContainer, maps 1:1 to WebsiteAnnotation.consoleErrors */
+  consoleErrors: ConsoleError[];
   reload: () => void;
 }
 
@@ -55,6 +59,9 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
   );
   const [status, setStatus] = useState<WebContainerStatus>(getStatusFromManagerState);
   const [error, setError] = useState<string | null>(null);
+  const [consoleErrors, setConsoleErrors] = useState<ConsoleError[]>(
+    WebContainerManager.getConsoleErrors()
+  );
 
   const mountedFilesRef = useRef<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -77,6 +84,10 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
         if (event.state.previewUrl !== previewUrl) {
           setPreviewUrl(event.state.previewUrl);
         }
+      }
+
+      if (event.type === "console-errors" && event.state) {
+        setConsoleErrors([...event.state.consoleErrors]);
       }
     });
 
@@ -136,6 +147,7 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
     previewUrl,
     status,
     error,
+    consoleErrors,
     reload,
   };
 }

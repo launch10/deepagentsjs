@@ -32,6 +32,7 @@ export type MinimalCodingAgentState = {
   jwt?: string;
   theme?: CodingPromptState["theme"];
   errors?: string;
+  consoleErrors?: Website.Errors.ConsoleError[];
   isCreateFlow?: boolean;
 };
 
@@ -212,6 +213,12 @@ async function resolveRoute(
     return { route: "full" };
   }
 
+  // Build errors from WebContainer → instant escalation, no classifier needed
+  if (state.consoleErrors && state.consoleErrors.some((e) => e.type === "error")) {
+    getLogger().info("Build errors detected, routing to full agent");
+    return { route: "full" };
+  }
+
   // Custom system prompt means the caller has specialized behavior (SEO, bugfix, etc.)
   // that doesn't fit single-shot's own prompt
   if (options.systemPrompt) {
@@ -337,14 +344,10 @@ async function _createCodingAgentInternal(
     backend
   );
 
-  const originalConfig = options.config;
-
   const result = await agent.invoke(
     { messages: options.messages },
-    originalConfig
-      ? Object.assign(originalConfig, { recursionLimit: options.recursionLimit ?? 150 })
-      : { recursionLimit: options.recursionLimit ?? 150 }
-  );
+    { ...options.config, recursionLimit: options.recursionLimit ?? 150 }
+  ) as { messages: BaseMessage[]; todos?: any[] };
 
   // Flush all deferred writes to DB in one batch
   await agentBackend.flush();
@@ -352,7 +355,8 @@ async function _createCodingAgentInternal(
   // Extract the first and last AI messages for the caller.
   // The first AI message is the personalized greeting (create flow) or initial response,
   // and the last is the final summary. Persisting both preserves the conversational feel on reload.
-  const aiMessages = result.messages.filter((msg: BaseMessage) => msg._getType() === "ai");
+  const messages = result.messages ?? [];
+  const aiMessages = messages.filter((msg: BaseMessage) => msg._getType() === "ai");
   const firstAI = aiMessages.at(0);
   const lastAI = aiMessages.at(-1);
 

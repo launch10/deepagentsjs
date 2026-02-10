@@ -18,4 +18,11 @@ export const codeGuidelinesPrompt: CodingPromptFn = async (
   - Raw hex for dark/atmospheric backgrounds ONLY: \`from-[#0a0a1a]\`
 - One component per file, under 150 lines
 - Prefer CSS-only animations where possible
+- **ALWAYS use named exports, NEVER default exports.** The export name MUST match the file name.
+  - Example: \`Hero.tsx\` → \`export function Hero() { ... }\`
+  - Example: \`PricingCard.tsx\` → \`export function PricingCard() { ... }\`
+  - NEVER: \`export default function() { ... }\` or \`export default Hero\`
+- **ALWAYS use named imports** matching the component file name:
+  - \`import { Hero } from "./Hero"\`
+  - NEVER: \`import Hero from "./Hero"\`
 `;

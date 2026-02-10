@@ -11,6 +11,7 @@
   },
   "scripts": {
     "dev": "tsx watch --watch-path=./app --watch-path=./server.ts --watch-path=../shared ./server.ts",
+    "dev:no-watch": "tsx ./server.ts",
     "worker": "tsx ./app/workers/documentExtractionWorker.ts",
     "worker:dev": "tsx watch --watch-path=./app --watch-path=../shared ./app/workers/documentExtractionWorker.ts",
     "dev:debug": "NODE_OPTIONS=--inspect-brk tsx ./server.ts",

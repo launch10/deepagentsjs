@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { useWebsitePreview } from "@hooks/website";
+import { useWebsitePreview, useWebsiteChatActions } from "@hooks/website";
+import { useChatIsStreaming } from "@components/shared/chat/ChatContext";
 import WebsiteLoader from "@components/website/WebsiteLoader";
 import type { WebContainerStatus } from "@lib/webcontainer";
+import type { Website } from "@shared";
+import { useCurrentUser } from "@stores/sessionStore";
 
 const previewSteps = [
   { id: "booting", label: "Starting preview environment..." },
@@ -22,9 +25,28 @@ const statusToStepIndex: Record<WebContainerStatus, number> = {
 
 interface StatusMessageProps {
   status: WebContainerStatus;
+  hasBuildErrors?: boolean;
+  onFix?: () => void;
 }
 
-function StatusMessage({ status }: StatusMessageProps) {
+function StatusMessage({ status, hasBuildErrors, onFix }: StatusMessageProps) {
+  if (hasBuildErrors) {
+    return (
+      <div data-testid="preview-status" data-status="build-error" className="flex flex-col items-center gap-3 text-center px-8">
+        <div className="size-10 rounded-full bg-red-100 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+        </div>
+        <p className="text-sm font-medium text-neutral-700">We had an issue building your page</p>
+        <button
+          onClick={onFix}
+          className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          Fix errors
+        </button>
+      </div>
+    );
+  }
+
   const currentStep = statusToStepIndex[status] ?? 0;
 
   return (
@@ -61,7 +83,11 @@ function ErrorMessage({ error, onRetry }: ErrorMessageProps) {
  * Uses WebContainer to run a dev server and display the preview.
  */
 export function WebsitePreview() {
-  const { previewUrl, status, error, reload } = useWebsitePreview();
+  const { previewUrl, status, error, consoleErrors, reload } = useWebsitePreview();
+  const { sendMessage } = useWebsiteChatActions();
+  const isStreaming = useChatIsStreaming();
+  const currentUser = useCurrentUser();
+  const isAdmin = currentUser?.admin ?? false;
   const [iframeLoaded, setIframeLoaded] = useState(false);
 
   // Reset iframeLoaded when previewUrl changes (e.g. WebContainer restart)
@@ -86,6 +112,19 @@ export function WebsitePreview() {
     reload();
   }, [reload]);
 
+  const buildErrors = consoleErrors.filter((e) => e.type === "error");
+
+  const handleFixErrors = useCallback(() => {
+    const errorSummary = buildErrors
+      .map((e: Website.Errors.ConsoleError) => `- ${e.message}${e.file ? ` (${e.file})` : ""}`)
+      .join("\n");
+
+    sendMessage(
+      `The preview has build errors. Please fix them:\n\n${errorSummary}`,
+      { consoleErrors: buildErrors }
+    );
+  }, [buildErrors, sendMessage]);
+
   // Show error state
   if (status === "error") {
     return (
@@ -95,6 +134,7 @@ export function WebsitePreview() {
     );
   }
 
+  const hasBuildErrors = buildErrors.length > 0;
   const isReady = status === "ready";
   const showLoading = !isReady || !iframeLoaded;
 
@@ -143,10 +183,10 @@ export function WebsitePreview() {
 
       {/* Preview content area */}
       <div className="flex-1 relative bg-white">
-        {/* Loading overlay - shown until iframe content has loaded */}
-        {showLoading && (
+        {/* Loading overlay — shows build error state or normal loading steps */}
+        {(showLoading || (hasBuildErrors && !isStreaming)) && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-50">
-            <StatusMessage status={status} />
+            <StatusMessage status={status} hasBuildErrors={hasBuildErrors && !isStreaming} onFix={handleFixErrors} />
           </div>
         )}
 

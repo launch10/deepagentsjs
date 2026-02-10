@@ -47,3 +47,6 @@ node_modules/**/**
 # TypeScript build info
 *.tsbuildinfo
 tmp/
+
+# Agent filesystem workspace (hydrated from DB, cleaned up after graph runs)
+agents/

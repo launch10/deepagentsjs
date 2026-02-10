@@ -1,13 +1,66 @@
 import { CardContent, CardFooter } from "@components/ui/card";
-import { useWebsiteChatIsLoadingHistory } from "@hooks/website";
+import { useWebsiteChatIsLoadingHistory, useWebsiteChatActions } from "@hooks/website";
+import { useWebsitePreview } from "@hooks/website";
 import WebsiteChatInput from "./chat/WebsiteChatInput";
 import WebsiteChatMessages from "./chat/WebsiteChatMessages";
 import { useChatIsStreaming } from "@components/shared/chat/ChatContext";
 import { twMerge } from "tailwind-merge";
+import { useCallback } from "react";
+import { useCurrentUser } from "@stores/sessionStore";
 
 export interface WebsiteChatProps {
   /** When true, the chat input is disabled and shows a muted state */
   locked?: boolean;
+}
+
+/**
+ * Prompt shown above the chat input when build errors are detected.
+ * Clicking "Fix errors" sends a message to the agent with the error details.
+ */
+function BuildErrorPrompt() {
+  const { consoleErrors } = useWebsitePreview();
+  const { sendMessage } = useWebsiteChatActions();
+  const isStreaming = useChatIsStreaming();
+  const currentUser = useCurrentUser();
+
+  const errors = consoleErrors.filter((e) => e.type === "error");
+
+  const handleFix = useCallback(() => {
+    const errorSummary = errors
+      .map((e) => `- ${e.message}${e.file ? ` (${e.file})` : ""}`)
+      .join("\n");
+
+    sendMessage(
+      `The preview has build errors. Please fix them:\n\n${errorSummary}`,
+      { consoleErrors: errors }
+    );
+  }, [errors, sendMessage]);
+
+  if (errors.length === 0 || isStreaming) return null;
+
+  const isAdmin = currentUser?.admin ?? false;
+
+  return (
+    <div className="mb-2 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between gap-3 w-full">
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-red-700">
+          We ran into an issue building your page
+        </p>
+        {isAdmin && (
+          <p className="text-xs text-red-500 mt-0.5 truncate">
+            {errors[0].message}
+            {errors.length > 1 && ` (+${errors.length - 1} more)`}
+          </p>
+        )}
+      </div>
+      <button
+        onClick={handleFix}
+        className="shrink-0 px-3 py-1.5 text-xs font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+      >
+        Fix errors
+      </button>
+    </div>
+  );
 }
 
 /**
@@ -37,6 +90,7 @@ export default function WebsiteChat({ locked = false }: WebsiteChatProps) {
         <WebsiteChatMessages />
       </CardContent>
       <CardFooter className="flex-col gap-1 px-4 pb-4 pt-0 w-full shrink-0">
+        <BuildErrorPrompt />
         <WebsiteChatInput disabled={locked} />
       </CardFooter>
     </div>
