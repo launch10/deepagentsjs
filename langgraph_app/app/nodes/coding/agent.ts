@@ -66,7 +66,9 @@ const todoOverrideMiddleware = createMiddleware({
         `\n\nIMPORTANT OVERRIDE FOR TASK TRACKING: Always use write_todos when delegating ` +
         `work to subagents via the task tool. Each subagent dispatch counts as a step that ` +
         `the user needs visibility into. Track delegation progress even for 2-3 dispatches. ` +
-        `Create the todo list BEFORE dispatching subagents, and update it as each completes.` +
+        `Create the todo list BEFORE dispatching subagents, and update it as each completes. ` +
+        `When dispatching multiple subagents in parallel, mark ALL of them as in_progress ` +
+        `since they are all running concurrently. ` +
         `The user is non-technical, so please keep the todos high-level and clear, with ` +
         `concise descriptions of each task. Do not reference specific files or directories.`
       ),
@@ -80,7 +82,11 @@ const getMiddlewares = (): AgentMiddleware[] => {
   // toolErrorSurfacing MUST be first — it wraps the outermost layer of the
   // wrapToolCall chain so that tool errors are returned as ToolMessages instead
   // of crashing the agent as MiddlewareErrors.
-  return [createToolErrorSurfacingMiddleware(), createPromptCachingMiddleware(), todoOverrideMiddleware];
+  return [
+    createToolErrorSurfacingMiddleware(),
+    createPromptCachingMiddleware(),
+    todoOverrideMiddleware,
+  ];
 };
 
 export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
@@ -352,10 +358,11 @@ async function _createCodingAgentInternal(
   // Flush all deferred writes to DB in one batch
   await agentBackend.flush();
 
+  const messages = result.messages ?? [];
+
   // Extract the first and last AI messages for the caller.
   // The first AI message is the personalized greeting (create flow) or initial response,
   // and the last is the final summary. Persisting both preserves the conversational feel on reload.
-  const messages = result.messages ?? [];
   const aiMessages = messages.filter((msg: BaseMessage) => msg._getType() === "ai");
   const firstAI = aiMessages.at(0);
   const lastAI = aiMessages.at(-1);
