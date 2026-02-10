@@ -119,16 +119,6 @@ export const websiteBuilderNode = NodeMiddleware.use(
       return await cachedResponse(state);
     }
 
-    // Guard: if there's no human message in context (e.g., a stateOnly call that
-    // routed to the default path with no intent and no user input), skip the agent.
-    // Without this, the LLM sees only prior AI messages, enters a degenerate
-    // repetition loop, and appends junk to the checkpoint on every page load.
-    const hasHumanMessage = state.messages.some((m) => m._getType() === "human");
-    if (!isCreate && !hasHumanMessage) {
-      getLogger().info("No human message in context, skipping websiteBuilder");
-      return {};
-    }
-
     const messages = await buildContext(state);
 
     const result = await createCodingAgent(
@@ -150,20 +140,38 @@ export const websiteBuilderNode = NodeMiddleware.use(
     // Only applies to create flow (isCreateFlow), not edits.
 
     // Read files from DB immediately so frontend gets them before compaction/cleanup.
-    // Same pattern as syncFilesNode — uses the codeFiles view (website_files + template_files).
-    const generatedFiles = await db
+    // Guard: only return files if the agent actually wrote to website_files.
+    // The codeFiles view includes template fallbacks — without this guard,
+    // template "Hello world" content leaks into state before the agent writes real files.
+    const agentWroteFiles = await db
       .select()
-      .from(codeFiles)
-      .where(eq(codeFiles.websiteId, state.websiteId!));
+      .from(websiteFiles)
+      .where(eq(websiteFiles.websiteId!, state.websiteId!))
+      .limit(1);
 
-    const files = generatedFiles.reduce((acc, file) => {
-      acc[file.path!] = { content: file.content!, created_at: file.createdAt!, modified_at: file.updatedAt! };
-      return acc;
-    }, {} as Website.FileMap);
+    if (agentWroteFiles.length > 0) {
+      // Agent wrote files — return full set (agent files + template fallbacks via codeFiles view)
+      const generatedFiles = await db
+        .select()
+        .from(codeFiles)
+        .where(eq(codeFiles.websiteId, state.websiteId!));
 
+      const files = generatedFiles.reduce((acc, file) => {
+        acc[file.path!] = { content: file.content!, created_at: file.createdAt!, modified_at: file.updatedAt! };
+        return acc;
+      }, {} as Website.FileMap);
+
+      return {
+        ...result,
+        files,
+        todos: result.todos ?? [],
+      };
+    }
+
+    // Agent didn't write files — don't return template files here.
+    // syncFilesNode at the end of the graph will handle it.
     return {
       ...result,
-      files,
       todos: result.todos ?? [],
     };
   }

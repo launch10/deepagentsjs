@@ -6,6 +6,7 @@ import { toStructuredMessage } from "langgraph-ai-sdk";
 import { executeTextEditorCommand, type TextEditorInput } from "@tools";
 import { getCodingAgentBackend, getTheme, type MinimalCodingAgentState } from "./agent";
 import { buildFileTree, preReadFiles } from "./fileContext";
+import { sanitizeMessagesForLLM } from "./messageUtils";
 import type { CodingPromptState } from "@prompts";
 import type { WebsiteFilesBackend } from "@services";
 
@@ -216,8 +217,22 @@ export async function singleShotEdit(
     tools: [NATIVE_TEXT_EDITOR_TOOL],
   });
 
+  // Sanitize context messages: strip tool_use blocks from AI messages and remove ToolMessages.
+  // These are artifacts from prior agent runs (deepagents ReAct loop) that cause
+  // "tool_use without tool_result" errors when sent to the Anthropic API.
+  const cleanContextMessages = sanitizeMessagesForLLM(contextMessages);
+
+  const totalChars = cleanContextMessages.reduce((sum, m) => {
+    const content = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
+    return sum + content.length;
+  }, 0);
+  getLogger().info(
+    { contextMessageCount: cleanContextMessages.length, totalChars },
+    "Single-shot edit: invoking LLM"
+  );
+
   // Single-shot: one LLM call, apply all edits
-  const invokeMessages: BaseMessage[] = [systemMessage, ...contextMessages];
+  const invokeMessages: BaseMessage[] = [systemMessage, ...cleanContextMessages];
 
   const response = await modelWithTools.invoke(invokeMessages);
   const toolCalls = response.tool_calls ?? [];

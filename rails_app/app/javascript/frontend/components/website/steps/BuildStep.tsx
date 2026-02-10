@@ -3,7 +3,7 @@ import WebsiteSidebar from "@components/website/sidebar/WebsiteSidebar";
 import { WebsitePreview } from "@components/website/preview";
 import { Chat } from "@components/shared/chat/Chat";
 import { PaginationFooter } from "@components/shared/pagination-footer";
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useEffect, useEffectEvent, useRef, useState, useCallback } from "react";
 import { usePage } from "@inertiajs/react";
 import {
   useWebsiteChat,
@@ -62,6 +62,45 @@ function useWebsiteInit() {
   }, [websiteId, projectId]);
 }
 
+function RestartChatButton() {
+  const { website } = usePage<WebsitePageProps>().props;
+  const [restarting, setRestarting] = useState(false);
+
+  const handleRestart = useCallback(async () => {
+    if (!website?.id) return;
+    if (!confirm("Restart chat? This deletes the chat and all checkpoints.")) return;
+
+    setRestarting(true);
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+      await fetch(`/test/websites/${website.id}/restart_chat`, {
+        method: "DELETE",
+        headers: {
+          "X-CSRF-Token": csrfToken || "",
+          Accept: "application/json",
+        },
+      });
+      // Full page reload to reset all chat state
+      window.location.reload();
+    } catch (e) {
+      console.error("Failed to restart chat:", e);
+      setRestarting(false);
+    }
+  }, [website?.id]);
+
+  if (!import.meta.env.DEV) return null;
+
+  return (
+    <button
+      onClick={handleRestart}
+      disabled={restarting}
+      className="text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
+    >
+      {restarting ? "Restarting…" : "Restart Chat (Dev)"}
+    </button>
+  );
+}
+
 /**
  * Website Build step - generates the website content
  */
@@ -75,13 +114,19 @@ export default function BuildStep() {
 
   // Check if we already have generated files (i.e. past initial generation)
   const files = useWebsiteChatState("files");
-  console.log("FILES")
+  console.log(`files`)
   console.log(files)
   const hasFiles = files && Object.keys(files).length > 0;
 
   // Check if we have todos from the stream (agent has started working)
   const todos = useWebsiteChatState("todos");
   const hasTodos = todos && todos.length > 0;
+  console.log(`todos`)
+  console.log(todos)
+
+  const messages = useWebsiteChatState("messages");
+  console.log(`messages`)
+  console.log(messages)
 
   // Only show full loading UI for initial generation (no files or todos yet) or history loading.
   // Once todos arrive from the stream, switch to chat view so the inline todo list renders.
@@ -115,6 +160,7 @@ export default function BuildStep() {
         <PaginationFooter.Root layout="full-bleed" isPending={isInitialLoading} canGoBack={false}>
           <PaginationFooter.BackButton />
           <PaginationFooter.Actions>
+            <RestartChatButton />
             <PaginationFooter.ActionButton disabled={isInitialLoading}>
               Preview
             </PaginationFooter.ActionButton>

@@ -64,9 +64,16 @@ export default {
   fetch: app.fetch,
 };
 
-serve({
+const server = serve({
   fetch: app.fetch,
   port,
 });
 
 rootLogger.info({ port }, "Hono server running");
+
+const shutdown = () => {
+  server.close();
+};
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);

@@ -9,6 +9,8 @@ authenticated :user do
 end
 
 namespace :test do
+  delete "websites/:website_id/restart_chat", to: "chats#restart_chat"
+
   # Database snapshot operations (true database concerns)
   post "database/truncate", to: "database#truncate"
   post "database/snapshots", to: "database#create_snapshot"

@@ -7,12 +7,14 @@ import {
   createPromptCachingMiddleware,
   createToolErrorSurfacingMiddleware,
   getLogger,
+  rollbar,
 } from "@core";
 import { WebsiteFilesBackend } from "@services";
 import { SearchIconsTool } from "@tools";
 import { buildCoderSubAgent } from "./subagents";
 import { checkpointer } from "@core";
 import {
+  createMiddleware,
   modelFallbackMiddleware as modelFallbackMiddlewareBuilder,
   type AgentMiddleware,
 } from "langchain";
@@ -23,6 +25,7 @@ import { buildFileTree } from "./fileContext";
 import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { toStructuredMessage } from "langgraph-ai-sdk";
+import { stripToolArtifacts } from "./messageUtils";
 
 export type MinimalCodingAgentState = {
   websiteId?: number;
@@ -43,6 +46,32 @@ export type CodingAgentOptions = {
   route?: EditRoute;
 };
 
+/**
+ * Custom middleware that reinforces todo usage when delegating to subagents.
+ *
+ * deepagents' todoListMiddleware() is hardcoded with no options and its built-in
+ * prompt tells the agent to skip todos for "simple" tasks (<3 steps). But our
+ * coding agent delegates to 4-6 subagents in parallel — the user needs visibility
+ * into that progress. Custom middleware added via the `middleware` param runs
+ * after built-ins, so this appends *after* the todoListMiddleware's own system
+ * prompt, giving it "last word" advantage.
+ */
+const todoOverrideMiddleware = createMiddleware({
+  name: "todoOverride",
+  wrapModelCall: (request, handler) =>
+    handler({
+      ...request,
+      systemMessage: request.systemMessage.concat(
+        `\n\nIMPORTANT OVERRIDE FOR TASK TRACKING: Always use write_todos when delegating ` +
+        `work to subagents via the task tool. Each subagent dispatch counts as a step that ` +
+        `the user needs visibility into. Track delegation progress even for 2-3 dispatches. ` +
+        `Create the todo list BEFORE dispatching subagents, and update it as each completes.` +
+        `The user is non-technical, so please keep the todos high-level and clear, with ` +
+        `concise descriptions of each task. Do not reference specific files or directories.`
+      ),
+    }),
+});
+
 const getMiddlewares = (): AgentMiddleware[] => {
   // deepagents' createDeepAgent() includes summarizationMiddleware internally
   // (trigger: 170K tokens, keep: 6 messages). Upstream compaction in the
@@ -50,7 +79,7 @@ const getMiddlewares = (): AgentMiddleware[] => {
   // toolErrorSurfacing MUST be first — it wraps the outermost layer of the
   // wrapToolCall chain so that tool errors are returned as ToolMessages instead
   // of crashing the agent as MiddlewareErrors.
-  return [createToolErrorSurfacingMiddleware(), createPromptCachingMiddleware()];
+  return [createToolErrorSurfacingMiddleware(), createPromptCachingMiddleware(), todoOverrideMiddleware];
 };
 
 export const getCodingAgentBackend = async (state: MinimalCodingAgentState) => {
@@ -124,9 +153,8 @@ async function buildFullCodingAgent(
   }
 
   const backend = existingBackend ?? (await getCodingAgentBackend(state));
-  const llm = (await getLLM({ skill: "coding", speed: "slow", cost: "paid" })).withConfig({
-    tags: ["notify"],
-  });
+  const baseLlm = await getLLM({ skill: "coding", speed: "slow", cost: "paid" });
+  const notifyLlm = baseLlm.withConfig({ tags: ["notify"] });
   const middlewares = getMiddlewares();
 
   // Build prompt state for async prompt generation
@@ -146,10 +174,10 @@ async function buildFullCodingAgent(
   // Build prompt and subagents - now async
   const [finalSystemPrompt, coderSubAgent] = await Promise.all([
     systemPrompt ? Promise.resolve(systemPrompt) : buildCodingPrompt(promptState),
-    buildCoderSubAgent(promptState),
+    buildCoderSubAgent(promptState, baseLlm),
   ]);
   const agent = createDeepAgent({
-    model: llm as any,
+    model: notifyLlm as any,
     name: "coding-agent",
     systemPrompt: finalSystemPrompt,
     backend: () => backend as any,
@@ -241,6 +269,35 @@ export async function createCodingAgent(
     );
   }
 
+  try {
+    return await _createCodingAgentInternal(state, options);
+  } catch (error) {
+    // Maximum durability: never let an unhandled error leave the user with no response.
+    // Log + report the error, then return a user-friendly message.
+    getLogger().error({ err: error }, "createCodingAgent crashed — returning fallback message");
+    rollbar.error(error instanceof Error ? error : new Error(String(error)), {
+      context: "createCodingAgent",
+      websiteId: state.websiteId,
+      isCreateFlow: state.isCreateFlow,
+      route: options.route ?? "auto",
+    });
+
+    const fallbackMessage = new AIMessage({
+      content: "I ran into an issue processing your request. Could you try again? If the problem persists, try rephrasing your request.",
+    });
+    const [structured] = await toStructuredMessage(fallbackMessage);
+    return {
+      messages: [structured] as BaseMessage[],
+      status: "completed",
+    };
+  }
+}
+
+/** Internal implementation — wrapped by createCodingAgent's durability catch. */
+async function _createCodingAgentInternal(
+  state: MinimalCodingAgentState,
+  options: CodingAgentOptions
+): Promise<{ messages: BaseMessage[]; status: "completed"; todos?: Array<{ content: string; status: "pending" | "in_progress" | "completed" }> }> {
   const requestedRoute = options.route ?? "auto";
 
   // Resolve route
@@ -252,6 +309,7 @@ export async function createCodingAgent(
     const result = await resolveRoute(state, options);
     resolvedRoute = result.route;
     if (result.backend) backend = result.backend;
+    getLogger().info({ resolvedRoute, userMessage: truncate(lastMessageText(options.messages)) }, "Route resolved");
   } else {
     resolvedRoute = requestedRoute;
   }
@@ -279,12 +337,13 @@ export async function createCodingAgent(
     backend
   );
 
+  const originalConfig = options.config;
+
   const result = await agent.invoke(
     { messages: options.messages },
-    {
-      ...options.config,
-      recursionLimit: options.recursionLimit ?? 150,
-    }
+    originalConfig
+      ? Object.assign(originalConfig, { recursionLimit: options.recursionLimit ?? 150 })
+      : { recursionLimit: options.recursionLimit ?? 150 }
   );
 
   // Flush all deferred writes to DB in one batch
@@ -303,7 +362,14 @@ export async function createCodingAgent(
       ? [firstAI, lastAI]
       : [firstAI ?? lastAI].filter((m): m is BaseMessage => !!m);
 
-  const structuredMessages = (await Promise.all(userFacing.map((msg) => toStructuredMessage(msg))))
+  // Strip tool_use/tool_call artifacts from agent messages before storing in graph state.
+  // These are internal ReAct loop artifacts that cause "tool_use without tool_result" errors
+  // when the messages are later passed as context to a different LLM call (e.g. singleShotEdit).
+  const cleanMessages = userFacing.map((msg) =>
+    msg._getType() === "ai" ? stripToolArtifacts(msg as AIMessage) : msg
+  );
+
+  const structuredMessages = (await Promise.all(cleanMessages.map((msg) => toStructuredMessage(msg))))
     .map(([m]) => m)
     .filter(Boolean);
 
@@ -326,4 +392,13 @@ export async function createCodingAgent(
     status: "completed" as const,
     todos,
   };
+}
+
+function lastMessageText(messages: BaseMessage[]): string {
+  const last = messages.at(-1);
+  return typeof last?.content === "string" ? last.content : "";
+}
+
+function truncate(text: string, maxLen = 100): string {
+  return text.length > maxLen ? text.slice(0, maxLen) + "..." : text;
 }
