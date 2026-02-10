@@ -1,0 +1,38 @@
+diff --git a/dist/agents/nodes/middleware.cjs b/dist/agents/nodes/middleware.cjs
+index b0aea95af2d941dadecbcb006cc4498cd46c65a7..6db6f9a8f84c98f7b2f87a63fde96a930b1b5552 100644
+--- a/dist/agents/nodes/middleware.cjs
++++ b/dist/agents/nodes/middleware.cjs
+@@ -66,10 +66,12 @@ var MiddlewareNode = class extends require_RunnableCallable.RunnableCallable {
+ 			}))
+ 		);
+ 		/**
+-		* If result is undefined, return current state
++		* If result is undefined, the hook changed nothing — return empty update.
++		* Previously this spread ...state which re-emitted every input key as a
++		* state update, causing downstream consumers (e.g. streaming handlers) to
++		* see spurious overwrites of keys like todos, files, etc.
+ 		*/
+ 		if (!result) return {
+-			...state,
+ 			jumpTo: void 0
+ 		};
+ 		/**
+diff --git a/dist/agents/nodes/middleware.js b/dist/agents/nodes/middleware.js
+index 56d1e0cfcffc539b90c99a266223a941d21e805a..31a60dab5dfaf3a2508b3a20b219e5d96854af95 100644
+--- a/dist/agents/nodes/middleware.js
++++ b/dist/agents/nodes/middleware.js
+@@ -65,10 +65,12 @@ var MiddlewareNode = class extends RunnableCallable {
+ 			}))
+ 		);
+ 		/**
+-		* If result is undefined, return current state
++		* If result is undefined, the hook changed nothing — return empty update.
++		* Previously this spread ...state which re-emitted every input key as a
++		* state update, causing downstream consumers (e.g. streaming handlers) to
++		* see spurious overwrites of keys like todos, files, etc.
+ 		*/
+ 		if (!result) return {
+-			...state,
+ 			jumpTo: void 0
+ 		};
+ 		/**

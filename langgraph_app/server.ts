@@ -72,7 +72,9 @@ const server = serve({
 rootLogger.info({ port }, "Hono server running");
 
 const shutdown = () => {
-  server.close();
+  server.close(() => process.exit(0));
+  // Force exit if graceful shutdown takes too long
+  setTimeout(() => process.exit(0), 2000);
 };
 
 process.on("SIGTERM", shutdown);
