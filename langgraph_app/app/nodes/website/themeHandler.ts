@@ -67,8 +67,10 @@ export const themeHandler = NodeMiddleware.use(
     }
 
     // 4. Return updated state - frontend merges this with existing files
+    // themeId is streamed to frontend so the theme picker stays in sync
     return {
       files,
+      themeId,
       status: "completed",
     };
   }

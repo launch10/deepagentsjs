@@ -1,58 +1,45 @@
-import { cn } from "@lib/utils";
-import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { useMemo } from "react";
+import { useWebsiteChatState } from "@hooks/website";
+import { StepProgress } from "@components/ui/step-progress";
 
-export interface WebsiteLoaderStep {
-  id: string;
-  label: string;
-}
+const fallbackSteps = [{ id: "1", label: "Setting up branding & colors" }];
 
-export interface WebsiteLoaderProps {
-  title?: string;
-  steps: WebsiteLoaderStep[];
-  currentStep?: number;
-  className?: string;
-}
+/**
+ * Self-contained loader for the initial website build.
+ * Reads todos from the chat store and derives its own progress state.
+ */
+export default function WebsiteLoader({ className }: { className?: string }) {
+  const todos = useWebsiteChatState("todos");
 
-export default function WebsiteLoader({
-  title = "Building your landing page",
-  steps,
-  currentStep = 0,
-  className,
-}: WebsiteLoaderProps) {
-  const currentStepLabel = steps[currentStep]?.label ?? "";
+  const { steps, currentStep, subtitle } = useMemo(() => {
+    if (!todos || todos.length === 0) {
+      return { steps: fallbackSteps, currentStep: 0, subtitle: undefined as string | undefined };
+    }
+
+    const inProgress = todos.filter((t) => t.status === "in_progress");
+    const completedCount = todos.filter((t) => t.status === "completed").length;
+
+    let label: string | undefined;
+    if (inProgress.length === 1) {
+      label = inProgress[0].content;
+    } else if (inProgress.length > 1) {
+      label = `${inProgress[0].content} + ${inProgress.length - 1} other task${inProgress.length - 1 > 1 ? "s" : ""}`;
+    }
+
+    return {
+      steps: todos.map((t) => ({ id: t.id ?? t.content, label: t.content })),
+      currentStep: completedCount,
+      subtitle: label,
+    };
+  }, [todos]);
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <div className="size-16 aspect-square">
-        {/* TODO: Update LogoSpinner component for sizing? */}
-        <DotLottieReact
-          src="https://lottie.host/9ce95de1-701b-4d54-969c-772d52666454/EYWiURpiQr.lottie"
-          loop
-          autoplay
-          layout={{
-            fit: "none",
-          }}
-        />
-      </div>
-      <div className={cn("flex flex-col items-center gap-3", className)}>
-        <div className="flex flex-col items-center">
-          <p className="text-sm font-medium text-base-500 leading-[18px]">{title}</p>
-          <p className="text-xs text-base-400 leading-4 mt-[7px]">{currentStepLabel}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {steps.map((step, index) => (
-            <div
-              key={step.id}
-              className={cn(
-                "size-2 rounded-full transition-colors",
-                index < currentStep && "bg-success-400",
-                index === currentStep && "bg-neutral-500",
-                index > currentStep && "bg-neutral-200"
-              )}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
+    <StepProgress
+      title="Building your landing page"
+      subtitle={subtitle}
+      steps={steps}
+      currentStep={currentStep}
+      className={className}
+    />
   );
 }

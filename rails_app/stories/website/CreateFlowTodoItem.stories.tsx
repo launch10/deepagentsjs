@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import LoadingStepPill from "~/components/website/sidebar/loading/WebsiteSidebarLoadingStepPill";
+import CreateFlowTodoItem from "~/components/website/sidebar/create-flow/CreateFlowTodoItem";
 import {
   BugAntIcon,
   ChatBubbleBottomCenterTextIcon,
@@ -7,8 +7,8 @@ import {
 } from "@heroicons/react/24/solid";
 
 const meta = {
-  title: "Landing Page Builder/Deployment History/Loading Pills",
-  component: LoadingStepPill,
+  title: "Landing Page Builder/Create Flow/Todo Item",
+  component: CreateFlowTodoItem,
   tags: ["autodocs"],
   parameters: {
     layout: "centered",
@@ -26,7 +26,7 @@ const meta = {
       options: ["completed", "in_progress", "pending"],
     },
   },
-} satisfies Meta<typeof LoadingStepPill>;
+} satisfies Meta<typeof CreateFlowTodoItem>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

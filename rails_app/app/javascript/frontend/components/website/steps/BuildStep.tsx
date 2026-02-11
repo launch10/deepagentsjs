@@ -8,10 +8,9 @@ import { usePage } from "@inertiajs/react";
 import {
   useWebsiteChat,
   useWebsiteChatState,
-  useWebsiteChatMessages,
   useWebsiteChatActions,
-  useWebsiteChatIsLoadingHistory,
   useWebsiteChatIsStreaming,
+  useWebsiteChatIsInitialLoading,
 } from "@hooks/website";
 
 interface WebsitePageProps {
@@ -20,8 +19,6 @@ interface WebsitePageProps {
   thread_id?: string;
   [key: string]: unknown;
 }
-
-const websiteLoaderSteps = [{ id: "1", label: "Setting up branding & colors" }];
 
 /**
  * Auto-initialize the website generation when the page loads.
@@ -44,11 +41,9 @@ function useWebsiteInit() {
   const hasInitialized = useRef(!!chatId || !!thread_id);
 
   const maybeInit = useEffectEvent(() => {
-    console.log(`MAYBE INIT: ${websiteId}, ${projectId}`);
     if (hasInitialized.current) return;
     if (isStreaming) return;
     if (!websiteId || !projectId) return;
-    console.log(`yes lets init`)
 
     hasInitialized.current = true;
     // No intent = default flow (website builder)
@@ -107,32 +102,10 @@ function RestartChatButton() {
  */
 export default function BuildStep() {
   const chat = useWebsiteChat();
-  const isLoadingHistory = useWebsiteChatIsLoadingHistory();
-  const isStreaming = useWebsiteChatIsStreaming();
+  const isInitialLoading = useWebsiteChatIsInitialLoading();
 
   // Auto-init website generation on first load
   useWebsiteInit();
-
-  // Check if we already have generated files (i.e. past initial generation)
-  const files = useWebsiteChatState("files");
-  console.log(`files`)
-  console.log(files)
-  const hasFiles = files && Object.keys(files).length > 0;
-
-  // Check if we have todos from the stream (agent has started working)
-  const todos = useWebsiteChatState("todos");
-  const hasTodos = todos && todos.length > 0;
-  console.log(`todos`)
-  console.log(todos)
-
-  const messages = useWebsiteChatMessages();
-  console.log(`messages`)
-  console.log(messages)
-
-  // Only show full loading UI for initial generation (no files or todos yet) or history loading.
-  // Once todos arrive from the stream, switch to chat view so the inline todo list renders.
-  // During edits (hasFiles), keep the chat + preview visible.
-  const isInitialLoading = isLoadingHistory || (isStreaming && !hasFiles && !hasTodos);
 
   // Credit integration is automatic via ChatProvider - no manual wiring needed
   return (
@@ -142,14 +115,14 @@ export default function BuildStep() {
         <main className="flex-1 min-h-0 grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%] pt-[2.5%]">
           {/* Left sidebar */}
           <div className="min-h-0 overflow-hidden">
-            <WebsiteSidebar isLoading={isInitialLoading} currentStep={0} />
+            <WebsiteSidebar />
           </div>
 
           {/* Preview content - negative margin extends behind footer, overflow clips rounded corners */}
           <div className="min-h-0 -mb-20 overflow-hidden">
             {isInitialLoading ? (
               <div className="border-[#D3D2D0] border rounded-2xl bg-white flex items-center justify-center h-full">
-                <WebsiteLoader steps={websiteLoaderSteps} currentStep={0} />
+                <WebsiteLoader />
               </div>
             ) : (
               <WebsitePreview />

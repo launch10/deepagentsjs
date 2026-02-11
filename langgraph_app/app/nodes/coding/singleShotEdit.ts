@@ -8,6 +8,7 @@ import { buildFileTree, preReadFiles } from "./fileContext";
 import { sanitizeMessagesForLLM } from "./messageUtils";
 import type { CodingPromptState } from "@prompts";
 import type { WebsiteFilesBackend } from "@services";
+import { Website } from "@types";
 
 /**
  * Native text editor tool definition with prompt caching.
@@ -45,11 +46,11 @@ SIMPLE edits: Targeted changes to 1-3 existing files. Examples:
 - Style tweaks (backgrounds, borders, shadows)
 - Reordering, swapping, hiding, or removing existing sections (just editing the composition root)
 
-COMPLEX edits: Structural changes or multi-file work. Examples:
+COMPLEX edits: Structural changes, multi-file work, or specialized tools. Examples:
 - Adding NEW sections or components that don't exist yet
 - Adding interactivity, forms, or logic
 - Redesigning or rebuilding a section from scratch
-- Changes that affect many files at once ("make the whole page darker")
+- Changing the overall color scheme, theme, or palette (requires the change_color_scheme tool)
 - Bug reports, complaints about something being "wrong", or visual issues that need investigation (gaps, misalignment, broken layout)
 
 Respond with ONLY the word "simple" or "complex". Nothing else.
@@ -100,7 +101,13 @@ Section backgrounds: ONLY bg-background, bg-muted, or bg-primary. Never bg-secon
     const vars = Object.entries(theme.semanticVariables)
       .map(([key, value]) => `  ${key}: ${value}`)
       .join("\n");
-    sections.push(`## CSS Variables (HSL)\n${vars}`);
+    sections.push(`## CSS Variables (HSL)
+
+Current theme colors (for reference when making component-level style tweaks):
+${vars}
+
+Note: To change the overall color scheme, the full agent has a \`change_color_scheme\` tool.
+Do NOT manually edit index.css for theme-wide changes.`);
   }
 
   // Tracking — never remove tracking calls
@@ -188,7 +195,7 @@ export async function singleShotEdit(
   state: MinimalCodingAgentState & { messages?: BaseMessage[] },
   contextMessages: BaseMessage[],
   existingBackend?: WebsiteFilesBackend
-): Promise<{ messages: BaseMessage[]; status: "completed"; allFailed?: boolean }> {
+): Promise<{ messages: BaseMessage[]; status: "completed"; allFailed?: boolean; files?: Website.FileMap }> {
   const backend = existingBackend ?? (await getCodingAgentBackend(state));
 
   // Pre-load source files into context: page components, pages, app root, CSS, libs.
@@ -359,7 +366,15 @@ export async function singleShotEdit(
   }
   returnMessages.push(new AIMessage({ content: messageContent }));
 
-  return { messages: returnMessages, status: "completed" };
+  // Collect edited files for progressive streaming (files enter graph state
+  // immediately instead of waiting for syncWebsiteChanges to read from DB at graph end)
+  const files = await collectDirtyFiles(backend);
+
+  return {
+    messages: returnMessages,
+    status: "completed",
+    ...(files ? { files } : {}),
+  };
 }
 
 /**
@@ -386,6 +401,33 @@ async function applyEdits(
     }
   }
   return { successCount, errors, results };
+}
+
+/**
+ * Read all dirty (modified) files from the backend and build a FileMap.
+ * Called after edits are applied but before flush, so content is available
+ * in the virtual filesystem. Returns undefined if no files were modified.
+ */
+async function collectDirtyFiles(backend: WebsiteFilesBackend): Promise<Website.FileMap | undefined> {
+  const dirtyPaths = backend.getDirtyPaths();
+  if (dirtyPaths.length === 0) return undefined;
+
+  const files: Website.FileMap = {};
+  const now = new Date().toISOString();
+
+  for (const filePath of dirtyPaths) {
+    try {
+      const fileData = await backend.readRaw(filePath);
+      const content = Array.isArray(fileData.content)
+        ? (fileData.content as string[]).join("\n")
+        : String(fileData.content);
+      files[filePath] = { content, created_at: now, modified_at: now };
+    } catch {
+      // File was deleted or unreadable — skip
+    }
+  }
+
+  return Object.keys(files).length > 0 ? files : undefined;
 }
 
 /**
@@ -472,14 +514,20 @@ async function retryWithErrorContext(
     }
 
     const retryText = extractTextContent(retryResponse);
-    let messageContent = retryText || "I've made the requested changes.";
+    let messageContent = retryText || "Done! Your changes have been applied.";
     if (retryErrors.length > 0) {
       messageContent +=
         "\n\nNote: some edits could not be applied. You may want to verify the changes.";
     }
     returnMessages.push(new AIMessage({ content: messageContent }));
 
-    return { messages: returnMessages, status: "completed" };
+    const retryFiles = await collectDirtyFiles(backend);
+
+    return {
+      messages: returnMessages,
+      status: "completed",
+      ...(retryFiles ? { files: retryFiles } : {}),
+    };
   } catch (e) {
     getLogger().warn({ err: e }, "Single-shot retry LLM call failed");
     return null;

@@ -13,6 +13,13 @@ export const WebsiteAnnotation = Annotation.Root({
     reducer: (current, next) => next,
   }),
 
+  // Current theme ID — streamed to frontend so the theme picker stays in sync
+  // when the coding agent creates a new theme via change_color_scheme tool.
+  themeId: Annotation<PrimaryKeyType | undefined>({
+    default: () => undefined,
+    reducer: (current, next) => next ?? current,
+  }),
+
   consoleErrors: Annotation<Website.Errors.ConsoleError[]>({
     default: () => [],
     reducer: (current, next) => next,
@@ -28,7 +35,7 @@ export const WebsiteAnnotation = Annotation.Root({
     reducer: (current, next) => next,
   }),
 
-  // Files synced from database via syncFilesToState node after agent completes
+  // Files synced from database via syncWebsiteChanges node after agent completes
   // FileData format: { content: string[], created_at: string, modified_at: string }
   files: Annotation<Website.FileMap>({
     default: () => ({}),

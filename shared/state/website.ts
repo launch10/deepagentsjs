@@ -49,6 +49,7 @@ export function todosMerge(incoming: Todo[], current: Todo[] | undefined): Todo[
 
 export type WebsiteGraphState = Simplify<CoreGraphState & {
     theme: Website.ThemeType | undefined;
+    themeId: PrimaryKeyType | undefined;
     consoleErrors: Website.Errors.ConsoleError[];
     errorRetries: number;
     status: Core.Status;
@@ -59,6 +60,20 @@ export type WebsiteGraphState = Simplify<CoreGraphState & {
 
 export type WebsiteBridgeType = BridgeType<WebsiteGraphState>;
 
+export function filesMerge(incoming: Website.FileMap, current: Website.FileMap | undefined): Website.FileMap {
+    const normalized: Website.FileMap = {};
+    for (const [path, file] of Object.entries(incoming)) {
+        normalized[path] = {
+            ...file,
+            content: Array.isArray(file.content)
+                ? (file.content as string[]).join("\n")
+                : file.content,
+        };
+    }
+    return { ...(current ?? {}), ...normalized };
+}
+
 export const WebsiteMergeReducer: Merge<WebsiteGraphState> = {
     todos: todosMerge,
+    files: filesMerge,
 };

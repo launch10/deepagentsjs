@@ -274,19 +274,16 @@ test.describe("Website Builder", () => {
       expect(statusChanged).toBeTruthy();
     });
 
-    // Note: Full WebContainer boot tests are slow (npm install) and may timeout
-    // in CI environments. These tests are marked for manual/local verification.
-    test.skip("preview becomes ready with iframe displaying content", async ({ page }) => {
+    test("preview becomes ready with iframe displaying content", async ({ page }) => {
       // Navigate to website
       await websitePage.goto(projectUuid);
 
       // Wait for the full preview to be ready - this means:
       // 1. Files were received from langgraph
-      // 2. WebContainer booted
+      // 2. WebContainer booted (using pre-built snapshot)
       // 3. Files mounted
-      // 4. npm install completed
-      // 5. Dev server started
-      // 6. Port opened and URL available
+      // 4. Dev server started
+      // 5. Port opened and URL available
       await websitePage.waitForPreviewReady(180000);
 
       // The iframe should now be visible with a src URL
@@ -298,7 +295,7 @@ test.describe("Website Builder", () => {
       expect(previewUrl).toMatch(/^https?:\/\//);
     });
 
-    test.skip("preview updates after sending edit message", async ({ page }) => {
+    test("preview updates after sending edit message", async ({ page }) => {
       // Navigate to website
       await websitePage.goto(projectUuid);
 
@@ -329,6 +326,72 @@ test.describe("Website Builder", () => {
       // Preview URL should still exist (same server, updated content)
       const updatedUrl = await websitePage.getPreviewUrl();
       expect(updatedUrl).toBeTruthy();
+    });
+  });
+
+  test.describe("Build Error UI", () => {
+    test("shows build error UI when console errors are injected", async ({ page }) => {
+      // Navigate to website — auto-init fires since website_step has no thread_id
+      await websitePage.goto(projectUuid);
+      await websitePage.expectChatInputReady();
+
+      // Wait for streaming to finish so isStreaming=false (error UI is hidden during streaming)
+      await page.waitForFunction(
+        () => {
+          const btn = document.querySelector('[data-testid="website-chat-submit"]');
+          return btn && btn.getAttribute("aria-label") === "Send message";
+        },
+        { timeout: 60000 }
+      );
+
+      // Inject mock build errors via WebContainerManager singleton
+      await websitePage.injectBuildErrors([
+        { type: "error", message: "Failed to resolve import \"../components/NonExistent\" from \"src/pages/IndexPage.tsx\"", file: "src/pages/IndexPage.tsx" },
+      ]);
+
+      // Preview area: build-error status + "Fix errors" button
+      await expect(page.getByTestId("preview-status")).toHaveAttribute("data-status", "build-error", { timeout: 5000 });
+      await expect(page.getByText("We had an issue building your page")).toBeVisible();
+      await expect(websitePage.fixErrorsButton).toBeVisible();
+
+      // Sidebar: error prompt banner
+      await expect(websitePage.buildErrorPrompt).toBeVisible();
+      await expect(
+        websitePage.buildErrorPrompt.getByText("We ran into an issue building your page")
+      ).toBeVisible();
+      await expect(websitePage.fixErrorsSidebarButton).toBeVisible();
+    });
+
+    test("shows real build errors when broken file is written to WebContainer", async ({ page }) => {
+      // Navigate to website — auto-init generates files and boots WebContainer
+      await websitePage.goto(projectUuid);
+
+      // Wait for the full preview to be ready (WebContainer booted, Vite running)
+      await websitePage.waitForPreviewReady(180000);
+
+      // Wait for streaming to finish
+      await page.waitForFunction(
+        () => {
+          const btn = document.querySelector('[data-testid="website-chat-submit"]');
+          return btn && btn.getAttribute("aria-label") === "Send message";
+        },
+        { timeout: 60000 }
+      );
+
+      // Write a broken file to WebContainer — Vite will try to resolve
+      // the import and fail, producing a real build error
+      await websitePage.writeBrokenFileToWebContainer(
+        "/src/pages/IndexPage.tsx",
+        `import { NonExistent } from "../components/NonExistent";\nexport default function IndexPage() { return <NonExistent />; }\n`
+      );
+
+      // Wait for the build-error status to appear (Vite detects the broken import)
+      await expect(page.getByTestId("preview-status")).toHaveAttribute("data-status", "build-error", { timeout: 15000 });
+      await expect(page.getByText("We had an issue building your page")).toBeVisible();
+      await expect(websitePage.fixErrorsButton).toBeVisible();
+
+      // Sidebar error prompt should also appear
+      await expect(websitePage.buildErrorPrompt).toBeVisible();
     });
   });
 });

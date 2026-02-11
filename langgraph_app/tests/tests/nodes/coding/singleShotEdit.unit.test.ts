@@ -80,6 +80,8 @@ function makeFakeBackend(): WebsiteFilesBackend {
     cleanup: vi.fn(),
     glob: vi.fn(),
     flush: vi.fn().mockResolvedValue(undefined),
+    getDirtyPaths: vi.fn().mockReturnValue([]),
+    readRaw: vi.fn().mockResolvedValue({ content: [], path: "" }),
   } as unknown as WebsiteFilesBackend;
 }
 
@@ -253,6 +255,57 @@ describe("singleShotEdit error handling", () => {
     const content = typeof lastMsg.content === "string" ? lastMsg.content : "";
     // Should use the improved fallback, not the old "I've made the requested changes."
     expect(content).toBe("Done! Your changes have been applied.");
+  });
+
+  it("returns files map from successful edits for progressive streaming", async () => {
+    const backend = makeFakeBackend();
+    // Mock dirty paths tracking (populated by backend.edit() in real flow)
+    (backend.getDirtyPaths as ReturnType<typeof vi.fn>).mockReturnValue([
+      "/src/components/Hero.tsx",
+    ]);
+    (backend.readRaw as ReturnType<typeof vi.fn>).mockResolvedValue({
+      content: ["<div>Updated Hero</div>"],
+      path: "/src/components/Hero.tsx",
+    });
+
+    mockInvoke.mockResolvedValue(
+      makeLLMResponseWithToolCalls("I've updated the hero headline.", 1)
+    );
+    mockExecuteTextEditorCommand
+      .mockResolvedValueOnce("Successfully replaced text at exactly one location.");
+
+    const result = await singleShotEdit(
+      baseState,
+      [new HumanMessage("Change the headline")],
+      backend
+    );
+
+    expect(result.files).toBeDefined();
+    expect(result.files!["/src/components/Hero.tsx"]).toBeDefined();
+    // Content should be normalized from string[] to string
+    expect(result.files!["/src/components/Hero.tsx"]!.content).toBe("<div>Updated Hero</div>");
+  });
+
+  it("does not return files when all edits fail", async () => {
+    const backend = makeFakeBackend();
+    // No dirty paths when all edits fail
+    (backend.getDirtyPaths as ReturnType<typeof vi.fn>).mockReturnValue([]);
+
+    mockInvoke
+      .mockResolvedValueOnce(makeLLMResponseWithToolCalls("I've made the changes.", 1))
+      .mockResolvedValueOnce(makeLLMResponseWithToolCalls("Trying again.", 1));
+    mockExecuteTextEditorCommand
+      .mockResolvedValueOnce("Error: No match found for replacement.")
+      .mockResolvedValueOnce("Error: No match found for replacement.");
+
+    const result = await singleShotEdit(
+      baseState,
+      [new HumanMessage("Change the headline")],
+      backend
+    );
+
+    // No files should be returned when all edits fail
+    expect(result.files).toBeUndefined();
   });
 
   it("does NOT retry when SOME edits succeed (partial failure)", async () => {

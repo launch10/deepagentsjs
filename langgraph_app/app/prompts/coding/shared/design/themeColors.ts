@@ -11,6 +11,12 @@ export const themeColorsPrompt: CodingPromptFn = async (
 ): Promise<string> => `
 ## Theme Colors (shadcn standard)
 
+All theme colors are defined as CSS custom properties (HSL values) in \`src/index.css\`.
+To change the color scheme or palette, use the \`change_color_scheme\` tool — do NOT
+manually edit \`src/index.css\` or individual component files. The tool creates a real
+theme record with proper WCAG contrast ratios and updates the CSS automatically - and saves it
+in a way so that the user can access it in the UI.
+
 Use semantic color classes. Each role has a background and matching text color:
 
 | Element | Background | Text on it |

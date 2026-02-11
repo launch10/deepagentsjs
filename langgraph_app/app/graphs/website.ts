@@ -15,7 +15,7 @@ import {
   websiteBuilderNode,
   compactConversationNode,
   cleanupFilesystemNode,
-  syncFilesNode,
+  syncWebsiteChangesNode,
   improveCopyNode,
   domainRecommendationsNode,
   themeHandler,
@@ -47,12 +47,12 @@ const improveCopySubgraph = new StateGraph(WebsiteAnnotation)
   .addNode("updateWebsite", updateWebsite)
   .addNode("improveCopy", improveCopyNode)
   .addNode("cleanupFilesystem", cleanupFilesystemNode)
-  .addNode("syncFiles", syncFilesNode)
+  .addNode("syncWebsiteChanges", syncWebsiteChangesNode)
   .addEdge(START, "updateWebsite")
   .addEdge("updateWebsite", "improveCopy")
   .addEdge("improveCopy", "cleanupFilesystem")
-  .addEdge("cleanupFilesystem", "syncFiles")
-  .addEdge("syncFiles", END)
+  .addEdge("cleanupFilesystem", "syncWebsiteChanges")
+  .addEdge("syncWebsiteChanges", END)
   .compile();
 
 /**
@@ -75,7 +75,7 @@ const websiteBuilderSubgraph = new StateGraph(WebsiteAnnotation)
   .addNode("compactConversation", compactConversationNode)
   .addNode("recommendDomains", domainRecommendationsNode)
   .addNode("cleanupFilesystem", cleanupFilesystemNode)
-  .addNode("syncFiles", syncFilesNode)
+  .addNode("syncWebsiteChanges", syncWebsiteChangesNode)
   .addNode("skipToEnd", () => ({})) // No-op node for cache mode domain recs path
 
   // START → updateWebsite → buildContext (with cache mode routing)
@@ -101,8 +101,8 @@ const websiteBuilderSubgraph = new StateGraph(WebsiteAnnotation)
 
   // Converge paths
   .addEdge("skipToEnd", END)
-  .addEdge("cleanupFilesystem", "syncFiles")
-  .addEdge("syncFiles", END)
+  .addEdge("cleanupFilesystem", "syncWebsiteChanges")
+  .addEdge("syncWebsiteChanges", END)
   .compile();
 
 // =============================================================================

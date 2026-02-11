@@ -13,6 +13,7 @@ import {
   llmConversationTraces,
   eq,
   and,
+  desc,
 } from "@db";
 import { testGraph, appScenario, consumeStream, logCostSummary } from "@support";
 import { DatabaseSnapshotter } from "@services";
@@ -306,6 +307,125 @@ describe("Website Builder", () => {
 
       threadId = existingChat.threadId as ThreadIDType;
     }, 60000);
+
+    it("routes color scheme changes through theme creation (real Theme record)", async () => {
+      const originalUsageRecords = await db.select().from(llmUsage);
+      expect(originalUsageRecords.length).toEqual(0);
+
+      // Record the website's original theme
+      const originalThemeId = website.themeId;
+
+      // Snapshot original component files to verify they weren't touched
+      const originalFiles = await db
+        .select()
+        .from(websiteFiles)
+        .where(eq(websiteFiles.websiteId, websiteId));
+
+      const originalComponentContents = new Map(
+        originalFiles
+          .filter((f) => f.path?.includes("src/components/"))
+          .map((f) => [f.path, f.content])
+      );
+
+      const originalIndexCss = originalFiles.find((f) => f.path === "src/index.css");
+      expect(originalIndexCss).toBeDefined();
+
+      // Count existing themes so we can detect the new one
+      const themesBefore = await db.select().from(themes);
+
+      const editResponse = WebsiteAPI.stream({
+        messages: [
+          {
+            role: "user",
+            content: "can we switch up the page color scheme?",
+          },
+        ],
+        threadId,
+        state: {
+          websiteId,
+          threadId,
+          accountId: website.accountId ?? undefined,
+          projectId: website.projectId ?? undefined,
+          jwt: "test-jwt",
+          messages: [
+            new AIMessage("Here is your website!"),
+            new HumanMessage("can we switch up the page color scheme?"),
+          ],
+        },
+      });
+      await consumeStream(editResponse);
+
+      // Get the state after edit
+      const editCheckpoint = await websiteGraph.getState({ configurable: { thread_id: threadId } });
+      const editState = editCheckpoint.values as WebsiteGraphState;
+
+      expect(editState.status).toBe("completed");
+
+      // ---- Cost assertions: should be cheap (classifier + 1 LLM for color generation) ----
+      const usageRecords = await db.select().from(llmUsage);
+      logCostSummary("Color Scheme Edit Cost Summary", usageRecords);
+
+      // Theme generation path: 1 classifier + 1 color generation LLM call (not 34!)
+      expect(usageRecords.length).toBeLessThanOrEqual(4);
+
+      // ---- Theme record assertions: a real custom theme should be created ----
+      const themesAfter = await db.select().from(themes);
+      expect(themesAfter.length).toBe(themesBefore.length + 1);
+
+      // Find the newly created theme (highest ID)
+      const newTheme = themesAfter.sort((a, b) => b.id - a.id)[0]!;
+      expect(newTheme.themeType).toBe("community"); // Custom themes are "community"
+
+      // Theme should have 5 hex colors
+      const colors = newTheme.colors as string[];
+      expect(colors).toHaveLength(5);
+      for (const color of colors) {
+        expect(color).toMatch(/^#?[0-9a-fA-F]{6}$/);
+      }
+
+      // Theme should have computed semantic variables (Rails before_save callback)
+      const themeVars = newTheme.theme as Record<string, string>;
+      expect(themeVars).toBeDefined();
+      expect(themeVars["--primary"]).toBeDefined();
+      expect(themeVars["--background"]).toBeDefined();
+      expect(themeVars["--foreground"]).toBeDefined();
+
+      // ---- Website association: website should point to the new theme ----
+      const [updatedWebsite] = await db
+        .select()
+        .from(websites)
+        .where(eq(websites.id, websiteId))
+        .limit(1);
+
+      expect(updatedWebsite!.themeId).toBe(newTheme.id);
+      expect(updatedWebsite!.themeId).not.toBe(originalThemeId);
+
+      // ---- Graph state themeId: streamed to frontend for picker sync ----
+      expect(editState.themeId).toBe(newTheme.id);
+
+      // ---- CSS injection: index.css should have the new theme's variables ----
+      const updatedFiles = await db
+        .select()
+        .from(websiteFiles)
+        .where(eq(websiteFiles.websiteId, websiteId));
+
+      const updatedIndexCss = updatedFiles.find((f) => f.path === "src/index.css");
+      expect(updatedIndexCss).toBeDefined();
+      expect(updatedIndexCss!.content).not.toEqual(originalIndexCss!.content);
+
+      // Verify the CSS contains the new theme's semantic variables
+      for (const [varName, varValue] of Object.entries(themeVars)) {
+        expect(updatedIndexCss!.content).toContain(`${varName}: ${varValue}`);
+      }
+
+      // ---- Component files should NOT have been modified ----
+      for (const [path, originalContent] of originalComponentContents) {
+        const updated = updatedFiles.find((f) => f.path === path);
+        expect(updated?.content).toEqual(originalContent);
+      }
+
+      assertEditFlowMessages(editState);
+    });
 
     it("edits an existing page cost-effectively", async () => {
       const originalUsageRecords = await db.select().from(llmUsage);

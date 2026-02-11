@@ -6,6 +6,9 @@ import { syncLanggraphToStore } from "~/stores/useSyncProject";
 import { useChatOptions } from "@hooks/useChatOptions";
 import { useCallback, useEffect, useRef } from "react";
 import { usePage, router } from "@inertiajs/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { websiteKeys } from "@api/websites.hooks";
+import { themeKeys } from "@api/themes.hooks";
 
 interface WebsitePageProps {
   website?: { id?: number };
@@ -78,6 +81,7 @@ export function useWebsiteChat(): LanggraphChat<UIMessage, WebsiteGraphState> {
   const chat = useLanggraph(options, (s) => s.chat);
   useSeedPageProps(chat);
   syncWebsiteToStore();
+  useSyncThemeFromChat();
 
   return chat;
 }
@@ -140,6 +144,22 @@ export function useWebsiteChatIsStreaming() {
 }
 
 /**
+ * Returns whether the website is in its initial loading phase:
+ * history is loading, or streaming before files are ready and todos aren't all done.
+ */
+export function useWebsiteChatIsInitialLoading() {
+  return useWebsiteSelector((s) => {
+    const isStreaming = s.status === "streaming" || s.status === "submitted";
+    const files = s.state.files;
+    const hasFiles = files && Object.keys(files).length > 0;
+    const todos = s.state.todos;
+    const allTodosCompleted =
+      todos && todos.length > 0 && todos.every((t) => t.status === "completed");
+    return s.isLoadingHistory || (isStreaming && !hasFiles && !allTodosCompleted);
+  });
+}
+
+/**
  * Syncs entity IDs from Langgraph state to the core entity store.
  * Call this once in the page component that uses the website chat.
  */
@@ -149,4 +169,30 @@ export function syncWebsiteToStore() {
 
   syncLanggraphToStore("websiteId", websiteId);
   syncLanggraphToStore("projectId", projectId);
+}
+
+/**
+ * Watches themeId from Langgraph streaming state and invalidates
+ * React Query caches so the theme picker stays in sync when the
+ * coding agent creates a new theme via change_color_scheme tool.
+ */
+function useSyncThemeFromChat() {
+  const themeId = useWebsiteChatState("themeId");
+  const websiteId = useWebsiteChatState("websiteId");
+  const queryClient = useQueryClient();
+  const prevThemeIdRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (themeId == null) return;
+    if (themeId === prevThemeIdRef.current) return;
+
+    prevThemeIdRef.current = themeId;
+
+    // Invalidate website query so useWebsite() refetches with new theme_id
+    if (websiteId) {
+      queryClient.invalidateQueries({ queryKey: websiteKeys.detail(websiteId) });
+    }
+    // Invalidate themes list so newly created themes appear in the picker
+    queryClient.invalidateQueries({ queryKey: themeKeys.lists() });
+  }, [themeId, websiteId, queryClient]);
 }

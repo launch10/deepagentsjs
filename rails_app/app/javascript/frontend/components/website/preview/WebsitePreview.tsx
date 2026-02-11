@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useWebsitePreview, useWebsiteChatActions } from "@hooks/website";
 import { useChatIsStreaming } from "@components/shared/chat/ChatContext";
-import WebsiteLoader from "@components/website/WebsiteLoader";
-import type { WebContainerStatus } from "@lib/webcontainer";
+import { StepProgress } from "@components/ui/step-progress";
+import { type WebContainerStatus, WebContainerManager } from "@lib/webcontainer";
 import { useCurrentUser } from "@stores/sessionStore";
 
 const previewSteps = [
@@ -50,7 +50,7 @@ function StatusMessage({ status, hasBuildErrors, onFix }: StatusMessageProps) {
 
   return (
     <div data-testid="preview-status" data-status={status}>
-      <WebsiteLoader title="Loading your preview" steps={previewSteps} currentStep={currentStep} />
+      <StepProgress title="Loading your preview" steps={previewSteps} currentStep={currentStep} />
     </div>
   );
 }
@@ -94,17 +94,22 @@ export function WebsitePreview() {
     setIframeLoaded(false);
   }, [previewUrl]);
 
-  // Listen for postMessage from the preview iframe signaling content has rendered
+  // Listen for postMessage from the preview iframe signaling content has rendered.
+  // If the page rendered successfully, clear any stale build errors — they were
+  // transient (e.g. missing imports during incremental file writes).
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "preview-ready") {
         setIframeLoaded(true);
+        if (consoleErrors.length > 0) {
+          WebContainerManager.clearConsoleErrors();
+        }
       }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  }, [consoleErrors.length]);
 
   const handleReload = useCallback(() => {
     setIframeLoaded(false);

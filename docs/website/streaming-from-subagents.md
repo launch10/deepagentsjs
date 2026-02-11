@@ -255,16 +255,14 @@ type Merge<TState> = {
 
 ## Where Reducers Live (Summary)
 
-The same merge-by-id + status-priority logic exists in **four places**. All four must agree or state will diverge.
+The merge-by-id + status-priority logic exists in **two places**:
 
 | Location | Package | Purpose |
 |----------|---------|---------|
 | `todosReducer` in `middleware/todos.ts` | deepagentsjs | Inner agent's `ReducedValue` — accumulates Commands from parallel tools |
-| `todos` reducer in `websiteAnnotation.ts` | langgraph_app | Outer graph's Annotation — accumulates state updates from subgraph |
-| `todosMerge` in `shared/state/website.ts` | shared | Frontend merge reducer — applied by `StateManager` to patches and stale `data-state-` |
-| `todosMerge` in `shared/state/website.ts` | shared | Also exported as `WebsiteMergeReducer` and wired into `useWebsiteChat.ts` |
+| `todosMerge` in `shared/state/website.ts` | shared | **Canonical implementation** — used by both the backend graph reducer (`websiteAnnotation.ts` imports it) and the frontend merge reducer (`WebsiteMergeReducer`) |
 
-The first two are backend (LangGraph graph reducers). The last two are the same function used in two contexts by the SDK client.
+The deepagentsjs copy is in a separate git repository (general-purpose agent framework) and can't import app code. The `shared/` copy is the single source of truth for all app code — the outer graph's `Annotation` reducer calls `todosMerge(next, current)` directly.
 
 ## Adding Streaming for a New State Key (e.g., `files`)
 

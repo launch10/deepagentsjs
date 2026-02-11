@@ -3,15 +3,15 @@ import { CheckCircleIcon } from "@heroicons/react/24/solid";
 import type { ComponentType, SVGProps } from "react";
 import { Spinner } from "@components/ui/spinner";
 
-export type LoadingStepStatus = "completed" | "in_progress" | "pending";
+export type TodoItemStatus = "completed" | "in_progress" | "pending";
 
-export interface LoadingStepPillProps {
+export interface CreateFlowTodoItemProps {
   icon: ComponentType<SVGProps<SVGSVGElement>>;
   label: string;
-  status: LoadingStepStatus;
+  status: TodoItemStatus;
 }
 
-export default function LoadingStepPill({ icon: Icon, label, status }: LoadingStepPillProps) {
+export default function CreateFlowTodoItem({ icon: Icon, label, status }: CreateFlowTodoItemProps) {
   return (
     <div
       className={cn(

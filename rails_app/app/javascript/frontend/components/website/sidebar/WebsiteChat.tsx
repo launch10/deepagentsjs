@@ -37,7 +37,7 @@ function BuildErrorPrompt() {
   const isAdmin = currentUser?.admin ?? false;
 
   return (
-    <div className="mb-2 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between gap-3 w-full">
+    <div data-testid="build-error-prompt" className="mb-2 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between gap-3 w-full">
       <div className="flex-1 min-w-0">
         <p className="text-xs font-medium text-red-700">
           We ran into an issue building your page

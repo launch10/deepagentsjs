@@ -186,7 +186,7 @@ export const websiteBuilderNode = NodeMiddleware.use(
     }
 
     // Agent didn't write files — don't return template files here.
-    // syncFilesNode at the end of the graph will handle it.
+    // syncWebsiteChangesNode at the end of the graph will handle it.
     return {
       ...result,
       todos: result.todos ?? [],

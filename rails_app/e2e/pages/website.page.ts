@@ -34,6 +34,11 @@ export class WebsitePage {
   readonly previewIframe: Locator;
   readonly previewStatus: Locator;
 
+  // Error UI
+  readonly buildErrorPrompt: Locator;
+  readonly fixErrorsButton: Locator;
+  readonly fixErrorsSidebarButton: Locator;
+
   constructor(page: Page) {
     this.page = page;
 
@@ -66,6 +71,11 @@ export class WebsitePage {
     this.previewContainer = page.getByTestId("preview-container");
     this.previewIframe = page.getByTestId("preview-iframe");
     this.previewStatus = page.getByTestId("preview-status");
+
+    // Error UI
+    this.buildErrorPrompt = page.getByTestId("build-error-prompt");
+    this.fixErrorsButton = page.getByRole("button", { name: "Fix errors" }).first();
+    this.fixErrorsSidebarButton = page.getByTestId("build-error-prompt").getByRole("button", { name: "Fix errors" });
   }
 
   /**
@@ -249,5 +259,33 @@ export class WebsitePage {
       return this.previewStatus.locator("p").textContent();
     }
     return null;
+  }
+
+  /**
+   * Inject build errors directly into WebContainerManager via page.evaluate().
+   * Tests the React pipeline (manager → event → hook → UI render) without
+   * requiring a full WebContainer boot + Vite failure cycle.
+   */
+  async injectBuildErrors(errors: Array<{ type: string; message: string; file?: string }>): Promise<void> {
+    await this.page.evaluate((errs) => {
+      const manager = (window as any).__WebContainerManager;
+      if (!manager) throw new Error("WebContainerManager not exposed on window");
+      for (const err of errs) {
+        manager.addConsoleError({ ...err, timestamp: new Date(), stack: "" });
+      }
+    }, errors);
+  }
+
+  /**
+   * Write a broken file to the running WebContainer to trigger real Vite errors.
+   * Requires WebContainer to be booted and Vite running.
+   */
+  async writeBrokenFileToWebContainer(path: string, content: string): Promise<void> {
+    await this.page.evaluate(async ({ path, content }) => {
+      const manager = (window as any).__WebContainerManager;
+      if (!manager) throw new Error("WebContainerManager not exposed on window");
+      const wc = await manager.getInstance();
+      await wc.fs.writeFile(path, content);
+    }, { path, content });
   }
 }

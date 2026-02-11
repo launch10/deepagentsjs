@@ -1,7 +1,7 @@
 import { WebContainer } from "@webcontainer/api";
 import type { FileSystemTree, PreviewMessage } from "@webcontainer/api";
 import type { Website } from "@shared";
-import { parseBuildErrors, parsePreviewMessage } from "./errorParsing";
+import { processViteChunk, parsePreviewMessage } from "./errorParsing";
 
 type ConsoleError = Website.Errors.ConsoleError;
 
@@ -121,10 +121,16 @@ class WebContainerManagerClass {
               }
             }
 
-            // Parse full chunk for build errors (multiline esbuild errors)
-            const errors = parseBuildErrors(chunk);
-            for (const error of errors) {
+            // Parse chunk for build errors AND detect successful rebuilds.
+            // When Vite reports HMR update / page reload, stale errors from
+            // transient build failures (e.g. missing imports during incremental
+            // file writes) are cleared.
+            const result = processViteChunk(chunk);
+            for (const error of result.errors) {
               this.addConsoleError(error);
+            }
+            if (this.state.consoleErrors.length > 0 && result.clearsErrors) {
+              this.clearConsoleErrors();
             }
           },
         })
@@ -306,7 +312,7 @@ class WebContainerManagerClass {
     return () => this.listeners.delete(listener);
   }
 
-  private addConsoleError(error: ConsoleError) {
+  addConsoleError(error: ConsoleError) {
     this.state = {
       ...this.state,
       consoleErrors: [...this.state.consoleErrors, error],
@@ -365,3 +371,8 @@ if (import.meta.hot) {
 }
 
 export const WebContainerManager = instance;
+
+// Expose for e2e testing — allows injecting errors without WebContainer boot
+if (typeof window !== "undefined") {
+  (window as any).__WebContainerManager = instance;
+}

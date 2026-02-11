@@ -1,6 +1,6 @@
 export * from "./websiteBuilder";
 export * from "./buildContext";
-export * from "./syncFiles";
+export * from "./syncWebsiteChanges";
 export * from "./cacheMode";
 export * from "./improveCopy";
 export * from "./recommendDomains";

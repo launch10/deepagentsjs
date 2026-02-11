@@ -10,7 +10,7 @@ import {
   rollbar,
 } from "@core";
 import { WebsiteFilesBackend } from "@services";
-import { SearchIconsTool } from "@tools";
+import { SearchIconsTool, ChangeColorSchemeTool } from "@tools";
 import { buildCoderSubAgent } from "./subagents";
 import { checkpointer } from "@core";
 import {
@@ -201,7 +201,12 @@ async function buildFullCodingAgent(
     systemPrompt: finalSystemPrompt,
     backend: () => backend as any,
     subagents: [coderSubAgent],
-    tools: [new SearchIconsTool()],
+    tools: [
+      new SearchIconsTool(),
+      ...(state.websiteId && state.jwt
+        ? [new ChangeColorSchemeTool({ websiteId: state.websiteId, jwt: state.jwt })]
+        : []),
+    ],
     middleware: middlewares as any,
   });
   return { agent, backend };
@@ -287,7 +292,7 @@ async function resolveRoute(
 export async function createCodingAgent(
   state: MinimalCodingAgentState,
   options: CodingAgentOptions
-): Promise<{ messages: BaseMessage[]; status: "completed"; todos?: Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }> }> {
+): Promise<{ messages: BaseMessage[]; status: "completed"; todos?: Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }>; files?: Website.FileMap }> {
   if (state.isCreateFlow === undefined) {
     throw new Error(
       "isCreateFlow is required - explicitly set to true (create) or false (edit/bugfix)"
@@ -320,7 +325,7 @@ export async function createCodingAgent(
 async function _createCodingAgentInternal(
   state: MinimalCodingAgentState,
   options: CodingAgentOptions
-): Promise<{ messages: BaseMessage[]; status: "completed"; todos?: Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }> }> {
+): Promise<{ messages: BaseMessage[]; status: "completed"; todos?: Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }>; files?: Website.FileMap }> {
   const requestedRoute = options.route ?? "auto";
 
   // Sanitize messages upfront — strips orphaned tool_use (AIMessages with tool_calls
@@ -348,7 +353,11 @@ async function _createCodingAgentInternal(
     const result = await singleShotEdit(state, sanitizedMessages, backend);
 
     if (!result.allFailed) {
-      return { messages: await toStructuredMessages(result.messages), status: "completed" };
+      return {
+        messages: await toStructuredMessages(result.messages),
+        status: "completed",
+        ...(result.files ? { files: result.files } : {}),
+      };
     }
 
     // Total failure after retry — escalate to full agent

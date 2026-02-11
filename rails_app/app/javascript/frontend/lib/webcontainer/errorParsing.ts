@@ -14,6 +14,15 @@ function stripAnsi(text: string): string {
 }
 
 /**
+ * Check if Vite output indicates a successful rebuild (HMR update or page reload).
+ * When Vite reports these, any previous build errors have been resolved.
+ */
+export function isSuccessfulRebuild(text: string): boolean {
+  const clean = stripAnsi(text);
+  return /\[vite\] (hmr update|page reload)/.test(clean);
+}
+
+/**
  * Noise patterns — stderr lines we always ignore.
  */
 const NOISE_PATTERNS = [
@@ -194,6 +203,40 @@ export function parseBuildErrors(text: string): ConsoleError[] {
   }
 
   return errors;
+}
+
+/**
+ * Result of processing a single chunk of Vite dev server output.
+ * Encapsulates both error detection and rebuild success detection in one pass.
+ */
+export interface ViteChunkResult {
+  /** New build errors found in this chunk */
+  errors: ConsoleError[];
+  /** True if this chunk signals a successful rebuild (HMR/reload), meaning stale errors are resolved */
+  clearsErrors: boolean;
+}
+
+/**
+ * Process a chunk of Vite dev server output: parse errors AND detect rebuild success.
+ *
+ * This is the core logic for the stale-error-clearing fix. When Vite outputs
+ * an error during incremental file writes (e.g. missing import while files are
+ * being written one-by-one), then later outputs an HMR update or page reload,
+ * the rebuild success signal tells us the earlier errors are resolved.
+ *
+ * Rules:
+ * - If the chunk contains errors, `clearsErrors` is always false (new errors take priority)
+ * - If the chunk contains no errors but IS a rebuild signal, `clearsErrors` is true
+ * - Otherwise, `clearsErrors` is false (normal non-error, non-rebuild output)
+ */
+export function processViteChunk(text: string): ViteChunkResult {
+  const errors = parseBuildErrors(text);
+  return {
+    errors,
+    // Only signal clear if there are NO new errors in this chunk.
+    // A chunk with both errors and a rebuild signal means the rebuild itself failed.
+    clearsErrors: errors.length === 0 && isSuccessfulRebuild(text),
+  };
 }
 
 /**
