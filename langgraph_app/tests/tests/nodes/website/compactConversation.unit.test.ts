@@ -15,6 +15,19 @@ import { messagesStateReducer } from "@langchain/langgraph";
 import type { BaseMessage } from "@langchain/core/messages";
 import { compactConversation, prepareContextWindow } from "@nodes";
 
+/**
+ * Deterministic mock summarizer so tests never hit a real LLM.
+ * Incorporates existing summaries (like the real one does) for consolidation tests.
+ */
+const mockSummarizer = async (messages: BaseMessage[], existingSummaries: string[]) => {
+  const parts: string[] = [];
+  if (existingSummaries.length > 0) {
+    parts.push(`Previous: ${existingSummaries.join("; ")}.`);
+  }
+  parts.push(`Summarized ${messages.length} messages.`);
+  return parts.join(" ");
+};
+
 describe("compactConversation", () => {
   describe("atomic grouping: never splits tool_call/tool_result pairs", () => {
     it("keeps AIMessage(tool_calls) + ToolMessages together when at the boundary", async () => {
@@ -47,6 +60,7 @@ describe("compactConversation", () => {
       const result = await compactConversation(messages, {
         messageThreshold: 8,
         keepRecent: 7,  // Naive slice(-7) would split the tool pair
+        summarizer: mockSummarizer,
       });
 
       if (!("messages" in result)) {
@@ -101,6 +115,7 @@ describe("compactConversation", () => {
       const result = await compactConversation(messages, {
         messageThreshold: 8,
         keepRecent: 8,  // Naive slice(-8) splits the group
+        summarizer: mockSummarizer,
       });
 
       if (!("messages" in result)) {
@@ -155,7 +170,7 @@ describe("compactConversation", () => {
         new HumanMessage({ content: "Latest", id: "h7" }),
       ];
 
-      const result = await compactConversation(messages, { messageThreshold: 8, keepRecent: 4 });
+      const result = await compactConversation(messages, { messageThreshold: 8, keepRecent: 4, summarizer: mockSummarizer });
 
       if (!("messages" in result)) {
         throw new Error("Expected compaction to trigger");
@@ -215,7 +230,7 @@ describe("compactConversation", () => {
         new HumanMessage({ content: "Latest request", id: "h6" }),
       ];
 
-      const result = await compactConversation(messages, { messageThreshold: 8, keepRecent: 4 });
+      const result = await compactConversation(messages, { messageThreshold: 8, keepRecent: 4, summarizer: mockSummarizer });
       if (!("messages" in result)) throw new Error("Expected compaction to trigger");
 
       const { contextMsgs, conversationMsgs } = applyAndSeparate(messages, result.messages);
@@ -261,7 +276,7 @@ describe("compactConversation", () => {
         new HumanMessage({ content: "Latest edit", id: "h5" }),
       ];
 
-      const result = await compactConversation(messages, { messageThreshold: 8, keepRecent: 6 });
+      const result = await compactConversation(messages, { messageThreshold: 8, keepRecent: 6, summarizer: mockSummarizer });
       if (!("messages" in result)) throw new Error("Expected compaction to trigger");
 
       const { contextMsgs, conversationMsgs } = applyAndSeparate(messages, result.messages);
@@ -304,7 +319,7 @@ describe("compactConversation", () => {
         new HumanMessage({ content: "Latest", id: "h7" }),
       ];
 
-      const result = await compactConversation(messages, { messageThreshold: 8, keepRecent: 4 });
+      const result = await compactConversation(messages, { messageThreshold: 8, keepRecent: 4, summarizer: mockSummarizer });
       if (!("messages" in result)) throw new Error("Expected compaction to trigger");
 
       const { contextMsgs, conversationMsgs, afterReducer } = applyAndSeparate(messages, result.messages);
@@ -337,7 +352,7 @@ describe("compactConversation", () => {
         new HumanMessage({ content: "Latest", id: "h7" }),
       ];
 
-      const compactionResult = await compactConversation(messages, { messageThreshold: 8, keepRecent: 4 });
+      const compactionResult = await compactConversation(messages, { messageThreshold: 8, keepRecent: 4, summarizer: mockSummarizer });
       if (!("messages" in compactionResult)) throw new Error("Expected compaction to trigger");
 
       // Apply reducer

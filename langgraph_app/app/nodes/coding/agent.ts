@@ -62,7 +62,12 @@ const todoOverrideMiddleware = createMiddleware({
     handler({
       ...request,
       systemMessage: request.systemMessage.concat(
-        `\n\nIMPORTANT OVERRIDE FOR TASK TRACKING: Always use write_todos when delegating ` +
+        `\n\nUSER COMMUNICATION: Always begin your response with a brief, friendly message ` +
+        `to the user (1-2 sentences) describing what you're about to build or change, BEFORE ` +
+        `calling any tools. This gives the user immediate feedback that their request is being ` +
+        `handled. For example: "I'll create a landing page with a bold hero section, social ` +
+        `proof, and a clear call to action." Then proceed with write_todos and task dispatches.\n\n` +
+        `IMPORTANT OVERRIDE FOR TASK TRACKING: Always use write_todos when delegating ` +
         `work to subagents via the task tool. Each subagent dispatch counts as a step that ` +
         `the user needs visibility into. Track delegation progress even for 2-3 dispatches. ` +
         `Create the todo list BEFORE dispatching subagents, and update it as each completes. ` +
