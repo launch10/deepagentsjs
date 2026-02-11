@@ -190,8 +190,9 @@ export async function compactConversation(
     .filter((m) => m.id)
     .map((m) => new RemoveMessage({ id: m.id! }));
 
-  // One consolidated summary stored as a context message (filtered from UI)
-  const summaryMessage = new HumanMessage({
+  // Summary stored as AIMessage with name="context" — filtered from UI,
+  // excluded from lastAIMessage(), and correctly attributed as assistant-generated.
+  const summaryMessage = new AIMessage({
     content: `[Conversation Summary] ${summary}`,
     name: "context",
   });
@@ -252,14 +253,20 @@ async function summarizeMessages(
 
   const response = await llm.invoke([
     new SystemMessage(
-      `Summarize this conversation history into a brief paragraph. Focus on:
-- What changes were requested and made
+      `Summarize this conversation as a neutral factual record in third person.
+Use "The user" and "The assistant" — never "we", "I", or "you".
+
+Focus on:
+- What the user requested and what the assistant built
 - Which files were modified (if mentioned)
-- Key decisions (colors chosen, sections added/removed, layout changes, content changes)
-- Any user preferences expressed
+- Key design decisions (colors, sections, layout, content)
+- User preferences and constraints expressed
+
 Keep it under 200 words. Be specific about what was changed.
-Important: Note when the assistant used tools to make changes vs just discussing them.
-If a previous summary is included, incorporate it into the new summary — produce ONE consolidated summary.`
+Note when the assistant used tools to make changes vs just discussing them.
+If a previous summary is included, incorporate it into the new summary — produce ONE consolidated summary.
+
+Example tone: "The user requested a landing page for a fitness app. The assistant created Hero, Features, and CTA sections. Color scheme: blue (#3B82F6) primary. Files modified: /src/pages/IndexPage.tsx."`
     ),
     new HumanMessage(parts.join("\n")),
   ]);

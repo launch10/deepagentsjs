@@ -165,4 +165,17 @@ describe("compactConversation", () => {
     expect((summaryMsg as any).name).toBe("context");
     expect((summaryMsg as any).content).toContain("[Conversation Summary]");
   });
+
+  it("summary message is an AIMessage, not HumanMessage", async () => {
+    const messages = makeMessages(14);
+    const result = await compactConversation(messages);
+    const resultMessages = (result as { messages: any[] }).messages;
+
+    const summaryMsg = resultMessages.find(
+      (m: any) => !(m instanceof RemoveMessage)
+    );
+    expect(summaryMsg).toBeDefined();
+    expect(summaryMsg).toBeInstanceOf(AIMessage);
+    expect(summaryMsg).not.toBeInstanceOf(HumanMessage);
+  });
 });

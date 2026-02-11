@@ -1,6 +1,7 @@
 import { useLanggraph, type ChatSnapshot, type LanggraphChat } from "langgraph-ai-sdk-react";
 import type { UIMessage } from "ai";
 import type { WebsiteBridgeType, WebsiteGraphState } from "@shared";
+import { WebsiteMergeReducer } from "@shared";
 import { syncLanggraphToStore } from "~/stores/useSyncProject";
 import { useChatOptions } from "@hooks/useChatOptions";
 import { useCallback, useEffect, useRef } from "react";
@@ -47,6 +48,7 @@ function useWebsiteChatOptions() {
 
   return useChatOptions<WebsiteBridgeType>({
     apiPath: "api/website/stream",
+    merge: WebsiteMergeReducer as any,
     onThreadIdAvailable,
   });
 }
