@@ -149,10 +149,10 @@ CRITICAL RULES:
 ${designGuidance}
 
 ## Workflow
-1. All source files are pre-loaded below — read them directly, do NOT call view
-2. Identify which file(s) to edit based on the user's request
-3. Use str_replace_based_edit_tool with command "str_replace" to make targeted changes
-4. Write a brief (1-2 sentence) confirmation of what you changed
+1. Start with a brief message to the user (1-2 sentences) describing what you'll change and why. This streams immediately as feedback.
+2. All source files are pre-loaded below — read them directly, do NOT call view
+3. Identify which file(s) to edit based on the user's request
+4. Use str_replace_based_edit_tool with command "str_replace" to make targeted changes
 
 ## Project File Tree
 ${fileTree}
@@ -355,7 +355,7 @@ export async function singleShotEdit(
       (textContent || "I've made the requested changes.") +
       "\n\nNote: some edits could not be applied. You may want to verify the changes.";
   } else {
-    messageContent = textContent || "I've made the requested changes.";
+    messageContent = textContent || "Done! Your changes have been applied.";
   }
   returnMessages.push(new AIMessage({ content: messageContent }));
 

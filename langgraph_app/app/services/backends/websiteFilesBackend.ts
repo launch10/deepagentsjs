@@ -330,9 +330,16 @@ export class WebsiteFilesBackend implements BackendProtocol {
       this.dirtyPaths.add(filePath);
     }
 
+    const now = new Date().toISOString();
     return {
       path: filePath,
-      filesUpdate: null,
+      filesUpdate: {
+        [filePath]: {
+          content: content.split("\n"),
+          created_at: now,
+          modified_at: now,
+        },
+      },
     };
   }
 
@@ -408,10 +415,20 @@ export class WebsiteFilesBackend implements BackendProtocol {
     // Track dirty file for deferred flush
     this.dirtyPaths.add(filePath);
 
+    const updatedData = await this.fs.readRaw(filePath);
+    const now = new Date().toISOString();
     return {
       path: filePath,
       occurrences: fsResult.occurrences,
-      filesUpdate: null,
+      filesUpdate: {
+        [filePath]: {
+          content: Array.isArray(updatedData.content)
+            ? updatedData.content
+            : String(updatedData.content).split("\n"),
+          created_at: now,
+          modified_at: now,
+        },
+      },
     };
   }
 

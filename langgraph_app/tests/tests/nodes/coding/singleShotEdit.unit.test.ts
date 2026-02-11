@@ -234,6 +234,27 @@ describe("singleShotEdit error handling", () => {
     expect(mockRollbarError).toHaveBeenCalled();
   });
 
+  it("uses improved fallback text when LLM provides no text content", async () => {
+    const backend = makeFakeBackend();
+    // LLM returns tool calls but no text content
+    mockInvoke.mockResolvedValue(
+      makeLLMResponseWithToolCalls("", 1)
+    );
+    mockExecuteTextEditorCommand
+      .mockResolvedValueOnce("Successfully replaced text at exactly one location.");
+
+    const result = await singleShotEdit(
+      baseState,
+      [new HumanMessage("Change the headline")],
+      backend
+    );
+
+    const lastMsg = result.messages.at(-1)!;
+    const content = typeof lastMsg.content === "string" ? lastMsg.content : "";
+    // Should use the improved fallback, not the old "I've made the requested changes."
+    expect(content).toBe("Done! Your changes have been applied.");
+  });
+
   it("does NOT retry when SOME edits succeed (partial failure)", async () => {
     const backend = makeFakeBackend();
     mockInvoke.mockResolvedValue(makeLLMResponseWithToolCalls("I've updated the hero section.", 3));
