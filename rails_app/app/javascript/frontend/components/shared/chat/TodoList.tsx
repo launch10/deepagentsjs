@@ -3,6 +3,7 @@ import { CheckCircleIcon } from "@heroicons/react/24/solid";
 import { Spinner } from "@components/ui/spinner";
 
 export interface TodoItem {
+  id?: string;
   content: string;
   status: "pending" | "in_progress" | "completed";
 }
@@ -22,7 +23,7 @@ export function TodoList({ todos, className }: TodoListProps) {
   return (
     <div className={twMerge("flex flex-col gap-1.5 py-2", className)}>
       {todos.map((todo, index) => (
-        <div key={index} className="flex items-center gap-2">
+        <div key={todo.id ?? index} className="flex items-center gap-2">
           <div className="size-4 flex items-center justify-center flex-shrink-0">
             {todo.status === "completed" && (
               <CheckCircleIcon className="size-4 text-success-500" />

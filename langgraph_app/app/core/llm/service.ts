@@ -303,7 +303,24 @@ class LLMService {
       candidates.push({ key, config: modelConfig });
     }
 
-    if (candidates.length === 0) return null;
+    if (candidates.length === 0) {
+      // Nothing configured — fall back to Haiku 4.5
+      const haikuConfig: ModelConfig = {
+        enabled: true,
+        provider: "anthropic",
+        model_card: "claude-haiku-4-5-20251001",
+        price_tier: 5,
+        max_usage_percent: null,
+        cost_in: 0.80,
+        cost_out: 4.00,
+        cost_reasoning: null,
+        cache_reads: 0.08,
+        cache_writes: 1.00,
+      };
+      const model = this.createModel("haiku", haikuConfig);
+      if (!model) return null;
+      return { model, config: haikuConfig };
+    }
 
     // Sort by price_tier descending (higher tier number = cheaper)
     candidates.sort((a, b) => (b.config.price_tier ?? 0) - (a.config.price_tier ?? 0));

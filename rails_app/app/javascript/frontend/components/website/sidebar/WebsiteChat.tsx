@@ -26,12 +26,8 @@ function BuildErrorPrompt() {
   const errors = consoleErrors.filter((e) => e.type === "error");
 
   const handleFix = useCallback(() => {
-    const errorSummary = errors
-      .map((e) => `- ${e.message}${e.file ? ` (${e.file})` : ""}`)
-      .join("\n");
-
     sendMessage(
-      `The preview has build errors. Please fix them:\n\n${errorSummary}`,
+      "My page isn't displaying correctly, can you fix it?",
       { consoleErrors: errors }
     );
   }, [errors, sendMessage]);

@@ -42,6 +42,7 @@
       "langgraph-ai-sdk": "workspace:*",
       "langgraph-ai-sdk-types": "workspace:*",
       "langgraph-ai-sdk-react": "workspace:*",
+      "deepagents": "workspace:*",
       "@langchain/langgraph": "^1.1.3",
       "@langchain/core": "^1.1.18",
       "langchain": "^1.2.15",

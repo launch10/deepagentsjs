@@ -88,13 +88,14 @@ export function prepareContextWindow(
   const contextMessages = messages.filter(isContextMessage);
   const conversationMessages = messages.filter((m) => !isContextMessage(m));
 
-  // If already within limits, return as-is
+  // If already within limits, return with context messages first
+  // (context-first ordering ensures [summary] [conversation] layout for caching)
   const totalChars = messages.reduce((sum, m) => sum + charCount(m), 0);
   if (
     conversationMessages.length <= opts.maxTurnPairs * 2 &&
     totalChars <= opts.maxChars
   ) {
-    return messages;
+    return [...contextMessages, ...conversationMessages];
   }
 
   // Group messages into atomic units: AI messages with tool_use + their ToolMessages

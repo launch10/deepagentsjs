@@ -1,15 +1,70 @@
-import { AIMessage, type BaseMessage } from "@langchain/core/messages";
+import { AIMessage, ToolMessage, type BaseMessage } from "@langchain/core/messages";
 
 /**
- * Strip tool_use / tool_call content blocks and metadata from an AIMessage.
+ * Sanitize a message array for direct LLM invocation.
  *
- * The full coding agent (deepagents) produces AI messages with tool_use blocks
- * from its ReAct tool loop. These are internal artifacts that must not leak into
- * graph state — if they do, subsequent LLM calls (e.g. singleShotEdit) crash with
- * "tool_use ids were found without tool_result blocks immediately after".
+ * Handles two categories of orphaned tool artifacts:
+ *
+ * 1. Orphaned tool_use — AIMessages with tool_calls that are NOT followed by
+ *    paired ToolMessages. Stripped to prevent "tool_use without tool_result" errors.
+ *
+ * 2. Orphaned tool_result — ToolMessages whose preceding AIMessage was removed
+ *    (e.g., by compactConversation summarizing old messages). Dropped to prevent
+ *    "unexpected tool_use_id in tool_result" errors.
  */
-export function stripToolArtifacts(message: AIMessage): AIMessage {
-  // Filter content blocks: keep text, image, reasoning — drop tool_use/tool_call/tool_call_chunk
+export function sanitizeMessagesForLLM(messages: BaseMessage[]): BaseMessage[] {
+  // Pass 1: Identify which tool_call IDs are preserved (AI message with tool_calls
+  // that is properly followed by a ToolMessage).
+  const preservedToolCallIds = new Set<string>();
+
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i]!;
+    if (msg._getType() === "ai" && ((msg as AIMessage).tool_calls?.length ?? 0) > 0) {
+      const nextMsg = messages[i + 1];
+      if (nextMsg && nextMsg._getType() === "tool") {
+        // This AI message's tool_calls are properly paired
+        for (const tc of (msg as AIMessage).tool_calls!) {
+          preservedToolCallIds.add(tc.id!);
+        }
+      }
+    }
+  }
+
+  // Pass 2: Build result, stripping orphaned tool_use and orphaned tool_result.
+  const result: BaseMessage[] = [];
+
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i]!;
+
+    if (msg._getType() === "ai" && ((msg as AIMessage).tool_calls?.length ?? 0) > 0) {
+      const nextMsg = messages[i + 1];
+      if (nextMsg && nextMsg._getType() === "tool") {
+        // Paired — preserve as-is
+        result.push(msg);
+      } else {
+        // Orphaned tool_use — strip tool artifacts, keep text content
+        result.push(stripToolArtifactsFromMessage(msg as AIMessage));
+      }
+    } else if (msg._getType() === "tool") {
+      // Only keep ToolMessages whose tool_call_id has a preserved AI message
+      const toolCallId = (msg as ToolMessage).tool_call_id;
+      if (toolCallId && preservedToolCallIds.has(toolCallId)) {
+        result.push(msg);
+      }
+      // else: orphaned tool_result — drop silently
+    } else {
+      result.push(msg);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Strip tool_use content blocks and tool_calls from an AIMessage, preserving text.
+ * Used only for orphaned tool_use (no paired ToolMessages) to prevent API errors.
+ */
+function stripToolArtifactsFromMessage(message: AIMessage): AIMessage {
   const TOOL_BLOCK_TYPES = new Set(["tool_use", "tool_call", "tool_call_chunk"]);
 
   let cleanContent: typeof message.content;
@@ -17,7 +72,6 @@ export function stripToolArtifacts(message: AIMessage): AIMessage {
     const filtered = message.content.filter(
       (block: any) => !TOOL_BLOCK_TYPES.has(block.type)
     );
-    // If all blocks were tool artifacts, fall back to empty string
     cleanContent = filtered.length > 0 ? filtered : "";
   } else {
     cleanContent = message.content;
@@ -30,30 +84,9 @@ export function stripToolArtifacts(message: AIMessage): AIMessage {
     response_metadata: message.response_metadata,
     additional_kwargs: {
       ...message.additional_kwargs,
-      // Clear any tool_calls stashed in additional_kwargs by some providers
       tool_calls: undefined,
     },
-    // Clear tool call arrays — these are agent-internal artifacts
     tool_calls: [],
     invalid_tool_calls: [],
   });
-}
-
-/**
- * Sanitize a message array for direct LLM invocation.
- *
- * - Strips tool_use content blocks from AIMessages
- * - Removes ToolMessages entirely (artifacts from prior agent runs)
- *
- * Defensive layer: protects against any message source producing dirty history.
- */
-export function sanitizeMessagesForLLM(messages: BaseMessage[]): BaseMessage[] {
-  return messages
-    .filter((msg) => msg._getType() !== "tool")
-    .map((msg) => {
-      if (msg._getType() === "ai") {
-        return stripToolArtifacts(msg as AIMessage);
-      }
-      return msg;
-    });
 }

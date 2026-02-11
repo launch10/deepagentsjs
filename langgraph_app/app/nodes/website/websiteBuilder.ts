@@ -91,6 +91,22 @@ const buildContext = async (state: WebsiteGraphState) => {
 
   const allMessages = [...contextMessages, ...instructions];
 
+  // Inject build errors as a context message so the agent sees the technical details
+  // without them appearing in the user-facing chat
+  if (state.consoleErrors?.length) {
+    const errors = state.consoleErrors.filter((e) => e.type === "error");
+    if (errors.length > 0) {
+      const errorSummary = errors
+        .map((e) => `- ${e.message}${e.file ? ` (${e.file})` : ""}`)
+        .join("\n");
+      allMessages.push(
+        createContextMessage(
+          `[Build Errors — fix these]\n${errorSummary}`
+        )
+      );
+    }
+  }
+
   // Window for edit turns as a safety net (caps first-call token count).
   // compactConversation handles long-term summarization in the graph state.
   if (!isCreate) {
@@ -165,6 +181,7 @@ export const websiteBuilderNode = NodeMiddleware.use(
         ...result,
         files,
         todos: result.todos ?? [],
+        consoleErrors: [],
       };
     }
 
@@ -173,6 +190,7 @@ export const websiteBuilderNode = NodeMiddleware.use(
     return {
       ...result,
       todos: result.todos ?? [],
+      consoleErrors: [],
     };
   }
 );

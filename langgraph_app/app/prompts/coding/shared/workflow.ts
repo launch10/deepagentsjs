@@ -28,6 +28,10 @@ const editWorkflow = `
 CRITICAL: ALWAYS make the change immediately. NEVER ask clarifying questions.
 If the request is vague, use your best creative judgment and just do it.
 
+CRITICAL: Your text responses do NOT modify files. Only tool calls (edit_file, write_file) change files.
+NEVER say "I've updated X" unless you actually called a tool to make that change.
+If you respond without calling tools, nothing has changed and the user will see no difference.
+
 1. **Read**: Find and read the relevant file(s) — use ls/glob then read_file in ONE message
 2. **Track with todos**: If this edit touches multiple files or requires subagent delegation, call write_todos to create a todo list so the user has visibility into progress. Each subagent dispatch counts as a tracked task.
 3. **Edit**: Use edit_file for targeted changes (text, colors, copy, styles, values).
@@ -48,6 +52,7 @@ const bugfixWorkflow = `
 5. **Fix**: Make the minimal fix necessary to resolve the error
 6. **Verify**: Read the fixed files back to confirm the error is resolved
 7. **Double-check**: Confirm the links are correctly formatted - either anchor tags or React Router links
+8. **Respond**: Tell the user you fixed the issue in plain, non-technical language. Do NOT mention file names, exports, imports, or code concepts. Just say the page should display correctly now.
 `;
 
 type Workflow = "Create" | "Edit" | "BugFix";

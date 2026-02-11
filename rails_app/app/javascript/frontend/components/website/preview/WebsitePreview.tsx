@@ -3,7 +3,6 @@ import { useWebsitePreview, useWebsiteChatActions } from "@hooks/website";
 import { useChatIsStreaming } from "@components/shared/chat/ChatContext";
 import WebsiteLoader from "@components/website/WebsiteLoader";
 import type { WebContainerStatus } from "@lib/webcontainer";
-import type { Website } from "@shared";
 import { useCurrentUser } from "@stores/sessionStore";
 
 const previewSteps = [
@@ -115,12 +114,8 @@ export function WebsitePreview() {
   const buildErrors = consoleErrors.filter((e) => e.type === "error");
 
   const handleFixErrors = useCallback(() => {
-    const errorSummary = buildErrors
-      .map((e: Website.Errors.ConsoleError) => `- ${e.message}${e.file ? ` (${e.file})` : ""}`)
-      .join("\n");
-
     sendMessage(
-      `The preview has build errors. Please fix them:\n\n${errorSummary}`,
+      "My page isn't displaying correctly, can you fix it?",
       { consoleErrors: buildErrors }
     );
   }, [buildErrors, sendMessage]);

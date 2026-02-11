@@ -22,10 +22,9 @@ import { buildCodingPrompt, type CodingPromptState } from "@prompts";
 import { ThemeAPIService } from "@rails_api";
 import { singleShotEdit, classifyEditWithLLM } from "./singleShotEdit";
 import { buildFileTree } from "./fileContext";
+import { sanitizeMessagesForLLM } from "./messageUtils";
 import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { toStructuredMessage } from "langgraph-ai-sdk";
-import { stripToolArtifacts } from "./messageUtils";
 
 export type MinimalCodingAgentState = {
   websiteId?: number;
@@ -70,7 +69,14 @@ const todoOverrideMiddleware = createMiddleware({
         `When dispatching multiple subagents in parallel, mark ALL of them as in_progress ` +
         `since they are all running concurrently. ` +
         `The user is non-technical, so please keep the todos high-level and clear, with ` +
-        `concise descriptions of each task. Do not reference specific files or directories.`
+        `concise descriptions of each task. Do not reference specific files or directories.\n\n` +
+        `CRITICAL FOR REAL-TIME PROGRESS: When dispatching a subagent via the task tool, ` +
+        `ALWAYS pass the todo_id parameter with the ID of the corresponding todo item. ` +
+        `This automatically marks that todo as completed when the subagent finishes, ` +
+        `giving the user real-time progress visibility. Example:\n` +
+        `task(description="Build the hero section...", subagent_type="coder", todo_id="<uuid>")\n` +
+        `The todo_id should match the id from write_todos. Without todo_id, the user won't ` +
+        `see progress until ALL subagents finish.`
       ),
     }),
 });
@@ -275,7 +281,7 @@ async function resolveRoute(
 export async function createCodingAgent(
   state: MinimalCodingAgentState,
   options: CodingAgentOptions
-): Promise<{ messages: BaseMessage[]; status: "completed"; todos?: Array<{ content: string; status: "pending" | "in_progress" | "completed" }> }> {
+): Promise<{ messages: BaseMessage[]; status: "completed"; todos?: Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }> }> {
   if (state.isCreateFlow === undefined) {
     throw new Error(
       "isCreateFlow is required - explicitly set to true (create) or false (edit/bugfix)"
@@ -295,12 +301,10 @@ export async function createCodingAgent(
       route: options.route ?? "auto",
     });
 
-    const fallbackMessage = new AIMessage({
-      content: "I ran into an issue processing your request. Could you try again? If the problem persists, try rephrasing your request.",
-    });
-    const [structured] = await toStructuredMessage(fallbackMessage);
     return {
-      messages: [structured] as BaseMessage[],
+      messages: [new AIMessage({
+        content: "I ran into an issue processing your request. Could you try again? If the problem persists, try rephrasing your request.",
+      })],
       status: "completed",
     };
   }
@@ -310,8 +314,13 @@ export async function createCodingAgent(
 async function _createCodingAgentInternal(
   state: MinimalCodingAgentState,
   options: CodingAgentOptions
-): Promise<{ messages: BaseMessage[]; status: "completed"; todos?: Array<{ content: string; status: "pending" | "in_progress" | "completed" }> }> {
+): Promise<{ messages: BaseMessage[]; status: "completed"; todos?: Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }> }> {
   const requestedRoute = options.route ?? "auto";
+
+  // Sanitize messages upfront — strips orphaned tool_use (AIMessages with tool_calls
+  // not followed by ToolMessages) and orphaned tool_result (ToolMessages whose AIMessage
+  // was removed by compactConversation). Both cause Claude API errors.
+  const sanitizedMessages = sanitizeMessagesForLLM(options.messages);
 
   // Resolve route
   let resolvedRoute: "single-shot" | "full";
@@ -330,7 +339,7 @@ async function _createCodingAgentInternal(
   // Dispatch: single-shot path
   if (resolvedRoute === "single-shot") {
     getLogger().info("Using single-shot edit path");
-    const result = await singleShotEdit(state, options.messages, backend);
+    const result = await singleShotEdit(state, sanitizedMessages, backend);
 
     if (!result.allFailed) {
       return { messages: result.messages, status: "completed" };
@@ -351,7 +360,7 @@ async function _createCodingAgentInternal(
   );
 
   const result = await agent.invoke(
-    { messages: options.messages },
+    { messages: sanitizedMessages },
     { ...options.config, recursionLimit: options.recursionLimit ?? 150 }
   ) as { messages: BaseMessage[]; todos?: any[] };
 
@@ -360,46 +369,27 @@ async function _createCodingAgentInternal(
 
   const messages = result.messages ?? [];
 
-  // Extract the first and last AI messages for the caller.
-  // The first AI message is the personalized greeting (create flow) or initial response,
-  // and the last is the final summary. Persisting both preserves the conversational feel on reload.
-  const aiMessages = messages.filter((msg: BaseMessage) => msg._getType() === "ai");
-  const firstAI = aiMessages.at(0);
-  const lastAI = aiMessages.at(-1);
-
-  // Deduplicate if only one AI message (first === last)
-  const userFacing: BaseMessage[] =
-    firstAI && lastAI && firstAI !== lastAI
-      ? [firstAI, lastAI]
-      : [firstAI ?? lastAI].filter((m): m is BaseMessage => !!m);
-
-  // Strip tool_use/tool_call artifacts from agent messages before storing in graph state.
-  // These are internal ReAct loop artifacts that cause "tool_use without tool_result" errors
-  // when the messages are later passed as context to a different LLM call (e.g. singleShotEdit).
-  const cleanMessages = userFacing.map((msg) =>
-    msg._getType() === "ai" ? stripToolArtifacts(msg as AIMessage) : msg
-  );
-
-  const structuredMessages = (await Promise.all(cleanMessages.map((msg) => toStructuredMessage(msg))))
-    .map(([m]) => m)
-    .filter(Boolean);
+  // Return all NEW messages from the agent run (exclude input messages).
+  // The full tool_call/ToolMessage history is preserved so the next LLM turn
+  // sees complete tool evidence and doesn't learn to skip tool usage.
+  // Use sanitizedMessages.length (not options.messages.length) since sanitization
+  // may have removed orphaned messages, changing the input count.
+  const returnMessages = messages.slice(sanitizedMessages.length);
 
   // When escalating from single-shot, prepend a brief note so the user
   // understands why the response took longer than a typical quick edit.
   if (escalated) {
-    const escalationMsg = new AIMessage({
+    returnMessages.unshift(new AIMessage({
       content: "This change needs a bit more work — taking a closer look...",
-    });
-    const [structured] = await toStructuredMessage(escalationMsg);
-    structuredMessages.unshift(structured);
+    }));
   }
 
   // deepagents' todoListMiddleware adds todos to the agent state, but the
   // MergedAgentState type doesn't reflect it. Access via index signature.
-  const todos = (result as any).todos as Array<{ content: string; status: "pending" | "in_progress" | "completed" }> | undefined;
+  const todos = (result as any).todos as Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }> | undefined;
 
   return {
-    messages: structuredMessages as BaseMessage[],
+    messages: returnMessages,
     status: "completed" as const,
     todos,
   };

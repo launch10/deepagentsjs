@@ -1,8 +1,7 @@
-import { AIMessage } from "@langchain/core/messages";
+import { AIMessage, ToolMessage } from "@langchain/core/messages";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import type { BaseMessage } from "@langchain/core/messages";
 import { getLLM, rollbar, getLogger } from "@core";
-import { toStructuredMessage } from "langgraph-ai-sdk";
 import { executeTextEditorCommand, type TextEditorInput } from "@tools";
 import { getCodingAgentBackend, getTheme, type MinimalCodingAgentState } from "./agent";
 import { buildFileTree, preReadFiles } from "./fileContext";
@@ -132,6 +131,7 @@ judgment and make the change. Do NOT ask clarifying questions.
 
 CRITICAL RULES:
 - This is a single-shot edit. You get ONE response.
+- Do not ask clarifying questions, just make the edit.
 - All file contents are pre-loaded below — NEVER use the "view" command. Go straight to str_replace edits.
 - ONLY edit files listed in the file tree below. NEVER guess or invent file paths that don't appear in the tree.
 
@@ -143,6 +143,8 @@ CRITICAL RULES:
 1. Use CSS variable classes (bg-primary, text-foreground, etc.) — never hardcode hex values unless the user explicitly asks for a specific color.
 2. Preserve imports: Keep existing imports unless explicitly asked to remove them.
 3. Minimal edits: Use str_replace to change only the lines that differ. Pick small, unique anchors.
+4. **ALWAYS use named exports, NEVER default exports.** The export name MUST match the file name (e.g., \`Hero.tsx\` → \`export function Hero()\`).
+5. **ALWAYS use named imports** matching the component file name: \`import { Hero } from "./Hero"\`. NEVER: \`import Hero from "./Hero"\`.
 
 ${designGuidance}
 
@@ -156,7 +158,10 @@ ${designGuidance}
 ${fileTree}
 
 ## All Source Files (pre-loaded — do NOT use view)
-${preReadContent}`;
+${preReadContent}
+
+## FINAL REMINDER
+Do NOT ask clarifying questions. Do NOT respond with only text. You MUST make at least one str_replace edit. If the request is ambiguous, use your best judgment and make the change.`;
 
   return new SystemMessage({
     content: [
@@ -242,23 +247,26 @@ export async function singleShotEdit(
   if (toolCalls.length === 0) {
     // Text-only response = agent asked questions or didn't edit. Escalate.
     getLogger().warn("Single-shot returned text-only, signaling escalation");
-    const [structuredMessage] = await toStructuredMessage(response);
-    return { messages: [structuredMessage], status: "completed", allFailed: true };
+    return { messages: [response], status: "completed", allFailed: true };
   }
 
-  // Filter out "view" calls — all files are pre-loaded, view is a wasted call.
-  // Only apply actual mutations (str_replace, create, insert).
+  // Separate view calls from mutation calls (str_replace, create, insert).
+  // View calls are wasteful (files are pre-loaded) but must still have paired
+  // ToolMessages to avoid orphaned tool_use errors in conversation history.
   const editCalls = toolCalls.filter((tc: any) => (tc.args as any)?.command !== "view");
-  const hadViewOnly = editCalls.length === 0 && toolCalls.length > 0;
+  const viewCalls = toolCalls.filter((tc: any) => (tc.args as any)?.command === "view");
+  const hadViewOnly = editCalls.length === 0 && viewCalls.length > 0;
 
   // Apply edits (if any). Successful edits are applied to the backend immediately.
   let successCount = 0;
   let errors: string[] = [];
+  let editResults: string[] = [];
 
   if (editCalls.length > 0) {
     const result = await applyEdits(backend, editCalls);
     successCount = result.successCount;
     errors = result.errors;
+    editResults = result.results;
 
     if (errors.length > 0) {
       getLogger().warn(
@@ -303,54 +311,81 @@ export async function singleShotEdit(
     }
 
     // Retry also failed completely — signal escalation to full agent
-    const failMessage = new AIMessage({
-      content:
-        "I attempted to make the changes but encountered errors applying the edits. Could you try rephrasing your request?",
-    });
-    const [failStructured] = await toStructuredMessage(failMessage);
-    return { messages: [failStructured], status: "completed", allFailed: true };
+    return {
+      messages: [new AIMessage({
+        content: "I attempted to make the changes but encountered errors applying the edits. Could you try rephrasing your request?",
+      })],
+      status: "completed",
+      allFailed: true,
+    };
   }
 
-  // Build user-facing message based on edit outcomes
+  // ─── Build return messages with full tool evidence ───────────────────────
+  // The next LLM turn must see: AIMessage(tool_use) → ToolMessages → AIMessage(summary)
+  // This prevents hallucination by showing the model that tools are required for changes.
+  const returnMessages: BaseMessage[] = [];
+
+  // 1. Original AIMessage with tool_use blocks preserved
+  returnMessages.push(response);
+
+  // 2. ToolMessages paired to every tool_call (views + edits)
+  for (const vc of viewCalls) {
+    returnMessages.push(
+      new ToolMessage({
+        content: "Files are pre-loaded in the system prompt. Use str_replace directly.",
+        tool_call_id: vc.id,
+      })
+    );
+  }
+  for (let i = 0; i < editCalls.length; i++) {
+    returnMessages.push(
+      new ToolMessage({
+        content: editResults[i] ?? "No result",
+        tool_call_id: editCalls[i]!.id,
+      })
+    );
+  }
+
+  // 3. Summary AIMessage with user-facing text
   const textContent = extractTextContent(response);
   let messageContent: string;
 
   if (errors.length > 0) {
-    // SOME edits failed — append a warning to the LLM's text
     messageContent =
       (textContent || "I've made the requested changes.") +
       "\n\nNote: some edits could not be applied. You may want to verify the changes.";
   } else {
-    // All edits succeeded — use original LLM text
     messageContent = textContent || "I've made the requested changes.";
   }
+  returnMessages.push(new AIMessage({ content: messageContent }));
 
-  const finalMessage = new AIMessage({ content: messageContent });
-  const [structuredMessage] = await toStructuredMessage(finalMessage);
-  return { messages: [structuredMessage], status: "completed" };
+  return { messages: returnMessages, status: "completed" };
 }
 
 /**
- * Apply tool call edits to the backend, collecting successes and errors.
+ * Apply tool call edits to the backend, returning per-call results.
+ * Each result string is either a success message or starts with "Error:".
  */
 async function applyEdits(
   backend: WebsiteFilesBackend,
   editCalls: Array<{ args: unknown }>
-): Promise<{ successCount: number; errors: string[] }> {
+): Promise<{ successCount: number; errors: string[]; results: string[] }> {
   const errors: string[] = [];
+  const results: string[] = [];
   let successCount = 0;
   for (const toolCall of editCalls) {
     const result = await executeTextEditorCommand(
       backend,
       toolCall.args as unknown as TextEditorInput
     );
+    results.push(result);
     if (result.startsWith("Error:")) {
       errors.push(result);
     } else {
       successCount++;
     }
   }
-  return { successCount, errors };
+  return { successCount, errors, results };
 }
 
 /**
@@ -401,7 +436,8 @@ async function retryWithErrorContext(
       return null;
     }
 
-    const { successCount: retrySuccessCount, errors: retryErrors } = await applyEdits(
+    const retryViewCalls = retryToolCalls.filter((tc: any) => (tc.args as any)?.command === "view");
+    const { successCount: retrySuccessCount, errors: retryErrors, results: retryResults } = await applyEdits(
       backend,
       retryEditCalls
     );
@@ -415,17 +451,35 @@ async function retryWithErrorContext(
     // Flush deferred writes to DB
     await backend.flush();
 
-    // At least some retry edits succeeded
+    // Build return messages with tool evidence (same pattern as primary path)
+    const returnMessages: BaseMessage[] = [retryResponse];
+
+    for (const vc of retryViewCalls) {
+      returnMessages.push(
+        new ToolMessage({
+          content: "Files are pre-loaded in the system prompt. Use str_replace directly.",
+          tool_call_id: vc.id,
+        })
+      );
+    }
+    for (let i = 0; i < retryEditCalls.length; i++) {
+      returnMessages.push(
+        new ToolMessage({
+          content: retryResults[i] ?? "No result",
+          tool_call_id: retryEditCalls[i]!.id,
+        })
+      );
+    }
+
     const retryText = extractTextContent(retryResponse);
     let messageContent = retryText || "I've made the requested changes.";
     if (retryErrors.length > 0) {
       messageContent +=
         "\n\nNote: some edits could not be applied. You may want to verify the changes.";
     }
+    returnMessages.push(new AIMessage({ content: messageContent }));
 
-    const finalMessage = new AIMessage({ content: messageContent });
-    const [structuredMessage] = await toStructuredMessage(finalMessage);
-    return { messages: [structuredMessage], status: "completed" };
+    return { messages: returnMessages, status: "completed" };
   } catch (e) {
     getLogger().warn({ err: e }, "Single-shot retry LLM call failed");
     return null;
