@@ -84,11 +84,18 @@ const SUMMARIZERS: Record<string, Summarizer> = {
     const content: ContentBlock[] = [];
 
     if (created.length > 0) {
-      // Text intro for created images
-      const filenames = created.map((e) => e.payload.filename as string).filter(Boolean);
+      // Text intro with filenames AND URLs so the agent uses exact URLs in src attributes
+      const imageList = created
+        .map((e) => {
+          const filename = e.payload.filename as string;
+          const url = e.payload.url as string;
+          return filename && url ? `- ${filename}: ${url}` : null;
+        })
+        .filter(Boolean)
+        .join("\n");
       content.push({
         type: "text",
-        text: `I uploaded ${created.length} image${created.length > 1 ? "s" : ""}: ${filenames.join(", ")}`,
+        text: `I uploaded ${created.length} image${created.length > 1 ? "s" : ""}:\n${imageList}\n\nUse these exact URLs in img src attributes.`,
       });
 
       // Add actual image blocks so agent can SEE the images
