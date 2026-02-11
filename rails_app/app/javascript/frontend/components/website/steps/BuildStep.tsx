@@ -8,6 +8,7 @@ import { usePage } from "@inertiajs/react";
 import {
   useWebsiteChat,
   useWebsiteChatState,
+  useWebsiteChatMessages,
   useWebsiteChatActions,
   useWebsiteChatIsLoadingHistory,
   useWebsiteChatIsStreaming,
@@ -124,7 +125,7 @@ export default function BuildStep() {
   console.log(`todos`)
   console.log(todos)
 
-  const messages = useWebsiteChatState("messages");
+  const messages = useWebsiteChatMessages();
   console.log(`messages`)
   console.log(messages)
 

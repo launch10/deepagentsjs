@@ -207,7 +207,7 @@ async function buildFullCodingAgent(
 }
 
 /**
- * Determine the edit route when route is "auto".
+ * Determine the edit route (singleShotEdit or full agent)
  *
  * - First message (create flow) → full (needs exploration + subagents)
  * - Errors present → full (debugging needs tool loops)
@@ -374,17 +374,10 @@ async function _createCodingAgentInternal(
 
   const messages = result.messages ?? [];
 
-  // Return all NEW messages from the agent run (exclude input messages).
-  // The full tool_call/ToolMessage history is preserved so the next LLM turn
-  // sees complete tool evidence and doesn't learn to skip tool usage.
-  // Use sanitizedMessages.length (not options.messages.length) since sanitization
-  // may have removed orphaned messages, changing the input count.
-  const returnMessages = messages.slice(sanitizedMessages.length);
-
   // When escalating from single-shot, prepend a brief note so the user
   // understands why the response took longer than a typical quick edit.
   if (escalated) {
-    returnMessages.unshift(new AIMessage({
+    messages.unshift(new AIMessage({
       content: "This change needs a bit more work — taking a closer look...",
     }));
   }
@@ -394,7 +387,7 @@ async function _createCodingAgentInternal(
   const todos = (result as any).todos as Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }> | undefined;
 
   return {
-    messages: returnMessages,
+    messages,
     status: "completed" as const,
     todos,
   };

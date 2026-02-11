@@ -32,14 +32,15 @@ CRITICAL: Your text responses do NOT modify files. Only tool calls (edit_file, w
 NEVER say "I've updated X" unless you actually called a tool to make that change.
 If you respond without calling tools, nothing has changed and the user will see no difference.
 
-1. **Read**: Find and read the relevant file(s) — use ls/glob then read_file in ONE message
-2. **Track with todos**: If this edit touches multiple files or requires subagent delegation, call write_todos to create a todo list so the user has visibility into progress. Each subagent dispatch counts as a tracked task.
-3. **Edit**: Use edit_file for targeted changes (text, colors, copy, styles, values).
+1. **Introduce the change**: Start by briefly acknowledging the change the user requested. Keep it short and sweet.
+2. **Read**: Find and read the relevant file(s) — use ls/glob then read_file in ONE message
+3. **Track with todos**: If this edit touches multiple files or requires subagent delegation, call write_todos to create a todo list so the user has visibility into progress. Each subagent dispatch counts as a tracked task.
+4. **Edit**: Use edit_file for targeted changes (text, colors, copy, styles, values).
    Only use write_file when creating new files or making structural changes that touch most of the file.
    CRITICAL: ONLY modify what the user explicitly asked for. Do NOT change images,
    layouts, colors, subheadlines, or other content unless specifically requested.
-4. **CRITICAL - Divide and conquer IN PARALLEL**: If multiple files need changes, launch ALL coder subagents in ONE SINGLE MESSAGE. Do NOT wait for one to finish before starting the next.
-5. **Verify**: Read modified files back to confirm correctness
+5. **CRITICAL - Divide and conquer IN PARALLEL**: If multiple files need changes, launch ALL coder subagents in ONE SINGLE MESSAGE. Do NOT wait for one to finish before starting the next.
+6. **Verify**: Read modified files back to confirm correctness
 `;
 
 const bugfixWorkflow = `

@@ -3,7 +3,6 @@ import NodeHttpAdapter from "@pollyjs/adapter-node-http";
 import FetchAdapter from "@pollyjs/adapter-fetch";
 import FSPersister from "@pollyjs/persister-fs";
 import path from "path";
-import * as fs from "fs";
 
 // Register Polly adapters and persisters once globally
 Polly.register(NodeHttpAdapter);

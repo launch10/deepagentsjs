@@ -17,10 +17,13 @@ const STATUS_PRIORITY: Record<string, number> = {
 
 /**
  * Merge-by-id reducer with status priority.
- * Mirrors the backend todosReducer in deepagentsjs — never downgrades status,
+ * Canonical implementation — used by both the frontend (StateManager merge reducer)
+ * and the backend (websiteAnnotation graph reducer). Never downgrades status,
  * so concurrent subagent patches accumulate correctly.
+ *
+ * Also mirrored in deepagentsjs todosReducer (separate package, can't share code).
  */
-function todosMerge(incoming: Todo[], current: Todo[] | undefined): Todo[] {
+export function todosMerge(incoming: Todo[], current: Todo[] | undefined): Todo[] {
     if (!current || current.length === 0) return incoming;
 
     const merged = [...current];

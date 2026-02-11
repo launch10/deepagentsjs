@@ -29,20 +29,20 @@ import { NodeMiddleware } from "@middleware";
 import { type CoreGraphState } from "@state";
 
 export interface CompactConversationOptions {
-  /** Trigger compaction when non-context messages exceed this count. Default: 12 */
+  /** Trigger compaction when human turns (non-context HumanMessages) exceed this count. Default: 30 */
   messageThreshold?: number;
-  /** Number of recent messages to keep (not summarized). Default: 6 */
+  /** Number of recent human turns to keep (not summarized). All associated AI/tool messages are kept too. Default: 20 */
   keepRecent?: number;
-  /** Max total chars before forced compaction. Default: 100000 */
+  /** Max total chars before forced compaction. Default: 200000 */
   maxChars?: number;
   /** Override the summarizer (for testing). Default: LLM-based summarization. */
   summarizer?: (messages: BaseMessage[], existingSummaries: string[]) => Promise<string>;
 }
 
 const DEFAULTS: Required<Omit<CompactConversationOptions, "summarizer">> = {
-  messageThreshold: 12,
-  keepRecent: 6,
-  maxChars: 100_000,
+  messageThreshold: 30,
+  keepRecent: 20,
+  maxChars: 200_000,
 };
 
 /**
@@ -129,10 +129,15 @@ export async function compactConversation(
     }
   }
 
+  // Count human turns (non-context HumanMessages) — tool calls don't count
+  const humanTurnCount = conversationMessages.filter(
+    (m) => m._getType() === "human"
+  ).length;
+
   // Check if compaction is needed
   const totalChars = messages.reduce((sum, m) => sum + charCount(m), 0);
   const needsCompaction =
-    conversationMessages.length > opts.messageThreshold ||
+    humanTurnCount > opts.messageThreshold ||
     totalChars > opts.maxChars;
 
   if (!needsCompaction) {
@@ -142,16 +147,16 @@ export async function compactConversation(
   // Group messages into atomic units (tool_call + tool_result pairs stay together)
   const groups = groupMessages(conversationMessages);
 
-  // Walk backwards to find the split point — keep at least keepRecent individual messages
-  let keptMessageCount = 0;
+  // Walk backwards to find the split point — keep groups containing the last keepRecent human turns
+  let keptHumanTurns = 0;
   let splitGroupIndex = groups.length;
 
   for (let g = groups.length - 1; g >= 0; g--) {
-    const groupSize = groups[g]!.length;
-    if (keptMessageCount + groupSize > opts.keepRecent && keptMessageCount >= opts.keepRecent) {
+    if (keptHumanTurns >= opts.keepRecent) {
       break;
     }
-    keptMessageCount += groupSize;
+    const groupHumanCount = groups[g]!.filter((m) => m._getType() === "human").length;
+    keptHumanTurns += groupHumanCount;
     splitGroupIndex = g;
   }
 

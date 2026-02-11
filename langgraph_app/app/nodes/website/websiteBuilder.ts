@@ -1,7 +1,7 @@
 import type { WebsiteGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { AIMessage } from "@langchain/core/messages";
-import { toStructuredMessage } from "langgraph-ai-sdk";
+import { toStructuredMessage, toStructuredMessages } from "langgraph-ai-sdk";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
 import { createContextMessage } from "langgraph-ai-sdk";
@@ -137,7 +137,7 @@ export const websiteBuilderNode = NodeMiddleware.use(
 
     const messages = await buildContext(state);
 
-    const result = await createCodingAgent(
+    const rawResult = await createCodingAgent(
       { ...state, isCreateFlow: isCreate },
       {
         messages,
@@ -145,6 +145,14 @@ export const websiteBuilderNode = NodeMiddleware.use(
         recursionLimit: isCreate ? 150 : 100,
       }
     );
+
+    // Convert AI messages to structured messages with parsed_blocks so they
+    // survive history reload. Without this, messages are only visible during
+    // streaming and disappear when the page is refreshed.
+    const result = {
+      ...rawResult,
+      messages: await toStructuredMessages(rawResult.messages),
+    };
 
     // TODO: Visual Feedback Loop (post-MVP)
     // After the create flow completes, add a visual validation step:
