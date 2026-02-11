@@ -25,6 +25,7 @@ import { buildFileTree } from "./fileContext";
 import { sanitizeMessagesForLLM } from "./messageUtils";
 import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
+import { toStructuredMessages } from "langgraph-ai-sdk";
 
 export type MinimalCodingAgentState = {
   websiteId?: number;
@@ -307,9 +308,9 @@ export async function createCodingAgent(
     });
 
     return {
-      messages: [new AIMessage({
+      messages: await toStructuredMessages([new AIMessage({
         content: "I ran into an issue processing your request. Could you try again? If the problem persists, try rephrasing your request.",
-      })],
+      })]),
       status: "completed",
     };
   }
@@ -347,7 +348,7 @@ async function _createCodingAgentInternal(
     const result = await singleShotEdit(state, sanitizedMessages, backend);
 
     if (!result.allFailed) {
-      return { messages: result.messages, status: "completed" };
+      return { messages: await toStructuredMessages(result.messages), status: "completed" };
     }
 
     // Total failure after retry — escalate to full agent
@@ -387,7 +388,7 @@ async function _createCodingAgentInternal(
   const todos = (result as any).todos as Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }> | undefined;
 
   return {
-    messages,
+    messages: await toStructuredMessages(messages),
     status: "completed" as const,
     todos,
   };
