@@ -15,7 +15,7 @@ import {
   GlobeAltIcon,
 } from "@heroicons/react/24/solid";
 import type { ComponentType, SVGProps } from "react";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import {
   useWebsiteChatState,
   useWebsiteChatIsStreaming,
@@ -88,6 +88,17 @@ export default function CreateFlowTodoList() {
   const todos = useWebsiteChatState("todos");
   const isStreaming = useWebsiteChatIsStreaming();
   const hasTodos = todos && todos.length > 0;
+
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log("[CreateFlowTodoList]", {
+        count: todos?.length ?? 0,
+        isStreaming,
+        ids: todos?.map((t) => t.id ?? "no-id"),
+        statuses: todos?.map((t) => `${(t.id ?? "no-id").slice(0, 8)}:${t.status}`),
+      });
+    }
+  }, [todos, isStreaming]);
 
   const icons = useMemo(
     () => (hasTodos ? assignIcons(todos) : []),

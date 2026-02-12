@@ -25,6 +25,7 @@ const STATUS_PRIORITY: Record<string, number> = {
  */
 export function todosMerge(incoming: Todo[], current: Todo[] | undefined): Todo[] {
     if (!current || current.length === 0) return incoming;
+    if (incoming.length === 0) return []; // explicit clear signal
 
     const merged = [...current];
     const mergedById = new Map(merged.map((t, i) => [t.id, i]));

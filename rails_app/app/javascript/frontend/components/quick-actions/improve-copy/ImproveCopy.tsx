@@ -43,11 +43,11 @@ export function ImproveCopyView({ options, onOptionSelect, disabled }: ImproveCo
 }
 
 export default function ImproveCopy() {
-  const { updateState } = useWebsiteChatActions();
+  const { sendMessage } = useWebsiteChatActions();
   const isStreaming = useWebsiteChatIsStreaming();
 
   const handleOptionSelect = (option: CopyOption) => {
-    updateState({
+    sendMessage(option.label, {
       intent: {
         type: "improve_copy",
         payload: { style: option.id },

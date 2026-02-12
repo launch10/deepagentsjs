@@ -32,28 +32,30 @@ CRITICAL: Your text responses do NOT modify files. Only tool calls (edit_file, w
 NEVER say "I've updated X" unless you actually called a tool to make that change.
 If you respond without calling tools, nothing has changed and the user will see no difference.
 
-1. **Introduce the change**: Start by briefly acknowledging the change the user requested. Keep it short and sweet.
-2. **Read**: Find and read the relevant file(s) — use ls/glob then read_file in ONE message
-3. **Track with todos**: If this edit touches multiple files or requires subagent delegation, call write_todos to create a todo list so the user has visibility into progress. Each subagent dispatch counts as a tracked task.
+1. **Introduce the change**: Start with a brief, friendly message to the user (1-2 sentences) describing what you're about to change. This gives the user immediate feedback that their request is being handled.
+2. **Track with todos**: ALWAYS call write_todos to create a todo list that tracks each piece of work. The user is non-technical and needs visibility into what's happening. Even for simple edits, create at least one todo so the user sees progress. For multi-file edits, create one todo per file or section being changed. Update todos as each completes.
+3. **Read**: Find and read the relevant file(s) — use ls/glob then read_file in ONE message
 4. **Edit**: Use edit_file for targeted changes (text, colors, copy, styles, values).
    Only use write_file when creating new files or making structural changes that touch most of the file.
    CRITICAL: ONLY modify what the user explicitly asked for. Do NOT change images,
    layouts, colors, subheadlines, or other content unless specifically requested.
-5. **CRITICAL - Divide and conquer IN PARALLEL**: If multiple files need changes, launch ALL coder subagents in ONE SINGLE MESSAGE. Do NOT wait for one to finish before starting the next.
+5. **CRITICAL - Divide and conquer IN PARALLEL**: If multiple files need changes, launch ALL coder subagents in ONE SINGLE MESSAGE. Do NOT wait for one to finish before starting the next. Pass todo_id to each subagent dispatch so progress updates in real time.
 6. **Verify**: Read modified files back to confirm correctness
 `;
 
 const bugfixWorkflow = `
 ## Workflow
 
-1. **Analyze**: Carefully read the error messages to understand what went wrong
-2. **Locate**: Find the file(s) and line(s) where the error originates
-3. **Read**: Read the relevant code to understand the current implementation
-4. **Diagnose**: Identify the root cause of the bug (syntax error, missing import, incorrect logic, etc.)
-5. **Fix**: Make the minimal fix necessary to resolve the error
-6. **Verify**: Read the fixed files back to confirm the error is resolved
-7. **Double-check**: Confirm the links are correctly formatted - either anchor tags or React Router links
-8. **Respond**: Tell the user you fixed the issue in plain, non-technical language. Do NOT mention file names, exports, imports, or code concepts. Just say the page should display correctly now.
+1. **Introduce**: Start with a brief, friendly message to the user (1-2 sentences) describing what you're investigating. This gives the user immediate feedback.
+2. **Track with todos**: ALWAYS call write_todos to create a todo list tracking your investigation and fix steps. The user is non-technical and needs visibility into what's happening. Create todos like "Diagnose the issue", "Fix the problem", "Verify the fix".
+3. **Analyze**: Carefully read the error messages to understand what went wrong
+4. **Locate**: Find the file(s) and line(s) where the error originates
+5. **Read**: Read the relevant code to understand the current implementation
+6. **Diagnose**: Identify the root cause of the bug (syntax error, missing import, incorrect logic, etc.)
+7. **Fix**: Make the minimal fix necessary to resolve the error
+8. **Verify**: Read the fixed files back to confirm the error is resolved
+9. **Double-check**: Confirm the links are correctly formatted - either anchor tags or React Router links
+10. **Respond**: Tell the user you fixed the issue in plain, non-technical language. Do NOT mention file names, exports, imports, or code concepts. Just say the page should display correctly now.
 `;
 
 type Workflow = "Create" | "Edit" | "BugFix";

@@ -91,6 +91,9 @@ export function WebsitePreview() {
 
   // Reset iframeLoaded when previewUrl changes (e.g. WebContainer restart)
   useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log("[WebsitePreview] previewUrl changed, resetting iframeLoaded", { previewUrl });
+    }
     setIframeLoaded(false);
   }, [previewUrl]);
 
@@ -100,6 +103,9 @@ export function WebsitePreview() {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "preview-ready") {
+        if (import.meta.env.DEV) {
+          console.log("[WebsitePreview] preview-ready received — iframeLoaded: true");
+        }
         setIframeLoaded(true);
         if (consoleErrors.length > 0) {
           WebContainerManager.clearConsoleErrors();
@@ -137,6 +143,17 @@ export function WebsitePreview() {
   const hasBuildErrors = buildErrors.length > 0;
   const isReady = status === "ready";
   const showLoading = !isReady || !iframeLoaded;
+
+  if (import.meta.env.DEV) {
+    console.log("[WebsitePreview] render", {
+      isReady,
+      iframeLoaded,
+      showLoading,
+      status,
+      hasBuildErrors,
+      iframeMounted: isReady && !!previewUrl,
+    });
+  }
 
   // Show preview iframe (behind loading overlay when not yet loaded)
   return (

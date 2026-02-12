@@ -685,6 +685,73 @@ describe("Website Builder", () => {
       });
     });
 
+    describe("Improve copy", () => {
+      let websiteId: number;
+      let website: DBTypes.WebsiteType;
+      let threadId: ThreadIDType;
+
+      beforeEach(async () => {
+        await DatabaseSnapshotter.restoreSnapshot("website_generated");
+        const [websiteRow] = await db.select().from(websites).limit(1);
+        if (!websiteRow) throw new Error("No website found in snapshot");
+        website = websiteRow;
+        websiteId = websiteRow.id;
+
+        const [chat] = await db
+          .select()
+          .from(chats)
+          .where(and(eq(chats.contextableId, websiteId), eq(chats.contextableType, "Website")))
+          .limit(1);
+        if (!chat?.threadId) throw new Error("No chat with threadId found for website");
+        threadId = chat.threadId as ThreadIDType;
+      }, 60000);
+
+      it("rewrites copy via improve_copy intent with a visible user message", async () => {
+        const userMessage = "Make tone more professional";
+
+        const response = WebsiteAPI.stream({
+          messages: [{ role: "user", content: userMessage }],
+          threadId,
+          state: {
+            websiteId,
+            threadId,
+            accountId: website.accountId ?? undefined,
+            projectId: website.projectId ?? undefined,
+            jwt: "test-jwt",
+            intent: {
+              type: "improve_copy",
+              payload: { style: "professional" },
+              createdAt: new Date().toISOString(),
+            },
+            messages: [
+              new AIMessage("Here is your website!"),
+              new HumanMessage(userMessage),
+            ],
+          },
+        });
+        await consumeStream(response);
+
+        const checkpoint = await websiteGraph.getState({ configurable: { thread_id: threadId } });
+        const state = checkpoint.values as WebsiteGraphState;
+
+        expect(state.status).toBe("completed");
+        expect(state.intent).toBeNull();
+
+        // Human message should be in conversation
+        const humanMessages = state.messages.filter(
+          (m: any) => m._getType?.() === "human" || m.type === "human"
+        );
+        expect(humanMessages.length).toBeGreaterThanOrEqual(1);
+
+        // AI response should exist
+        assertEditFlowMessages(state);
+
+        // Cost should be reasonable (full agent edit path)
+        const usageRecords = await db.select().from(llmUsage);
+        logCostSummary("Improve Copy Cost Summary", usageRecords);
+      }, 300000);
+    });
+
     describe("Image uploads via context engineering", () => {
       let websiteId: number;
       let projectId: number;

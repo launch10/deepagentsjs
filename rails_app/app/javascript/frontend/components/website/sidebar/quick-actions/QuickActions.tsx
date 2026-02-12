@@ -112,10 +112,7 @@ export default function QuickActions() {
 
   // Send a chat message to update the page with uploaded images
   const handleApplyImages = useCallback(() => {
-    sendMessage({
-      content:
-        "Update the landing page to use the images I uploaded. Replace placeholder or stock images with my uploaded ones.",
-    });
+    sendMessage("I've updated my project images, can you incorporate them into my site?");
   }, [sendMessage]);
 
   // Render settings content based on active action

@@ -202,6 +202,27 @@ describe("parseBuildErrors — parses stderr lines into ConsoleError[]", () => {
         parseBuildErrors("(node:5678) DeprecationWarning: something")
       ).toEqual([]);
     });
+
+    it("filters out esbuild 'The build was canceled' (transient during rapid file writes)", () => {
+      expect(parseBuildErrors(`✘ [ERROR] The build was canceled`)).toEqual([]);
+    });
+
+    it("keeps real errors in a chunk that also contains 'The build was canceled'", () => {
+      const chunk = [
+        `✘ [ERROR] The build was canceled`,
+        ``,
+        `✘ [ERROR] No matching export in "src/components/Hero.tsx" for import "Hero"`,
+        ``,
+        `    src/pages/IndexPage.tsx:2:9:`,
+        `      2 │ import { Hero } from "@/components/Hero";`,
+        `        ╵          ~~~~`,
+      ].join("\n");
+      const errors = parseBuildErrors(chunk);
+
+      expect(errors).toHaveLength(1);
+      expect(errors[0].message).toContain("No matching export");
+      expect(errors[0].file).toBe("src/components/Hero.tsx");
+    });
   });
 
   describe("warning detection", () => {

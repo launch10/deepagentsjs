@@ -14,8 +14,7 @@ import {
   buildContext,
   websiteBuilderNode,
   compactConversationNode,
-  cleanupFilesystemNode,
-  syncWebsiteChangesNode,
+  afterAgentNode,
   improveCopyNode,
   domainRecommendationsNode,
   themeHandler,
@@ -35,37 +34,40 @@ import type { WebsiteIntent } from "@types";
 const themeHandlerSubgraph = new StateGraph(WebsiteAnnotation)
   .addNode("updateWebsite", updateWebsite)
   .addNode("themeHandler", themeHandler)
+  .addNode("afterAgent", afterAgentNode)
   .addEdge(START, "updateWebsite")
   .addEdge("updateWebsite", "themeHandler")
-  .addEdge("themeHandler", END)
+  .addEdge("themeHandler", "afterAgent")
+  .addEdge("afterAgent", END)
   .compile();
 
 /**
- * Improve copy - regenerates copy with different style
+ * Improve copy - regenerates copy with different style.
+ * Uses the full coding agent (same as edit flow) with copy style as context.
  */
 const improveCopySubgraph = new StateGraph(WebsiteAnnotation)
   .addNode("updateWebsite", updateWebsite)
   .addNode("improveCopy", improveCopyNode)
-  .addNode("cleanupFilesystem", cleanupFilesystemNode)
-  .addNode("syncWebsiteChanges", syncWebsiteChangesNode)
+  .addNode("compactConversation", compactConversationNode)
+  .addNode("afterAgent", afterAgentNode)
   .addEdge(START, "updateWebsite")
   .addEdge("updateWebsite", "improveCopy")
-  .addEdge("improveCopy", "cleanupFilesystem")
-  .addEdge("cleanupFilesystem", "syncWebsiteChanges")
-  .addEdge("syncWebsiteChanges", END)
+  .addEdge("improveCopy", "compactConversation")
+  .addEdge("compactConversation", "afterAgent")
+  .addEdge("afterAgent", END)
   .compile();
 
 /**
  * Website builder - full page generation flow
  * - buildContext fans out to websiteBuilder and recommendDomains in parallel
- * - Both converge at cleanupFilesystem (or cleanupState in cache mode)
- * - Includes cacheMode as internal optimization
+ * - Both converge at afterAgent (or skipToEnd in cache mode)
+ * - afterAgent handles: filesystem cleanup, DB sync, todos clear
  */
 const routeFromRecommendDomains = (state: { messages?: unknown[] }): string => {
   if (isCacheModeEnabled(state)) {
     return "skipToEnd"; // In cache mode (create only), domain recs go directly to END (files already cached)
   }
-  return "cleanupFilesystem";
+  return "afterAgent";
 };
 
 const websiteBuilderSubgraph = new StateGraph(WebsiteAnnotation)
@@ -74,8 +76,7 @@ const websiteBuilderSubgraph = new StateGraph(WebsiteAnnotation)
   .addNode("websiteBuilder", websiteBuilderNode)
   .addNode("compactConversation", compactConversationNode)
   .addNode("recommendDomains", domainRecommendationsNode)
-  .addNode("cleanupFilesystem", cleanupFilesystemNode)
-  .addNode("syncWebsiteChanges", syncWebsiteChangesNode)
+  .addNode("afterAgent", afterAgentNode)
   .addNode("skipToEnd", () => ({})) // No-op node for cache mode domain recs path
 
   // START → updateWebsite → buildContext (with cache mode routing)
@@ -89,20 +90,19 @@ const websiteBuilderSubgraph = new StateGraph(WebsiteAnnotation)
   .addEdge("buildContext", "websiteBuilder")
   .addEdge("buildContext", "recommendDomains")
 
-  // websiteBuilder → compactConversation → cleanupFilesystem
+  // websiteBuilder → compactConversation → afterAgent
   .addEdge("websiteBuilder", "compactConversation")
-  .addEdge("compactConversation", "cleanupFilesystem")
+  .addEdge("compactConversation", "afterAgent")
 
   // recommendDomains routes based on mode
   .addConditionalEdges("recommendDomains", routeFromRecommendDomains, {
     skipToEnd: "skipToEnd",
-    cleanupFilesystem: "cleanupFilesystem",
+    afterAgent: "afterAgent",
   })
 
   // Converge paths
   .addEdge("skipToEnd", END)
-  .addEdge("cleanupFilesystem", "syncWebsiteChanges")
-  .addEdge("syncWebsiteChanges", END)
+  .addEdge("afterAgent", END)
   .compile();
 
 // =============================================================================

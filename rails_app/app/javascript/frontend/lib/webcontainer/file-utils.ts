@@ -12,6 +12,38 @@ interface FileSystemDirectoryEntry {
 }
 
 /**
+ * Diffs two FileMaps, returning only files whose content changed.
+ * Returns null if nothing changed (all content identical).
+ * Returns the full current map when previous is null (initial mount).
+ *
+ * Comparison is content-only — metadata (modified_at) is ignored.
+ * Deleted files are ignored because WebContainer mount() is additive.
+ */
+export function diffFileMap(
+  previous: Website.FileMap | null,
+  current: Website.FileMap
+): Website.FileMap | null {
+  if (!previous) return current;
+
+  const changed: Website.FileMap = {};
+  let hasChanges = false;
+
+  for (const path in current) {
+    if (!Object.prototype.hasOwnProperty.call(current, path)) continue;
+
+    const prevFile = previous[path];
+    const currFile = current[path];
+
+    if (!prevFile || prevFile.content !== currFile.content) {
+      changed[path] = currFile;
+      hasChanges = true;
+    }
+  }
+
+  return hasChanges ? changed : null;
+}
+
+/**
  * Converts a FileMap (from langgraph state) to a WebContainer FileSystemTree.
  * FileMap format: { "/path/to/file": { content: string, created_at: string, modified_at: string } }
  * FileSystemTree format: { "path": { "to": { "file": { file: { contents: "..." } } } } }

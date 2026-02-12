@@ -38,20 +38,23 @@ export async function classifyEditWithLLM(
 
   const classifierPrompt = `You are a routing classifier for a landing page editor. Given a user's edit request and the project file tree, determine if this is a SIMPLE or COMPLEX edit.
 
-SIMPLE edits: Targeted changes to 1-3 existing files. Examples:
-- Changing text, colors, fonts, spacing, sizes
-- Swapping images or icons
-- Showing/hiding elements
+SIMPLE edits: A focused change to a SINGLE component or section. Examples:
+- Changing text, colors, fonts, spacing, sizes in one section
+- Swapping images or icons in one component
+- Showing/hiding elements within one component
 - Minor layout adjustments within a component
-- Style tweaks (backgrounds, borders, shadows)
+- Style tweaks (backgrounds, borders, shadows) in one place
 - Reordering, swapping, hiding, or removing existing sections (just editing the composition root)
 
-COMPLEX edits: Structural changes, multi-file work, or specialized tools. Examples:
+COMPLEX edits: Changes spanning MULTIPLE components, structural changes, or specialized tools. Examples:
+- Rewriting or updating copy/content across multiple sections or components
+- Requests that explicitly mention multiple components (e.g. "update the hero and features")
 - Adding NEW sections or components that don't exist yet
 - Adding interactivity, forms, or logic
 - Redesigning or rebuilding a section from scratch
 - Changing the overall color scheme, theme, or palette (requires the change_color_scheme tool)
 - Bug reports, complaints about something being "wrong", or visual issues that need investigation (gaps, misalignment, broken layout)
+- Any request involving "all", "every", or "each" section/component
 
 Respond with ONLY the word "simple" or "complex". Nothing else.
 

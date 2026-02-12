@@ -1,68 +1,74 @@
 import type { WebsiteGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { HumanMessage } from "@langchain/core/messages";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
 import { type ImproveCopyStyle, isImproveCopyIntent } from "@types";
 import { injectAgentContext } from "@api/middleware";
+import { createContextMessage } from "langgraph-ai-sdk";
+import { prepareContextWindow } from "./contextWindow";
 
 /**
  * Get the prompt for the given improve_copy style.
+ *
+ * NOTE: The agent already receives editWorkflow instructions (read files,
+ * create todos, dispatch subagents in parallel) and todoOverrideMiddleware
+ * (message first, always todos, pass todo_id). This prompt only describes
+ * WHAT to change — the system handles HOW.
  */
 function getImproveCopyPrompt(style: ImproveCopyStyle | undefined): string {
-  const basePrompt = `Review and rewrite all the copy on this landing page. Keep the same structure and HTML elements, but update the text content.`;
+  const basePrompt = `Rewrite the copy across ALL sections of this landing page. Keep the same structure, layout, and HTML elements — only change the text content (headlines, subheadlines, body copy, CTAs, labels).
 
+Every component in src/components/*.tsx that contains user-facing text needs updating. Create one todo per component and dispatch them all to subagents in parallel.`;
+
+  const styleGuide = getStyleGuide(style);
+
+  return `${basePrompt}\n\n${styleGuide}`;
+}
+
+function getStyleGuide(style: ImproveCopyStyle | undefined): string {
   switch (style) {
     case "professional":
-      return `${basePrompt}
-
-Make the tone more professional and business-focused:
-- Use formal language and industry-standard terminology
+      return `## Style: Professional
+- Formal language with industry-standard terminology
 - Emphasize trust, reliability, and expertise
 - Replace casual phrases with professional alternatives
 - Add credibility indicators where appropriate
-- Keep the messaging clear and authoritative`;
+- Clear, authoritative messaging throughout`;
 
     case "friendly":
-      return `${basePrompt}
-
-Make the tone more friendly and approachable:
-- Use casual, conversational language
-- Add personality and warmth to the copy
-- Include emojis where appropriate (but don't overdo it)
-- Make it feel like talking to a helpful friend
-- Keep it engaging and relatable`;
+      return `## Style: Friendly
+- Casual, conversational language
+- Personality and warmth in every section
+- Emojis where appropriate (but don't overdo it)
+- Feels like talking to a helpful friend
+- Engaging and relatable throughout`;
 
     case "shorter":
-      return `${basePrompt}
-
-Make all copy shorter and more concise:
+      return `## Style: Concise
 - Cut unnecessary words and phrases
-- Use short, punchy sentences
+- Short, punchy sentences
 - Remove redundant descriptions
 - Get straight to the point
-- Keep only the essential information`;
+- Only essential information remains`;
 
     default:
-      return `${basePrompt}
-
-Improve the overall quality of the copy:
-- Make it more compelling and clear
-- Ensure consistent tone throughout
+      return `## Style: Improved
+- More compelling and clear
+- Consistent tone throughout
 - Fix any awkward phrasing`;
   }
 }
 
 /**
  * Node that rewrites the copy on a landing page based on a selected style.
- * Uses single-shot edit (Haiku + native text_editor) for cost-effective copy rewrites.
- * All src/ files are pre-loaded — the LLM rewrites copy via str_replace in one call.
+ * Runs through the full coding agent (same as the edit flow) with the copy
+ * style instructions injected as a context message.
  */
 export const improveCopyNode = NodeMiddleware.use(
   {},
   async (
     state: WebsiteGraphState,
-    _config: LangGraphRunnableConfig
+    config: LangGraphRunnableConfig
   ): Promise<Partial<WebsiteGraphState>> => {
     if (!state.websiteId || !state.jwt) {
       throw new Error("websiteId and jwt are required");
@@ -75,22 +81,30 @@ export const improveCopyNode = NodeMiddleware.use(
 
     const prompt = getImproveCopyPrompt(style);
 
-    // Inject brainstorm.finished context so Haiku knows the brand voice
+    // Build context the same way as the edit flow in websiteBuilderNode:
+    // 1. Inject agent context events (brainstorm.finished, images, etc.)
     const messagesWithContext =
       state.projectId && state.jwt
         ? await injectAgentContext({
             graphName: "website",
             projectId: state.projectId,
             jwt: state.jwt,
-            messages: [...(state.messages || []), new HumanMessage(prompt)],
+            messages: state.messages || [],
           })
-        : [...(state.messages || []), new HumanMessage(prompt)];
+        : state.messages || [];
+
+    // 2. Add the copy style instructions as a context message
+    const allMessages = [...messagesWithContext, createContextMessage(prompt)];
+
+    // 3. Apply context window (same safety net as edit flow)
+    const windowedMessages = prepareContextWindow(allMessages, { maxTurnPairs: 10, maxChars: 40_000 });
 
     return await createCodingAgent(
       { ...state, isCreateFlow: false },
       {
-        messages: messagesWithContext,
-        route: "single-shot",
+        messages: windowedMessages,
+        config,
+        route: "full", // Always full agent — rewriting copy across all sections is multi-file
       }
     );
   }

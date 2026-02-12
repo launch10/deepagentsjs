@@ -48,13 +48,13 @@ export type CodingAgentOptions = {
 };
 
 /**
- * Custom middleware that reinforces todo usage when delegating to subagents.
+ * Custom middleware that enforces todo usage for ALL agent work.
  *
  * deepagents' todoListMiddleware() is hardcoded with no options and its built-in
  * prompt tells the agent to skip todos for "simple" tasks (<3 steps). But our
- * coding agent delegates to 4-6 subagents in parallel — the user needs visibility
- * into that progress. Custom middleware added via the `middleware` param runs
- * after built-ins, so this appends *after* the todoListMiddleware's own system
+ * users are non-technical and need visibility into what the agent is doing at
+ * all times. Custom middleware added via the `middleware` param runs after
+ * built-ins, so this appends *after* the todoListMiddleware's own system
  * prompt, giving it "last word" advantage.
  */
 const todoOverrideMiddleware = createMiddleware({
@@ -63,26 +63,26 @@ const todoOverrideMiddleware = createMiddleware({
     handler({
       ...request,
       systemMessage: request.systemMessage.concat(
-        `\n\nUSER COMMUNICATION: Always begin your response with a brief, friendly message ` +
-        `to the user (1-2 sentences) describing what you're about to build or change, BEFORE ` +
+        `\n\nEVERY RESPONSE MUST FOLLOW THIS PATTERN — NO EXCEPTIONS:\n\n` +
+        `1. MESSAGE FIRST: Always begin your response with a brief, friendly message ` +
+        `to the user (1-2 sentences) describing what you're about to do, BEFORE ` +
         `calling any tools. This gives the user immediate feedback that their request is being ` +
-        `handled. For example: "I'll create a landing page with a bold hero section, social ` +
-        `proof, and a clear call to action." Then proceed with write_todos and task dispatches.\n\n` +
-        `IMPORTANT OVERRIDE FOR TASK TRACKING: Always use write_todos when delegating ` +
-        `work to subagents via the task tool. Each subagent dispatch counts as a step that ` +
-        `the user needs visibility into. Track delegation progress even for 2-3 dispatches. ` +
-        `Create the todo list BEFORE dispatching subagents, and update it as each completes. ` +
-        `When dispatching multiple subagents in parallel, mark ALL of them as in_progress ` +
-        `since they are all running concurrently. ` +
-        `The user is non-technical, so please keep the todos high-level and clear, with ` +
-        `concise descriptions of each task. Do not reference specific files or directories.\n\n` +
-        `CRITICAL FOR REAL-TIME PROGRESS: When dispatching a subagent via the task tool, ` +
-        `ALWAYS pass the todo_id parameter with the ID of the corresponding todo item. ` +
-        `This automatically marks that todo as completed when the subagent finishes, ` +
-        `giving the user real-time progress visibility. Example:\n` +
-        `task(description="Build the hero section...", subagent_type="coder", todo_id="<uuid>")\n` +
-        `The todo_id should match the id from write_todos. Without todo_id, the user won't ` +
-        `see progress until ALL subagents finish.`
+        `handled. For example: "I'll update the copy across all sections to be more professional ` +
+        `and compelling."\n\n` +
+        `2. TODOS ALWAYS: ALWAYS call write_todos to create a todo list — even for simple edits. ` +
+        `The user is non-technical and needs to see what's happening. Create todos BEFORE doing ` +
+        `any work. Keep them high-level and clear (no file names or code jargon). ` +
+        `For simple edits: at least 1-2 todos (e.g. "Update the headline copy", "Polish the CTA"). ` +
+        `For multi-file work: one todo per section or file being changed. ` +
+        `For subagent delegation: one todo per subagent dispatch. ` +
+        `Mark todos as in_progress when you start them and completed when done.\n\n` +
+        `3. DELEGATE OR DO: Either delegate todos to subagents via the task tool, or complete ` +
+        `them yourself. When dispatching subagents, launch ALL in ONE message (parallel). ` +
+        `ALWAYS pass the todo_id parameter when dispatching subagents so progress updates in ` +
+        `real time. Example:\n` +
+        `task(description="Build the hero section...", subagent_type="coder", todo_id="<uuid>")\n\n` +
+        `NEVER skip todos. NEVER skip the introductory message. The user must always see ` +
+        `what you're doing and track progress.`
       ),
     }),
 });

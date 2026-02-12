@@ -132,6 +132,15 @@ class WebContainerManagerClass {
             if (this.state.consoleErrors.length > 0 && result.clearsErrors) {
               this.clearConsoleErrors();
             }
+
+            // Tag HMR events for diagnostic visibility
+            if (chunk.includes("hmr update")) {
+              const fileMatch = chunk.match(/hmr update\s+(.+)/);
+              this.log(`[WebContainer:HMR] hmr update detected — file: ${fileMatch?.[1] ?? "unknown"}`);
+            }
+            if (chunk.includes("page reload")) {
+              this.log("[WebContainer:HMR] page reload triggered");
+            }
           },
         })
       );
@@ -164,7 +173,14 @@ class WebContainerManagerClass {
    *
    * If the project has dependencies not in the snapshot, runs npm install.
    */
+  private loadProjectCount = 0;
+
   async loadProject(files: FileSystemTree): Promise<string> {
+    const callIndex = ++this.loadProjectCount;
+    const isIncremental = this.state.viteRunning && this.loadProjectCount > 1;
+
+    this.log(`[WebContainer] loadProject called (#${callIndex}) — isIncremental: ${isIncremental}`);
+
     // Ensure warmup is complete
     await this.warmup();
 
@@ -176,9 +192,11 @@ class WebContainerManagerClass {
     this.clearConsoleErrors();
 
     // Mount project files (this is fast - just file writes)
+    const mountStart = performance.now();
     this.log("[WebContainer] Mounting project files...");
     await this.instance.mount(files);
-    this.log("[WebContainer] Project files mounted");
+    const mountElapsed = (performance.now() - mountStart).toFixed(0);
+    this.log(`[WebContainer] Project files mounted in ${mountElapsed}ms`);
 
     // Check if project has dependencies not in the snapshot
     const missingDeps = await this.checkForMissingDeps();
@@ -197,6 +215,8 @@ class WebContainerManagerClass {
           `[WebContainer] npm install complete in ${(performance.now() - installStart).toFixed(0)}ms`
         );
       }
+    } else {
+      this.log("[WebContainer] No missing deps");
     }
 
     // Return the preview URL (Vite already running)

@@ -6,6 +6,7 @@ import {
   mergeFileSystemTrees,
   hasPackageJson,
   injectPreviewReadinessScript,
+  diffFileMap,
   type WebContainerStatus,
 } from "@lib/webcontainer";
 import { useWebsiteChatState } from "./useWebsiteChat";
@@ -63,7 +64,7 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
     WebContainerManager.getConsoleErrors()
   );
 
-  const mountedFilesRef = useRef<string | null>(null);
+  const mountedFilesRef = useRef<Website.FileMap | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   // Reload the preview iframe
@@ -94,45 +95,87 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
     return unsubscribe;
   }, [previewUrl]);
 
-  // Mount files when they change
+  // Mount files when they change — only mounts files whose content actually differs.
   useEffect(() => {
     if (!files || Object.keys(files).length === 0) {
       return;
     }
 
-    // Skip if files haven't changed
-    const filesKey = JSON.stringify(files);
-    if (mountedFilesRef.current === filesKey) {
+    const fileMapTyped = files as Website.FileMap;
+    const isInitialMount = mountedFilesRef.current === null;
+    const changedFiles = diffFileMap(mountedFilesRef.current, fileMapTyped);
+
+    if (!changedFiles) {
+      if (import.meta.env.DEV) {
+        console.log("[useWebsitePreview] files unchanged — skipping mount", {
+          fileCount: Object.keys(files).length,
+        });
+      }
       return;
     }
 
+    const changedKeys = Object.keys(changedFiles);
+
+    if (import.meta.env.DEV) {
+      console.log("[useWebsitePreview] files changed", {
+        totalFiles: Object.keys(files).length,
+        changedFiles: changedKeys.length,
+        changedKeys,
+        isInitialMount,
+        previousStatus: status,
+      });
+    }
+
     async function mountFiles() {
+      const mountStart = performance.now();
       try {
-        // If container is not yet warm, update status to show progress
-        if (!WebContainerManager.isWarm()) {
-          setStatus(getStatusFromManagerState());
-        } else {
-          setStatus("mounting");
+        // For initial mount or cold container, show loading status.
+        // For incremental updates on a warm container, skip status change
+        // to keep the iframe mounted — Vite HMR handles the update.
+        if (isInitialMount || !WebContainerManager.isWarm()) {
+          const newStatus = WebContainerManager.isWarm() ? "mounting" : getStatusFromManagerState();
+          setStatus(newStatus);
+          if (import.meta.env.DEV) {
+            console.log("[useWebsitePreview] status transition →", newStatus);
+          }
+        } else if (import.meta.env.DEV) {
+          console.log("[useWebsitePreview] incremental update — keeping iframe mounted");
         }
 
-        // Inject preview readiness script and convert files to FileSystemTree
-        const fileMapTyped = files as Website.FileMap;
-        const fileMapWithReadiness = injectPreviewReadinessScript(fileMapTyped);
-        const fileTree = convertFileMapToFileSystemTree(fileMapWithReadiness);
+        // For initial mount, inject preview readiness script and include fallback package.json.
+        // For incremental updates, only convert changed files.
+        let filesToMount: Website.FileMap;
+        if (isInitialMount) {
+          filesToMount = injectPreviewReadinessScript(fileMapTyped);
+        } else {
+          filesToMount = changedFiles;
+        }
 
-        // Only add fallback package.json if files don't include one
+        const fileTree = convertFileMapToFileSystemTree(filesToMount);
+
         let mergedTree = fileTree;
-        if (!hasPackageJson(fileMapWithReadiness)) {
+        if (isInitialMount && !hasPackageJson(fileMapTyped)) {
           const packageJson = createStaticSitePackageJson();
           mergedTree = mergeFileSystemTrees(fileTree, packageJson);
         }
 
         // Load project - this waits for warmup if needed, then mounts files
         const url = await WebContainerManager.loadProject(mergedTree);
-        mountedFilesRef.current = filesKey;
+        mountedFilesRef.current = fileMapTyped;
 
         setPreviewUrl(url);
-        setStatus("ready");
+        if (isInitialMount || !WebContainerManager.isWarm()) {
+          setStatus("ready");
+        }
+
+        if (import.meta.env.DEV) {
+          const elapsed = (performance.now() - mountStart).toFixed(0);
+          console.log(`[useWebsitePreview] mount complete (${elapsed}ms)`, {
+            isInitialMount,
+            changedFiles: changedKeys.length,
+            totalFiles: Object.keys(files).length,
+          });
+        }
       } catch (err) {
         console.error("WebContainer error:", err);
         setError(err instanceof Error ? err.message : "Unknown error");

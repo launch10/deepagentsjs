@@ -121,11 +121,20 @@ function splitEsbuildErrors(text: string): string[] {
 }
 
 /**
- * Parse a single esbuild error block into a ConsoleError.
+ * esbuild messages that are transient noise, not actionable errors.
+ * "The build was canceled" fires when rapid file changes abort an in-progress build.
  */
-function parseEsbuildBlock(block: string): ConsoleError {
+const ESBUILD_NOISE = [/^The build was canceled$/i];
+
+/**
+ * Parse a single esbuild error block into a ConsoleError, or null for noise.
+ */
+function parseEsbuildBlock(block: string): ConsoleError | null {
   // First line: ✘ [ERROR] <message>
   const firstLine = block.split("\n")[0].replace(/^✘ \[ERROR\]\s*/, "").trim();
+
+  // Skip transient esbuild messages (e.g. build cancellation during rapid file writes)
+  if (ESBUILD_NOISE.some((p) => p.test(firstLine))) return null;
 
   // Try to extract file from the error message itself first
   // e.g. No matching export in "src/components/Problem.tsx" for import "Problem"
@@ -167,7 +176,8 @@ export function parseBuildErrors(text: string): ConsoleError[] {
   // 1. Extract all esbuild "✘ [ERROR]" blocks (a chunk can contain many)
   const esbuildBlocks = splitEsbuildErrors(clean);
   for (const block of esbuildBlocks) {
-    errors.push(parseEsbuildBlock(block));
+    const parsed = parseEsbuildBlock(block);
+    if (parsed) errors.push(parsed);
   }
 
   // 2. If we found esbuild errors, also check for the "Failed to scan" wrapper
