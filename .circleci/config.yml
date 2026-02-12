@@ -131,12 +131,19 @@ jobs:
             - langgraph-deps-v1-
       - run:
           name: Install langgraph dependencies
-          command: pnpm install --frozen-lockfile
+          command: |
+            cd ~/project
+            pnpm install --frozen-lockfile
       - save_cache:
           key: langgraph-deps-v1-{{ checksum "../pnpm-lock.yaml" }}
           paths:
             - node_modules
             - ~/.pnpm-store
+      - run:
+          name: Build workspace packages
+          command: |
+            cd ~/project
+            pnpm run build:packages
       - run:
           name: Run typecheck
           command: pnpm run typecheck

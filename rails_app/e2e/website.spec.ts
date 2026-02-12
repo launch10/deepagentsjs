@@ -144,7 +144,11 @@ test.describe("Website Builder", () => {
       });
       await websitePage.waitForStreamingComplete(120000);
 
-      // Preview iframe still visible (CSS updated via index.css change)
+      // AI confirms the theme change
+      await expect(websitePage.aiMessages.last()).toBeVisible({ timeout: 30000 });
+
+      // Preview iframe re-renders with the new theme (CSS updated via index.css change)
+      await websitePage.waitForPreviewReady(120000);
       await expect(websitePage.previewIframe).toBeVisible();
     });
 

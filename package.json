@@ -5,6 +5,7 @@
   "description": "Launch10 monorepo with Rails frontend and Langgraph backend",
   "scripts": {
     "prepare": "husky",
+    "build:packages": "pnpm --filter langgraph-ai-sdk-types run build && pnpm --filter langgraph-ai-sdk run build && pnpm --filter deepagents run build",
     "docs:generate": "cd rails_app && bundle exec rake rswag:specs:swaggerize",
     "types:generate": "cd langgraph_app && pnpm run api:generate",
     "types:sync": "pnpm run docs:generate && pnpm run types:generate && pnpm --filter @launch10/shared run build:types",
