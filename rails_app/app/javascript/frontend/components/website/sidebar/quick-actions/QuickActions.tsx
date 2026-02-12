@@ -94,6 +94,8 @@ export default function QuickActions() {
     setActiveAction((prev) => (prev === action ? null : action));
   };
 
+  const closePanel = useCallback(() => setActiveAction(null), []);
+
   // Intent-based theme selection handler
   const handleThemeSelect = useCallback(
     (themeId: number | null) => {
@@ -106,14 +108,16 @@ export default function QuickActions() {
           createdAt: new Date().toISOString(),
         },
       });
+      closePanel();
     },
-    [updateState]
+    [updateState, closePanel]
   );
 
   // Send a chat message to update the page with uploaded images
   const handleApplyImages = useCallback(() => {
     sendMessage("I've updated my project images, can you incorporate them into my site?");
-  }, [sendMessage]);
+    closePanel();
+  }, [sendMessage, closePanel]);
 
   // Render settings content based on active action
   const renderSettingsContent = () => {
@@ -138,7 +142,7 @@ export default function QuickActions() {
           </>
         );
       case "copy":
-        return <ImproveCopy />;
+        return <ImproveCopy onSubmit={closePanel} />;
       default:
         return null;
     }

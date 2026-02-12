@@ -87,7 +87,8 @@ class WebContainerManagerClass {
 
       // Listen for runtime errors from preview iframes
       this.instance.on("preview-message", (msg: PreviewMessage) => {
-        this.addConsoleError(parsePreviewMessage(msg));
+        const error = parsePreviewMessage(msg);
+        if (error) this.addConsoleError(error);
       });
       this.log(`[WebContainer] Booted in ${(performance.now() - start).toFixed(0)}ms`);
 
@@ -121,16 +122,15 @@ class WebContainerManagerClass {
               }
             }
 
-            // Parse chunk for build errors AND detect successful rebuilds.
-            // When Vite reports HMR update / page reload, stale errors from
-            // transient build failures (e.g. missing imports during incremental
-            // file writes) are cleared.
+            // Snapshot model: errors represent "what's broken RIGHT NOW."
+            // - Rebuild success (HMR/reload) → clear all errors (build is healthy)
+            // - New errors → REPLACE the list (these are the current build errors)
+            // - Neither → leave state alone
             const result = processViteChunk(chunk);
-            for (const error of result.errors) {
-              this.addConsoleError(error);
-            }
-            if (this.state.consoleErrors.length > 0 && result.clearsErrors) {
+            if (result.clearsErrors) {
               this.clearConsoleErrors();
+            } else if (result.errors.length > 0) {
+              this.setBuildErrors(result.errors);
             }
 
             // Tag HMR events for diagnostic visibility
@@ -332,13 +332,31 @@ class WebContainerManagerClass {
     return () => this.listeners.delete(listener);
   }
 
+  /**
+   * Replace the entire error list with the given errors (snapshot model).
+   * Called by Vite output handler — each error batch is the current build state.
+   */
+  setBuildErrors(errors: ConsoleError[]) {
+    this.state = { ...this.state, consoleErrors: errors };
+    if (import.meta.env.DEV) {
+      for (const error of errors) {
+        console.warn(`[WebContainer] Build error:`, error.message, error.file ? `(${error.file})` : "");
+      }
+    }
+    this.emit({ type: "console-errors", state: this.state });
+  }
+
+  /**
+   * Append a single runtime error (from preview iframe).
+   * Runtime errors are independent events, not a build state snapshot.
+   */
   addConsoleError(error: ConsoleError) {
     this.state = {
       ...this.state,
       consoleErrors: [...this.state.consoleErrors, error],
     };
     if (import.meta.env.DEV) {
-      console.warn(`[WebContainer] Build error:`, error.message, error.file ? `(${error.file})` : "");
+      console.warn(`[WebContainer] Runtime error:`, error.message, error.file ? `(${error.file})` : "");
     }
     this.emit({ type: "console-errors", state: this.state });
   }

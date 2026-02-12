@@ -11,9 +11,9 @@
  * resolves to undefined in test/vitest due to module initialization order.
  * Wire it in after the circular-init issue in @core/logger is fixed.
  *
- * Context engineering was moved from stream middleware to node-level.
- * Nodes that need context injection should call `injectAgentContext()` directly.
- * See: app/api/middleware/context/injectAgentContext.ts
+ * Context engineering lives in app/conversation/. Conversation preparation
+ * (event fetching, context injection, windowing) is handled inside
+ * createCodingAgent via prepareConversation().
  */
 import { createBridgeFactory } from "langgraph-ai-sdk";
 import { usageTrackingMiddleware } from "./usageTracking";

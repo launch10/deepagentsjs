@@ -6,14 +6,16 @@
  * 2. Summary consolidation: multiple old summaries get folded into one
  * 3. Existing summary is included in new summarization input
  * 4. Exactly one summary message in the result
- * 5. Structural layout: after reducer + contextWindow, messages are
+ * 5. Structural layout: after reducer + Conversation.window(), messages are
  *    [summary (context)] [recent conversation messages]
  */
 import { describe, it, expect } from "vitest";
 import { HumanMessage, AIMessage, ToolMessage, RemoveMessage } from "@langchain/core/messages";
 import { messagesStateReducer } from "@langchain/langgraph";
 import type { BaseMessage } from "@langchain/core/messages";
-import { compactConversation, prepareContextWindow } from "@nodes";
+import { compactConversation } from "@nodes";
+import { Conversation } from "@conversation";
+import { isSummaryMessage } from "langgraph-ai-sdk";
 
 /**
  * Deterministic mock summarizer so tests never hit a real LLM.
@@ -58,8 +60,8 @@ describe("compactConversation", () => {
       ];
 
       const result = await compactConversation(messages, {
-        messageThreshold: 8,
-        keepRecent: 7,  // Naive slice(-7) would split the tool pair
+        messageThreshold: 3,
+        keepRecent: 3,  // Naive slice(-7) would split the tool pair
         summarizer: mockSummarizer,
       });
 
@@ -113,8 +115,8 @@ describe("compactConversation", () => {
       ];
 
       const result = await compactConversation(messages, {
-        messageThreshold: 8,
-        keepRecent: 8,  // Naive slice(-8) splits the group
+        messageThreshold: 3,
+        keepRecent: 3,  // Naive slice(-8) splits the group
         summarizer: mockSummarizer,
       });
 
@@ -145,12 +147,12 @@ describe("compactConversation", () => {
       const messages: BaseMessage[] = [
         // Two old summaries (accumulated from previous compactions)
         new HumanMessage({
-          content: "[Conversation Summary] Built the initial page.",
+          content: "[[[CONVERSATION SUMMARY]]] Built the initial page.",
           name: "context",
           id: "summary-1",
         }),
         new HumanMessage({
-          content: "[Conversation Summary] Changed the headline.",
+          content: "[[[CONVERSATION SUMMARY]]] Changed the headline.",
           name: "context",
           id: "summary-2",
         }),
@@ -170,7 +172,7 @@ describe("compactConversation", () => {
         new HumanMessage({ content: "Latest", id: "h7" }),
       ];
 
-      const result = await compactConversation(messages, { messageThreshold: 8, keepRecent: 4, summarizer: mockSummarizer });
+      const result = await compactConversation(messages, { messageThreshold: 3, keepRecent: 4, summarizer: mockSummarizer });
 
       if (!("messages" in result)) {
         throw new Error("Expected compaction to trigger");
@@ -178,7 +180,7 @@ describe("compactConversation", () => {
 
       // Count summary messages (non-removal messages with name="context")
       const summaryMessages = result.messages.filter(
-        (m) => (m as any).name === "context" && (m as any).content?.includes?.("[Conversation Summary]")
+        (m) => isSummaryMessage(m as BaseMessage)
       );
       expect(summaryMessages.length).toBe(1);
 
@@ -230,14 +232,14 @@ describe("compactConversation", () => {
         new HumanMessage({ content: "Latest request", id: "h6" }),
       ];
 
-      const result = await compactConversation(messages, { messageThreshold: 8, keepRecent: 4, summarizer: mockSummarizer });
+      const result = await compactConversation(messages, { messageThreshold: 3, keepRecent: 4, summarizer: mockSummarizer });
       if (!("messages" in result)) throw new Error("Expected compaction to trigger");
 
       const { contextMsgs, conversationMsgs } = applyAndSeparate(messages, result.messages);
 
       // Exactly one summary
       expect(contextMsgs.length).toBe(1);
-      expect((contextMsgs[0] as any).content).toContain("[Conversation Summary]");
+      expect(isSummaryMessage(contextMsgs[0] as BaseMessage)).toBe(true);
 
       // Recent messages are only the kept ones — old tool calls are gone
       const keptIds = new Set(conversationMsgs.map((m) => m.id));
@@ -276,7 +278,7 @@ describe("compactConversation", () => {
         new HumanMessage({ content: "Latest edit", id: "h5" }),
       ];
 
-      const result = await compactConversation(messages, { messageThreshold: 8, keepRecent: 6, summarizer: mockSummarizer });
+      const result = await compactConversation(messages, { messageThreshold: 3, keepRecent: 3, summarizer: mockSummarizer });
       if (!("messages" in result)) throw new Error("Expected compaction to trigger");
 
       const { contextMsgs, conversationMsgs } = applyAndSeparate(messages, result.messages);
@@ -300,7 +302,7 @@ describe("compactConversation", () => {
       // Simulate state AFTER a previous compaction: [old-summary, recent messages]
       const messages: BaseMessage[] = [
         new HumanMessage({
-          content: "[Conversation Summary] Built a landing page with hero, features, CTA. Changed headline to be punchier.",
+          content: "[[[CONVERSATION SUMMARY]]] Built a landing page with hero, features, CTA. Changed headline to be punchier.",
           name: "context",
           id: "old-summary",
         }),
@@ -319,7 +321,7 @@ describe("compactConversation", () => {
         new HumanMessage({ content: "Latest", id: "h7" }),
       ];
 
-      const result = await compactConversation(messages, { messageThreshold: 8, keepRecent: 4, summarizer: mockSummarizer });
+      const result = await compactConversation(messages, { messageThreshold: 3, keepRecent: 4, summarizer: mockSummarizer });
       if (!("messages" in result)) throw new Error("Expected compaction to trigger");
 
       const { contextMsgs, conversationMsgs, afterReducer } = applyAndSeparate(messages, result.messages);
@@ -335,7 +337,7 @@ describe("compactConversation", () => {
       expect(conversationMsgs.some((m) => m.id === "h7")).toBe(true);
     });
 
-    it("prepareContextWindow places summary BEFORE recent messages", async () => {
+    it("Conversation.window() places summary BEFORE recent messages", async () => {
       const messages: BaseMessage[] = [
         new HumanMessage({ content: "Build page", id: "h1" }),
         new AIMessage({ content: "Done", id: "a1" }),
@@ -352,23 +354,86 @@ describe("compactConversation", () => {
         new HumanMessage({ content: "Latest", id: "h7" }),
       ];
 
-      const compactionResult = await compactConversation(messages, { messageThreshold: 8, keepRecent: 4, summarizer: mockSummarizer });
+      const compactionResult = await compactConversation(messages, { messageThreshold: 3, keepRecent: 4, summarizer: mockSummarizer });
       if (!("messages" in compactionResult)) throw new Error("Expected compaction to trigger");
 
       // Apply reducer
       const afterReducer = messagesStateReducer(messages, compactionResult.messages);
 
-      // Pass through contextWindow (like websiteBuilder does)
-      const finalMessages = prepareContextWindow(afterReducer);
+      // Window through Conversation (like prepareTurn does internally)
+      const finalMessages = new Conversation(afterReducer).window();
 
       // First message should be the summary (context message)
       expect((finalMessages[0] as any).name).toBe("context");
-      expect((finalMessages[0] as any).content).toContain("[Conversation Summary]");
+      expect(isSummaryMessage(finalMessages[0]!)).toBe(true);
 
       // Remaining messages should be conversation (not context)
       for (let i = 1; i < finalMessages.length; i++) {
         expect((finalMessages[i] as any).name).not.toBe("context");
       }
+    });
+  });
+
+  // ─── Structured summarization ───────────────────────────────────────────
+
+  describe("structured summarization prompt", () => {
+    it("summary uses the triple-bracket marker for agent visibility", async () => {
+      const messages: BaseMessage[] = [
+        new HumanMessage({ content: "Build my page", id: "h1" }),
+        new AIMessage({ content: "Done!", id: "a1" }),
+        new HumanMessage({ content: "Change headline", id: "h2" }),
+        new AIMessage({ content: "Changed.", id: "a2" }),
+        new HumanMessage({ content: "Change color", id: "h3" }),
+        new AIMessage({ content: "Changed color.", id: "a3" }),
+        new HumanMessage({ content: "Add CTA", id: "h4" }),
+        new AIMessage({ content: "Added CTA.", id: "a4" }),
+        new HumanMessage({ content: "Fix typo", id: "h5" }),
+        new AIMessage({ content: "Fixed.", id: "a5" }),
+        new HumanMessage({ content: "Latest request", id: "h6" }),
+      ];
+
+      const result = await compactConversation(messages, {
+        messageThreshold: 3,
+        keepRecent: 3,
+        summarizer: mockSummarizer,
+      });
+
+      if (!("messages" in result)) throw new Error("Expected compaction to trigger");
+
+      const summaryMsgs = result.messages.filter(
+        (m) => !(m instanceof RemoveMessage) && (m as any).name === "context"
+      );
+      expect(summaryMsgs.length).toBe(1);
+
+      const content = summaryMsgs[0]!.content as string;
+      // Should use the triple-bracket marker
+      expect(content).toContain("[[[CONVERSATION SUMMARY]]]");
+    });
+
+    it("summary message has isSummary metadata flag", async () => {
+      const messages: BaseMessage[] = [
+        ...Array.from({ length: 6 }, (_, i) => [
+          new HumanMessage({ content: `Turn ${i + 1}`, id: `h${i + 1}` }),
+          new AIMessage({ content: `Reply ${i + 1}`, id: `a${i + 1}` }),
+        ]).flat(),
+        new HumanMessage({ content: "Latest", id: "h7" }),
+      ];
+
+      const result = await compactConversation(messages, {
+        messageThreshold: 3,
+        keepRecent: 3,
+        summarizer: mockSummarizer,
+      });
+
+      if (!("messages" in result)) throw new Error("Expected compaction to trigger");
+
+      const summaryMsgs = result.messages.filter(
+        (m) => !(m instanceof RemoveMessage) && (m as any).name === "context"
+      );
+      expect(summaryMsgs.length).toBe(1);
+
+      // Should have metadata flag for reliable identification
+      expect(summaryMsgs[0]!.additional_kwargs?.isSummary).toBe(true);
     });
   });
 

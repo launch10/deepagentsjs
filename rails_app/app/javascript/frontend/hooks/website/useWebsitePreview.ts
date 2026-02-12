@@ -142,13 +142,17 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
           console.log("[useWebsitePreview] incremental update — keeping iframe mounted");
         }
 
-        // For initial mount, inject preview readiness script and include fallback package.json.
-        // For incremental updates, only convert changed files.
+        // Always inject preview readiness script when index.html is present.
+        // On initial mount, inject into the full file set.
+        // On incremental updates, inject into changed files (if index.html changed).
+        // This ensures the script survives AI edits to index.html + Vite full reloads.
         let filesToMount: Website.FileMap;
         if (isInitialMount) {
           filesToMount = injectPreviewReadinessScript(fileMapTyped);
+        } else if (changedFiles) {
+          filesToMount = injectPreviewReadinessScript(changedFiles);
         } else {
-          filesToMount = changedFiles;
+          return;
         }
 
         const fileTree = convertFileMapToFileSystemTree(filesToMount);

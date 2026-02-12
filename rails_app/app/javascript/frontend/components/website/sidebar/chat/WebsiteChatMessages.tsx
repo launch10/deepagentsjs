@@ -48,7 +48,7 @@ export function WebsiteChatMessagesView({ messages, isStreaming, todos }: Websit
   }
 
   return (
-    <Chat.Messages.List ref={containerRef} className="space-y-4">
+    <Chat.Messages.List ref={containerRef}>
       {messages.map((message, index) => {
         const isLastMessage = index === messages.length - 1;
 

@@ -52,6 +52,7 @@ export interface AIMessageContentProps {
 function Content({ children, state = "active", className }: AIMessageContentProps) {
   return (
     <div
+      data-role="assistant"
       className={twMerge(
         "text-sm prose prose-sm max-w-none",
         state === "inactive" && "text-base-300",

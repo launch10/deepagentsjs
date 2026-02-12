@@ -11,6 +11,7 @@ import type { BrainstormGraphState, InertiaProps, BrainstormBridgeType } from "@
 import { UploadsAPIService } from "@rails_api_base";
 import { validateFile } from "~/types/attachment";
 import { syncLanggraphToStore } from "~/stores/useSyncProject";
+import { useJwt, useLanggraphPath, useRootPath } from "~/stores/sessionStore";
 
 type NewBrainstormProps =
   InertiaProps.paths["/projects/new"]["get"]["responses"]["200"]["content"]["application/json"];
@@ -39,7 +40,15 @@ function getThreadIdFromUrl(): string | undefined {
  */
 function useBrainstormChatOptions(): UseLanggraphOptions<BrainstormBridgeType> {
   const page = usePage<BrainstormPageProps>();
-  const { thread_id, jwt, langgraph_path, root_path, project } = page.props;
+  const { thread_id, project } = page.props;
+  // Session-level values: prefer store (refreshed by useJwtRefresh),
+  // fall back to page props on first render before store hydration
+  const storeJwt = useJwt();
+  const storeLanggraphPath = useLanggraphPath();
+  const storeRootPath = useRootPath();
+  const jwt = storeJwt ?? (page.props as any).jwt;
+  const langgraph_path = storeLanggraphPath ?? (page.props as any).langgraph_path;
+  const root_path = storeRootPath ?? (page.props as any).root_path;
 
   const onThreadIdAvailable = useCallback(
     (threadId: string) => {
@@ -80,7 +89,7 @@ function useBrainstormChatOptions(): UseLanggraphOptions<BrainstormBridgeType> {
 
   return useMemo(() => {
     const url = langgraph_path ? new URL("api/brainstorm/stream", langgraph_path).toString() : "";
-    const uploadService = new UploadsAPIService({ jwt, baseUrl: root_path });
+    const uploadService = new UploadsAPIService({ jwt: jwt ?? "", baseUrl: root_path ?? "" });
 
     return {
       api: url,

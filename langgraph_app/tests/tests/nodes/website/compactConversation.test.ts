@@ -91,7 +91,7 @@ describe("compactConversation", () => {
 
     // Should have a summary message
     const summaryMsg = resultMessages.find(
-      (m: any) => typeof m.content === "string" && m.content.includes("[Conversation Summary]")
+      (m: any) => typeof m.content === "string" && m.content.includes("[[[CONVERSATION SUMMARY]]]")
     );
     expect(summaryMsg).toBeDefined();
     expect((summaryMsg as any).name).toBe("context");
@@ -168,7 +168,8 @@ describe("compactConversation", () => {
     }
   });
 
-  it("removes context messages (they'll be re-injected)", async () => {
+  it("removes context messages in summarized turns", async () => {
+    // Context at position 0 is before turn 1, which is in the summarized portion
     const contextMsg = createContextMessage("brainstorm context");
     (contextMsg as any).id = "ctx-1";
     const messages = [...[contextMsg], ...makeMessages(35)];
@@ -181,6 +182,28 @@ describe("compactConversation", () => {
       .map((m: any) => m.id);
 
     expect(removedIds).toContain("ctx-1");
+  });
+
+  it("preserves context messages in kept turns", async () => {
+    // 35 turns, keep last 20 (turns 16-35). Place context AFTER turn 25
+    // so it's firmly in the kept portion.
+    const msgs = makeMessages(35);
+
+    // Insert context between turn 25's AI response and turn 26's human message
+    // Turn 25 = msgs[48] (h25) and msgs[49] (a25), so insert after index 49
+    const contextMsg = createContextMessage("recent image upload");
+    (contextMsg as any).id = "ctx-kept";
+    msgs.splice(50, 0, contextMsg);
+
+    const result = await compactConversation(msgs);
+    const resultMessages = (result as { messages: any[] }).messages;
+
+    const removedIds = resultMessages
+      .filter((m: any) => m instanceof RemoveMessage)
+      .map((m: any) => m.id);
+
+    // Context in kept portion should NOT be removed
+    expect(removedIds).not.toContain("ctx-kept");
   });
 
   it("respects custom threshold and keepRecent", async () => {
@@ -245,7 +268,7 @@ describe("compactConversation", () => {
     );
     expect(summaryMsg).toBeDefined();
     expect((summaryMsg as any).name).toBe("context");
-    expect((summaryMsg as any).content).toContain("[Conversation Summary]");
+    expect((summaryMsg as any).content).toContain("[[[CONVERSATION SUMMARY]]]");
     expect(summaryMsg).toBeInstanceOf(AIMessage);
     expect(summaryMsg).not.toBeInstanceOf(HumanMessage);
   });

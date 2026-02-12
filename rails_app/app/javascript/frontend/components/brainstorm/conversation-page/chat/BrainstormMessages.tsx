@@ -108,7 +108,7 @@ export function BrainstormMessagesView({
   }
 
   return (
-    <Chat.Messages.List className="flex-1 py-4 space-y-4 max-w-3xl mx-auto">
+    <Chat.Messages.List className="flex-1 py-4 max-w-3xl mx-auto">
       {messages.map((message, index) => {
         const { isUser, isLastMessage, startsNewTopic, questionNumber } = messageMetadata[index];
 
@@ -132,7 +132,7 @@ export function BrainstormMessagesView({
           isLastMessage && !isStreaming && availableCommands && availableCommands.length > 0;
 
         return (
-          <div key={message.id} className="space-y-3">
+          <div key={message.id} data-role="assistant" className="space-y-3">
             {/* Question badge appears on first AI message of each topic */}
             {startsNewTopic && <QuestionBadge current={questionNumber} total={totalQuestions} />}
             <BrainstormAIMessage

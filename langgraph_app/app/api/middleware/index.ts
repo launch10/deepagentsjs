@@ -1,8 +1,7 @@
 /**
  * API Middleware
  *
- * Middleware for graph stream processing and context injection.
+ * Middleware for graph stream processing.
  */
 export { createAppBridge } from "./appBridge";
 export { usageTrackingMiddleware } from "./usageTracking";
-export { injectAgentContext } from "./context";

@@ -1,15 +1,12 @@
 import type { WebsiteGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { AIMessage } from "@langchain/core/messages";
-import { toStructuredMessage } from "langgraph-ai-sdk";
+import { AIMessage, type BaseMessage } from "@langchain/core/messages";
+import { toStructuredMessage, createContextMessage } from "langgraph-ai-sdk";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
-import { createContextMessage } from "langgraph-ai-sdk";
 import { isCacheModeEnabled } from "./cacheMode";
-import { prepareContextWindow } from "./contextWindow";
 import { getSchedulingToolMinorEditFiles } from "@cache";
 import type { Website } from "@types";
-import { injectAgentContext } from "@api/middleware";
 import { getLogger } from "@core";
 import { db, codeFiles, websiteFiles, eq } from "@db";
 
@@ -67,54 +64,30 @@ const hasWebsiteFiles = async (state: WebsiteGraphState): Promise<boolean> => {
   return rows.length > 0;
 };
 
-const buildContext = async (state: WebsiteGraphState) => {
-  const isCreate = await isCreateFlow(state);
+/** Build extra context messages for this turn (create instructions, build errors). */
+function buildExtraContext(state: WebsiteGraphState, isCreate: boolean): BaseMessage[] {
+  const extraContext: BaseMessage[] = [];
 
-  // Inject context events (brainstorm.finished, images.created, images.deleted)
-  // This runs within AsyncLocalStorage context, preserving Polly.js caching
-  // For the first message (create flow), this will include brainstorm context from events
-  const contextMessages =
-    state.projectId && state.jwt
-      ? await injectAgentContext({
-          graphName: "website",
-          projectId: state.projectId,
-          jwt: state.jwt,
-          messages: state.messages || [],
-        })
-      : state.messages || [];
+  if (isCreate) {
+    extraContext.push(
+      createContextMessage("Create a landing page for this business", { timestamp: new Date().toISOString() })
+    );
+  }
 
-  // For create flow, add instruction to create a landing page
-  // Brainstorm context and images come from events via injectAgentContext
-  const instructions = isCreate
-    ? [createContextMessage("Create a landing page for this business")]
-    : []; // For edits, just use the user's message directly
-
-  const allMessages = [...contextMessages, ...instructions];
-
-  // Inject build errors as a context message so the agent sees the technical details
-  // without them appearing in the user-facing chat
   if (state.consoleErrors?.length) {
     const errors = state.consoleErrors.filter((e) => e.type === "error");
     if (errors.length > 0) {
       const errorSummary = errors
         .map((e) => `- ${e.message}${e.file ? ` (${e.file})` : ""}`)
         .join("\n");
-      allMessages.push(
-        createContextMessage(
-          `[Build Errors — fix these]\n${errorSummary}`
-        )
+      extraContext.push(
+        createContextMessage(`[Build Errors — fix these]\n${errorSummary}`, { timestamp: new Date().toISOString() })
       );
     }
   }
 
-  // Window for edit turns as a safety net (caps first-call token count).
-  // compactConversation handles long-term summarization in the graph state.
-  if (!isCreate) {
-    return prepareContextWindow(allMessages, { maxTurnPairs: 10, maxChars: 40_000 });
-  }
-
-  return allMessages;
-};
+  return extraContext;
+}
 
 export const websiteBuilderNode = NodeMiddleware.use(
   {},
@@ -135,12 +108,14 @@ export const websiteBuilderNode = NodeMiddleware.use(
       return await cachedResponse(state);
     }
 
-    const messages = await buildContext(state);
-
     const result = await createCodingAgent(
       { ...state, isCreateFlow: isCreate },
       {
-        messages,
+        messages: state.messages || [],
+        extraContext: buildExtraContext(state, isCreate),
+        graphName: "website",
+        maxTurnPairs: isCreate ? Infinity : 10,
+        maxChars: isCreate ? Infinity : 40_000,
         config,
         recursionLimit: isCreate ? 150 : 100,
       }

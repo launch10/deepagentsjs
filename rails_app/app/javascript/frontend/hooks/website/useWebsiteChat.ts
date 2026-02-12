@@ -14,9 +14,6 @@ interface WebsitePageProps {
   website?: { id?: number };
   project?: { id?: number; uuid?: string };
   thread_id?: string;
-  jwt?: string;
-  langgraph_path?: string;
-  root_path?: string;
   [key: string]: unknown;
 }
 
@@ -24,7 +21,7 @@ export type WebsiteSnapshot = ChatSnapshot<WebsiteGraphState>;
 
 function useWebsiteChatOptions() {
   const page = usePage<WebsitePageProps>();
-  const { project, jwt, langgraph_path, root_path } = page.props;
+  const { project } = page.props;
 
   const onThreadIdAvailable = useCallback(
     (threadId: string) => {

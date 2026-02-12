@@ -226,7 +226,7 @@ describe("sanitizeMessagesForLLM — preserves tool evidence", () => {
     // "unexpected tool_use_id found in tool_result blocks"
     const messages: BaseMessage[] = [
       // compactConversation summary (replaced the AIMessage that had tool_calls)
-      new HumanMessage({ content: "[Conversation Summary] Built a landing page...", name: "context" }),
+      new HumanMessage({ content: "[[[CONVERSATION SUMMARY]]] Built a landing page...", name: "context" }),
       // Orphaned ToolMessage — its AIMessage was summarized away
       new ToolMessage({ content: "Hero section created.", tool_call_id: "toolu_orphaned" }),
       // Properly paired tool evidence

@@ -11,6 +11,7 @@ import z from "zod";
 import { BrainstormNextStepsService } from "@services";
 import { lastAIMessage } from "@types";
 import { BrainstormBridge } from "@annotation";
+import { Conversation } from "@conversation";
 
 /**
  * Schema for middleware state - minimal fields needed for mode detection.
@@ -140,10 +141,18 @@ export const brainstormAgent = NodeMiddleware.use(
       ...initialNextSteps,
     };
 
+    // Window messages to fit context limits before sending to the agent.
+    // Brainstorm middleware handles context injection during model calls,
+    // so we only need windowing here (no contextMessages to inject).
+    const windowedMessages = new Conversation(state.messages || []).prepareTurn({
+      maxTurnPairs: 10,
+      maxChars: 40_000,
+    });
+
     // Prepare initial state for agent
     const stateForAgent: BrainstormGraphState = {
       ...initialState,
-      messages: state.messages || [],
+      messages: windowedMessages,
     };
 
     // Create tracker to capture context messages injected by middleware
@@ -184,7 +193,7 @@ export const brainstormAgent = NodeMiddleware.use(
     // Build final messages array from agent result
     // Include context messages that middleware injected (they're not in result.messages)
     const resultMessages = (result as any).messages || [];
-    const originalMessageCount = (state.messages || []).length;
+    const originalMessageCount = windowedMessages.length;
     const newMessages = resultMessages.slice(originalMessageCount);
 
     // Start with original messages

@@ -1,13 +1,13 @@
 /**
- * Context Engineering Middleware Integration Tests
+ * prepareTurn Integration Tests
  *
- * Tests that the context engineering middleware correctly:
+ * Tests that prepareTurn correctly:
  * 1. Fetches events from Rails API
  * 2. Summarizes events into context messages
  * 3. Injects context messages before user's message
  *
  * Uses REAL Rails API calls (no mocking) to create events and verify
- * the middleware picks them up.
+ * prepareTurn picks them up.
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { HumanMessage, AIMessage } from "@langchain/core/messages";
@@ -17,7 +17,8 @@ import { Annotation, StateGraph, END, MemorySaver } from "@langchain/langgraph";
 import { db, eq, chats, projects } from "@db";
 import { DatabaseSnapshotter } from "@services";
 import { consumeStream, appScenario } from "@support";
-import { createAppBridge, injectAgentContext } from "@api/middleware";
+import { createAppBridge } from "@api/middleware";
+import { prepareTurn } from "@conversation";
 import { NodeMiddleware } from "@middleware";
 
 // ============================================================================
@@ -55,12 +56,12 @@ const ContextTestBridge = createAppBridge({
   stateAnnotation: ContextTestAnnotation,
 });
 
-// Simple node that injects context (like real nodes do) and captures messages
+// Simple node that calls prepareTurn (like createCodingAgent does) and captures messages
 const captureNode = NodeMiddleware.use({}, (async (state: ContextTestState) => {
-  // Inject context at node level (same pattern as websiteBuilder, improveCopy, etc.)
+  // Prepare turn (same as createCodingAgent's prepareConversation)
   const messagesWithContext =
     state.projectId && state.jwt
-      ? await injectAgentContext({
+      ? await prepareTurn({
           graphName: "website",
           projectId: state.projectId,
           jwt: state.jwt,
@@ -111,7 +112,7 @@ function extractContextText(messages: BaseMessage[]): string {
 // TESTS
 // ============================================================================
 
-describe("Context Engineering Middleware", () => {
+describe("prepareTurn", () => {
   let testThreadId: string;
   let testProjectId: number;
 

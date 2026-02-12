@@ -22,6 +22,14 @@ describe("isSuccessfulRebuild — detects Vite rebuild success signals", () => {
     expect(isSuccessfulRebuild(`✘ [ERROR] No matching export in "src/App.tsx"`)).toBe(false);
   });
 
+  it("detects server restarted", () => {
+    expect(isSuccessfulRebuild("[vite] server restarted.")).toBe(true);
+  });
+
+  it("detects server restarted with timestamp", () => {
+    expect(isSuccessfulRebuild("8:38:42 AM [vite] server restarted.")).toBe(true);
+  });
+
   it("returns false for normal Vite ready output", () => {
     expect(isSuccessfulRebuild("VITE v5.0.0  ready in 200 ms")).toBe(false);
   });
@@ -59,16 +67,17 @@ describe("processViteChunk — parse errors AND detect rebuild in one pass", () 
     expect(result.clearsErrors).toBe(false);
   });
 
-  it("returns errors and no clear signal when chunk has both errors and rebuild", () => {
-    // Edge case: a chunk that somehow contains both an error and a rebuild signal.
-    // Errors take priority — don't clear if there are new errors in the same chunk.
+  it("clears errors when chunk has both errors and rebuild signal (snapshot model)", () => {
+    // Snapshot model: rebuild success means the build is healthy NOW.
+    // Any errors in the same chunk are from a previous build that was superseded
+    // by the successful one — they should be discarded, not kept.
     const chunk = [
       `✘ [ERROR] Could not resolve "bad-package"`,
       `[vite] hmr update /src/App.tsx`,
     ].join("\n");
     const result = processViteChunk(chunk);
-    expect(result.errors).toHaveLength(1);
-    expect(result.clearsErrors).toBe(false);
+    expect(result.errors).toHaveLength(0);
+    expect(result.clearsErrors).toBe(true);
   });
 });
 

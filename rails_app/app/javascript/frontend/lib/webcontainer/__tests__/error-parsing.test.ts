@@ -263,7 +263,7 @@ describe("parsePreviewMessage — maps WebContainer PreviewMessage to ConsoleErr
       message: "ReferenceError: foo is not defined",
       stack: "at App.tsx:5:3",
     });
-    expect(error.timestamp).toBeInstanceOf(Date);
+    expect(error!.timestamp).toBeInstanceOf(Date);
   });
 
   it("maps UnhandledRejection to ConsoleError with type error", () => {
@@ -304,5 +304,21 @@ describe("parsePreviewMessage — maps WebContainer PreviewMessage to ConsoleErr
       message: expect.stringContaining("Failed to load"),
       stack: "at fetch (app.js:10)",
     });
+  });
+
+  it("filters transient HMR failure as noise", () => {
+    const msg = {
+      type: PreviewMessageType.ConsoleError as const,
+      args: ["[hmr] Failed to reload /src/index.css. This could be due to syntax errors or importing non-existent modules. (see errors above)"],
+      stack: undefined,
+      previewId: "p1",
+      port: 5173,
+      pathname: "/",
+      search: "",
+      hash: "",
+    };
+    const error = parsePreviewMessage(msg);
+
+    expect(error).toBeNull();
   });
 });

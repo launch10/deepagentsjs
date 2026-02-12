@@ -11,7 +11,6 @@
 import { StateGraph, START, END } from "@langchain/langgraph";
 import { WebsiteAnnotation } from "@annotation";
 import {
-  buildContext,
   websiteBuilderNode,
   compactConversationNode,
   afterAgentNode,
@@ -59,9 +58,12 @@ const improveCopySubgraph = new StateGraph(WebsiteAnnotation)
 
 /**
  * Website builder - full page generation flow
- * - buildContext fans out to websiteBuilder and recommendDomains in parallel
+ * - updateWebsite fans out to websiteBuilder and recommendDomains in parallel
  * - Both converge at afterAgent (or skipToEnd in cache mode)
  * - afterAgent handles: filesystem cleanup, DB sync, todos clear
+ *
+ * Context preparation (event fetching, injection, windowing) happens inside
+ * websiteBuilder via prepareTurn — no separate context node needed.
  */
 const routeFromRecommendDomains = (state: { messages?: unknown[] }): string => {
   if (isCacheModeEnabled(state)) {
@@ -72,23 +74,16 @@ const routeFromRecommendDomains = (state: { messages?: unknown[] }): string => {
 
 const websiteBuilderSubgraph = new StateGraph(WebsiteAnnotation)
   .addNode("updateWebsite", updateWebsite)
-  .addNode("buildContext", buildContext)
   .addNode("websiteBuilder", websiteBuilderNode)
   .addNode("compactConversation", compactConversationNode)
   .addNode("recommendDomains", domainRecommendationsNode)
   .addNode("afterAgent", afterAgentNode)
   .addNode("skipToEnd", () => ({})) // No-op node for cache mode domain recs path
 
-  // START → updateWebsite → buildContext (with cache mode routing)
+  // START → updateWebsite → fan out to websiteBuilder + recommendDomains
   .addEdge(START, "updateWebsite")
-  .addConditionalEdges("updateWebsite", (state) => (isCacheModeEnabled(state) ? "cacheMode" : "buildContext"), {
-    cacheMode: "buildContext", // Even in cache mode, we go through buildContext
-    buildContext: "buildContext",
-  })
-
-  // buildContext fans out to websiteBuilder and recommendDomains in parallel
-  .addEdge("buildContext", "websiteBuilder")
-  .addEdge("buildContext", "recommendDomains")
+  .addEdge("updateWebsite", "websiteBuilder")
+  .addEdge("updateWebsite", "recommendDomains")
 
   // websiteBuilder → compactConversation → afterAgent
   .addEdge("websiteBuilder", "compactConversation")

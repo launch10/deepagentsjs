@@ -3,9 +3,7 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
 import { type ImproveCopyStyle, isImproveCopyIntent } from "@types";
-import { injectAgentContext } from "@api/middleware";
 import { createContextMessage } from "langgraph-ai-sdk";
-import { prepareContextWindow } from "./contextWindow";
 
 /**
  * Get the prompt for the given improve_copy style.
@@ -81,28 +79,14 @@ export const improveCopyNode = NodeMiddleware.use(
 
     const prompt = getImproveCopyPrompt(style);
 
-    // Build context the same way as the edit flow in websiteBuilderNode:
-    // 1. Inject agent context events (brainstorm.finished, images, etc.)
-    const messagesWithContext =
-      state.projectId && state.jwt
-        ? await injectAgentContext({
-            graphName: "website",
-            projectId: state.projectId,
-            jwt: state.jwt,
-            messages: state.messages || [],
-          })
-        : state.messages || [];
-
-    // 2. Add the copy style instructions as a context message
-    const allMessages = [...messagesWithContext, createContextMessage(prompt)];
-
-    // 3. Apply context window (same safety net as edit flow)
-    const windowedMessages = prepareContextWindow(allMessages, { maxTurnPairs: 10, maxChars: 40_000 });
-
     return await createCodingAgent(
       { ...state, isCreateFlow: false },
       {
-        messages: windowedMessages,
+        messages: state.messages || [],
+        extraContext: [createContextMessage(prompt)],
+        graphName: "website",
+        maxTurnPairs: 10,
+        maxChars: 40_000,
         config,
         route: "full", // Always full agent — rewriting copy across all sections is multi-file
       }

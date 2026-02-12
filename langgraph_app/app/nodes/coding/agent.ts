@@ -26,9 +26,12 @@ import { sanitizeMessagesForLLM } from "./messageUtils";
 import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { toStructuredMessages } from "langgraph-ai-sdk";
+import { prepareTurn, Conversation } from "@conversation";
+import type { SubscribableGraph } from "@conversation";
 
 export type MinimalCodingAgentState = {
   websiteId?: number;
+  projectId?: number;
   jwt?: string;
   theme?: CodingPromptState["theme"];
   errors?: string;
@@ -45,6 +48,14 @@ export type CodingAgentOptions = {
   config?: LangGraphRunnableConfig;
   recursionLimit?: number;
   route?: EditRoute;
+  /** Extra context messages to inject (build errors, copy instructions, etc.) */
+  extraContext?: BaseMessage[];
+  /** Graph name for event subscriptions. When set, fetches Rails events. */
+  graphName?: SubscribableGraph;
+  /** Max turn pairs to keep in context window. Default: 10 */
+  maxTurnPairs?: number;
+  /** Max total chars in context window. Default: 40000 */
+  maxChars?: number;
 };
 
 /**
@@ -141,16 +152,20 @@ export const getTheme = async (
     .limit(1);
 
   if (websiteRow?.themeId) {
-    const themeAPI = new ThemeAPIService({ jwt: state.jwt });
-    const theme = await themeAPI.get(websiteRow.themeId);
-
-    return {
-      id: theme.id,
-      name: theme.name,
-      colors: theme.colors,
-      semanticVariables: theme.theme, // CSS custom properties (HSL values)
-      typography_recommendations: theme.typography_recommendations,
-    };
+    try {
+      const themeAPI = new ThemeAPIService({ jwt: state.jwt });
+      const theme = await themeAPI.get(websiteRow.themeId);
+      return {
+        id: theme.id,
+        name: theme.name,
+        colors: theme.colors,
+        semanticVariables: theme.theme, // CSS custom properties (HSL values)
+        typography_recommendations: theme.typography_recommendations,
+      };
+    } catch (error) {
+      console.error("Failed to fetch theme", error);
+      return undefined;
+    }
   }
 
   return undefined;
@@ -248,7 +263,7 @@ async function resolveRoute(
     return { route: "full" };
   }
 
-  // Image context (from injectAgentContext) → full agent.
+  // Image context (from prepareTurn) → full agent.
   // Image swaps touch multiple files (HTML references, imports), so single-shot won't cut it.
   const hasImageContext = options.messages.some((msg) => {
     if (Array.isArray(msg.content)) {
@@ -277,6 +292,45 @@ async function resolveRoute(
     return { route: "single-shot", backend };
   }
   return { route: "full" };
+}
+
+/**
+ * Prepare conversation for the LLM.
+ *
+ * When graphName + projectId + jwt are present, fetches Rails events
+ * (brainstorm, images, etc.) and injects them as context. Always
+ * injects any extraContext and windows to fit within limits.
+ *
+ * No-ops gracefully for single-turn callers that pass fresh messages.
+ */
+async function prepareConversation(
+  state: MinimalCodingAgentState,
+  options: CodingAgentOptions
+): Promise<BaseMessage[]> {
+  // Full preparation: fetch events from Rails + inject context + window
+  if (options.graphName && state.projectId && state.jwt) {
+    return prepareTurn({
+      graphName: options.graphName,
+      projectId: state.projectId,
+      jwt: state.jwt,
+      messages: options.messages,
+      extraContext: options.extraContext,
+      maxTurnPairs: options.maxTurnPairs,
+      maxChars: options.maxChars,
+    });
+  }
+
+  // No event fetching, but still inject any extra context + window
+  if (options.extraContext?.length) {
+    return new Conversation(options.messages).prepareTurn({
+      contextMessages: options.extraContext,
+      maxTurnPairs: options.maxTurnPairs,
+      maxChars: options.maxChars,
+    });
+  }
+
+  // No preparation needed (single-turn, no context)
+  return options.messages;
 }
 
 /**
@@ -328,10 +382,16 @@ async function _createCodingAgentInternal(
 ): Promise<{ messages: BaseMessage[]; status: "completed"; todos?: Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }>; files?: Website.FileMap }> {
   const requestedRoute = options.route ?? "auto";
 
-  // Sanitize messages upfront — strips orphaned tool_use (AIMessages with tool_calls
+  // Prepare conversation: fetch events, inject context, window.
+  // Full preparation when graphName + projectId + jwt are present.
+  // Falls back to pure windowing + context injection when only extraContext is provided.
+  // No-ops for single-turn callers (bugFix, SEO) that pass fresh messages.
+  const preparedMessages = await prepareConversation(state, options);
+
+  // Sanitize messages — strips orphaned tool_use (AIMessages with tool_calls
   // not followed by ToolMessages) and orphaned tool_result (ToolMessages whose AIMessage
   // was removed by compactConversation). Both cause Claude API errors.
-  const sanitizedMessages = sanitizeMessagesForLLM(options.messages);
+  const sanitizedMessages = sanitizeMessagesForLLM(preparedMessages);
 
   // Resolve route
   let resolvedRoute: "single-shot" | "full";

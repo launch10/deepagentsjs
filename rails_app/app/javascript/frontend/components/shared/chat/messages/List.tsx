@@ -28,7 +28,12 @@ export const List = forwardRef<HTMLDivElement, ListProps>(
         ref={ref}
         role="log"
         data-testid="message-list"
-        className={twMerge("flex flex-col gap-4 overflow-y-auto", className)}
+        className={twMerge(
+          "flex flex-col overflow-y-auto",
+          // Default spacing between messages, tighter for consecutive AI messages
+          "[&>*+*]:mt-4 [&>[data-role=assistant]+[data-role=assistant]]:mt-2",
+          className
+        )}
         {...props}
       >
         {children}

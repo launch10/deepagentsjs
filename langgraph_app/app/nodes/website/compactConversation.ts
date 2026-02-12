@@ -1,29 +1,15 @@
 /**
  * Conversation-level compaction for long-running graph conversations.
  *
- * Runs after the main work node completes. Checks if state.messages
- * exceeds a threshold, and if so, summarizes old messages into a
- * compact summary, preserving recent context.
- *
- * Key invariants:
- * 1. Tool call pairs are atomic — an AIMessage with tool_calls and its
- *    following ToolMessages are never split across the keep/summarize boundary.
- * 2. Existing summaries are consolidated — previous [Conversation Summary]
- *    messages are folded into the new summarization input so only ONE
- *    summary message exists at any time.
+ * Thin wrapper around Conversation.compact() — provides the LLM-based
+ * summarizer and NodeMiddleware wiring for graph nodes.
  *
  * Works with any graph that has `messages: BaseMessage[]` in its state
  * (website, brainstorm, ads, etc.).
  */
 import type { BaseMessage } from "@langchain/core/messages";
-import {
-  AIMessage,
-  RemoveMessage,
-  HumanMessage,
-  SystemMessage,
-  ToolMessage,
-} from "@langchain/core/messages";
-import { isContextMessage } from "langgraph-ai-sdk";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { Conversation } from "@conversation";
 import { getLLM } from "@core";
 import { NodeMiddleware } from "@middleware";
 import { type CoreGraphState } from "@state";
@@ -38,12 +24,6 @@ export interface CompactConversationOptions {
   /** Override the summarizer (for testing). Default: LLM-based summarization. */
   summarizer?: (messages: BaseMessage[], existingSummaries: string[]) => Promise<string>;
 }
-
-const DEFAULTS: Required<Omit<CompactConversationOptions, "summarizer">> = {
-  messageThreshold: 30,
-  keepRecent: 20,
-  maxChars: 200_000,
-};
 
 /**
  * Create a compaction node for any graph that has `messages` in its state.
@@ -64,161 +44,29 @@ export function createCompactConversationNode(
 export const compactConversationNode = createCompactConversationNode();
 
 /**
- * An atomic message group — either a single message or an AIMessage with
- * tool_calls bundled with its ToolMessage results.
- */
-type MessageGroup = BaseMessage[];
-
-/**
- * Group a flat message array into atomic units. An AIMessage with tool_calls
- * and its immediately-following ToolMessages form one indivisible group.
- * All other messages are solo groups.
- */
-function groupMessages(messages: BaseMessage[]): MessageGroup[] {
-  const groups: MessageGroup[] = [];
-  let i = 0;
-
-  while (i < messages.length) {
-    const msg = messages[i]!;
-
-    if (msg._getType() === "ai" && ((msg as AIMessage).tool_calls?.length ?? 0) > 0) {
-      // Start an atomic group: AI with tool_calls + following ToolMessages
-      const group: BaseMessage[] = [msg];
-      let j = i + 1;
-      while (j < messages.length && messages[j]!._getType() === "tool") {
-        group.push(messages[j]!);
-        j++;
-      }
-      groups.push(group);
-      i = j;
-    } else {
-      groups.push([msg]);
-      i++;
-    }
-  }
-
-  return groups;
-}
-
-/**
  * Compact a message array by summarizing old messages.
  *
- * Returns partial state with RemoveMessage entries + a summary message,
- * or empty object if compaction isn't needed.
- *
- * Generic — works with any graph state that has `messages`.
+ * Delegates to Conversation.compact() — returns partial state with
+ * RemoveMessage entries + a summary message, or empty object if
+ * compaction isn't needed.
  */
 export async function compactConversation(
   messages: BaseMessage[],
   options?: CompactConversationOptions
 ): Promise<{ messages: BaseMessage[] } | Record<string, never>> {
-  const opts = { ...DEFAULTS, ...options };
-
-  // Separate summaries and context events from conversation messages
-  const existingSummaries: BaseMessage[] = [];
-  const contextMessages: BaseMessage[] = [];
-  const conversationMessages: BaseMessage[] = [];
-
-  for (const m of messages) {
-    if (isSummaryMessage(m)) {
-      existingSummaries.push(m);
-    } else if (isContextMessage(m)) {
-      contextMessages.push(m);
-    } else {
-      conversationMessages.push(m);
-    }
-  }
-
-  // Count human turns (non-context HumanMessages) — tool calls don't count
-  const humanTurnCount = conversationMessages.filter(
-    (m) => m._getType() === "human"
-  ).length;
-
-  // Check if compaction is needed
-  const totalChars = messages.reduce((sum, m) => sum + charCount(m), 0);
-  const needsCompaction =
-    humanTurnCount > opts.messageThreshold ||
-    totalChars > opts.maxChars;
-
-  if (!needsCompaction) {
-    return {};
-  }
-
-  // Group messages into atomic units (tool_call + tool_result pairs stay together)
-  const groups = groupMessages(conversationMessages);
-
-  // Walk backwards to find the split point — keep groups containing the last keepRecent human turns
-  let keptHumanTurns = 0;
-  let splitGroupIndex = groups.length;
-
-  for (let g = groups.length - 1; g >= 0; g--) {
-    if (keptHumanTurns >= opts.keepRecent) {
-      break;
-    }
-    const groupHumanCount = groups[g]!.filter((m) => m._getType() === "human").length;
-    keptHumanTurns += groupHumanCount;
-    splitGroupIndex = g;
-  }
-
-  // Flatten groups into toSummarize / toKeep
-  const toSummarize: BaseMessage[] = groups.slice(0, splitGroupIndex).flat();
-  // toKeep is just for reference — we don't emit it, the graph state already has them
-
-  if (toSummarize.length === 0 && existingSummaries.length <= 1) {
-    return {};
-  }
-
-  // Extract text from existing summaries to fold into the new summarization
-  const existingSummaryTexts = existingSummaries
-    .map((m) => {
-      const content = typeof m.content === "string" ? m.content : "";
-      return content.replace(/^\[Conversation Summary\]\s*/, "");
-    })
-    .filter(Boolean);
-
-  // Summarize old messages + existing summaries into one consolidated summary
-  const summarize = opts.summarizer ?? summarizeMessages;
-  const summary = await summarize(toSummarize, existingSummaryTexts);
-
-  // RemoveMessage for each old conversation message
-  const removals = toSummarize
-    .filter((m) => m.id)
-    .map((m) => new RemoveMessage({ id: m.id! }));
-
-  // Remove old summaries (we're consolidating into one)
-  const summaryRemovals = existingSummaries
-    .filter((m) => m.id)
-    .map((m) => new RemoveMessage({ id: m.id! }));
-
-  // Remove old context events — they'll be re-injected by injectAgentContext
-  const contextRemovals = contextMessages
-    .filter((m) => m.id)
-    .map((m) => new RemoveMessage({ id: m.id! }));
-
-  // Summary stored as AIMessage with name="context" — filtered from UI,
-  // excluded from lastAIMessage(), and correctly attributed as assistant-generated.
-  const summaryMessage = new AIMessage({
-    content: `[Conversation Summary] ${summary}`,
-    name: "context",
+  const conversation = new Conversation(messages);
+  const result = await conversation.compact({
+    messageThreshold: options?.messageThreshold,
+    keepRecent: options?.keepRecent,
+    maxChars: options?.maxChars,
+    summarizer: options?.summarizer ?? summarizeMessages,
   });
 
-  return {
-    messages: [
-      ...removals,
-      ...summaryRemovals,
-      ...contextRemovals,
-      summaryMessage,
-    ] as BaseMessage[],
-  };
+  if (!result) return {};
+  return { messages: result.toMessages() };
 }
 
-/** Check if a message is a [Conversation Summary] context message. */
-function isSummaryMessage(m: BaseMessage): boolean {
-  if (!isContextMessage(m)) return false;
-  const content = typeof m.content === "string" ? m.content : "";
-  return content.includes("[Conversation Summary]");
-}
-
+/** LLM-based summarizer — consolidates old messages + existing summaries. */
 async function summarizeMessages(
   messages: BaseMessage[],
   existingSummaries: string[]
@@ -258,20 +106,28 @@ async function summarizeMessages(
 
   const response = await llm.invoke([
     new SystemMessage(
-      `Summarize this conversation as a neutral factual record in third person.
-Use "The user" and "The assistant" — never "we", "I", or "you".
+      `Summarize this conversation into the following structured sections. Use third person ("The user", "The assistant"). Be specific — include exact values (hex codes, file paths, component names).
 
-Focus on:
-- What the user requested and what the assistant built
-- Which files were modified (if mentioned)
-- Key design decisions (colors, sections, layout, content)
-- User preferences and constraints expressed
+## User Goals
+What the user wants to build or achieve overall.
 
-Keep it under 200 words. Be specific about what was changed.
-Note when the assistant used tools to make changes vs just discussing them.
-If a previous summary is included, incorporate it into the new summary — produce ONE consolidated summary.
+## Current State
+What has been built so far. List specific files and their purpose.
 
-Example tone: "The user requested a landing page for a fitness app. The assistant created Hero, Features, and CTA sections. Color scheme: blue (#3B82F6) primary. Files modified: /src/pages/IndexPage.tsx."`
+## Design Decisions
+Colors, fonts, layout choices, component decisions. Include specifics like hex codes and Tailwind classes.
+
+## User Preferences
+Expressed constraints, style preferences, things they liked or disliked.
+
+## Recent Changes
+What was most recently modified and why.
+
+## Open Issues
+Anything unresolved, pending, or that the user mentioned wanting to change. Leave empty if none.
+
+Keep each section concise (1-3 bullet points). Total summary under 300 words.
+If a previous summary is included, incorporate it — produce ONE consolidated summary with all sections updated.`
     ),
     new HumanMessage(parts.join("\n")),
   ]);
@@ -279,15 +135,4 @@ Example tone: "The user requested a landing page for a fitness app. The assistan
   return typeof response.content === "string"
     ? response.content
     : "Previous conversation involved edits and changes.";
-}
-
-function charCount(msg: BaseMessage): number {
-  if (typeof msg.content === "string") return msg.content.length;
-  if (Array.isArray(msg.content)) {
-    return msg.content.reduce(
-      (sum: number, block: any) => sum + (block.text?.length ?? 0),
-      0
-    );
-  }
-  return 0;
 }

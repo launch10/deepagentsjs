@@ -75,7 +75,7 @@ export function UserMessage(props: UserMessageProps) {
     const fileBlocks = extractFilesFromBlocks(props.blocks);
 
     return (
-      <div className="flex flex-col items-end">
+      <div data-role="user" className="flex flex-col items-end">
         {textContent && (
           <div
             data-testid="user-message"

@@ -19,7 +19,7 @@ function stripAnsi(text: string): string {
  */
 export function isSuccessfulRebuild(text: string): boolean {
   const clean = stripAnsi(text);
-  return /\[vite\] (hmr update|page reload)/.test(clean);
+  return /\[vite\] (hmr update|page reload|server restarted)/.test(clean);
 }
 
 /**
@@ -229,48 +229,61 @@ export interface ViteChunkResult {
 /**
  * Process a chunk of Vite dev server output: parse errors AND detect rebuild success.
  *
- * This is the core logic for the stale-error-clearing fix. When Vite outputs
- * an error during incremental file writes (e.g. missing import while files are
- * being written one-by-one), then later outputs an HMR update or page reload,
- * the rebuild success signal tells us the earlier errors are resolved.
+ * Snapshot model: errors represent "what's broken RIGHT NOW", not "what has ever gone wrong."
  *
  * Rules:
- * - If the chunk contains errors, `clearsErrors` is always false (new errors take priority)
- * - If the chunk contains no errors but IS a rebuild signal, `clearsErrors` is true
- * - Otherwise, `clearsErrors` is false (normal non-error, non-rebuild output)
+ * - If the chunk contains a rebuild signal (HMR update / page reload), `clearsErrors` is true
+ *   regardless of whether the chunk also contains errors — those errors are from a PREVIOUS
+ *   build that was already superseded by the successful one.
+ * - If the chunk contains errors but NO rebuild signal, these are the current build errors.
+ * - Otherwise (no errors, no rebuild signal), leave the error state alone.
  */
 export function processViteChunk(text: string): ViteChunkResult {
-  const errors = parseBuildErrors(text);
+  const rebuiltSuccessfully = isSuccessfulRebuild(text);
+  const errors = rebuiltSuccessfully ? [] : parseBuildErrors(text);
   return {
     errors,
-    // Only signal clear if there are NO new errors in this chunk.
-    // A chunk with both errors and a rebuild signal means the rebuild itself failed.
-    clearsErrors: errors.length === 0 && isSuccessfulRebuild(text),
+    clearsErrors: rebuiltSuccessfully,
   };
 }
 
 /**
- * Map a WebContainer PreviewMessage to our shared ConsoleError type.
+ * Runtime errors from the preview iframe that are transient HMR noise.
+ * These fire when Vite's HMR client fails during a server restart — the real
+ * error (if any) will appear in Vite's build output, not as a runtime error.
+ */
+const RUNTIME_NOISE_PATTERNS = [
+  /\[hmr\] Failed to reload/i,
+];
+
+/**
+ * Map a WebContainer PreviewMessage to our shared ConsoleError type, or null for noise.
  *
  * PreviewMessage comes from the `preview-message` event on the WebContainer
  * instance (requires `forwardPreviewErrors: true` at boot).
  */
-export function parsePreviewMessage(msg: PreviewMessage): ConsoleError {
+export function parsePreviewMessage(msg: PreviewMessage): ConsoleError | null {
+  let message: string;
+
   switch (msg.type) {
     case PreviewMessageType.UncaughtException:
     case PreviewMessageType.UnhandledRejection:
-      return {
-        type: "error",
-        message: msg.message,
-        stack: msg.stack,
-        timestamp: new Date(),
-      };
+      message = msg.message;
+      break;
     case PreviewMessageType.ConsoleError:
-      return {
-        type: "error",
-        message: msg.args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" "),
-        stack: msg.stack,
-        timestamp: new Date(),
-      };
+      message = msg.args.map((a) => (typeof a === "string" ? a : JSON.stringify(a))).join(" ");
+      break;
   }
+
+  // Filter transient HMR noise (fires during rapid file writes / server restarts)
+  if (RUNTIME_NOISE_PATTERNS.some((p) => p.test(message))) {
+    return null;
+  }
+
+  return {
+    type: "error",
+    message,
+    stack: msg.stack,
+    timestamp: new Date(),
+  };
 }
