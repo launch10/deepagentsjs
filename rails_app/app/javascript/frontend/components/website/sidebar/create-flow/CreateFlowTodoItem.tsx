@@ -15,7 +15,7 @@ export default function CreateFlowTodoItem({ icon: Icon, label, status }: Create
   return (
     <div
       className={cn(
-        "flex items-center justify-between h-10 px-3 rounded-lg border border-neutral-300",
+        "flex items-center justify-between min-h-10 px-3 py-2 rounded-lg border border-neutral-300",
         status === "pending" ? "bg-neutral-50" : "bg-white"
       )}
     >

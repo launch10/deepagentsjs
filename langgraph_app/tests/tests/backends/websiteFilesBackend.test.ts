@@ -504,6 +504,7 @@ describe("WebsiteFilesBackend", () => {
   describe("filesUpdate for state sync", () => {
     it("write() returns filesUpdate with file content as lines array", async () => {
       const testPath = "/src/state-sync-write.ts";
+      const stateKey = "src/state-sync-write.ts"; // normalizePathForState strips leading /
       const testContent = 'export const value = "synced";';
 
       const result = await backend.write(testPath, testContent);
@@ -512,7 +513,7 @@ describe("WebsiteFilesBackend", () => {
       expect(result.filesUpdate).toBeDefined();
       expect(result.filesUpdate).not.toBeNull();
 
-      const fileData = result.filesUpdate?.[testPath];
+      const fileData = result.filesUpdate?.[stateKey];
       expect(fileData).toBeDefined();
       // FileData format: content is an array of lines
       expect(Array.isArray(fileData?.content)).toBe(true);
@@ -523,6 +524,7 @@ describe("WebsiteFilesBackend", () => {
 
     it("edit() returns filesUpdate with updated content", async () => {
       const testPath = "/src/state-sync-edit.ts";
+      const stateKey = "src/state-sync-edit.ts";
       const initialContent = 'const msg = "before";';
       const expectedContent = 'const msg = "after";';
 
@@ -533,7 +535,7 @@ describe("WebsiteFilesBackend", () => {
       expect(result.filesUpdate).toBeDefined();
       expect(result.filesUpdate).not.toBeNull();
 
-      const fileData = result.filesUpdate?.[testPath];
+      const fileData = result.filesUpdate?.[stateKey];
       expect(fileData).toBeDefined();
       expect(fileData?.content.join("\n")).toBe(expectedContent);
       expect(fileData?.modified_at).toBeDefined();
@@ -541,6 +543,7 @@ describe("WebsiteFilesBackend", () => {
 
     it("edit() with replaceAll returns filesUpdate with all replacements", async () => {
       const testPath = "/src/state-sync-replace-all.ts";
+      const stateKey = "src/state-sync-replace-all.ts";
       const initialContent = "foo bar foo baz foo";
       const expectedContent = "qux bar qux baz qux";
 
@@ -551,12 +554,13 @@ describe("WebsiteFilesBackend", () => {
       expect(result.occurrences).toBe(3);
       expect(result.filesUpdate).toBeDefined();
 
-      const fileData = result.filesUpdate?.[testPath];
+      const fileData = result.filesUpdate?.[stateKey];
       expect(fileData?.content.join("\n")).toBe(expectedContent);
     });
 
     it("write() filesUpdate format matches deepagents FileData interface", async () => {
       const testPath = "/src/middleware-compat.ts";
+      const stateKey = "src/middleware-compat.ts";
       const testContent = "export default {}";
 
       const result = await backend.write(testPath, testContent);
@@ -566,11 +570,69 @@ describe("WebsiteFilesBackend", () => {
       expect(typeof result.filesUpdate).toBe("object");
       expect(result.filesUpdate).not.toBeNull();
 
-      const fileData = result.filesUpdate?.[testPath];
+      const fileData = result.filesUpdate?.[stateKey];
       expect(fileData).toBeDefined();
       expect(Array.isArray(fileData?.content)).toBe(true);
       expect(typeof fileData?.created_at).toBe("string");
       expect(typeof fileData?.modified_at).toBe("string");
     });
+  });
+});
+
+/**
+ * Concurrent edit safety tests — FS-only, no DB or Rails server needed.
+ *
+ * These reproduce the real-world race condition where LangGraph's ToolNode
+ * (tool_node.js:185) fires all tool calls from a single LLM response via
+ * Promise.all. When the LLM batches multiple edit_file calls for the same
+ * file in one response, the underlying read-modify-write cycle in
+ * FilesystemBackend.edit() races: all readers see the original content,
+ * each applies only its own replacement, and the last writer wins.
+ */
+describe("WebsiteFilesBackend concurrent edit safety", () => {
+  let backend: WebsiteFilesBackend;
+
+  beforeEach(() => {
+    // Construct directly — no DB hydration needed for FS-only tests
+    backend = new WebsiteFilesBackend({
+      website: { id: 999, name: "concurrent_test", accountId: 1 } as any,
+      jwt: "test-jwt",
+    });
+  });
+
+  afterEach(async () => {
+    await backend.cleanup();
+  });
+
+  it("preserves all edits when multiple edit() calls run concurrently on the same file", async () => {
+    const testPath = "/src/concurrent-edit.ts";
+    const initialContent = [
+      "const a = 1;",
+      "const b = 2;",
+      "const c = 3;",
+      "const d = 4;",
+    ].join("\n");
+
+    await backend.write(testPath, initialContent);
+
+    // Fire 4 concurrent edits to the same file — simulates Promise.all
+    // in LangGraph's ToolNode which processes all tool calls in parallel
+    const results = await Promise.all([
+      backend.edit(testPath, "const a = 1;", "const a = 10;"),
+      backend.edit(testPath, "const b = 2;", "const b = 20;"),
+      backend.edit(testPath, "const c = 3;", "const c = 30;"),
+      backend.edit(testPath, "const d = 4;", "const d = 40;"),
+    ]);
+
+    // All edits should succeed (no errors)
+    for (const result of results) {
+      expect(result.error).toBeUndefined();
+    }
+
+    // Final content must have ALL four edits applied — not just the last writer's
+    const finalContent = await backend.read(testPath);
+    expect(finalContent).toBe(
+      ["const a = 10;", "const b = 20;", "const c = 30;", "const d = 40;"].join("\n")
+    );
   });
 });

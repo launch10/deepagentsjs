@@ -62,6 +62,33 @@ export class WebsiteFilesBackend implements BackendProtocol {
   private rootDir: string;
   private jwt: string;
   private dirtyPaths: Set<string> = new Set();
+  private fileLocks: Map<string, Promise<void>> = new Map();
+
+  /**
+   * Normalize a tool-facing path (e.g. "/src/Hero.tsx") to a state key
+   * ("src/Hero.tsx") that matches Rails DB paths.
+   */
+  private normalizePathForState(filePath: string): string {
+    return filePath.replace(/^\//, "");
+  }
+
+  /**
+   * Acquire a per-file lock. Returns a release function.
+   * Concurrent operations on the SAME file serialize; different files
+   * run in parallel. This prevents the read-modify-write race in
+   * FilesystemBackend.edit() when LangGraph's ToolNode fires multiple
+   * edit_file calls via Promise.all.
+   */
+  private acquireFileLock(filePath: string): Promise<() => void> {
+    const currentLock = this.fileLocks.get(filePath) ?? Promise.resolve();
+    let release!: () => void;
+    const newLock = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    // Chain: wait for current holder to finish, then hand off to us
+    this.fileLocks.set(filePath, currentLock.then(() => newLock));
+    return currentLock.then(() => release);
+  }
 
   constructor(config: CreateBackendParams) {
     this.website = config.website;
@@ -288,19 +315,18 @@ export class WebsiteFilesBackend implements BackendProtocol {
     // Try to write first (for new files)
     let fsResult = await this.fs.write(filePath, content);
 
-    // If file already exists, replace its entire content via edit
+    // If file already exists, replace its entire content via edit.
+    // Uses per-file mutex to serialize concurrent writes to the same file.
     if (fsResult.error?.includes("already exists")) {
       debugLog(this.website.id, "WRITE_FILE_EXISTS_REPLACING", { filePath });
 
-      // Read current content to replace it entirely
+      const release = await this.acquireFileLock(filePath);
       try {
         const fileData = await this.fs.readRaw(filePath);
-        // FileData.content is string[] (array of lines)
         const currentContent = Array.isArray(fileData.content)
           ? fileData.content.join("\n")
           : String(fileData.content);
 
-        // Replace entire content
         const editResult = await this.fs.edit(filePath, currentContent, content, false);
         if (editResult.error) {
           debugLog(this.website.id, "WRITE_REPLACE_FAILED", {
@@ -310,11 +336,35 @@ export class WebsiteFilesBackend implements BackendProtocol {
           return { error: editResult.error };
         }
 
-        fsResult = { path: filePath, filesUpdate: null };
+        // Read back actual content from FS (avoids optimistic mismatch if edit
+        // applied differently than expected — same pattern edit() uses)
+        const updatedData = await this.fs.readRaw(filePath);
+
+        // Track dirty file for deferred flush (skip empty files — Rails rejects them)
+        if (content) {
+          this.dirtyPaths.add(filePath);
+        }
+
+        const stateKey = this.normalizePathForState(filePath);
+        const now = new Date().toISOString();
+        return {
+          path: filePath,
+          filesUpdate: {
+            [stateKey]: {
+              content: Array.isArray(updatedData.content)
+                ? updatedData.content
+                : String(updatedData.content).split("\n"),
+              created_at: now,
+              modified_at: now,
+            },
+          },
+        };
       } catch (e) {
         const errorMsg = e instanceof Error ? e.message : String(e);
         debugLog(this.website.id, "WRITE_REPLACE_ERROR", { filePath, error: errorMsg });
         return { error: errorMsg };
+      } finally {
+        release();
       }
     }
 
@@ -330,11 +380,12 @@ export class WebsiteFilesBackend implements BackendProtocol {
       this.dirtyPaths.add(filePath);
     }
 
+    const stateKey = this.normalizePathForState(filePath);
     const now = new Date().toISOString();
     return {
       path: filePath,
       filesUpdate: {
-        [filePath]: {
+        [stateKey]: {
           content: content.split("\n"),
           created_at: now,
           modified_at: now,
@@ -368,68 +419,78 @@ export class WebsiteFilesBackend implements BackendProtocol {
       replaceAll,
     });
 
-    const fsResult = await this.fs.edit(filePath, oldString, newString, replaceAll);
-    if (fsResult.error) {
-      // Enhanced error logging for debugging edit failures
-      const editLog = getLogger({ component: "WebsiteFilesBackend" });
-      editLog.warn(
-        {
+    // Per-file mutex: serialize concurrent edits to the same file.
+    // Without this, Promise.all in LangGraph's ToolNode causes all edits
+    // to read the same original content, each applies only its replacement,
+    // and the last writer wins (other edits lost).
+    const release = await this.acquireFileLock(filePath);
+    try {
+      const fsResult = await this.fs.edit(filePath, oldString, newString, replaceAll);
+      if (fsResult.error) {
+        // Enhanced error logging for debugging edit failures
+        const editLog = getLogger({ component: "WebsiteFilesBackend" });
+        editLog.warn(
+          {
+            filePath,
+            error: fsResult.error,
+            oldStringLength: oldString.length,
+            oldStringPreview: oldString.slice(0, 200),
+          },
+          "Edit failed"
+        );
+
+        // Try to read current file content to help debug
+        try {
+          const currentContent = await this.fs.read(filePath, 0, 5000);
+
+          // Check if it's a whitespace/newline issue
+          const oldStringNormalized = oldString.replace(/\r\n/g, "\n").replace(/\s+/g, " ");
+          const contentNormalized = currentContent.replace(/\r\n/g, "\n").replace(/\s+/g, " ");
+          if (contentNormalized.includes(oldStringNormalized)) {
+            editLog.warn(
+              { filePath },
+              "Whitespace mismatch detected - content exists but whitespace differs"
+            );
+          }
+        } catch (readError) {
+          editLog.debug({ filePath, err: readError }, "Could not read file for debugging");
+        }
+
+        debugLog(this.website.id, "EDIT_FS_FAILED", {
           filePath,
           error: fsResult.error,
-          oldStringLength: oldString.length,
-          oldStringPreview: oldString.slice(0, 200),
-        },
-        "Edit failed"
-      );
+        });
 
-      // Try to read current file content to help debug
-      try {
-        const currentContent = await this.fs.read(filePath, 0, 5000);
-
-        // Check if it's a whitespace/newline issue
-        const oldStringNormalized = oldString.replace(/\r\n/g, "\n").replace(/\s+/g, " ");
-        const contentNormalized = currentContent.replace(/\r\n/g, "\n").replace(/\s+/g, " ");
-        if (contentNormalized.includes(oldStringNormalized)) {
-          editLog.warn(
-            { filePath },
-            "Whitespace mismatch detected - content exists but whitespace differs"
-          );
-        }
-      } catch (readError) {
-        editLog.debug({ filePath, err: readError }, "Could not read file for debugging");
+        return fsResult;
       }
 
-      debugLog(this.website.id, "EDIT_FS_FAILED", {
+      debugLog(this.website.id, "EDIT_FS_COMPLETE", {
         filePath,
-        error: fsResult.error,
+        occurrences: fsResult.occurrences,
       });
 
-      return fsResult;
-    }
+      // Track dirty file for deferred flush
+      this.dirtyPaths.add(filePath);
 
-    debugLog(this.website.id, "EDIT_FS_COMPLETE", {
-      filePath,
-      occurrences: fsResult.occurrences,
-    });
-
-    // Track dirty file for deferred flush
-    this.dirtyPaths.add(filePath);
-
-    const updatedData = await this.fs.readRaw(filePath);
-    const now = new Date().toISOString();
-    return {
-      path: filePath,
-      occurrences: fsResult.occurrences,
-      filesUpdate: {
-        [filePath]: {
-          content: Array.isArray(updatedData.content)
-            ? updatedData.content
-            : String(updatedData.content).split("\n"),
-          created_at: now,
-          modified_at: now,
+      const updatedData = await this.fs.readRaw(filePath);
+      const stateKey = this.normalizePathForState(filePath);
+      const now = new Date().toISOString();
+      return {
+        path: filePath,
+        occurrences: fsResult.occurrences,
+        filesUpdate: {
+          [stateKey]: {
+            content: Array.isArray(updatedData.content)
+              ? updatedData.content
+              : String(updatedData.content).split("\n"),
+            created_at: now,
+            modified_at: now,
+          },
         },
-      },
-    };
+      };
+    } finally {
+      release();
+    }
   }
 
   /**
@@ -447,21 +508,34 @@ export class WebsiteFilesBackend implements BackendProtocol {
   }
 
   /**
-   * Persist all dirty files to the database in a single batch API call.
+   * Persist dirty files to the database in a single batch API call.
    * Reads final content from the virtual filesystem and sends it via the
    * write endpoint (which handles both creates and updates).
    *
-   * Idempotent — calling flush() with no dirty files is a no-op.
+   * When `pathsToFlush` is provided, ONLY those paths are flushed and removed
+   * from `dirtyPaths`. This is critical for parallel subagents that share the
+   * same backend instance — each subagent should flush only the files it edited,
+   * not files still being actively edited by other subagents.
+   *
+   * When `pathsToFlush` is omitted, all dirty paths are flushed (legacy behavior).
+   *
+   * Idempotent — calling flush() with no dirty/matching files is a no-op.
    */
-  async flush(maxRetries: number = 2): Promise<void> {
-    if (this.dirtyPaths.size === 0) {
-      debugLog(this.website.id, "FLUSH_SKIP", { reason: "no dirty paths" });
+  async flush(pathsToFlush?: string[], maxRetries: number = 2): Promise<void> {
+    const targetPaths = pathsToFlush ?? [...this.dirtyPaths];
+
+    if (targetPaths.length === 0) {
+      debugLog(this.website.id, "FLUSH_SKIP", { reason: "no target paths" });
       return;
     }
 
     const files: Array<{ path: string; content: string }> = [];
 
-    for (const filePath of this.dirtyPaths) {
+    for (const filePath of targetPaths) {
+      // Only flush paths that are actually dirty (another subagent may have
+      // already flushed this path between our snapshot and now)
+      if (!this.dirtyPaths.has(filePath)) continue;
+
       try {
         const fileData = await this.fs.readRaw(filePath);
         const content = Array.isArray(fileData.content)
@@ -482,14 +556,24 @@ export class WebsiteFilesBackend implements BackendProtocol {
     }
 
     if (files.length === 0) {
-      debugLog(this.website.id, "FLUSH_SKIP", { reason: "all dirty files empty or unreadable" });
-      this.dirtyPaths.clear();
+      debugLog(this.website.id, "FLUSH_SKIP", { reason: "all target files empty or unreadable" });
+      // Only remove attempted paths from dirty set (not all dirty paths)
+      for (const p of targetPaths) {
+        this.dirtyPaths.delete(p);
+      }
       return;
     }
 
     debugLog(this.website.id, "FLUSH_START", {
       fileCount: files.length,
       paths: files.map((f) => f.path),
+      totalDirtyPaths: this.dirtyPaths.size,
+      flushedPathCount: targetPaths.length,
+      contentTails: files.map((f) => ({
+        path: f.path,
+        len: f.content.length,
+        tail: f.content.slice(-200),
+      })),
     });
 
     const service = new WebsiteFilesAPIService({ jwt: this.jwt });
@@ -501,8 +585,18 @@ export class WebsiteFilesBackend implements BackendProtocol {
           files,
         });
 
-        debugLog(this.website.id, "FLUSH_COMPLETE", { fileCount: files.length });
-        this.dirtyPaths.clear();
+        debugLog(this.website.id, "FLUSH_COMPLETE", {
+          fileCount: files.length,
+          flushedPaths: files.map((f) => f.path),
+          remainingDirtyPaths: [...this.dirtyPaths].filter(
+            (p) => !targetPaths.includes(p)
+          ),
+        });
+
+        // Only clear the paths we actually flushed (not ALL dirtyPaths)
+        for (const p of targetPaths) {
+          this.dirtyPaths.delete(p);
+        }
         return;
       } catch (e) {
         if (attempt === maxRetries) throw e;

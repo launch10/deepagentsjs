@@ -271,6 +271,12 @@ export async function singleShotEdit(
   let successCount = 0;
   let errors: string[] = [];
   let editResults: string[] = [];
+  let files: Website.FileMap | undefined;
+
+  // Snapshot dirty paths BEFORE applying edits so we can determine which
+  // paths THIS invocation dirtied (other parallel subagents may have already
+  // dirtied paths on the shared backend instance).
+  const preEditDirtyPaths = new Set(backend.getDirtyPaths());
 
   if (editCalls.length > 0) {
     const result = await applyEdits(backend, editCalls);
@@ -290,9 +296,15 @@ export async function singleShotEdit(
       });
     }
 
-    // Flush deferred writes to DB (only if at least one edit succeeded)
-    if (successCount > 0) {
-      await backend.flush();
+    // Compute which paths THIS invocation dirtied (exclude pre-existing dirty paths)
+    const myDirtyPaths = backend.getDirtyPaths().filter((p) => !preEditDirtyPaths.has(p));
+
+    // Collect edited files for progressive streaming BEFORE flush — flush
+    // removes paths from dirtyPaths, so collectDirtyFiles must run first.
+    if (successCount > 0 && myDirtyPaths.length > 0) {
+      files = await collectDirtyFiles(backend, myDirtyPaths);
+      // Flush ONLY this invocation's files to DB
+      await backend.flush(myDirtyPaths);
     }
   }
 
@@ -313,7 +325,8 @@ export async function singleShotEdit(
       modelWithTools,
       invokeMessages,
       editCalls.length > 0 ? editCalls : toolCalls,
-      [retryReason]
+      [retryReason],
+      preEditDirtyPaths
     );
 
     if (retryResult) {
@@ -369,10 +382,6 @@ export async function singleShotEdit(
   }
   returnMessages.push(new AIMessage({ content: messageContent }));
 
-  // Collect edited files for progressive streaming (files enter graph state
-  // immediately instead of waiting for syncWebsiteChanges to read from DB at graph end)
-  const files = await collectDirtyFiles(backend);
-
   return {
     messages: returnMessages,
     status: "completed",
@@ -407,24 +416,35 @@ async function applyEdits(
 }
 
 /**
- * Read all dirty (modified) files from the backend and build a FileMap.
- * Called after edits are applied but before flush, so content is available
- * in the virtual filesystem. Returns undefined if no files were modified.
+ * Read dirty (modified) files from the backend and build a FileMap.
+ * Must be called BEFORE flush() — flush clears dirtyPaths.
+ *
+ * When `scopedPaths` is provided, only those paths are collected.
+ * This is critical for parallel subagents: each should only collect
+ * files it edited, not files from other concurrent subagents.
+ *
+ * Keys are normalized to DB convention (no leading slash) to match
+ * how Rails stores paths and how the frontend expects them.
  */
-async function collectDirtyFiles(backend: WebsiteFilesBackend): Promise<Website.FileMap | undefined> {
-  const dirtyPaths = backend.getDirtyPaths();
-  if (dirtyPaths.length === 0) return undefined;
+async function collectDirtyFiles(
+  backend: WebsiteFilesBackend,
+  scopedPaths?: string[]
+): Promise<Website.FileMap | undefined> {
+  const pathsToCollect = scopedPaths ?? backend.getDirtyPaths();
+  if (pathsToCollect.length === 0) return undefined;
 
   const files: Website.FileMap = {};
   const now = new Date().toISOString();
 
-  for (const filePath of dirtyPaths) {
+  for (const filePath of pathsToCollect) {
     try {
       const fileData = await backend.readRaw(filePath);
       const content = Array.isArray(fileData.content)
         ? (fileData.content as string[]).join("\n")
         : String(fileData.content);
-      files[filePath] = { content, created_at: now, modified_at: now };
+      // Normalize key: strip leading slash to match DB convention
+      const stateKey = filePath.replace(/^\//, "");
+      files[stateKey] = { content, created_at: now, modified_at: now };
     } catch {
       // File was deleted or unreadable — skip
     }
@@ -437,14 +457,18 @@ async function collectDirtyFiles(backend: WebsiteFilesBackend): Promise<Website.
  * Retry failed edits by re-invoking the LLM with error context and current file contents.
  * Returns a successful result if the retry produces any successful edits, or null if retry
  * also fails completely.
+ *
+ * `preEditDirtyPaths` is the snapshot of dirty paths from before the primary edit attempt,
+ * used to scope the retry's flush to only paths dirtied by this invocation.
  */
 async function retryWithErrorContext(
   backend: WebsiteFilesBackend,
   model: any,
   originalMessages: BaseMessage[],
   failedCalls: Array<{ args: unknown }>,
-  errors: string[]
-): Promise<{ messages: BaseMessage[]; status: "completed" } | null> {
+  errors: string[],
+  preEditDirtyPaths: Set<string> = new Set()
+): Promise<{ messages: BaseMessage[]; status: "completed"; files?: Website.FileMap } | null> {
   // Collect unique file paths from failed edits and re-read their current contents
   const failedPaths = [...new Set(failedCalls.map((tc) => (tc.args as any)?.path).filter(Boolean))];
 
@@ -493,8 +517,16 @@ async function retryWithErrorContext(
       return null;
     }
 
-    // Flush deferred writes to DB
-    await backend.flush();
+    // Compute which paths THIS retry dirtied (scoped flush)
+    const myRetryDirtyPaths = backend.getDirtyPaths().filter((p) => !preEditDirtyPaths.has(p));
+
+    // Collect files BEFORE flush (flush clears dirtyPaths)
+    let retryFiles: Website.FileMap | undefined;
+    if (myRetryDirtyPaths.length > 0) {
+      retryFiles = await collectDirtyFiles(backend, myRetryDirtyPaths);
+      // Flush ONLY this invocation's files to DB
+      await backend.flush(myRetryDirtyPaths);
+    }
 
     // Build return messages with tool evidence (same pattern as primary path)
     const returnMessages: BaseMessage[] = [retryResponse];
@@ -523,8 +555,6 @@ async function retryWithErrorContext(
         "\n\nNote: some edits could not be applied. You may want to verify the changes.";
     }
     returnMessages.push(new AIMessage({ content: messageContent }));
-
-    const retryFiles = await collectDirtyFiles(backend);
 
     return {
       messages: returnMessages,

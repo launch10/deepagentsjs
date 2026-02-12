@@ -143,7 +143,6 @@ export async function fetchContextMessages({
     return [];
   }
 
-  debugger;
   if (rawEvents.length === 0) {
     return [];
   }

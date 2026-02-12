@@ -142,17 +142,20 @@ export function useWebsiteChatIsStreaming() {
 
 /**
  * Returns whether the website is in its initial loading phase:
- * history is loading, or streaming before files are ready and todos aren't all done.
+ * history is loading, or streaming with todos still in progress.
+ * Stays on the todo list until ALL todos are completed, even if files have arrived.
+ * Once the user has sent any message, always show chat (never return to todo list).
  */
 export function useWebsiteChatIsInitialLoading() {
   return useWebsiteSelector((s) => {
+    const hasUserMessages = s.messages.some((m) => m.role === "user");
+    if (hasUserMessages) return false;
+
     const isStreaming = s.status === "streaming" || s.status === "submitted";
-    const files = s.state.files;
-    const hasFiles = files && Object.keys(files).length > 0;
     const todos = s.state.todos;
-    const allTodosCompleted =
-      todos && todos.length > 0 && todos.every((t) => t.status === "completed");
-    return s.isLoadingHistory || (isStreaming && !hasFiles && !allTodosCompleted);
+    const hasTodos = todos && todos.length > 0;
+    const allTodosCompleted = hasTodos && todos.every((t) => t.status === "completed");
+    return s.isLoadingHistory || (isStreaming && hasTodos && !allTodosCompleted);
   });
 }
 

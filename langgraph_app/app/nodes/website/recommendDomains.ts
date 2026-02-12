@@ -1,7 +1,7 @@
 import { type WebsiteGraphState } from "@annotation";
 import { NodeMiddleware } from "@middleware";
 import { DomainContextAPIService, ContextAPIService, type DomainWithWebsite } from "@rails_api";
-import { getLLM, getLogger } from "@core";
+import { getLLM, getLogger, createPromptCachingMiddleware } from "@core";
 import type { Website } from "@types";
 import {
   buildDomainRecommendationsPrompt,
@@ -21,7 +21,7 @@ const PLATFORM_DOMAIN_SUFFIX = ".launch10.site";
 
 /**
  * Domain recommendations node for the website graph.
- * Runs in parallel with websiteBuilder after buildContext.
+ * Runs in parallel with websiteBuilder after updateWebsite.
  * Idempotent: skips if domainRecommendations already exists in state.
  *
  * Uses a simple agent loop with a domain search tool to:
@@ -32,6 +32,9 @@ const PLATFORM_DOMAIN_SUFFIX = ".launch10.site";
 export const domainRecommendationsNode = NodeMiddleware.use(
   {},
   async (state: WebsiteGraphState): Promise<Partial<WebsiteGraphState>> => {
+    // TODO: REMOVE - just testing website builder flow
+    return {};
+
     // Idempotent: skip if already computed
     if (state.domainRecommendations) {
       getLogger({ component: "domainRecommendations" }).debug("Skipping - already computed");
@@ -102,6 +105,7 @@ export const domainRecommendationsNode = NodeMiddleware.use(
         tools,
         systemPrompt,
         responseFormat: domainRecommendationsOutputSchema,
+        middleware: [createPromptCachingMiddleware()],
       });
 
       const result = await agent.invoke({
