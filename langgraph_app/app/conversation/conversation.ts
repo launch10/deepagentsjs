@@ -25,15 +25,46 @@
  * the full tool call history to learn that it actually performed actions.
  */
 import type { BaseMessage } from "@langchain/core/messages";
-import { AIMessage, RemoveMessage, ToolMessage } from "@langchain/core/messages";
+import { AIMessage, HumanMessage, RemoveMessage, ToolMessage } from "@langchain/core/messages";
 import { isContextMessage, isSummaryMessage } from "langgraph-ai-sdk";
 
 /**
  * A Turn is a BaseMessage[] slice from one non-context HumanMessage
  * through everything before the next non-context HumanMessage.
  * Includes any preceding context messages.
+ *
+ * Extends Array<BaseMessage> so existing array-access patterns
+ * (indexing, .length, .filter, .flat) keep working.
  */
-export type Turn = BaseMessage[];
+export class Turn extends Array<BaseMessage> {
+  /** Ensure .filter(), .map(), .slice() return plain arrays, not Turn instances. */
+  // @ts-expect-error -- override static Symbol.species from Array
+  static get [Symbol.species](): ArrayConstructor {
+    return Array;
+  }
+
+  constructor(messages: BaseMessage[]) {
+    super(...messages);
+    Object.setPrototypeOf(this, Turn.prototype);
+  }
+
+  /**
+   * Returns true if this turn contains image context.
+   *
+   * Image context is identified by:
+   * - Array content with `{ type: "image_url" }` blocks
+   * - String content containing both "[Context]" and "image"
+   */
+  hasImageContext(): boolean {
+    return this.some((msg) => {
+      if (Array.isArray(msg.content)) {
+        return msg.content.some((block: any) => block.type === "image_url");
+      }
+      const content = typeof msg.content === "string" ? msg.content : "";
+      return content.includes("[Context]") && content.includes("image");
+    });
+  }
+}
 
 export interface CompactOptions {
   /** Trigger compaction when human turns exceed this count. Default: 30 */
@@ -266,6 +297,46 @@ export class Conversation {
     return new Conversation(allMessages).window({ maxTurnPairs, maxChars });
   }
 
+  // ── Turn access ─────────────────────────────────────────────
+
+  /** Returns the most recent turn, or undefined if there are no turns. */
+  currentTurn(): Turn | undefined {
+    return this.turns[this.turns.length - 1];
+  }
+
+  // ── Digest ─────────────────────────────────────────────────
+
+  /**
+   * Returns a trimmed view of recent conversation: only HumanMessage
+   * and AIMessage with string content. Strips tool calls, tool results,
+   * context messages, and summaries — just the conversational back-and-forth.
+   *
+   * Useful for giving a classifier or router enough context to understand
+   * ambiguous user messages like "great and 3 bloods I guess."
+   */
+  /**
+   * Recent conversational history, excluding the current turn.
+   *
+   * Returns up to `maxTurns` prior turns of just Human + AI text
+   * (no tool calls, context, or summaries). The current turn is
+   * excluded because the caller typically already has the latest
+   * user message and passes it separately.
+   */
+  digestMessages(maxTurns: number = 4): BaseMessage[] {
+    // Exclude current turn — caller already has the latest user message
+    const priorTurns = this.turns.slice(0, -1).slice(-maxTurns);
+    return priorTurns
+      .flat()
+      .filter((msg) => {
+        if (!HumanMessage.isInstance(msg) && !AIMessage.isInstance(msg)) return false;
+        if (isContextMessage(msg)) return false;
+        if (isSummaryMessage(msg)) return false;
+        if (typeof msg.content !== "string") return false;
+        if (msg.content.length === 0) return false;
+        return true;
+      });
+  }
+
   // ── Reconstruction ───────────────────────────────────────────
 
   /**
@@ -308,7 +379,7 @@ export class Conversation {
 
     const turns: Turn[] = [];
     let pendingContext: BaseMessage[] = [];
-    let currentTurn: BaseMessage[] | null = null;
+    let currentTurnMsgs: BaseMessage[] | null = null;
 
     for (const msg of remaining) {
       // Context messages accumulate — they'll attach to the next human turn
@@ -319,18 +390,18 @@ export class Conversation {
 
       // Non-context human message starts a new turn
       if (msg._getType() === "human") {
-        if (currentTurn !== null) {
-          turns.push(currentTurn);
+        if (currentTurnMsgs !== null) {
+          turns.push(new Turn(currentTurnMsgs));
         }
         // New turn = [buffered context] + [human message]
-        currentTurn = [...pendingContext, msg];
+        currentTurnMsgs = [...pendingContext, msg];
         pendingContext = [];
         continue;
       }
 
       // AI or tool: part of the current turn
-      if (currentTurn !== null) {
-        currentTurn.push(msg);
+      if (currentTurnMsgs !== null) {
+        currentTurnMsgs.push(msg);
       } else {
         // Orphaned AI/tool before any human — treat as trailing
         pendingContext.push(msg);
@@ -338,8 +409,8 @@ export class Conversation {
     }
 
     // Finalize
-    if (currentTurn !== null) {
-      turns.push(currentTurn);
+    if (currentTurnMsgs !== null) {
+      turns.push(new Turn(currentTurnMsgs));
     }
 
     // Remaining pending context = trailing messages after the last turn

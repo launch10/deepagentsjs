@@ -126,6 +126,12 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
       });
     }
 
+    // Update ref SYNCHRONOUSLY so subsequent effect invocations (from rapid
+    // streaming patches) see the latest files and skip duplicate mounts.
+    // Reverted on error so the next attempt retries.
+    const previousFiles = mountedFilesRef.current;
+    mountedFilesRef.current = fileMapTyped;
+
     async function mountFiles() {
       const mountStart = performance.now();
       try {
@@ -165,7 +171,6 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
 
         // Load project - this waits for warmup if needed, then mounts files
         const url = await WebContainerManager.loadProject(mergedTree);
-        mountedFilesRef.current = fileMapTyped;
 
         setPreviewUrl(url);
         if (isInitialMount || !WebContainerManager.isWarm()) {
@@ -181,6 +186,8 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
           });
         }
       } catch (err) {
+        // Revert ref so the next effect invocation retries these files
+        mountedFilesRef.current = previousFiles;
         console.error("WebContainer error:", err);
         setError(err instanceof Error ? err.message : "Unknown error");
         setStatus("error");

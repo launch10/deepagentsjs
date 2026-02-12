@@ -263,29 +263,25 @@ async function resolveRoute(
     return { route: "full" };
   }
 
-  // Image context (from prepareTurn) → full agent.
+  // Image context in the CURRENT turn → full agent.
   // Image swaps touch multiple files (HTML references, imports), so single-shot won't cut it.
-  const hasImageContext = options.messages.some((msg) => {
-    if (Array.isArray(msg.content)) {
-      return msg.content.some((block: any) => block.type === "image_url");
-    }
-    const content = typeof msg.content === "string" ? msg.content : "";
-    return content.includes("[Context]") && content.includes("image");
-  });
-
-  if (hasImageContext) {
-    getLogger().info("Image context detected, routing to full agent");
+  // Only checks the last turn — not the entire history (old images don't affect new edits).
+  const conversation = new Conversation(options.messages);
+  if (conversation.currentTurn()?.hasImageContext()) {
+    getLogger().info("Image context detected in current turn, routing to full agent");
     return { route: "full" };
   }
 
-  // Classify with cheap LLM
+  // Classify with cheap LLM — include recent conversational history so the
+  // classifier understands ambiguous messages like "great and 3 bloods I guess"
   const lastMessage = options.messages.at(-1);
   const userText = typeof lastMessage?.content === "string" ? lastMessage.content : "";
+  const recentHistory = conversation.digestMessages(4);
 
   const backend = options.existingBackend ?? (await getCodingAgentBackend(state));
   const { tree } = await buildFileTree(backend);
 
-  const classification = await classifyEditWithLLM(userText, tree);
+  const classification = await classifyEditWithLLM(userText, tree, recentHistory);
   getLogger().info({ route: classification }, "Edit classified");
 
   if (classification === "simple") {
@@ -398,6 +394,7 @@ async function _createCodingAgentInternal(
   let escalated = false;
   let backend: WebsiteFilesBackend | undefined = options.existingBackend;
 
+  debugger;
   if (requestedRoute === "auto") {
     const result = await resolveRoute(state, options);
     resolvedRoute = result.route;

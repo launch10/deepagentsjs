@@ -32,7 +32,8 @@ const NATIVE_TEXT_EDITOR_TOOL = {
  */
 export async function classifyEditWithLLM(
   userMessage: string,
-  fileTree: string
+  fileTree: string,
+  recentHistory?: BaseMessage[]
 ): Promise<"simple" | "complex"> {
   const llm = await getLLM({ skill: "coding", speed: "blazing", cost: "paid", maxTier: 5 });
 
@@ -62,10 +63,13 @@ Respond with ONLY the word "simple" or "complex". Nothing else.
 ${fileTree}`;
 
   try {
-    const response = await llm.invoke([
+    const messages: BaseMessage[] = [
       new SystemMessage(classifierPrompt),
+      ...(recentHistory ?? []),
       new HumanMessage(userMessage),
-    ]);
+    ];
+
+    const response = await llm.invoke(messages);
 
     const content =
       typeof response.content === "string" ? response.content.trim().toLowerCase() : "complex";

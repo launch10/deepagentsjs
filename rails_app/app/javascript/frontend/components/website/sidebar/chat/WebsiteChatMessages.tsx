@@ -51,7 +51,7 @@ export function WebsiteChatMessagesView({ messages, isStreaming, todos }: Websit
           const hasContent = textBlocks.length > 0;
 
           // Show thinking indicator for last message while streaming with no content
-          if (!hasContent && isLastMessage && isStreaming) {
+          if (isLastMessage && isStreaming) {
             return <Chat.ThinkingIndicator key={message.id} text="Thinking" className="text-xs" />;
           }
 

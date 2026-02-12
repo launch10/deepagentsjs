@@ -48,7 +48,7 @@ const cachedResponse = async (state: WebsiteGraphState) => {
  * - Eval/test: 1 HumanMessage passed for input control
  */
 const isCreateFlow = async (state: WebsiteGraphState) => {
-  const hasAiMessage = state.messages.some((m) => m._getType() === "ai");
+  const hasAiMessage = state.messages.some((m) => AIMessage.isInstance(m));
   if (hasAiMessage) return false;
 
   const hasFiles = await hasWebsiteFiles(state);

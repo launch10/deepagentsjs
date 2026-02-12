@@ -11,7 +11,7 @@
 import { describe, it, expect } from "vitest";
 import { HumanMessage, AIMessage, ToolMessage, RemoveMessage } from "@langchain/core/messages";
 import type { BaseMessage } from "@langchain/core/messages";
-import { createContextMessage, isSummaryMessage } from "langgraph-ai-sdk";
+import { createContextMessage, createMultimodalContextMessage, isSummaryMessage } from "langgraph-ai-sdk";
 import { messagesStateReducer } from "@langchain/langgraph";
 import { Conversation } from "@conversation";
 
@@ -1076,6 +1076,163 @@ describe("Conversation", () => {
       });
 
       expect(result).toBeNull();
+    });
+  });
+
+  // ── currentTurn / Turn.hasImageContext ──────────────────────────
+
+  describe("currentTurn", () => {
+    it("returns undefined for empty conversation", () => {
+      const conv = new Conversation([]);
+      expect(conv.currentTurn()).toBeUndefined();
+    });
+
+    it("returns the last turn", () => {
+      const msgs: BaseMessage[] = [
+        new HumanMessage({ content: "Turn 1", id: "h1" }),
+        new AIMessage({ content: "OK", id: "a1" }),
+        new HumanMessage({ content: "Turn 2", id: "h2" }),
+      ];
+      const conv = new Conversation(msgs);
+      const turn = conv.currentTurn();
+      expect(turn).toBeDefined();
+      expect(turn![0]).toBe(msgs[2]); // h2
+    });
+  });
+
+  describe("Turn.hasImageContext", () => {
+    it("returns true when the last turn has an image_url block", () => {
+      const msgs: BaseMessage[] = [
+        new HumanMessage({ content: "Turn 1", id: "h1" }),
+        new AIMessage({ content: "OK", id: "a1" }),
+        // Last turn has image context
+        createMultimodalContextMessage([
+          { type: "text", text: "I uploaded an image" },
+          { type: "image_url", image_url: { url: "https://example.com/photo.png" } },
+        ]),
+        new HumanMessage({ content: "Use this image", id: "h2" }),
+      ];
+      const conv = new Conversation(msgs);
+      expect(conv.currentTurn()?.hasImageContext()).toBe(true);
+    });
+
+    it("returns false when only an older turn has image context", () => {
+      const msgs: BaseMessage[] = [
+        // Old turn with image
+        createMultimodalContextMessage([
+          { type: "text", text: "I uploaded an image" },
+          { type: "image_url", image_url: { url: "https://example.com/photo.png" } },
+        ]),
+        new HumanMessage({ content: "Use this image", id: "h1" }),
+        new AIMessage({ content: "Done", id: "a1" }),
+        // Current turn — no image
+        new HumanMessage({ content: "Make the copy more casual", id: "h2" }),
+      ];
+      const conv = new Conversation(msgs);
+      expect(conv.currentTurn()?.hasImageContext()).toBe(false);
+    });
+
+    it("returns false when no messages have image context", () => {
+      const msgs: BaseMessage[] = [
+        new HumanMessage({ content: "Hello", id: "h1" }),
+        new AIMessage({ content: "Hi", id: "a1" }),
+        new HumanMessage({ content: "Edit the hero", id: "h2" }),
+      ];
+      const conv = new Conversation(msgs);
+      expect(conv.currentTurn()?.hasImageContext()).toBe(false);
+    });
+
+    it("returns true when last turn has text mentioning [Context] and image", () => {
+      const msgs: BaseMessage[] = [
+        new HumanMessage({ content: "Turn 1", id: "h1" }),
+        new AIMessage({ content: "OK", id: "a1" }),
+        createContextMessage("[Context] The user uploaded an image to the site"),
+        new HumanMessage({ content: "Swap the hero image", id: "h2" }),
+      ];
+      const conv = new Conversation(msgs);
+      expect(conv.currentTurn()?.hasImageContext()).toBe(true);
+    });
+
+    it("returns undefined for empty conversation (safe chaining)", () => {
+      const conv = new Conversation([]);
+      expect(conv.currentTurn()?.hasImageContext()).toBeUndefined();
+    });
+  });
+
+  // ── digestMessages ──────────────────────────────────────────────
+
+  describe("digestMessages", () => {
+    it("returns only Human and AI text from prior turns, excluding current", () => {
+      const msgs: BaseMessage[] = [
+        new HumanMessage({ content: "Make the hero red", id: "h1" }),
+        new AIMessage({ content: "Done, hero is red now", id: "a1" }),
+        new HumanMessage({ content: "great and 3 bloods I guess", id: "h2" }),
+      ];
+      const conv = new Conversation(msgs);
+      const digest = conv.digestMessages();
+
+      expect(digest).toHaveLength(2);
+      expect(digest[0]!.content).toBe("Make the hero red");
+      expect(digest[1]!.content).toBe("Done, hero is red now");
+    });
+
+    it("excludes tool messages, context messages, and summaries", () => {
+      const msgs: BaseMessage[] = [
+        createContextMessage("brainstorm context"),
+        new HumanMessage({ content: "Update the CTA", id: "h1" }),
+        new AIMessage({
+          content: "",
+          id: "a1",
+          tool_calls: [{ id: "tc1", name: "edit_file", args: {} }],
+        }),
+        new ToolMessage({ content: "file edited", id: "t1", tool_call_id: "tc1" }),
+        new AIMessage({ content: "Updated the CTA button text", id: "a2" }),
+        new HumanMessage({ content: "now make it blue", id: "h2" }),
+      ];
+      const conv = new Conversation(msgs);
+      const digest = conv.digestMessages();
+
+      // Only turn 1's human + AI with non-empty string content
+      expect(digest).toHaveLength(2);
+      expect(digest[0]!.content).toBe("Update the CTA");
+      expect(digest[1]!.content).toBe("Updated the CTA button text");
+    });
+
+    it("respects maxTurns limit", () => {
+      const msgs: BaseMessage[] = [
+        new HumanMessage({ content: "Turn 1", id: "h1" }),
+        new AIMessage({ content: "Reply 1", id: "a1" }),
+        new HumanMessage({ content: "Turn 2", id: "h2" }),
+        new AIMessage({ content: "Reply 2", id: "a2" }),
+        new HumanMessage({ content: "Turn 3", id: "h3" }),
+        new AIMessage({ content: "Reply 3", id: "a3" }),
+        new HumanMessage({ content: "Turn 4", id: "h4" }),
+        new AIMessage({ content: "Reply 4", id: "a4" }),
+        new HumanMessage({ content: "Current turn", id: "h5" }),
+      ];
+      const conv = new Conversation(msgs);
+
+      // Default maxTurns=4, excludes current → turns 1-4
+      const digest = conv.digestMessages();
+      expect(digest).toHaveLength(8);
+
+      // maxTurns=2 → only turns 3 and 4
+      const short = conv.digestMessages(2);
+      expect(short).toHaveLength(4);
+      expect(short[0]!.content).toBe("Turn 3");
+    });
+
+    it("returns empty array for single-turn conversation", () => {
+      const msgs: BaseMessage[] = [
+        new HumanMessage({ content: "Hello", id: "h1" }),
+      ];
+      const conv = new Conversation(msgs);
+      expect(conv.digestMessages()).toEqual([]);
+    });
+
+    it("returns empty array for empty conversation", () => {
+      const conv = new Conversation([]);
+      expect(conv.digestMessages()).toEqual([]);
     });
   });
 });
