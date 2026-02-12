@@ -1,4 +1,3 @@
-import { useEffect, useRef } from "react";
 import { Chat } from "@components/shared/chat/Chat";
 import { useChatMessages, useChatIsStreaming } from "@components/shared/chat/ChatContext";
 import { useWebsiteChatState } from "@hooks/website";
@@ -26,16 +25,6 @@ export interface WebsiteChatMessagesViewProps {
  * Follows the same pattern as BrainstormMessages.
  */
 export function WebsiteChatMessagesView({ messages, isStreaming, todos }: WebsiteChatMessagesViewProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Scroll container to bottom without affecting parent scroll containers
-    const container = containerRef.current?.parentElement;
-    if (container) {
-      container.scrollTop = container.scrollHeight;
-    }
-  }, [messages]);
-
   // Show thinking indicator when streaming with no messages yet
   // This handles the initial load case where backend is generating response
   if (messages.length === 0 && isStreaming) {
@@ -48,7 +37,7 @@ export function WebsiteChatMessagesView({ messages, isStreaming, todos }: Websit
   }
 
   return (
-    <Chat.Messages.List ref={containerRef}>
+    <Chat.Messages.List>
       {messages.map((message, index) => {
         const isLastMessage = index === messages.length - 1;
 
@@ -83,6 +72,7 @@ export function WebsiteChatMessagesView({ messages, isStreaming, todos }: Websit
       {isStreaming && todos && todos.length > 0 && (
         <Chat.TodoList todos={todos} className="text-xs" />
       )}
+      <Chat.Messages.ScrollAnchor />
     </Chat.Messages.List>
   );
 }

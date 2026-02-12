@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import type { MessageBlock, InferBridgeData, AnyMessageWithBlocks } from "langgraph-ai-sdk-types";
 import { ChatSelectors } from "langgraph-ai-sdk-react";
 import { Brainstorm, type BrainstormBridgeType } from "@shared";
@@ -59,13 +59,6 @@ export function BrainstormMessagesView({
   onCommandClick,
   totalQuestions = Brainstorm.TotalQuestions,
 }: BrainstormMessagesViewProps) {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
   // Detect topic changes to show question badge on first message of each topic
   const messageMetadata = useMemo(() => {
     let lastSeenTopic: string | undefined;
@@ -158,7 +151,7 @@ export function BrainstormMessagesView({
         );
       })}
 
-      <div ref={messagesEndRef} />
+      <Chat.Messages.ScrollAnchor />
     </Chat.Messages.List>
   );
 }

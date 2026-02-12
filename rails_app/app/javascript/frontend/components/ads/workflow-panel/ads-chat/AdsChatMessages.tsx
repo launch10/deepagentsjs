@@ -1,4 +1,3 @@
-import { useEffect, useRef } from "react";
 import { Chat } from "@components/shared/chat/Chat";
 import { useChatMessages, useChatIsStreaming } from "@components/shared/chat/ChatContext";
 
@@ -21,18 +20,8 @@ export interface AdsChatMessagesViewProps {
  * Uses Chat compound components for consistent styling.
  */
 export function AdsChatMessagesView({ messages, isStreaming }: AdsChatMessagesViewProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Scroll container to bottom without affecting parent scroll containers
-    const container = containerRef.current?.parentElement;
-    if (container) {
-      container.scrollTop = container.scrollHeight;
-    }
-  }, [messages]);
-
   return (
-    <Chat.Messages.List ref={containerRef}>
+    <Chat.Messages.List>
       {messages.map((message, index) => {
         const isLastMessage = index === messages.length - 1;
 
@@ -64,6 +53,7 @@ export function AdsChatMessagesView({ messages, isStreaming }: AdsChatMessagesVi
 
         return null;
       })}
+      <Chat.Messages.ScrollAnchor />
     </Chat.Messages.List>
   );
 }
