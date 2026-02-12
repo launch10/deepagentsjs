@@ -8,7 +8,13 @@
  * human turn are kept/removed as a unit.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { HumanMessage, AIMessage, ToolMessage, RemoveMessage } from "@langchain/core/messages";
+import {
+  BaseMessage,
+  HumanMessage,
+  AIMessage,
+  ToolMessage,
+  RemoveMessage,
+} from "@langchain/core/messages";
 import { createContextMessage } from "langgraph-ai-sdk";
 import { compactConversation } from "@nodes";
 
@@ -27,7 +33,7 @@ vi.mock("@core", async (importOriginal) => {
 
 /** Creates N human+AI pairs (2N raw messages). */
 function makeMessages(humanCount: number, startId = 1) {
-  const msgs = [];
+  const msgs: BaseMessage[] = [];
   for (let i = 0; i < humanCount; i++) {
     const hId = `msg-h${startId + i}`;
     const aId = `msg-a${startId + i}`;
@@ -42,22 +48,26 @@ function makeTurnWithTools(turnIndex: number, toolCount = 2) {
   const msgs: any[] = [];
   msgs.push(new HumanMessage({ content: `User turn ${turnIndex}`, id: `turn-h${turnIndex}` }));
   // AI with tool_calls
-  msgs.push(new AIMessage({
-    content: "",
-    id: `turn-ai-tc${turnIndex}`,
-    tool_calls: Array.from({ length: toolCount }, (_, j) => ({
-      id: `tc-${turnIndex}-${j}`,
-      name: `tool_${j}`,
-      args: {},
-    })),
-  }));
+  msgs.push(
+    new AIMessage({
+      content: "",
+      id: `turn-ai-tc${turnIndex}`,
+      tool_calls: Array.from({ length: toolCount }, (_, j) => ({
+        id: `tc-${turnIndex}-${j}`,
+        name: `tool_${j}`,
+        args: {},
+      })),
+    })
+  );
   // ToolMessages
   for (let j = 0; j < toolCount; j++) {
-    msgs.push(new ToolMessage({
-      content: `Tool result ${j}`,
-      id: `turn-tm${turnIndex}-${j}`,
-      tool_call_id: `tc-${turnIndex}-${j}`,
-    }));
+    msgs.push(
+      new ToolMessage({
+        content: `Tool result ${j}`,
+        id: `turn-tm${turnIndex}-${j}`,
+        tool_call_id: `tc-${turnIndex}-${j}`,
+      })
+    );
   }
   // Final AI response
   msgs.push(new AIMessage({ content: `AI final ${turnIndex}`, id: `turn-af${turnIndex}` }));
@@ -218,9 +228,7 @@ describe("compactConversation", () => {
     const resultMessages = (result as { messages: any[] }).messages;
 
     // 8 turns - keep 3 = 5 turns summarized = 10 raw messages removed
-    const removals = resultMessages.filter(
-      (m: any) => m instanceof RemoveMessage
-    );
+    const removals = resultMessages.filter((m: any) => m instanceof RemoveMessage);
     expect(removals.length).toBe(10);
   });
 
@@ -263,9 +271,7 @@ describe("compactConversation", () => {
     const result = await compactConversation(messages);
     const resultMessages = (result as { messages: any[] }).messages;
 
-    const summaryMsg = resultMessages.find(
-      (m: any) => !(m instanceof RemoveMessage)
-    );
+    const summaryMsg = resultMessages.find((m: any) => !(m instanceof RemoveMessage));
     expect(summaryMsg).toBeDefined();
     expect((summaryMsg as any).name).toBe("context");
     expect((summaryMsg as any).content).toContain("[[[CONVERSATION SUMMARY]]]");

@@ -10,11 +10,13 @@ Polly.register(FetchAdapter);
 Polly.register(FSPersister);
 
 /**
- * Normalize absolute paths in request body for deterministic Polly matching.
- * Replaces machine-specific paths like /Users/brett/... or /home/circleci/...
- * with a canonical placeholder so recordings work across different environments.
+ * Normalize request body for deterministic Polly matching.
+ *
+ * Handles two sources of non-determinism:
+ * 1. Absolute paths (machine-specific /Users/brett/... vs /home/circleci/...)
+ * 2. cache_control fields (added by prompt caching middleware, absent in older recordings)
  */
-function normalizePathsInBody(body: unknown): string {
+function normalizeBodyForMatching(body: unknown): string {
   // Handle non-string bodies (objects, Buffers, undefined, etc.)
   if (body === null || body === undefined) {
     return "";
@@ -38,19 +40,23 @@ function normalizePathsInBody(body: unknown): string {
 
   if (!bodyStr) return bodyStr;
 
-  // Pattern matches common absolute path prefixes followed by langgraph_app
-  // Examples:
-  //   /Users/brettshollenberger/programming/business/launch10/langgraph_app/agents/...
-  //   /home/circleci/project/langgraph_app/agents/...
-  //   C:\Users\user\project\langgraph_app\agents\...
+  // 1. Normalize absolute paths
   const absolutePathPattern = /(?:\/[^\/\s"'\\]+)+\/langgraph_app\//g;
   const windowsPathPattern = /(?:[A-Za-z]:\\[^\\"\s]+\\)+langgraph_app\\/g;
 
   let normalized = bodyStr.replace(absolutePathPattern, "/PROJECT_ROOT/langgraph_app/");
   normalized = normalized.replace(windowsPathPattern, "/PROJECT_ROOT/langgraph_app/");
 
+  // 2. Strip cache_control fields so recordings match regardless of prompt caching.
+  //    The middleware adds {"type":"ephemeral","ttl":"5m"} to tools and messages,
+  //    but older recordings have cache_control:null or omit it entirely.
+  normalized = normalized.replace(/"cache_control":\s*\{[^}]*\}/g, '"cache_control":null');
+
   return normalized;
 }
+
+// Keep old name as alias for backward compatibility in beforePersist handler
+const normalizePathsInBody = normalizeBodyForMatching;
 
 // Use global to ensure singleton across module boundaries
 // This is necessary because TypeScript path aliases can cause module duplication

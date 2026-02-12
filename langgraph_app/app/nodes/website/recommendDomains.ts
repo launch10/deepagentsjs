@@ -32,9 +32,6 @@ const PLATFORM_DOMAIN_SUFFIX = ".launch10.site";
 export const domainRecommendationsNode = NodeMiddleware.use(
   {},
   async (state: WebsiteGraphState): Promise<Partial<WebsiteGraphState>> => {
-    // TODO: REMOVE - just testing website builder flow
-    return {};
-
     // Idempotent: skip if already computed
     if (state.domainRecommendations) {
       getLogger({ component: "domainRecommendations" }).debug("Skipping - already computed");
