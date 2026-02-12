@@ -76,6 +76,7 @@ vi.mock("@services", () => ({
 // Mock tools
 vi.mock("@tools", () => ({
   SearchIconsTool: vi.fn().mockImplementation(() => ({})),
+  ChangeColorSchemeTool: vi.fn().mockImplementation(() => ({})),
   executeTextEditorCommand: vi.fn(),
 }));
 

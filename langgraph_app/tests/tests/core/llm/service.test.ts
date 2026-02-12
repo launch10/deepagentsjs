@@ -710,7 +710,7 @@ describe.sequential("LLMService Integration Tests", () => {
       expect(getModelCard(model)).toBe("claude-haiku-4-5");
     });
 
-    it("handles empty preference chain", async () => {
+    it("handles empty preference chain by falling back to cheapest available model", async () => {
       await createModelPreference({
         costTier: "paid",
         speedTier: "slow",
@@ -720,9 +720,10 @@ describe.sequential("LLMService Integration Tests", () => {
 
       await LLMManager.clearCache();
 
-      await expect(LLMManager.get("coding", "slow", "paid", 0)).rejects.toThrow(
-        "No available model"
-      );
+      // LLMService has a hardcoded Haiku fallback when no models match preferences
+      const result = await LLMManager.get("coding", "slow", "paid", 0);
+      expect(result.model).toBeDefined();
+      expect(result.modelCard).toContain("haiku");
     });
 
     it("handles unknown model in preferences gracefully", async () => {
@@ -935,7 +936,7 @@ describe.sequential("LLMService Integration Tests", () => {
       expect(getModelCard(model)).toBe("claude-haiku-4-5");
     });
 
-    it("throws when no models in the entire system have valid cost config", async () => {
+    it("falls back to hardcoded haiku when no models in the system have valid cost config", async () => {
       await createModelConfig({
         modelKey: "sonnet",
         enabled: true,
@@ -961,9 +962,11 @@ describe.sequential("LLMService Integration Tests", () => {
 
       await LLMManager.clearCache();
 
-      await expect(LLMManager.get("coding", "slow", "paid", 0)).rejects.toThrow(
-        "No available model"
-      );
+      // LLMService has a hardcoded Haiku 4.5 fallback when no models have valid cost config.
+      // This ensures the system never fully breaks, even with bad DB state.
+      const result = await LLMManager.get("coding", "slow", "paid", 0);
+      expect(result.model).toBeDefined();
+      expect(result.modelCard).toBe("claude-haiku-4-5-20251001");
     });
   });
 

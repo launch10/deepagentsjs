@@ -135,9 +135,6 @@ export default function BuildStep() {
           <PaginationFooter.BackButton />
           <PaginationFooter.Actions>
             <RestartChatButton />
-            <PaginationFooter.ActionButton disabled={isInitialLoading}>
-              Preview
-            </PaginationFooter.ActionButton>
             <PaginationFooter.ContinueButton disabled={isInitialLoading} />
           </PaginationFooter.Actions>
         </PaginationFooter.Root>

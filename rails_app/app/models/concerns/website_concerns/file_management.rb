@@ -120,18 +120,26 @@ module WebsiteConcerns
 
       attrs_array = attributes.is_a?(Hash) ? attributes.values : attributes
 
-      # Batch preload: template files and website files (avoids N+1)
-      all_paths = attrs_array.filter_map { |a|
-        a.with_indifferent_access[:path]&.to_s&.gsub(/^\//, "")
-      }
-      templates_by_path = template_files.where(path: all_paths).index_by(&:path)
-
+      # Batch preload existing website files by ID (avoids N+1)
       all_ids = attrs_array.filter_map { |a| a.with_indifferent_access[:id] }
       existing_by_id = if all_ids.any?
         website_files.where(id: all_ids).index_by(&:id)
       else
         {}
       end
+
+      # Batch preload template files (avoids N+1)
+      # Include paths from attributes AND from existing records (when path isn't in attributes)
+      all_paths = attrs_array.filter_map { |a|
+        attrs = a.with_indifferent_access
+        path = attrs[:path]
+        if path.nil? && attrs[:id].present?
+          existing_by_id[attrs[:id].to_i]&.path
+        else
+          path
+        end
+      }.map { |p| p.to_s.gsub(/^\//, "") }
+      templates_by_path = template_files.where(path: all_paths).index_by(&:path)
 
       # Handle both hash and array formats
       if attributes.is_a?(Hash)

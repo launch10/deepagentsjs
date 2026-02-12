@@ -90,6 +90,9 @@ describe("Website Builder File Return Behavior", () => {
       const [website] = await db.select().from(websites).limit(1);
       if (!website) throw new Error("No website found");
       websiteId = website.id;
+
+      // Ensure clean state: delete any website_files that may have leaked into the snapshot
+      await db.delete(websiteFiles).where(eq(websiteFiles.websiteId, websiteId));
     });
 
     it("codeFiles view returns template files even when no website_files exist", async () => {

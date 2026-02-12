@@ -384,7 +384,7 @@ export async function singleShotEdit(
   } else {
     messageContent = textContent || "Done! Your changes have been applied.";
   }
-  returnMessages.push(new AIMessage({ content: messageContent }));
+  returnMessages.push(new AIMessage({ content: messageContent, id: `sse-summary-${crypto.randomUUID()}` }));
 
   return {
     messages: returnMessages,
@@ -558,7 +558,7 @@ async function retryWithErrorContext(
       messageContent +=
         "\n\nNote: some edits could not be applied. You may want to verify the changes.";
     }
-    returnMessages.push(new AIMessage({ content: messageContent }));
+    returnMessages.push(new AIMessage({ content: messageContent, id: `sse-retry-summary-${crypto.randomUUID()}` }));
 
     return {
       messages: returnMessages,

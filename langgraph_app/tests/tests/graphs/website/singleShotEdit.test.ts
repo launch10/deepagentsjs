@@ -184,13 +184,13 @@ const SIMPLE_EDITS: EditTestCase[] = [
     expectedTargets: ["HowItWorks"],
   },
 
-  // ── Problem-targeted ──
+  // ── HowItWorks heading change ──
   {
-    prompt: "Change the problem section heading to 'The Real Cost of Bad Scheduling'",
-    label: "problem-heading",
+    prompt: "Change the how it works heading to 'The Real Cost of Bad Scheduling'",
+    label: "howitworks-heading",
     expectedRoute: "simple",
-    expectedTargets: ["Problem"],
-    expectedContains: [{ file: "Problem", text: "The Real Cost of Bad Scheduling" }],
+    expectedTargets: ["HowItWorks"],
+    expectedContains: [{ file: "HowItWorks", text: "The Real Cost of Bad Scheduling" }],
   },
 
   // ── SocialProof-targeted ──
@@ -228,11 +228,11 @@ const SIMPLE_EDITS: EditTestCase[] = [
     expectedAbsent: [{ file: "IndexPage", text: "<SocialProof" }],
   },
   {
-    prompt: "Remove the problem section from the page",
-    label: "cross-remove-problem",
+    prompt: "Remove the footer from the page",
+    label: "cross-remove-footer",
     expectedRoute: "simple",
     expectedTargets: ["IndexPage"],
-    expectedAbsent: [{ file: "IndexPage", text: "<Problem" }],
+    expectedAbsent: [{ file: "IndexPage", text: "<Footer" }],
   },
 ];
 

@@ -259,10 +259,12 @@ describe("singleShotEdit error handling", () => {
 
   it("returns files map from successful edits for progressive streaming", async () => {
     const backend = makeFakeBackend();
-    // Mock dirty paths tracking (populated by backend.edit() in real flow)
-    (backend.getDirtyPaths as ReturnType<typeof vi.fn>).mockReturnValue([
-      "/src/components/Hero.tsx",
-    ]);
+    // Mock dirty paths tracking: empty before edits, populated after
+    // singleShotEdit snapshots preEditDirtyPaths BEFORE applying edits,
+    // then compares with getDirtyPaths() AFTER edits to scope flush.
+    (backend.getDirtyPaths as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce([])  // preEditDirtyPaths snapshot (before edits)
+      .mockReturnValue(["/src/components/Hero.tsx"]);  // after edits
     (backend.readRaw as ReturnType<typeof vi.fn>).mockResolvedValue({
       content: ["<div>Updated Hero</div>"],
       path: "/src/components/Hero.tsx",
@@ -281,9 +283,10 @@ describe("singleShotEdit error handling", () => {
     );
 
     expect(result.files).toBeDefined();
-    expect(result.files!["/src/components/Hero.tsx"]).toBeDefined();
+    // Key is normalized: leading slash stripped to match DB convention
+    expect(result.files!["src/components/Hero.tsx"]).toBeDefined();
     // Content should be normalized from string[] to string
-    expect(result.files!["/src/components/Hero.tsx"]!.content).toBe("<div>Updated Hero</div>");
+    expect(result.files!["src/components/Hero.tsx"]!.content).toBe("<div>Updated Hero</div>");
   });
 
   it("does not return files when all edits fail", async () => {

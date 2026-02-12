@@ -394,7 +394,6 @@ async function _createCodingAgentInternal(
   let escalated = false;
   let backend: WebsiteFilesBackend | undefined = options.existingBackend;
 
-  debugger;
   if (requestedRoute === "auto") {
     const result = await resolveRoute(state, options);
     resolvedRoute = result.route;
@@ -439,7 +438,10 @@ async function _createCodingAgentInternal(
   // Flush all deferred writes to DB in one batch
   await agentBackend.flush();
 
-  const messages = result.messages ?? [];
+  // agent.invoke() returns [...inputMessages, ...newMessages].
+  // Slice off the input messages to return only NEW messages from the agent.
+  const allMessages = result.messages ?? [];
+  const messages = allMessages.slice(sanitizedMessages.length);
 
   // When escalating from single-shot, prepend a brief note so the user
   // understands why the response took longer than a typical quick edit.

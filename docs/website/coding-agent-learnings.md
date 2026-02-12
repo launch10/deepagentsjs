@@ -2,7 +2,7 @@
 
 ## 1. Introduction
 
-This document captures institutional knowledge about the coding agent system — the AI-powered engine that builds and edits landing pages in Launch10. It's not an API reference (see `docs/website/coding-agent.md` for that). Instead, it records *why* each piece exists, what problems motivated it, and what we learned from running it in production.
+This document captures institutional knowledge about the coding agent system — the AI-powered engine that builds and edits landing pages in Launch10. It's not an API reference (see `docs/website/coding-agent.md` for that). Instead, it records _why_ each piece exists, what problems motivated it, and what we learned from running it in production.
 
 **Audience**: Future engineers, and ourselves in six months when the context has faded.
 
@@ -41,14 +41,14 @@ The most important architectural decision. Every user message passes through up 
 
 Within the default subgraph, `resolveRoute()` in `langgraph_app/app/nodes/coding/agent.ts:226` decides between single-shot and the full agent:
 
-| Condition | Route | Rationale |
-|-----------|-------|-----------|
-| `state.isCreateFlow === true` | full | Create needs parallel subagents |
-| `state.errors` present | full | Debugging needs tool loops |
-| Console errors with `type === "error"` | full | Build errors need investigation |
-| Custom `systemPrompt` provided | full | Specialized behavior doesn't fit single-shot's prompt |
-| Image context in messages | full | Image swaps touch multiple files |
-| Otherwise | LLM classifier decides | Haiku-class model, ~$0.001 per classification |
+| Condition                              | Route                  | Rationale                                             |
+| -------------------------------------- | ---------------------- | ----------------------------------------------------- |
+| `state.isCreateFlow === true`          | full                   | Create needs parallel subagents                       |
+| `state.errors` present                 | full                   | Debugging needs tool loops                            |
+| Console errors with `type === "error"` | full                   | Build errors need investigation                       |
+| Custom `systemPrompt` provided         | full                   | Specialized behavior doesn't fit single-shot's prompt |
+| Image context in messages              | full                   | Image swaps touch multiple files                      |
+| Otherwise                              | LLM classifier decides | Haiku-class model, ~$0.001 per classification         |
 
 The classifier (`classifyEditWithLLM` in `singleShotEdit.ts:33`) receives the user message and the **file tree** (not file contents) — cheap and fast. It returns `"simple"` or `"complex"`.
 
@@ -107,7 +107,7 @@ The model was trained on this tool, so it's more reliable than custom alternativ
 
 ### Tell-Then-Do Pattern
 
-The prompt says: *"Start with a brief message describing what you'll change, THEN make edits."* This means the user sees streaming text immediately while edits are being processed. Combined with the `"notify"` tag on the model config, tokens stream to the frontend in real-time.
+The prompt says: _"Start with a brief message describing what you'll change, THEN make edits."_ This means the user sees streaming text immediately while edits are being processed. Combined with the `"notify"` tag on the model config, tokens stream to the frontend in real-time.
 
 ### Two-Pass Retry
 
@@ -126,7 +126,7 @@ const editCalls = toolCalls.filter((tc: any) => (tc.args as any)?.command !== "v
 const viewCalls = toolCalls.filter((tc: any) => (tc.args as any)?.command === "view");
 ```
 
-On retry, the prompt explicitly says: *"All files are already pre-loaded in the system prompt above — NEVER use the 'view' command."*
+On retry, the prompt explicitly says: _"All files are already pre-loaded in the system prompt above — NEVER use the 'view' command."_
 
 ### Tool Evidence in History
 
@@ -141,6 +141,7 @@ The heavyweight path for complex edits and create flows. Source: `langgraph_app/
 ### Architecture
 
 `createDeepAgent()` from the deepagents library with:
+
 - Parent Sonnet agent plans work and delegates
 - Parallel coder subagents implement sections simultaneously
 - `SearchIconsTool` for semantic Lucide React icon search
@@ -165,11 +166,12 @@ Subagents (`langgraph_app/app/nodes/coding/subagents/coder.ts`) get static conte
 deepagents' built-in `todoListMiddleware()` is hardcoded to skip todos for "simple" tasks (<3 steps). But our agent dispatches 4-6 subagents — users need visibility into progress. The custom `todoOverrideMiddleware` (`agent.ts:60-88`) appends AFTER the built-in middleware (getting "last word" advantage):
 
 Key instructions it reinforces:
+
 - Always begin with a friendly 1-2 sentence message BEFORE any tool calls
 - Always `write_todos` when delegating to subagents
 - Mark ALL parallel subagents as `in_progress` when dispatching
 - Always pass `todo_id` to `task()` for real-time auto-completion
-- Keep todos non-technical: *"Build the hero section"* not *"Edit Hero.tsx"*
+- Keep todos non-technical: _"Build the hero section"_ not _"Edit Hero.tsx"_
 
 ---
 
@@ -212,11 +214,13 @@ Static sections (role, tools, design philosophy) come FIRST in the prompt. Dynam
 ```typescript
 // singleShotEdit.ts:173-181
 return new SystemMessage({
-  content: [{
-    type: "text",
-    text,
-    cache_control: { type: "ephemeral" as const },
-  }],
+  content: [
+    {
+      type: "text",
+      text,
+      cache_control: { type: "ephemeral" as const },
+    },
+  ],
 });
 ```
 
@@ -248,12 +252,13 @@ Source: `langgraph_app/app/nodes/website/contextWindow.ts`
 
 Pure function, no LLM calls — just windowing. This is the "safety ceiling" for when compaction hasn't run yet.
 
-| Parameter | Default | Purpose |
-|-----------|---------|---------|
-| `maxTurnPairs` | 10 | Human+AI turn pairs to keep |
-| `maxChars` | 40,000 | Total character ceiling |
+| Parameter      | Default | Purpose                     |
+| -------------- | ------- | --------------------------- |
+| `maxTurnPairs` | 10      | Human+AI turn pairs to keep |
+| `maxChars`     | 40,000  | Total character ceiling     |
 
 Key behaviors:
+
 - Context messages (`name="context"`) always kept, placed FIRST for caching
 - AI+ToolMessage groups treated as atomic — never split
 - If a group exceeds limits, strip tool blocks instead of orphaning them
@@ -264,18 +269,19 @@ Source: `langgraph_app/app/nodes/website/compactConversation.ts`
 
 LLM-based summarization of old messages. Triggers when conversation grows too long.
 
-| Parameter | Default | Purpose |
-|-----------|---------|---------|
-| `messageThreshold` | 30 | Human turns before compaction triggers |
-| `keepRecent` | 20 | Recent human turns preserved (not summarized) |
-| `maxChars` | 200,000 | Character ceiling for forced compaction |
+| Parameter          | Default | Purpose                                       |
+| ------------------ | ------- | --------------------------------------------- |
+| `messageThreshold` | 30      | Human turns before compaction triggers        |
+| `keepRecent`       | 20      | Recent human turns preserved (not summarized) |
+| `maxChars`         | 200,000 | Character ceiling for forced compaction       |
 
 Key invariants:
+
 - Atomic message groups (tool_call pairs) are NEVER split
 - Existing summaries folded into new summary — always exactly ONE summary at any time
 - Summary stored as `AIMessage(name="context")` — filtered from UI, excluded from `lastAIMessage()`
-- Old context events are removed (re-injected fresh by `injectAgentContext`)
-- Neutral third-person voice: *"The user requested... The assistant built..."*
+- Old context events are removed (re-injected fresh by `prepareTurn`)
+- Neutral third-person voice: _"The user requested... The assistant built..."_
 
 ### Layer 4: deepagents Internal Summarization
 
@@ -289,7 +295,7 @@ Context messages FIRST, then conversation. This ensures `[summary] [conversation
 
 ## 8. Context Injection: Out-of-Band Data
 
-Source: `langgraph_app/app/api/middleware/context/injectAgentContext.ts`
+Source: `langgraph_app/app/api/middleware/context/prepareTurn.ts`
 
 How the agent learns about things that happened outside the conversation (e.g., brainstorm completed, images generated).
 
@@ -336,7 +342,7 @@ Critical distinction: 429 (rate limit) does NOT trigger fallback unless the erro
 
 ### Layer 3: Single-Shot Escalation
 
-In `agent.ts:363-366`: if all edits fail after retry, escalate to the full agent. User sees *"This change needs a bit more work — taking a closer look..."*
+In `agent.ts:363-366`: if all edits fail after retry, escalate to the full agent. User sees _"This change needs a bit more work — taking a closer look..."_
 
 ### Layer 4: Node-Level Error Handling
 
@@ -344,7 +350,7 @@ In graph nodes: catches node execution errors, stores in state. Prevents one nod
 
 ### Layer 5: Durability Catch
 
-In `createCodingAgent` (`agent.ts:302-321`): try/catch around the entire agent invocation. Logs + reports to Rollbar. Returns user-friendly message: *"I ran into an issue processing your request. Could you try again?"*
+In `createCodingAgent` (`agent.ts:302-321`): try/catch around the entire agent invocation. Logs + reports to Rollbar. Returns user-friendly message: _"I ran into an issue processing your request. Could you try again?"_
 
 NEVER lets an unhandled error leave the user with no response.
 
@@ -359,6 +365,7 @@ How WebContainer build errors feed back to the agent.
 Source: `rails_app/app/javascript/frontend/lib/webcontainer/errorParsing.ts`
 
 Pattern-matched error extraction:
+
 - esbuild blocks: split on `✘ [ERROR]`, extract message + file + code frame
 - Vite resolution errors: `Failed to resolve import`, `No matching export`
 - SyntaxError, Pre-transform errors
@@ -433,7 +440,7 @@ The user is assumed non-technical. This is enforced at multiple levels:
 
 **Prompt-level**: The role prompt says NEVER mention exports, imports, components, props, syntax, JSX, TypeScript, file names, file paths, tools, or subagents.
 
-**Todo-level**: Todo override middleware says *"keep todos high-level and clear. Do not reference specific files or directories."*
+**Todo-level**: Todo override middleware says _"keep todos high-level and clear. Do not reference specific files or directories."_
 
 **Error messages**: `"I ran into an issue"` not `"TypeError: Cannot read property 'default' of undefined"`
 
@@ -465,7 +472,7 @@ Theme-specific typography recommendations included as a dynamic suffix to the pr
 
 ### Tracking
 
-`L10.createLead()` calls must NEVER be removed. This is enforced in both the full agent prompt and single-shot prompt: *"NEVER remove L10.createLead() calls or tracking imports."*
+`L10.createLead()` calls must NEVER be removed. This is enforced in both the full agent prompt and single-shot prompt: _"NEVER remove L10.createLead() calls or tracking imports."_
 
 ---
 
@@ -511,7 +518,7 @@ Models cannot reliably detect their own loops. Hard limits (recursion limits, ti
 
 ### Lesson 3: Silent failures are deadlier than loud crashes
 
-Anthropic's TPU bug silently degraded code quality for weeks before anyone noticed. We need output validation and quality heuristics, not just error catching. The current system catches *errors* well but has no concept of *quality degradation*.
+Anthropic's TPU bug silently degraded code quality for weeks before anyone noticed. We need output validation and quality heuristics, not just error catching. The current system catches _errors_ well but has no concept of _quality degradation_.
 
 ### Lesson 4: Provider outages are correlated
 
@@ -525,20 +532,20 @@ Single-shot is ~$0.005. Full agent is ~$0.50. Getting routing right saves more m
 
 ## Appendix: Key File Paths
 
-| Component | Path |
-|-----------|------|
-| Website graph | `langgraph_app/app/graphs/website.ts` |
-| Intent graph factory | `langgraph_app/app/graphs/shared/createIntentGraph.ts` |
-| Coding agent (routing + dispatch) | `langgraph_app/app/nodes/coding/agent.ts` |
-| Single-shot edit | `langgraph_app/app/nodes/coding/singleShotEdit.ts` |
-| Coder subagent | `langgraph_app/app/nodes/coding/subagents/coder.ts` |
-| Message sanitization | `langgraph_app/app/nodes/coding/messageUtils.ts` |
-| Context window | `langgraph_app/app/nodes/website/contextWindow.ts` |
-| Conversation compaction | `langgraph_app/app/nodes/website/compactConversation.ts` |
-| Context injection | `langgraph_app/app/api/middleware/context/injectAgentContext.ts` |
-| Prompt caching middleware | `langgraph_app/app/core/llm/promptCachingMiddleware.ts` |
-| Tool error surfacing | `langgraph_app/app/core/llm/toolErrorSurfacingMiddleware.ts` |
-| Model fallback | `langgraph_app/app/core/llm/unavailableModelFallbackMiddleware.ts` |
-| Theme colors prompt | `langgraph_app/app/prompts/coding/shared/design/themeColors.ts` |
-| Error parsing (frontend) | `rails_app/app/javascript/frontend/lib/webcontainer/errorParsing.ts` |
-| State merge reducers | `shared/state/website.ts` |
+| Component                         | Path                                                                 |
+| --------------------------------- | -------------------------------------------------------------------- |
+| Website graph                     | `langgraph_app/app/graphs/website.ts`                                |
+| Intent graph factory              | `langgraph_app/app/graphs/shared/createIntentGraph.ts`               |
+| Coding agent (routing + dispatch) | `langgraph_app/app/nodes/coding/agent.ts`                            |
+| Single-shot edit                  | `langgraph_app/app/nodes/coding/singleShotEdit.ts`                   |
+| Coder subagent                    | `langgraph_app/app/nodes/coding/subagents/coder.ts`                  |
+| Message sanitization              | `langgraph_app/app/nodes/coding/messageUtils.ts`                     |
+| Context window                    | `langgraph_app/app/nodes/website/contextWindow.ts`                   |
+| Conversation compaction           | `langgraph_app/app/nodes/website/compactConversation.ts`             |
+| Context injection                 | `langgraph_app/app/api/middleware/context/prepareTurn.ts`            |
+| Prompt caching middleware         | `langgraph_app/app/core/llm/promptCachingMiddleware.ts`              |
+| Tool error surfacing              | `langgraph_app/app/core/llm/toolErrorSurfacingMiddleware.ts`         |
+| Model fallback                    | `langgraph_app/app/core/llm/unavailableModelFallbackMiddleware.ts`   |
+| Theme colors prompt               | `langgraph_app/app/prompts/coding/shared/design/themeColors.ts`      |
+| Error parsing (frontend)          | `rails_app/app/javascript/frontend/lib/webcontainer/errorParsing.ts` |
+| State merge reducers              | `shared/state/website.ts`                                            |

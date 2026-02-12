@@ -14,6 +14,8 @@ import type { BaseMessage } from "@langchain/core/messages";
 import { createContextMessage, createMultimodalContextMessage, isSummaryMessage } from "langgraph-ai-sdk";
 import { messagesStateReducer } from "@langchain/langgraph";
 import { Conversation } from "@conversation";
+import { sanitizeMessagesForLLM } from "@nodes";
+import { timestampedMessagesReducer } from "@annotation";
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -1233,6 +1235,253 @@ describe("Conversation", () => {
     it("returns empty array for empty conversation", () => {
       const conv = new Conversation([]);
       expect(conv.digestMessages()).toEqual([]);
+    });
+  });
+
+  // ── Tool Evidence Preservation ──────────────────────────────────────
+  //
+  // singleShotEdit returns: AIMessage(tool_calls) → ToolMessage(s) → AIMessage(summary)
+  // These must survive through parsing, windowing, sanitization, and compaction
+  // so the next LLM turn sees the full tool call history.
+
+  describe("tool evidence preservation (singleShotEdit pattern)", () => {
+    /** Build the exact message pattern singleShotEdit returns. */
+    function makeSingleShotEditReturn(turnIdx: number) {
+      return [
+        new HumanMessage({ content: `User edit request ${turnIdx}`, id: `h${turnIdx}` }),
+        new AIMessage({
+          content: [
+            { type: "text", text: "I'll update the heading using str_replace." },
+            { type: "tool_use", id: `toolu_${turnIdx}`, name: "str_replace_based_edit_tool", input: { command: "str_replace", path: "/src/Hero.tsx", old_str: "old text", new_str: "new text" } },
+          ],
+          id: `a${turnIdx}-tc`,
+          tool_calls: [{
+            id: `toolu_${turnIdx}`,
+            name: "str_replace_based_edit_tool",
+            args: { command: "str_replace", path: "/src/Hero.tsx", old_str: "old text", new_str: "new text" },
+            type: "tool_call" as const,
+          }],
+        }),
+        new ToolMessage({
+          content: "Successfully replaced text at exactly one location.",
+          id: `t${turnIdx}`,
+          tool_call_id: `toolu_${turnIdx}`,
+        }),
+        new AIMessage({
+          content: "I'll update the heading using str_replace.",
+          id: `a${turnIdx}-summary`,
+        }),
+      ];
+    }
+
+    it("preserves tool evidence through Conversation parsing", () => {
+      const msgs: BaseMessage[] = [
+        ...makeSimpleTurns(2),           // 2 normal turns
+        ...makeSingleShotEditReturn(3),   // singleShotEdit turn
+      ];
+      const conv = new Conversation(msgs);
+
+      expect(conv.humanTurnCount).toBe(3);
+
+      // The singleShotEdit turn should contain all 4 messages
+      const sseditTurn = conv.turns[2]!;
+      expect(sseditTurn.length).toBe(4);
+
+      // Verify tool_calls on the AI message
+      const aiWithTools = sseditTurn[1] as AIMessage;
+      expect(aiWithTools.tool_calls).toHaveLength(1);
+      expect(aiWithTools.tool_calls![0]!.name).toBe("str_replace_based_edit_tool");
+
+      // Verify ToolMessage
+      const toolMsg = sseditTurn[2] as ToolMessage;
+      expect(toolMsg._getType()).toBe("tool");
+      expect(toolMsg.tool_call_id).toBe("toolu_3");
+    });
+
+    it("preserves tool evidence through windowing", () => {
+      const msgs: BaseMessage[] = [
+        ...makeSimpleTurns(2),
+        ...makeSingleShotEditReturn(3),
+        // New turn after the singleShotEdit
+        new HumanMessage({ content: "Another request", id: "h4" }),
+      ];
+      const conv = new Conversation(msgs);
+      const windowed = conv.window({ maxTurnPairs: 10, maxChars: 100_000 });
+
+      // Find the AI message with tool_calls in windowed output
+      const aiWithTools = windowed.find(
+        (m) => m._getType() === "ai" && ((m as AIMessage).tool_calls?.length ?? 0) > 0
+      ) as AIMessage;
+      expect(aiWithTools).toBeDefined();
+      expect(aiWithTools.tool_calls![0]!.name).toBe("str_replace_based_edit_tool");
+
+      // ToolMessage should be right after it
+      const toolMsgIdx = windowed.indexOf(aiWithTools) + 1;
+      const toolMsg = windowed[toolMsgIdx]!;
+      expect(toolMsg._getType()).toBe("tool");
+      expect((toolMsg as ToolMessage).tool_call_id).toBe("toolu_3");
+    });
+
+    it("preserves tool evidence through prepareTurn", () => {
+      const msgs: BaseMessage[] = [
+        ...makeSimpleTurns(2),
+        ...makeSingleShotEditReturn(3),
+        new HumanMessage({ content: "Next request", id: "h4" }),
+      ];
+      const conv = new Conversation(msgs);
+      const prepared = conv.prepareTurn({ maxTurnPairs: 10, maxChars: 100_000 });
+
+      // Tool evidence should appear in prepared messages
+      const aiWithTools = prepared.find(
+        (m) => m._getType() === "ai" && ((m as AIMessage).tool_calls?.length ?? 0) > 0
+      ) as AIMessage;
+      expect(aiWithTools).toBeDefined();
+      expect(aiWithTools.tool_calls![0]!.name).toBe("str_replace_based_edit_tool");
+
+      const toolMsgs = prepared.filter((m) => m._getType() === "tool");
+      expect(toolMsgs).toHaveLength(1);
+      expect((toolMsgs[0] as ToolMessage).tool_call_id).toBe("toolu_3");
+    });
+
+    it("preserves tool evidence through sanitizeMessagesForLLM", () => {
+      // sanitizeMessagesForLLM imported at top of file
+
+      const msgs: BaseMessage[] = [
+        ...makeSimpleTurns(2),
+        ...makeSingleShotEditReturn(3),
+        new HumanMessage({ content: "Next request", id: "h4" }),
+      ];
+
+      const sanitized = sanitizeMessagesForLLM(msgs);
+
+      // All messages should be preserved (none orphaned)
+      const aiWithTools = sanitized.find(
+        (m: BaseMessage) => m._getType() === "ai" && ((m as AIMessage).tool_calls?.length ?? 0) > 0
+      ) as AIMessage;
+      expect(aiWithTools).toBeDefined();
+      expect(aiWithTools.tool_calls![0]!.name).toBe("str_replace_based_edit_tool");
+
+      const toolMsgs = sanitized.filter((m: BaseMessage) => m._getType() === "tool");
+      expect(toolMsgs).toHaveLength(1);
+    });
+
+    it("preserves tool evidence through full pipeline: parse → window → sanitize", () => {
+      // sanitizeMessagesForLLM imported at top of file
+
+      const msgs: BaseMessage[] = [
+        ...makeSimpleTurns(2),
+        ...makeSingleShotEditReturn(3),
+        new HumanMessage({ content: "Make the background darker", id: "h4" }),
+      ];
+
+      // Simulate the full agent.ts pipeline:
+      // 1. Conversation.prepareTurn (parse + inject context + window)
+      const conv = new Conversation(msgs);
+      const prepared = conv.prepareTurn({ maxTurnPairs: 10, maxChars: 100_000 });
+
+      // 2. sanitizeMessagesForLLM
+      const sanitized = sanitizeMessagesForLLM(prepared);
+
+      // The sanitized messages (what the LLM actually sees) should contain:
+      // - The AI message with tool_calls
+      // - The ToolMessage
+      // - The summary AI message
+      // - The new human message
+      const aiWithTools = sanitized.find(
+        (m: BaseMessage) => m._getType() === "ai" && ((m as AIMessage).tool_calls?.length ?? 0) > 0
+      ) as AIMessage;
+      expect(aiWithTools).toBeDefined();
+      expect(aiWithTools.tool_calls![0]!.name).toBe("str_replace_based_edit_tool");
+
+      const toolMsgs = sanitized.filter((m: BaseMessage) => m._getType() === "tool");
+      expect(toolMsgs).toHaveLength(1);
+      expect((toolMsgs[0] as ToolMessage).tool_call_id).toBe("toolu_3");
+
+      // The new human message should be the last message
+      const lastMsg = sanitized[sanitized.length - 1]!;
+      expect(lastMsg._getType()).toBe("human");
+      expect(lastMsg.content).toBe("Make the background darker");
+    });
+
+    it("compaction keeps tool evidence in recent turns", async () => {
+      // Create enough turns to trigger compaction, with the singleShotEdit turn in the "recent" window
+      const oldTurns = makeSimpleTurns(25);  // 25 old turns (will be summarized)
+      const recentTurns = [
+        ...makeSingleShotEditReturn(30),     // singleShotEdit is in recent window
+        ...makeSimpleTurns(5, 31),           // 5 more recent turns
+      ];
+
+      const msgs: BaseMessage[] = [...oldTurns, ...recentTurns];
+      const conv = new Conversation(msgs);
+
+      const result = await conv.compact({
+        messageThreshold: 20,
+        keepRecent: 10,
+        summarizer: async () => "Summary of old conversation.",
+      });
+
+      expect(result).not.toBeNull();
+
+      // The singleShotEdit turn (turn 26) should be in the kept window
+      // Get the messages that survive after compaction
+      const removedIds = new Set(result!.removals.map((r) => r.id));
+
+      // Tool evidence messages should NOT be removed
+      expect(removedIds.has("a30-tc")).toBe(false);
+      expect(removedIds.has("t30")).toBe(false);
+      expect(removedIds.has("a30-summary")).toBe(false);
+    });
+
+    it("timestampedMessagesReducer preserves tool_calls on AIMessages", () => {
+      const aiWithTools = new AIMessage({
+        content: [
+          { type: "text", text: "I'll update the heading." },
+          { type: "tool_use", id: "toolu_1", name: "str_replace_based_edit_tool", input: {} },
+        ],
+        id: "ai-with-tools",
+        tool_calls: [{
+          id: "toolu_1",
+          name: "str_replace_based_edit_tool",
+          args: { command: "str_replace" },
+          type: "tool_call" as const,
+        }],
+      });
+
+      const toolMsg = new ToolMessage({
+        content: "Success",
+        id: "tool-1",
+        tool_call_id: "toolu_1",
+      });
+
+      const summaryAi = new AIMessage({
+        content: "I've updated the heading.",
+        id: "ai-summary",
+      });
+
+      // Simulate adding these messages through the reducer (as websiteBuilder output would)
+      const state1 = timestampedMessagesReducer([], [aiWithTools, toolMsg, summaryAi]);
+
+      // The AI message with tool_calls should still have them after going through the reducer
+      const reducedAi = state1.find((m) => m.id === "ai-with-tools") as AIMessage;
+      expect(reducedAi).toBeDefined();
+      expect(reducedAi.tool_calls).toHaveLength(1);
+      expect(reducedAi.tool_calls![0]!.name).toBe("str_replace_based_edit_tool");
+
+      // The ToolMessage should be preserved
+      const reducedTool = state1.find((m) => m.id === "tool-1");
+      expect(reducedTool).toBeDefined();
+      expect(reducedTool!._getType()).toBe("tool");
+
+      // Now add a new human message (simulating next user turn)
+      const state2 = timestampedMessagesReducer(state1, [
+        new HumanMessage({ content: "Make the background darker", id: "h-next" }),
+      ]);
+
+      // Tool evidence should STILL be preserved after adding more messages
+      const reducedAi2 = state2.find((m) => m.id === "ai-with-tools") as AIMessage;
+      expect(reducedAi2).toBeDefined();
+      expect(reducedAi2.tool_calls).toHaveLength(1);
+      expect(reducedAi2.tool_calls![0]!.name).toBe("str_replace_based_edit_tool");
     });
   });
 });
