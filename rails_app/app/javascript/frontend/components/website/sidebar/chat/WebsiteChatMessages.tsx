@@ -24,7 +24,11 @@ export interface WebsiteChatMessagesViewProps {
  * Uses Chat compound components for consistent styling.
  * Follows the same pattern as BrainstormMessages.
  */
-export function WebsiteChatMessagesView({ messages, isStreaming, todos }: WebsiteChatMessagesViewProps) {
+export function WebsiteChatMessagesView({
+  messages,
+  isStreaming,
+  todos,
+}: WebsiteChatMessagesViewProps) {
   // Show thinking indicator when streaming with no messages yet
   // This handles the initial load case where backend is generating response
   if (messages.length === 0 && isStreaming) {
@@ -55,16 +59,23 @@ export function WebsiteChatMessagesView({ messages, isStreaming, todos }: Websit
             return <Chat.ThinkingIndicator key={message.id} text="Thinking" className="text-xs" />;
           }
 
-          // Render text blocks
-          return textBlocks.map((block) => (
-            <Chat.AIMessage.Content
-              key={block.id}
-              state={isLastMessage ? "active" : "inactive"}
-              className="text-xs"
-            >
-              {block.text}
-            </Chat.AIMessage.Content>
-          ));
+          // Skip messages with no text content
+          if (!hasContent) return null;
+
+          // Render text blocks wrapped in AIMessage.Root for data-testid="ai-message"
+          return (
+            <Chat.AIMessage.Root key={message.id}>
+              {textBlocks.map((block) => (
+                <Chat.AIMessage.Content
+                  key={block.id}
+                  state={isLastMessage ? "active" : "inactive"}
+                  className="text-xs"
+                >
+                  {block.text}
+                </Chat.AIMessage.Content>
+              ))}
+            </Chat.AIMessage.Root>
+          );
         }
 
         return null;

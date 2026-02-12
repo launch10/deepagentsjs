@@ -138,14 +138,9 @@ test.describe("Website Builder", () => {
       const targetIndex = paletteCount > 1 ? 1 : 0;
       await websitePage.selectColorPalette(targetIndex);
 
-      // Panel auto-closes after selection, streaming starts (change_theme intent fires through Langgraph)
-      await expect(websitePage.sendButton).toHaveAttribute("aria-label", "Stop", {
-        timeout: 10000,
-      });
+      // Panel auto-closes after selection, state-only stream fires (change_theme intent through Langgraph)
+      // Note: change_theme is a silent action — no AI message is generated, only state updates (files + themeId)
       await websitePage.waitForStreamingComplete(120000);
-
-      // AI confirms the theme change
-      await expect(websitePage.aiMessages.last()).toBeVisible({ timeout: 30000 });
 
       // Preview iframe re-renders with the new theme (CSS updated via index.css change)
       await websitePage.waitForPreviewReady(120000);

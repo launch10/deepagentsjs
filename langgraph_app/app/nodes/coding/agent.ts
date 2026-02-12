@@ -75,25 +75,25 @@ const todoOverrideMiddleware = createMiddleware({
       ...request,
       systemMessage: request.systemMessage.concat(
         `\n\nEVERY RESPONSE MUST FOLLOW THIS PATTERN — NO EXCEPTIONS:\n\n` +
-        `1. MESSAGE FIRST: Always begin your response with a brief, friendly message ` +
-        `to the user (1-2 sentences) describing what you're about to do, BEFORE ` +
-        `calling any tools. This gives the user immediate feedback that their request is being ` +
-        `handled. For example: "I'll update the copy across all sections to be more professional ` +
-        `and compelling."\n\n` +
-        `2. TODOS ALWAYS: ALWAYS call write_todos to create a todo list — even for simple edits. ` +
-        `The user is non-technical and needs to see what's happening. Create todos BEFORE doing ` +
-        `any work. Keep them high-level and clear (no file names or code jargon). ` +
-        `For simple edits: at least 1-2 todos (e.g. "Update the headline copy", "Polish the CTA"). ` +
-        `For multi-file work: one todo per section or file being changed. ` +
-        `For subagent delegation: one todo per subagent dispatch. ` +
-        `Mark todos as in_progress when you start them and completed when done.\n\n` +
-        `3. DELEGATE OR DO: Either delegate todos to subagents via the task tool, or complete ` +
-        `them yourself. When dispatching subagents, launch ALL in ONE message (parallel). ` +
-        `ALWAYS pass the todo_id parameter when dispatching subagents so progress updates in ` +
-        `real time. Example:\n` +
-        `task(description="Build the hero section...", subagent_type="coder", todo_id="<uuid>")\n\n` +
-        `NEVER skip todos. NEVER skip the introductory message. The user must always see ` +
-        `what you're doing and track progress.`
+          `1. MESSAGE FIRST: Always begin your response with a brief, friendly message ` +
+          `to the user (1-2 sentences) describing what you're about to do, BEFORE ` +
+          `calling any tools. This gives the user immediate feedback that their request is being ` +
+          `handled. For example: "I'll update the copy across all sections to be more professional ` +
+          `and compelling."\n\n` +
+          `2. TODOS ALWAYS: ALWAYS call write_todos to create a todo list — even for simple edits. ` +
+          `The user is non-technical and needs to see what's happening. Create todos BEFORE doing ` +
+          `any work. Keep them high-level and clear (no file names or code jargon). ` +
+          `For simple edits: at least 1-2 todos (e.g. "Update the headline copy", "Polish the CTA"). ` +
+          `For multi-file work: one todo per section or file being changed. ` +
+          `For subagent delegation: one todo per subagent dispatch. ` +
+          `Mark todos as in_progress when you start them and completed when done.\n\n` +
+          `3. DELEGATE OR DO: Either delegate todos to subagents via the task tool, or complete ` +
+          `them yourself. When dispatching subagents, launch ALL in ONE message (parallel). ` +
+          `ALWAYS pass the todo_id parameter when dispatching subagents so progress updates in ` +
+          `real time. Example:\n` +
+          `task(description="Build the hero section...", subagent_type="coder", todo_id="<uuid>")\n\n` +
+          `NEVER skip todos. NEVER skip the introductory message. The user must always see ` +
+          `what you're doing and track progress.`
       ),
     }),
 });
@@ -163,7 +163,7 @@ export const getTheme = async (
         typography_recommendations: theme.typography_recommendations,
       };
     } catch (error) {
-      console.error("Failed to fetch theme", error);
+      getLogger().error(`Failed to fetch theme ${JSON.stringify(error)}`);
       return undefined;
     }
   }
@@ -342,7 +342,12 @@ async function prepareConversation(
 export async function createCodingAgent(
   state: MinimalCodingAgentState,
   options: CodingAgentOptions
-): Promise<{ messages: BaseMessage[]; status: "completed"; todos?: Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }>; files?: Website.FileMap }> {
+): Promise<{
+  messages: BaseMessage[];
+  status: "completed";
+  todos?: Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }>;
+  files?: Website.FileMap;
+}> {
   if (state.isCreateFlow === undefined) {
     throw new Error(
       "isCreateFlow is required - explicitly set to true (create) or false (edit/bugfix)"
@@ -363,9 +368,12 @@ export async function createCodingAgent(
     });
 
     return {
-      messages: await toStructuredMessages([new AIMessage({
-        content: "I ran into an issue processing your request. Could you try again? If the problem persists, try rephrasing your request.",
-      })]),
+      messages: await toStructuredMessages([
+        new AIMessage({
+          content:
+            "I ran into an issue processing your request. Could you try again? If the problem persists, try rephrasing your request.",
+        }),
+      ]),
       status: "completed",
     };
   }
@@ -375,7 +383,12 @@ export async function createCodingAgent(
 async function _createCodingAgentInternal(
   state: MinimalCodingAgentState,
   options: CodingAgentOptions
-): Promise<{ messages: BaseMessage[]; status: "completed"; todos?: Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }>; files?: Website.FileMap }> {
+): Promise<{
+  messages: BaseMessage[];
+  status: "completed";
+  todos?: Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }>;
+  files?: Website.FileMap;
+}> {
   const requestedRoute = options.route ?? "auto";
 
   // Prepare conversation: fetch events, inject context, window.
@@ -398,7 +411,10 @@ async function _createCodingAgentInternal(
     const result = await resolveRoute(state, options);
     resolvedRoute = result.route;
     if (result.backend) backend = result.backend;
-    getLogger().info({ resolvedRoute, userMessage: truncate(lastMessageText(options.messages)) }, "Route resolved");
+    getLogger().info(
+      { resolvedRoute, userMessage: truncate(lastMessageText(options.messages)) },
+      "Route resolved"
+    );
   } else {
     resolvedRoute = requestedRoute;
   }
@@ -430,10 +446,10 @@ async function _createCodingAgentInternal(
     backend
   );
 
-  const result = await agent.invoke(
+  const result = (await agent.invoke(
     { messages: sanitizedMessages },
     { ...options.config, recursionLimit: options.recursionLimit ?? 150 }
-  ) as { messages: BaseMessage[]; todos?: any[] };
+  )) as { messages: BaseMessage[]; todos?: any[] };
 
   // Flush all deferred writes to DB in one batch
   await agentBackend.flush();
@@ -446,14 +462,18 @@ async function _createCodingAgentInternal(
   // When escalating from single-shot, prepend a brief note so the user
   // understands why the response took longer than a typical quick edit.
   if (escalated) {
-    messages.unshift(new AIMessage({
-      content: "This change needs a bit more work — taking a closer look...",
-    }));
+    messages.unshift(
+      new AIMessage({
+        content: "This change needs a bit more work — taking a closer look...",
+      })
+    );
   }
 
   // deepagents' todoListMiddleware adds todos to the agent state, but the
   // MergedAgentState type doesn't reflect it. Access via index signature.
-  const todos = (result as any).todos as Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }> | undefined;
+  const todos = (result as any).todos as
+    | Array<{ id: string; content: string; status: "pending" | "in_progress" | "completed" }>
+    | undefined;
 
   return {
     messages: await toStructuredMessages(messages),
