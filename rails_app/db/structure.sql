@@ -432,7 +432,8 @@ CREATE TABLE public.accounts (
     time_zone character varying DEFAULT 'America/New_York'::character varying,
     plan_millicredits bigint DEFAULT 0 NOT NULL,
     pack_millicredits bigint DEFAULT 0 NOT NULL,
-    total_millicredits bigint DEFAULT 0 NOT NULL
+    total_millicredits bigint DEFAULT 0 NOT NULL,
+    signup_attribution jsonb
 );
 
 
@@ -4165,8 +4166,7 @@ CREATE TABLE public.users (
     otp_backup_codes text,
     preferences jsonb,
     name character varying GENERATED ALWAYS AS ((((first_name)::text || ' '::text) || (COALESCE(last_name, ''::character varying))::text)) STORED,
-    jti character varying NOT NULL,
-    signup_attribution jsonb
+    jti character varying NOT NULL
 );
 
 
@@ -11759,6 +11759,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260213230932'),
 ('20260213225309'),
 ('20260213214137'),
 ('20260204152455'),

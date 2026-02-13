@@ -32,7 +32,6 @@
 #  remember_created_at    :datetime
 #  reset_password_sent_at :datetime
 #  reset_password_token   :string
-#  signup_attribution     :jsonb
 #  time_zone              :string
 #  unconfirmed_email      :string
 #  created_at             :datetime         not null
@@ -97,31 +96,34 @@ class User < ApplicationRecord
   private
 
   def track_signup
+    acct = accounts.first
+    attribution = acct&.signup_attribution
     method = connected_accounts.any? ? connected_accounts.last.provider : "email"
     event_data = {
       user: self,
-      account: accounts.first,
+      account: acct,
       method: method
     }
-    event_data.merge!(signup_attribution.symbolize_keys) if signup_attribution.present?
+    event_data.merge!(attribution.symbolize_keys) if attribution.present?
     TrackEvent.call("user_signed_up", **event_data)
-    PosthogTracker.identify(self, posthog_attribution_properties)
+    PosthogTracker.identify(self, posthog_attribution_properties(attribution))
   end
 
-  def posthog_attribution_properties
-    return {} unless signup_attribution.present?
+  def posthog_attribution_properties(attribution = nil)
+    attribution ||= accounts.first&.signup_attribution
+    return {} unless attribution.present?
 
     {
-      initial_utm_source: signup_attribution["utm_source"],
-      initial_utm_medium: signup_attribution["utm_medium"],
-      initial_utm_campaign: signup_attribution["utm_campaign"],
-      initial_utm_term: signup_attribution["utm_term"],
-      initial_utm_content: signup_attribution["utm_content"],
-      initial_icp: signup_attribution["icp"],
-      initial_landing_page: signup_attribution["landing_page"],
-      initial_referrer: signup_attribution["referrer"],
-      initial_gclid: signup_attribution["gclid"],
-      initial_fbclid: signup_attribution["fbclid"]
+      initial_utm_source: attribution["utm_source"],
+      initial_utm_medium: attribution["utm_medium"],
+      initial_utm_campaign: attribution["utm_campaign"],
+      initial_utm_term: attribution["utm_term"],
+      initial_utm_content: attribution["utm_content"],
+      initial_icp: attribution["icp"],
+      initial_landing_page: attribution["landing_page"],
+      initial_referrer: attribution["referrer"],
+      initial_gclid: attribution["gclid"],
+      initial_fbclid: attribution["fbclid"]
     }.compact
   end
 end

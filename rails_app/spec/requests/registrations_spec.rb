@@ -53,7 +53,7 @@ RSpec.describe "Registrations", type: :request do
       expect(attribution["utm_campaign"]).to eq("first_campaign")
     end
 
-    it "persists attribution on the user after registration" do
+    it "persists attribution on the account after registration" do
       get new_user_registration_path, params: {
         utm_source: "google",
         utm_medium: "cpc",
@@ -66,13 +66,13 @@ RSpec.describe "Registrations", type: :request do
         post user_registration_path, params: valid_params
       }.to change(User, :count).by(1)
 
-      user = User.find_by(email: email)
-      expect(user.signup_attribution).to be_present
-      expect(user.signup_attribution["utm_source"]).to eq("google")
-      expect(user.signup_attribution["utm_medium"]).to eq("cpc")
-      expect(user.signup_attribution["utm_campaign"]).to eq("launch_beta")
-      expect(user.signup_attribution["gclid"]).to eq("abc123")
-      expect(user.signup_attribution["icp"]).to eq("saas-founders")
+      account = User.find_by(email: email).owned_account
+      expect(account.signup_attribution).to be_present
+      expect(account.signup_attribution["utm_source"]).to eq("google")
+      expect(account.signup_attribution["utm_medium"]).to eq("cpc")
+      expect(account.signup_attribution["utm_campaign"]).to eq("launch_beta")
+      expect(account.signup_attribution["gclid"]).to eq("abc123")
+      expect(account.signup_attribution["icp"]).to eq("saas-founders")
     end
 
     it "sets signup_attribution to nil when no UTMs are present" do
@@ -82,7 +82,7 @@ RSpec.describe "Registrations", type: :request do
         post user_registration_path, params: valid_params
       }.to change(User, :count).by(1)
 
-      expect(User.find_by(email: email).signup_attribution).to be_nil
+      expect(User.find_by(email: email).owned_account.signup_attribution).to be_nil
     end
 
     it "clears the attribution cookie after successful signup" do

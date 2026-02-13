@@ -28,10 +28,10 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   def create
     build_resource(sign_up_params)
-    resource.signup_attribution = signup_attribution
     resource.save
 
     if resource.persisted?
+      persist_signup_attribution(resource)
       clear_signup_attribution_cookie
 
       if resource.active_for_authentication?
@@ -103,6 +103,13 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   private
+
+  def persist_signup_attribution(user)
+    attribution = signup_attribution
+    return unless attribution.present?
+
+    user.owned_account&.update_column(:signup_attribution, attribution.to_json)
+  end
 
   def setup_captcha_session
     session[:invisible_captcha_timestamp] = Time.zone.now.iso8601

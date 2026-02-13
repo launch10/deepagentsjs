@@ -11,6 +11,7 @@
 #  pack_millicredits   :bigint           default(0), not null
 #  personal            :boolean          default(FALSE)
 #  plan_millicredits   :bigint           default(0), not null
+#  signup_attribution  :jsonb
 #  subdomain           :string
 #  time_zone           :string           default("America/New_York")
 #  total_millicredits  :bigint           default(0), not null
