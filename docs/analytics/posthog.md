@@ -64,11 +64,14 @@ Client-side tracking gracefully no-ops when PostHog isn't loaded (dev without en
 
 Users sign up
 
-| Event            | Side   | Location                                                            | Key Properties                                                 |
-| ---------------- | ------ | ------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `user_signed_up` | Server | `user.rb` after_create_commit                                       | `method`, `referral_code`                                      |
-| `user_signed_in` | Server | `sessions_controller.rb` (email/OTP), `warden_callbacks.rb` (OAuth) | `method`, `days_since_signup`, `has_projects`, `project_count` |
-| Page views       | Client | Auto-captured by posthog-js (`capture_pageview: true`)              | URL, referrer, UTMs                                            |
+| Event               | Side   | Location                                                            | Key Properties                                                                                     |
+| ------------------- | ------ | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `user_signed_up`    | Server | `user.rb` after_create_commit                                       | `method`, `referral_code`, `utm_source`, `utm_medium`, `utm_campaign`, `icp`, `gclid` (from attribution) |
+| `user_signed_in`    | Server | `sessions_controller.rb` (email/OTP), `warden_callbacks.rb` (OAuth) | `method`, `days_since_signup`, `has_projects`, `project_count`                                     |
+| `landing_page_view` | Client | `landing_page/src/pages/Index.tsx`                                  | `page_path`, `variant_id`, UTMs                                                                    |
+| `pricing_page_view` | Client | `landing_page/src/pages/Pricing.tsx`                                | `page_path`, `source`, UTMs                                                                        |
+| `icp_page_view`     | Client | `landing_page/src/pages/ICPLandingPage.tsx`                         | `icp_slug`, `page_path`, `variant_id`, UTMs                                                        |
+| Page views          | Client | Auto-captured by posthog-js (`capture_pageview: true`)              | URL, referrer, UTMs                                                                                |
 
 ### Activation
 
@@ -126,10 +129,9 @@ Users invite others to try our product
 
 ### Not Yet Implemented
 
-| Event                  | Reason                                   |
-| ---------------------- | ---------------------------------------- |
-| `pricing_page_viewed`  | No dedicated Inertia pricing page exists |
-| `referral_link_shared` | Referral share UI doesn't exist yet      |
+| Event                  | Reason                              |
+| ---------------------- | ----------------------------------- |
+| `referral_link_shared` | Referral share UI doesn't exist yet |
 
 ## app_events Table
 
@@ -166,6 +168,103 @@ AppEvent.where(event_name: "website_deployed").where("created_at > ?", 24.hours.
 **Server-side**: `PosthogTracker.capture(user, event, props)` uses `user.id` as the PostHog `distinct_id`.
 
 **Client-side**: `site-layout.tsx` calls `analytics.identify(user.id, { email, name })` when the user is logged in, and `analytics.reset()` on logout.
+
+## Signup Attribution
+
+Tracks "where did this user come from?" — which landing page, ad campaign, UTM source led to signup. Uses a cookie-based first-touch model with data persisted to a JSONB column on User.
+
+### How It Works
+
+```
+1. User lands on launch10.com/founders?utm_source=google&utm_campaign=saas
+   (static landing page, served by Cloudflare → Vercel)
+       │
+       │ PostHog records anonymous events (landing_page_view, icp_page_view, etc.)
+       │
+2. User clicks "Get Started" → navigates to launch10.com/users/sign_up
+   (Rails app, served by Cloudflare → Rails)
+       │
+       │ UtmTracking concern reads UTM params from URL → stores in first-touch cookie
+       │
+3. User completes registration
+       │
+       │ RegistrationsController reads cookie → saves to user.signup_attribution
+       │ PosthogTracker.identify(user, initial_utm_source: ..., initial_icp: ...)
+       │ Cookie is cleared
+       │
+4. PostHog merges anonymous session with identified user
+   (same domain = same distinct_id, identify() links them)
+```
+
+### Cross-Domain Identity (Landing Page ↔ Rails App)
+
+Both the static landing page and the Rails app are deployed to **launch10.com** via Cloudflare routing (ICP pages → static site, everything else → Rails). Because they share the same origin, PostHog's anonymous `distinct_id` (stored in localStorage) is shared. When `posthog.identify(userId)` fires after signup, PostHog automatically merges all prior anonymous events with the real user.
+
+**Requirement**: Both apps must use the **same PostHog API key**. The landing page has it hardcoded in `landing_page/src/utils/analytics.ts`. The Rails app reads from `VITE_POSTHOG_API_KEY`.
+
+### UTM Forwarding (Landing Page → Rails)
+
+The landing page captures UTMs in `sessionStorage` on first visit (first-touch). When linking to the Rails app, use `buildAppUrl()` to forward UTM params:
+
+```typescript
+import { buildAppUrl } from '@/utils/utm';
+
+// Builds: https://launch10.com/users/sign_up?utm_source=google&utm_campaign=saas&icp=founders
+const signupUrl = buildAppUrl('/users/sign_up', { tier: 'growth' });
+```
+
+Currently the landing page uses a waitlist modal (BetaSignupModal → Supabase). When switching to direct signup, replace the modal with a redirect using `buildAppUrl()`.
+
+### Rails-Side Cookie Capture
+
+The `UtmTracking` concern (`app/controllers/concerns/utm_tracking.rb`) runs on every request via `ApplicationController`. It:
+
+1. Checks if a `signup_attribution` cookie already exists (first-touch: won't overwrite)
+2. Reads UTM params from URL: `utm_source`, `utm_medium`, `utm_campaign`, `utm_term`, `utm_content`, `gclid`, `fbclid`, `ref`, `icp`
+3. Adds `landing_page` (full URL) and `referrer` (HTTP Referer header)
+4. Stores as JSON in a 30-day httpOnly cookie
+
+At registration, `RegistrationsController` reads the cookie into `user.signup_attribution` (JSONB) and clears it.
+
+### PostHog Person Properties
+
+On signup, `PosthogTracker.identify` sets `initial_*` person properties from the attribution data:
+
+| Property | Source |
+|----------|--------|
+| `initial_utm_source` | `signup_attribution["utm_source"]` |
+| `initial_utm_medium` | `signup_attribution["utm_medium"]` |
+| `initial_utm_campaign` | `signup_attribution["utm_campaign"]` |
+| `initial_utm_term` | `signup_attribution["utm_term"]` |
+| `initial_utm_content` | `signup_attribution["utm_content"]` |
+| `initial_icp` | `signup_attribution["icp"]` |
+| `initial_landing_page` | `signup_attribution["landing_page"]` |
+| `initial_referrer` | `signup_attribution["referrer"]` |
+| `initial_gclid` | `signup_attribution["gclid"]` |
+| `initial_fbclid` | `signup_attribution["fbclid"]` |
+
+### Querying Attribution in Rails
+
+```ruby
+# Users from Google Ads
+User.where("signup_attribution->>'utm_source' = ?", "google")
+
+# Users from a specific ICP page
+User.where("signup_attribution->>'icp' = ?", "founders")
+
+# Users with any attribution data
+User.where.not(signup_attribution: nil)
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `app/controllers/concerns/utm_tracking.rb` | Cookie capture concern (first-touch) |
+| `app/controllers/users/registrations_controller.rb` | Persists attribution at signup |
+| `app/models/user.rb` | `signup_attribution` JSONB column, enriched `track_signup` |
+| `landing_page/src/utils/utm.ts` | UTM capture + `buildAppUrl()` for forwarding |
+| `landing_page/src/utils/analytics.ts` | Landing page PostHog events |
 
 ## Environment Variables
 

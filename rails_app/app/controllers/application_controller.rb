@@ -16,4 +16,5 @@ class ApplicationController < ActionController::Base
   include Users::Sudo
   include Pundit::Authorization
   include InternalAPIVerification
+  include UtmTracking
 end

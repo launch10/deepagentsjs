@@ -32,6 +32,7 @@
 #  remember_created_at    :datetime
 #  reset_password_sent_at :datetime
 #  reset_password_token   :string
+#  signup_attribution     :jsonb
 #  time_zone              :string
 #  unconfirmed_email      :string
 #  created_at             :datetime         not null

@@ -28,9 +28,12 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   def create
     build_resource(sign_up_params)
+    resource.signup_attribution = signup_attribution
     resource.save
 
     if resource.persisted?
+      clear_signup_attribution_cookie
+
       if resource.active_for_authentication?
         set_flash_message!(:notice, :signed_up)
         sign_up(resource_name, resource)
