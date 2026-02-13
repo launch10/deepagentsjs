@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import { usePage } from "@inertiajs/react";
+import { router, usePage } from "@inertiajs/react";
 import { Chat } from "@components/shared/chat/Chat";
-import { DeploySidebar, DeployFooter } from "@components/deploy";
+import { DeploySidebar } from "@components/deploy";
 import {
   InProgressScreen,
   GoogleConnectScreen,
@@ -13,6 +13,8 @@ import {
   DeployCompleteScreen,
   DeployErrorScreen,
 } from "@components/deploy/screens";
+import { PaginationFooter } from "@components/shared/pagination-footer";
+import { Button } from "@components/ui/button";
 import DevButton from "@components/shared/DevButton";
 import { useDeployChatInstance, type DeployProps } from "@hooks/useDeployChat";
 import { useDeployInit } from "@hooks/useDeployInit";
@@ -52,7 +54,8 @@ function RestartDeployButton() {
 }
 
 function DeployContent() {
-  const { deploy, deploy_type, website_url, deploy_environment } = usePage<DeployProps>().props;
+  const { deploy, deploy_type, website_url, deploy_environment, project } =
+    usePage<DeployProps>().props;
   const polling = useDeployInit();
   const { state, startDeploy } = polling;
   const screen = useDeployContentScreen(state, deploy?.status);
@@ -70,10 +73,13 @@ function DeployContent() {
   const isComplete = state.status === "completed" || deploy?.status === "completed";
 
   return (
-    <main className="mx-auto container max-w-7xl grid grid-cols-[288px_1fr] gap-8 px-8 py-8">
-      <DeploySidebar deployType={deploy_type} tasks={state.tasks} />
-      <div className="flex flex-col">
-        <div className="border border-neutral-300 bg-white rounded-2xl flex-1 min-h-[500px]">
+    <div className="h-full flex flex-col">
+      {/* Main content area - matches Website grid pattern */}
+      <main className="flex-1 min-h-0 grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%] pt-[2.5%]">
+        <div className="min-h-0 overflow-hidden">
+          <DeploySidebar deployType={deploy_type} tasks={state.tasks} />
+        </div>
+        <div className="min-h-0 overflow-auto border border-neutral-300 bg-white rounded-2xl">
           {screen === "in-progress" && (
             <InProgressScreen deployType={deploy_type} currentTaskLabel={currentTaskLabel} />
           )}
@@ -104,12 +110,29 @@ function DeployContent() {
             <DeployErrorScreen consoleErrors={state.consoleErrors} onRetry={startDeploy} />
           )}
         </div>
-        <div className="flex items-center justify-end gap-3 pt-4">
+      </main>
+
+      {/* Pagination Footer - full-bleed matches Website grid alignment */}
+      <PaginationFooter.Root layout="full-bleed" canGoBack={false} canGoForward={isComplete}>
+        <div /> {/* Empty left side - no back button */}
+        <PaginationFooter.Actions>
           <RestartDeployButton />
-          <DeployFooter isComplete={isComplete} />
-        </div>
-      </div>
-    </main>
+          <Button
+            variant="outline"
+            disabled={!isComplete}
+            onClick={() => router.visit(`/projects/${project.uuid}`)}
+          >
+            View Dashboard
+          </Button>
+          <Button
+            disabled={!isComplete}
+            onClick={() => router.visit(`/projects/${project.uuid}/performance`)}
+          >
+            Review Performance
+          </Button>
+        </PaginationFooter.Actions>
+      </PaginationFooter.Root>
+    </div>
   );
 }
 

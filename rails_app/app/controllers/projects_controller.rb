@@ -61,12 +61,11 @@ class ProjectsController < SubscribedController
     end
   end
 
-  # Website deploy renders the Deploy page (not the Website page)
   def website_deploy
     @project.current_workflow.update!(step: "website", substep: "deploy")
     @deploy = find_existing_deploy
 
-    render inertia: "Deploy",
+    render inertia: "Website",
       props: @project.to_website_deploy_json(@deploy),
       layout: "layouts/webcontainer"
   end

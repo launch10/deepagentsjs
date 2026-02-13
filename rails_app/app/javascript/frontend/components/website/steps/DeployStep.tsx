@@ -1,12 +1,10 @@
+import DeployPage from "@pages/Deploy";
+
 /**
- * Website Deploy step - deploy the website
+ * Website Deploy step — renders the shared Deploy UI configured for website-only deploy.
+ * The controller passes deploy_type: "website" in page props, which the deploy hooks
+ * use to send deploy={ website: true, googleAds: false } to langgraph.
  */
 export default function DeployStep() {
-  // TODO: Implement deploy UI component
-  return (
-    <div className="h-full flex flex-col items-center justify-center">
-      <h1 className="text-2xl font-semibold mb-4">Deploy Website</h1>
-      <p className="text-gray-500">Deploy UI coming soon...</p>
-    </div>
-  );
+  return <DeployPage />;
 }

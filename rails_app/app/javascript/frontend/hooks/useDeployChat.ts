@@ -21,6 +21,7 @@ export interface DeployProps {
   website_url: string | null;
   deploy_environment: string;
   campaign: { id: number } | null;
+  project: { id: number; uuid: string };
   [key: string]: unknown;
 }
 
