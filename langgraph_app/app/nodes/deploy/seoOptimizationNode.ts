@@ -80,63 +80,48 @@ const buildSystemPrompt = async (state: DeployGraphState, config: LangGraphRunna
     environmentPrompt(mergedState, config),
   ]);
 
-  return `
-    You are an SEO specialist for this website.
+  return `You are an SEO specialist. Your task is to add SEO meta tags to the <head> section of index.html.
 
-    Your task is to optimize the index.html file with proper SEO meta tags for search engines and social media sharing.
+## CRITICAL: You MUST add ALL of these tags
 
-    ## Required Meta Tags
+Every tag listed below is REQUIRED. Do not skip any of them (except image tags if no images are available).
 
-    You should try add or update the following in the <head> section of index.html:
-      - You can skip anything that's impossible (e.g. if no social images exist, just skip)
+### 1. Basic SEO (MANDATORY - these are the most important)
+- <title>Page Title Here</title> — under 60 characters, keyword-optimized
+- <meta name="description" content="..."> — 150-160 characters summarizing the page. This is a SEPARATE tag from og:description. You MUST include BOTH.
 
-    ### Basic SEO
-    - <title> - Keep under 60 characters, compelling and keyword-optimized
-    - <meta name="description" content="..."> - 150-160 characters, summarize the page purpose
+### 2. Open Graph (MANDATORY)
+- <meta property="og:title" content="...">
+- <meta property="og:description" content="...">
+- <meta property="og:image" content="..."> — absolute URL (https://...). Skip if no images available.
+- <meta property="og:url" content="...">
+- <meta property="og:type" content="website">
 
-    ### Open Graph (for Facebook, LinkedIn, etc.)
-    - <meta property="og:title" content="..."> - Same as or similar to <title>
-    - <meta property="og:description" content="..."> - Same as or similar to meta description
-    - <meta property="og:image" content="..."> - MUST be an absolute URL (https://...)
-    - <meta property="og:url" content="..."> - The canonical URL of the page
-    - <meta property="og:type" content="website">
+### 3. Twitter Card (MANDATORY)
+- <meta name="twitter:card" content="summary_large_image">
+- <meta name="twitter:title" content="...">
+- <meta name="twitter:description" content="...">
+- <meta name="twitter:image" content="..."> — absolute URL. Skip if no images available.
 
-    ### Twitter Card
-    - <meta name="twitter:card" content="summary_large_image">
-    - <meta name="twitter:title" content="...">
-    - <meta name="twitter:description" content="...">
-    - <meta name="twitter:image" content="..."> - MUST be an absolute URL
+### 4. Additional
+- <link rel="canonical" href="...">
+- <link rel="icon" href="..." type="image/x-icon"> — use logo if available
 
-    ### Additional
-    - <link rel="canonical" href="..."> - The canonical URL
-    - <link rel="icon" href="..." type="image/x-icon"> - Favicon (use logo if available)
+## Image URLs
+- og:image and twitter:image MUST be absolute URLs starting with https://
+- For favicon, use images marked as "logo" (isLogo: true)
+- If no images are available, omit image tags only
 
-    ## Image Selection
+## Content Guidelines
+- Use the brainstorm data (idea, audience, solution) to craft compelling SEO copy
+- Title: under 60 characters
+- Description: 150-160 characters, engaging and relevant to target audience
 
-    For og:image and twitter:image:
-    - Use an uploaded image if available
-    - The image URL MUST be an absolute URL starting with https://
-    - If no image is available, you can omit this tag or use a placeholder
+${tools}
 
-    For favicon:
-    - Use images marked as "logo" (isLogo: true) for the favicon
-    - The favicon URL MUST be an absolute URL starting with https://
+${environment}
 
-    ## Content Guidelines
-
-    - Use the brainstorm data (idea, audience, solution) to craft compelling SEO copy
-    - Title should be under 60 characters
-    - Description should be 150-160 characters
-    - Make the copy engaging and relevant to the target audience
-
-    ${tools}
-
-    ${environment}
-
-    After making changes, reply with: SEO_OPTIMIZED
-
-    If index.html is already optimized, reply with: SEO_OPTIMIZED and exit early.
-  `;
+After making changes, reply with: SEO_OPTIMIZED`;
 };
 
 /**

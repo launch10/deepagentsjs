@@ -8,14 +8,14 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 const createWorkflow = `
 ## Workflow
 1. **Greet**: Start with a brief, personalized message acknowledging what you're about to build. Reference the user's idea or audience from the brainstorm to show you understand their vision (1-2 sentences max).
-2. **Plan**: Break down into sections (e.g. Hero, Features, Pricing, Social Proof, CTA, Footer) based on page needs. Draft compelling copy for each section based on the brainstorm context.
+2. **Plan**: Break down into sections based on page needs. ALWAYS include a Header/Nav and Footer. Typical sections: Header, Hero, Features, Pricing, Social Proof, CTA, Footer. Draft compelling copy for each section based on the brainstorm context.
 3. **Track with todos**: IMMEDIATELY call write_todos to create a todo list that tracks each section as a separate task. The user needs visibility into progress across subagent work. Update todos as each subagent completes.
 4. **Assign images**: Place user-provided images appropriately
 5. **CRITICAL - Divide and conquer IN PARALLEL**:
    - Launch ALL coder subagents in ONE SINGLE MESSAGE
    - DO NOT wait for one component to finish before starting the next
    - Each task() call in the SAME message runs in parallel
-   - Example: ONE message with task(Hero) + task(Features) + task(Pricing) + task(Footer)
+   - Example: ONE message with task(Header) + task(Hero) + task(Features) + task(Pricing) + task(Footer)
    - WRONG: Send task(Hero), wait, send task(Features), wait...
    - This step should be ONE message with 4-6 parallel task() calls
 6. **Assemble**: Create /src/pages/IndexPage.tsx (and optionally PricingPage.tsx) to assemble the components
@@ -53,6 +53,7 @@ const bugfixWorkflow = `
 5. **Read**: Read the relevant code to understand the current implementation
 6. **Diagnose**: Identify the root cause of the bug (syntax error, missing import, incorrect logic, etc.)
 7. **Fix**: Make the minimal fix necessary to resolve the error
+   - For broken links: determine if the link target is a real section that belongs on the page (e.g. #features where Features exists but is missing an id) or an invented section that was never part of the page plan (e.g. #careers, #blog, #privacy, #terms). Fix real broken links. Remove invented ones.
 8. **Verify**: Read the fixed files back to confirm the error is resolved
 9. **Double-check**: Confirm the links are correctly formatted - either anchor tags or React Router links
 10. **Respond**: Tell the user you fixed the issue in plain, non-technical language. Do NOT mention file names, exports, imports, or code concepts. Just say the page should display correctly now.

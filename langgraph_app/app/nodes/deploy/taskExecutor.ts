@@ -28,31 +28,51 @@ const anyTaskFailed = (state: Partial<DeployGraphState>): boolean => {
  * Returns null if all tasks are done or we hit a fatal failure.
  */
 async function findNextTask(state: DeployGraphState): Promise<NextTask | null> {
+  const log = getLogger({ component: "taskExecutor.findNextTask" });
   const tasks = Deploy.findTasks(state.deploy); // Returns tasks based on instructions, in order of execution
+
+  log.debug(
+    {
+      taskOrder: tasks,
+      existingTasks: state.tasks?.map((t) => ({ name: t.name, status: t.status })),
+    },
+    "Scanning task order for next task"
+  );
 
   for (const taskName of tasks) {
     const task = Task.findTask(state.tasks, taskName);
     const runner = getTaskRunner(taskName);
-    if (!runner) continue;
+    if (!runner) {
+      log.warn({ taskName }, "No runner registered for task, skipping");
+      continue;
+    }
 
     // Skip completed/skipped
     if (task?.status === "completed" || task?.status === "skipped") {
+      log.debug({ taskName, status: task.status }, "Task already done, continuing");
       continue;
     }
 
     // Failed task - check if recoverable
     if (task?.status === "failed") {
       if (runner.isFailureRecoverable) {
-        // Recoverable failure - skip and continue
+        log.info({ taskName, error: task.error }, "Task failed but recoverable, skipping past it");
         continue;
       }
-      // Non-recoverable failure = fatal
+      log.error(
+        { taskName, error: task.error },
+        "Task failed with non-recoverable error — halting"
+      );
       return null;
     }
 
     // Running task - check if blocking
     if (task?.status === "running") {
       const blocking = runner.isBlocking?.(state, task) ?? false;
+      log.info(
+        { taskName, blocking, jobId: task.jobId, hasResult: !!task.result },
+        "Task is running"
+      );
       return { taskName, blocking, shouldSkip: false, readyToRun: !blocking };
     }
 
@@ -60,9 +80,14 @@ async function findNextTask(state: DeployGraphState): Promise<NextTask | null> {
     const shouldSkip = await runner.shouldSkip(state);
     const readyToRun = runner.readyToRun ? await runner.readyToRun(state) : true;
 
+    log.info(
+      { taskName, shouldSkip, readyToRun, currentStatus: task?.status ?? "not-created" },
+      "Evaluated next candidate task"
+    );
     return { taskName, blocking: false, shouldSkip, readyToRun };
   }
 
+  log.info("All tasks in task order have been processed");
   return null; // All done
 }
 
@@ -99,12 +124,23 @@ async function runTaskExecutor(
   state: DeployGraphState,
   config?: LangGraphRunnableConfig
 ): Promise<Partial<DeployGraphState>> {
+  const log = getLogger({ component: "taskExecutor" });
+
+  log.info(
+    {
+      deployId: state.deployId,
+      currentStatus: state.status,
+      taskSummary: state.tasks?.map((t) => ({ name: t.name, status: t.status })),
+    },
+    "taskExecutor invoked"
+  );
+
   const nextTask = await findNextTask(state);
 
   // No next task
   if (!nextTask) {
-    getLogger().info("No next task found");
     if (allTasksComplete(state)) {
+      log.info("All tasks complete — marking deploy as completed");
       return { status: "completed" };
     }
     // Fatal failure - find the failed task using runner's isFailureRecoverable
@@ -113,6 +149,10 @@ async function runTaskExecutor(
       const runner = getTaskRunner(t.name as Deploy.TaskName);
       return !runner?.isFailureRecoverable;
     });
+    log.error(
+      { failedTask: failedTask?.name, error: failedTask?.error },
+      "No next task and not all complete — fatal failure"
+    );
     return {
       ...withPhases(state, []),
       status: "failed",
@@ -122,13 +162,16 @@ async function runTaskExecutor(
 
   // Blocking - wait for webhook
   if (nextTask.blocking) {
-    getLogger().info({ taskName: nextTask.taskName }, "Task is blocking, waiting for webhook");
+    log.info(
+      { taskName: nextTask.taskName },
+      "Task is blocking, waiting for webhook — exiting graph"
+    );
     return {};
   }
 
   // Should skip - mark as skipped
   if (nextTask.shouldSkip) {
-    getLogger().info({ taskName: nextTask.taskName }, "Skipping task");
+    log.info({ taskName: nextTask.taskName }, "Skipping task — marking as skipped");
     return {
       tasks: [{ ...Deploy.createTask(nextTask.taskName), status: "skipped" }],
     };
@@ -136,6 +179,7 @@ async function runTaskExecutor(
 
   // Not ready - wait for dependencies
   if (!nextTask.readyToRun) {
+    log.info({ taskName: nextTask.taskName }, "Task not ready — waiting for dependencies");
     return {};
   }
 
@@ -146,36 +190,74 @@ async function runTaskExecutor(
   // If task doesn't exist or is pending, enqueue it and RETURN
   // (don't run - executor will loop back)
   if (!task || task.status === "pending") {
-    getLogger().info({ taskName: nextTask.taskName }, "Enqueuing task");
+    log.info(
+      { taskName: nextTask.taskName, previousStatus: task?.status ?? "not-created" },
+      "Enqueuing task as running"
+    );
     const enqueuedTasks = Deploy.enqueueTask(state.tasks, nextTask.taskName);
     const enqueuedTask = enqueuedTasks.find((t) => t.name === nextTask.taskName)!;
     const phaseResult = withPhases({ tasks: state.tasks }, [enqueuedTask]);
-    return { tasks: [{
-      ...enqueuedTask,
-      status: "running"
-    }], phases: phaseResult.phases };
+    return {
+      tasks: [
+        {
+          ...enqueuedTask,
+          status: "running",
+        },
+      ],
+      phases: phaseResult.phases,
+    };
   }
 
   // Task is running - run it
   try {
-    getLogger().info({ taskName: nextTask.taskName }, "Running task");
+    log.info({ taskName: nextTask.taskName }, "Executing task runner");
+    const startTime = Date.now();
     const partialGraphState = await runner.run(state, config);
+    const durationMs = Date.now() - startTime;
+
     if (anyTaskFailed(partialGraphState)) {
-      const failedTask = getFailedTask(partialGraphState)
+      const failedTask = getFailedTask(partialGraphState);
       const runner = getTaskRunner(failedTask?.name as Deploy.TaskName);
+      log.error(
+        {
+          taskName: nextTask.taskName,
+          failedTask: failedTask?.name,
+          error: failedTask?.error,
+          durationMs,
+          recoverable: !!runner?.isFailureRecoverable,
+        },
+        "Task runner returned failure"
+      );
       if (!runner?.isFailureRecoverable) {
         const failedTaskUpdate = { ...failedTask, status: "failed" } as Deploy.Task;
         return {
           ...withPhases(state, [failedTaskUpdate]),
           status: "failed",
-          error: { message: failedTask?.error ?? "Task failed", node: failedTask?.name ?? "unknown" },
+          error: {
+            message: failedTask?.error ?? "Task failed",
+            node: failedTask?.name ?? "unknown",
+          },
         };
       }
       return partialGraphState;
     }
+
+    const updatedTasks = partialGraphState.tasks?.map((t) => ({ name: t.name, status: t.status }));
+    log.info(
+      { taskName: nextTask.taskName, durationMs, updatedTasks },
+      "Task runner completed successfully"
+    );
     return partialGraphState;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    log.error(
+      {
+        taskName: nextTask.taskName,
+        error: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined,
+      },
+      "Task runner threw an exception"
+    );
     const failedTaskUpdate = { ...task, status: "failed", error: errorMessage } as Deploy.Task;
     return {
       ...withPhases(state, [failedTaskUpdate]),
@@ -194,22 +276,38 @@ export const taskExecutorNode = NodeMiddleware.use(runTaskExecutor);
 export async function taskExecutorRouter(
   state: DeployGraphState
 ): Promise<"continue" | "wait" | "end"> {
-  if (state.error) return "end";
+  const log = getLogger({ component: "taskExecutorRouter" });
+
+  if (state.error) {
+    log.info({ error: state.error }, "Router → end (error present)");
+    return "end";
+  }
 
   const nextTask = await findNextTask(state);
 
   if (!nextTask) {
-    getLogger().info("No next task, ending");
+    log.info(
+      { taskSummary: state.tasks?.map((t) => ({ name: t.name, status: t.status })) },
+      "Router → end (no next task)"
+    );
     return "end";
   }
   if (nextTask.blocking) {
-    getLogger().info({ taskName: nextTask.taskName }, "Task blocking, waiting");
+    log.info({ taskName: nextTask.taskName }, "Router → wait (task blocking)");
     return "wait";
   }
   if (!nextTask.readyToRun && !nextTask.shouldSkip) {
-    getLogger().info({ taskName: nextTask.taskName }, "Task not ready to run, waiting");
+    log.info({ taskName: nextTask.taskName }, "Router → wait (task not ready, not skippable)");
     return "wait";
   }
 
+  log.info(
+    {
+      taskName: nextTask.taskName,
+      shouldSkip: nextTask.shouldSkip,
+      readyToRun: nextTask.readyToRun,
+    },
+    "Router → continue"
+  );
   return "continue";
 }

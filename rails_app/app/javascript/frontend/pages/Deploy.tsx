@@ -1,3 +1,4 @@
+import { useCallback, useState } from "react";
 import { usePage } from "@inertiajs/react";
 import { Chat } from "@components/shared/chat/Chat";
 import { DeploySidebar, DeployFooter } from "@components/deploy";
@@ -12,10 +13,43 @@ import {
   DeployCompleteScreen,
   DeployErrorScreen,
 } from "@components/deploy/screens";
+import DevButton from "@components/shared/DevButton";
 import { useDeployChatInstance, type DeployProps } from "@hooks/useDeployChat";
 import { useDeployInit } from "@hooks/useDeployInit";
 import { useDeployContentScreen } from "@hooks/useDeployContentScreen";
 import { Deploy as DeployTypes } from "@shared";
+
+function RestartDeployButton() {
+  const { deploy } = usePage<DeployProps>().props;
+  const [restarting, setRestarting] = useState(false);
+
+  const handleRestart = useCallback(async () => {
+    if (!deploy.id) return;
+    if (!confirm("Restart deploy? This deletes the deploy chat and resets to pending.")) return;
+
+    setRestarting(true);
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+      await fetch(`/test/deploys/${deploy.id}/restart`, {
+        method: "DELETE",
+        headers: {
+          "X-CSRF-Token": csrfToken || "",
+          Accept: "application/json",
+        },
+      });
+      window.location.reload();
+    } catch (e) {
+      console.error("Failed to restart deploy:", e);
+      setRestarting(false);
+    }
+  }, [deploy.id]);
+
+  return (
+    <DevButton onClick={handleRestart} disabled={restarting}>
+      {restarting ? "Restarting..." : "Restart Deploy (Dev)"}
+    </DevButton>
+  );
+}
 
 function DeployContent() {
   const { deploy_type } = usePage<DeployProps>().props;
@@ -65,7 +99,10 @@ function DeployContent() {
             <DeployErrorScreen consoleErrors={state.consoleErrors} onRetry={startDeploy} />
           )}
         </div>
-        <DeployFooter isComplete={isComplete} />
+        <div className="flex items-center justify-end gap-3 pt-4">
+          <RestartDeployButton />
+          <DeployFooter isComplete={isComplete} />
+        </div>
       </div>
     </main>
   );

@@ -266,33 +266,25 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
       },
     };
 
-    try {
-      const nodeResult = await this.nodeFunction!(
-        initialState,
-        configWithJwt as LangGraphRunnableConfig
-      );
+    const nodeResult = await this.nodeFunction!(
+      initialState,
+      configWithJwt as LangGraphRunnableConfig
+    );
 
-      // Handle Send[] return type (routing nodes)
-      if (Array.isArray(nodeResult)) {
-        return {
-          state: initialState,
-          messages: initialState.messages || [],
-        };
-      }
-
-      const result = { ...initialState, ...nodeResult } as TGraphState;
-      return {
-        state: result,
-        messages: result.messages || [],
-        error: (result as any).error,
-      };
-    } catch (error) {
+    // Handle Send[] return type (routing nodes)
+    if (Array.isArray(nodeResult)) {
       return {
         state: initialState,
         messages: initialState.messages || [],
-        error: error as Error,
       };
     }
+
+    const result = { ...initialState, ...nodeResult } as TGraphState;
+    return {
+      state: result,
+      messages: result.messages || [],
+      error: (result as any).error,
+    };
   }
 
   /**
@@ -334,31 +326,23 @@ export class GraphTestBuilder<TGraphState extends CoreGraphState> {
       ? { ...configWithJwt, interruptAfter: [this.targetNode] }
       : configWithJwt;
 
-    try {
-      const result = await graph.invoke(initialState, invokeConfig);
+    const result = await graph.invoke(initialState, invokeConfig);
 
-      if (result && result.__interrupt__) {
-        const checkpoint = await graph.getState(this.config);
-        const state = checkpoint.values as TGraphState;
-        return {
-          state,
-          messages: state.messages || [],
-          error: undefined,
-        };
-      }
-
+    if (result && result.__interrupt__) {
+      const checkpoint = await graph.getState(this.config);
+      const state = checkpoint.values as TGraphState;
       return {
-        state: result as TGraphState,
-        messages: result.messages || [],
-        error: result.error,
-      };
-    } catch (error) {
-      return {
-        state: initialState,
-        messages: initialState.messages || [],
-        error: error as Error,
+        state,
+        messages: state.messages || [],
+        error: undefined,
       };
     }
+
+    return {
+      state: result as TGraphState,
+      messages: result.messages || [],
+      error: result.error,
+    };
   }
 }
 

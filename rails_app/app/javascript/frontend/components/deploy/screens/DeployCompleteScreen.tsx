@@ -1,5 +1,7 @@
-import { CheckCircleIcon, GlobeAltIcon } from "@heroicons/react/24/solid";
 import type { Deploy } from "@shared";
+import DeploymentHistoryCard from "@components/website/deployment-history/DeploymentHistoryCard";
+import type { Deployment } from "@components/website/deployment-history/DeploymentHistory.types";
+import deployImage from "@assets/deploy.png";
 
 interface DeployCompleteScreenProps {
   deployType: "website" | "campaign";
@@ -13,47 +15,52 @@ export default function DeployCompleteScreen({
   domain,
 }: DeployCompleteScreenProps) {
   const isCampaign = deployType === "campaign";
-  const deployUrl = result?.url as string | undefined;
-  const displayUrl = deployUrl || domain;
+  const deployUrl = (result?.url as string | undefined) || domain || undefined;
+
+  const deployment: Deployment = {
+    id: "current",
+    status: "success",
+    isNew: true,
+    isLive: true,
+    timestamp: new Date().toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }),
+    url: deployUrl,
+  };
 
   return (
-    <div className="flex flex-col items-center justify-center p-12 min-h-[400px]">
-      <div className="max-w-lg w-full">
-        <div className="text-center mb-6">
-          <div className="mx-auto w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mb-4">
-            <CheckCircleIcon className="size-10 text-success-500" />
+    <div className="flex size-full flex-col">
+      {/* Header */}
+      <div className="flex flex-col gap-0.5 px-10 pt-7">
+        <h2 className="text-lg font-semibold leading-[22px] text-base-500">Deployment History</h2>
+        <p className="text-xs leading-4 text-base-300">
+          This page tracks all deployments for your landing page
+          {isCampaign ? " and ad campaigns" : ""}. Review the status and details of each deployment
+          to ensure optimal performance and quickly identify any issues.
+        </p>
+      </div>
+
+      {/* Content */}
+      <div className="flex flex-1 flex-col items-center justify-center px-10 py-7">
+        <img src={deployImage} alt="Deployment" className="w-28" />
+        <div className="flex flex-col items-center gap-5 py-6 text-center">
+          <div className="flex flex-col gap-3">
+            <h3 className="text-base font-semibold text-base-500">
+              {isCampaign
+                ? "You've just launched your first campaign"
+                : "You've just launched your website"}
+            </h3>
+            <p className="max-w-md text-sm leading-[18px] text-base-300">
+              Your big idea is now out in the world and attracting customers. This is just the
+              beginning of something amazing!
+            </p>
           </div>
-          <h2 className="text-xl font-semibold text-base-900">
-            {isCampaign ? "Campaign Launched!" : "Website Launched!"}
-          </h2>
         </div>
-
-        <div className="border border-neutral-200 rounded-xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-base-700">Deployment History</h3>
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center text-xs font-medium text-success-700 bg-success-50 border border-success-200 rounded-full px-2 py-0.5">
-                Live
-              </span>
-              {isCampaign && (
-                <span className="inline-flex items-center text-xs font-medium text-primary-700 bg-primary-50 border border-primary-200 rounded-full px-2 py-0.5">
-                  Ads Enabled
-                </span>
-              )}
-            </div>
-          </div>
-
-          {displayUrl && (
-            <a
-              href={displayUrl.startsWith("http") ? displayUrl : `https://${displayUrl}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 transition-colors"
-            >
-              <GlobeAltIcon className="size-4" />
-              <span className="underline">{displayUrl}</span>
-            </a>
-          )}
+        <div className="w-full max-w-[580px]">
+          <DeploymentHistoryCard deployment={deployment} />
         </div>
       </div>
     </div>

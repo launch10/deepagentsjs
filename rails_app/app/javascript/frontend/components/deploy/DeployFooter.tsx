@@ -10,7 +10,7 @@ export default function DeployFooter({ isComplete }: DeployFooterProps) {
   const { project } = usePage<{ project: { uuid: string } }>().props;
 
   return (
-    <div className="flex items-center justify-end gap-3 pt-4">
+    <div className="flex items-center justify-end gap-3">
       <Button
         variant="outline"
         disabled={!isComplete}

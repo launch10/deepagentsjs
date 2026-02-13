@@ -44,7 +44,11 @@ export const validateLinksNode = NodeMiddleware.use(
 
     return {
       errorRetries: state.errorRetries + 1,
-      messages: [new HumanMessage(`Validation failed:\n${errorList}\n\nFix these issues.`)],
+      messages: [
+        new HumanMessage(
+          `Validation failed:\n${errorList}\n\nFix these issues. For real sections with missing IDs, add the id attribute. For invented sections or pages that were never part of the plan (e.g. careers, blog, privacy, terms), remove the link instead of creating fake content.`
+        ),
+      ],
     };
   }
 );

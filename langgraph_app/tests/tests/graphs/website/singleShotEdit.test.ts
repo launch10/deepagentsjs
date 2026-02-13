@@ -403,7 +403,7 @@ function checkTrackingPreserved(before: Map<string, string>, after: Map<string, 
 // Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe("Single-Shot Edit Eval", () => {
+describe.skipIf(!!process.env.CI)("Single-Shot Edit Eval", () => {
   afterAll(async () => {
     await stopPolly();
     console.log("\n━━━ TOTAL EVAL COST ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");

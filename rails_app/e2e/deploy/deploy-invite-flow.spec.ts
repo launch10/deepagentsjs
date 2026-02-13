@@ -4,6 +4,7 @@ import { appQuery } from "../support/on-rails";
 import { E2EMocks } from "../fixtures/e2e-mocks";
 import { loginUser } from "../fixtures/auth";
 import { e2eConfig } from "../config";
+import { DeployPage } from "../pages/deploy.page";
 
 test.describe("Deploy - Google Ads Invite Flow", () => {
   test.beforeEach(async ({ page }) => {
@@ -19,7 +20,7 @@ test.describe("Deploy - Google Ads Invite Flow", () => {
   test("mock endpoint sets invite status correctly", async ({ request }) => {
     // Test the mock endpoint infrastructure
     const setResponse = await request.post(`${e2eConfig.railsBaseUrl}/test/e2e/set_invite_status`, {
-      data: { status: "pending" }
+      data: { status: "pending" },
     });
 
     expect(setResponse.ok()).toBeTruthy();
@@ -31,25 +32,28 @@ test.describe("Deploy - Google Ads Invite Flow", () => {
     expect(resetResponse.ok()).toBeTruthy();
   });
 
-  test("deploy page loads and shows deploy button", async ({ page }) => {
+  test("campaign deploy page loads with sidebar and content area", async ({ page }) => {
     const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
-    await page.goto(`/projects/${project.uuid}/deploy`);
+    const deployPage = new DeployPage(page);
+    await deployPage.gotoCampaignDeploy(project.uuid);
 
-    // Verify basic page structure is present
-    await expect(page.getByRole("heading", { name: "Deploy Your Campaign" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Deploy Campaign" })).toBeVisible();
+    // Verify the new two-panel layout
+    await expect(page.getByText("Launching Campaign")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("Launching your campaign")).toBeVisible();
   });
 
   test("navigates to deploy page from campaign review", async ({ page }) => {
     const project = await appQuery<{ id: number; uuid: string; name: string }>("first_project");
+    const deployPage = new DeployPage(page);
 
     // Start from the review step
     await page.goto(`/projects/${project.uuid}/campaigns/review`);
 
     // Navigate to deploy
-    await page.goto(`/projects/${project.uuid}/deploy`);
+    await deployPage.gotoCampaignDeploy(project.uuid);
 
-    await expect(page.getByRole("heading", { name: "Deploy Your Campaign" })).toBeVisible();
+    // Verify the deploy page layout loaded
+    await expect(page.getByText("Launching Campaign")).toBeVisible({ timeout: 15000 });
   });
 
   test("mock handles different invite statuses", async ({ request }) => {
@@ -58,7 +62,7 @@ test.describe("Deploy - Google Ads Invite Flow", () => {
 
     for (const status of statuses) {
       const response = await request.post(`${e2eConfig.railsBaseUrl}/test/e2e/set_invite_status`, {
-        data: { status }
+        data: { status },
       });
 
       expect(response.ok()).toBeTruthy();

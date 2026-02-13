@@ -89,14 +89,22 @@ export const PhaseSchema = z.object({
 export type Phase = z.infer<typeof PhaseSchema>;
 
 /**
+ * Whether a task status is terminal (no more work to do)
+ */
+function isTerminalStatus(status: string): boolean {
+  return status === "completed" || status === "passed" || status === "skipped" || status === "failed";
+}
+
+/**
  * Compute the status of a phase from its child tasks
  *
  * Rules:
  * - If no tasks exist yet: "pending"
  * - If any task is "running": "running"
- * - If any task is "failed" and none running: "failed"
- * - If all tasks are "completed": "completed"
- * - Otherwise: "pending" (some tasks not started)
+ * - If all tasks are terminal (completed/passed/skipped/failed): "completed"
+ *   (A phase "completes" when all its work is done, even if a child failed —
+ *    e.g. CheckingForBugs is "completed" whether it found bugs or not)
+ * - Otherwise: "running" (some tasks started, some pending)
  */
 export function computePhaseStatus(tasks: Task[]): Status {
   if (tasks.length === 0) return "pending";
@@ -104,27 +112,20 @@ export function computePhaseStatus(tasks: Task[]): Status {
   const hasRunning = tasks.some((t) => t.status === "running");
   if (hasRunning) return "running";
 
-  const hasFailed = tasks.some((t) => t.status === "failed");
-  const hasRunningOrPending = tasks.some((t) => t.status === "running" || t.status === "pending");
-  if (hasFailed && !hasRunningOrPending) return "failed";
-
-  const allCompleted = tasks.every((t) => t.status === "completed" || t.status === "passed");
-  if (allCompleted) return "completed";
+  if (tasks.every((t) => isTerminalStatus(t.status))) return "completed";
 
   return "running"; // Some tasks started, some pending
 }
 
 /**
- * Compute progress (0-1) for a phase based on completed tasks
+ * Compute progress (0-1) for a phase based on terminal tasks
  */
 export function computePhaseProgress(tasks: Task[], totalExpectedTasks: number): number {
   if (totalExpectedTasks === 0) return 0;
 
-  const completedCount = tasks.filter(
-    (t) => t.status === "completed" || t.status === "passed"
-  ).length;
+  const doneCount = tasks.filter((t) => isTerminalStatus(t.status)).length;
 
-  return completedCount / totalExpectedTasks;
+  return doneCount / totalExpectedTasks;
 }
 
 /**

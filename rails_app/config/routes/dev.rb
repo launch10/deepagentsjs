@@ -10,6 +10,7 @@ end
 
 namespace :test do
   delete "websites/:website_id/restart_chat", to: "chats#restart_chat"
+  delete "deploys/:deploy_id/restart", to: "deploys#restart"
 
   # Database snapshot operations (true database concerns)
   post "database/truncate", to: "database#truncate"

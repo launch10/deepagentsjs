@@ -95,7 +95,11 @@ export function useDeployChatThreadId() {
  * Uses updateState() to poll for status updates during active deploys.
  */
 export function useDeployChatWithPolling() {
-  const { deploy, deploy_type, website, campaign } = usePage<DeployProps>().props;
+  const props = usePage<DeployProps>().props;
+  const { deploy, deploy_type, website, campaign } = props;
+  // Read projectId directly from page props (always synchronous) rather than
+  // from the project store, which may not be hydrated yet when startDeploy fires.
+  const projectId = (props.project as { id?: number } | null)?.id;
   const snapshot = useDeployChat();
   const { updateState, state, isLoading, error, status } = snapshot;
 
@@ -106,6 +110,7 @@ export function useDeployChatWithPolling() {
   const startDeploy = useCallback(() => {
     const isCampaign = deploy_type === "campaign";
     updateState({
+      projectId,
       deploy: {
         deployId: deploy.id,
         websiteId: website?.id,
@@ -114,11 +119,11 @@ export function useDeployChatWithPolling() {
         googleAds: isCampaign,
       },
     });
-  }, [updateState, deploy.id, deploy_type, website?.id, campaign?.id]);
+  }, [updateState, deploy.id, deploy_type, website?.id, campaign?.id, projectId]);
 
-  // Check if deploy is in terminal state
+  // The graph sets status: "running" on entry, "completed"/"failed" at exit.
   const isTerminal = state.status === "completed" || state.status === "failed";
-  const isInProgress = state.status === "pending" || state.status === "running";
+  const isInProgress = state.status === "running";
   const isStreaming = status === "streaming" || status === "submitted";
 
   // Polling effect - starts when in progress and not streaming, stops when terminal

@@ -35,12 +35,11 @@
 class Deploy < ApplicationRecord
   acts_as_paranoid
 
-  include ChatCreatable
-
   STATUS = %w[pending running completed failed].freeze
 
   belongs_to :project
   has_one :website, through: :project
+  include ChatCreatable
   belongs_to :website_deploy, class_name: "WebsiteDeploy", optional: true
   belongs_to :campaign_deploy, optional: true
   has_many :job_runs, dependent: :nullify

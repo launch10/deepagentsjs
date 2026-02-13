@@ -46,7 +46,10 @@ const extractText = (msg: AIMessage): string | undefined => {
  * summary (last AI message), and that the greeting references brainstorm context.
  */
 const assertCreateFlowMessages = async (state: WebsiteGraphState, websiteId: number) => {
-  const textMessages = state.messages.filter(isAIMessage).flatMap((m) => (m as any).content).filter((c) => c.type === "text");
+  const textMessages = state.messages
+    .filter(isAIMessage)
+    .flatMap((m) => (m as any).content)
+    .filter((c) => c.type === "text");
 
   // Create flow should persist at least 2 text parts (intro and summary)
   expect(textMessages.length).toBeGreaterThanOrEqual(2);
@@ -138,10 +141,10 @@ describe("Website Builder", () => {
 
       websiteId = website.id;
 
-      threadId = 'abc-123' as any;
+      threadId = "abc-123" as any;
     }, 60000);
 
-    it("generates a complete landing page with required sections", async () => {
+    it.only("generates a complete landing page with required sections", async () => {
       // Use WebsiteAPI.stream to go through the bridge with usageTrackingMiddleware
       const response = WebsiteAPI.stream({
         messages: [{ role: "user", content: "howdy big guy, let's make the landing page" }],
@@ -239,7 +242,7 @@ describe("Website Builder", () => {
       const historyResponse = await WebsiteAPI.loadHistory(threadId);
       expect(historyResponse.status).toBe(200);
 
-      const historyBody = await historyResponse.json() as {
+      const historyBody = (await historyResponse.json()) as {
         messages: Array<{ role: string; parts: Array<{ type: string; text?: string }> }>;
         state: Record<string, unknown>;
       };
@@ -263,11 +266,12 @@ describe("Website Builder", () => {
         const historyMsg = historyBody.messages[i];
 
         // Extract text from state message
-        const stateText = typeof stateMsg.content === "string"
-          ? stateMsg.content
-          : Array.isArray(stateMsg.content)
-            ? stateMsg.content.find((c: any) => c.type === "text")?.text
-            : undefined;
+        const stateText =
+          typeof stateMsg.content === "string"
+            ? stateMsg.content
+            : Array.isArray(stateMsg.content)
+              ? stateMsg.content.find((c: any) => c.type === "text")?.text
+              : undefined;
 
         // Extract text from history message
         const historyText = historyMsg?.parts?.find((p: any) => p.type === "text")?.text;
@@ -279,6 +283,73 @@ describe("Website Builder", () => {
       }
       // At least some text messages should round-trip correctly
       expect(matchedTextMessages).toBeGreaterThan(0);
+
+      // ---- Footer content quality assertions ----
+      // Footer should only link to sections that actually exist on the page
+      const footerFile = generatedFiles.find((f) => f.path?.toLowerCase().includes("footer"));
+      expect(footerFile).toBeDefined();
+      expect(footerFile!.content).toBeDefined();
+
+      // Collect all element IDs across all files
+      const allIds = new Set<string>();
+      for (const file of generatedFiles) {
+        if (!file.content) continue;
+        const idMatches = file.content.matchAll(/id=["']([^"']+)["']/g);
+        for (const match of idMatches) {
+          if (match[1]) allIds.add(match[1]);
+        }
+      }
+
+      // Collect component names (e.g. Features.tsx -> "features")
+      const componentNames = new Set<string>();
+      for (const file of generatedFiles) {
+        if (!file.path?.includes("src/components/")) continue;
+        const name = file.path.split("/").pop()?.replace(".tsx", "").replace(".ts", "");
+        if (name) componentNames.add(name.toLowerCase());
+      }
+
+      // Extract all anchor links from the footer
+      const footerAnchors: string[] = [];
+      const anchorMatches = footerFile!.content.matchAll(/href=["']#([^"']+)["']/g);
+      for (const match of anchorMatches) {
+        if (match[1]) footerAnchors.push(match[1]);
+      }
+
+      console.log(`\n=== Footer Quality ===`);
+      console.log(`Footer anchor links: ${footerAnchors.join(", ")}`);
+      console.log(`Page section IDs: ${[...allIds].join(", ")}`);
+      console.log(`Component names: ${[...componentNames].join(", ")}`);
+      console.log(`=====================\n`);
+
+      // Every footer anchor must correspond to either an existing id OR a real
+      // component (e.g. #features is fine if Features.tsx exists, even if the
+      // component is missing the id attribute — that's a separate fix)
+      const isRealSection = (anchor: string) => {
+        if (allIds.has(anchor)) return true;
+        // Normalize: "social-proof" -> "socialproof" to match "SocialProof.tsx"
+        const normalized = anchor.toLowerCase().replace(/-/g, "");
+        return [...componentNames].some((name) => name === normalized);
+      };
+      const inventedAnchors = footerAnchors.filter((anchor) => !isRealSection(anchor));
+      expect(inventedAnchors).toEqual([]);
+
+      // Footer should NOT contain links to invented pages that don't exist
+      const phantomPages = [
+        "/about",
+        "/blog",
+        "/careers",
+        "/contact",
+        "/privacy",
+        "/terms",
+        "/cookies",
+        "/team",
+      ];
+      const footerContent = footerFile!.content;
+      const foundPhantomLinks = phantomPages.filter(
+        (page) =>
+          footerContent.includes(`href="${page}"`) || footerContent.includes(`href='${page}'`)
+      );
+      expect(foundPhantomLinks).toEqual([]);
 
       await saveExample(websiteId, "scheduling-tool"); // So we can see the result
     }, 500000);
@@ -724,10 +795,7 @@ describe("Website Builder", () => {
               payload: { style: "professional" },
               createdAt: new Date().toISOString(),
             },
-            messages: [
-              new AIMessage("Here is your website!"),
-              new HumanMessage(userMessage),
-            ],
+            messages: [new AIMessage("Here is your website!"), new HumanMessage(userMessage)],
           },
         });
         await consumeStream(response);

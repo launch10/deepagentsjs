@@ -15,6 +15,14 @@ describe("Static Validation", () => {
       expect(getLinkType("tel:+1234567890")).toBe("skip");
     });
 
+    it("identifies static asset links", () => {
+      expect(getLinkType("/favicon.ico")).toBe("skip");
+      expect(getLinkType("./styles.css")).toBe("skip");
+      expect(getLinkType("/logo.png")).toBe("skip");
+      expect(getLinkType("/bundle.js")).toBe("skip");
+      expect(getLinkType("/image.svg")).toBe("skip");
+    });
+
     it("identifies route links", () => {
       expect(getLinkType("/pricing")).toBe("route");
       expect(getLinkType("/about")).toBe("route");
@@ -187,6 +195,21 @@ describe("Static Validation", () => {
             <a href="https://twitter.com">Twitter</a>
             <a href="mailto:test@example.com">Email</a>
             <a href="tel:+1234567890">Phone</a>
+          `,
+        },
+      ];
+      const errors = validateLinks(files);
+      expect(errors).toHaveLength(0);
+    });
+
+    it("skips static asset references (favicon, stylesheets, etc.)", () => {
+      const files = [
+        {
+          path: "index.html",
+          content: `
+            <link rel="icon" href="/favicon.ico" />
+            <link rel="stylesheet" href="./styles.css" />
+            <script src="/bundle.js"></script>
           `,
         },
       ];

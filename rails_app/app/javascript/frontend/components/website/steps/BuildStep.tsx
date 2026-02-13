@@ -3,6 +3,7 @@ import WebsiteSidebar from "@components/website/sidebar/WebsiteSidebar";
 import { WebsitePreview } from "@components/website/preview";
 import { Chat } from "@components/shared/chat/Chat";
 import { PaginationFooter } from "@components/shared/pagination-footer";
+import DevButton from "@components/shared/DevButton";
 import { useEffect, useEffectEvent, useRef, useState, useCallback } from "react";
 import { usePage } from "@inertiajs/react";
 import {
@@ -84,16 +85,10 @@ function RestartChatButton() {
     }
   }, [website?.id]);
 
-  if (!import.meta.env.DEV) return null;
-
   return (
-    <button
-      onClick={handleRestart}
-      disabled={restarting}
-      className="text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
-    >
+    <DevButton onClick={handleRestart} disabled={restarting}>
       {restarting ? "Restarting…" : "Restart Chat (Dev)"}
-    </button>
+    </DevButton>
   );
 }
 

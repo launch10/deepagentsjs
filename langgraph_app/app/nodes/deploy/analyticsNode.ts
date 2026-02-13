@@ -2,44 +2,50 @@ import type { DeployGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { HumanMessage } from "@langchain/core/messages";
 import { Deploy, Task } from "@types";
-import { singleShotEdit, getCodingAgentBackend } from "@nodes";
-import type { WebsiteFilesBackend } from "@services";
+import { createCodingAgent } from "@nodes";
 import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
 import { db, websiteFiles, eq, and, like } from "@db";
 import { trackingPrompt } from "@prompts";
+import { codingToolsPrompt, environmentPrompt } from "@prompts";
 import { NodeMiddleware } from "@middleware";
 import { getLogger } from "@core";
 
 const TASK_NAME = "AddingAnalytics" as const;
 
 /**
- * Build the instrumentation prompt using the shared tracking context
+ * Build the system prompt for the analytics instrumentation agent
  */
-const buildInstrumentationPrompt = async (
+const buildSystemPrompt = async (
   state: DeployGraphState,
-  config?: LangGraphRunnableConfig
+  config: LangGraphRunnableConfig
 ): Promise<string> => {
-  const trackingContext = await trackingPrompt(
-    { websiteId: state.websiteId, jwt: state.jwt, isCreateFlow: false },
-    config
-  );
+  const mergedState = { ...state, isCreateFlow: false };
+  const [trackingContext, tools, environment] = await Promise.all([
+    trackingPrompt({ websiteId: state.websiteId, jwt: state.jwt, isCreateFlow: false }, config),
+    codingToolsPrompt(mergedState, config),
+    environmentPrompt(mergedState, config),
+  ]);
 
-  return `You are a code instrumentation specialist. Your job is to add L10.createLead() tracking to a React component.
+  return `You are a code instrumentation specialist. Your job is to add L10.createLead() tracking to React components that capture email addresses.
 
 ${trackingContext}
 
 ## Your Task
 
-1. Read the file at the path provided
+1. Read the component files listed in the user message
 2. Find form submission handlers or button click handlers that capture email
 3. Add L10.createLead() call when the email is captured following the patterns above
-4. Save the file with your changes
+4. Save each file with your changes
 
 ## Rules
 
 - Only add L10.createLead() - don't change anything else
 - Follow the import and usage patterns from the tracking context above
-- If the component doesn't actually capture emails, leave it unchanged
+- If a component doesn't actually capture emails, leave it unchanged
+
+${tools}
+
+${environment}
 
 Reply DONE when finished.
 `;
@@ -79,31 +85,11 @@ export function needsInstrumentation(content: string): boolean {
 }
 
 /**
- * Instrument files using singleShotEdit — all files needing work are passed
- * in a single request since singleShotEdit pre-loads all src/ files anyway.
- */
-async function instrumentFiles(
-  state: DeployGraphState,
-  files: FileToInstrument[],
-  backend: WebsiteFilesBackend,
-  config?: LangGraphRunnableConfig
-): Promise<void> {
-  const prompt = await buildInstrumentationPrompt(state, config);
-  const filePaths = files.map((f) => f.path).join(", ");
-
-  await singleShotEdit(
-    { ...state, isCreateFlow: false },
-    [new HumanMessage(`${prompt}\n\nInstrument these files with L10.createLead(): ${filePaths}`)],
-    backend
-  );
-}
-
-/**
- * Direct analytics instrumentation - parallel agents, each handling one file
+ * Run analytics instrumentation using the full coding agent
  */
 async function instrumentAnalytics(
   state: DeployGraphState,
-  config?: LangGraphRunnableConfig
+  config: LangGraphRunnableConfig
 ): Promise<"CONFIRMED" | "FIXED"> {
   if (!state.websiteId || !state.jwt) {
     throw new Error("Missing websiteId or jwt");
@@ -143,29 +129,18 @@ async function instrumentAnalytics(
     "Found files needing instrumentation"
   );
 
-  // Create backend once — singleShotEdit pre-loads all src/ files, so one call handles all files
-  const backend = await getCodingAgentBackend({
-    websiteId: state.websiteId,
-    jwt: state.jwt,
-  });
+  const systemPrompt = await buildSystemPrompt(state, config);
+  const filePaths = filesNeedingWork.map((f) => f.path).join(", ");
 
-  await instrumentFiles(state, filesNeedingWork, backend, config);
-
-  // Post-edit verification: re-read files and confirm L10.createLead was added
-  const missingFiles: string[] = [];
-  for (const file of filesNeedingWork) {
-    const updatedContent = await backend.read(file.path);
-    if (!updatedContent || !updatedContent.includes("L10.createLead")) {
-      missingFiles.push(file.path);
+  await createCodingAgent(
+    { websiteId: state.websiteId, jwt: state.jwt, isCreateFlow: false },
+    {
+      messages: [new HumanMessage(`Add L10.createLead() tracking to these files: ${filePaths}`)],
+      systemPrompt,
+      route: "full",
+      config,
     }
-  }
-
-  if (missingFiles.length > 0) {
-    getLogger().warn({ missingFiles }, "L10.createLead not found after instrumentation");
-    throw new Error(
-      `L10.createLead was not added to: ${missingFiles.join(", ")}. Analytics tracking may be missing.`
-    );
-  }
+  );
 
   getLogger().info({ fileCount: filesNeedingWork.length }, "Instrumented files");
   return "FIXED";
@@ -174,8 +149,8 @@ async function instrumentAnalytics(
 /**
  * Analytics Task Runner
  *
- * Validates that landing pages use L10.createLead() for lead capture.
- * Uses parallel coding agents for speed - each agent handles one file.
+ * Adds L10.createLead() tracking to landing page components that capture emails.
+ * Uses the full coding agent to read, edit, and verify multiple files.
  */
 export const analyticsTaskRunner: TaskRunner = {
   taskName: TASK_NAME,

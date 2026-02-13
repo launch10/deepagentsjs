@@ -86,10 +86,14 @@ class Website < ApplicationRecord
     deploy.build!
   end
 
-  def deploy(async: true, environment: nil)
+  def deploy(async: true, environment: nil, job_run_id: nil)
     env = environment || default_environment
     deploy_record = deploys.create!(environment: env, is_preview: false)
-    deploy_record.deploy(async: async)
+    deploy_record.deploy(async: async, job_run_id: job_run_id)
+  end
+
+  def deploy_async(job_run_id: nil)
+    deploy(async: true, job_run_id: job_run_id)
   end
 
   def deploy!(async: true, environment: nil)

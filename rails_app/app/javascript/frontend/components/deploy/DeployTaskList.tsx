@@ -93,8 +93,12 @@ function computePhaseStatusFromGraphTasks(
 
   if (phaseTasks.length === 0) return "pending";
   if (phaseTasks.some((t) => t.status === "running")) return "running";
-  if (phaseTasks.some((t) => t.status === "failed")) return "failed";
-  if (phaseTasks.every((t) => t.status === "completed")) return "completed";
+
+  // A task is "done" if it reached any terminal state (completed, skipped, or failed-recoverable)
+  const isTerminal = (status: string) =>
+    status === "completed" || status === "skipped" || status === "failed" || status === "passed";
+  if (phaseTasks.every((t) => isTerminal(t.status))) return "completed";
+
   return "pending";
 }
 

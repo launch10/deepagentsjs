@@ -2830,7 +2830,10 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
+                        /** @description Project ID to create the deploy for */
                         project_id: number;
+                        /** @description Thread ID from Langgraph for chat creation */
+                        thread_id?: string;
                     };
                 };
             };
@@ -2840,7 +2843,32 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Deploy status (pending, running, completed, failed) */
+                            status: string;
+                            /** @description Current deploy step */
+                            current_step?: string | null;
+                            /** @description Whether the deploy is live */
+                            is_live: boolean;
+                            /** @description Chat thread ID */
+                            thread_id?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
                 };
                 /** @description unauthorized */
                 401: {
@@ -2896,7 +2924,32 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Deploy status (pending, running, completed, failed) */
+                            status: string;
+                            /** @description Current deploy step */
+                            current_step?: string | null;
+                            /** @description Whether the deploy is live */
+                            is_live: boolean;
+                            /** @description Chat thread ID */
+                            thread_id?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
                 };
                 /** @description cannot access deploy from different account */
                 404: {
@@ -2943,7 +2996,32 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Deploy status (pending, running, completed, failed) */
+                            status: string;
+                            /** @description Current deploy step */
+                            current_step?: string | null;
+                            /** @description Whether the deploy is live */
+                            is_live: boolean;
+                            /** @description Chat thread ID */
+                            thread_id?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
                 };
             };
         };
@@ -2983,7 +3061,15 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            touched_at: string;
+                        };
+                    };
                 };
                 /** @description cannot touch deploy from different account */
                 404: {

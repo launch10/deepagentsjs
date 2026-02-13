@@ -1,8 +1,9 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { DeployAnnotation, type DeployGraphState } from "@annotation";
 import { Deploy } from "@types";
-import { initPhasesNode, taskExecutorNode, taskExecutorRouter } from "@nodes";
+import { initDeployNode, initPhasesNode, taskExecutorNode, taskExecutorRouter } from "@nodes";
 import { withCreditExhaustion } from "./shared";
+import { getLogger } from "@core";
 
 /**
  * Deploy Graph V2 - Task-Based Architecture
@@ -20,6 +21,9 @@ import { withCreditExhaustion } from "./shared";
  * │   ├──[nothing to deploy?]──► END                                         │
  * │   │                                                                      │
  * │   ▼                                                                      │
+ * │ initDeploy (idempotent chat creation via Rails API)                      │
+ * │   │                                                                      │
+ * │   ▼                                                                      │
  * │ initPhases                                                               │
  * │   │                                                                      │
  * │   ▼                                                                      │
@@ -32,8 +36,9 @@ import { withCreditExhaustion } from "./shared";
  * │   └──[end]──► END                                                        │
  * └──────────────────────────────────────────────────────────────────────────┘
  *
- * Chat is pre-created by Rails via ChatCreatable when Deploy record is created.
- * Thread ownership is validated by the route handler before graph execution.
+ * Chat is created by initDeploy node (first node in graph) via Rails API.
+ * Frontend triggers the graph with a fresh thread_id; the node idempotently
+ * creates the Chat record. Thread ownership is validated by JWT auth.
  *
  * The taskExecutor processes tasks in order (defined in TASK_ORDER):
  * 1. ConnectingGoogle (campaign, skippable)
@@ -57,6 +62,11 @@ import { withCreditExhaustion } from "./shared";
 export const deployGraph = withCreditExhaustion(
   new StateGraph(DeployAnnotation)
     // --------------------------------------------------------------------------
+    // Init Deploy: Idempotent chat creation via Rails API
+    // --------------------------------------------------------------------------
+    .addNode("initDeploy", initDeployNode)
+
+    // --------------------------------------------------------------------------
     // Init Phases: Compute phases from any pre-existing tasks (for tests)
     // --------------------------------------------------------------------------
     .addNode("initPhases", initPhasesNode)
@@ -70,13 +80,30 @@ export const deployGraph = withCreditExhaustion(
     // ROUTING
     // ==========================================================================
 
-    // Chat is pre-created by Rails, route from START
-    // Either end early if nothing to deploy, or initialize phases
+    // Route from START: exit early if nothing to deploy, or init the deploy
     .addConditionalEdges(START, (state: DeployGraphState) => {
-      // Exit early if nothing to deploy
-      if (!Deploy.shouldDeployAnything(state)) return END;
-      return "initPhases";
+      const log = getLogger({ component: "deployGraph" });
+      log.info(
+        {
+          deployId: state.deployId,
+          deploy: state.deploy,
+          taskCount: state.tasks?.length ?? 0,
+          status: state.status,
+        },
+        "Deploy graph entry — evaluating whether to deploy"
+      );
+
+      if (!Deploy.shouldDeployAnything(state)) {
+        log.info({ deploy: state.deploy }, "Nothing to deploy, exiting early");
+        return END;
+      }
+
+      log.info("Proceeding to initDeploy");
+      return "initDeploy";
     })
+
+    // After init deploy, initialize phases
+    .addEdge("initDeploy", "initPhases")
 
     // After init phases, proceed to task executor
     .addEdge("initPhases", "taskExecutor")

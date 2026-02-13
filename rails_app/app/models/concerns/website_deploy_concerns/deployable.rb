@@ -9,11 +9,11 @@ module WebsiteDeployConcerns
       after_create :update_revertible_deploys
     end
 
-    def deploy(async: true)
+    def deploy(async: true, job_run_id: nil)
       if async
-        WebsiteDeploy::DeployWorker.perform_async(id)
+        WebsiteDeploy::DeployWorker.perform_async(id, job_run_id)
       else
-        actually_deploy
+        actually_deploy(job_run_id: job_run_id)
       end
     end
 
@@ -21,7 +21,7 @@ module WebsiteDeployConcerns
       deploy(async: false)
     end
 
-    def actually_deploy
+    def actually_deploy(job_run_id: nil)
       later_deploy_exists = WebsiteDeploy.live.where(website_id: website_id).where("id > ?", id).exists?
       if later_deploy_exists
         update!(status: "skipped")

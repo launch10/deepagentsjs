@@ -15,6 +15,7 @@ export * from "./checkPaymentNode";
 export * from "./enableCampaignNode";
 export * from "./deployCampaignNode";
 export * from "./initPhasesNode";
+export * from "./initDeployNode";
 
 // Legacy (will be removed after migration)
 export * from "./createEnqueueNode";

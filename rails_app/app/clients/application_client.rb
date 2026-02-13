@@ -168,6 +168,15 @@ class ApplicationClient
     return unless http.use_ssl?
 
     http.verify_mode = ssl_verify_mode if ssl_verify_mode
+
+    # Use explicit CA bundle to avoid OpenSSL 3.6 CRL verification issue.
+    # Net::HTTP's default set_default_paths triggers CRL checking that fails
+    # against some endpoints (Cloudflare, Google Trust Services certs).
+    if (ca_bundle = SslCaBundle.path)
+      store = OpenSSL::X509::Store.new
+      store.add_file(ca_bundle)
+      http.cert_store = store
+    end
   end
 
   # Makes an HTTP request

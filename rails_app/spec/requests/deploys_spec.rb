@@ -14,6 +14,8 @@ RSpec.describe "Deploys API", type: :request do
     auth_headers_for(user)
   end
 
+  let(:thread_id) { SecureRandom.uuid }
+
   path "/api/v1/deploys" do
     post "Creates a deploy" do
       tags "Deploys"
@@ -24,19 +26,14 @@ RSpec.describe "Deploys API", type: :request do
       parameter name: "X-Signature", in: :header, type: :string, required: false
       parameter name: "X-Timestamp", in: :header, type: :string, required: false
 
-      parameter name: :deploy_params, in: :body, schema: {
-        type: :object,
-        properties: {
-          project_id: { type: :integer }
-        },
-        required: ["project_id"]
-      }
+      parameter name: :deploy_params, in: :body, schema: APISchemas::Deploy.params_schema
 
-      response "201", "deploy created" do
+      response "201", "deploy created with chat" do
+        schema APISchemas::Deploy.response
         let(:Authorization) { auth_headers["Authorization"] }
         let(:"X-Signature") { auth_headers["X-Signature"] }
         let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
-        let(:deploy_params) { { project_id: project.id } }
+        let(:deploy_params) { { project_id: project.id, thread_id: thread_id } }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -44,18 +41,23 @@ RSpec.describe "Deploys API", type: :request do
           expect(data["id"]).to be_present
           expect(data["status"]).to eq("pending")
           expect(data["project_id"]).to eq(project.id)
+          expect(data["thread_id"]).to eq(thread_id)
 
           deploy = Deploy.find(data["id"])
           expect(deploy.project).to eq(project)
           expect(deploy.status).to eq("pending")
+          expect(deploy.chat).to be_present
+          expect(deploy.chat.thread_id).to eq(thread_id)
+          expect(deploy.chat.chat_type).to eq("deploy")
         end
       end
 
       response "201", "deploy created increments deploy count" do
+        schema APISchemas::Deploy.response
         let(:Authorization) { auth_headers["Authorization"] }
         let(:"X-Signature") { auth_headers["X-Signature"] }
         let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
-        let(:deploy_params) { { project_id: project.id } }
+        let(:deploy_params) { { project_id: project.id, thread_id: thread_id } }
 
         it "increments the deploy count" do
           expect {
@@ -68,7 +70,7 @@ RSpec.describe "Deploys API", type: :request do
         let(:Authorization) { auth_headers["Authorization"] }
         let(:"X-Signature") { auth_headers["X-Signature"] }
         let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
-        let(:deploy_params) { { project_id: 999999 } }
+        let(:deploy_params) { { project_id: 999999, thread_id: thread_id } }
 
         run_test! do |response|
           expect(response.code).to eq("404")
@@ -77,7 +79,7 @@ RSpec.describe "Deploys API", type: :request do
 
       response "401", "unauthorized" do
         let(:Authorization) { nil }
-        let(:deploy_params) { { project_id: project.id } }
+        let(:deploy_params) { { project_id: project.id, thread_id: thread_id } }
 
         run_test! do |response|
           expect(response.code).to eq("401")
@@ -100,6 +102,7 @@ RSpec.describe "Deploys API", type: :request do
       let!(:deploy) { create(:deploy, project: project, status: "running", current_step: "ConnectingGoogle") }
 
       response "200", "deploy found" do
+        schema APISchemas::Deploy.response
         let(:Authorization) { auth_headers["Authorization"] }
         let(:"X-Signature") { auth_headers["X-Signature"] }
         let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
@@ -171,6 +174,7 @@ RSpec.describe "Deploys API", type: :request do
       let!(:deploy) { create(:deploy, project: project, status: "pending") }
 
       response "200", "deploy updated" do
+        schema APISchemas::Deploy.response
         let(:Authorization) { auth_headers["Authorization"] }
         let(:"X-Signature") { auth_headers["X-Signature"] }
         let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
@@ -191,6 +195,7 @@ RSpec.describe "Deploys API", type: :request do
       end
 
       response "200", "deploy marked as live" do
+        schema APISchemas::Deploy.response
         let(:Authorization) { auth_headers["Authorization"] }
         let(:"X-Signature") { auth_headers["X-Signature"] }
         let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
@@ -224,6 +229,7 @@ RSpec.describe "Deploys API", type: :request do
       let!(:deploy) { create(:deploy, project: project, status: "running", user_active_at: 10.minutes.ago) }
 
       response "200", "user activity updated" do
+        schema APISchemas::Deploy.touch_response
         let(:Authorization) { auth_headers["Authorization"] }
         let(:"X-Signature") { auth_headers["X-Signature"] }
         let(:"X-Timestamp") { auth_headers["X-Timestamp"] }

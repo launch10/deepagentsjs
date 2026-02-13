@@ -158,9 +158,16 @@ export const createWorkflowStore = () => {
         const url = buildUrl(page, substep, uuid);
         const hasVisitedReview = substep === "review" ? true : get().hasVisitedReview;
 
-        // Cross-page navigation needs Inertia (component swap)
-        // Same-page substep navigation uses pushState
-        if (page !== currentPage) {
+        // Cross-page navigation needs Inertia (component swap).
+        // website/deploy also needs Inertia because the controller renders the
+        // Deploy component (not Website), so a pushState would skip the swap.
+        const currentSubstep = get().substep;
+        const needsInertia =
+          page !== currentPage ||
+          (page === "website" && substep === "deploy") ||
+          (page === "website" && currentSubstep === "deploy");
+
+        if (needsInertia) {
           // Update hasVisitedReview before navigation
           if (hasVisitedReview !== get().hasVisitedReview) {
             set({ hasVisitedReview });

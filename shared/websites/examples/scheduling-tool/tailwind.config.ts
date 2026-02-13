@@ -20,8 +20,8 @@ export default {
 		},
 		extend: {
 			fontFamily: {
-				sans: ['DM Sans', 'system-ui', 'sans-serif'],
-				display: ['Space Grotesk', 'system-ui', 'sans-serif'],
+				sans: ['DM Sans', 'sans-serif'],
+				display: ['Space Grotesk', 'sans-serif'],
 			},
 			colors: {
 				// shadcn standard

@@ -1,9 +1,13 @@
 class API::V1::DeploysController < API::BaseController
   # POST /api/v1/deploys
-  # Creates a new deploy for a project
+  # Creates a new deploy for a project.
+  # ChatCreatable auto-creates a Chat record using initial_thread_id.
   def create
     project = current_account.projects.find(params[:project_id])
-    deploy = project.deploys.create!(status: "pending")
+    deploy = project.deploys.create!(
+      status: "pending",
+      initial_thread_id: params[:thread_id]
+    )
 
     render json: deploy_json(deploy), status: :created
   end

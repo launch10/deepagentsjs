@@ -10,7 +10,8 @@ class Cloudflare
         access_key_id: Cloudflare.config.r2_access_key_id,
         secret_access_key: Cloudflare.config.r2_secret_access_key,
         region: Cloudflare.config.r2_region,
-        force_path_style: false
+        force_path_style: false,
+        ssl_ca_bundle: SslCaBundle.path
       )
     end
 

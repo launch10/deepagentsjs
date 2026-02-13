@@ -7,70 +7,35 @@ import type { ThreadIDType } from "@types";
 import { Deploy, Task } from "@types";
 import { graphParams } from "@core";
 import { DatabaseSnapshotter } from "@rails_api";
-import { websiteFiles, campaigns, and, eq, db } from "@db";
+import { websiteFiles, campaigns, projects, and, eq, db } from "@db";
 import { jobRunCallback } from "@server/routes/webhooks/jobRunCallback";
 import { getCodingAgentBackend, analyticsNode } from "@nodes";
 
-// Mock @rails_api - JobRunAPIService and ChatsAPIService
+// Mock external services that hit Rails workers / Google APIs
 vi.mock("@rails_api", async () => {
   const actual = await vi.importActual("@rails_api");
   return {
     ...actual,
     JobRunAPIService: vi.fn(),
-    ChatsAPIService: vi.fn().mockImplementation(() => ({
-      create: vi.fn().mockResolvedValue({
-        id: 1,
-        thread_id: "thread_123",
-        chat_type: "deploy",
-        project_id: 1,
-        account_id: 1,
-      }),
-      validate: vi.fn().mockResolvedValue({
-        valid: true,
-        exists: false,
-      }),
-    })),
   };
 });
 
-// Mock @services since some nodes import from there (which re-exports from @rails_api)
 vi.mock("@services", async () => {
   const actual = await vi.importActual("@services");
+  // Re-use the same JobRunAPIService mock from @rails_api so both import paths share one mock
+  const { JobRunAPIService } = await import("@rails_api");
   return {
     ...actual,
-    JobRunAPIService: vi.fn(),
-    ChatsAPIService: vi.fn().mockImplementation(() => ({
-      create: vi.fn().mockResolvedValue({
-        id: 1,
-        thread_id: "thread_123",
-        chat_type: "deploy",
-        project_id: 1,
-        account_id: 1,
-      }),
-      validate: vi.fn().mockResolvedValue({
-        valid: true,
-        exists: false,
-      }),
-    })),
     GoogleAPIService: vi.fn(),
+    JobRunAPIService,
   };
 });
 
-import { GoogleAPIService, JobRunAPIService } from "@services";
-import { JobRunAPIService as RailsJobRunAPIService } from "@rails_api";
+import { GoogleAPIService } from "@services";
+import { JobRunAPIService } from "@rails_api";
 
 const mockGoogleAPIService = vi.mocked(GoogleAPIService);
 const mockJobRunAPIService = vi.mocked(JobRunAPIService);
-const mockRailsJobRunAPIService = vi.mocked(RailsJobRunAPIService);
-
-/**
- * Helper to mock JobRunAPIService from both @services and @rails_api
- * (different nodes import from different locations)
- */
-const setupJobRunMock = (mockFn: () => any) => {
-  mockJobRunAPIService.mockImplementation(mockFn);
-  mockRailsJobRunAPIService.mockImplementation(mockFn);
-};
 
 const deployGraph = uncompiledGraph.compile({ ...graphParams, name: "deploy" });
 
@@ -107,7 +72,7 @@ afterEach(async () => {
  * 10. Payment and Enable Campaign Flow - Integration tests
  */
 
-describe.sequential.skip("Deploy Graph Tests", () => {
+describe.sequential("Deploy Graph Tests", () => {
   /**
    * =============================================================================
    * 1. GOOGLE CONNECT/VERIFY TESTS [campaign]
@@ -117,14 +82,16 @@ describe.sequential.skip("Deploy Graph Tests", () => {
    */
   describe("Google Onboarding Flow", () => {
     let campaignId: number | undefined;
+    let projectId: number | undefined;
 
     beforeEach(async () => {
       vi.clearAllMocks();
 
       await DatabaseSnapshotter.restoreSnapshot("campaign_complete");
       campaignId = (await db.select().from(campaigns).limit(1).execute())[0]?.id;
+      projectId = (await db.select().from(projects).limit(1).execute())[0]?.id;
 
-      // Default: Google connected, invite accepted
+      // Default: Google connected, invite accepted, payment verified
       mockGoogleAPIService.mockImplementation(
         () =>
           ({
@@ -134,18 +101,22 @@ describe.sequential.skip("Deploy Graph Tests", () => {
             getInviteStatus: vi
               .fn()
               .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
+            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: true }),
           }) as any
       );
 
-      // Default job run creation mock
-      setupJobRunMock(() => ({
-        create: vi.fn().mockResolvedValue({ id: 123, status: "pending" }),
-      }));
+      // Mock JobRunAPIService to prevent real Rails worker dispatch
+      mockJobRunAPIService.mockImplementation(
+        () =>
+          ({
+            create: vi.fn().mockResolvedValue({ id: 999, status: "pending" }),
+          }) as any
+      );
     });
 
     describe("ConnectingGoogle", () => {
       it("skips ConnectingGoogle when Google is already connected", async () => {
-        // Mock: Google connected, invite accepted
+        // Mock: Google connected, invite accepted, payment verified
         mockGoogleAPIService.mockImplementation(
           () =>
             ({
@@ -155,6 +126,7 @@ describe.sequential.skip("Deploy Graph Tests", () => {
               getInviteStatus: vi
                 .fn()
                 .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
+              getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: true }),
             }) as any
         );
 
@@ -163,8 +135,10 @@ describe.sequential.skip("Deploy Graph Tests", () => {
           .withState({
             jwt: "test-jwt",
             threadId: "thread_123" as ThreadIDType,
+            projectId,
             websiteId: 1,
-            campaignId: 123,
+            campaignId,
+            deployId: 1,
             deploy: { googleAds: true },
             tasks: [],
             chatId: 1,
@@ -196,8 +170,10 @@ describe.sequential.skip("Deploy Graph Tests", () => {
             .withState({
               jwt: "test-jwt",
               threadId: "thread_123" as ThreadIDType,
+              projectId,
               websiteId: 1,
               campaignId: 123,
+              deployId: 1,
               deploy: { googleAds: true },
               tasks: [],
               chatId: 1,
@@ -217,8 +193,10 @@ describe.sequential.skip("Deploy Graph Tests", () => {
             .withState({
               jwt: "test-jwt",
               threadId: "thread_123" as ThreadIDType,
+              projectId,
               websiteId: 1,
               campaignId: 123,
+              deployId: 1,
               deploy: { googleAds: true },
               tasks: Deploy.withTasks({ googleAds: true }, { ConnectingGoogle: "running" }),
               chatId: 1,
@@ -238,8 +216,10 @@ describe.sequential.skip("Deploy Graph Tests", () => {
             .withState({
               jwt: "test-jwt",
               threadId: "thread_123" as ThreadIDType,
+              projectId,
               websiteId: 1,
               campaignId,
+              deployId: 1,
               deploy: { googleAds: true },
               tasks: [],
               chatId: 1,
@@ -283,7 +263,7 @@ describe.sequential.skip("Deploy Graph Tests", () => {
     describe("VerifyingGoogle", async () => {
       describe("When NOT deploying website", async () => {
         it("proceeds to DeployCampaign after both GoogleConnect and GoogleVerify complete", async () => {
-          // Mock: Google connected, invite accepted
+          // Mock: Google connected, invite NOT accepted, payment verified
           mockGoogleAPIService.mockImplementation(
             () =>
               ({
@@ -291,6 +271,7 @@ describe.sequential.skip("Deploy Graph Tests", () => {
                   .fn()
                   .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
                 getInviteStatus: vi.fn().mockResolvedValue({ accepted: false, status: "none" }),
+                getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: true }),
               }) as any
           );
 
@@ -299,8 +280,10 @@ describe.sequential.skip("Deploy Graph Tests", () => {
             .withState({
               jwt: "test-jwt",
               threadId: "thread_123" as ThreadIDType,
+              projectId,
               websiteId: 1,
               campaignId,
+              deployId: 1,
               deploy: { googleAds: true },
               tasks: Deploy.withTasks({ googleAds: true }, { ConnectingGoogle: "completed" }),
               chatId: 1,
@@ -350,7 +333,7 @@ describe.sequential.skip("Deploy Graph Tests", () => {
             .spyOn(await import("@nodes"), "createCodingAgent")
             .mockResolvedValue({ messages: [], status: "completed" } as any);
 
-          // Mock: Google connected, invite accepted
+          // Mock: Google connected, invite NOT accepted, payment verified
           mockGoogleAPIService.mockImplementation(
             () =>
               ({
@@ -358,6 +341,7 @@ describe.sequential.skip("Deploy Graph Tests", () => {
                   .fn()
                   .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
                 getInviteStatus: vi.fn().mockResolvedValue({ accepted: false, status: "none" }),
+                getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: true }),
               }) as any
           );
 
@@ -368,8 +352,10 @@ describe.sequential.skip("Deploy Graph Tests", () => {
             .withState({
               jwt: "test-jwt",
               threadId: "thread_123" as ThreadIDType,
+              projectId,
               websiteId: 1,
               campaignId,
+              deployId: 1,
               deploy: { googleAds: true, website: true },
               tasks: Deploy.withTasks(
                 { googleAds: true, website: true },
@@ -390,8 +376,14 @@ describe.sequential.skip("Deploy Graph Tests", () => {
             result: { status: "accepted" },
           });
 
-          // Resume graph - let it run through Analytics (mocked)
-          const updatedResult = await deployGraph.invoke(null, {
+          // Resume graph - fetch state and re-invoke (same pattern as DeployCampaign test)
+          const updates = (
+            await deployGraph.getState({
+              configurable: { thread_id: graph.threadId },
+            })
+          ).values;
+
+          const updatedResult = await deployGraph.invoke(updates, {
             configurable: { thread_id: graph.threadId },
           });
 
@@ -422,12 +414,9 @@ describe.sequential.skip("Deploy Graph Tests", () => {
    * instrumentation adds the necessary L10.createLead() calls.
    */
   describe("AddingAnalytics", () => {
-    let campaignId: number | undefined;
-
     beforeEach(async () => {
       // Use a snapshot that doesn't have analytics
       await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
-      campaignId = (await db.select().from(campaigns).limit(1).execute())[0]?.id;
     });
 
     it("adds L10.createLead() instrumentation to landing pages", async () => {
@@ -543,7 +532,9 @@ describe.sequential.skip("Deploy Graph Tests", () => {
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
+          projectId: 1,
           websiteId: 1,
+          deployId: 1,
           deploy: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
@@ -580,7 +571,9 @@ describe.sequential.skip("Deploy Graph Tests", () => {
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
+          projectId: 1,
           websiteId: 1,
+          deployId: 1,
           deploy: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
@@ -641,7 +634,9 @@ describe.sequential.skip("Deploy Graph Tests", () => {
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
+          projectId: 1,
           websiteId: 1,
+          deployId: 1,
           deploy: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
@@ -684,7 +679,9 @@ describe.sequential.skip("Deploy Graph Tests", () => {
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
+          projectId: 1,
           websiteId: 1,
+          deployId: 1,
           deploy: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
@@ -748,7 +745,9 @@ describe.sequential.skip("Deploy Graph Tests", () => {
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
+          projectId: 1,
           websiteId: 1,
+          deployId: 1,
           deploy: { website: true },
           tasks: Deploy.withTasks({ website: true }, { ValidateLinks: "pending" }),
           chatId: 1,
@@ -795,7 +794,9 @@ describe.sequential.skip("Deploy Graph Tests", () => {
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
+          projectId: 1,
           websiteId: 1,
+          deployId: 1,
           deploy: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
@@ -803,7 +804,8 @@ describe.sequential.skip("Deploy Graph Tests", () => {
               ValidateLinks: "completed",
               RuntimeValidation: "completed",
               FixingBugs: "pending",
-            }
+            },
+            { after: "completed" }
           ),
           chatId: 1,
         })
@@ -841,7 +843,9 @@ describe.sequential.skip("Deploy Graph Tests", () => {
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
+          projectId: 1,
           websiteId: 1,
+          deployId: 1,
           deploy: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
@@ -890,9 +894,13 @@ describe.sequential.skip("Deploy Graph Tests", () => {
       vi.clearAllMocks();
       await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
 
-      setupJobRunMock(() => ({
-        create: vi.fn().mockResolvedValue({ id: 123, status: "pending" }),
-      }));
+      // Mock JobRunAPIService to prevent real Rails worker dispatch
+      mockJobRunAPIService.mockImplementation(
+        () =>
+          ({
+            create: vi.fn().mockResolvedValue({ id: 888, status: "pending" }),
+          }) as any
+      );
     });
 
     /**
@@ -904,8 +912,10 @@ describe.sequential.skip("Deploy Graph Tests", () => {
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
+          projectId: 1,
           websiteId: 1,
           campaignId: 1,
+          deployId: 1,
           deploy: { googleAds: true },
           tasks: [],
           chatId: 1,
@@ -925,7 +935,9 @@ describe.sequential.skip("Deploy Graph Tests", () => {
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
+          projectId: 1,
           websiteId: 1,
+          deployId: 1,
           deploy: { website: true },
           tasks: Deploy.withTasks({ website: true }, { DeployingWebsite: "pending" }),
           chatId: 1,
@@ -968,9 +980,13 @@ describe.sequential.skip("Deploy Graph Tests", () => {
           }) as any
       );
 
-      setupJobRunMock(() => ({
-        create: vi.fn().mockResolvedValue({ id: 123, status: "pending" }),
-      }));
+      // Mock JobRunAPIService to prevent real Rails worker dispatch
+      mockJobRunAPIService.mockImplementation(
+        () =>
+          ({
+            create: vi.fn().mockResolvedValue({ id: 777, status: "pending" }),
+          }) as any
+      );
     });
 
     /**
@@ -982,8 +998,10 @@ describe.sequential.skip("Deploy Graph Tests", () => {
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
+          projectId: 1,
           websiteId: 1,
           campaignId,
+          deployId: 1,
           deploy: { googleAds: true },
           tasks: Deploy.withTasks({ googleAds: true }, { CheckingBilling: "pending" }),
           chatId: 1,
@@ -1016,8 +1034,10 @@ describe.sequential.skip("Deploy Graph Tests", () => {
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
+          projectId: 1,
           websiteId: 1,
           campaignId,
+          deployId: 1,
           deploy: { googleAds: true },
           tasks: Deploy.withTasks({ googleAds: true }, { CheckingBilling: "pending" }),
           chatId: 1,
@@ -1038,8 +1058,10 @@ describe.sequential.skip("Deploy Graph Tests", () => {
         .withState({
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
+          projectId: 1,
           websiteId: 1,
           campaignId,
+          deployId: 1,
           deploy: { googleAds: true },
           tasks: Deploy.withTasks({ googleAds: true }, { EnablingCampaign: "pending" }),
           chatId: 1,

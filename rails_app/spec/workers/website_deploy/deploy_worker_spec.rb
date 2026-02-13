@@ -11,6 +11,7 @@ RSpec.describe WebsiteDeploy::DeployWorker, type: :worker do
     site
   end
   let(:deploy) { FactoryBot.create(:website_deploy, website: website) }
+  let(:job_run) { create(:job_run, :with_langgraph_callback, account: website.account, job_class: "WebsiteDeploy") }
   let(:worker) { WebsiteDeploy::DeployWorker.new }
 
   before do
@@ -36,7 +37,7 @@ RSpec.describe WebsiteDeploy::DeployWorker, type: :worker do
   end
 
   describe '#perform' do
-    context 'with a valid deploy' do
+    context 'without job_run_id' do
       before do
         allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
         allow(deploy).to receive(:actually_deploy).and_return(true)
@@ -59,22 +60,113 @@ RSpec.describe WebsiteDeploy::DeployWorker, type: :worker do
       end
     end
 
-    context 'when deploy fails' do
-      before do
+    context 'with job_run_id' do
+      it 'transitions job_run through running before completing' do
         allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
-        allow(deploy).to receive(:actually_deploy).and_return(false)
+
+        # Capture the job_run status at the time actually_deploy is called
+        status_during_deploy = nil
+        allow(deploy).to receive(:actually_deploy) do
+          status_during_deploy = job_run.reload.status
+          true
+        end
+
+        worker.perform(deploy.id, job_run.id)
+
+        expect(status_during_deploy).to eq("running")
+        expect(job_run.reload.started_at).to be_present
       end
 
-      it 'raises an error' do
-        expect {
-          worker.perform(deploy.id)
-        }.to raise_error(StandardError, "Deploy #{deploy.id} failed")
+      it 'does not update job_run if already running' do
+        job_run.update!(status: "running", started_at: 1.hour.ago)
+        allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
+        allow(deploy).to receive(:actually_deploy).and_return(true)
+
+        expect { worker.perform(deploy.id, job_run.id) }
+          .not_to change { job_run.reload.started_at }
       end
 
-      it 'logs the failure' do
-        expect(Rails.logger).to receive(:error).with("Failed to deploy #{deploy.id}")
-        expect(Rails.logger).to receive(:error).with("Error deploying #{deploy.id}: Deploy #{deploy.id} failed")
-        expect { worker.perform(deploy.id) }.to raise_error(StandardError)
+      context 'when deploy succeeds' do
+        before do
+          job_run.update!(status: "running", started_at: Time.current)
+          allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
+          allow(deploy).to receive(:actually_deploy).and_return(true)
+        end
+
+        it 'completes the job_run' do
+          worker.perform(deploy.id, job_run.id)
+          expect(job_run.reload.status).to eq("completed")
+        end
+
+        it 'notifies Langgraph of completion' do
+          expect(LanggraphCallbackWorker).to receive(:perform_async)
+            .with(job_run.id, hash_including(status: "completed"))
+
+          worker.perform(deploy.id, job_run.id)
+        end
+
+        it 'includes website details in the result' do
+          expect(LanggraphCallbackWorker).to receive(:perform_async)
+            .with(job_run.id, hash_including(
+              result: hash_including(
+                website_id: deploy.website_id,
+                deploy_id: deploy.id,
+                status: "completed"
+              )
+            ))
+
+          worker.perform(deploy.id, job_run.id)
+        end
+      end
+
+      context 'when deploy fails (returns false)' do
+        before do
+          job_run.update!(status: "running", started_at: Time.current)
+          allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
+          allow(deploy).to receive(:actually_deploy).and_return(false)
+        end
+
+        it 'fails the job_run' do
+          expect { worker.perform(deploy.id, job_run.id) }.to raise_error(StandardError)
+          expect(job_run.reload.status).to eq("failed")
+        end
+
+        it 'notifies Langgraph of failure' do
+          expect(LanggraphCallbackWorker).to receive(:perform_async)
+            .with(job_run.id, hash_including(status: "failed", error: "Website deploy failed"))
+
+          expect { worker.perform(deploy.id, job_run.id) }.to raise_error(StandardError)
+        end
+      end
+
+      context 'when deploy raises an exception' do
+        before do
+          job_run.update!(status: "running", started_at: Time.current)
+          allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
+          allow(deploy).to receive(:actually_deploy).and_raise(StandardError, "Unexpected error")
+        end
+
+        it 'does not notify Langgraph immediately (waits for retries to exhaust)' do
+          expect(LanggraphCallbackWorker).not_to receive(:perform_async)
+
+          expect {
+            worker.perform(deploy.id, job_run.id)
+          }.to raise_error(StandardError, "Unexpected error")
+        end
+
+        it 'does not mark job_run as failed (allows retries)' do
+          expect {
+            worker.perform(deploy.id, job_run.id)
+          }.to raise_error(StandardError)
+
+          expect(job_run.reload.status).to eq("running")
+        end
+
+        it 're-raises error for Sidekiq retry' do
+          expect {
+            worker.perform(deploy.id, job_run.id)
+          }.to raise_error(StandardError, "Unexpected error")
+        end
       end
     end
 
@@ -112,40 +204,38 @@ RSpec.describe WebsiteDeploy::DeployWorker, type: :worker do
 
   describe 'retry behavior' do
     it 'uses Sidekiq default retry behavior' do
-      # DeployWorker uses default Sidekiq retry behavior (exponential backoff)
-      # The retry count is configured to 5
       expect(described_class.sidekiq_options['retry']).to eq(5)
     end
   end
 
   describe 'retries exhausted' do
-    let(:msg) do
-      {
-        'args' => [deploy.id],
-        'retry_count' => 3
-      }
-    end
     let(:exception) { StandardError.new("Test error") }
 
     before do
+      exception.set_backtrace(['line1', 'line2', 'line3'])
       allow(WebsiteDeploy).to receive(:find_by).with(id: deploy.id).and_return(deploy)
     end
 
-    it 'logs the exhausted retries' do
-      expect(Rails.logger).to receive(:error).with(
-        "Failed to deploy #{deploy.id} after 3 retries: Test error"
-      )
+    context 'without job_run_id' do
+      let(:msg) do
+        {
+          'args' => [deploy.id],
+          'retry_count' => 5
+        }
+      end
 
-      described_class.sidekiq_retries_exhausted_block.call(msg, exception)
-    end
+      it 'logs the exhausted retries' do
+        expect(Rails.logger).to receive(:error).with(
+          "Failed to deploy #{deploy.id} after 5 retries: Test error"
+        )
 
-    context 'when deploy exists and is not already failed' do
-      before do
-        deploy.update!(status: 'pending')
-        allow(deploy).to receive(:update!)
+        described_class.sidekiq_retries_exhausted_block.call(msg, exception)
       end
 
       it 'marks the deploy as failed' do
+        deploy.update!(status: 'pending')
+        allow(deploy).to receive(:update!)
+
         expect(deploy).to receive(:update!).with(
           hash_including(
             status: 'failed',
@@ -156,20 +246,70 @@ RSpec.describe WebsiteDeploy::DeployWorker, type: :worker do
         described_class.sidekiq_retries_exhausted_block.call(msg, exception)
       end
     end
+
+    context 'with job_run_id' do
+      let(:msg) do
+        {
+          'args' => [deploy.id, job_run.id],
+          'retry_count' => 5
+        }
+      end
+
+      it 'marks the deploy as failed' do
+        described_class.sidekiq_retries_exhausted_block.call(msg, exception)
+        expect(deploy.reload.status).to eq('failed')
+      end
+
+      it 'fails the job_run' do
+        described_class.sidekiq_retries_exhausted_block.call(msg, exception)
+        expect(job_run.reload.status).to eq('failed')
+      end
+
+      it 'notifies Langgraph of failure' do
+        expect(LanggraphCallbackWorker).to receive(:perform_async)
+          .with(job_run.id, hash_including(status: "failed", error: "Test error"))
+
+        described_class.sidekiq_retries_exhausted_block.call(msg, exception)
+      end
+
+      it 'does not fail already-finished job_run' do
+        job_run.update!(status: "completed", completed_at: Time.current)
+
+        expect(LanggraphCallbackWorker).not_to receive(:perform_async)
+
+        described_class.sidekiq_retries_exhausted_block.call(msg, exception)
+
+        expect(job_run.reload.status).to eq('completed')
+      end
+    end
   end
 
   describe 'async enqueueing' do
-    it 'can be enqueued' do
+    it 'can be enqueued without job_run_id' do
       expect {
         WebsiteDeploy::DeployWorker.perform_async(deploy.id)
       }.to change(WebsiteDeploy::DeployWorker.jobs, :size).by(1)
     end
 
-    it 'enqueues with correct arguments' do
+    it 'enqueues with correct arguments (no job_run_id)' do
       WebsiteDeploy::DeployWorker.perform_async(deploy.id)
 
       job = WebsiteDeploy::DeployWorker.jobs.last
       expect(job['args']).to eq([deploy.id])
+      expect(job['queue']).to eq('critical')
+    end
+
+    it 'can be enqueued with job_run_id' do
+      expect {
+        WebsiteDeploy::DeployWorker.perform_async(deploy.id, job_run.id)
+      }.to change(WebsiteDeploy::DeployWorker.jobs, :size).by(1)
+    end
+
+    it 'enqueues with correct arguments (with job_run_id)' do
+      WebsiteDeploy::DeployWorker.perform_async(deploy.id, job_run.id)
+
+      job = WebsiteDeploy::DeployWorker.jobs.last
+      expect(job['args']).to eq([deploy.id, job_run.id])
       expect(job['queue']).to eq('critical')
     end
   end

@@ -1,4 +1,5 @@
 import { type DeployGraphState, getPhasesFromState } from "@annotation";
+import { getLogger } from "@core";
 
 /**
  * Initialize phases from existing tasks
@@ -8,12 +9,23 @@ import { type DeployGraphState, getPhasesFromState } from "@annotation";
  * useful for tests that start with tasks already in a terminal state.
  */
 export function initPhasesNode(state: DeployGraphState): Partial<DeployGraphState> {
-  // If no tasks exist, nothing to compute
+  const log = getLogger({ component: "initPhasesNode" });
+
+  // If no tasks exist, nothing to compute — but still mark as running
   if (!state.tasks || state.tasks.length === 0) {
-    return {};
+    log.info("No existing tasks, skipping phase computation");
+    return { status: "running" };
   }
 
   // Compute phases from current tasks
   const phases = getPhasesFromState(state);
-  return { phases };
+  log.info(
+    {
+      taskCount: state.tasks.length,
+      taskSummary: state.tasks.map((t) => ({ name: t.name, status: t.status })),
+      phaseCount: phases.length,
+    },
+    "Computed initial phases from existing tasks"
+  );
+  return { phases, status: "running" };
 }
