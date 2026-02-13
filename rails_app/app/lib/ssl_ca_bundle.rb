@@ -10,7 +10,7 @@ class SslCaBundle
     "/opt/homebrew/etc/openssl@3/cert.pem",   # macOS (Homebrew ARM)
     "/usr/local/etc/openssl@3/cert.pem",       # macOS (Homebrew Intel)
     "/etc/ssl/certs/ca-certificates.crt",       # Debian/Ubuntu
-    "/etc/pki/tls/certs/ca-bundle.crt",         # RHEL/CentOS
+    "/etc/pki/tls/certs/ca-bundle.crt"         # RHEL/CentOS
   ].freeze
 
   def self.path

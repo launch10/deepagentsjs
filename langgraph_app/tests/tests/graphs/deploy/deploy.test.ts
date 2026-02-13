@@ -17,6 +17,7 @@ vi.mock("@rails_api", async () => {
   return {
     ...actual,
     JobRunAPIService: vi.fn(),
+    DeployAPIService: vi.fn(),
   };
 });
 
@@ -32,10 +33,11 @@ vi.mock("@services", async () => {
 });
 
 import { GoogleAPIService } from "@services";
-import { JobRunAPIService } from "@rails_api";
+import { JobRunAPIService, DeployAPIService } from "@rails_api";
 
 const mockGoogleAPIService = vi.mocked(GoogleAPIService);
 const mockJobRunAPIService = vi.mocked(JobRunAPIService);
+const mockDeployAPIService = vi.mocked(DeployAPIService);
 
 const deployGraph = uncompiledGraph.compile({ ...graphParams, name: "deploy" });
 
@@ -73,6 +75,34 @@ afterEach(async () => {
  */
 
 describe.sequential("Deploy Graph Tests", () => {
+  // Mock DeployAPIService globally — initDeployNode creates the deploy,
+  // syncDeployStatus updates it at terminal states.
+  beforeEach(() => {
+    mockDeployAPIService.mockImplementation(
+      () =>
+        ({
+          create: vi.fn().mockResolvedValue({
+            id: 1,
+            project_id: 1,
+            status: "pending",
+            is_live: false,
+            thread_id: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }),
+          update: vi.fn().mockResolvedValue({
+            id: 1,
+            project_id: 1,
+            status: "completed",
+            is_live: true,
+            thread_id: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }),
+        }) as any
+    );
+  });
+
   /**
    * =============================================================================
    * 1. GOOGLE CONNECT/VERIFY TESTS [campaign]
@@ -138,7 +168,7 @@ describe.sequential("Deploy Graph Tests", () => {
             projectId,
             websiteId: 1,
             campaignId,
-            deployId: 1,
+
             deploy: { googleAds: true },
             tasks: [],
             chatId: 1,
@@ -173,7 +203,7 @@ describe.sequential("Deploy Graph Tests", () => {
               projectId,
               websiteId: 1,
               campaignId: 123,
-              deployId: 1,
+
               deploy: { googleAds: true },
               tasks: [],
               chatId: 1,
@@ -196,7 +226,7 @@ describe.sequential("Deploy Graph Tests", () => {
               projectId,
               websiteId: 1,
               campaignId: 123,
-              deployId: 1,
+
               deploy: { googleAds: true },
               tasks: Deploy.withTasks({ googleAds: true }, { ConnectingGoogle: "running" }),
               chatId: 1,
@@ -219,7 +249,7 @@ describe.sequential("Deploy Graph Tests", () => {
               projectId,
               websiteId: 1,
               campaignId,
-              deployId: 1,
+
               deploy: { googleAds: true },
               tasks: [],
               chatId: 1,
@@ -283,7 +313,7 @@ describe.sequential("Deploy Graph Tests", () => {
               projectId,
               websiteId: 1,
               campaignId,
-              deployId: 1,
+
               deploy: { googleAds: true },
               tasks: Deploy.withTasks({ googleAds: true }, { ConnectingGoogle: "completed" }),
               chatId: 1,
@@ -355,7 +385,7 @@ describe.sequential("Deploy Graph Tests", () => {
               projectId,
               websiteId: 1,
               campaignId,
-              deployId: 1,
+
               deploy: { googleAds: true, website: true },
               tasks: Deploy.withTasks(
                 { googleAds: true, website: true },
@@ -534,7 +564,7 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_123" as ThreadIDType,
           projectId: 1,
           websiteId: 1,
-          deployId: 1,
+
           deploy: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
@@ -573,7 +603,7 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_123" as ThreadIDType,
           projectId: 1,
           websiteId: 1,
-          deployId: 1,
+
           deploy: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
@@ -636,7 +666,7 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_123" as ThreadIDType,
           projectId: 1,
           websiteId: 1,
-          deployId: 1,
+
           deploy: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
@@ -681,7 +711,7 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_123" as ThreadIDType,
           projectId: 1,
           websiteId: 1,
-          deployId: 1,
+
           deploy: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
@@ -747,7 +777,7 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_123" as ThreadIDType,
           projectId: 1,
           websiteId: 1,
-          deployId: 1,
+
           deploy: { website: true },
           tasks: Deploy.withTasks({ website: true }, { ValidateLinks: "pending" }),
           chatId: 1,
@@ -796,7 +826,7 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_123" as ThreadIDType,
           projectId: 1,
           websiteId: 1,
-          deployId: 1,
+
           deploy: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
@@ -845,7 +875,7 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_123" as ThreadIDType,
           projectId: 1,
           websiteId: 1,
-          deployId: 1,
+
           deploy: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
@@ -915,7 +945,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
           campaignId: 1,
-          deployId: 1,
+
           deploy: { googleAds: true },
           tasks: [],
           chatId: 1,
@@ -937,7 +967,7 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_123" as ThreadIDType,
           projectId: 1,
           websiteId: 1,
-          deployId: 1,
+
           deploy: { website: true },
           tasks: Deploy.withTasks({ website: true }, { DeployingWebsite: "pending" }),
           chatId: 1,
@@ -1001,7 +1031,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
           campaignId,
-          deployId: 1,
+
           deploy: { googleAds: true },
           tasks: Deploy.withTasks({ googleAds: true }, { CheckingBilling: "pending" }),
           chatId: 1,
@@ -1037,7 +1067,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
           campaignId,
-          deployId: 1,
+
           deploy: { googleAds: true },
           tasks: Deploy.withTasks({ googleAds: true }, { CheckingBilling: "pending" }),
           chatId: 1,
@@ -1061,7 +1091,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
           campaignId,
-          deployId: 1,
+
           deploy: { googleAds: true },
           tasks: Deploy.withTasks({ googleAds: true }, { EnablingCampaign: "pending" }),
           chatId: 1,

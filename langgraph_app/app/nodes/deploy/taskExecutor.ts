@@ -4,6 +4,7 @@ import { Deploy, Task } from "@types";
 import { TASK_ORDER, getTaskRunner } from "./taskRunner";
 import { NodeMiddleware } from "@middleware";
 import { getLogger } from "@core";
+import { DeployAPIService } from "@rails_api";
 
 type NextTask = {
   taskName: Deploy.TaskName;
@@ -118,6 +119,28 @@ function allTasksComplete(state: DeployGraphState): boolean {
 }
 
 /**
+ * Sync terminal deploy status back to Rails so page reloads show the correct screen.
+ */
+async function syncDeployStatus(
+  state: DeployGraphState,
+  status: "completed" | "failed"
+): Promise<void> {
+  const log = getLogger({ component: "taskExecutor.syncDeployStatus" });
+  if (!state.deployId || !state.jwt) {
+    log.warn({ deployId: state.deployId }, "Cannot sync deploy status — missing deployId or jwt");
+    return;
+  }
+  try {
+    const api = new DeployAPIService({ jwt: state.jwt });
+    await api.update(state.deployId as number, { status, is_live: status === "completed" });
+    log.info({ deployId: state.deployId, status }, "Synced deploy status to Rails");
+  } catch (err) {
+    // Non-critical — frontend falls back to langgraph state
+    log.error({ error: err }, "Failed to sync deploy status to Rails");
+  }
+}
+
+/**
  * Task Executor Node - Raw Function
  */
 async function runTaskExecutor(
@@ -141,6 +164,7 @@ async function runTaskExecutor(
   if (!nextTask) {
     if (allTasksComplete(state)) {
       log.info("All tasks complete — marking deploy as completed");
+      await syncDeployStatus(state, "completed");
       return { status: "completed" };
     }
     // Fatal failure - find the failed task using runner's isFailureRecoverable
@@ -153,6 +177,7 @@ async function runTaskExecutor(
       { failedTask: failedTask?.name, error: failedTask?.error },
       "No next task and not all complete — fatal failure"
     );
+    await syncDeployStatus(state, "failed");
     return {
       ...withPhases(state, []),
       status: "failed",
@@ -229,6 +254,7 @@ async function runTaskExecutor(
         "Task runner returned failure"
       );
       if (!runner?.isFailureRecoverable) {
+        await syncDeployStatus(state, "failed");
         const failedTaskUpdate = { ...failedTask, status: "failed" } as Deploy.Task;
         return {
           ...withPhases(state, [failedTaskUpdate]),
@@ -247,6 +273,15 @@ async function runTaskExecutor(
       { taskName: nextTask.taskName, durationMs, updatedTasks },
       "Task runner completed successfully"
     );
+
+    // Sync terminal status to Rails so page reloads show the correct screen.
+    // This fires here because task runners (e.g. deployWebsiteNode) can return
+    // a terminal status directly, and the graph exits via the router without
+    // re-entering the executor's allTasksComplete branch.
+    if (partialGraphState.status === "completed" || partialGraphState.status === "failed") {
+      await syncDeployStatus(state, partialGraphState.status);
+    }
+
     return partialGraphState;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -258,6 +293,7 @@ async function runTaskExecutor(
       },
       "Task runner threw an exception"
     );
+    await syncDeployStatus(state, "failed");
     const failedTaskUpdate = { ...task, status: "failed", error: errorMessage } as Deploy.Task;
     return {
       ...withPhases(state, [failedTaskUpdate]),

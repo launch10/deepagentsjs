@@ -6,16 +6,28 @@ import deployImage from "@assets/deploy.png";
 interface DeployCompleteScreenProps {
   deployType: "website" | "campaign";
   result?: Deploy.DeployGraphState["result"];
-  domain?: string | null;
+  websiteUrl?: string | null;
+  deployEnvironment?: string;
+}
+
+function buildDeployUrl(baseUrl: string | undefined, environment?: string): string | undefined {
+  if (!baseUrl) return undefined;
+  if (!environment || environment === "production") return baseUrl;
+  const full = baseUrl.startsWith("http") ? baseUrl : `https://${baseUrl}`;
+  const url = new URL(full);
+  url.searchParams.set("cloudEnv", environment);
+  return url.toString();
 }
 
 export default function DeployCompleteScreen({
   deployType,
   result,
-  domain,
+  websiteUrl,
+  deployEnvironment,
 }: DeployCompleteScreenProps) {
   const isCampaign = deployType === "campaign";
-  const deployUrl = (result?.url as string | undefined) || domain || undefined;
+  const rawUrl = (result?.url as string | undefined) || websiteUrl || undefined;
+  const deployUrl = buildDeployUrl(rawUrl, deployEnvironment);
 
   const deployment: Deployment = {
     id: "current",

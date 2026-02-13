@@ -19,14 +19,19 @@ type DeployStatus = Deploy.DeployGraphState["status"];
  * Pure function that resolves which content screen to show based on deploy state.
  *
  * Priority order:
- * 1. Terminal states (completed, failed)
+ * 1. Terminal states (from langgraph state or Rails deploy record)
  * 2. Task-specific blocking states (OAuth, invite, payment)
  * 3. Default in-progress
  */
-export function resolveContentScreen(tasks: TaskState, status: DeployStatus): DeployScreen {
-  // Terminal states first
-  if (status === "completed") return "deploy-complete";
-  if (status === "failed") return "deploy-error";
+export function resolveContentScreen(
+  tasks: TaskState,
+  status: DeployStatus,
+  railsDeployStatus?: string
+): DeployScreen {
+  // Terminal states — check both langgraph state and Rails record
+  // Rails status is the fallback for page reloads before langgraph state loads
+  if (status === "completed" || railsDeployStatus === "completed") return "deploy-complete";
+  if (status === "failed" || railsDeployStatus === "failed") return "deploy-error";
 
   if (!tasks || tasks.length === 0) return "in-progress";
 
@@ -69,10 +74,14 @@ export function resolveContentScreen(tasks: TaskState, status: DeployStatus): De
 /**
  * Hook that returns the current content screen based on deploy chat state.
  * Accepts Partial state since useLanggraph returns partial state initially.
+ * Falls back to Rails deploy status for immediate rendering on page reload.
  */
-export function useDeployContentScreen(state: Partial<Deploy.DeployGraphState>): DeployScreen {
+export function useDeployContentScreen(
+  state: Partial<Deploy.DeployGraphState>,
+  railsDeployStatus?: string
+): DeployScreen {
   return useMemo(
-    () => resolveContentScreen(state.tasks, state.status),
-    [state.tasks, state.status]
+    () => resolveContentScreen(state.tasks, state.status, railsDeployStatus),
+    [state.tasks, state.status, railsDeployStatus]
   );
 }

@@ -24,7 +24,7 @@ function RestartDeployButton() {
   const [restarting, setRestarting] = useState(false);
 
   const handleRestart = useCallback(async () => {
-    if (!deploy.id) return;
+    if (!deploy?.id) return;
     if (!confirm("Restart deploy? This deletes the deploy chat and resets to pending.")) return;
 
     setRestarting(true);
@@ -42,7 +42,7 @@ function RestartDeployButton() {
       console.error("Failed to restart deploy:", e);
       setRestarting(false);
     }
-  }, [deploy.id]);
+  }, [deploy?.id]);
 
   return (
     <DevButton onClick={handleRestart} disabled={restarting}>
@@ -52,10 +52,10 @@ function RestartDeployButton() {
 }
 
 function DeployContent() {
-  const { deploy_type } = usePage<DeployProps>().props;
+  const { deploy, deploy_type, website_url, deploy_environment } = usePage<DeployProps>().props;
   const polling = useDeployInit();
   const { state, startDeploy } = polling;
-  const screen = useDeployContentScreen(state);
+  const screen = useDeployContentScreen(state, deploy?.status);
 
   // Find the currently running task for the in-progress label
   const currentTask = state.tasks?.find((t) => t.status === "running");
@@ -67,7 +67,7 @@ function DeployContent() {
   const connectTask = state.tasks?.find((t) => t.name === "ConnectingGoogle");
   const googleEmail = connectTask?.result?.google_email as string | undefined;
 
-  const isComplete = state.status === "completed";
+  const isComplete = state.status === "completed" || deploy?.status === "completed";
 
   return (
     <main className="mx-auto container max-w-7xl grid grid-cols-[288px_1fr] gap-8 px-8 py-8">
@@ -93,7 +93,12 @@ function DeployContent() {
             <WaitingGoogleScreen onCheckAgain={() => polling.updateState({ polling: true })} />
           )}
           {screen === "deploy-complete" && (
-            <DeployCompleteScreen deployType={deploy_type} result={state.result} />
+            <DeployCompleteScreen
+              deployType={deploy_type}
+              result={state.result}
+              websiteUrl={website_url}
+              deployEnvironment={deploy_environment}
+            />
           )}
           {screen === "deploy-error" && (
             <DeployErrorScreen consoleErrors={state.consoleErrors} onRetry={startDeploy} />

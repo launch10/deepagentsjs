@@ -15,9 +15,11 @@ export interface DeployProps {
     status: string;
     current_step: string | null;
     langgraph_thread_id: string | null;
-  };
+  } | null;
   deploy_type: "website" | "campaign";
   website: { id: number } | null;
+  website_url: string | null;
+  deploy_environment: string;
   campaign: { id: number } | null;
   [key: string]: unknown;
 }
@@ -30,7 +32,7 @@ function useDeployChatOptions() {
   return useChatOptions<Deploy.DeployBridgeType>({
     apiPath: "api/deploy/stream",
     merge: Deploy.MergeReducer as any,
-    getInitialThreadId: () => deploy.langgraph_thread_id ?? undefined,
+    getInitialThreadId: () => deploy?.langgraph_thread_id ?? undefined,
     includeAttachments: false,
   });
 }
@@ -96,7 +98,7 @@ export function useDeployChatThreadId() {
  */
 export function useDeployChatWithPolling() {
   const props = usePage<DeployProps>().props;
-  const { deploy, deploy_type, website, campaign } = props;
+  const { deploy_type, website, campaign } = props;
   // Read projectId directly from page props (always synchronous) rather than
   // from the project store, which may not be hydrated yet when startDeploy fires.
   const projectId = (props.project as { id?: number } | null)?.id;
@@ -106,20 +108,20 @@ export function useDeployChatWithPolling() {
   const [isPolling, setIsPolling] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Start the deploy process
+  // Start the deploy process — graph's initDeployNode creates the Deploy record.
+  // We only send project/website/campaign IDs and deploy instructions.
   const startDeploy = useCallback(() => {
     const isCampaign = deploy_type === "campaign";
     updateState({
       projectId,
+      websiteId: website?.id,
+      campaignId: isCampaign ? campaign?.id : undefined,
       deploy: {
-        deployId: deploy.id,
-        websiteId: website?.id,
-        campaignId: isCampaign ? campaign?.id : undefined,
         website: !!website?.id,
         googleAds: isCampaign,
       },
     });
-  }, [updateState, deploy.id, deploy_type, website?.id, campaign?.id, projectId]);
+  }, [updateState, deploy_type, website?.id, campaign?.id, projectId]);
 
   // The graph sets status: "running" on entry, "completed"/"failed" at exit.
   const isTerminal = state.status === "completed" || state.status === "failed";

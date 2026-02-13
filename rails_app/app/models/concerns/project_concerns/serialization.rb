@@ -74,35 +74,6 @@ module ProjectConcerns
       }.merge!(core_json)
     end
 
-    def to_deploy_json(deploy)
-      Project.with_launch_relations.find_by(id: id)
-
-      to_ad_campaign_json.merge!({
-        thread_id: deploy.thread_id,
-        deploy: {
-          id: deploy.id,
-          status: deploy.status,
-          current_step: deploy.current_step,
-          langgraph_thread_id: deploy.thread_id
-        },
-        deploy_type: "campaign"
-      })
-    end
-
-    def to_website_deploy_json(deploy)
-      to_website_json.merge!({
-        thread_id: deploy.thread_id,
-        deploy: {
-          id: deploy.id,
-          status: deploy.status,
-          current_step: deploy.current_step,
-          langgraph_thread_id: deploy.thread_id
-        },
-        deploy_type: "website",
-        campaign: nil
-      })
-    end
-
     def to_ad_campaign_json
       project = Project.with_launch_relations.find_by(id: id)
       campaign = project.campaigns.first
@@ -142,6 +113,42 @@ module ProjectConcerns
       end
 
       result
+    end
+
+    def to_deploy_json(deploy = nil)
+      Project.with_launch_relations.find_by(id: id)
+
+      to_ad_campaign_json.merge!({
+        thread_id: deploy&.thread_id,
+        deploy: deploy_props(deploy),
+        deploy_type: "campaign",
+        website_url: primary_url_string,
+        deploy_environment: Rails.env.production? ? nil : Cloudflare.deploy_env
+      })
+    end
+
+    def to_website_deploy_json(deploy = nil)
+      to_website_json.merge!({
+        thread_id: deploy&.thread_id,
+        deploy: deploy_props(deploy),
+        deploy_type: "website",
+        website_url: primary_url_string,
+        deploy_environment: Rails.env.production? ? nil : Cloudflare.deploy_env,
+        campaign: nil
+      })
+    end
+
+    private
+
+    def deploy_props(deploy)
+      return nil unless deploy
+
+      {
+        id: deploy.id,
+        status: deploy.status,
+        current_step: deploy.current_step,
+        langgraph_thread_id: deploy.thread_id
+      }
     end
   end
 end

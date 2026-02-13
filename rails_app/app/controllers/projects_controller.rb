@@ -64,7 +64,7 @@ class ProjectsController < SubscribedController
   # Website deploy renders the Deploy page (not the Website page)
   def website_deploy
     @project.current_workflow.update!(step: "website", substep: "deploy")
-    @deploy = @project.deploys.in_progress.first || @project.deploys.create!(status: "pending")
+    @deploy = find_existing_deploy
 
     render inertia: "Deploy",
       props: @project.to_website_deploy_json(@deploy),
@@ -95,8 +95,7 @@ class ProjectsController < SubscribedController
   end
 
   def deploy
-    # Create or find existing deploy for this project
-    @deploy = @project.deploys.in_progress.first || @project.deploys.create!(status: "pending")
+    @deploy = find_existing_deploy
 
     render inertia: "Deploy",
       props: @project.to_deploy_json(@deploy),
@@ -142,6 +141,12 @@ class ProjectsController < SubscribedController
     first_metric = @project.analytics_daily_metrics.order(:date).first
     return 30 unless first_metric
     (Date.current - first_metric.date).to_i
+  end
+
+  # Find existing deploy — does NOT create. The graph's initDeploy node handles creation.
+  # Returns the most recent deploy (which is always the one the graph created/is working on).
+  def find_existing_deploy
+    @project.deploys.order(created_at: :desc).first
   end
 
   def set_project
