@@ -8,6 +8,7 @@ import {
 } from "@server/middleware";
 import { validateThreadOrError } from "../middleware/threadValidation";
 import { SupportAPI } from "@api";
+import { trackChatMessage } from "./shared";
 
 type Variables = {
   auth: AuthContext;
@@ -32,6 +33,8 @@ supportRoutes.post("/stream", ...streamMiddleware, async (c) => {
   }
 
   const stateObj = state || {};
+
+  trackChatMessage(auth, messages, threadId, "support", stateObj);
 
   return SupportAPI.stream({
     messages: messages || [],

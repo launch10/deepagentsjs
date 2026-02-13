@@ -397,6 +397,18 @@ class CampaignDeploy < ApplicationRecord
 
       if step.nil?
         update!(status: "completed")
+
+        account = campaign&.account
+        TrackEvent.call("campaign_deployed",
+          user: account&.owner,
+          account: account,
+          project: campaign&.project,
+          campaign: campaign,
+          project_uuid: campaign&.project&.uuid,
+          deploy_status: "completed",
+          daily_budget_cents: campaign&.daily_budget_cents
+        )
+
         return true  # All steps complete
       end
 
@@ -417,4 +429,5 @@ class CampaignDeploy < ApplicationRecord
 
     false  # More steps remain (we just enqueued/recursed)
   end
+
 end

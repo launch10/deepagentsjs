@@ -1,8 +1,15 @@
 import { Hono } from "hono";
-import { type AuthContext, authMiddleware, streamMiddleware, readOnlyMiddleware, getCreditState } from "@server/middleware";
+import {
+  type AuthContext,
+  authMiddleware,
+  streamMiddleware,
+  readOnlyMiddleware,
+  getCreditState,
+} from "@server/middleware";
 import { validateThreadOrError } from "../middleware/threadValidation";
 import { WebsiteAPI } from "@api";
 import { env } from "@core";
+import { trackChatMessage } from "./shared";
 
 type Variables = {
   auth: AuthContext;
@@ -29,6 +36,8 @@ websiteRoutes.post("/stream", ...streamMiddleware, async (c) => {
   // Validate thread ownership (new threads pass — chat created by updateWebsite node)
   const validationError = await validateThreadOrError(c, threadId, auth);
   if (validationError) return validationError;
+
+  trackChatMessage(auth, messages, threadId, "website", state);
 
   // Stream with automatic billing via middleware
   // ChatId is looked up from threadId at stream completion

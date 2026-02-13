@@ -280,5 +280,6 @@ RSpec.describe Credits::ConsumptionService do
         expect(account.plan_millicredits).to eq(7000)
       end
     end
+
   end
 end

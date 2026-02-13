@@ -83,6 +83,16 @@ class API::V1::DomainsController < API::BaseController
     )
 
     if result[:success]
+      TrackEvent.call("domain_configured",
+        user: current_user,
+        account: current_account,
+        project: website.project,
+        website: website,
+        project_uuid: website.project&.uuid,
+        domain_type: result[:domain].is_platform_subdomain ? "platform_subdomain" : "custom",
+        domain_name: result[:domain].domain
+      )
+
       render json: {
         domain: result[:domain].to_api_json,
         website_url: result[:website_url].to_api_json,

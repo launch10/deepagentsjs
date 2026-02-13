@@ -1,9 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useWebsitePreview, useWebsiteChatActions } from "@hooks/website";
 import { useChatIsStreaming } from "@components/shared/chat/ChatContext";
 import { StepProgress } from "@components/ui/step-progress";
 import { type WebContainerStatus, WebContainerManager } from "@lib/webcontainer";
 import { useCurrentUser } from "@stores/sessionStore";
+import { useProjectUuid } from "@stores/projectStore";
+import { analytics } from "@lib/analytics";
 
 const previewSteps = [
   { id: "booting", label: "Starting preview environment..." },
@@ -31,9 +33,28 @@ interface StatusMessageProps {
 function StatusMessage({ status, hasBuildErrors, onFix }: StatusMessageProps) {
   if (hasBuildErrors) {
     return (
-      <div data-testid="preview-status" data-status="build-error" className="flex flex-col items-center gap-3 text-center px-8">
+      <div
+        data-testid="preview-status"
+        data-status="build-error"
+        className="flex flex-col items-center gap-3 text-center px-8"
+      >
         <div className="size-10 rounded-full bg-red-100 flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-red-500"
+          >
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" x2="12" y1="8" y2="12" />
+            <line x1="12" x2="12.01" y1="16" y2="16" />
+          </svg>
         </div>
         <p className="text-sm font-medium text-neutral-700">We had an issue building your page</p>
         <button
@@ -87,14 +108,17 @@ export function WebsitePreview() {
   const isStreaming = useChatIsStreaming();
   const currentUser = useCurrentUser();
   const isAdmin = currentUser?.admin ?? false;
+  const projectUuid = useProjectUuid();
   const [iframeLoaded, setIframeLoaded] = useState(false);
+  const hasTrackedPreview = useRef(false);
 
   // Reset iframeLoaded when previewUrl changes (e.g. WebContainer restart)
   useEffect(() => {
     if (import.meta.env.DEV) {
-      console.log("[WebsitePreview] previewUrl changed, resetting iframeLoaded", { previewUrl });
+      console.warn("[WebsitePreview] previewUrl changed, resetting iframeLoaded", { previewUrl });
     }
     setIframeLoaded(false);
+    hasTrackedPreview.current = false;
   }, [previewUrl]);
 
   // Listen for postMessage from the preview iframe signaling content has rendered.
@@ -104,9 +128,13 @@ export function WebsitePreview() {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "preview-ready") {
         if (import.meta.env.DEV) {
-          console.log("[WebsitePreview] preview-ready received — iframeLoaded: true");
+          console.warn("[WebsitePreview] preview-ready received — iframeLoaded: true");
         }
         setIframeLoaded(true);
+        if (projectUuid && !hasTrackedPreview.current) {
+          hasTrackedPreview.current = true;
+          analytics.trackProject("website_previewed", projectUuid);
+        }
         if (consoleErrors.length > 0) {
           WebContainerManager.clearConsoleErrors();
         }
@@ -115,7 +143,7 @@ export function WebsitePreview() {
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [consoleErrors.length]);
+  }, [consoleErrors.length, projectUuid]);
 
   const handleReload = useCallback(() => {
     setIframeLoaded(false);
@@ -125,11 +153,12 @@ export function WebsitePreview() {
   const buildErrors = consoleErrors.filter((e) => e.type === "error");
 
   const handleFixErrors = useCallback(() => {
-    sendMessage(
-      "My page isn't displaying correctly, can you fix it?",
-      { consoleErrors: buildErrors }
-    );
-  }, [buildErrors, sendMessage]);
+    sendMessage("My page isn't displaying correctly, can you fix it?", {
+      consoleErrors: buildErrors,
+    });
+    if (projectUuid)
+      analytics.trackProject("website_edited", projectUuid, { edit_type: "error_fix" });
+  }, [buildErrors, sendMessage, projectUuid]);
 
   // Show error state
   if (status === "error") {
@@ -145,7 +174,7 @@ export function WebsitePreview() {
   const showLoading = !isReady || !iframeLoaded;
 
   if (import.meta.env.DEV) {
-    console.log("[WebsitePreview] render", {
+    console.warn("[WebsitePreview] render", {
       isReady,
       iframeLoaded,
       showLoading,
@@ -203,7 +232,11 @@ export function WebsitePreview() {
         {/* Loading overlay — shows build error state or normal loading steps */}
         {(showLoading || (hasBuildErrors && !isStreaming)) && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-50">
-            <StatusMessage status={status} hasBuildErrors={hasBuildErrors && !isStreaming} onFix={handleFixErrors} />
+            <StatusMessage
+              status={status}
+              hasBuildErrors={hasBuildErrors && !isStreaming}
+              onFix={handleFixErrors}
+            />
           </div>
         )}
 

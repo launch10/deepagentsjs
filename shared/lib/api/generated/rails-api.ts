@@ -97,6 +97,72 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/app_events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates an internal app event */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description Name of the event to track */
+                        event_name: string;
+                        /** @description User ID */
+                        user_id?: number | null;
+                        /** @description Project ID */
+                        project_id?: number | null;
+                        /** @description Additional event properties */
+                        properties?: {
+                            [key: string]: unknown;
+                        } | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description event accepted without optional fields */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description unauthorized - missing signature */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description rejects missing event_name */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/credits/check": {
         parameters: {
             query?: never;
@@ -1064,6 +1130,71 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/v1/website_deploys/{id}/rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rolls back to a previous website deploy */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    Authorization: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description successfully triggers rollback */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            success: boolean;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description returns not found for non-existent deploy */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description cannot rollback a non-completed deploy */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/website_urls/search": {

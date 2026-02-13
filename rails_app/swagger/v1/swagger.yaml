@@ -104,6 +104,53 @@ paths:
           description: cannot access another account's project
         "401":
           description: unauthorized - invalid token
+  "/api/v1/app_events":
+    post:
+      summary: Creates an internal app event
+      tags:
+        - App Events
+      parameters:
+        - name: X-Signature
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Timestamp
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        "202":
+          description: event accepted without optional fields
+        "422":
+          description: rejects missing event_name
+        "401":
+          description: unauthorized - missing signature
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event_name:
+                  type: string
+                  description: Name of the event to track
+                user_id:
+                  type: integer
+                  description: User ID
+                  nullable: true
+                project_id:
+                  type: integer
+                  description: Project ID
+                  nullable: true
+                properties:
+                  type: object
+                  additionalProperties: true
+                  description: Additional event properties
+                  nullable: true
+              required:
+                - event_name
   "/api/v1/credits/check":
     get:
       summary: Checks account credit balance
@@ -1244,6 +1291,52 @@ paths:
                   - project
         "404":
           description: cannot restore another account's project
+        "401":
+          description: unauthorized - missing token
+  "/api/v1/website_deploys/{id}/rollback":
+    post:
+      summary: Rolls back to a previous website deploy
+      tags:
+        - Website Deploys
+      security:
+        - bearer_auth: []
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: X-Signature
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Timestamp
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: successfully triggers rollback
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required:
+                  - success
+        "422":
+          description: cannot rollback a non-completed deploy
+        "404":
+          description: returns not found for non-existent deploy
         "401":
           description: unauthorized - missing token
   "/api/v1/website_urls/search":

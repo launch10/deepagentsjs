@@ -42,6 +42,19 @@ module Credits
       old_plan = Plan.find_by(stripe_id: old_price_id)
       raise "Plan not found for stripe_id: #{old_price_id}" unless old_plan
 
+      current_plan = Plan.find_by(stripe_id: current_price_id)
+      direction = current_plan && old_plan && current_plan.amount.to_i > old_plan.amount.to_i ? "upgrade" : "downgrade"
+
+      months_on_old_plan = subscription.created_at ? ((Time.current - subscription.created_at) / 1.month).round : nil
+      TrackEvent.call("subscription_plan_changed",
+        user: account.owner,
+        account: account,
+        old_plan: old_plan&.name,
+        new_plan: current_plan&.name,
+        direction: direction,
+        months_on_old_plan: months_on_old_plan
+      )
+
       # Use Stripe event ID for idempotency (globally unique)
       Credits::ResetPlanCreditsWorker.perform_async(
         subscription.id,

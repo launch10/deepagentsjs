@@ -31,10 +31,12 @@ module WebsiteDeployConcerns
       dist_path = build!
       upload!(dist_path)
       website.sync_all_to_atlas
+      track_website_deployed("completed")
       true
     rescue => e
       Rails.logger.error "Deploy failed: #{e.message} #{e.backtrace}"
       update!(status: "failed", stacktrace: "#{e.message}\n#{e.backtrace.join("\n")}")
+      track_website_deployed("failed")
       false
     ensure
       if dist_path
@@ -123,6 +125,7 @@ module WebsiteDeployConcerns
         # Update revertible status
         update_revertible_deploys
 
+        track_website_rollback
         true
       rescue => e
         Rails.logger.error "Rollback failed: #{e.message}"
@@ -131,6 +134,34 @@ module WebsiteDeployConcerns
     end
 
     private
+
+    def track_website_deployed(deploy_status)
+      return if is_preview?
+      account = website&.project&.account
+      TrackEvent.call("website_deployed",
+        user: account&.owner,
+        account: account,
+        project: website&.project,
+        website: website,
+        project_uuid: website&.project&.uuid,
+        deploy_status: deploy_status,
+        is_first_deploy: website.deploys.where(status: "completed").count <= 1,
+        deploy_duration_seconds: updated_at && created_at ? (updated_at - created_at).round : nil
+      )
+    end
+
+    def track_website_rollback
+      return if is_preview?
+      account = website&.project&.account
+      TrackEvent.call("website_rollback",
+        user: account&.owner,
+        account: account,
+        project: website&.project,
+        website: website,
+        project_uuid: website&.project&.uuid,
+        rollback_to_version: version_path
+      )
+    end
 
     def set_default_status
       self.status ||= "pending"

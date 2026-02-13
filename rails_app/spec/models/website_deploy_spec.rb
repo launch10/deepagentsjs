@@ -880,4 +880,59 @@ RSpec.describe WebsiteDeploy, type: :model do
       end
     end
   end
+
+  describe "event tracking" do
+    let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
+    let(:deploy) { website_with_files.deploys.create!(environment: "development") }
+
+    before do
+      website_with_files.snapshot
+    end
+
+    it "tracks website_deployed with completed on successful actually_deploy" do
+      allow(deploy).to receive(:build!).and_return("/tmp/dist")
+      allow(deploy).to receive(:upload!)
+      allow(website_with_files).to receive(:sync_all_to_atlas)
+      allow(FileUtils).to receive(:rm_rf)
+
+      expect(TrackEvent).to receive(:call).with("website_deployed",
+        hash_including(deploy_status: "completed", project_uuid: kind_of(String))
+      )
+      deploy.actually_deploy
+    end
+
+    it "tracks website_deployed with failed when actually_deploy fails" do
+      allow(deploy).to receive(:build!).and_raise(StandardError, "build failed")
+      allow(FileUtils).to receive(:rm_rf)
+
+      expect(TrackEvent).to receive(:call).with("website_deployed",
+        hash_including(deploy_status: "failed")
+      )
+      deploy.actually_deploy
+    end
+
+    it "does not track website_deployed for preview deploys" do
+      preview_deploy = website_with_files.deploys.create!(environment: "development", is_preview: true)
+      allow(preview_deploy).to receive(:build!).and_return("/tmp/dist")
+      allow(preview_deploy).to receive(:upload!)
+      allow(website_with_files).to receive(:sync_all_to_atlas)
+      allow(FileUtils).to receive(:rm_rf)
+
+      expect(TrackEvent).not_to receive(:call).with("website_deployed", anything)
+      preview_deploy.actually_deploy
+    end
+
+    it "tracks website_rollback on successful actually_rollback" do
+      # Set up a completed, revertible, non-live deploy
+      deploy.update_columns(status: "completed", is_live: false, revertible: true, version_path: "72/20260101120000")
+      uploader = instance_double(DeployUploader)
+      allow(DeployUploader).to receive(:new).and_return(uploader)
+      allow(uploader).to receive(:hotswap_live)
+
+      expect(TrackEvent).to receive(:call).with("website_rollback",
+        hash_including(project_uuid: kind_of(String), rollback_to_version: "72/20260101120000")
+      )
+      deploy.actually_rollback
+    end
+  end
 end

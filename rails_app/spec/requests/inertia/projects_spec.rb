@@ -164,6 +164,15 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     end
   end
 
+  describe 'GET /projects/:uuid/performance' do
+    it 'tracks project_performance_viewed' do
+      expect(TrackEvent).to receive(:call).with("project_performance_viewed",
+        hash_including(project_uuid: project.uuid, has_leads: kind_of(FalseClass))
+      )
+      get performance_project_path(project.uuid)
+    end
+  end
+
   describe 'DELETE /projects/:uuid (soft delete)' do
     # Create a fully populated project using the proper creation method (mimics real app behavior)
     let!(:brainstorm_data) do

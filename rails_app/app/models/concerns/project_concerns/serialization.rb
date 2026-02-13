@@ -123,7 +123,8 @@ module ProjectConcerns
         deploy: deploy_props(deploy),
         deploy_type: "campaign",
         website_url: primary_url_string,
-        deploy_environment: Rails.env.production? ? nil : Cloudflare.deploy_env
+        deploy_environment: Rails.env.production? ? nil : Cloudflare.deploy_env,
+        website_deploys: recent_website_deploys
       })
     end
 
@@ -134,7 +135,8 @@ module ProjectConcerns
         deploy_type: "website",
         website_url: primary_url_string,
         deploy_environment: Rails.env.production? ? nil : Cloudflare.deploy_env,
-        campaign: nil
+        campaign: nil,
+        website_deploys: recent_website_deploys
       })
     end
 
@@ -148,6 +150,27 @@ module ProjectConcerns
         status: deploy.status,
         current_step: deploy.current_step,
         langgraph_thread_id: deploy.thread_id
+      }
+    end
+
+    def recent_website_deploys
+      return [] unless website
+
+      website.deploys
+        .where(is_preview: false)
+        .order(created_at: :desc)
+        .limit(5)
+        .map { |wd| website_deploy_props(wd) }
+    end
+
+    def website_deploy_props(wd)
+      {
+        id: wd.id,
+        status: wd.status,
+        environment: wd.environment,
+        is_live: wd.is_live,
+        revertible: wd.revertible,
+        created_at: wd.created_at
       }
     end
   end

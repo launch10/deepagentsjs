@@ -29,6 +29,14 @@ class Users::SessionsController < Devise::SessionsController
     if resource
       set_flash_message!(:notice, :signed_in)
       sign_in(resource_name, resource)
+      TrackEvent.call("user_signed_in",
+        user: resource,
+        account: resource.accounts.first,
+        method: "email",
+        days_since_signup: ((Time.current - resource.created_at) / 1.day).round,
+        has_projects: resource.accounts.first&.projects&.exists? || false,
+        project_count: resource.accounts.first&.projects&.count || 0
+      )
       inertia_location after_sign_in_path_for(resource)
     else
       render inertia: "Auth/SignIn",
@@ -69,6 +77,14 @@ class Users::SessionsController < Devise::SessionsController
       remember_me(resource) if session.delete(:remember_me)
       set_flash_message!(:notice, :signed_in)
       sign_in(resource, event: :authentication)
+      TrackEvent.call("user_signed_in",
+        user: resource,
+        account: resource.accounts.first,
+        method: "otp",
+        days_since_signup: ((Time.current - resource.created_at) / 1.day).round,
+        has_projects: resource.accounts.first&.projects&.exists? || false,
+        project_count: resource.accounts.first&.projects&.count || 0
+      )
       inertia_location after_sign_in_path_for(resource)
     else
       flash.now[:alert] = t(".incorrect_verification_code")

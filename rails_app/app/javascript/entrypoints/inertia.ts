@@ -3,11 +3,15 @@ import { createElement, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 // import { AppLayout } from '../frontend/layouts/app'
 import { SiteLayout } from "../frontend/layouts/site-layout";
+import { initPostHog } from "../frontend/lib/analytics";
 
 // Import global styles here for Vite to process
 import "@styles/index.scss";
 import "@xterm/xterm/css/xterm.css";
 import "react-toastify/dist/ReactToastify.css";
+
+// Initialize PostHog analytics
+initPostHog();
 
 // Temporary type definition, until @inertiajs/react provides one
 type PageComponent = React.ComponentType & {

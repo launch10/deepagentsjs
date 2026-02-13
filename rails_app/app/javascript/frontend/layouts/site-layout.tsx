@@ -12,6 +12,7 @@ import { useSessionStore } from "~/stores/sessionStore";
 import { useCreditStore } from "~/stores/creditStore";
 import { WebContainerManager } from "@lib/webcontainer";
 import { useJwtRefresh } from "@hooks/useJwtRefresh";
+import { analytics } from "@lib/analytics";
 
 const queryClient = new QueryClient();
 
@@ -88,6 +89,16 @@ export const SiteLayout = ({ children }: { children: React.ReactNode }): React.R
       thread_id: props.thread_id,
     });
     lastUrlRef.current = url;
+
+    // 4. PostHog user identification
+    if (props.current_user) {
+      analytics.identify(props.current_user.id, {
+        email: props.current_user.email,
+        name: props.current_user.name,
+      });
+    } else {
+      analytics.reset();
+    }
   }, [url, props]);
 
   // Proactive JWT refresh (30-min interval, visibility change, expiry detection)

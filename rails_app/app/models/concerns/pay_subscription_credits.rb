@@ -26,6 +26,19 @@ module PaySubscriptionCredits
   def handle_subscription_created
     return unless should_allocate_credits?
 
+    account = customer&.owner
+    if account.is_a?(Account)
+      plan = Plan.find_by(stripe_id: processor_plan)
+      TrackEvent.call("subscription_started",
+        user: account.owner,
+        account: account,
+        plan_name: plan&.name,
+        plan_interval: plan&.interval,
+        plan_amount_cents: plan&.amount,
+        time_since_signup_hours: account.owner ? ((Time.current - account.owner.created_at) / 1.hour).round : nil
+      )
+    end
+
     Credits::ResetPlanCreditsWorker.perform_async(id)
   end
 

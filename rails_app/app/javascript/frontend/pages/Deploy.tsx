@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { router, usePage } from "@inertiajs/react";
 import { Chat } from "@components/shared/chat/Chat";
-import { DeploySidebar } from "@components/deploy";
+import { DeploySidebar, DeployHistory } from "@components/deploy";
 import {
   InProgressScreen,
   GoogleConnectScreen,
@@ -20,6 +20,7 @@ import { useDeployChatInstance, type DeployProps } from "@hooks/useDeployChat";
 import { useDeployInit } from "@hooks/useDeployInit";
 import { useDeployContentScreen } from "@hooks/useDeployContentScreen";
 import { Deploy as DeployTypes } from "@shared";
+import { useRootPath } from "~/stores/sessionStore";
 
 function RestartDeployButton() {
   const { deploy } = usePage<DeployProps>().props;
@@ -53,6 +54,38 @@ function RestartDeployButton() {
   );
 }
 
+function NewDeployButton() {
+  const { project } = usePage<DeployProps>().props;
+  const rootPath = useRootPath();
+  const [creating, setCreating] = useState(false);
+
+  const handleNewDeploy = useCallback(async () => {
+    if (!confirm("Start a new deployment?")) return;
+    setCreating(true);
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+      await fetch(`${rootPath}/api/v1/deploys`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken || "",
+        },
+        credentials: "include",
+        body: JSON.stringify({ project_id: project.id }),
+      });
+      window.location.reload();
+    } catch {
+      setCreating(false);
+    }
+  }, [project.id, rootPath]);
+
+  return (
+    <Button onClick={handleNewDeploy} disabled={creating} variant="outline">
+      {creating ? "Starting..." : "New Deploy"}
+    </Button>
+  );
+}
+
 function DeployContent() {
   const { deploy, deploy_type, website_url, deploy_environment, project } =
     usePage<DeployProps>().props;
@@ -75,7 +108,7 @@ function DeployContent() {
   return (
     <div className="h-full flex flex-col">
       {/* Main content area - matches Website grid pattern */}
-      <main className="flex-1 min-h-0 grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%] pt-[2.5%]">
+      <main className="flex-1 min-h-0 grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%] py-[2.5%]">
         <div className="min-h-0 overflow-hidden">
           <DeploySidebar deployType={deploy_type} tasks={state.tasks} />
         </div>
@@ -99,12 +132,15 @@ function DeployContent() {
             <WaitingGoogleScreen onCheckAgain={() => polling.updateState({ polling: true })} />
           )}
           {screen === "deploy-complete" && (
-            <DeployCompleteScreen
-              deployType={deploy_type}
-              result={state.result}
-              websiteUrl={website_url}
-              deployEnvironment={deploy_environment}
-            />
+            <>
+              <DeployCompleteScreen
+                deployType={deploy_type}
+                result={state.result}
+                websiteUrl={website_url}
+                deployEnvironment={deploy_environment}
+              />
+              <DeployHistory />
+            </>
           )}
           {screen === "deploy-error" && (
             <DeployErrorScreen consoleErrors={state.consoleErrors} onRetry={startDeploy} />
@@ -117,6 +153,7 @@ function DeployContent() {
         <div /> {/* Empty left side - no back button */}
         <PaginationFooter.Actions>
           <RestartDeployButton />
+          {isComplete && <NewDeployButton />}
           <Button
             variant="outline"
             disabled={!isComplete}

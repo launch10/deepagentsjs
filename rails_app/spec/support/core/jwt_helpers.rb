@@ -34,6 +34,16 @@ module JwtHelpers
     }
   end
 
+  def internal_service_headers
+    timestamp = Time.current.to_i
+    signature = generate_internal_api_signature(timestamp)
+
+    {
+      'X-Signature' => signature,
+      'X-Timestamp' => timestamp.to_s
+    }
+  end
+
   def invalid_auth_headers
     {'Authorization' => "Bearer invalid_token"}
   end

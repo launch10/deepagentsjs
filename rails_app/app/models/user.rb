@@ -60,6 +60,8 @@ class User < ApplicationRecord
   include Searchable
   include Theme
 
+  after_create_commit :track_signup
+
   has_one_attached :avatar
   has_person_name
 
@@ -89,5 +91,17 @@ class User < ApplicationRecord
 
   def confirmed?
     confirmed_at.present?
+  end
+
+  private
+
+  def track_signup
+    method = connected_accounts.any? ? connected_accounts.last.provider : "email"
+    TrackEvent.call("user_signed_up",
+      user: self,
+      account: accounts.first,
+      method: method
+    )
+    PosthogTracker.identify(self)
   end
 end

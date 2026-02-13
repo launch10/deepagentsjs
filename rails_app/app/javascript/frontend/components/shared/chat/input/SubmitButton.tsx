@@ -76,7 +76,6 @@ export function SubmitButton({
         stop();
       }
     } else if (canSubmit && !isOutOfCredits) {
-      // Send message using context's submit (respects Chat.Root onSubmit)
       submit();
     }
   };

@@ -89,6 +89,20 @@ class API::V1::WebsiteFilesController < API::BaseController
     end
 
     if website.update(website_files_attributes: website_files_attributes)
+      # Track first file generation
+      if website.website_files.count == files_params.size
+        TrackEvent.call("website_generated",
+          user: current_user,
+          account: current_account,
+          project: website.project,
+          website: website,
+          project_uuid: website.project&.uuid,
+          file_count: files_params.size,
+          template_name: website.template&.name,
+          theme_name: website.theme&.name
+        )
+      end
+
       render json: {
         files: website.website_files.reload.map { |f| serialize_file(f) }
       }, status: :ok

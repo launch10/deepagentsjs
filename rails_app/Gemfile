@@ -89,3 +89,5 @@ gem "rack-cors"
 gem "chroma"
 gem "wcag_color_contrast"
 gem "ahoy_matey", "~> 5.4"
+
+gem "posthog-ruby", "~> 3.5"

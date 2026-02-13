@@ -562,6 +562,8 @@ GEM
     platform_agent (1.0.1)
       activesupport (>= 5.2.0)
       useragent (~> 0.16.3)
+    posthog-ruby (3.5.3)
+      concurrent-ruby (~> 1)
     pp (0.6.2)
       prettyprint
     prawn (2.5.0)
@@ -977,6 +979,7 @@ DEPENDENCIES
   paranoia
   pay (~> 9.0)
   pg
+  posthog-ruby (~> 3.5)
   prefixed_ids (~> 1.2)
   pretender (~> 0.4)
   propshaft (~> 1.0)

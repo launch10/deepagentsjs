@@ -59,4 +59,5 @@ class WebsiteDeploy < ApplicationRecord
   validates :environment, inclusion: {in: ENVIRONMENTS}
   validates :status, presence: true
   validates :website, presence: true
+
 end

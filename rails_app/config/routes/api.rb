@@ -70,11 +70,15 @@ namespace :api, defaults: {format: :json} do
     # Agent context events for Langgraph
     resources :agent_context_events, only: [:index]
 
-    # Internal service endpoints for Langgraph billing integration
+    # Internal service endpoints for Langgraph integration
     post "llm_usage/notify", to: "llm_usage#notify"
+    post "app_events", to: "app_events#create"
     get "credits/check", to: "credits#check"
     resources :deploys, only: [:create, :show, :update] do
       post :touch, on: :member
+    end
+    resources :website_deploys, only: [] do
+      post :rollback, on: :member
     end
 
     # Google status APIs for deploy flow

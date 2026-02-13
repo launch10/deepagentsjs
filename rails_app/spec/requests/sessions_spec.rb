@@ -10,6 +10,15 @@ RSpec.describe "Sessions", type: :request do
     subscribe_account(user.owned_account, plan_name: "growth_monthly")
   end
 
+  describe "event tracking" do
+    it "tracks user_signed_in on successful login" do
+      expect(TrackEvent).to receive(:call).with("user_signed_in",
+        hash_including(method: "email", days_since_signup: kind_of(Integer))
+      )
+      post user_session_path, params: { user: { email: user.email, password: user.password } }
+    end
+  end
+
   describe "DELETE /users/sign_out" do
     before do
       sign_in user

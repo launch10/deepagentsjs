@@ -20,6 +20,8 @@ module Leads
       website = Website.find(website_id)
       visit = options[:visit_id].present? ? Ahoy::Visit.find_by(id: options[:visit_id]) : nil
 
+      result = nil
+
       ActiveRecord::Base.transaction do
         result = Lead.find_or_create_for_signup(
           account: account,
@@ -55,6 +57,19 @@ module Leads
             time: Time.current
           )
         end
+      end
+
+      # Track after successful transaction for new leads
+      if result&.dig(:created)
+        TrackEvent.call("lead_received",
+          user: account.owner,
+          account: account,
+          project: website.project,
+          website: website,
+          project_uuid: website.project&.uuid,
+          has_gclid: options[:gclid].present?,
+          total_leads_for_project: website.project&.leads&.count || 0
+        )
       end
     end
   end

@@ -38,8 +38,10 @@ const PROJECT_COLORS = [
 const DEFAULT_DAYS: DaysKey = "30";
 
 export default function Dashboard() {
+  const pageProps = usePage<DashboardProps>().props;
   const { all_performance, all_projects, status_counts, date_range_options, current_user } =
-    usePage<DashboardProps>().props;
+    pageProps;
+  const serverInsights = (pageProps as any).insights;
 
   // Generate insights via Langgraph if not already cached
   const { insights, isGenerating: isGeneratingInsights } = useInsightsChat();
@@ -623,11 +625,10 @@ function ProjectCard({ project }: { project: ProjectSummary }) {
 }
 
 function DataDelayIndicator({ type }: { type: string }) {
-  const delayText = type === "ads" ? "Data may be 2-4 hours delayed" : "Data may be 15 minutes delayed";
+  const delayText =
+    type === "ads" ? "Data may be 2-4 hours delayed" : "Data may be 15 minutes delayed";
 
-  return (
-    <p className="text-[10px] text-base-400 mt-1">{delayText}</p>
-  );
+  return <p className="text-[10px] text-base-400 mt-1">{delayText}</p>;
 }
 
 function formatDate(isoDate: string): string {

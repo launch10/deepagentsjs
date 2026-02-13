@@ -14,6 +14,20 @@ class CampaignDeploy
           status: "failed",
           stacktrace: "Sidekiq retries exhausted: #{ex.message}\n#{ex.backtrace&.first(10)&.join("\n")}"
         )
+
+        account = deploy.campaign&.project&.account
+        if account&.owner
+          TrackEvent.call("campaign_deployed",
+            user: account.owner,
+            account: account,
+            project: deploy.campaign.project,
+            campaign: deploy.campaign,
+            project_uuid: deploy.campaign.project.uuid,
+            deploy_status: "failed",
+            failed_step: deploy.current_step,
+            daily_budget_cents: deploy.campaign.daily_budget_cents
+          )
+        end
       end
 
       # Notify Langgraph of failure

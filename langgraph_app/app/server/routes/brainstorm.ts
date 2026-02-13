@@ -1,7 +1,13 @@
 import { Hono } from "hono";
-import { type AuthContext, streamMiddleware, readOnlyMiddleware, getCreditState } from "@server/middleware";
+import {
+  type AuthContext,
+  streamMiddleware,
+  readOnlyMiddleware,
+  getCreditState,
+} from "@server/middleware";
 import { validateThreadOrError } from "../middleware/threadValidation";
 import { BrainstormAPI } from "@api";
+import { trackChatMessage } from "./shared";
 
 type Variables = {
   auth: AuthContext;
@@ -21,6 +27,8 @@ brainstormRoutes.post("/stream", ...streamMiddleware, async (c) => {
   }
 
   let stateObj = state || {};
+
+  trackChatMessage(auth, messages, threadId, "brainstorm", stateObj);
 
   // Stream with automatic billing via middleware
   // ChatId is looked up from threadId at stream completion

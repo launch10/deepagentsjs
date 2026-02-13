@@ -210,4 +210,23 @@ RSpec.describe Project, type: :model do
       end
     end
   end
+
+  describe "event tracking" do
+    it "tracks project_created on create" do
+      allow(TrackEvent).to receive(:call)
+      expect(TrackEvent).to receive(:call).with("project_created",
+        hash_including(project_uuid: kind_of(String), project_number: kind_of(Integer))
+      )
+      Brainstorm.create_brainstorm!(account, name: "Tracked Project", thread_id: "thread_tracked")
+    end
+
+    it "tracks project_status_changed via refresh_status!" do
+      project.update_column(:status, "draft")
+      campaign.update_column(:status, "draft")
+      expect(TrackEvent).to receive(:call).with("project_status_changed",
+        hash_including(old_status: "draft", new_status: "live")
+      )
+      create(:deploy, project: project, is_live: true)
+    end
+  end
 end

@@ -39,6 +39,17 @@ module Credits
 
       account = subscription.customer&.owner
       return unless account.is_a?(Account)
+
+      plan = Plan.find_by(stripe_id: subscription.processor_plan)
+      TrackEvent.call("subscription_renewed",
+        user: account.owner,
+        account: account,
+        plan_name: plan&.name,
+        plan_amount_cents: plan&.amount,
+        months_subscribed: subscription.created_at ? ((Time.current - subscription.created_at) / 1.month).round : nil,
+        credits_used_this_period: account.credits_used
+      )
+
       # Use Stripe event ID for idempotency (globally unique)
       Credits::ResetPlanCreditsWorker.perform_async(
         subscription.id,

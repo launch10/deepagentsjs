@@ -76,7 +76,19 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def sign_up(resource_name, resource)
     super
 
-    refer(resource) if defined? Refer
+    if defined?(Refer)
+      refer(resource)
+
+      if resource.respond_to?(:referral) && resource.referral.present?
+        TrackEvent.call("referral_signup_completed",
+          user: resource,
+          account: resource.accounts.first,
+          referrer_user_id: resource.referral.refer_code&.user_id,
+          referral_code: resource.referral.refer_code&.code,
+          referred_user_id: resource.id
+        )
+      end
+    end
 
     if @account_invitation
       # Remove any default team accounts to make the invited account the default.

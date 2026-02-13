@@ -1366,6 +1366,43 @@ ALTER SEQUENCE public.api_tokens_id_seq OWNED BY public.api_tokens.id;
 
 
 --
+-- Name: app_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.app_events (
+    id bigint NOT NULL,
+    account_id bigint,
+    user_id bigint,
+    project_id bigint,
+    campaign_id bigint,
+    website_id bigint,
+    event_name character varying NOT NULL,
+    properties jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: app_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.app_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: app_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.app_events_id_seq OWNED BY public.app_events.id;
+
+
+--
 -- Name: ar_internal_metadata; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4867,6 +4904,13 @@ ALTER TABLE ONLY public.api_tokens ALTER COLUMN id SET DEFAULT nextval('public.a
 
 
 --
+-- Name: app_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.app_events ALTER COLUMN id SET DEFAULT nextval('public.app_events_id_seq'::regclass);
+
+
+--
 -- Name: brainstorms id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5680,6 +5724,14 @@ ALTER TABLE ONLY public.announcements
 
 ALTER TABLE ONLY public.api_tokens
     ADD CONSTRAINT api_tokens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: app_events app_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.app_events
+    ADD CONSTRAINT app_events_pkey PRIMARY KEY (id);
 
 
 --
@@ -8139,6 +8191,62 @@ CREATE UNIQUE INDEX index_api_tokens_on_token ON public.api_tokens USING btree (
 --
 
 CREATE INDEX index_api_tokens_on_user_id ON public.api_tokens USING btree (user_id);
+
+
+--
+-- Name: index_app_events_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_app_events_on_account_id ON public.app_events USING btree (account_id);
+
+
+--
+-- Name: index_app_events_on_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_app_events_on_campaign_id ON public.app_events USING btree (campaign_id);
+
+
+--
+-- Name: index_app_events_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_app_events_on_created_at ON public.app_events USING btree (created_at);
+
+
+--
+-- Name: index_app_events_on_event_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_app_events_on_event_name ON public.app_events USING btree (event_name);
+
+
+--
+-- Name: index_app_events_on_event_name_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_app_events_on_event_name_and_created_at ON public.app_events USING btree (event_name, created_at);
+
+
+--
+-- Name: index_app_events_on_project_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_app_events_on_project_id ON public.app_events USING btree (project_id);
+
+
+--
+-- Name: index_app_events_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_app_events_on_user_id ON public.app_events USING btree (user_id);
+
+
+--
+-- Name: index_app_events_on_website_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_app_events_on_website_id ON public.app_events USING btree (website_id);
 
 
 --
@@ -11650,6 +11758,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260213214137'),
 ('20260204152455'),
 ('20260204124042'),
 ('20260204014903'),

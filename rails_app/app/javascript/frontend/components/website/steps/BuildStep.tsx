@@ -13,6 +13,7 @@ import {
   useWebsiteChatIsStreaming,
   useWebsiteChatIsInitialLoading,
 } from "@hooks/website";
+import { analytics } from "@lib/analytics";
 
 interface WebsitePageProps {
   website?: { id?: number };
@@ -98,13 +99,23 @@ function RestartChatButton() {
 export default function BuildStep() {
   const chat = useWebsiteChat();
   const isInitialLoading = useWebsiteChatIsInitialLoading();
+  const { sendMessage } = useWebsiteChatActions();
+  const { project } = usePage<WebsitePageProps>().props;
 
   // Auto-init website generation on first load
   useWebsiteInit();
 
+  // Wrap sendMessage to track website_edited events
+  const handleSubmit = useCallback(() => {
+    if (project?.uuid) {
+      analytics.trackProject("website_edited", project.uuid, { edit_type: "chat_iteration" });
+    }
+    sendMessage();
+  }, [sendMessage, project?.uuid]);
+
   // Credit integration is automatic via ChatProvider - no manual wiring needed
   return (
-    <Chat.Root chat={chat}>
+    <Chat.Root chat={chat} onSubmit={handleSubmit}>
       <div className="h-full flex flex-col">
         {/* Main content area - no bottom padding so preview extends behind footer */}
         <main className="flex-1 min-h-0 grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%] pt-[2.5%]">

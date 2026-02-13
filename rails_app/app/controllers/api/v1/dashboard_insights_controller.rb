@@ -16,7 +16,16 @@ class API::V1::DashboardInsightsController < API::BaseController
   # @return [401 Unauthorized] When JWT is missing or invalid
   #
   def index
-    render json: serialize_insight(current_account.dashboard_insight)
+    insight = current_account.dashboard_insight
+
+    TrackEvent.call("insights_viewed",
+      user: current_user,
+      account: current_account,
+      insight_count: insight&.insights&.length || 0,
+      triggered_regeneration: !insight&.fresh?
+    )
+
+    render json: serialize_insight(insight)
   end
 
   # POST /api/v1/dashboard_insights

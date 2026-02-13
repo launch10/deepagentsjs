@@ -936,6 +936,64 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
     end
   end
 
+  describe "event tracking" do
+    it "tracks subscription_renewed on invoice.paid webhook" do
+      subscription = subscribe_to(growth_monthly)
+
+      travel 1.month do
+        advance_billing_period(subscription)
+
+        allow(TrackEvent).to receive(:call)
+        expect(TrackEvent).to receive(:call).with("subscription_renewed",
+          hash_including(plan_name: growth_monthly.name)
+        )
+
+        event = invoice_paid_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id,
+          billing_reason: "subscription_cycle"
+        )
+        process_webhook(event)
+      end
+    end
+
+    it "tracks subscription_plan_changed on subscription.updated webhook" do
+      subscription = subscribe_to(growth_monthly)
+
+      allow(TrackEvent).to receive(:call)
+      expect(TrackEvent).to receive(:call).with("subscription_plan_changed",
+        hash_including(old_plan: growth_monthly.name, new_plan: pro_monthly.name, direction: "upgrade")
+      )
+
+      event = subscription_plan_changed_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id,
+        old_price_id: growth_monthly.stripe_id,
+        new_price_id: pro_monthly.stripe_id,
+        old_unit_amount: growth_monthly.amount,
+        new_unit_amount: pro_monthly.amount
+      )
+      subscription.update!(processor_plan: pro_monthly.stripe_id)
+      process_webhook(event)
+    end
+
+    it "tracks subscription_cancelled on subscription.deleted webhook" do
+      subscription = subscribe_to(growth_monthly)
+
+      allow(TrackEvent).to receive(:call)
+      expect(TrackEvent).to receive(:call).with("subscription_cancelled",
+        hash_including(plan_name: growth_monthly.name, projects_live: kind_of(Integer))
+      )
+
+      event = subscription_deleted_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id
+      )
+      subscription.update!(status: "canceled")
+      process_webhook(event)
+    end
+  end
+
   describe "full subscription lifecycle" do
     it "handles create -> use -> renew -> upgrade -> cancel" do
       # 1. Create subscription (initial allocation via callback)

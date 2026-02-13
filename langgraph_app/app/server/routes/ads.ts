@@ -1,8 +1,14 @@
 import { Hono } from "hono";
-import { type AuthContext, streamMiddleware, readOnlyMiddleware, getCreditState } from "@server/middleware";
+import {
+  type AuthContext,
+  streamMiddleware,
+  readOnlyMiddleware,
+  getCreditState,
+} from "@server/middleware";
 import { validateThreadOrError } from "../middleware/threadValidation";
 import { AdsAPI } from "@api";
 import { getLogger } from "@core";
+import { trackChatMessage } from "./shared";
 
 type Variables = {
   auth: AuthContext;
@@ -26,6 +32,8 @@ adsRoutes.post("/stream", ...streamMiddleware, async (c) => {
   if (validationError) return validationError;
 
   let stateObj = state || {};
+
+  trackChatMessage(auth, messages, threadId, "ads", stateObj);
 
   try {
     // Stream with automatic billing via middleware

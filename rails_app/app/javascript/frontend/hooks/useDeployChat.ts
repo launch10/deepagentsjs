@@ -5,6 +5,15 @@ import type { UIMessage } from "ai";
 import { Deploy } from "@shared";
 import { useChatOptions } from "@hooks/useChatOptions";
 
+export interface WebsiteDeployRecord {
+  id: number;
+  status: string;
+  environment: string;
+  is_live: boolean;
+  revertible: boolean;
+  created_at: string;
+}
+
 export interface DeployProps {
   thread_id: string | null;
   jwt: string;
@@ -22,6 +31,7 @@ export interface DeployProps {
   deploy_environment: string;
   campaign: { id: number } | null;
   project: { id: number; uuid: string };
+  website_deploys: WebsiteDeployRecord[];
   [key: string]: unknown;
 }
 

@@ -10,6 +10,8 @@ import ImproveCopy from "@components/quick-actions/improve-copy/ImproveCopy";
 import { DocumentTextIcon, PhotoIcon, SwatchIcon } from "@heroicons/react/24/solid";
 import { useWebsiteChatActions, useWebsiteChatIsStreaming } from "@hooks/website/useWebsiteChat";
 import { useProjectImages } from "@api/uploads.hooks";
+import { useProjectUuid } from "@stores/projectStore";
+import { analytics } from "@lib/analytics";
 
 export type QuickActionType = "colors" | "images" | "copy";
 
@@ -88,6 +90,7 @@ export default function QuickActions() {
   const { updateState, sendMessage } = useWebsiteChatActions();
   const isStreaming = useWebsiteChatIsStreaming();
   const { data: projectImages } = useProjectImages();
+  const projectUuid = useProjectUuid();
 
   const handleActionClick = (action: QuickActionType) => {
     // Toggle off if clicking the same action, otherwise switch to new action
@@ -108,9 +111,14 @@ export default function QuickActions() {
           createdAt: new Date().toISOString(),
         },
       });
+      if (projectUuid)
+        analytics.trackProject("website_edited", projectUuid, {
+          edit_type: "theme_change",
+          theme_id: themeId,
+        });
       closePanel();
     },
-    [updateState, closePanel]
+    [updateState, closePanel, projectUuid]
   );
 
   // Send a chat message to update the page with uploaded images
