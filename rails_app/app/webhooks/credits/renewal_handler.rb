@@ -47,8 +47,7 @@ module Credits
         plan_name: plan&.name,
         plan_amount_cents: plan&.amount,
         months_subscribed: subscription.created_at ? ((Time.current - subscription.created_at) / 1.month).round : nil,
-        credits_used_this_period: account.credits_used
-      )
+        credits_used_this_period: account.credits_used)
 
       # Use Stripe event ID for idempotency (globally unique)
       Credits::ResetPlanCreditsWorker.perform_async(

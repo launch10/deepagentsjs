@@ -40,8 +40,7 @@ RSpec.describe Brainstorm, type: :model do
     it "tracks brainstorm_started on create" do
       allow(TrackEvent).to receive(:call)
       expect(TrackEvent).to receive(:call).with("brainstorm_started",
-        hash_including(project_uuid: kind_of(String), is_first_brainstorm: true)
-      )
+        hash_including(project_uuid: kind_of(String), is_first_brainstorm: true))
       Brainstorm.create_brainstorm!(account, name: "Test Brainstorm", thread_id: "thread_1")
     end
 
@@ -50,8 +49,7 @@ RSpec.describe Brainstorm, type: :model do
       brainstorm = create_brainstorm(thread_id: "thread_2")
 
       expect(TrackEvent).to receive(:call).with("brainstorm_completed",
-        hash_including(project_uuid: kind_of(String), duration_minutes: kind_of(Integer))
-      )
+        hash_including(project_uuid: kind_of(String), duration_minutes: kind_of(Integer)))
       complete_brainstorm(brainstorm)
     end
 

@@ -896,8 +896,7 @@ RSpec.describe WebsiteDeploy, type: :model do
       allow(FileUtils).to receive(:rm_rf)
 
       expect(TrackEvent).to receive(:call).with("website_deployed",
-        hash_including(deploy_status: "completed", project_uuid: kind_of(String))
-      )
+        hash_including(deploy_status: "completed", project_uuid: kind_of(String)))
       deploy.actually_deploy
     end
 
@@ -906,8 +905,7 @@ RSpec.describe WebsiteDeploy, type: :model do
       allow(FileUtils).to receive(:rm_rf)
 
       expect(TrackEvent).to receive(:call).with("website_deployed",
-        hash_including(deploy_status: "failed")
-      )
+        hash_including(deploy_status: "failed"))
       deploy.actually_deploy
     end
 
@@ -930,8 +928,7 @@ RSpec.describe WebsiteDeploy, type: :model do
       allow(uploader).to receive(:hotswap_live)
 
       expect(TrackEvent).to receive(:call).with("website_rollback",
-        hash_including(project_uuid: kind_of(String), rollback_to_version: "72/20260101120000")
-      )
+        hash_including(project_uuid: kind_of(String), rollback_to_version: "72/20260101120000"))
       deploy.actually_rollback
     end
   end

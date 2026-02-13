@@ -509,8 +509,7 @@ RSpec.describe Campaign, type: :model do
       campaign, _, _ = create_campaign(account)
       campaign.update_column(:status, "draft")
       expect(TrackEvent).to receive(:call).with("campaign_status_changed",
-        hash_including(old_status: "draft", new_status: "active")
-      )
+        hash_including(old_status: "draft", new_status: "active"))
       campaign.update!(status: "active")
     end
 

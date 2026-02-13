@@ -90,8 +90,7 @@ class API::V1::DomainsController < API::BaseController
         website: website,
         project_uuid: website.project&.uuid,
         domain_type: result[:domain].is_platform_subdomain ? "platform_subdomain" : "custom",
-        domain_name: result[:domain].domain
-      )
+        domain_name: result[:domain].domain)
 
       render json: {
         domain: result[:domain].to_api_json,

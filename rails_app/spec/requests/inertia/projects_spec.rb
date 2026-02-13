@@ -167,8 +167,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
   describe 'GET /projects/:uuid/performance' do
     it 'tracks project_performance_viewed' do
       expect(TrackEvent).to receive(:call).with("project_performance_viewed",
-        hash_including(project_uuid: project.uuid, has_leads: kind_of(FalseClass))
-      )
+        hash_including(project_uuid: project.uuid, has_leads: kind_of(FalseClass)))
       get performance_project_path(project.uuid)
     end
   end

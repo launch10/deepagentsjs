@@ -35,8 +35,7 @@ class Users::SessionsController < Devise::SessionsController
         method: "email",
         days_since_signup: ((Time.current - resource.created_at) / 1.day).round,
         has_projects: resource.accounts.first&.projects&.exists? || false,
-        project_count: resource.accounts.first&.projects&.count || 0
-      )
+        project_count: resource.accounts.first&.projects&.count || 0)
       inertia_location after_sign_in_path_for(resource)
     else
       render inertia: "Auth/SignIn",
@@ -83,8 +82,7 @@ class Users::SessionsController < Devise::SessionsController
         method: "otp",
         days_since_signup: ((Time.current - resource.created_at) / 1.day).round,
         has_projects: resource.accounts.first&.projects&.exists? || false,
-        project_count: resource.accounts.first&.projects&.count || 0
-      )
+        project_count: resource.accounts.first&.projects&.count || 0)
       inertia_location after_sign_in_path_for(resource)
     else
       flash.now[:alert] = t(".incorrect_verification_code")

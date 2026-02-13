@@ -186,8 +186,7 @@ RSpec.describe "Dashboard Insights API", type: :request do
   describe "event tracking" do
     it "tracks insights_viewed" do
       expect(TrackEvent).to receive(:call).with("insights_viewed",
-        hash_including(insight_count: kind_of(Integer))
-      )
+        hash_including(insight_count: kind_of(Integer)))
       get "/api/v1/dashboard_insights", headers: auth_headers
     end
   end

@@ -19,6 +19,5 @@ Warden::Manager.after_authentication do |user, auth, opts|
     method: provider,
     days_since_signup: ((Time.current - user.created_at) / 1.day).round,
     has_projects: user.accounts.first&.projects&.exists? || false,
-    project_count: user.accounts.first&.projects&.count || 0
-  )
+    project_count: user.accounts.first&.projects&.count || 0)
 end

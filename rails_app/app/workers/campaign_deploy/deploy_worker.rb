@@ -25,8 +25,7 @@ class CampaignDeploy
             project_uuid: deploy.campaign.project.uuid,
             deploy_status: "failed",
             failed_step: deploy.current_step,
-            daily_budget_cents: deploy.campaign.daily_budget_cents
-          )
+            daily_budget_cents: deploy.campaign.daily_budget_cents)
         end
       end
 

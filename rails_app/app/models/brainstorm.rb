@@ -89,8 +89,7 @@ class Brainstorm < ApplicationRecord
       project: project,
       website: website,
       project_uuid: project&.uuid,
-      is_first_brainstorm: Brainstorm.joins(website: :project).where(projects: {account_id: account.id}).count <= 1
-    )
+      is_first_brainstorm: Brainstorm.joins(website: :project).where(projects: {account_id: account.id}).count <= 1)
   end
 
   def track_brainstorm_completed
@@ -103,7 +102,6 @@ class Brainstorm < ApplicationRecord
       project: project,
       website: website,
       project_uuid: project&.uuid,
-      duration_minutes: created_at ? ((Time.current - created_at) / 1.minute).round : nil
-    )
+      duration_minutes: created_at ? ((Time.current - created_at) / 1.minute).round : nil)
   end
 end

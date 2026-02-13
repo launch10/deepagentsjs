@@ -99,8 +99,7 @@ class API::V1::WebsiteFilesController < API::BaseController
           project_uuid: website.project&.uuid,
           file_count: files_params.size,
           template_name: website.template&.name,
-          theme_name: website.theme&.name
-        )
+          theme_name: website.theme&.name)
       end
 
       render json: {

@@ -22,8 +22,7 @@ class API::V1::DashboardInsightsController < API::BaseController
       user: current_user,
       account: current_account,
       insight_count: insight&.insights&.length || 0,
-      triggered_regeneration: !insight&.fresh?
-    )
+      triggered_regeneration: !insight&.fresh?)
 
     render json: serialize_insight(insight)
   end

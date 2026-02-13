@@ -33,8 +33,7 @@ module Credits
         pack_credits: credit_pack.credits,
         pack_price_cents: charge.amount,
         current_balance: account.reload.total_millicredits,
-        plan_name: account.plan&.name
-      )
+        plan_name: account.plan&.name)
     end
   end
 end

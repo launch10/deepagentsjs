@@ -167,8 +167,7 @@ class Project < ApplicationRecord
       project: self,
       project_uuid: uuid,
       old_status: old_status,
-      new_status: new_status
-    )
+      new_status: new_status)
   end
 
   def track_project_created
@@ -178,8 +177,7 @@ class Project < ApplicationRecord
       project: self,
       project_uuid: uuid,
       project_number: account.projects.count,
-      time_since_signup_hours: account.owner ? ((Time.current - account.owner.created_at) / 1.hour).round : nil
-    )
+      time_since_signup_hours: account.owner ? ((Time.current - account.owner.created_at) / 1.hour).round : nil)
   end
 
   def compute_status

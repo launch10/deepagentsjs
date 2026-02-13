@@ -273,16 +273,14 @@ RSpec.describe ProjectWorkflow, type: :model do
     it "tracks workflow_step_reached on next_step!" do
       workflow.update(step: "brainstorm", substep: nil)
       expect(TrackEvent).to receive(:call).with("workflow_step_reached",
-        hash_including(step: "website", substep: "build", previous_step: "brainstorm")
-      )
+        hash_including(step: "website", substep: "build", previous_step: "brainstorm"))
       workflow.next_step!
     end
 
     it "tracks workflow_step_reached on advance_to" do
       workflow.update(step: "brainstorm", substep: nil)
       expect(TrackEvent).to receive(:call).with("workflow_step_reached",
-        hash_including(step: "website", substep: "build")
-      )
+        hash_including(step: "website", substep: "build"))
       workflow.advance_to(step: "website")
     end
   end

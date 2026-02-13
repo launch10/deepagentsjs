@@ -322,8 +322,7 @@ RSpec.describe User, type: :model do
     it "tracks user_signed_up on create" do
       new_user = build(:user)
       expect(TrackEvent).to receive(:call).with("user_signed_up",
-        hash_including(user: new_user, method: "email")
-      )
+        hash_including(user: new_user, method: "email"))
       new_user.save!
     end
   end

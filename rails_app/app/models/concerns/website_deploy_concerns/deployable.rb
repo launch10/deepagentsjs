@@ -146,8 +146,7 @@ module WebsiteDeployConcerns
         project_uuid: website&.project&.uuid,
         deploy_status: deploy_status,
         is_first_deploy: website.deploys.where(status: "completed").count <= 1,
-        deploy_duration_seconds: updated_at && created_at ? (updated_at - created_at).round : nil
-      )
+        deploy_duration_seconds: (updated_at && created_at) ? (updated_at - created_at).round : nil)
     end
 
     def track_website_rollback
@@ -159,8 +158,7 @@ module WebsiteDeployConcerns
         project: website&.project,
         website: website,
         project_uuid: website&.project&.uuid,
-        rollback_to_version: version_path
-      )
+        rollback_to_version: version_path)
     end
 
     def set_default_status

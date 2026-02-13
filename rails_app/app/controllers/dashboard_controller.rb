@@ -76,7 +76,6 @@ class DashboardController < SubscribedController
       account: current_account,
       project_count: current_account.projects.count,
       live_project_count: current_account.projects.where(status: "live").count,
-      has_insights: current_account.dashboard_insight&.fresh? || false
-    )
+      has_insights: current_account.dashboard_insight&.fresh? || false)
   end
 end

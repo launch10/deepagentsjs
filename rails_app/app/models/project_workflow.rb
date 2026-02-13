@@ -64,8 +64,7 @@ class ProjectWorkflow < ApplicationRecord
       step: next_step,
       substep: next_substep,
       previous_step: previous_step_val,
-      previous_substep: previous_substep_val
-    )
+      previous_substep: previous_substep_val)
 
     [next_step, next_substep]
   end
@@ -98,8 +97,7 @@ class ProjectWorkflow < ApplicationRecord
         step: step,
         substep: substep,
         previous_step: previous_step_val,
-        previous_substep: previous_substep_val
-      )
+        previous_substep: previous_substep_val)
     end
 
     result

@@ -85,8 +85,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
           account: resource.accounts.first,
           referrer_user_id: resource.referral.refer_code&.user_id,
           referral_code: resource.referral.refer_code&.code,
-          referred_user_id: resource.id
-        )
+          referred_user_id: resource.id)
       end
     end
 

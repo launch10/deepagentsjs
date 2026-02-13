@@ -254,8 +254,7 @@ RSpec.describe "Website Files API", type: :request do
 
     it "tracks website_generated for first file batch" do
       expect(TrackEvent).to receive(:call).with("website_generated",
-        hash_including(file_count: kind_of(Integer), project_uuid: kind_of(String))
-      )
+        hash_including(file_count: kind_of(Integer), project_uuid: kind_of(String)))
       post "/api/v1/websites/#{website1_owned.id}/files/write",
         params: {
           files: [

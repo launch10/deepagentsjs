@@ -13,8 +13,7 @@ RSpec.describe "Sessions", type: :request do
   describe "event tracking" do
     it "tracks user_signed_in on successful login" do
       expect(TrackEvent).to receive(:call).with("user_signed_in",
-        hash_including(method: "email", days_since_signup: kind_of(Integer))
-      )
+        hash_including(method: "email", days_since_signup: kind_of(Integer)))
       post user_session_path, params: { user: { email: user.email, password: user.password } }
     end
   end

@@ -98,8 +98,7 @@ RSpec.describe Credits::AllocatePackCreditsWorker do
         hash_including(
           pack_credits: credit_pack.credits,
           pack_price_cents: charge.amount
-        )
-      )
+        ))
       worker.perform(charge.id, credit_pack.id)
     end
 

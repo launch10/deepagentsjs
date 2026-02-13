@@ -35,8 +35,7 @@ module PaySubscriptionCredits
         plan_name: plan&.name,
         plan_interval: plan&.interval,
         plan_amount_cents: plan&.amount,
-        time_since_signup_hours: account.owner ? ((Time.current - account.owner.created_at) / 1.hour).round : nil
-      )
+        time_since_signup_hours: account.owner ? ((Time.current - account.owner.created_at) / 1.hour).round : nil)
     end
 
     Credits::ResetPlanCreditsWorker.perform_async(id)

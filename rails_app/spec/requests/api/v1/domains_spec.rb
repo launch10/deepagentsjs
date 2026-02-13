@@ -752,8 +752,7 @@ RSpec.describe "Domains API", type: :request do
 
     it "tracks domain_configured on successful create" do
       expect(TrackEvent).to receive(:call).with("domain_configured",
-        hash_including(domain_type: kind_of(String), domain_name: kind_of(String))
-      )
+        hash_including(domain_type: kind_of(String), domain_name: kind_of(String)))
       post "/api/v1/domains",
         params: { domain: { domain: "tracked-site.launch10.site", website_id: website.id } },
         headers: auth_headers,

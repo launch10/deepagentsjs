@@ -184,7 +184,6 @@ class Campaign < ApplicationRecord
       project_uuid: project&.uuid,
       old_status: old_status,
       new_status: new_status,
-      days_active: old_status == "active" && created_at ? ((Time.current - created_at) / 1.day).round : nil
-    )
+      days_active: (old_status == "active" && created_at) ? ((Time.current - created_at) / 1.day).round : nil)
   end
 end

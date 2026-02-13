@@ -40,8 +40,7 @@ module Credits
         plan_name: plan&.name,
         months_subscribed: subscription.created_at ? ((Time.current - subscription.created_at) / 1.month).round : nil,
         projects_live: account.projects.where(status: "live").count,
-        last_active_days_ago: user&.updated_at ? ((Time.current - user.updated_at) / 1.day).round : nil
-      )
+        last_active_days_ago: user&.updated_at ? ((Time.current - user.updated_at) / 1.day).round : nil)
     end
   end
 end

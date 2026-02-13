@@ -120,8 +120,7 @@ class ProjectsController < SubscribedController
       project: @project,
       project_uuid: @project.uuid,
       has_leads: @project.website&.leads&.exists? || false,
-      has_traffic: @project.analytics_daily_metrics.exists?
-    )
+      has_traffic: @project.analytics_daily_metrics.exists?)
 
     render inertia: "ProjectPerformance", props: {
       project: @project.to_mini_json,

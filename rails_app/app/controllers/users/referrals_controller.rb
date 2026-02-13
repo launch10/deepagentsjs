@@ -6,7 +6,6 @@ class Users::ReferralsController < ApplicationController
     TrackEvent.call("referral_code_viewed",
       user: current_user,
       account: current_account,
-      referral_code: @referral_code.code
-    )
+      referral_code: @referral_code.code)
   end
 end

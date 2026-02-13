@@ -100,8 +100,7 @@ class User < ApplicationRecord
     TrackEvent.call("user_signed_up",
       user: self,
       account: accounts.first,
-      method: method
-    )
+      method: method)
     PosthogTracker.identify(self)
   end
 end

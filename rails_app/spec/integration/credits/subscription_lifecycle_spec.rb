@@ -945,8 +945,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
 
         allow(TrackEvent).to receive(:call)
         expect(TrackEvent).to receive(:call).with("subscription_renewed",
-          hash_including(plan_name: growth_monthly.name)
-        )
+          hash_including(plan_name: growth_monthly.name))
 
         event = invoice_paid_event(
           subscription_id: subscription.processor_id,
@@ -962,8 +961,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
 
       allow(TrackEvent).to receive(:call)
       expect(TrackEvent).to receive(:call).with("subscription_plan_changed",
-        hash_including(old_plan: growth_monthly.name, new_plan: pro_monthly.name, direction: "upgrade")
-      )
+        hash_including(old_plan: growth_monthly.name, new_plan: pro_monthly.name, direction: "upgrade"))
 
       event = subscription_plan_changed_event(
         subscription_id: subscription.processor_id,
@@ -982,8 +980,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
 
       allow(TrackEvent).to receive(:call)
       expect(TrackEvent).to receive(:call).with("subscription_cancelled",
-        hash_including(plan_name: growth_monthly.name, projects_live: kind_of(Integer))
-      )
+        hash_including(plan_name: growth_monthly.name, projects_live: kind_of(Integer)))
 
       event = subscription_deleted_event(
         subscription_id: subscription.processor_id,

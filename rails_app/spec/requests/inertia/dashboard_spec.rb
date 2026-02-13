@@ -116,8 +116,7 @@ RSpec.describe "Dashboard Inertia Page", type: :request, inertia: true do
     describe "event tracking" do
       it "tracks dashboard_viewed" do
         expect(TrackEvent).to receive(:call).with("dashboard_viewed",
-          hash_including(project_count: kind_of(Integer), live_project_count: kind_of(Integer))
-        )
+          hash_including(project_count: kind_of(Integer), live_project_count: kind_of(Integer)))
         get dashboard_path
       end
     end
