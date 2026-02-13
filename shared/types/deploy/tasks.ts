@@ -16,29 +16,31 @@ export const TaskNames = [
   "ConnectingGoogle",
   "VerifyingGoogle",
 
-  // Website Preparation (can run in parallel once Google is done)
-  "AddingAnalytics",
-  "OptimizingSEO",
+  // Billing (campaign only — resolve all external Google blockers before website prep)
+  "CheckingBilling",
 
   // Validation
   "ValidateLinks",
   "RuntimeValidation",
   "FixingBugs", // Only runs when validation fails
 
+  // Website Preparation
+  "OptimizingSEO",
+  "AddingAnalytics",
+
   // Deploy
   "DeployingWebsite",
 
   // Campaign (only when deploying Google Ads)
   "DeployingCampaign",
-  "CheckingBilling",
   "EnablingCampaign",
 ] as const;
 export type TaskName = (typeof TaskNames)[number];
 export const TASK_ORDER = TaskNames;
 
 const TasksForInstructions: Record<InstructionType, TaskName[]> = {
-  website: ["AddingAnalytics", "OptimizingSEO", "ValidateLinks", "RuntimeValidation", "FixingBugs", "DeployingWebsite"],
-  googleAds: ["ConnectingGoogle", "VerifyingGoogle", "DeployingCampaign", "CheckingBilling", "EnablingCampaign"],
+  website: ["ValidateLinks", "RuntimeValidation", "FixingBugs", "OptimizingSEO", "AddingAnalytics", "DeployingWebsite"],
+  googleAds: ["ConnectingGoogle", "VerifyingGoogle", "CheckingBilling", "DeployingCampaign", "EnablingCampaign"],
 }
 
 const findTasksForInstructions = (instructions: Instructions): TaskName[] => {

@@ -135,8 +135,8 @@ export const checkPaymentTaskRunner: TaskRunner = {
   taskName: TASK_NAME,
 
   readyToRun: (state: DeployGraphState) => {
-    // Ready when DeployingCampaign is done
-    return isTaskDone(state, "DeployingCampaign");
+    // Ready when VerifyingGoogle is done (billing check runs right after Google setup)
+    return isTaskDone(state, "VerifyingGoogle");
   },
 
   shouldSkip: async (state: DeployGraphState) => {
@@ -151,7 +151,12 @@ export const checkPaymentTaskRunner: TaskRunner = {
 
   isBlocking: (state: DeployGraphState, task: Task.Task) => {
     // Blocking when we have a jobId but no result yet
-    return task.status === "running" && !!task.jobId && task.result?.has_payment === undefined && !task.error;
+    return (
+      task.status === "running" &&
+      !!task.jobId &&
+      task.result?.has_payment === undefined &&
+      !task.error
+    );
   },
 
   run: checkPaymentNode,

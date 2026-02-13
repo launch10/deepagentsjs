@@ -15,21 +15,23 @@ import { type TaskName } from "./tasks";
  */
 
 export const PhaseNames = [
-  // Website preparation (1:1)
-  "AddingAnalytics",
-  "OptimizingSEO",
+  // Google setup (campaign only, 1:1 each)
+  "ConnectingGoogle",
+  "VerifyingGoogle",
+
+  // Billing (campaign only — resolve all external Google blockers before website prep)
+  "CheckingBilling",
 
   // Validation cycle
   "CheckingForBugs", // ValidateLinks + RuntimeValidation (merged)
   "FixingBugs", // BugFix (1:1)
 
+  // Website preparation (1:1)
+  "OptimizingSEO",
+  "AddingAnalytics",
+
   // Website deployment (1:1)
   "DeployingWebsite",
-
-  // Google setup (1:1 each)
-  "ConnectingGoogle",
-  "VerifyingGoogle",
-  "CheckingBilling",
 
   // Campaign deployment (1:1)
   "DeployingCampaign",

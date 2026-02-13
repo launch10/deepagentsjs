@@ -3,7 +3,7 @@ import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { JobRunAPIService } from "@services";
 import { Deploy, Task } from "@types";
-import { type TaskRunner, registerTask } from "./taskRunner";
+import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
 
 const TASK_NAME: Deploy.TaskName = "DeployingWebsite";
 
@@ -95,12 +95,8 @@ export const deployWebsiteTaskRunner: TaskRunner = {
   taskName: TASK_NAME,
 
   readyToRun: (state: DeployGraphState) => {
-    // Ready when RuntimeValidation is done (or if bugfix ran)
-    // We only deploy if validation passed
-    const runtimeTask = Task.findTask(state.tasks, "RuntimeValidation");
-    const bugFixTask = Task.findTask(state.tasks, "FixingBugs");
-
-    return (runtimeTask?.status === "completed" || bugFixTask?.status === "completed")
+    // Ready when AddingAnalytics is done (last prep step before deploy)
+    return isTaskDone(state, "AddingAnalytics");
   },
 
   shouldSkip: (state: DeployGraphState) => {

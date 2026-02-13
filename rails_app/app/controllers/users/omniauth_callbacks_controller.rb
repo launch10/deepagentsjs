@@ -69,15 +69,8 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
     job_run.notify_langgraph(status: "completed", result: { google_email: connected_account.email })
   end
 
-  # To change the redirect URL after an account is connected, you can override the following methods:
-  #
-  # After sign up and sign in with OAuth
-  # def after_sign_in_path_for(resource)
-  #   root_path
-  # end
-  #
-  # After connecting an OAuth account while logged in
-  # def after_connect_redirect_path(connected_account)
-  #   request.env['omniauth.origin'] || user_connected_accounts_path
-  # end
+  # After connecting an OAuth account while logged in, redirect back to where they came from
+  def after_connect_redirect_path(connected_account)
+    request.env['omniauth.origin'] || user_connected_accounts_path
+  end
 end

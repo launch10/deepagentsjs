@@ -263,7 +263,8 @@ export const seoOptimizationTaskRunner: TaskRunner = {
   taskName: TASK_NAME,
 
   readyToRun: (state: DeployGraphState) => {
-    return isTaskDone(state, "VerifyingGoogle");
+    // Ready after validation cycle is done (RuntimeValidation, or FixingBugs if it ran)
+    return isTaskDone(state, "RuntimeValidation");
   },
 
   shouldSkip: (state: DeployGraphState) => {

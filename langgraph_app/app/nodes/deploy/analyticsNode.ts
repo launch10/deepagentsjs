@@ -181,10 +181,8 @@ export const analyticsTaskRunner: TaskRunner = {
   taskName: TASK_NAME,
 
   readyToRun: (state: DeployGraphState) => {
-    if (!Deploy.shouldDeployGoogleAds(state)) {
-      return true;
-    }
-    return isTaskDone(state, "VerifyingGoogle");
+    // Ready after SEO optimization is done
+    return isTaskDone(state, "OptimizingSEO");
   },
 
   shouldSkip: (state: DeployGraphState) => {

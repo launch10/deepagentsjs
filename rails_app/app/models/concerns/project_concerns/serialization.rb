@@ -84,7 +84,22 @@ module ProjectConcerns
           status: deploy.status,
           current_step: deploy.current_step,
           langgraph_thread_id: deploy.thread_id
-        }
+        },
+        deploy_type: "campaign"
+      })
+    end
+
+    def to_website_deploy_json(deploy)
+      to_website_json.merge!({
+        thread_id: deploy.thread_id,
+        deploy: {
+          id: deploy.id,
+          status: deploy.status,
+          current_step: deploy.current_step,
+          langgraph_thread_id: deploy.thread_id
+        },
+        deploy_type: "website",
+        campaign: nil
       })
     end
 

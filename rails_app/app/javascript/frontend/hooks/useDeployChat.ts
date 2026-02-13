@@ -16,6 +16,7 @@ export interface DeployProps {
     current_step: string | null;
     langgraph_thread_id: string | null;
   };
+  deploy_type: "website" | "campaign";
   website: { id: number } | null;
   campaign: { id: number } | null;
   [key: string]: unknown;
@@ -94,7 +95,7 @@ export function useDeployChatThreadId() {
  * Uses updateState() to poll for status updates during active deploys.
  */
 export function useDeployChatWithPolling() {
-  const { deploy, website, campaign } = usePage<DeployProps>().props;
+  const { deploy, deploy_type, website, campaign } = usePage<DeployProps>().props;
   const snapshot = useDeployChat();
   const { updateState, state, isLoading, error, status } = snapshot;
 
@@ -103,16 +104,17 @@ export function useDeployChatWithPolling() {
 
   // Start the deploy process
   const startDeploy = useCallback(() => {
+    const isCampaign = deploy_type === "campaign";
     updateState({
       deploy: {
         deployId: deploy.id,
         websiteId: website?.id,
-        campaignId: campaign?.id,
+        campaignId: isCampaign ? campaign?.id : undefined,
         website: !!website?.id,
-        googleAds: !!campaign?.id,
+        googleAds: isCampaign,
       },
     });
-  }, [updateState, deploy.id, website?.id, campaign?.id]);
+  }, [updateState, deploy.id, deploy_type, website?.id, campaign?.id]);
 
   // Check if deploy is in terminal state
   const isTerminal = state.status === "completed" || state.status === "failed";

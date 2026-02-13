@@ -83,8 +83,12 @@ export const validateLinksTaskRunner: TaskRunner = {
   isFailureRecoverable: true,
 
   readyToRun: (state: DeployGraphState) => {
-    // Ready when both AddingAnalytics and OptimizingSEO are done
-    return isTaskDone(state, "AddingAnalytics") && isTaskDone(state, "OptimizingSEO");
+    // For campaign deploys, wait until Google setup + billing is resolved
+    if (Deploy.shouldDeployGoogleAds(state)) {
+      return isTaskDone(state, "CheckingBilling");
+    }
+    // For website-only deploys, ready immediately
+    return true;
   },
 
   shouldSkip: (state: DeployGraphState) => {

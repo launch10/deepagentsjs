@@ -47,8 +47,10 @@ class ProjectsController < SubscribedController
     render inertia: "Brainstorm", props: @project.to_brainstorm_json, layout: "layouts/webcontainer"
   end
 
-  # Dynamic website substep actions (build, domain, deploy)
+  # Dynamic website substep actions (build, domain)
   WorkflowConfig.substeps_for("launch", "website").each do |substep|
+    next if substep == "deploy" # deploy is handled explicitly below
+
     define_method("website_#{substep}") do
       # Advance workflow step/substep
       @project.current_workflow.update!(step: "website", substep: substep)
@@ -57,6 +59,16 @@ class ProjectsController < SubscribedController
         props: @project.to_website_json.merge(substep: substep),
         layout: "layouts/webcontainer"
     end
+  end
+
+  # Website deploy renders the Deploy page (not the Website page)
+  def website_deploy
+    @project.current_workflow.update!(step: "website", substep: "deploy")
+    @deploy = @project.deploys.in_progress.first || @project.deploys.create!(status: "pending")
+
+    render inertia: "Deploy",
+      props: @project.to_website_deploy_json(@deploy),
+      layout: "layouts/webcontainer"
   end
 
   WorkflowConfig.substeps_for("launch", "ad_campaign").each do |substep|
