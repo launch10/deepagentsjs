@@ -1,3 +1,3 @@
 export * from "./agent";
-export * from "./handleCommand";
+export * from "./skipTopic";
 export * from "./nameProject";

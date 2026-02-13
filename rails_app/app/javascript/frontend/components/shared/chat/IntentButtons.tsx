@@ -2,34 +2,38 @@ import { twMerge } from "tailwind-merge";
 import type { ReactNode, ButtonHTMLAttributes, HTMLAttributes } from "react";
 
 // Root container
-export interface CommandButtonsRootProps extends HTMLAttributes<HTMLDivElement> {
+export interface IntentButtonsRootProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   className?: string;
 }
 
-function Root({ children, className, ...props }: CommandButtonsRootProps) {
+function Root({ children, className, ...props }: IntentButtonsRootProps) {
   return (
-    <div data-testid="command-buttons" className={twMerge("flex flex-wrap gap-2", className)} {...props}>
+    <div
+      data-testid="intent-buttons"
+      className={twMerge("flex flex-wrap gap-2", className)}
+      {...props}
+    >
       {children}
     </div>
   );
 }
 
 // Button component
-export type CommandButtonVariant = "primary" | "secondary";
+export type IntentButtonVariant = "primary" | "secondary";
 
-export interface CommandButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface IntentButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
-  variant?: CommandButtonVariant;
+  variant?: IntentButtonVariant;
   className?: string;
 }
 
-const variantStyles: Record<CommandButtonVariant, string> = {
+const variantStyles: Record<IntentButtonVariant, string> = {
   primary: "bg-primary-500 text-white hover:bg-primary-600",
   secondary: "border border-neutral-200 bg-white text-neutral-700 hover:bg-neutral-50",
 };
 
-function Button({ children, variant = "secondary", className, ...props }: CommandButtonProps) {
+function Button({ children, variant = "secondary", className, ...props }: IntentButtonProps) {
   return (
     <button
       type="button"
@@ -47,7 +51,7 @@ function Button({ children, variant = "secondary", className, ...props }: Comman
 }
 
 // Export as compound component
-export const CommandButtons = {
+export const IntentButtons = {
   Root,
   Button,
 };

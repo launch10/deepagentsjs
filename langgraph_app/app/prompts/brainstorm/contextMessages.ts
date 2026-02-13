@@ -1,6 +1,10 @@
 import { type BrainstormGraphState } from "@state";
 import { Brainstorm, type LangGraphRunnableConfig } from "@types";
-import { createContextMessage, createMultimodalContextMessage, type ContextMessage } from "langgraph-ai-sdk";
+import {
+  createContextMessage,
+  createMultimodalContextMessage,
+  type ContextMessage,
+} from "langgraph-ai-sdk";
 
 /**
  * Context messages for significant mode SWITCHES in brainstorm.
@@ -35,10 +39,10 @@ export const getBrainstormMode = (state: BrainstormGraphState): BrainstormMode =
     return "uiGuidance";
   }
 
-  // Conversational mode with special behaviors
-  const command = state.command as Brainstorm.AgentBehaviorType | undefined;
-  if (command === "helpMe") return "helpMe";
-  if (command === "doTheRest") return "doTheRest";
+  // Conversational mode with special behaviors based on intent
+  const intentType = state.intent?.type;
+  if (intentType === "help_me") return "helpMe";
+  if (intentType === "do_the_rest") return "doTheRest";
 
   return "default";
 };
@@ -169,9 +173,7 @@ const createHelpMeSwitchMessage = (state: BrainstormGraphState): ContextMessage 
 const createDoTheRestSwitchMessage = (state: BrainstormGraphState): ContextMessage => {
   const remainingTopics = state.remainingTopics || [];
   const skippedTopics = state.skippedTopics || [];
-  const topicsToFinish = [...remainingTopics, ...skippedTopics].filter(
-    (t) => t !== "lookAndFeel"
-  );
+  const topicsToFinish = [...remainingTopics, ...skippedTopics].filter((t) => t !== "lookAndFeel");
 
   const content = `
 <context_switch type="do_the_rest">

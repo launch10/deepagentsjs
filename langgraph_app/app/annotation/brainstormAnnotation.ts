@@ -19,11 +19,10 @@ export const BrainstormAnnotation = Annotation.Root({
   placeholderText: Annotation<string>(),
   brainstormId: Annotation<PrimaryKeyType | undefined>(),
   memories: Annotation<Brainstorm.MemoriesType>(),
-  availableCommands: Annotation<Brainstorm.CommandName[]>({
+  availableIntents: Annotation<Brainstorm.BrainstormIntentName[]>({
     default: () => [],
     reducer: (current, next) => [...next],
   }),
-  command: Annotation<Brainstorm.CommandName | undefined>(),
   redirect: Annotation<Brainstorm.RedirectType | undefined>(),
   skippedTopics: Annotation<Brainstorm.TopicName[]>({
     default: () => [],

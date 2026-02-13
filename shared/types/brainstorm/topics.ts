@@ -1,5 +1,4 @@
 import z from "zod";
-import { CommandNames } from "./commands";
 
 export const TopicKinds = ["conversational", "ui"] as const;
 export type TopicKind = typeof TopicKinds[number];
@@ -12,12 +11,15 @@ export const ConversationalTopics = ["idea", "audience", "solution", "socialProo
 export type ConversationalTopicName = typeof ConversationalTopics[number];
 export const UITopics = ["lookAndFeel"] as const;
 
+export const BrainstormIntentNames = ["help_me", "skip_topic", "do_the_rest"] as const;
+export type BrainstormIntentName = typeof BrainstormIntentNames[number];
+
 export const topicSchema = z.object({
     name: z.enum(TopicNames),
     kind: z.enum(TopicKinds),
     description: z.string(),
     placeholderText: z.string(),
-    availableCommands: z.array(z.enum(CommandNames)),
+    availableIntents: z.array(z.enum(BrainstormIntentNames)),
     skippable: z.boolean(),
     hardcodedQuestion: z.string().optional(),
 })
@@ -30,7 +32,7 @@ export const Topics: Record<TopicName, Topic> = {
         kind: "conversational",
         description: "The core business idea. What does the business do? What makes them different?",
         placeholderText: "I want to acquire leads, sell my product...",
-        availableCommands: ["helpMe"],
+        availableIntents: ["help_me"],
         skippable: false,
         hardcodedQuestion: "Tell us about your business. More info → better outcomes.",
     },
@@ -39,7 +41,7 @@ export const Topics: Record<TopicName, Topic> = {
         kind: "conversational",
         description: "The target audience. What are their pain points? What are their goals?",
         placeholderText: "My target audience is...",
-        availableCommands: ["helpMe", "skip", "doTheRest"],
+        availableIntents: ["help_me", "skip_topic", "do_the_rest"],
         skippable: true,
     },
     solution: {
@@ -47,7 +49,7 @@ export const Topics: Record<TopicName, Topic> = {
         kind: "conversational",
         description: "How does the user's business solve the audience's pain points, or help them reach their goals?",
         placeholderText: "My solution is...",
-        availableCommands: ["helpMe", "skip", "doTheRest"],
+        availableIntents: ["help_me", "skip_topic", "do_the_rest"],
         skippable: true,
     },
     socialProof: {
@@ -55,7 +57,7 @@ export const Topics: Record<TopicName, Topic> = {
         kind: "conversational",
         description: "Social proof or testimonials to include on the landing page. Remember, anything can be social proof: the user's background, experience, beliefs, founder story, etc.",
         placeholderText: "My social proof is...",
-        availableCommands: ["helpMe", "skip", "doTheRest"],
+        availableIntents: ["help_me", "skip_topic", "do_the_rest"],
         skippable: true,
     },
     lookAndFeel: {
@@ -63,7 +65,7 @@ export const Topics: Record<TopicName, Topic> = {
         kind: "ui",
         description: "The look and feel of the landing page.",
         placeholderText: "Use the Advanced sidebar or click \"Build My Site\"...",
-        availableCommands: ["finished"],
+        availableIntents: [],
         skippable: false,
     },
 }

@@ -16,8 +16,8 @@ export class BrainstormPage {
   readonly aiMessages: Locator;
   readonly thinkingIndicator: Locator;
 
-  // Command buttons
-  readonly commandButtons: Locator;
+  // Intent buttons
+  readonly intentButtons: Locator;
 
   // Social links
   readonly socialLinksSection: Locator;
@@ -50,7 +50,7 @@ export class BrainstormPage {
   readonly chatAttachmentList: Locator;
   readonly chatAttachmentItems: Locator;
 
-  // Command buttons for workflow actions
+  // Intent buttons for workflow actions
   readonly buildMySiteButton: Locator;
 
   // Custom theme elements
@@ -75,8 +75,8 @@ export class BrainstormPage {
     // Thinking/loading indicator
     this.thinkingIndicator = page.getByTestId("thinking-indicator");
 
-    // Command buttons
-    this.commandButtons = page.getByTestId("command-buttons");
+    // Intent buttons
+    this.intentButtons = page.getByTestId("intent-buttons");
 
     // Social links section
     this.socialLinksSection = page.getByTestId("social-links");
@@ -114,9 +114,9 @@ export class BrainstormPage {
     this.chatAttachmentList = page.getByTestId("attachment-list");
     this.chatAttachmentItems = page.getByTestId("attachment-item");
 
-    // Command buttons for workflow actions - use last() since multiple AI messages may have command-buttons containers
+    // Intent buttons for workflow actions - use last() since multiple AI messages may have intent-buttons containers
     this.buildMySiteButton = page
-      .getByTestId("command-buttons")
+      .getByTestId("intent-buttons")
       .last()
       .getByRole("button", { name: "Build My Site" });
 
@@ -251,17 +251,17 @@ export class BrainstormPage {
   }
 
   /**
-   * Click a command button by its text
+   * Click an intent button by its text
    */
-  async clickCommandButton(text: string): Promise<void> {
-    await this.commandButtons.getByText(text).click();
+  async clickIntentButton(text: string): Promise<void> {
+    await this.intentButtons.getByText(text).click();
   }
 
   /**
-   * Check if command buttons are visible
+   * Check if intent buttons are visible
    */
-  async areCommandButtonsVisible(): Promise<boolean> {
-    return await this.commandButtons.isVisible();
+  async areIntentButtonsVisible(): Promise<boolean> {
+    return await this.intentButtons.isVisible();
   }
 
   /**
@@ -617,7 +617,9 @@ export class BrainstormPage {
    */
   async hasCustomThemeWithColors(colors: string[]): Promise<boolean> {
     // Find the selected palette
-    const selectedPalette = this.page.locator('[data-testid^="color-palette-"][data-selected="true"]');
+    const selectedPalette = this.page.locator(
+      '[data-testid^="color-palette-"][data-selected="true"]'
+    );
     const isVisible = await selectedPalette.isVisible();
     if (!isVisible) {
       return false;
@@ -645,10 +647,10 @@ export class BrainstormPage {
     };
 
     // Check if all input colors are found in the palette
-    const inputRgbColors = colors.map(c => hexToRgb(c.replace("#", "").toUpperCase()));
+    const inputRgbColors = colors.map((c) => hexToRgb(c.replace("#", "").toUpperCase()));
 
-    return inputRgbColors.every(inputRgb =>
-      paletteRgbColors.some(paletteStyle => paletteStyle.includes(inputRgb))
+    return inputRgbColors.every((inputRgb) =>
+      paletteRgbColors.some((paletteStyle) => paletteStyle.includes(inputRgb))
     );
   }
 
@@ -706,7 +708,7 @@ export class BrainstormPage {
    */
   async hasDocumentWithMimeType(mimeType: string): Promise<boolean> {
     const doc = this.page.locator(`[data-testid="message-document"][data-mime-type="${mimeType}"]`);
-    return await doc.count() > 0;
+    return (await doc.count()) > 0;
   }
 
   /**

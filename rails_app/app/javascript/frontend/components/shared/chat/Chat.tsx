@@ -30,10 +30,7 @@
 // ============================================================================
 
 // Context and hooks
-export {
-  ChatProvider,
-  type ChatContextValue,
-} from "./ChatContext";
+export { ChatProvider, type ChatContextValue } from "./ChatContext";
 
 // Utility hooks
 export { useMessageMetadata, type MessageMetadata } from "./hooks";
@@ -83,21 +80,17 @@ export {
 export { BlockRenderer, type BlockRendererProps } from "./BlockRenderer";
 export { Suggestions, type SuggestionsRootProps, type SuggestionsItemProps } from "./Suggestions";
 export {
-  CommandButtons,
-  type CommandButtonsRootProps,
-  type CommandButtonProps,
-  type CommandButtonVariant,
-} from "./CommandButtons";
+  IntentButtons,
+  type IntentButtonsRootProps,
+  type IntentButtonProps,
+  type IntentButtonVariant,
+} from "./IntentButtons";
 export {
   ThinkingIndicator,
   type ThinkingIndicatorProps,
   type ThinkingIndicatorVariant,
 } from "./ThinkingIndicator";
-export {
-  TodoList,
-  type TodoListProps,
-  type TodoItem,
-} from "./TodoList";
+export { TodoList, type TodoListProps, type TodoItem } from "./TodoList";
 
 // Attachment components (shared infrastructure)
 export {
@@ -122,7 +115,7 @@ import { UserMessage } from "./UserMessage";
 import { AIMessage } from "./AIMessage";
 import { BlockRenderer } from "./BlockRenderer";
 import { Suggestions } from "./Suggestions";
-import { CommandButtons } from "./CommandButtons";
+import { IntentButtons } from "./IntentButtons";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 import { TodoList } from "./TodoList";
 
@@ -139,7 +132,7 @@ export const Chat = {
   AIMessage,
   BlockRenderer,
   Suggestions,
-  CommandButtons,
+  IntentButtons,
   ThinkingIndicator,
   TodoList,
 };

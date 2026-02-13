@@ -3,28 +3,52 @@ import { BrainstormAnnotation } from "@annotation";
 import {
   brainstormAgent,
   createBrainstorm,
-  handleCommand,
+  skipTopic,
   createCompactConversationNode,
 } from "@nodes";
-import { withCreditExhaustion } from "./shared";
+import { createIntentGraph } from "./shared";
+import type { BrainstormIntent } from "@types";
 
 /**
  * The main brainstorm graph
  *
- * Credit exhaustion is detected via withCreditExhaustion wrapper,
- * which runs this graph as a subgraph, then calculates credit status.
+ * Uses createIntentGraph to route by intent:
+ * - default: createBrainstorm → brainstormAgent → compactConversation
+ * - help_me: same as default (agent reads intent to pick prompt)
+ * - do_the_rest: same as default (agent reads intent to pick prompt)
+ * - skip_topic: skipTopic → createBrainstorm → brainstormAgent → compactConversation
+ *
+ * Credit exhaustion is detected via createIntentGraph's withCreditExhaustion wrapper.
  */
-export const brainstormGraph = withCreditExhaustion(
-  new StateGraph(BrainstormAnnotation)
-    .addNode("createBrainstorm", createBrainstorm)
-    .addNode("handleCommand", handleCommand)
-    .addNode("brainstormAgent", brainstormAgent)
-    .addNode("compactConversation", createCompactConversationNode())
 
-    .addEdge(START, "createBrainstorm")
-    .addEdge("createBrainstorm", "handleCommand")
-    .addEdge("handleCommand", "brainstormAgent")
-    .addEdge("brainstormAgent", "compactConversation")
-    .addEdge("compactConversation", END),
-  BrainstormAnnotation
-);
+const defaultSubgraph = new StateGraph(BrainstormAnnotation)
+  .addNode("createBrainstorm", createBrainstorm)
+  .addNode("brainstormAgent", brainstormAgent)
+  .addNode("compactConversation", createCompactConversationNode())
+  .addEdge(START, "createBrainstorm")
+  .addEdge("createBrainstorm", "brainstormAgent")
+  .addEdge("brainstormAgent", "compactConversation")
+  .addEdge("compactConversation", END)
+  .compile();
+
+const skipTopicSubgraph = new StateGraph(BrainstormAnnotation)
+  .addNode("skipTopic", skipTopic)
+  .addNode("createBrainstorm", createBrainstorm)
+  .addNode("brainstormAgent", brainstormAgent)
+  .addNode("compactConversation", createCompactConversationNode())
+  .addEdge(START, "skipTopic")
+  .addEdge("skipTopic", "createBrainstorm")
+  .addEdge("createBrainstorm", "brainstormAgent")
+  .addEdge("brainstormAgent", "compactConversation")
+  .addEdge("compactConversation", END)
+  .compile();
+
+export const brainstormGraph = createIntentGraph<BrainstormIntent["type"]>()({
+  annotation: BrainstormAnnotation,
+  intents: {
+    skip_topic: skipTopicSubgraph,
+    help_me: defaultSubgraph,
+    do_the_rest: defaultSubgraph,
+    default: defaultSubgraph,
+  },
+});

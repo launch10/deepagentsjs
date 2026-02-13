@@ -48,9 +48,15 @@ export type ChangeThemeIntent = z.infer<typeof changeThemeIntentSchema>;
 export type ImproveCopyIntent = z.infer<typeof improveCopyIntentSchema>;
 
 // Brainstorm intents
+export const helpMeIntentSchema = z.object({
+  type: z.literal("help_me"),
+  payload: z.object({}),
+  createdAt: z.string(),
+});
+
 export const skipTopicIntentSchema = z.object({
   type: z.literal("skip_topic"),
-  payload: z.object({ topic: z.string() }),
+  payload: z.object({}),
   createdAt: z.string(),
 });
 
@@ -61,6 +67,7 @@ export const doTheRestIntentSchema = z.object({
 });
 
 export const brainstormIntentSchema = z.discriminatedUnion("type", [
+  helpMeIntentSchema,
   skipTopicIntentSchema,
   doTheRestIntentSchema,
 ]);
@@ -107,7 +114,7 @@ export function isWebsiteIntent(intent: Intent): intent is WebsiteIntent {
 }
 
 export function isBrainstormIntent(intent: Intent): intent is BrainstormIntent {
-  return intent !== null && ["skip_topic", "do_the_rest"].includes(intent.type);
+  return intent !== null && ["help_me", "skip_topic", "do_the_rest"].includes(intent.type);
 }
 
 export function isNavigationIntent(intent: Intent): intent is NavigationIntent {

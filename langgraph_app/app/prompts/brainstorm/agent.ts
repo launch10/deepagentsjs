@@ -28,14 +28,12 @@ const conversationalPrompt = async (
   state: BrainstormGraphState,
   config?: LangGraphRunnableConfig
 ) => {
-  const behavior: Brainstorm.AgentBehaviorType = state.command || "default";
+  const intentType = state.intent?.type;
 
-  switch (behavior) {
-    case "default":
-      return await defaultPrompt(state, config);
-    case "helpMe":
+  switch (intentType) {
+    case "help_me":
       return await helpMePrompt(state, config);
-    case "doTheRest":
+    case "do_the_rest":
       return await finishForMePrompt(state, config);
     default:
       return await defaultPrompt(state, config);

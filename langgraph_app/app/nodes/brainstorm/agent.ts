@@ -24,8 +24,8 @@ const middlewareStateSchema = z.object({
   currentTopic: z.string().optional(),
   skippedTopics: z.array(z.string()).optional(),
   redirect: z.string().optional(),
-  availableCommands: z.array(z.string()).default([]),
-  command: z.string().optional(),
+  availableIntents: z.array(z.string()).default([]),
+  intent: z.any().optional(),
   jwt: z.string().optional(),
 });
 
@@ -52,8 +52,10 @@ const createBrainstormMiddleware = (
   tracker: MiddlewareTracker,
   config?: LangGraphRunnableConfig
 ) => {
-  // Initialize tracker with mode from state (persisted across turns)
-  tracker.lastSeenMode = initialState.brainstormMode;
+  // Initialize tracker with mode from state (persisted across turns).
+  // Default to "default" when brainstormMode is unset (first turn) so that
+  // intent-driven mode changes (e.g., helpMe, doTheRest) are detected as switches.
+  tracker.lastSeenMode = initialState.brainstormMode ?? "default";
   tracker.injectedContextMessages = [];
 
   return createMiddleware({
@@ -136,9 +138,22 @@ export const brainstormAgent = NodeMiddleware.use(
 
     // Get initial next steps (state at START of turn)
     const initialNextSteps = await new BrainstormNextStepsService(state).nextSteps();
+
+    // Validate intent against available intents for current topic.
+    // This prevents forced intents that don't match the topic's available actions
+    // (e.g., do_the_rest on the idea topic where only help_me is allowed).
+    const validatedIntent =
+      state.intent?.type &&
+      initialNextSteps.availableIntents?.includes(
+        state.intent.type as Brainstorm.BrainstormIntentName
+      )
+        ? state.intent
+        : undefined;
+
     const initialState: BrainstormGraphState = {
       ...state,
       ...initialNextSteps,
+      intent: validatedIntent,
     };
 
     // Window messages to fit context limits before sending to the agent.
@@ -161,13 +176,16 @@ export const brainstormAgent = NodeMiddleware.use(
       lastSeenMode: state.brainstormMode,
     };
 
-    const llm = (await getLLM({maxTier: 2})).withConfig({ tags: ["notify"] });
+    const llm = (await getLLM({ maxTier: 2 })).withConfig({ tags: ["notify"] });
     const tools = [saveAnswersTool, finishedTool, queryUploadsTool];
 
     const agent = await createAgent({
       model: llm,
       tools,
-      middleware: [createPromptCachingMiddleware(), createBrainstormMiddleware(initialState, middlewareTracker, config)],
+      middleware: [
+        createPromptCachingMiddleware(),
+        createBrainstormMiddleware(initialState, middlewareTracker, config),
+      ],
     });
 
     const result = (await agent.invoke(stateForAgent as any, config)) as BrainstormGraphState;
@@ -178,7 +196,7 @@ export const brainstormAgent = NodeMiddleware.use(
 
     const [message, updates] = await BrainstormBridge.toStructuredMessage(lastMessage);
     // Get updated next steps after agent processing
-    const { memories, remainingTopics, currentTopic, placeholderText, availableCommands } =
+    const { memories, remainingTopics, currentTopic, placeholderText, availableIntents } =
       await new BrainstormNextStepsService(state).nextSteps();
 
     // Compute the final mode to persist in state
@@ -186,7 +204,6 @@ export const brainstormAgent = NodeMiddleware.use(
       ...state,
       currentTopic,
       skippedTopics: (result.skippedTopics || []) as Brainstorm.TopicName[],
-      command: state.command, // command may have been consumed
     };
     const finalMode = getBrainstormMode(finalState);
 
@@ -227,7 +244,7 @@ export const brainstormAgent = NodeMiddleware.use(
       currentTopic,
       remainingTopics,
       placeholderText,
-      availableCommands,
+      availableIntents,
       brainstormMode: finalMode, // Persist mode for next turn
     };
   }

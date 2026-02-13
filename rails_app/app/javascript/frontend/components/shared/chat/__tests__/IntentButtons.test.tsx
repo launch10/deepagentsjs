@@ -1,33 +1,33 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CommandButtons } from "../CommandButtons";
+import { IntentButtons } from "../IntentButtons";
 
-describe("CommandButtons", () => {
+describe("IntentButtons", () => {
   describe("Root", () => {
     it("renders children", () => {
       render(
-        <CommandButtons.Root>
+        <IntentButtons.Root>
           <button>Test</button>
-        </CommandButtons.Root>
+        </IntentButtons.Root>
       );
       expect(screen.getByRole("button", { name: "Test" })).toBeInTheDocument();
     });
 
     it("applies custom className", () => {
       render(
-        <CommandButtons.Root className="custom-class" data-testid="root">
+        <IntentButtons.Root className="custom-class" data-testid="root">
           <button>Test</button>
-        </CommandButtons.Root>
+        </IntentButtons.Root>
       );
       expect(screen.getByTestId("root")).toHaveClass("custom-class");
     });
 
     it("has flex layout for button grouping", () => {
       render(
-        <CommandButtons.Root data-testid="root">
+        <IntentButtons.Root data-testid="root">
           <button>Test</button>
-        </CommandButtons.Root>
+        </IntentButtons.Root>
       );
       expect(screen.getByTestId("root")).toHaveClass("flex");
     });
@@ -35,32 +35,32 @@ describe("CommandButtons", () => {
 
   describe("Button", () => {
     it("renders a button with label", () => {
-      render(<CommandButtons.Button>Continue</CommandButtons.Button>);
+      render(<IntentButtons.Button>Continue</IntentButtons.Button>);
       expect(screen.getByRole("button", { name: "Continue" })).toBeInTheDocument();
     });
 
     it("calls onClick when clicked", async () => {
       const user = userEvent.setup();
       const handleClick = vi.fn();
-      render(<CommandButtons.Button onClick={handleClick}>Continue</CommandButtons.Button>);
+      render(<IntentButtons.Button onClick={handleClick}>Continue</IntentButtons.Button>);
 
       await user.click(screen.getByRole("button", { name: "Continue" }));
       expect(handleClick).toHaveBeenCalled();
     });
 
     it("can be disabled", () => {
-      render(<CommandButtons.Button disabled>Continue</CommandButtons.Button>);
+      render(<IntentButtons.Button disabled>Continue</IntentButtons.Button>);
       expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
     });
 
     it("supports primary variant", () => {
-      render(<CommandButtons.Button variant="primary">Continue</CommandButtons.Button>);
+      render(<IntentButtons.Button variant="primary">Continue</IntentButtons.Button>);
       const button = screen.getByRole("button", { name: "Continue" });
       expect(button).toHaveClass("bg-primary-500");
     });
 
     it("supports secondary variant by default", () => {
-      render(<CommandButtons.Button>Continue</CommandButtons.Button>);
+      render(<IntentButtons.Button>Continue</IntentButtons.Button>);
       const button = screen.getByRole("button", { name: "Continue" });
       expect(button).toHaveClass("border");
     });
@@ -69,11 +69,11 @@ describe("CommandButtons", () => {
   describe("compound usage", () => {
     it("renders multiple action buttons", () => {
       render(
-        <CommandButtons.Root>
-          <CommandButtons.Button variant="primary">Show Landing Page</CommandButtons.Button>
-          <CommandButtons.Button>Continue Brainstorming</CommandButtons.Button>
-          <CommandButtons.Button>Edit Response</CommandButtons.Button>
-        </CommandButtons.Root>
+        <IntentButtons.Root>
+          <IntentButtons.Button variant="primary">Show Landing Page</IntentButtons.Button>
+          <IntentButtons.Button>Continue Brainstorming</IntentButtons.Button>
+          <IntentButtons.Button>Edit Response</IntentButtons.Button>
+        </IntentButtons.Root>
       );
 
       expect(screen.getByRole("button", { name: "Show Landing Page" })).toBeInTheDocument();
@@ -87,12 +87,12 @@ describe("CommandButtons", () => {
       const handleContinue = vi.fn();
 
       render(
-        <CommandButtons.Root>
-          <CommandButtons.Button variant="primary" onClick={handleShowLanding}>
+        <IntentButtons.Root>
+          <IntentButtons.Button variant="primary" onClick={handleShowLanding}>
             Show Landing Page
-          </CommandButtons.Button>
-          <CommandButtons.Button onClick={handleContinue}>Continue</CommandButtons.Button>
-        </CommandButtons.Root>
+          </IntentButtons.Button>
+          <IntentButtons.Button onClick={handleContinue}>Continue</IntentButtons.Button>
+        </IntentButtons.Root>
       );
 
       await user.click(screen.getByRole("button", { name: "Show Landing Page" }));
