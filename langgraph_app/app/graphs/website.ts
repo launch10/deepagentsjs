@@ -11,15 +11,14 @@
 import { StateGraph, START, END } from "@langchain/langgraph";
 import { WebsiteAnnotation } from "@annotation";
 import {
-  buildContext,
   websiteBuilderNode,
   compactConversationNode,
-  cleanupFilesystemNode,
-  syncFilesNode,
+  afterAgentNode,
   improveCopyNode,
   domainRecommendationsNode,
   themeHandler,
   isCacheModeEnabled,
+  updateWebsite,
 } from "@nodes";
 import { createIntentGraph } from "./shared";
 import type { WebsiteIntent } from "@types";
@@ -32,70 +31,73 @@ import type { WebsiteIntent } from "@types";
  * Theme handler - silent action, no AI messages
  */
 const themeHandlerSubgraph = new StateGraph(WebsiteAnnotation)
+  .addNode("updateWebsite", updateWebsite)
   .addNode("themeHandler", themeHandler)
-  .addEdge(START, "themeHandler")
-  .addEdge("themeHandler", END)
+  .addNode("afterAgent", afterAgentNode)
+  .addEdge(START, "updateWebsite")
+  .addEdge("updateWebsite", "themeHandler")
+  .addEdge("themeHandler", "afterAgent")
+  .addEdge("afterAgent", END)
   .compile();
 
 /**
- * Improve copy - regenerates copy with different style
+ * Improve copy - regenerates copy with different style.
+ * Uses the full coding agent (same as edit flow) with copy style as context.
  */
 const improveCopySubgraph = new StateGraph(WebsiteAnnotation)
+  .addNode("updateWebsite", updateWebsite)
   .addNode("improveCopy", improveCopyNode)
-  .addNode("cleanupFilesystem", cleanupFilesystemNode)
-  .addNode("syncFiles", syncFilesNode)
-  .addEdge(START, "improveCopy")
-  .addEdge("improveCopy", "cleanupFilesystem")
-  .addEdge("cleanupFilesystem", "syncFiles")
-  .addEdge("syncFiles", END)
+  .addNode("compactConversation", compactConversationNode)
+  .addNode("afterAgent", afterAgentNode)
+  .addEdge(START, "updateWebsite")
+  .addEdge("updateWebsite", "improveCopy")
+  .addEdge("improveCopy", "compactConversation")
+  .addEdge("compactConversation", "afterAgent")
+  .addEdge("afterAgent", END)
   .compile();
 
 /**
  * Website builder - full page generation flow
- * - buildContext fans out to websiteBuilder and recommendDomains in parallel
- * - Both converge at cleanupFilesystem (or cleanupState in cache mode)
- * - Includes cacheMode as internal optimization
+ * - updateWebsite fans out to websiteBuilder and recommendDomains in parallel
+ * - Both converge at afterAgent (or skipToEnd in cache mode)
+ * - afterAgent handles: filesystem cleanup, DB sync, todos clear
+ *
+ * Context preparation (event fetching, injection, windowing) happens inside
+ * websiteBuilder via prepareTurn — no separate context node needed.
  */
 const routeFromRecommendDomains = (state: { messages?: unknown[] }): string => {
   if (isCacheModeEnabled(state)) {
     return "skipToEnd"; // In cache mode (create only), domain recs go directly to END (files already cached)
   }
-  return "cleanupFilesystem";
+  return "afterAgent";
 };
 
 const websiteBuilderSubgraph = new StateGraph(WebsiteAnnotation)
-  .addNode("buildContext", buildContext)
+  .addNode("updateWebsite", updateWebsite)
   .addNode("websiteBuilder", websiteBuilderNode)
   .addNode("compactConversation", compactConversationNode)
   .addNode("recommendDomains", domainRecommendationsNode)
-  .addNode("cleanupFilesystem", cleanupFilesystemNode)
-  .addNode("syncFiles", syncFilesNode)
+  .addNode("afterAgent", afterAgentNode)
   .addNode("skipToEnd", () => ({})) // No-op node for cache mode domain recs path
 
-  // START routes based on cache mode (create only)
-  .addConditionalEdges(START, (state) => (isCacheModeEnabled(state) ? "cacheMode" : "buildContext"), {
-    cacheMode: "buildContext", // Even in cache mode, we go through buildContext
-    buildContext: "buildContext",
-  })
+  // START → updateWebsite → fan out to websiteBuilder + recommendDomains
+  .addEdge(START, "updateWebsite")
+  .addEdge("updateWebsite", "websiteBuilder")
+  .addEdge("updateWebsite", "recommendDomains")
 
-  // buildContext fans out to websiteBuilder and recommendDomains in parallel
-  .addEdge("buildContext", "websiteBuilder")
-  .addEdge("buildContext", "recommendDomains")
-
-  // websiteBuilder → compactConversation → cleanupFilesystem
+  // websiteBuilder → compactConversation → afterAgent
   .addEdge("websiteBuilder", "compactConversation")
-  .addEdge("compactConversation", "cleanupFilesystem")
+  .addEdge("compactConversation", "afterAgent")
 
   // recommendDomains routes based on mode
   .addConditionalEdges("recommendDomains", routeFromRecommendDomains, {
     skipToEnd: "skipToEnd",
-    cleanupFilesystem: "cleanupFilesystem",
+    afterAgent: "afterAgent",
   })
 
   // Converge paths
   .addEdge("skipToEnd", END)
-  .addEdge("cleanupFilesystem", "syncFiles")
-  .addEdge("syncFiles", END)
+  .addEdge("afterAgent", END)
   .compile();
 
 // =============================================================================

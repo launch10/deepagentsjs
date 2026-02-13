@@ -2,7 +2,8 @@ import { createAgent, createMiddleware } from "langchain";
 import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLLM, createPromptCachingMiddleware, getLogger } from "@core";
-import { chooseAdsPrompt, injectAdsContextMessage } from "@prompts";
+import { chooseAdsPrompt, getContextMessage } from "@prompts";
+import { Conversation } from "@conversation";
 import { NodeMiddleware } from "@middleware";
 import { type AdsGraphState } from "@state";
 import z from "zod";
@@ -56,9 +57,17 @@ export const adsAgent = NodeMiddleware.use(
       middleware: [createPromptCachingMiddleware(), dynamicPromptMiddleware],
     });
 
+    // Window messages and inject ads-specific context (refresh, page switch, begin).
+    const contextMsg = getContextMessage(state);
+    const windowedMessages = new Conversation(state.messages || []).prepareTurn({
+      contextMessages: contextMsg ? [contextMsg] : [],
+      maxTurnPairs: 10,
+      maxChars: 40_000,
+    });
+
     const stateWithMessages = {
       ...state,
-      messages: injectAdsContextMessage(state),
+      messages: windowedMessages,
     };
 
     getLogger().info({ stage: state.stage }, "Running ads agent");

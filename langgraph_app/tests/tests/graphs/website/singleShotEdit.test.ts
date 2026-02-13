@@ -2,15 +2,12 @@
  * Single-Shot Edit Eval Suite
  *
  * Tests classifier routing and single-shot execution across dozens of
- * realistic user edit requests. All tests hit real APIs (no Polly recordings).
+ * realistic user edit requests. Uses Polly recordings for replay.
+ * Run locally once with no recordings to capture; CI replays from recordings.
  *
  * Component inventory (from website_generated snapshot):
  *   Hero.tsx, Features.tsx, CTA.tsx, Footer.tsx, HowItWorks.tsx,
  *   Problem.tsx, SocialProof.tsx, App.tsx (composition root)
- *
- * Cost budget: ~$2 total
- * - Classifier calls: ~$0.0001 each (negligible)
- * - Single-shot edits (Haiku): ~$0.01-0.05 each (all 25 simple edits executed)
  *
  * Usage:
  *   cd langgraph_app
@@ -28,6 +25,7 @@ import { DatabaseSnapshotter } from "@services";
 import { WebsiteAPI } from "@api";
 import { getCodingAgentBackend, classifyEditWithLLM } from "@nodes";
 import { buildFileTree } from "@nodes";
+import { startPolly, stopPolly, persistRecordings } from "@utils";
 import type { ThreadIDType } from "@types";
 import type { WebsiteGraphState } from "@annotation";
 
@@ -184,13 +182,13 @@ const SIMPLE_EDITS: EditTestCase[] = [
     expectedTargets: ["HowItWorks"],
   },
 
-  // ── Problem-targeted ──
+  // ── HowItWorks heading change ──
   {
-    prompt: "Change the problem section heading to 'The Real Cost of Bad Scheduling'",
-    label: "problem-heading",
+    prompt: "Change the how it works heading to 'The Real Cost of Bad Scheduling'",
+    label: "howitworks-heading",
     expectedRoute: "simple",
-    expectedTargets: ["Problem"],
-    expectedContains: [{ file: "Problem", text: "The Real Cost of Bad Scheduling" }],
+    expectedTargets: ["HowItWorks"],
+    expectedContains: [{ file: "HowItWorks", text: "The Real Cost of Bad Scheduling" }],
   },
 
   // ── SocialProof-targeted ──
@@ -228,11 +226,11 @@ const SIMPLE_EDITS: EditTestCase[] = [
     expectedAbsent: [{ file: "IndexPage", text: "<SocialProof" }],
   },
   {
-    prompt: "Remove the problem section from the page",
-    label: "cross-remove-problem",
+    prompt: "Remove the footer from the page",
+    label: "cross-remove-footer",
     expectedRoute: "simple",
     expectedTargets: ["IndexPage"],
-    expectedAbsent: [{ file: "IndexPage", text: "<Problem" }],
+    expectedAbsent: [{ file: "IndexPage", text: "<Footer" }],
   },
 ];
 
@@ -405,8 +403,9 @@ function checkTrackingPreserved(before: Map<string, string>, after: Map<string, 
 // Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe.skipIf(!!process.env.CI)("Single-Shot Edit Eval", () => {
-  afterAll(() => {
+describe("Single-Shot Edit Eval", () => {
+  afterAll(async () => {
+    await stopPolly();
     console.log("\n━━━ TOTAL EVAL COST ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     console.log(
       `Total spend: $${(cumulativeCostMillicredits / 100_000).toFixed(4)} ` +
@@ -436,6 +435,10 @@ describe.skipIf(!!process.env.CI)("Single-Shot Edit Eval", () => {
     }, 30000);
 
     it("correctly classifies all test cases", async () => {
+      // classifyEditWithLLM calls LLM directly (not through NodeMiddleware),
+      // so we need manual Polly management for recording/replay.
+      await startPolly("single-shot-classifier");
+
       const results: {
         label: string;
         prompt: string;
@@ -485,6 +488,7 @@ describe.skipIf(!!process.env.CI)("Single-Shot Edit Eval", () => {
       }
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
+      await persistRecordings();
       expect(correct / total).toBeGreaterThanOrEqual(0.8);
     }, 120000);
   });
@@ -525,6 +529,7 @@ describe.skipIf(!!process.env.CI)("Single-Shot Edit Eval", () => {
 
     for (const testCase of SIMPLE_EDITS) {
       it(`[${testCase.label}] ${testCase.prompt}`, async () => {
+        await startPolly(`single-shot-exec-${testCase.label}`);
         await DatabaseSnapshotter.restoreSnapshot("website_generated");
         ctx = await getTestContext();
         await db.delete(llmUsage);
@@ -617,6 +622,8 @@ describe.skipIf(!!process.env.CI)("Single-Shot Edit Eval", () => {
           console.error(`  ❌ Tracking violations: ${trackingViolations.join(", ")}`);
         }
         expect(trackingViolations, "L10 tracking must be preserved").toHaveLength(0);
+
+        await persistRecordings();
       }, 120000);
     }
   });
@@ -643,8 +650,10 @@ describe.skipIf(!!process.env.CI)("Single-Shot Edit Eval", () => {
 
     for (const testCase of COMPLEX_EDITS) {
       it(`routes "${testCase.label}" to complex`, async () => {
+        await startPolly("single-shot-complex-classifier");
         const route = await classifyEditWithLLM(testCase.prompt, fileTree);
         console.log(`[${testCase.label}] classified as: ${route} (expected: complex)`);
+        await persistRecordings();
         expect(route).toBe("complex");
       }, 15000);
     }

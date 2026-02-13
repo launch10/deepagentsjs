@@ -1,139 +1,122 @@
-import React from 'react';
 import { Twitter, Linkedin, Github } from 'lucide-react';
 
-export const Footer = () => {
-  const currentYear = new Date().getFullYear();
+export function Footer() {
+  const footerLinks = {
+    product: [
+      { name: 'Features', href: '#features' },
+      { name: 'Pricing', href: '#pricing' },
+      { name: 'Integrations', href: '#integrations' },
+    ],
+    company: [
+      { name: 'About', href: '#about' },
+      { name: 'Blog', href: '#blog' },
+      { name: 'Careers', href: '#careers' },
+    ],
+    support: [
+      { name: 'Help Center', href: '#help' },
+      { name: 'Contact', href: '#contact' },
+      { name: 'Status', href: '#status' },
+    ],
+  };
+
+  const socialLinks = [
+    { name: 'Twitter', icon: Twitter, href: '#twitter' },
+    { name: 'LinkedIn', icon: Linkedin, href: '#linkedin' },
+    { name: 'GitHub', icon: Github, href: '#github' },
+  ];
 
   return (
     <footer className="bg-muted py-12 md:py-16">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 mb-12">
-          {/* Column 1: Logo + Tagline */}
-          <div className="space-y-4">
-            <img 
-              src="https://dev-uploads.launch10.ai/uploads/21b36cfc-f657-471f-8256-d36bea9689fc.png" 
-              alt="Logo" 
-              className="h-10"
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 md:gap-12">
+          {/* Brand Section */}
+          <div className="lg:col-span-2">
+            <img
+              src="https://dev-uploads.launch10.ai/uploads/21b36cfc-f657-471f-8256-d36bea9689fc.png"
+              alt="Logo"
+              className="h-8 md:h-10 w-auto mb-4"
             />
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground text-sm md:text-base max-w-sm">
               Scheduling made simple for distributed teams
             </p>
+            
+            {/* Social Links */}
+            <div className="flex gap-4 mt-6">
+              {socialLinks.map((social) => {
+                const Icon = social.icon;
+                return (
+                  <a
+                    key={social.name}
+                    href={social.href}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label={social.name}
+                  >
+                    <Icon size={20} />
+                  </a>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Column 2: Product */}
+          {/* Product Links */}
           <div>
             <h3 className="font-semibold text-foreground mb-4">Product</h3>
             <ul className="space-y-3">
-              <li>
-                <a href="#features" className="text-muted-foreground hover:text-primary transition-colors text-sm">
-                  Features
-                </a>
-              </li>
-              <li>
-                <a href="#pricing" className="text-muted-foreground hover:text-primary transition-colors text-sm">
-                  Pricing
-                </a>
-              </li>
-              <li>
-                <a href="#integrations" className="text-muted-foreground hover:text-primary transition-colors text-sm">
-                  Integrations
-                </a>
-              </li>
-              <li>
-                <a href="#security" className="text-muted-foreground hover:text-primary transition-colors text-sm">
-                  Security
-                </a>
-              </li>
+              {footerLinks.product.map((link) => (
+                <li key={link.name}>
+                  <a
+                    href={link.href}
+                    className="text-muted-foreground hover:text-foreground transition-colors text-sm"
+                  >
+                    {link.name}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Column 3: Company */}
+          {/* Company Links */}
           <div>
             <h3 className="font-semibold text-foreground mb-4">Company</h3>
             <ul className="space-y-3">
-              <li>
-                <a href="#about" className="text-muted-foreground hover:text-primary transition-colors text-sm">
-                  About
-                </a>
-              </li>
-              <li>
-                <a href="#blog" className="text-muted-foreground hover:text-primary transition-colors text-sm">
-                  Blog
-                </a>
-              </li>
-              <li>
-                <a href="#careers" className="text-muted-foreground hover:text-primary transition-colors text-sm">
-                  Careers
-                </a>
-              </li>
-              <li>
-                <a href="#contact" className="text-muted-foreground hover:text-primary transition-colors text-sm">
-                  Contact
-                </a>
-              </li>
+              {footerLinks.company.map((link) => (
+                <li key={link.name}>
+                  <a
+                    href={link.href}
+                    className="text-muted-foreground hover:text-foreground transition-colors text-sm"
+                  >
+                    {link.name}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Column 4: Legal */}
+          {/* Support Links */}
           <div>
-            <h3 className="font-semibold text-foreground mb-4">Legal</h3>
+            <h3 className="font-semibold text-foreground mb-4">Support</h3>
             <ul className="space-y-3">
-              <li>
-                <a href="#privacy" className="text-muted-foreground hover:text-primary transition-colors text-sm">
-                  Privacy Policy
-                </a>
-              </li>
-              <li>
-                <a href="#terms" className="text-muted-foreground hover:text-primary transition-colors text-sm">
-                  Terms of Service
-                </a>
-              </li>
-              <li>
-                <a href="#cookies" className="text-muted-foreground hover:text-primary transition-colors text-sm">
-                  Cookie Policy
-                </a>
-              </li>
+              {footerLinks.support.map((link) => (
+                <li key={link.name}>
+                  <a
+                    href={link.href}
+                    className="text-muted-foreground hover:text-foreground transition-colors text-sm"
+                  >
+                    {link.name}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
 
-        {/* Bottom: Social + Copyright */}
-        <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-muted-foreground text-sm">
-            © {currentYear} All rights reserved.
+        {/* Copyright */}
+        <div className="border-t border-border mt-12 pt-8">
+          <p className="text-muted-foreground text-sm text-center">
+            © 2024 All rights reserved.
           </p>
-          
-          <div className="flex items-center gap-4">
-            <a 
-              href="https://twitter.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-primary transition-colors"
-              aria-label="Twitter"
-            >
-              <Twitter className="h-5 w-5" />
-            </a>
-            <a 
-              href="https://linkedin.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-primary transition-colors"
-              aria-label="LinkedIn"
-            >
-              <Linkedin className="h-5 w-5" />
-            </a>
-            <a 
-              href="https://github.com" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-primary transition-colors"
-              aria-label="GitHub"
-            >
-              <Github className="h-5 w-5" />
-            </a>
-          </div>
         </div>
       </div>
     </footer>
   );
-};
+}

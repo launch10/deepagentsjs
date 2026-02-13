@@ -1,4 +1,3 @@
-import { CardContent } from "@components/ui/card";
 import { Button } from "@components/ui/button";
 import { useWebsiteChatActions, useWebsiteChatIsStreaming } from "@hooks/website";
 import type { Website } from "@shared";
@@ -22,9 +21,9 @@ const defaultOptions: CopyOption[] = [
 
 export function ImproveCopyView({ options, onOptionSelect, disabled }: ImproveCopyViewProps) {
   return (
-    <CardContent className="px-4 py-4 flex flex-col gap-3">
-      <span className="text-xs font-medium text-base-400">Update Copy</span>
-      <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5">
+      <div className="font-medium text-sm text-base-400">Update Copy</div>
+      <div className="flex flex-col gap-2.5">
         {options.map((option) => (
           <Button
             key={option.id}
@@ -32,28 +31,29 @@ export function ImproveCopyView({ options, onOptionSelect, disabled }: ImproveCo
             size="sm"
             onClick={() => onOptionSelect?.(option)}
             disabled={disabled}
-            className="justify-start bg-white border-neutral-300 hover:border-neutral-500"
+            className="w-full justify-start bg-white border-neutral-300 hover:border-neutral-500"
           >
             {option.label}
           </Button>
         ))}
       </div>
-    </CardContent>
+    </div>
   );
 }
 
-export default function ImproveCopy() {
-  const { updateState } = useWebsiteChatActions();
+export default function ImproveCopy({ onSubmit }: { onSubmit?: () => void }) {
+  const { sendMessage } = useWebsiteChatActions();
   const isStreaming = useWebsiteChatIsStreaming();
 
   const handleOptionSelect = (option: CopyOption) => {
-    updateState({
+    sendMessage(option.label, {
       intent: {
         type: "improve_copy",
         payload: { style: option.id },
         createdAt: new Date().toISOString(),
       },
     });
+    onSubmit?.();
   };
 
   return (

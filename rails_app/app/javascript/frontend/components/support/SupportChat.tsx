@@ -13,7 +13,7 @@ export default function SupportChat() {
         <Chat.Root chat={chat}>
           <div className="flex flex-col h-[500px] bg-white">
             <div className="flex-1 overflow-y-auto p-4">
-              <Chat.Messages.List className="space-y-4">
+              <Chat.Messages.List>
                 {messages.map((message, index) => {
                   const isLastMessage = index === messages.length - 1;
 

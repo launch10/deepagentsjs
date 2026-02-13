@@ -3,23 +3,22 @@ import WebsiteSidebar from "@components/website/sidebar/WebsiteSidebar";
 import { WebsitePreview } from "@components/website/preview";
 import { Chat } from "@components/shared/chat/Chat";
 import { PaginationFooter } from "@components/shared/pagination-footer";
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useEffect, useEffectEvent, useRef, useState, useCallback } from "react";
 import { usePage } from "@inertiajs/react";
 import {
   useWebsiteChat,
   useWebsiteChatState,
   useWebsiteChatActions,
-  useWebsiteChatIsLoadingHistory,
   useWebsiteChatIsStreaming,
+  useWebsiteChatIsInitialLoading,
 } from "@hooks/website";
 
 interface WebsitePageProps {
   website?: { id?: number };
   project?: { id?: number; uuid?: string };
+  thread_id?: string;
   [key: string]: unknown;
 }
-
-const websiteLoaderSteps = [{ id: "1", label: "Setting up branding & colors" }];
 
 /**
  * Auto-initialize the website generation when the page loads.
@@ -29,14 +28,17 @@ const websiteLoaderSteps = [{ id: "1", label: "Setting up branding & colors" }];
  * updateState reference changes causing infinite re-renders.
  */
 function useWebsiteInit() {
-  const { website, project } = usePage<WebsitePageProps>().props;
+  const { website, project, thread_id } = usePage<WebsitePageProps>().props;
   const websiteId = website?.id;
   const projectId = project?.id;
 
   const { updateState } = useWebsiteChatActions();
   const isStreaming = useWebsiteChatIsStreaming();
   const chatId = useWebsiteChatState("chatId");
-  const hasInitialized = useRef(!!chatId);
+  // thread_id from page props is available immediately (server-rendered),
+  // while chatId only populates after history loads. Using both prevents
+  // firing updateState on existing chats during the history-loading window.
+  const hasInitialized = useRef(!!chatId || !!thread_id);
 
   const maybeInit = useEffectEvent(() => {
     if (hasInitialized.current) return;
@@ -56,21 +58,54 @@ function useWebsiteInit() {
   }, [websiteId, projectId]);
 }
 
+function RestartChatButton() {
+  const { website } = usePage<WebsitePageProps>().props;
+  const [restarting, setRestarting] = useState(false);
+
+  const handleRestart = useCallback(async () => {
+    if (!website?.id) return;
+    if (!confirm("Restart chat? This deletes the chat and all checkpoints.")) return;
+
+    setRestarting(true);
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+      await fetch(`/test/websites/${website.id}/restart_chat`, {
+        method: "DELETE",
+        headers: {
+          "X-CSRF-Token": csrfToken || "",
+          Accept: "application/json",
+        },
+      });
+      // Full page reload to reset all chat state
+      window.location.reload();
+    } catch (e) {
+      console.error("Failed to restart chat:", e);
+      setRestarting(false);
+    }
+  }, [website?.id]);
+
+  if (!import.meta.env.DEV) return null;
+
+  return (
+    <button
+      onClick={handleRestart}
+      disabled={restarting}
+      className="text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
+    >
+      {restarting ? "Restarting…" : "Restart Chat (Dev)"}
+    </button>
+  );
+}
+
 /**
  * Website Build step - generates the website content
  */
 export default function BuildStep() {
   const chat = useWebsiteChat();
-  const isLoadingHistory = useWebsiteChatIsLoadingHistory();
-  const isStreaming = useWebsiteChatIsStreaming();
+  const isInitialLoading = useWebsiteChatIsInitialLoading();
 
   // Auto-init website generation on first load
   useWebsiteInit();
-
-  // Show loading when:
-  // 1. Loading chat history from server
-  // 2. Sending message
-  const isLoading = isLoadingHistory || isStreaming;
 
   // Credit integration is automatic via ChatProvider - no manual wiring needed
   return (
@@ -79,15 +114,15 @@ export default function BuildStep() {
         {/* Main content area - no bottom padding so preview extends behind footer */}
         <main className="flex-1 min-h-0 grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%] pt-[2.5%]">
           {/* Left sidebar */}
-          <div>
-            <WebsiteSidebar isLoading={isLoading} currentStep={0} />
+          <div className="min-h-0 overflow-hidden">
+            <WebsiteSidebar />
           </div>
 
           {/* Preview content - negative margin extends behind footer, overflow clips rounded corners */}
           <div className="min-h-0 -mb-20 overflow-hidden">
-            {isLoading ? (
+            {isInitialLoading ? (
               <div className="border-[#D3D2D0] border rounded-2xl bg-white flex items-center justify-center h-full">
-                <WebsiteLoader steps={websiteLoaderSteps} currentStep={0} />
+                <WebsiteLoader />
               </div>
             ) : (
               <WebsitePreview />
@@ -96,13 +131,11 @@ export default function BuildStep() {
         </main>
 
         {/* Footer - full width background, content aligned with preview */}
-        <PaginationFooter.Root layout="full-bleed" isPending={isLoading} canGoBack={false}>
+        <PaginationFooter.Root layout="full-bleed" isPending={isInitialLoading} canGoBack={false}>
           <PaginationFooter.BackButton />
           <PaginationFooter.Actions>
-            <PaginationFooter.ActionButton disabled={isLoading}>
-              Preview
-            </PaginationFooter.ActionButton>
-            <PaginationFooter.ContinueButton disabled={isLoading} />
+            <RestartChatButton />
+            <PaginationFooter.ContinueButton disabled={isInitialLoading} />
           </PaginationFooter.Actions>
         </PaginationFooter.Root>
       </div>

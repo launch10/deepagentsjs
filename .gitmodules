@@ -1,3 +1,6 @@
 [submodule "packages/langgraph-ai-sdk"]
 	path = packages/langgraph-ai-sdk
 	url = git@github.com:brettshollenberger/langgraph-ai-sdk.git
+[submodule "packages/deepagentsjs"]
+	path = packages/deepagentsjs
+	url = git@github.com:launch10/deepagentsjs.git

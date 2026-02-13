@@ -1,6 +1,9 @@
-import { useWebsitePreview } from "@hooks/website";
-import WebsiteLoader from "@components/website/WebsiteLoader";
-import type { WebContainerStatus } from "@lib/webcontainer";
+import { useState, useEffect, useCallback } from "react";
+import { useWebsitePreview, useWebsiteChatActions } from "@hooks/website";
+import { useChatIsStreaming } from "@components/shared/chat/ChatContext";
+import { StepProgress } from "@components/ui/step-progress";
+import { type WebContainerStatus, WebContainerManager } from "@lib/webcontainer";
+import { useCurrentUser } from "@stores/sessionStore";
 
 const previewSteps = [
   { id: "booting", label: "Starting preview environment..." },
@@ -21,14 +24,33 @@ const statusToStepIndex: Record<WebContainerStatus, number> = {
 
 interface StatusMessageProps {
   status: WebContainerStatus;
+  hasBuildErrors?: boolean;
+  onFix?: () => void;
 }
 
-function StatusMessage({ status }: StatusMessageProps) {
+function StatusMessage({ status, hasBuildErrors, onFix }: StatusMessageProps) {
+  if (hasBuildErrors) {
+    return (
+      <div data-testid="preview-status" data-status="build-error" className="flex flex-col items-center gap-3 text-center px-8">
+        <div className="size-10 rounded-full bg-red-100 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+        </div>
+        <p className="text-sm font-medium text-neutral-700">We had an issue building your page</p>
+        <button
+          onClick={onFix}
+          className="px-4 py-2 text-sm font-medium bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+        >
+          Fix errors
+        </button>
+      </div>
+    );
+  }
+
   const currentStep = statusToStepIndex[status] ?? 0;
 
   return (
     <div data-testid="preview-status" data-status={status}>
-      <WebsiteLoader title="Loading your preview" steps={previewSteps} currentStep={currentStep} />
+      <StepProgress title="Loading your preview" steps={previewSteps} currentStep={currentStep} />
     </div>
   );
 }
@@ -60,27 +82,80 @@ function ErrorMessage({ error, onRetry }: ErrorMessageProps) {
  * Uses WebContainer to run a dev server and display the preview.
  */
 export function WebsitePreview() {
-  const { previewUrl, status, error, reload } = useWebsitePreview();
+  const { previewUrl, status, error, consoleErrors, reload } = useWebsitePreview();
+  const { sendMessage } = useWebsiteChatActions();
+  const isStreaming = useChatIsStreaming();
+  const currentUser = useCurrentUser();
+  const isAdmin = currentUser?.admin ?? false;
+  const [iframeLoaded, setIframeLoaded] = useState(false);
 
-  // Show loading state while WebContainer is initializing
-  if (status !== "ready" && status !== "error") {
-    return (
-      <div className="w-full h-full flex items-center justify-center bg-neutral-50 rounded-2xl border border-neutral-200">
-        <StatusMessage status={status} />
-      </div>
+  // Reset iframeLoaded when previewUrl changes (e.g. WebContainer restart)
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log("[WebsitePreview] previewUrl changed, resetting iframeLoaded", { previewUrl });
+    }
+    setIframeLoaded(false);
+  }, [previewUrl]);
+
+  // Listen for postMessage from the preview iframe signaling content has rendered.
+  // If the page rendered successfully, clear any stale build errors — they were
+  // transient (e.g. missing imports during incremental file writes).
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === "preview-ready") {
+        if (import.meta.env.DEV) {
+          console.log("[WebsitePreview] preview-ready received — iframeLoaded: true");
+        }
+        setIframeLoaded(true);
+        if (consoleErrors.length > 0) {
+          WebContainerManager.clearConsoleErrors();
+        }
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [consoleErrors.length]);
+
+  const handleReload = useCallback(() => {
+    setIframeLoaded(false);
+    reload();
+  }, [reload]);
+
+  const buildErrors = consoleErrors.filter((e) => e.type === "error");
+
+  const handleFixErrors = useCallback(() => {
+    sendMessage(
+      "My page isn't displaying correctly, can you fix it?",
+      { consoleErrors: buildErrors }
     );
-  }
+  }, [buildErrors, sendMessage]);
 
   // Show error state
   if (status === "error") {
     return (
       <div className="w-full h-full flex items-center justify-center bg-neutral-50 rounded-2xl border border-neutral-200">
-        <ErrorMessage error={error || "Unknown error"} onRetry={reload} />
+        <ErrorMessage error={error || "Unknown error"} onRetry={handleReload} />
       </div>
     );
   }
 
-  // Show preview iframe
+  const hasBuildErrors = buildErrors.length > 0;
+  const isReady = status === "ready";
+  const showLoading = !isReady || !iframeLoaded;
+
+  if (import.meta.env.DEV) {
+    console.log("[WebsitePreview] render", {
+      isReady,
+      iframeLoaded,
+      showLoading,
+      status,
+      hasBuildErrors,
+      iframeMounted: isReady && !!previewUrl,
+    });
+  }
+
+  // Show preview iframe (behind loading overlay when not yet loaded)
   return (
     <div
       className="w-full h-full flex flex-col rounded-2xl border border-neutral-200 overflow-hidden"
@@ -99,7 +174,7 @@ export function WebsitePreview() {
           </div>
         </div>
         <button
-          onClick={reload}
+          onClick={handleReload}
           className="p-1 hover:bg-neutral-200 rounded transition-colors"
           title="Reload preview"
         >
@@ -123,9 +198,17 @@ export function WebsitePreview() {
         </button>
       </div>
 
-      {/* Preview iframe */}
-      <div className="flex-1 bg-white">
-        {previewUrl ? (
+      {/* Preview content area */}
+      <div className="flex-1 relative bg-white">
+        {/* Loading overlay — shows build error state or normal loading steps */}
+        {(showLoading || (hasBuildErrors && !isStreaming)) && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-50">
+            <StatusMessage status={status} hasBuildErrors={hasBuildErrors && !isStreaming} onFix={handleFixErrors} />
+          </div>
+        )}
+
+        {/* Iframe - rendered once ready, loads behind the overlay */}
+        {isReady && previewUrl && (
           <iframe
             src={previewUrl}
             className="w-full h-full border-none"
@@ -133,10 +216,6 @@ export function WebsitePreview() {
             data-testid="preview-iframe"
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
           />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <StatusMessage status="idle" />
-          </div>
         )}
       </div>
     </div>

@@ -63,46 +63,50 @@ Only go sequential when there's a true dependency:
 - Component B imports something Component A creates
 - You need to read subagent output before knowing what to delegate next
 
-### write_file vs edit_file - IMPORTANT
+### edit_file vs write_file - IMPORTANT
 
-**PREFER write_file** for most changes. It's more reliable.
+**For EDITS: PREFER edit_file** for targeted changes. It's safer and more precise.
+
+Use **edit_file** when:
+- Changing text, copy, colors, styles, or values
+- Modifying a specific section of a component
+- Making 1-3 changes to a file
+- Any change where you should NOT alter surrounding code
 
 Use **write_file** when:
-- Adding new imports AND modifying code (multiple changes)
-- Restructuring a component (adding state, handlers, etc.)
-- Making more than one change to a file
-- The file is small-to-medium sized (<500 lines)
+- Creating a brand new file
+- Adding a new component from scratch
+- Making structural changes that touch most of the file (>50% of lines)
+- The file is small (<50 lines) and you're changing most of it
 
-Use **edit_file** ONLY when:
-- Making a single, small change (e.g., fixing a typo, changing one value)
-- The file is very large and you only need to change a few lines
+**CRITICAL**: When editing, ONLY modify what the user asked for.
+Do NOT change images, layouts, subheadlines, or any content
+the user didn't mention. A request to 'improve the headline'
+means ONLY change the headline text.
 
-**Why?** edit_file uses exact string matching. If you make multiple edits,
-the second edit may fail because the first edit changed the content.
+### edit_file usage
 
-### write_file usage
+**WORKFLOW for editing files:**
+1. FIRST: Read the file with read_file to see current content
+2. THEN: Use edit_file with old_content (exact match) and new_content
 
-**WORKFLOW for modifying files:**
-1. FIRST: Read the file with read_file to get current content
-2. THEN: Modify the content in your response
-3. FINALLY: Call write_file with the COMPLETE modified content
+**CRITICAL**: edit_file uses exact string matching for old_content.
+Copy the exact text you want to replace, including whitespace.
+
+Example correct call:
+\`\`\`
+edit_file(
+  file_path="/src/components/Hero.tsx",
+  old_content="Launch Your Business Today",
+  new_content="Start Your Journey Today"
+)
+\`\`\`
+
+### write_file usage (for new files or full rewrites)
 
 **CRITICAL**: write_file requires BOTH parameters:
 - file_path: The absolute path (e.g., "/src/components/Hero.tsx")
 - content: The COMPLETE file content as a string (ALL lines, not just changes)
 
 **COMMON MISTAKE**: Calling write_file without content. This WILL fail.
-
-Example correct call:
-\`\`\`
-write_file(
-  file_path="/src/components/Hero.tsx",
-  content="import React from 'react';\\nimport { L10 } from '@/lib/tracking';\\n\\nexport function Hero() {\\n  return <div>Hero</div>;\\n}"
-)
-\`\`\`
-
-Example WRONG call (missing content - WILL FAIL):
-\`\`\`
-write_file(file_path="/src/components/Hero.tsx")  // ❌ WRONG - missing content!
-\`\`\`
 `;

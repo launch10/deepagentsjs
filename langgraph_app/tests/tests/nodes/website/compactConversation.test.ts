@@ -2,9 +2,19 @@
  * Unit tests for compactConversation.
  *
  * Tests the compaction logic with mock LLM — no real API calls.
+ *
+ * Threshold and keepRecent count HUMAN TURNS (non-context HumanMessages),
+ * not raw message count. Tool calls and AI responses bundled with their
+ * human turn are kept/removed as a unit.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { HumanMessage, AIMessage, RemoveMessage } from "@langchain/core/messages";
+import {
+  BaseMessage,
+  HumanMessage,
+  AIMessage,
+  ToolMessage,
+  RemoveMessage,
+} from "@langchain/core/messages";
 import { createContextMessage } from "langgraph-ai-sdk";
 import { compactConversation } from "@nodes";
 
@@ -15,22 +25,52 @@ vi.mock("@core", async (importOriginal) => {
     ...original,
     getLLM: vi.fn().mockResolvedValue({
       invoke: vi.fn().mockResolvedValue({
-        content: "User changed hero headline and updated colors to blue.",
+        content: "The user changed hero headline and updated colors to blue.",
       }),
     }),
   };
 });
 
-function makeMessages(count: number, startId = 1) {
-  const msgs = [];
-  for (let i = 0; i < count; i++) {
-    const id = `msg-${startId + i}`;
-    if (i % 2 === 0) {
-      msgs.push(new HumanMessage({ content: `User message ${i + 1}`, id }));
-    } else {
-      msgs.push(new AIMessage({ content: `AI response ${i + 1}`, id }));
-    }
+/** Creates N human+AI pairs (2N raw messages). */
+function makeMessages(humanCount: number, startId = 1) {
+  const msgs: BaseMessage[] = [];
+  for (let i = 0; i < humanCount; i++) {
+    const hId = `msg-h${startId + i}`;
+    const aId = `msg-a${startId + i}`;
+    msgs.push(new HumanMessage({ content: `User message ${i + 1}`, id: hId }));
+    msgs.push(new AIMessage({ content: `AI response ${i + 1}`, id: aId }));
   }
+  return msgs;
+}
+
+/** Creates a human turn with an AI tool-call exchange (human → AI+tools → ToolMsg × N → AI final). */
+function makeTurnWithTools(turnIndex: number, toolCount = 2) {
+  const msgs: any[] = [];
+  msgs.push(new HumanMessage({ content: `User turn ${turnIndex}`, id: `turn-h${turnIndex}` }));
+  // AI with tool_calls
+  msgs.push(
+    new AIMessage({
+      content: "",
+      id: `turn-ai-tc${turnIndex}`,
+      tool_calls: Array.from({ length: toolCount }, (_, j) => ({
+        id: `tc-${turnIndex}-${j}`,
+        name: `tool_${j}`,
+        args: {},
+      })),
+    })
+  );
+  // ToolMessages
+  for (let j = 0; j < toolCount; j++) {
+    msgs.push(
+      new ToolMessage({
+        content: `Tool result ${j}`,
+        id: `turn-tm${turnIndex}-${j}`,
+        tool_call_id: `tc-${turnIndex}-${j}`,
+      })
+    );
+  }
+  // Final AI response
+  msgs.push(new AIMessage({ content: `AI final ${turnIndex}`, id: `turn-af${turnIndex}` }));
   return msgs;
 }
 
@@ -39,8 +79,9 @@ describe("compactConversation", () => {
     vi.clearAllMocks();
   });
 
-  it("returns empty object when below message threshold", async () => {
-    const messages = makeMessages(10); // 10 < 12
+  it("returns empty object when below threshold (default 30 human turns)", async () => {
+    // 25 human turns × 2 msgs each = 50 raw messages, but only 25 human turns < 30
+    const messages = makeMessages(25);
     const result = await compactConversation(messages);
     expect(result).toEqual({});
   });
@@ -50,51 +91,98 @@ describe("compactConversation", () => {
     expect(result).toEqual({});
   });
 
-  it("triggers compaction when message count exceeds threshold", async () => {
-    const messages = makeMessages(14); // 14 > 12
+  it("triggers compaction when human turns exceed threshold", async () => {
+    // 35 human turns > 30 default threshold
+    const messages = makeMessages(35);
     const result = await compactConversation(messages);
 
     expect(result).toHaveProperty("messages");
     const resultMessages = (result as { messages: any[] }).messages;
 
-    // Should have RemoveMessages for old messages (14 - 6 = 8 removals)
-    const removals = resultMessages.filter(
-      (m: any) => m instanceof RemoveMessage
-    );
-    expect(removals.length).toBe(8);
-
     // Should have a summary message
     const summaryMsg = resultMessages.find(
-      (m: any) => typeof m.content === "string" && m.content.includes("[Conversation Summary]")
+      (m: any) => typeof m.content === "string" && m.content.includes("[[[CONVERSATION SUMMARY]]]")
     );
     expect(summaryMsg).toBeDefined();
     expect((summaryMsg as any).name).toBe("context");
   });
 
-  it("keeps the last N messages (default 6)", async () => {
-    const messages = makeMessages(14);
+  it("keeps last 20 human turns by default (and their associated messages)", async () => {
+    // 35 turns. Should keep last 20 turns = turns 16-35.
+    // Summarize first 15 turns = turns 1-15.
+    const messages = makeMessages(35);
     const result = await compactConversation(messages);
     const resultMessages = (result as { messages: any[] }).messages;
 
-    // Removed IDs should be msg-1 through msg-8
     const removedIds = resultMessages
       .filter((m: any) => m instanceof RemoveMessage)
       .map((m: any) => m.id);
 
-    for (let i = 1; i <= 8; i++) {
-      expect(removedIds).toContain(`msg-${i}`);
+    // First 15 turns removed (human + AI for each = 30 messages)
+    for (let i = 1; i <= 15; i++) {
+      expect(removedIds).toContain(`msg-h${i}`);
+      expect(removedIds).toContain(`msg-a${i}`);
     }
 
-    // msg-9 through msg-14 should NOT be removed
-    for (let i = 9; i <= 14; i++) {
-      expect(removedIds).not.toContain(`msg-${i}`);
+    // Last 20 turns kept (turns 16-35)
+    for (let i = 16; i <= 35; i++) {
+      expect(removedIds).not.toContain(`msg-h${i}`);
+      expect(removedIds).not.toContain(`msg-a${i}`);
     }
   });
 
-  it("removes context messages (they'll be re-injected)", async () => {
+  it("tool messages don't count toward human turn threshold", async () => {
+    // 10 turns with 3 tool calls each = 10 human + 10 AI(tc) + 30 tool + 10 AI(final) = 60 raw msgs
+    // But only 10 human turns < 30 threshold — should NOT compact
+    const messages = [];
+    for (let i = 1; i <= 10; i++) {
+      messages.push(...makeTurnWithTools(i, 3));
+    }
+    const result = await compactConversation(messages);
+    expect(result).toEqual({});
+  });
+
+  it("keeps tool calls bundled with their human turn", async () => {
+    // 8 turns with 2 tool calls each, threshold=5, keepRecent=3
+    // Each turn: human + AI(tc) + 2 tool + AI(final) = 5 msgs
+    // Should keep last 3 human turns = 15 raw messages
+    // Should remove first 5 human turns = 25 raw messages
+    const messages = [];
+    for (let i = 1; i <= 8; i++) {
+      messages.push(...makeTurnWithTools(i, 2));
+    }
+
+    const result = await compactConversation(messages, {
+      messageThreshold: 5,
+      keepRecent: 3,
+    });
+
+    expect(result).toHaveProperty("messages");
+    const resultMessages = (result as { messages: any[] }).messages;
+
+    const removedIds = resultMessages
+      .filter((m: any) => m instanceof RemoveMessage)
+      .map((m: any) => m.id);
+
+    // First 5 turns should be removed (turns 1-5)
+    for (let i = 1; i <= 5; i++) {
+      expect(removedIds).toContain(`turn-h${i}`);
+      expect(removedIds).toContain(`turn-ai-tc${i}`);
+      expect(removedIds).toContain(`turn-af${i}`);
+    }
+
+    // Last 3 turns should be kept (turns 6-8)
+    for (let i = 6; i <= 8; i++) {
+      expect(removedIds).not.toContain(`turn-h${i}`);
+      expect(removedIds).not.toContain(`turn-af${i}`);
+    }
+  });
+
+  it("removes context messages in summarized turns", async () => {
+    // Context at position 0 is before turn 1, which is in the summarized portion
     const contextMsg = createContextMessage("brainstorm context");
     (contextMsg as any).id = "ctx-1";
-    const messages = [...[contextMsg], ...makeMessages(14)];
+    const messages = [...[contextMsg], ...makeMessages(35)];
 
     const result = await compactConversation(messages);
     const resultMessages = (result as { messages: any[] }).messages;
@@ -106,27 +194,46 @@ describe("compactConversation", () => {
     expect(removedIds).toContain("ctx-1");
   });
 
-  it("respects custom options", async () => {
+  it("preserves context messages in kept turns", async () => {
+    // 35 turns, keep last 20 (turns 16-35). Place context AFTER turn 25
+    // so it's firmly in the kept portion.
+    const msgs = makeMessages(35);
+
+    // Insert context between turn 25's AI response and turn 26's human message
+    // Turn 25 = msgs[48] (h25) and msgs[49] (a25), so insert after index 49
+    const contextMsg = createContextMessage("recent image upload");
+    (contextMsg as any).id = "ctx-kept";
+    msgs.splice(50, 0, contextMsg);
+
+    const result = await compactConversation(msgs);
+    const resultMessages = (result as { messages: any[] }).messages;
+
+    const removedIds = resultMessages
+      .filter((m: any) => m instanceof RemoveMessage)
+      .map((m: any) => m.id);
+
+    // Context in kept portion should NOT be removed
+    expect(removedIds).not.toContain("ctx-kept");
+  });
+
+  it("respects custom threshold and keepRecent", async () => {
+    // 8 human turns, threshold=5, keepRecent=3
     const messages = makeMessages(8);
-    // With threshold of 6, this should trigger compaction
     const result = await compactConversation(messages, {
-      messageThreshold: 6,
-      keepRecent: 4,
+      messageThreshold: 5,
+      keepRecent: 3,
     });
 
     expect(result).toHaveProperty("messages");
     const resultMessages = (result as { messages: any[] }).messages;
 
-    // 8 messages, keep 4, so 4 removals
-    const removals = resultMessages.filter(
-      (m: any) => m instanceof RemoveMessage
-    );
-    expect(removals.length).toBe(4);
+    // 8 turns - keep 3 = 5 turns summarized = 10 raw messages removed
+    const removals = resultMessages.filter((m: any) => m instanceof RemoveMessage);
+    expect(removals.length).toBe(10);
   });
 
   it("triggers compaction when maxChars is exceeded", async () => {
-    // Create a few messages with very long content
-    const longContent = "x".repeat(60_000);
+    const longContent = "x".repeat(100_000);
     const messages = [
       new HumanMessage({ content: longContent, id: "long-1" }),
       new AIMessage({ content: "short reply", id: "long-2" }),
@@ -138,31 +245,37 @@ describe("compactConversation", () => {
       new AIMessage({ content: "latest reply", id: "long-8" }),
     ];
 
-    // 8 messages but >100K chars, should trigger
-    const result = await compactConversation(messages);
+    // 4 human turns < 30 threshold, but >200K chars exceeds maxChars
+    // Use keepRecent=2 so there are turns to summarize
+    const result = await compactConversation(messages, { keepRecent: 2 });
     expect(result).toHaveProperty("messages");
+
+    const resultMessages = (result as { messages: any[] }).messages;
+    const removals = resultMessages.filter((m: any) => m instanceof RemoveMessage);
+    // Keep last 2 human turns (long-5..long-8), remove first 2 (long-1..long-4)
+    expect(removals.length).toBe(4);
   });
 
-  it("returns empty when all messages would be kept", async () => {
-    // 14 messages but keepRecent=14 means nothing to summarize
-    const messages = makeMessages(14);
+  it("returns empty when all turns would be kept", async () => {
+    // 8 human turns, keepRecent=10 (more than we have)
+    const messages = makeMessages(8);
     const result = await compactConversation(messages, {
-      messageThreshold: 12,
-      keepRecent: 14,
+      messageThreshold: 5,
+      keepRecent: 10,
     });
     expect(result).toEqual({});
   });
 
-  it("summary message is marked as context", async () => {
-    const messages = makeMessages(14);
+  it("summary message is marked as context AIMessage", async () => {
+    const messages = makeMessages(35);
     const result = await compactConversation(messages);
     const resultMessages = (result as { messages: any[] }).messages;
 
-    const summaryMsg = resultMessages.find(
-      (m: any) => !(m instanceof RemoveMessage)
-    );
+    const summaryMsg = resultMessages.find((m: any) => !(m instanceof RemoveMessage));
     expect(summaryMsg).toBeDefined();
     expect((summaryMsg as any).name).toBe("context");
-    expect((summaryMsg as any).content).toContain("[Conversation Summary]");
+    expect((summaryMsg as any).content).toContain("[[[CONVERSATION SUMMARY]]]");
+    expect(summaryMsg).toBeInstanceOf(AIMessage);
+    expect(summaryMsg).not.toBeInstanceOf(HumanMessage);
   });
 });

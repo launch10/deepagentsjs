@@ -1,11 +1,16 @@
 /**
- * Unit tests for singleShotEdit error handling.
+ * Unit tests for singleShotEdit.
  *
- * Tests the P0 bug: failed edits silently report success to users.
+ * Tests:
+ * 1. Error handling (P0 bug: failed edits silently report success)
+ * 2. History-generating contract: returned AI messages must include [Actions: ...]
+ *    annotations when tools were used, so subsequent LLM turns see evidence of
+ *    tool usage and don't learn to hallucinate "Done!" without calling tools.
+ *
  * All LLM calls are mocked — no real API calls, no cost.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { AIMessage, HumanMessage } from "@langchain/core/messages";
+import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 
 // ─── Hoisted mocks (vi.mock factories can only reference these) ─────────────
 
@@ -42,14 +47,6 @@ vi.mock("@core", async (importOriginal) => {
   };
 });
 
-// Mock toStructuredMessage — pass through the message
-vi.mock("langgraph-ai-sdk", async (importOriginal) => {
-  const original = await importOriginal<typeof import("langgraph-ai-sdk")>();
-  return {
-    ...original,
-    toStructuredMessage: vi.fn().mockImplementation(async (msg: any) => [msg]),
-  };
-});
 
 // Mock fileContext (buildFileTree/preReadFiles) — singleShotEdit imports from this file
 vi.mock("../../../../app/nodes/coding/fileContext", async (importOriginal) => {
@@ -64,14 +61,11 @@ vi.mock("../../../../app/nodes/coding/fileContext", async (importOriginal) => {
   };
 });
 
-// Mock agent.ts (getTheme) to avoid DB calls
-vi.mock("../../../../app/nodes/coding/agent", async (importOriginal) => {
-  const original = (await importOriginal()) as Record<string, unknown>;
-  return {
-    ...original,
-    getTheme: vi.fn().mockResolvedValue(undefined),
-  };
-});
+// Mock agent.ts (getTheme, getCodingAgentBackend) to avoid DB calls
+vi.mock("../../../../app/nodes/coding/agent", () => ({
+  getTheme: vi.fn().mockResolvedValue(undefined),
+  getCodingAgentBackend: vi.fn(),
+}));
 
 import { singleShotEdit } from "../../../../app/nodes/coding/singleShotEdit";
 import type { WebsiteFilesBackend } from "@services";
@@ -86,6 +80,8 @@ function makeFakeBackend(): WebsiteFilesBackend {
     cleanup: vi.fn(),
     glob: vi.fn(),
     flush: vi.fn().mockResolvedValue(undefined),
+    getDirtyPaths: vi.fn().mockReturnValue([]),
+    readRaw: vi.fn().mockResolvedValue({ content: [], path: "" }),
   } as unknown as WebsiteFilesBackend;
 }
 
@@ -135,8 +131,9 @@ describe("singleShotEdit error handling", () => {
     );
 
     expect(result.status).toBe("completed");
-    const content =
-      typeof result.messages[0]?.content === "string" ? result.messages[0]?.content : "";
+    // Summary is the last message (after AIMessage(tool_use) + ToolMessages)
+    const lastMsg = result.messages.at(-1)!;
+    const content = typeof lastMsg.content === "string" ? lastMsg.content : "";
     expect(content).toContain("updated the hero headline");
     // Should NOT contain error language
     expect(content).not.toContain("errors");
@@ -166,8 +163,9 @@ describe("singleShotEdit error handling", () => {
     expect(result.allFailed).toBeUndefined();
     // LLM was invoked twice (initial + retry)
     expect(mockInvoke).toHaveBeenCalledTimes(2);
-    const content =
-      typeof result.messages[0]?.content === "string" ? result.messages[0]?.content : "";
+    // Summary is the last message (retry path also returns tool evidence)
+    const lastMsg = result.messages.at(-1)!;
+    const content = typeof lastMsg.content === "string" ? lastMsg.content : "";
     expect(content).toContain("Fixed the headline");
   });
 
@@ -213,8 +211,9 @@ describe("singleShotEdit error handling", () => {
     );
 
     expect(result.status).toBe("completed");
-    const content =
-      typeof result.messages[0]?.content === "string" ? result.messages[0]?.content : "";
+    // Summary is the last message (after AIMessage(tool_use) + ToolMessages)
+    const lastMsg = result.messages.at(-1)!;
+    const content = typeof lastMsg.content === "string" ? lastMsg.content : "";
     // Should still include the LLM text (some edits worked)
     expect(content).toContain("updated the hero section");
     // But should also have a note about partial failure
@@ -235,6 +234,81 @@ describe("singleShotEdit error handling", () => {
     await singleShotEdit(baseState, [new HumanMessage("Change stuff")], backend);
 
     expect(mockRollbarError).toHaveBeenCalled();
+  });
+
+  it("uses improved fallback text when LLM provides no text content", async () => {
+    const backend = makeFakeBackend();
+    // LLM returns tool calls but no text content
+    mockInvoke.mockResolvedValue(
+      makeLLMResponseWithToolCalls("", 1)
+    );
+    mockExecuteTextEditorCommand
+      .mockResolvedValueOnce("Successfully replaced text at exactly one location.");
+
+    const result = await singleShotEdit(
+      baseState,
+      [new HumanMessage("Change the headline")],
+      backend
+    );
+
+    const lastMsg = result.messages.at(-1)!;
+    const content = typeof lastMsg.content === "string" ? lastMsg.content : "";
+    // Should use the improved fallback, not the old "I've made the requested changes."
+    expect(content).toBe("Done! Your changes have been applied.");
+  });
+
+  it("returns files map from successful edits for progressive streaming", async () => {
+    const backend = makeFakeBackend();
+    // Mock dirty paths tracking: empty before edits, populated after
+    // singleShotEdit snapshots preEditDirtyPaths BEFORE applying edits,
+    // then compares with getDirtyPaths() AFTER edits to scope flush.
+    (backend.getDirtyPaths as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce([])  // preEditDirtyPaths snapshot (before edits)
+      .mockReturnValue(["/src/components/Hero.tsx"]);  // after edits
+    (backend.readRaw as ReturnType<typeof vi.fn>).mockResolvedValue({
+      content: ["<div>Updated Hero</div>"],
+      path: "/src/components/Hero.tsx",
+    });
+
+    mockInvoke.mockResolvedValue(
+      makeLLMResponseWithToolCalls("I've updated the hero headline.", 1)
+    );
+    mockExecuteTextEditorCommand
+      .mockResolvedValueOnce("Successfully replaced text at exactly one location.");
+
+    const result = await singleShotEdit(
+      baseState,
+      [new HumanMessage("Change the headline")],
+      backend
+    );
+
+    expect(result.files).toBeDefined();
+    // Key is normalized: leading slash stripped to match DB convention
+    expect(result.files!["src/components/Hero.tsx"]).toBeDefined();
+    // Content should be normalized from string[] to string
+    expect(result.files!["src/components/Hero.tsx"]!.content).toBe("<div>Updated Hero</div>");
+  });
+
+  it("does not return files when all edits fail", async () => {
+    const backend = makeFakeBackend();
+    // No dirty paths when all edits fail
+    (backend.getDirtyPaths as ReturnType<typeof vi.fn>).mockReturnValue([]);
+
+    mockInvoke
+      .mockResolvedValueOnce(makeLLMResponseWithToolCalls("I've made the changes.", 1))
+      .mockResolvedValueOnce(makeLLMResponseWithToolCalls("Trying again.", 1));
+    mockExecuteTextEditorCommand
+      .mockResolvedValueOnce("Error: No match found for replacement.")
+      .mockResolvedValueOnce("Error: No match found for replacement.");
+
+    const result = await singleShotEdit(
+      baseState,
+      [new HumanMessage("Change the headline")],
+      backend
+    );
+
+    // No files should be returned when all edits fail
+    expect(result.files).toBeUndefined();
   });
 
   it("does NOT retry when SOME edits succeed (partial failure)", async () => {
@@ -280,5 +354,142 @@ describe("singleShotEdit error handling", () => {
     const lastMsg = retryInvokeArgs[retryInvokeArgs.length - 1];
     expect(lastMsg.content).toContain("Your edits failed with these errors");
     expect(lastMsg.content).toContain("Hello");
+  });
+});
+
+// ─── History-generating contract ─────────────────────────────────────────────
+//
+// Both singleShotEdit and the full agent path return messages that get stored
+// in graph state. When the next turn fires, the LLM sees these as conversation
+// history. The LLM must see tool_use → tool_result sequences so it understands
+// that tools are required to make changes. Without this evidence, the LLM
+// learns the pattern "User: change X → AI: Done!" and stops calling tools.
+//
+// Contract: returned messages must include the full tool loop —
+// AIMessage(tool_use) + ToolMessage(result) + AIMessage(summary) — so the
+// next LLM turn sees properly paired tool evidence.
+
+describe("history-generating contract: tool evidence in returned messages", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns AIMessage(tool_use) + ToolMessages + AIMessage(summary) when edits succeed", async () => {
+    const backend = makeFakeBackend();
+    mockInvoke.mockResolvedValue(
+      makeLLMResponseWithToolCalls("I've updated the hero headline.", 2)
+    );
+    mockExecuteTextEditorCommand
+      .mockResolvedValueOnce("Successfully replaced text at exactly one location.")
+      .mockResolvedValueOnce("Successfully replaced text at exactly one location.");
+
+    const result = await singleShotEdit(
+      baseState,
+      [new HumanMessage("Change the headline")],
+      backend
+    );
+
+    // Should have: AIMessage(tool_use) + 2 ToolMessages + AIMessage(summary)
+    expect(result.messages.length).toBe(4);
+
+    // First message: AIMessage with tool_use blocks preserved
+    const firstMsg = result.messages[0]!;
+    expect(firstMsg._getType()).toBe("ai");
+    expect((firstMsg as AIMessage).tool_calls?.length).toBe(2);
+
+    // Middle messages: ToolMessages with results paired to tool_call_ids
+    const toolMsg1 = result.messages[1]!;
+    const toolMsg2 = result.messages[2]!;
+    expect(toolMsg1._getType()).toBe("tool");
+    expect(toolMsg2._getType()).toBe("tool");
+    expect((toolMsg1 as ToolMessage).tool_call_id).toBe("call_0");
+    expect((toolMsg2 as ToolMessage).tool_call_id).toBe("call_1");
+    expect(toolMsg1.content).toContain("Successfully replaced");
+    expect(toolMsg2.content).toContain("Successfully replaced");
+
+    // Last message: AIMessage with user-facing summary
+    const lastMsg = result.messages[3]!;
+    expect(lastMsg._getType()).toBe("ai");
+    expect(lastMsg.content).toContain("updated the hero headline");
+  });
+
+  it("includes error results in ToolMessages for partial failures", async () => {
+    const backend = makeFakeBackend();
+    mockInvoke.mockResolvedValue(
+      makeLLMResponseWithToolCalls("I've updated the hero section.", 2)
+    );
+    mockExecuteTextEditorCommand
+      .mockResolvedValueOnce("Successfully replaced text at exactly one location.")
+      .mockResolvedValueOnce("Error: No match found for replacement.");
+
+    const result = await singleShotEdit(
+      baseState,
+      [new HumanMessage("Update the hero section")],
+      backend
+    );
+
+    // Should still include tool evidence
+    const toolMessages = result.messages.filter((m) => m._getType() === "tool");
+    expect(toolMessages.length).toBe(2);
+    expect(toolMessages[0]!.content).toContain("Successfully replaced");
+    expect(toolMessages[1]!.content).toContain("Error:");
+  });
+
+  it("includes ToolMessages for view calls (properly paired)", async () => {
+    const backend = makeFakeBackend();
+    // LLM calls view first (wasted) then str_replace on retry
+    const viewResponse = new AIMessage({
+      content: "Let me check the file.",
+      tool_calls: [
+        { id: "view_1", name: "str_replace_based_edit_tool", args: { command: "view", path: "/src/components/Hero.tsx" }, type: "tool_call" as const },
+      ],
+    });
+    const editResponse = makeLLMResponseWithToolCalls("Fixed it.", 1);
+
+    mockInvoke
+      .mockResolvedValueOnce(viewResponse)
+      .mockResolvedValueOnce(editResponse);
+    mockExecuteTextEditorCommand
+      .mockResolvedValueOnce("Successfully replaced text at exactly one location.");
+
+    const result = await singleShotEdit(
+      baseState,
+      [new HumanMessage("Change the headline")],
+      backend
+    );
+
+    // View call should have a paired ToolMessage (not orphaned)
+    const allToolMsgs = result.messages.filter((m) => m._getType() === "tool");
+    expect(allToolMsgs.length).toBeGreaterThan(0);
+
+    // Every AIMessage tool_call should have a matching ToolMessage
+    const aiMsgsWithToolCalls = result.messages.filter(
+      (m) => m._getType() === "ai" && ((m as AIMessage).tool_calls?.length ?? 0) > 0
+    );
+    for (const aiMsg of aiMsgsWithToolCalls) {
+      for (const tc of (aiMsg as AIMessage).tool_calls ?? []) {
+        const matchingToolMsg = allToolMsgs.find(
+          (tm) => (tm as ToolMessage).tool_call_id === tc.id
+        );
+        expect(matchingToolMsg).toBeDefined();
+      }
+    }
+  });
+
+  it("does NOT include tool evidence when escalating (zero tool calls)", async () => {
+    const backend = makeFakeBackend();
+    mockInvoke.mockResolvedValue(
+      new AIMessage({ content: "Could you be more specific about what to change?" })
+    );
+
+    const result = await singleShotEdit(
+      baseState,
+      [new HumanMessage("Make it better")],
+      backend
+    );
+
+    const toolMessages = result.messages.filter((m) => m._getType() === "tool");
+    expect(toolMessages.length).toBe(0);
+    expect(result.allFailed).toBe(true);
   });
 });

@@ -1,19 +1,84 @@
 import { useLanggraph, type ChatSnapshot, type LanggraphChat } from "langgraph-ai-sdk-react";
 import type { UIMessage } from "ai";
 import type { WebsiteBridgeType, WebsiteGraphState } from "@shared";
+import { WebsiteMergeReducer } from "@shared";
 import { syncLanggraphToStore } from "~/stores/useSyncProject";
 import { useChatOptions } from "@hooks/useChatOptions";
+import { useCallback, useEffect, useRef } from "react";
+import { usePage, router } from "@inertiajs/react";
+import { useQueryClient } from "@tanstack/react-query";
+import { websiteKeys } from "@api/websites.hooks";
+import { themeKeys } from "@api/themes.hooks";
+
+interface WebsitePageProps {
+  website?: { id?: number };
+  project?: { id?: number; uuid?: string };
+  thread_id?: string;
+  [key: string]: unknown;
+}
 
 export type WebsiteSnapshot = ChatSnapshot<WebsiteGraphState>;
 
 function useWebsiteChatOptions() {
-  return useChatOptions<WebsiteBridgeType>({ apiPath: "api/website/stream" });
+  const page = usePage<WebsitePageProps>();
+  const { project } = page.props;
+
+  const onThreadIdAvailable = useCallback(
+    (threadId: string) => {
+      if (!threadId || threadId === "undefined" || threadId === "null") {
+        console.error(
+          "[useWebsiteChat] onThreadIdAvailable called with invalid threadId:",
+          threadId
+        );
+        return;
+      }
+
+      // Update Inertia page props with the new thread_id (URL stays the same)
+      router.push({
+        url: window.location.pathname,
+        component: "Website",
+        props: {
+          ...page.props,
+          thread_id: threadId,
+        },
+      });
+    },
+    [page.props]
+  );
+
+  return useChatOptions<WebsiteBridgeType>({
+    apiPath: "api/website/stream",
+    merge: WebsiteMergeReducer as any,
+    onThreadIdAvailable,
+  });
+}
+
+/**
+ * Seed websiteId and projectId from page props into the chat's client-side
+ * state so they're always present when sendMessage fires — including
+ * follow-up edits on existing threads.
+ */
+function useSeedPageProps(chat: LanggraphChat<UIMessage, WebsiteGraphState>) {
+  const { website, project } = usePage<WebsitePageProps>().props;
+  const seeded = useRef(false);
+
+  useEffect(() => {
+    if (seeded.current) return;
+    const websiteId = website?.id;
+    const projectId = project?.id;
+    if (!websiteId || !projectId) return;
+
+    seeded.current = true;
+    chat.setState({ websiteId, projectId } as Partial<WebsiteGraphState>);
+  }, [chat, website?.id, project?.id]);
 }
 
 export function useWebsiteChat(): LanggraphChat<UIMessage, WebsiteGraphState> {
   const options = useWebsiteChatOptions();
   const chat = useLanggraph(options, (s) => s.chat);
+  useSeedPageProps(chat);
   syncWebsiteToStore();
+  useSyncThemeFromChat();
 
   return chat;
 }
@@ -76,6 +141,25 @@ export function useWebsiteChatIsStreaming() {
 }
 
 /**
+ * Returns whether the website is in its initial loading phase:
+ * history is loading, or streaming with todos still in progress.
+ * Stays on the todo list until ALL todos are completed, even if files have arrived.
+ * Once the user has sent any message, always show chat (never return to todo list).
+ */
+export function useWebsiteChatIsInitialLoading() {
+  return useWebsiteSelector((s) => {
+    const hasUserMessages = s.messages.some((m) => m.role === "user");
+    if (hasUserMessages) return false;
+
+    const isStreaming = s.status === "streaming" || s.status === "submitted";
+    const todos = s.state.todos;
+    const hasTodos = todos && todos.length > 0;
+    const allTodosCompleted = hasTodos && todos.every((t) => t.status === "completed");
+    return s.isLoadingHistory || (isStreaming && hasTodos && !allTodosCompleted);
+  });
+}
+
+/**
  * Syncs entity IDs from Langgraph state to the core entity store.
  * Call this once in the page component that uses the website chat.
  */
@@ -85,4 +169,30 @@ export function syncWebsiteToStore() {
 
   syncLanggraphToStore("websiteId", websiteId);
   syncLanggraphToStore("projectId", projectId);
+}
+
+/**
+ * Watches themeId from Langgraph streaming state and invalidates
+ * React Query caches so the theme picker stays in sync when the
+ * coding agent creates a new theme via change_color_scheme tool.
+ */
+function useSyncThemeFromChat() {
+  const themeId = useWebsiteChatState("themeId");
+  const websiteId = useWebsiteChatState("websiteId");
+  const queryClient = useQueryClient();
+  const prevThemeIdRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (themeId == null) return;
+    if (themeId === prevThemeIdRef.current) return;
+
+    prevThemeIdRef.current = themeId;
+
+    // Invalidate website query so useWebsite() refetches with new theme_id
+    if (websiteId) {
+      queryClient.invalidateQueries({ queryKey: websiteKeys.detail(websiteId) });
+    }
+    // Invalidate themes list so newly created themes appear in the picker
+    queryClient.invalidateQueries({ queryKey: themeKeys.lists() });
+  }, [themeId, websiteId, queryClient]);
 }

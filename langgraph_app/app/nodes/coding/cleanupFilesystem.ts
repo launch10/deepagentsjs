@@ -9,8 +9,8 @@ export const cleanupFilesystemNode = NodeMiddleware.use(
     state: MinimalCodingAgentState,
     config: LangGraphRunnableConfig
   ): Promise<Partial<WebsiteGraphState>> => {
-    // const backend = await getCodingAgentBackend(state);
-    // await backend.cleanup();
+    const backend = await getCodingAgentBackend(state);
+    await backend.cleanup();
 
     return {};
   }

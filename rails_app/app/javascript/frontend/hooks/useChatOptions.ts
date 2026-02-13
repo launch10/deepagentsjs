@@ -4,6 +4,7 @@ import type { UseLanggraphOptions } from "langgraph-ai-sdk-react";
 import type { Bridge } from "langgraph-ai-sdk-types";
 import { UploadsAPIService } from "@rails_api_base";
 import { validateFile } from "~/types/attachment";
+import { useJwt, useLanggraphPath, useRootPath } from "~/stores/sessionStore";
 
 /** Common page props for chat pages */
 interface ChatPageProps {
@@ -47,9 +48,17 @@ export interface UseChatOptionsConfig<TBridge extends Bridge<any, any, any>> {
 export function useChatOptions<TBridge extends Bridge<any, any, any>>(
   config: UseChatOptionsConfig<TBridge>
 ): UseLanggraphOptions<TBridge> {
-  // Read directly from page props - simple and stable
+  // thread_id is page-specific, always from props
   const page = usePage<ChatPageProps>();
-  const { thread_id, jwt, langgraph_path, root_path } = page.props;
+  const { thread_id } = page.props;
+  // Session-level values: prefer store (refreshed by useJwtRefresh),
+  // fall back to page props on first render before store hydration
+  const storeJwt = useJwt();
+  const storeLanggraphPath = useLanggraphPath();
+  const storeRootPath = useRootPath();
+  const jwt = storeJwt ?? page.props.jwt;
+  const langgraph_path = storeLanggraphPath ?? page.props.langgraph_path;
+  const root_path = storeRootPath ?? page.props.root_path;
   const {
     apiPath,
     merge,

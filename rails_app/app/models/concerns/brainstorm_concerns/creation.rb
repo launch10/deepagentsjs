@@ -27,7 +27,7 @@ module BrainstormConcerns
             step: "brainstorm"
           )
 
-          # Create website (ChatCreatable auto-creates its chat)
+          # Create website (chat is created later by updateWebsite graph node)
           website = Website.create!(
             project_id: project.id,
             name: project.name,

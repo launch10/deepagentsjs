@@ -53,6 +53,7 @@
       "@shared/config/*": ["../shared/config/*"],
       "@types": ["../shared/types/index.ts"],
       "@shared/*": ["./app/lib/shared/*"],
+      "@conversation": ["./app/conversation/index.ts"],
       "@helpers": ["../shared/helpers/index.ts"],
       "@db": ["app/db/index.ts"],
       "@core": ["./app/core/index.ts"],

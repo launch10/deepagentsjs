@@ -3,6 +3,7 @@ import { usePage } from "@inertiajs/react";
 import { type ChatSnapshot, type UseLanggraphOptions, useLanggraph } from "langgraph-ai-sdk-react";
 import type { InertiaProps, InsightsBridgeType, InsightsGraphState } from "@shared";
 import { useInsightsStore, useStoredInsights, type InsightsStore } from "@stores/insightsStore";
+import { useJwt, useLanggraphPath } from "~/stores/sessionStore";
 
 // Use the same types as the Dashboard page
 type DashboardProps =
@@ -13,8 +14,6 @@ interface InsightsPageProps {
   insights: Insight[] | null;
   metrics_summary: DashboardProps["metrics_summary"];
   thread_id: string;
-  jwt?: string;
-  langgraph_path?: string;
   [key: string]: unknown;
 }
 
@@ -24,7 +23,14 @@ export type InsightsSnapshot = ChatSnapshot<InsightsGraphState>;
  * Get the langgraph options for insights generation.
  */
 function useInsightsChatOptions(): UseLanggraphOptions<InsightsBridgeType> {
-  const { thread_id, jwt, langgraph_path } = usePage<InsightsPageProps>().props;
+  const page = usePage<InsightsPageProps>();
+  const { thread_id } = page.props;
+  // Session-level values: prefer store (refreshed by useJwtRefresh),
+  // fall back to page props on first render before store hydration
+  const storeJwt = useJwt();
+  const storeLanggraphPath = useLanggraphPath();
+  const jwt = storeJwt ?? (page.props as any).jwt;
+  const langgraph_path = storeLanggraphPath ?? (page.props as any).langgraph_path;
 
   return useMemo(() => {
     const url = langgraph_path ? new URL("api/insights/generate", langgraph_path).toString() : "";

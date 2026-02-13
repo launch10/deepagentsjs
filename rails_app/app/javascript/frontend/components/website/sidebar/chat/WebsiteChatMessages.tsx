@@ -1,6 +1,7 @@
-import { useEffect, useRef } from "react";
 import { Chat } from "@components/shared/chat/Chat";
 import { useChatMessages, useChatIsStreaming } from "@components/shared/chat/ChatContext";
+import { useWebsiteChatState } from "@hooks/website";
+import type { Todo } from "@shared";
 
 /**
  * Props for the WebsiteChatMessagesView presentation component.
@@ -14,6 +15,8 @@ export interface WebsiteChatMessagesViewProps {
   }>;
   /** Whether the chat is currently streaming a response */
   isStreaming: boolean;
+  /** Optional todos to display inline at the bottom of the message list */
+  todos?: Todo[];
 }
 
 /**
@@ -21,17 +24,11 @@ export interface WebsiteChatMessagesViewProps {
  * Uses Chat compound components for consistent styling.
  * Follows the same pattern as BrainstormMessages.
  */
-export function WebsiteChatMessagesView({ messages, isStreaming }: WebsiteChatMessagesViewProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Scroll container to bottom without affecting parent scroll containers
-    const container = containerRef.current?.parentElement;
-    if (container) {
-      container.scrollTop = container.scrollHeight;
-    }
-  }, [messages]);
-
+export function WebsiteChatMessagesView({
+  messages,
+  isStreaming,
+  todos,
+}: WebsiteChatMessagesViewProps) {
   // Show thinking indicator when streaming with no messages yet
   // This handles the initial load case where backend is generating response
   if (messages.length === 0 && isStreaming) {
@@ -44,7 +41,7 @@ export function WebsiteChatMessagesView({ messages, isStreaming }: WebsiteChatMe
   }
 
   return (
-    <Chat.Messages.List ref={containerRef} className="space-y-4">
+    <Chat.Messages.List>
       {messages.map((message, index) => {
         const isLastMessage = index === messages.length - 1;
 
@@ -58,24 +55,35 @@ export function WebsiteChatMessagesView({ messages, isStreaming }: WebsiteChatMe
           const hasContent = textBlocks.length > 0;
 
           // Show thinking indicator for last message while streaming with no content
-          if (!hasContent && isLastMessage && isStreaming) {
+          if (isLastMessage && isStreaming) {
             return <Chat.ThinkingIndicator key={message.id} text="Thinking" className="text-xs" />;
           }
 
-          // Render text blocks
-          return textBlocks.map((block) => (
-            <Chat.AIMessage.Content
-              key={block.id}
-              state={isLastMessage ? "active" : "inactive"}
-              className="text-xs"
-            >
-              {block.text}
-            </Chat.AIMessage.Content>
-          ));
+          // Skip messages with no text content
+          if (!hasContent) return null;
+
+          // Render text blocks wrapped in AIMessage.Root for data-testid="ai-message"
+          return (
+            <Chat.AIMessage.Root key={message.id}>
+              {textBlocks.map((block) => (
+                <Chat.AIMessage.Content
+                  key={block.id}
+                  state={isLastMessage ? "active" : "inactive"}
+                  className="text-xs"
+                >
+                  {block.text}
+                </Chat.AIMessage.Content>
+              ))}
+            </Chat.AIMessage.Root>
+          );
         }
 
         return null;
       })}
+      {isStreaming && todos && todos.length > 0 && (
+        <Chat.TodoList todos={todos} className="text-xs" />
+      )}
+      <Chat.Messages.ScrollAnchor />
     </Chat.Messages.List>
   );
 }
@@ -87,6 +95,7 @@ export function WebsiteChatMessagesView({ messages, isStreaming }: WebsiteChatMe
 export default function WebsiteChatMessages() {
   const messages = useChatMessages();
   const isStreaming = useChatIsStreaming();
+  const todos = useWebsiteChatState("todos");
 
-  return <WebsiteChatMessagesView messages={messages} isStreaming={isStreaming} />;
+  return <WebsiteChatMessagesView messages={messages} isStreaming={isStreaming} todos={todos} />;
 }

@@ -13,6 +13,11 @@ class API::V1::WebsitesController < API::BaseController
     end
   end
 
+  def initialize_chat
+    chat = @website.create_website_chat!(thread_id: params[:thread_id])
+    render json: { chat_id: chat.id, thread_id: chat.thread_id }
+  end
+
   private
 
   def set_website

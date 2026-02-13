@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import type { MessageBlock, InferBridgeData, AnyMessageWithBlocks } from "langgraph-ai-sdk-types";
 import { ChatSelectors } from "langgraph-ai-sdk-react";
 import { Brainstorm, type BrainstormBridgeType } from "@shared";
@@ -59,13 +59,6 @@ export function BrainstormMessagesView({
   onCommandClick,
   totalQuestions = Brainstorm.TotalQuestions,
 }: BrainstormMessagesViewProps) {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
   // Detect topic changes to show question badge on first message of each topic
   const messageMetadata = useMemo(() => {
     let lastSeenTopic: string | undefined;
@@ -108,7 +101,7 @@ export function BrainstormMessagesView({
   }
 
   return (
-    <Chat.Messages.List className="flex-1 py-4 space-y-4 max-w-3xl mx-auto">
+    <Chat.Messages.List className="flex-1 py-4 max-w-3xl mx-auto">
       {messages.map((message, index) => {
         const { isUser, isLastMessage, startsNewTopic, questionNumber } = messageMetadata[index];
 
@@ -132,7 +125,7 @@ export function BrainstormMessagesView({
           isLastMessage && !isStreaming && availableCommands && availableCommands.length > 0;
 
         return (
-          <div key={message.id} className="space-y-3">
+          <div key={message.id} data-role="assistant" className="space-y-3">
             {/* Question badge appears on first AI message of each topic */}
             {startsNewTopic && <QuestionBadge current={questionNumber} total={totalQuestions} />}
             <BrainstormAIMessage
@@ -158,7 +151,7 @@ export function BrainstormMessagesView({
         );
       })}
 
-      <div ref={messagesEndRef} />
+      <Chat.Messages.ScrollAnchor />
     </Chat.Messages.List>
   );
 }

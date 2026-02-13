@@ -12,6 +12,38 @@ interface FileSystemDirectoryEntry {
 }
 
 /**
+ * Diffs two FileMaps, returning only files whose content changed.
+ * Returns null if nothing changed (all content identical).
+ * Returns the full current map when previous is null (initial mount).
+ *
+ * Comparison is content-only — metadata (modified_at) is ignored.
+ * Deleted files are ignored because WebContainer mount() is additive.
+ */
+export function diffFileMap(
+  previous: Website.FileMap | null,
+  current: Website.FileMap
+): Website.FileMap | null {
+  if (!previous) return current;
+
+  const changed: Website.FileMap = {};
+  let hasChanges = false;
+
+  for (const path in current) {
+    if (!Object.prototype.hasOwnProperty.call(current, path)) continue;
+
+    const prevFile = previous[path];
+    const currFile = current[path];
+
+    if (!prevFile || prevFile.content !== currFile.content) {
+      changed[path] = currFile;
+      hasChanges = true;
+    }
+  }
+
+  return hasChanges ? changed : null;
+}
+
+/**
  * Converts a FileMap (from langgraph state) to a WebContainer FileSystemTree.
  * FileMap format: { "/path/to/file": { content: string, created_at: string, modified_at: string } }
  * FileSystemTree format: { "path": { "to": { "file": { file: { contents: "..." } } } } }
@@ -77,6 +109,51 @@ export function createStaticSitePackageJson(): FileSystemTree {
           2
         ),
       },
+    },
+  };
+}
+
+/**
+ * Injects a small inline script into index.html that fires a postMessage
+ * to the parent frame when the page content has actually rendered.
+ * This lets WebsitePreview keep the loading overlay until real content is visible,
+ * avoiding the blank flash while Vite compiles modules.
+ */
+const PREVIEW_READINESS_SCRIPT = `<script>
+(function() {
+  var root = document.getElementById('root');
+  if (!root) {
+    window.parent.postMessage({ type: 'preview-ready' }, '*');
+    return;
+  }
+  if (root.children.length > 0) {
+    window.parent.postMessage({ type: 'preview-ready' }, '*');
+    return;
+  }
+  var observer = new MutationObserver(function() {
+    if (root.children.length > 0) {
+      observer.disconnect();
+      window.parent.postMessage({ type: 'preview-ready' }, '*');
+    }
+  });
+  observer.observe(root, { childList: true });
+})();
+</script>`;
+
+export function injectPreviewReadinessScript(fileMap: Website.FileMap): Website.FileMap {
+  const indexKey = "/index.html" in fileMap ? "/index.html" : "index.html" in fileMap ? "index.html" : null;
+  if (!indexKey) return fileMap;
+
+  const indexFile = fileMap[indexKey];
+  if (!indexFile || typeof indexFile.content !== "string") return fileMap;
+
+  const modifiedContent = indexFile.content.replace("</body>", `${PREVIEW_READINESS_SCRIPT}\n</body>`);
+
+  return {
+    ...fileMap,
+    [indexKey]: {
+      ...indexFile,
+      content: modifiedContent,
     },
   };
 }

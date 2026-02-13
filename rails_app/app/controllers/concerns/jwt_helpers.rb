@@ -36,24 +36,24 @@ module JwtHelpers
   private
 
   def real_jwt_user
-    sub = real_jwt_field("sub")
+    sub = real_jwt_field("sub", verify_expiry: !internal_api_verified?)
     return nil if sub.blank?
 
     User.find_by(id: sub)
   end
 
   def real_jwt_account
-    account_id = real_jwt_field("account_id")
+    account_id = real_jwt_field("account_id", verify_expiry: !internal_api_verified?)
     return nil if account_id.blank?
 
     Account.find_by(id: account_id)
   end
 
-  def real_jwt_field(field)
+  def real_jwt_field(field, verify_expiry: true)
     jwt = get_jwt
 
     if jwt
-      payload = jwt_payload
+      payload = jwt_payload(verify_expiry: verify_expiry)
       return nil if payload.blank? || payload.dig(0, field).blank?
 
       payload.dig(0, field)
@@ -97,14 +97,21 @@ module JwtHelpers
     jwt_payload.nil?
   end
 
-  def jwt_payload
+  def jwt_payload(verify_expiry: true)
+    options = {algorithm: "HS256"}
+    options[:verify_expiration] = false unless verify_expiry
     begin
       secret = Rails.application.credentials.devise_jwt_secret_key
-      payload = JWT.decode(get_jwt, secret, true, {algorithm: "HS256"})
+      payload = JWT.decode(get_jwt, secret, true, options)
     rescue JWT::DecodeError
       return nil
     end
     payload
+  end
+
+  # Safe check — JwtHelpers is used in contexts without InternalAPIVerification
+  def internal_api_verified?
+    respond_to?(:internal_api_request?, true) && internal_api_request?
   end
 
   def get_jwt

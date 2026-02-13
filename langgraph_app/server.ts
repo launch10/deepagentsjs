@@ -64,9 +64,18 @@ export default {
   fetch: app.fetch,
 };
 
-serve({
+const server = serve({
   fetch: app.fetch,
   port,
 });
 
 rootLogger.info({ port }, "Hono server running");
+
+const shutdown = () => {
+  server.close(() => process.exit(0));
+  // Force exit if graceful shutdown takes too long
+  setTimeout(() => process.exit(0), 2000);
+};
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);

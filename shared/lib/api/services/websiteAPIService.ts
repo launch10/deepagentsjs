@@ -48,6 +48,27 @@ export class WebsiteAPIService extends RailsAPIBase {
     return response.data satisfies GetWebsiteResponse;
   }
 
+  async initializeChat(
+    websiteId: number,
+    threadId: string
+  ): Promise<{ chat_id: number; thread_id: string }> {
+    const client = await this.getClient();
+    const response = await (client as any).POST(
+      `/api/v1/websites/${websiteId}/initialize_chat`,
+      { body: { thread_id: threadId } }
+    );
+
+    if (response.error) {
+      throw new Error(`Failed to initialize website chat: ${JSON.stringify(response.error)}`);
+    }
+
+    if (!response.data) {
+      throw new Error("Failed to initialize website chat: No data returned");
+    }
+
+    return response.data as { chat_id: number; thread_id: string };
+  }
+
   async update(
     websiteId: number,
     website: UpdateWebsiteRequest["website"]

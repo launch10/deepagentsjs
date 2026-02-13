@@ -93,6 +93,7 @@ namespace :api, defaults: {format: :json} do
     end
 
     resources :websites, only: [:show, :update] do
+      post :initialize_chat, on: :member
       post "files/write", to: "website_files#write"
       patch "files/edit", to: "website_files#edit"
     end

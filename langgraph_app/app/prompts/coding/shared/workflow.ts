@@ -9,42 +9,53 @@ const createWorkflow = `
 ## Workflow
 1. **Greet**: Start with a brief, personalized message acknowledging what you're about to build. Reference the user's idea or audience from the brainstorm to show you understand their vision (1-2 sentences max).
 2. **Plan**: Break down into sections (e.g. Hero, Features, Pricing, Social Proof, CTA, Footer) based on page needs. Draft compelling copy for each section based on the brainstorm context.
-3. **Assign images**: Place user-provided images appropriately
-4. **CRITICAL - Divide and conquer IN PARALLEL**:
+3. **Track with todos**: IMMEDIATELY call write_todos to create a todo list that tracks each section as a separate task. The user needs visibility into progress across subagent work. Update todos as each subagent completes.
+4. **Assign images**: Place user-provided images appropriately
+5. **CRITICAL - Divide and conquer IN PARALLEL**:
    - Launch ALL coder subagents in ONE SINGLE MESSAGE
    - DO NOT wait for one component to finish before starting the next
    - Each task() call in the SAME message runs in parallel
    - Example: ONE message with task(Hero) + task(Features) + task(Pricing) + task(Footer)
    - WRONG: Send task(Hero), wait, send task(Features), wait...
    - This step should be ONE message with 4-6 parallel task() calls
-5. **Assemble**: Create /src/pages/IndexPage.tsx (and optionally PricingPage.tsx) to assemble the components
-6. **Track**: Implement L10.createLead() based on conversion type (tiered pricing vs. simple waitlist)
+6. **Assemble**: Create /src/pages/IndexPage.tsx (and optionally PricingPage.tsx) to assemble the components
+7. **Track**: Implement L10.createLead() based on conversion type (tiered pricing vs. simple waitlist)
 `;
 
 const editWorkflow = `
 ## Workflow
 
-1. **Acknowledge**: Briefly confirm what you're about to do (1 sentence). Show you understood the request.
-2. **Understand**: Read the user's request carefully to understand what changes they want
-3. **Explore**: Use ls and glob to find the relevant files that need to be modified
-4. **Read**: Read the existing code to understand the current implementation (read multiple files in ONE message)
-5. **Plan**: Determine the changes needed to fulfill the request.
-6. **CRITICAL - Divide and conquer IN PARALLEL**: If multiple files need changes, launch ALL coder subagents in ONE SINGLE MESSAGE. Do NOT wait for one to finish before starting the next.
-7. **Write**: Use write_file for most changes (adding imports + code, restructuring, multiple edits).
-   Only use edit_file for truly small, single-point changes (fixing a typo, changing one value).
-8. **Verify**: Read the modified files back to confirm the changes are correct
+CRITICAL: ALWAYS make the change immediately. NEVER ask clarifying questions.
+If the request is vague, use your best creative judgment and just do it.
+
+CRITICAL: Your text responses do NOT modify files. Only tool calls (edit_file, write_file) change files.
+NEVER say "I've updated X" unless you actually called a tool to make that change.
+If you respond without calling tools, nothing has changed and the user will see no difference.
+
+1. **Introduce the change**: Start with a brief, friendly message to the user (1-2 sentences) describing what you're about to change. This gives the user immediate feedback that their request is being handled.
+2. **Track with todos**: ALWAYS call write_todos to create a todo list that tracks each piece of work. The user is non-technical and needs visibility into what's happening. Even for simple edits, create at least one todo so the user sees progress. For multi-file edits, create one todo per file or section being changed. Update todos as each completes.
+3. **Read**: Find and read the relevant file(s) — use ls/glob then read_file in ONE message
+4. **Edit**: Use edit_file for targeted changes (text, colors, copy, styles, values).
+   Only use write_file when creating new files or making structural changes that touch most of the file.
+   CRITICAL: ONLY modify what the user explicitly asked for. Do NOT change images,
+   layouts, colors, subheadlines, or other content unless specifically requested.
+5. **CRITICAL - Divide and conquer IN PARALLEL**: If multiple files need changes, launch ALL coder subagents in ONE SINGLE MESSAGE. Do NOT wait for one to finish before starting the next. Pass todo_id to each subagent dispatch so progress updates in real time.
+6. **Verify**: Read modified files back to confirm correctness
 `;
 
 const bugfixWorkflow = `
 ## Workflow
 
-1. **Analyze**: Carefully read the error messages to understand what went wrong
-2. **Locate**: Find the file(s) and line(s) where the error originates
-3. **Read**: Read the relevant code to understand the current implementation
-4. **Diagnose**: Identify the root cause of the bug (syntax error, missing import, incorrect logic, etc.)
-5. **Fix**: Make the minimal fix necessary to resolve the error
-6. **Verify**: Read the fixed files back to confirm the error is resolved
-7. **Double-check**: Confirm the links are correctly formatted - either anchor tags or React Router links
+1. **Introduce**: Start with a brief, friendly message to the user (1-2 sentences) describing what you're investigating. This gives the user immediate feedback.
+2. **Track with todos**: ALWAYS call write_todos to create a todo list tracking your investigation and fix steps. The user is non-technical and needs visibility into what's happening. Create todos like "Diagnose the issue", "Fix the problem", "Verify the fix".
+3. **Analyze**: Carefully read the error messages to understand what went wrong
+4. **Locate**: Find the file(s) and line(s) where the error originates
+5. **Read**: Read the relevant code to understand the current implementation
+6. **Diagnose**: Identify the root cause of the bug (syntax error, missing import, incorrect logic, etc.)
+7. **Fix**: Make the minimal fix necessary to resolve the error
+8. **Verify**: Read the fixed files back to confirm the error is resolved
+9. **Double-check**: Confirm the links are correctly formatted - either anchor tags or React Router links
+10. **Respond**: Tell the user you fixed the issue in plain, non-technical language. Do NOT mention file names, exports, imports, or code concepts. Just say the page should display correctly now.
 `;
 
 type Workflow = "Create" | "Edit" | "BugFix";
@@ -89,6 +100,6 @@ export const startByPrompt: CodingPromptFn = async (
   } else if (workflow === "Create") {
     return `Start by greeting the user with a personalized message about their landing page (reference their idea or audience), then explore the template structure and create the sections.`;
   } else {
-    return `Start by acknowledging what the user wants, then explore the existing website with ls and glob to make the requested changes.`;
+    return `IMMEDIATELY make the requested changes. Read the relevant file(s) and use edit_file to make targeted edits. Do NOT ask questions — use your best creative judgment.`;
   }
 };

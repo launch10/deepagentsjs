@@ -1,40 +1,29 @@
 /**
  * Conversation-level compaction for long-running graph conversations.
  *
- * Runs after the main work node completes. Checks if state.messages
- * exceeds a threshold, and if so, summarizes old messages into a
- * compact summary, preserving recent context.
+ * Thin wrapper around Conversation.compact() — provides the LLM-based
+ * summarizer and NodeMiddleware wiring for graph nodes.
  *
  * Works with any graph that has `messages: BaseMessage[]` in its state
  * (website, brainstorm, ads, etc.).
  */
 import type { BaseMessage } from "@langchain/core/messages";
-import {
-  RemoveMessage,
-  HumanMessage,
-  SystemMessage,
-} from "@langchain/core/messages";
-import { isContextMessage } from "langgraph-ai-sdk";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { Conversation } from "@conversation";
 import { getLLM } from "@core";
 import { NodeMiddleware } from "@middleware";
-
-/** Minimal state shape — any graph extending BaseAnnotation satisfies this. */
-type HasMessages = { messages: BaseMessage[] };
+import { type CoreGraphState } from "@state";
 
 export interface CompactConversationOptions {
-  /** Trigger compaction when non-context messages exceed this count. Default: 12 */
+  /** Trigger compaction when human turns (non-context HumanMessages) exceed this count. Default: 30 */
   messageThreshold?: number;
-  /** Number of recent messages to keep (not summarized). Default: 6 */
+  /** Number of recent human turns to keep (not summarized). All associated AI/tool messages are kept too. Default: 20 */
   keepRecent?: number;
-  /** Max total chars before forced compaction. Default: 100000 */
+  /** Max total chars before forced compaction. Default: 200000 */
   maxChars?: number;
+  /** Override the summarizer (for testing). Default: LLM-based summarization. */
+  summarizer?: (messages: BaseMessage[], existingSummaries: string[]) => Promise<string>;
 }
-
-const DEFAULTS: Required<CompactConversationOptions> = {
-  messageThreshold: 12,
-  keepRecent: 6,
-  maxChars: 100_000,
-};
 
 /**
  * Create a compaction node for any graph that has `messages` in its state.
@@ -45,7 +34,7 @@ export function createCompactConversationNode(
 ) {
   return NodeMiddleware.use(
     {},
-    async (state: HasMessages) => {
+    async (state: CoreGraphState) => {
       return compactConversation(state.messages, options);
     }
   );
@@ -57,74 +46,45 @@ export const compactConversationNode = createCompactConversationNode();
 /**
  * Compact a message array by summarizing old messages.
  *
- * Returns partial state with RemoveMessage entries + a summary message,
- * or empty object if compaction isn't needed.
- *
- * Generic — works with any graph state that has `messages`.
+ * Delegates to Conversation.compact() — returns partial state with
+ * RemoveMessage entries + a summary message, or empty object if
+ * compaction isn't needed.
  */
 export async function compactConversation(
   messages: BaseMessage[],
   options?: CompactConversationOptions
 ): Promise<{ messages: BaseMessage[] } | Record<string, never>> {
-  const opts = { ...DEFAULTS, ...options };
-
-  // Separate context events from conversation messages
-  const contextMessages = messages.filter(isContextMessage);
-  const conversationMessages = messages.filter((m) => !isContextMessage(m));
-
-  // Check if compaction is needed
-  const totalChars = messages.reduce((sum, m) => sum + charCount(m), 0);
-  const needsCompaction =
-    conversationMessages.length > opts.messageThreshold ||
-    totalChars > opts.maxChars;
-
-  if (!needsCompaction) {
-    return {};
-  }
-
-  // Split: messages to summarize vs messages to keep
-  const toKeep = conversationMessages.slice(-opts.keepRecent);
-  const toSummarize = conversationMessages.slice(0, -opts.keepRecent);
-
-  if (toSummarize.length === 0) {
-    return {};
-  }
-
-  // Summarize old messages with cheap LLM
-  const summary = await summarizeMessages(toSummarize);
-
-  // RemoveMessage for each old conversation message
-  const removals = toSummarize
-    .filter((m) => m.id)
-    .map((m) => new RemoveMessage({ id: m.id! }));
-
-  // Also remove old context events — they'll be re-injected by injectAgentContext
-  const contextRemovals = contextMessages
-    .filter((m) => m.id)
-    .map((m) => new RemoveMessage({ id: m.id! }));
-
-  // Summary stored as a context message so it's filtered from the UI
-  const summaryMessage = new HumanMessage({
-    content: `[Conversation Summary] ${summary}`,
-    name: "context",
+  const conversation = new Conversation(messages);
+  const result = await conversation.compact({
+    messageThreshold: options?.messageThreshold,
+    keepRecent: options?.keepRecent,
+    maxChars: options?.maxChars,
+    summarizer: options?.summarizer ?? summarizeMessages,
   });
 
-  return {
-    messages: [
-      ...removals,
-      ...contextRemovals,
-      summaryMessage,
-    ] as BaseMessage[],
-  };
+  if (!result) return {};
+  return { messages: result.toMessages() };
 }
 
-async function summarizeMessages(messages: BaseMessage[]): Promise<string> {
+/** LLM-based summarizer — consolidates old messages + existing summaries. */
+async function summarizeMessages(
+  messages: BaseMessage[],
+  existingSummaries: string[]
+): Promise<string> {
   const llm = await getLLM({
     skill: "coding",
-    speed: "blazing",
     cost: "paid",
-    maxTier: 5,
+    maxTier: 3,
   });
+
+  const parts: string[] = [];
+
+  // Include existing summaries first so the LLM can fold them in
+  if (existingSummaries.length > 0) {
+    parts.push("=== Previous Summary ===");
+    parts.push(existingSummaries.join("\n\n"));
+    parts.push("=== New Messages to Incorporate ===");
+  }
 
   const formatted = messages
     .map((m) => {
@@ -142,29 +102,37 @@ async function summarizeMessages(messages: BaseMessage[]): Promise<string> {
     })
     .join("\n");
 
+  parts.push(formatted);
+
   const response = await llm.invoke([
     new SystemMessage(
-      `Summarize this conversation history into a brief paragraph. Focus on:
-- What changes were requested and made
-- Key decisions (colors chosen, sections added/removed, layout changes, content changes)
-- Any user preferences expressed
-Keep it under 200 words. Be specific about what was changed.`
+      `Summarize this conversation into the following structured sections. Use third person ("The user", "The assistant"). Be specific — include exact values (hex codes, file paths, component names).
+
+## User Goals
+What the user wants to build or achieve overall.
+
+## Current State
+What has been built so far. List specific files and their purpose.
+
+## Design Decisions
+Colors, fonts, layout choices, component decisions. Include specifics like hex codes and Tailwind classes.
+
+## User Preferences
+Expressed constraints, style preferences, things they liked or disliked.
+
+## Recent Changes
+What was most recently modified and why.
+
+## Open Issues
+Anything unresolved, pending, or that the user mentioned wanting to change. Leave empty if none.
+
+Keep each section concise (1-3 bullet points). Total summary under 300 words.
+If a previous summary is included, incorporate it — produce ONE consolidated summary with all sections updated.`
     ),
-    new HumanMessage(formatted),
+    new HumanMessage(parts.join("\n")),
   ]);
 
   return typeof response.content === "string"
     ? response.content
     : "Previous conversation involved edits and changes.";
-}
-
-function charCount(msg: BaseMessage): number {
-  if (typeof msg.content === "string") return msg.content.length;
-  if (Array.isArray(msg.content)) {
-    return msg.content.reduce(
-      (sum: number, block: any) => sum + (block.text?.length ?? 0),
-      0
-    );
-  }
-  return 0;
 }

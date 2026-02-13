@@ -93,6 +93,11 @@ export {
   type ThinkingIndicatorProps,
   type ThinkingIndicatorVariant,
 } from "./ThinkingIndicator";
+export {
+  TodoList,
+  type TodoListProps,
+  type TodoItem,
+} from "./TodoList";
 
 // Attachment components (shared infrastructure)
 export {
@@ -119,6 +124,7 @@ import { BlockRenderer } from "./BlockRenderer";
 import { Suggestions } from "./Suggestions";
 import { CommandButtons } from "./CommandButtons";
 import { ThinkingIndicator } from "./ThinkingIndicator";
+import { TodoList } from "./TodoList";
 
 export const Chat = {
   // Provider
@@ -135,4 +141,5 @@ export const Chat = {
   Suggestions,
   CommandButtons,
   ThinkingIndicator,
+  TodoList,
 };

@@ -26,7 +26,9 @@ const websiteGraph = uncompiledGraph.compile({
   name: "website",
 });
 
-describe.sequential("Domain Recommendations (Graph Tests)", () => {
+// domainRecommendationsNode is currently disabled (returns {} immediately).
+// Skip tests until the feature is re-enabled.
+describe.skip("Domain Recommendations (Graph Tests)", () => {
   let websiteId: number;
   let threadId: ThreadIDType;
   let accountId: number;

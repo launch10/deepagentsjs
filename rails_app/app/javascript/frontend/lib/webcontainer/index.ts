@@ -14,3 +14,4 @@ export const webcontainer = WebContainerManager.getInstance();
 
 export * from "./types";
 export * from "./file-utils";
+export { parseBuildErrors, parsePreviewMessage } from "./errorParsing";

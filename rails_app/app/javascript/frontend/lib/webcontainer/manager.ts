@@ -1,5 +1,9 @@
 import { WebContainer } from "@webcontainer/api";
-import type { FileSystemTree } from "@webcontainer/api";
+import type { FileSystemTree, PreviewMessage } from "@webcontainer/api";
+import type { Website } from "@shared";
+import { processViteChunk, parsePreviewMessage } from "./errorParsing";
+
+type ConsoleError = Website.Errors.ConsoleError;
 
 export const WORK_DIR_NAME = "project";
 export const WORK_DIR = `/home/${WORK_DIR_NAME}`;
@@ -9,9 +13,10 @@ interface WarmupState {
   depsInstalled: boolean;
   viteRunning: boolean;
   previewUrl: string | null;
+  consoleErrors: ConsoleError[];
 }
 
-type WarmupEventType = "state-change" | "log";
+type WarmupEventType = "state-change" | "log" | "console-errors";
 
 interface WarmupEvent {
   type: WarmupEventType;
@@ -45,6 +50,7 @@ class WebContainerManagerClass {
     depsInstalled: false,
     viteRunning: false,
     previewUrl: null,
+    consoleErrors: [],
   };
 
   /**
@@ -73,8 +79,17 @@ class WebContainerManagerClass {
     try {
       // Step 1: Boot WebContainer
       this.log("[WebContainer] Booting...");
-      this.instance = await WebContainer.boot({ workdirName: WORK_DIR_NAME });
+      this.instance = await WebContainer.boot({
+        workdirName: WORK_DIR_NAME,
+        forwardPreviewErrors: true,
+      });
       this.updateState({ booted: true });
+
+      // Listen for runtime errors from preview iframes
+      this.instance.on("preview-message", (msg: PreviewMessage) => {
+        const error = parsePreviewMessage(msg);
+        if (error) this.addConsoleError(error);
+      });
       this.log(`[WebContainer] Booted in ${(performance.now() - start).toFixed(0)}ms`);
 
       // Step 2: Mount snapshot (required - contains pre-installed node_modules)
@@ -96,7 +111,7 @@ class WebContainerManagerClass {
       this.log("[WebContainer] Starting Vite dev server...");
       const devProc = await this.instance.spawn("npm", ["run", "dev"]);
 
-      // Pipe dev server output
+      // Pipe dev server output and parse for build errors
       devProc.output.pipeTo(
         new WritableStream({
           write: (chunk) => {
@@ -105,6 +120,26 @@ class WebContainerManagerClass {
               if (line.trim()) {
                 this.log(`[vite] ${line}`);
               }
+            }
+
+            // Snapshot model: errors represent "what's broken RIGHT NOW."
+            // - Rebuild success (HMR/reload) → clear all errors (build is healthy)
+            // - New errors → REPLACE the list (these are the current build errors)
+            // - Neither → leave state alone
+            const result = processViteChunk(chunk);
+            if (result.clearsErrors) {
+              this.clearConsoleErrors();
+            } else if (result.errors.length > 0) {
+              this.setBuildErrors(result.errors);
+            }
+
+            // Tag HMR events for diagnostic visibility
+            if (chunk.includes("hmr update")) {
+              const fileMatch = chunk.match(/hmr update\s+(.+)/);
+              this.log(`[WebContainer:HMR] hmr update detected — file: ${fileMatch?.[1] ?? "unknown"}`);
+            }
+            if (chunk.includes("page reload")) {
+              this.log("[WebContainer:HMR] page reload triggered");
             }
           },
         })
@@ -138,7 +173,14 @@ class WebContainerManagerClass {
    *
    * If the project has dependencies not in the snapshot, runs npm install.
    */
+  private loadProjectCount = 0;
+
   async loadProject(files: FileSystemTree): Promise<string> {
+    const callIndex = ++this.loadProjectCount;
+    const isIncremental = this.state.viteRunning && this.loadProjectCount > 1;
+
+    this.log(`[WebContainer] loadProject called (#${callIndex}) — isIncremental: ${isIncremental}`);
+
     // Ensure warmup is complete
     await this.warmup();
 
@@ -146,10 +188,15 @@ class WebContainerManagerClass {
       throw new Error("WebContainer not initialized");
     }
 
+    // Clear previous errors before mounting new files
+    this.clearConsoleErrors();
+
     // Mount project files (this is fast - just file writes)
+    const mountStart = performance.now();
     this.log("[WebContainer] Mounting project files...");
     await this.instance.mount(files);
-    this.log("[WebContainer] Project files mounted");
+    const mountElapsed = (performance.now() - mountStart).toFixed(0);
+    this.log(`[WebContainer] Project files mounted in ${mountElapsed}ms`);
 
     // Check if project has dependencies not in the snapshot
     const missingDeps = await this.checkForMissingDeps();
@@ -168,6 +215,8 @@ class WebContainerManagerClass {
           `[WebContainer] npm install complete in ${(performance.now() - installStart).toFixed(0)}ms`
         );
       }
+    } else {
+      this.log("[WebContainer] No missing deps");
     }
 
     // Return the preview URL (Vite already running)
@@ -260,11 +309,56 @@ class WebContainerManagerClass {
   }
 
   /**
+   * Get current console errors (build + runtime).
+   * Maps 1:1 to WebsiteAnnotation.consoleErrors on the backend.
+   */
+  getConsoleErrors(): ConsoleError[] {
+    return [...this.state.consoleErrors];
+  }
+
+  /**
+   * Clear console errors — called when new files are mounted (new attempt).
+   */
+  clearConsoleErrors(): void {
+    this.state = { ...this.state, consoleErrors: [] };
+    this.emit({ type: "console-errors", state: this.state });
+  }
+
+  /**
    * Subscribe to state changes
    */
   subscribe(listener: WarmupListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /**
+   * Replace the entire error list with the given errors (snapshot model).
+   * Called by Vite output handler — each error batch is the current build state.
+   */
+  setBuildErrors(errors: ConsoleError[]) {
+    this.state = { ...this.state, consoleErrors: errors };
+    if (import.meta.env.DEV) {
+      for (const error of errors) {
+        console.warn(`[WebContainer] Build error:`, error.message, error.file ? `(${error.file})` : "");
+      }
+    }
+    this.emit({ type: "console-errors", state: this.state });
+  }
+
+  /**
+   * Append a single runtime error (from preview iframe).
+   * Runtime errors are independent events, not a build state snapshot.
+   */
+  addConsoleError(error: ConsoleError) {
+    this.state = {
+      ...this.state,
+      consoleErrors: [...this.state.consoleErrors, error],
+    };
+    if (import.meta.env.DEV) {
+      console.warn(`[WebContainer] Runtime error:`, error.message, error.file ? `(${error.file})` : "");
+    }
+    this.emit({ type: "console-errors", state: this.state });
   }
 
   private updateState(partial: Partial<WarmupState>) {
@@ -315,3 +409,8 @@ if (import.meta.hot) {
 }
 
 export const WebContainerManager = instance;
+
+// Expose for e2e testing — allows injecting errors without WebContainer boot
+if (typeof window !== "undefined") {
+  (window as any).__WebContainerManager = instance;
+}
