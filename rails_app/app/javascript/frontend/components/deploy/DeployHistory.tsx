@@ -1,10 +1,13 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePage } from "@inertiajs/react";
 import { CheckCircleIcon, ExclamationTriangleIcon } from "@heroicons/react/16/solid";
 import { ArrowUturnLeftIcon } from "@heroicons/react/16/solid";
 import { cn } from "@lib/utils";
 import DeploymentHistoryBadge from "@components/website/deployment-history/DeploymentHistoryBadge";
+import { ProjectsPagination } from "@components/projects/ProjectsPagination";
 import type { DeployProps, WebsiteDeployRecord } from "@hooks/useDeployChat";
+import { Skeleton } from "@components/ui/skeleton";
+import { useWebsiteDeploys } from "@api/websiteDeploys.hooks";
 import { useRootPath } from "~/stores/sessionStore";
 
 function formatTimestamp(dateStr: string) {
@@ -85,14 +88,46 @@ function DeployHistoryItem({ deploy }: { deploy: WebsiteDeployRecord }) {
   );
 }
 
+function DeployHistorySkeleton() {
+  return (
+    <div className="flex flex-col gap-4 px-10 pb-7">
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-12 w-full rounded-lg" />
+      </div>
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-4 w-20" />
+        <Skeleton className="h-12 w-full rounded-lg" />
+        <Skeleton className="h-12 w-full rounded-lg" />
+      </div>
+    </div>
+  );
+}
+
 export default function DeployHistory() {
-  const { website_deploys } = usePage<DeployProps>().props;
+  const { website } = usePage<DeployProps>().props;
+  const [page, setPage] = useState(1);
+  const pinnedLiveDeploy = useRef<WebsiteDeployRecord | null>(null);
 
-  if (!website_deploys?.length) return null;
+  const websiteId = website?.id;
+  const { data, isLoading } = useWebsiteDeploys(websiteId ?? 0, page);
 
-  // Separate current (live) from previous deploys
-  const liveDeploy = website_deploys.find((d) => d.is_live);
-  const previousDeploys = website_deploys.filter((d) => !d.is_live);
+  const deploys = data?.website_deploys ?? [];
+  const pagination = data?.pagination;
+
+  // Cache the live deploy from whichever page first returns it (always page 1)
+  // so it stays pinned at the top during pagination.
+  useEffect(() => {
+    const live = deploys.find((d) => d.is_live);
+    if (live) pinnedLiveDeploy.current = live;
+  }, [deploys]);
+
+  if (!websiteId) return null;
+  if (isLoading && !deploys.length) return <DeployHistorySkeleton />;
+  if (!deploys.length && !pinnedLiveDeploy.current) return null;
+
+  const liveDeploy = pinnedLiveDeploy.current;
+  const previousDeploys = deploys.filter((d) => !d.is_live);
 
   return (
     <div className="flex flex-col gap-4 px-10 pb-7">
@@ -113,6 +148,9 @@ export default function DeployHistory() {
             ))}
           </div>
         </div>
+      )}
+      {pagination && pagination.total_pages > 1 && (
+        <ProjectsPagination pagination={pagination} onPageChange={setPage} disabled={isLoading} />
       )}
     </div>
   );

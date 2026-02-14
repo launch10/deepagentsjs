@@ -4,11 +4,14 @@ import { Deploy, Task } from "@types";
 import { TASK_ORDER, getTaskRunner } from "./taskRunner";
 import { NodeMiddleware } from "@middleware";
 import { getLogger } from "@core";
-import { DeployAPIService } from "@rails_api";
+import { DeployAPIService, JobRunAPIService } from "@rails_api";
+
+const DEFAULT_BLOCKING_TIMEOUT = 300_000; // 5 minutes
 
 type NextTask = {
   taskName: Deploy.TaskName;
   blocking: boolean;
+  timedOut: boolean;
   shouldSkip: boolean;
   readyToRun: boolean;
 };
@@ -67,14 +70,27 @@ async function findNextTask(state: DeployGraphState): Promise<NextTask | null> {
       return null;
     }
 
-    // Running task - check if blocking
+    // Running task - check if blocking and if timed out
     if (task?.status === "running") {
       const blocking = runner.isBlocking?.(state, task) ?? false;
-      log.info(
-        { taskName, blocking, jobId: task.jobId, hasResult: !!task.result },
-        "Task is running"
-      );
-      return { taskName, blocking, shouldSkip: false, readyToRun: !blocking };
+      let timedOut = false;
+
+      if (blocking && task.blockingStartedAt) {
+        const timeout = runner.blockingTimeout ?? DEFAULT_BLOCKING_TIMEOUT;
+        const elapsed = Date.now() - task.blockingStartedAt;
+        timedOut = elapsed > timeout;
+        log.info(
+          { taskName, blocking, timedOut, elapsed, timeout, jobId: task.jobId },
+          "Task is blocking — checking timeout"
+        );
+      } else {
+        log.info(
+          { taskName, blocking, jobId: task.jobId, hasResult: !!task.result },
+          "Task is running"
+        );
+      }
+
+      return { taskName, blocking, timedOut, shouldSkip: false, readyToRun: !blocking };
     }
 
     // New task - check shouldSkip and readyToRun
@@ -85,7 +101,7 @@ async function findNextTask(state: DeployGraphState): Promise<NextTask | null> {
       { taskName, shouldSkip, readyToRun, currentStatus: task?.status ?? "not-created" },
       "Evaluated next candidate task"
     );
-    return { taskName, blocking: false, shouldSkip, readyToRun };
+    return { taskName, blocking: false, timedOut: false, shouldSkip, readyToRun };
   }
 
   log.info("All tasks in task order have been processed");
@@ -116,6 +132,30 @@ function allTasksComplete(state: DeployGraphState): boolean {
     return false;
   }
   return true;
+}
+
+/**
+ * Check Rails for the actual job run status (fallback when webhook hasn't arrived).
+ * Returns the job status if reachable, or null if the check fails.
+ */
+async function checkJobRunStatus(
+  jobId: number,
+  jwt: string
+): Promise<{
+  status: string;
+  result: Record<string, unknown> | null;
+  error: string | null;
+} | null> {
+  const log = getLogger({ component: "taskExecutor.checkJobRunStatus" });
+  try {
+    const api = new JobRunAPIService({ jwt });
+    const jobRun = await api.show(jobId);
+    log.info({ jobId, status: jobRun.status }, "Job run status check succeeded");
+    return jobRun;
+  } catch (err) {
+    log.warn({ jobId, error: err }, "Job run status check failed — will continue with timeout");
+    return null;
+  }
 }
 
 /**
@@ -185,8 +225,87 @@ async function runTaskExecutor(
     };
   }
 
-  // Blocking - wait for webhook
+  // Blocking - check timeout or set blockingStartedAt
   if (nextTask.blocking) {
+    const task = Task.findTask(state.tasks, nextTask.taskName)!;
+
+    // Timed out — check Rails for actual status before failing
+    if (nextTask.timedOut) {
+      // Fallback: maybe the job completed but the webhook failed to deliver
+      if (task.jobId && state.jwt) {
+        const jobStatus = await checkJobRunStatus(task.jobId, state.jwt);
+        if (jobStatus) {
+          if (jobStatus.status === "completed" && jobStatus.result) {
+            log.info(
+              { taskName: nextTask.taskName, jobId: task.jobId },
+              "Job completed in Rails but webhook missed — recovering from status check"
+            );
+            return {
+              tasks: [{ ...task, result: jobStatus.result, blockingStartedAt: undefined }],
+            };
+          }
+          if (jobStatus.status === "failed") {
+            log.info(
+              { taskName: nextTask.taskName, jobId: task.jobId },
+              "Job failed in Rails — propagating error from status check"
+            );
+            return {
+              tasks: [
+                { ...task, error: jobStatus.error ?? "Job failed", blockingStartedAt: undefined },
+              ],
+            };
+          }
+          // Job still running in Rails — extend timeout by resetting blockingStartedAt
+          if (jobStatus.status === "running" || jobStatus.status === "pending") {
+            log.info(
+              { taskName: nextTask.taskName, jobId: task.jobId, railsStatus: jobStatus.status },
+              "Job still in progress in Rails — extending timeout"
+            );
+            return {
+              tasks: [{ ...task, blockingStartedAt: Date.now() }],
+            };
+          }
+        }
+      }
+
+      // Status check failed or no jobId — proceed with timeout failure
+      const runner = getTaskRunner(nextTask.taskName);
+      const timeoutError = `Task "${nextTask.taskName}" timed out waiting for external result`;
+      log.error({ taskName: nextTask.taskName, jobId: task.jobId }, timeoutError);
+
+      const failedTask = { ...task, status: "failed" as const, error: timeoutError };
+
+      if (runner?.isFailureRecoverable) {
+        log.info(
+          { taskName: nextTask.taskName },
+          "Timed-out task is recoverable, skipping past it"
+        );
+        return {
+          tasks: [failedTask],
+        };
+      }
+
+      await syncDeployStatus(state, "failed");
+      return {
+        ...withPhases(state, [failedTask]),
+        status: "failed",
+        error: { message: timeoutError, node: nextTask.taskName },
+        tasks: [failedTask],
+      };
+    }
+
+    // First time blocking — record blockingStartedAt
+    if (!task.blockingStartedAt) {
+      log.info(
+        { taskName: nextTask.taskName },
+        "Task is blocking for the first time — recording blockingStartedAt"
+      );
+      return {
+        tasks: [{ ...task, blockingStartedAt: Date.now() }],
+      };
+    }
+
+    // Already has blockingStartedAt and within timeout — just wait
     log.info(
       { taskName: nextTask.taskName },
       "Task is blocking, waiting for webhook — exiting graph"

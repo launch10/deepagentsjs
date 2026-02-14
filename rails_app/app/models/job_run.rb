@@ -46,6 +46,7 @@ class JobRun < ApplicationRecord
   scope :failed, -> { where(status: "failed") }
   scope :for_job, ->(job_class) { where(job_class: job_class) }
   scope :recent, -> { order(created_at: :desc) }
+  scope :stuck, -> { where(status: %w[pending running]).where("created_at < ?", 10.minutes.ago) }
 
   # Create a job run for tracking purposes (non-Langgraph usage)
   # For Langgraph-triggered jobs, use the API endpoint instead

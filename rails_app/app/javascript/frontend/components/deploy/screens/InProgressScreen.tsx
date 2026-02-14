@@ -7,11 +7,12 @@ type GraphTask = NonNullable<Deploy.DeployGraphState["tasks"]>[number];
 interface InProgressScreenProps {
   deployType: "website" | "campaign";
   tasks?: GraphTask[];
+  isStuck?: boolean;
 }
 
 const fallbackSteps = [{ id: "preparing", label: "Preparing deployment" }];
 
-export default function InProgressScreen({ deployType, tasks }: InProgressScreenProps) {
+export default function InProgressScreen({ deployType, tasks, isStuck }: InProgressScreenProps) {
   const noun = deployType === "campaign" ? "website & campaign" : "website";
 
   const { steps, currentStep, subtitle } = useMemo(() => {
@@ -51,6 +52,13 @@ export default function InProgressScreen({ deployType, tasks }: InProgressScreen
         steps={steps}
         currentStep={currentStep}
       />
+      {isStuck && (
+        <div className="mt-6 max-w-sm rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-center">
+          <p className="text-sm text-amber-800">
+            This is taking longer than expected. Your deployment is still in progress.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

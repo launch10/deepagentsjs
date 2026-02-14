@@ -1,4 +1,14 @@
 class API::V1::JobRunsController < API::BaseController
+  def show
+    job_run = current_account.job_runs.find(params[:id])
+    render json: {
+      id: job_run.id,
+      status: job_run.status,
+      result: job_run.result_data,
+      error: job_run.error_message
+    }
+  end
+
   def create
     unless JobRun::ALLOWED_JOBS.include?(params[:job_class])
       return render json: { errors: ["Invalid job type"] }, status: :unprocessable_entity

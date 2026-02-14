@@ -241,6 +241,94 @@ RSpec.describe "Job Runs API", type: :request do
     end
   end
 
+  # Show endpoint (used by Langgraph for status check fallback)
+  describe 'Show job run' do
+    let!(:job_run) do
+      create(:job_run,
+        account: account,
+        job_class: "WebsiteDeploy",
+        status: "completed",
+        result_data: { "url" => "https://example.com" },
+        langgraph_thread_id: "thread_show123"
+      )
+    end
+
+    path '/api/v1/job_runs/{id}' do
+      get 'Returns job run status and result' do
+        tags 'Job Runs'
+        produces 'application/json'
+        security [bearer_auth: []]
+        parameter name: :Authorization, in: :header, type: :string, required: false
+        parameter name: 'X-Signature', in: :header, type: :string, required: false
+        parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+        parameter name: :id, in: :path, type: :integer, required: true
+
+        response '200', 'returns job run with status and result' do
+          schema APISchemas::JobRun.show_response
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:id) { job_run.id }
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data['id']).to eq(job_run.id)
+            expect(data['status']).to eq('completed')
+            expect(data['result']).to eq({ "url" => "https://example.com" })
+            expect(data['error']).to be_nil
+          end
+        end
+
+        response '200', 'returns error for failed job run' do
+          schema APISchemas::JobRun.show_response
+          let!(:failed_job_run) do
+            create(:job_run,
+              account: account,
+              job_class: "WebsiteDeploy",
+              status: "failed",
+              error_message: "Deploy failed: timeout",
+              langgraph_thread_id: "thread_fail123"
+            )
+          end
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:id) { failed_job_run.id }
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data['status']).to eq('failed')
+            expect(data['error']).to eq('Deploy failed: timeout')
+          end
+        end
+
+        response '404', 'cannot access other accounts job run' do
+          let!(:other_user) { create(:user) }
+          let!(:other_account) { other_user.owned_account }
+          let!(:other_job_run) do
+            create(:job_run,
+              account: other_account,
+              job_class: "WebsiteDeploy",
+              status: "completed",
+              langgraph_thread_id: "thread_other123"
+            )
+          end
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:id) { other_job_run.id }
+
+          run_test! do |response|
+            expect(response.code).to eq("404")
+          end
+        end
+      end
+    end
+  end
+
   # WebsiteDeploy job type tests
   describe 'WebsiteDeploy job' do
     let!(:project) { create(:project, account: account) }

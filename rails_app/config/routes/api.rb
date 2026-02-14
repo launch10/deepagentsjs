@@ -58,7 +58,7 @@ namespace :api, defaults: {format: :json} do
         post :search
       end
     end
-    resources :job_runs, only: [:create]
+    resources :job_runs, only: [:create, :show]
 
     # Dashboard insights for Langgraph
     resources :dashboard_insights, only: [:index, :create] do
@@ -77,7 +77,7 @@ namespace :api, defaults: {format: :json} do
     resources :deploys, only: [:create, :show, :update] do
       post :touch, on: :member
     end
-    resources :website_deploys, only: [] do
+    resources :website_deploys, only: [:index] do
       post :rollback, on: :member
     end
 

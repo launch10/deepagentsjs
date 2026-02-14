@@ -64,6 +64,12 @@ Zhong.schedule do
     end
   end
 
+  category "Monitoring" do
+    every(5.minutes, "detect stuck job runs") do
+      Monitoring::StuckJobDetectorWorker.perform_async
+    end
+  end
+
   category "Analytics" do
     # Sync Google Ads performance data hourly for near-real-time dashboard
     # Uses 7-day rolling window to capture late-arriving conversions

@@ -214,7 +214,10 @@ describe.sequential("Deploy Graph Tests", () => {
           const googleConnectTask = Task.findTask(result.state.tasks, "ConnectingGoogle");
           expect(googleConnectTask).toBeDefined();
           expect(googleConnectTask?.status).toBe("running");
-          expect(result.state.tasks.length).toBe(1); // this is a blocking action, it will not have run other tasks...
+          // All googleAds tasks are pre-created as pending, but only ConnectingGoogle is running
+          // (this is a blocking action, executor won't advance past it)
+          const nonPendingTasks = result.state.tasks.filter((t) => t.status !== "pending");
+          expect(nonPendingTasks.length).toBe(1);
         });
 
         it("continues to wait when already running ConnectingGoogle", async () => {
@@ -281,10 +284,10 @@ describe.sequential("Deploy Graph Tests", () => {
           const updatedGoogleConnectTask = Task.findTask(updatedResult.tasks, "ConnectingGoogle");
           const verifyingGoogleTask = Task.findTask(updatedResult.tasks, "VerifyingGoogle");
 
-          // Should have ConnectingGoogle task with running status
+          // Should have ConnectingGoogle completed and VerifyingGoogle running
           expect(updatedGoogleConnectTask).toBeDefined();
           expect(updatedGoogleConnectTask?.status).toBe("completed");
-          expect(updatedResult.tasks.length).toBe(2); // this is a blocking action, it will not have run other tasks...
+          // All googleAds tasks are pre-created; ConnectingGoogle completed, VerifyingGoogle running
           expect(verifyingGoogleTask?.status).toBe("running");
         });
       });
@@ -982,7 +985,505 @@ describe.sequential("Deploy Graph Tests", () => {
 
   /**
    * =============================================================================
-   * 7. CAMPAIGN DEPLOYMENT TESTS [campaign]
+   * 7. TASK PRE-CREATION TESTS
+   * =============================================================================
+   * These tests verify that initPhasesNode pre-creates all expected tasks
+   * as "pending" so the frontend progress bar shows the full set from the start.
+   *
+   * The key invariants being tested:
+   * - Fresh deploys (empty tasks[]) get all expected tasks pre-created as pending
+   * - Pre-created pending tasks are correctly picked up by the executor
+   * - shouldSkip logic still works correctly with pre-existing pending tasks
+   * - Serial execution is preserved (readyToRun dependencies don't cause premature skipping)
+   */
+  describe("Task Pre-Creation", () => {
+    beforeEach(async () => {
+      vi.clearAllMocks();
+      await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
+
+      mockJobRunAPIService.mockImplementation(
+        () =>
+          ({
+            create: vi.fn().mockResolvedValue({ id: 555, status: "pending" }),
+          }) as any
+      );
+    });
+
+    // Helper: wrap sync initPhasesNode as async for runNode() compatibility
+    const asyncInitPhases = async (state: DeployGraphState) => {
+      const { initPhasesNode } = await import("@nodes");
+      return initPhasesNode(state);
+    };
+
+    /**
+     * Test initPhasesNode directly: when tasks are empty and deploy includes website,
+     * it should pre-create all website tasks as pending.
+     */
+    it("pre-creates all expected website tasks as pending on fresh deploy", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_precreate_1" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: [],
+          chatId: 1,
+        })
+        .runNode(asyncInitPhases)
+        .execute();
+
+      const expectedWebsiteTasks: Deploy.TaskName[] = [
+        "ValidateLinks",
+        "RuntimeValidation",
+        "FixingBugs",
+        "OptimizingSEO",
+        "AddingAnalytics",
+        "DeployingWebsite",
+      ];
+
+      // All expected tasks should exist
+      for (const taskName of expectedWebsiteTasks) {
+        const task = Task.findTask(result.state.tasks, taskName);
+        expect(task, `Expected task "${taskName}" to exist`).toBeDefined();
+        expect(task?.status, `Expected task "${taskName}" to be pending`).toBe("pending");
+      }
+
+      // No campaign tasks should exist
+      const campaignTasks = [
+        "ConnectingGoogle",
+        "VerifyingGoogle",
+        "CheckingBilling",
+        "DeployingCampaign",
+        "EnablingCampaign",
+      ];
+      for (const taskName of campaignTasks) {
+        const task = Task.findTask(result.state.tasks, taskName);
+        expect(task, `Expected campaign task "${taskName}" to NOT exist`).toBeUndefined();
+      }
+
+      // Phases should also be computed from the pending tasks
+      expect(result.state.phases.length).toBeGreaterThan(0);
+    });
+
+    /**
+     * Test initPhasesNode directly: when deploy includes both website and googleAds,
+     * it should pre-create ALL tasks (website + campaign) as pending.
+     */
+    it("pre-creates all expected campaign + website tasks on combined deploy", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_precreate_2" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          campaignId: 1,
+          deploy: { website: true, googleAds: true },
+          tasks: [],
+          chatId: 1,
+        })
+        .runNode(asyncInitPhases)
+        .execute();
+
+      // All website AND campaign tasks should exist
+      const allExpectedTasks: Deploy.TaskName[] = [
+        "ConnectingGoogle",
+        "VerifyingGoogle",
+        "CheckingBilling",
+        "ValidateLinks",
+        "RuntimeValidation",
+        "FixingBugs",
+        "OptimizingSEO",
+        "AddingAnalytics",
+        "DeployingWebsite",
+        "DeployingCampaign",
+        "EnablingCampaign",
+      ];
+
+      for (const taskName of allExpectedTasks) {
+        const task = Task.findTask(result.state.tasks, taskName);
+        expect(task, `Expected task "${taskName}" to exist`).toBeDefined();
+        expect(task?.status, `Expected task "${taskName}" to be pending`).toBe("pending");
+      }
+    });
+
+    /**
+     * Test initPhasesNode directly: when tasks already exist (resumed from checkpoint),
+     * it should NOT overwrite them — only compute phases.
+     */
+    it("does not overwrite existing tasks when tasks already present", async () => {
+      const existingTasks = Deploy.withTasks(
+        { website: true },
+        { ValidateLinks: "completed", RuntimeValidation: "running" }
+      );
+
+      const result = await testGraph<DeployGraphState>()
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_precreate_3" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: existingTasks,
+          chatId: 1,
+        })
+        .runNode(asyncInitPhases)
+        .execute();
+
+      // Existing tasks should be unchanged
+      const validateLinks = Task.findTask(result.state.tasks, "ValidateLinks");
+      expect(validateLinks?.status).toBe("completed");
+
+      const runtimeValidation = Task.findTask(result.state.tasks, "RuntimeValidation");
+      expect(runtimeValidation?.status).toBe("running");
+    });
+
+    /**
+     * Test the task executor with pre-created pending tasks:
+     * The executor should enqueue the first pending task as running.
+     *
+     * Note: runNode returns the partial state update (before the reducer merges).
+     * The executor returns only the tasks it modified. We verify:
+     * 1. The returned tasks include the first task as "running"
+     * 2. No other tasks are in the returned partial (executor only touches one task per pass)
+     */
+    it("pre-created pending tasks transition to running when executor picks them up", async () => {
+      const { taskExecutorNode } = await import("@nodes");
+
+      // Start with pre-created pending tasks (simulating what initPhasesNode creates)
+      const pendingTasks = Deploy.createTasks({ website: true });
+
+      const result = await testGraph<DeployGraphState>()
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_precreate_4" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks: pendingTasks,
+          chatId: 1,
+        })
+        .runNode(taskExecutorNode)
+        .execute();
+
+      // The executor returns a partial with only the first task transitioned to running.
+      // runNode merges partial onto initial state, replacing the tasks array.
+      // The first task in website order is ValidateLinks — executor enqueues it as running.
+      const validateLinks = Task.findTask(result.state.tasks, "ValidateLinks");
+      expect(validateLinks).toBeDefined();
+      expect(validateLinks?.status).toBe("running");
+    });
+
+    /**
+     * Test shouldSkip with pre-created pending tasks:
+     * FixingBugs should be skipped when both validation tasks completed without failure.
+     */
+    it("shouldSkip still works correctly with pre-created pending tasks", async () => {
+      // FixingBugs should be skipped when validation passes (both completed, neither failed)
+      // Start with pre-created tasks, but set validation tasks to completed
+      const tasks = Deploy.createTasks({ website: true }).map((t) => {
+        if (t.name === "ValidateLinks" || t.name === "RuntimeValidation") {
+          return { ...t, status: "completed" as const };
+        }
+        return t;
+      });
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_precreate_5" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          deploy: { website: true },
+          tasks,
+          chatId: 1,
+        })
+        .stopAfter("taskExecutor")
+        .execute();
+
+      // FixingBugs should be skipped (validation passed)
+      const fixingBugs = Task.findTask(result.state.tasks, "FixingBugs");
+      expect(fixingBugs?.status).toBe("skipped");
+    });
+
+    /**
+     * Test initPhasesNode directly: campaign-only deploy creates only campaign tasks.
+     */
+    it("campaign-only deploy pre-creates only campaign tasks", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_precreate_6" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          campaignId: 1,
+          deploy: { googleAds: true },
+          tasks: [],
+          chatId: 1,
+        })
+        .runNode(asyncInitPhases)
+        .execute();
+
+      const expectedCampaignTasks: Deploy.TaskName[] = [
+        "ConnectingGoogle",
+        "VerifyingGoogle",
+        "CheckingBilling",
+        "DeployingCampaign",
+        "EnablingCampaign",
+      ];
+
+      for (const taskName of expectedCampaignTasks) {
+        const task = Task.findTask(result.state.tasks, taskName);
+        expect(task, `Expected task "${taskName}" to exist`).toBeDefined();
+        expect(task?.status, `Expected task "${taskName}" to be pending`).toBe("pending");
+      }
+
+      // No website tasks should exist
+      const websiteTasks = [
+        "ValidateLinks",
+        "RuntimeValidation",
+        "FixingBugs",
+        "OptimizingSEO",
+        "AddingAnalytics",
+        "DeployingWebsite",
+      ];
+      for (const taskName of websiteTasks) {
+        const task = Task.findTask(result.state.tasks, taskName);
+        expect(task, `Expected website task "${taskName}" to NOT exist`).toBeUndefined();
+      }
+    });
+
+    /**
+     * =============================================================================
+     * CAMPAIGN TASK DEPENDENCY REGRESSION TESTS
+     * =============================================================================
+     * These tests verify that pre-created pending campaign tasks don't break
+     * the readyToRun / shouldSkip dependency chain. Each campaign task runner
+     * has specific dependencies that must work correctly with pre-existing
+     * pending tasks in state.
+     */
+
+    it("campaign: VerifyingGoogle waits for ConnectingGoogle (readyToRun dependency)", async () => {
+      const { taskExecutorNode } = await import("@nodes");
+
+      // All campaign tasks pre-created as pending. ConnectingGoogle is first,
+      // but Google IS already connected, so it should be skipped.
+      // VerifyingGoogle should then be next — but its readyToRun checks
+      // isTaskDone("ConnectingGoogle"). After ConnectingGoogle is skipped,
+      // isTaskDone returns true, so VerifyingGoogle should proceed.
+      mockGoogleAPIService.mockImplementation(
+        () =>
+          ({
+            getConnectionStatus: vi
+              .fn()
+              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
+            getInviteStatus: vi.fn().mockResolvedValue({ accepted: false, status: "none" }),
+          }) as any
+      );
+
+      // Simulate: ConnectingGoogle already skipped, rest are pending
+      const tasks = Deploy.createTasks({ googleAds: true }).map((t) => {
+        if (t.name === "ConnectingGoogle") return { ...t, status: "skipped" as const };
+        return t;
+      });
+
+      const result = await testGraph<DeployGraphState>()
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_campaign_dep_1" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          campaignId: 1,
+          deploy: { googleAds: true },
+          tasks,
+          chatId: 1,
+        })
+        .runNode(taskExecutorNode)
+        .execute();
+
+      // VerifyingGoogle should be enqueued as running (ConnectingGoogle is done → readyToRun = true)
+      const verifyTask = Task.findTask(result.state.tasks, "VerifyingGoogle");
+      expect(verifyTask).toBeDefined();
+      expect(verifyTask?.status).toBe("running");
+    });
+
+    it("campaign: CheckingBilling waits for VerifyingGoogle (readyToRun dependency)", async () => {
+      const { taskExecutorNode } = await import("@nodes");
+
+      mockGoogleAPIService.mockImplementation(
+        () =>
+          ({
+            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: false }),
+          }) as any
+      );
+
+      // ConnectingGoogle + VerifyingGoogle completed, rest pending
+      const tasks = Deploy.createTasks({ googleAds: true }).map((t) => {
+        if (t.name === "ConnectingGoogle" || t.name === "VerifyingGoogle") {
+          return { ...t, status: "completed" as const };
+        }
+        return t;
+      });
+
+      const result = await testGraph<DeployGraphState>()
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_campaign_dep_2" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          campaignId: 1,
+          deploy: { googleAds: true },
+          tasks,
+          chatId: 1,
+        })
+        .runNode(taskExecutorNode)
+        .execute();
+
+      // CheckingBilling should be enqueued (VerifyingGoogle done → readyToRun = true)
+      const billingTask = Task.findTask(result.state.tasks, "CheckingBilling");
+      expect(billingTask).toBeDefined();
+      expect(billingTask?.status).toBe("running");
+    });
+
+    it("campaign: DeployingCampaign readyToRun respects cross-instruction dependency", async () => {
+      const { taskExecutorNode } = await import("@nodes");
+      await DatabaseSnapshotter.restoreSnapshot("campaign_complete");
+      const campaignId = (await db.select().from(campaigns).limit(1).execute())[0]?.id;
+
+      // Combined deploy: DeployingCampaign.readyToRun checks isTaskDone("DeployingWebsite")
+      // With DeployingWebsite still pending, it should NOT be ready
+      const tasks = Deploy.createTasks({ website: true, googleAds: true }).map((t) => {
+        // Google setup + billing done, website tasks done except DeployingWebsite
+        if (
+          [
+            "ConnectingGoogle",
+            "VerifyingGoogle",
+            "CheckingBilling",
+            "ValidateLinks",
+            "RuntimeValidation",
+            "FixingBugs",
+            "OptimizingSEO",
+            "AddingAnalytics",
+          ].includes(t.name)
+        ) {
+          return { ...t, status: "completed" as const };
+        }
+        return t; // DeployingWebsite, DeployingCampaign, EnablingCampaign stay pending
+      });
+
+      const result = await testGraph<DeployGraphState>()
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_campaign_dep_3" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          campaignId,
+          deploy: { website: true, googleAds: true },
+          tasks,
+          chatId: 1,
+        })
+        .runNode(taskExecutorNode)
+        .execute();
+
+      // DeployingWebsite is the first non-done task — executor should pick it up
+      const deployWebsite = Task.findTask(result.state.tasks, "DeployingWebsite");
+      expect(deployWebsite?.status).toBe("running");
+
+      // DeployingCampaign should still be pending (DeployingWebsite not done)
+      // Note: runNode replaces tasks with partial, so it won't be in result.
+      // The key assertion is that DeployingWebsite was chosen, not DeployingCampaign.
+    });
+
+    it("campaign: shouldSkip checks deploy instructions, not task state", async () => {
+      const { taskExecutorNode } = await import("@nodes");
+
+      // Campaign-only deploy: website tasks like DeployingWebsite should be skipped
+      // because shouldSkip checks !state.deploy?.website (deploy instructions),
+      // NOT whether the task exists in state.
+      // Pre-create only campaign tasks (as initPhasesNode would)
+      const tasks = Deploy.createTasks({ googleAds: true });
+
+      mockGoogleAPIService.mockImplementation(
+        () =>
+          ({
+            getConnectionStatus: vi
+              .fn()
+              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
+            getInviteStatus: vi
+              .fn()
+              .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
+            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: true }),
+          }) as any
+      );
+
+      const result = await testGraph<DeployGraphState>()
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_campaign_dep_4" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          campaignId: 1,
+          deploy: { googleAds: true },
+          tasks,
+          chatId: 1,
+        })
+        .runNode(taskExecutorNode)
+        .execute();
+
+      // ConnectingGoogle should be skipped (already connected)
+      const connectTask = Task.findTask(result.state.tasks, "ConnectingGoogle");
+      expect(connectTask?.status).toBe("skipped");
+    });
+
+    it("campaign: EnableCampaign waits for CheckingBilling (readyToRun dependency)", async () => {
+      const { taskExecutorNode } = await import("@nodes");
+      await DatabaseSnapshotter.restoreSnapshot("campaign_complete");
+      const campaignId = (await db.select().from(campaigns).limit(1).execute())[0]?.id;
+
+      // All done except EnableCampaign and CheckingBilling (still pending)
+      // EnableCampaign.readyToRun checks isTaskDone("CheckingBilling")
+      const tasks = Deploy.createTasks({ googleAds: true }).map((t) => {
+        if (
+          t.name === "ConnectingGoogle" ||
+          t.name === "VerifyingGoogle" ||
+          t.name === "DeployingCampaign"
+        ) {
+          return { ...t, status: "completed" as const };
+        }
+        return t; // CheckingBilling and EnablingCampaign stay pending
+      });
+
+      mockGoogleAPIService.mockImplementation(
+        () =>
+          ({
+            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: false }),
+          }) as any
+      );
+
+      const result = await testGraph<DeployGraphState>()
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_campaign_dep_5" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          campaignId,
+          deploy: { googleAds: true },
+          tasks,
+          chatId: 1,
+        })
+        .runNode(taskExecutorNode)
+        .execute();
+
+      // CheckingBilling is the first non-done task — executor picks it up
+      const billingTask = Task.findTask(result.state.tasks, "CheckingBilling");
+      expect(billingTask?.status).toBe("running");
+    });
+  });
+
+  /**
+   * =============================================================================
+   * 8. CAMPAIGN DEPLOYMENT TESTS [campaign]
    * =============================================================================
    * These tests verify Google Ads campaign deployment.
    *

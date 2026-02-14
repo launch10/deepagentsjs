@@ -1132,6 +1132,103 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/website_deploys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists paginated website deploys */
+        get: {
+            parameters: {
+                query: {
+                    /** @description Website ID to list deploys for */
+                    website_id: number;
+                    /** @description Page number (default 1) */
+                    page?: number;
+                };
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description scoped to current account's website */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            website_deploys: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Deploy status (pending, building, uploading, completed, failed, skipped) */
+                                status: string;
+                                /** @description Deploy environment (development, staging, production) */
+                                environment: string;
+                                /** @description Whether this deploy is currently live */
+                                is_live: boolean;
+                                /** @description Whether this is a preview deploy */
+                                is_preview?: boolean;
+                                /** @description Whether this deploy can be rolled back to */
+                                revertible: boolean;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                created_at: string;
+                            }[];
+                            pagination: {
+                                /** @description Current page number */
+                                current_page: number;
+                                /** @description Total number of pages */
+                                total_pages: number;
+                                /** @description Total number of items */
+                                total_count: number;
+                                /** @description Previous page number or null */
+                                prev_page?: number | null;
+                                /** @description Next page number or null */
+                                next_page?: number | null;
+                                /** @description First item index on current page */
+                                from?: number | null;
+                                /** @description Last item index on current page */
+                                to?: number | null;
+                                /** @description Page series for pagination controls */
+                                series?: (number | string)[];
+                            };
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description website not found for another account */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/website_deploys/{id}/rollback": {
         parameters: {
             query?: never;

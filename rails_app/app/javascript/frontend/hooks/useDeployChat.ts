@@ -31,7 +31,6 @@ export interface DeployProps {
   deploy_environment: string;
   campaign: { id: number } | null;
   project: { id: number; uuid: string };
-  website_deploys: WebsiteDeployRecord[];
   [key: string]: unknown;
 }
 
@@ -107,6 +106,8 @@ export function useDeployChatThreadId() {
  * Hook that provides deploy-specific functionality including polling.
  * Uses updateState() to poll for status updates during active deploys.
  */
+const STUCK_THRESHOLD_MS = 180_000; // 3 minutes without task state change
+
 export function useDeployChatWithPolling() {
   const props = usePage<DeployProps>().props;
   const { deploy_type, website, campaign } = props;
@@ -117,7 +118,10 @@ export function useDeployChatWithPolling() {
   const { updateState, state, isLoading, error, status } = snapshot;
 
   const [isPolling, setIsPolling] = useState(false);
+  const [isStuck, setIsStuck] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastTaskSnapshotRef = useRef<string>("");
+  const lastChangeTimeRef = useRef<number>(Date.now());
 
   // Start the deploy process — graph's initDeployNode creates the Deploy record.
   // We only send project/website/campaign IDs and deploy instructions.
@@ -138,6 +142,28 @@ export function useDeployChatWithPolling() {
   const isTerminal = state.status === "completed" || state.status === "failed";
   const isInProgress = state.status === "running";
   const isStreaming = status === "streaming" || status === "submitted";
+
+  // Stuck detection: track task state changes
+  useEffect(() => {
+    if (!isInProgress || isTerminal) {
+      setIsStuck(false);
+      return;
+    }
+
+    // Create a snapshot of task statuses to detect changes
+    const taskSnapshot = JSON.stringify(
+      state.tasks?.map((t) => ({ n: t.name, s: t.status })) ?? []
+    );
+
+    if (taskSnapshot !== lastTaskSnapshotRef.current) {
+      lastTaskSnapshotRef.current = taskSnapshot;
+      lastChangeTimeRef.current = Date.now();
+      setIsStuck(false);
+    } else {
+      const elapsed = Date.now() - lastChangeTimeRef.current;
+      setIsStuck(elapsed > STUCK_THRESHOLD_MS);
+    }
+  }, [state.tasks, state.status, isInProgress, isTerminal]);
 
   // Polling effect - starts when in progress and not streaming, stops when terminal
   useEffect(() => {
@@ -169,6 +195,7 @@ export function useDeployChatWithPolling() {
     state,
     isLoading,
     isPolling,
+    isStuck,
     error: error ?? null,
     startDeploy,
   };

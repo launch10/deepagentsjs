@@ -64,6 +64,15 @@ export interface TaskRunner {
   isBlocking?: (state: DeployGraphState, task: Task.Task) => boolean;
 
   /**
+   * How long (ms) to wait for a blocking task before timing out.
+   *
+   * Default: 300_000 (5 minutes). Only applies when isBlocking returns true.
+   * When exceeded, the task is marked failed. If isFailureRecoverable,
+   * the task is retried; otherwise the deploy fails.
+   */
+  blockingTimeout?: number;
+
+  /**
    * Can we recover from this task's failure?
    *
    * Default: false (failure is fatal, stops the graph)
