@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { usePage } from "@inertiajs/react";
 import { Chat } from "@components/shared/chat/Chat";
-import { DeploySidebar, DeployHistory } from "@components/deploy";
+import { DeploySidebar } from "@components/deploy";
 import {
   InProgressScreen,
   GoogleConnectScreen,
@@ -19,7 +19,6 @@ import DevButton from "@components/shared/DevButton";
 import { useDeployChatInstance, type DeployProps } from "@hooks/useDeployChat";
 import { useDeployInit } from "@hooks/useDeployInit";
 import { useDeployContentScreen } from "@hooks/useDeployContentScreen";
-import { Deploy as DeployTypes } from "@shared";
 import { useRootPath } from "~/stores/sessionStore";
 
 function RestartDeployButton() {
@@ -92,12 +91,6 @@ function DeployContent() {
   const { state, startDeploy } = polling;
   const screen = useDeployContentScreen(state, deploy?.status);
 
-  // Find the currently running task for the in-progress label
-  const currentTask = state.tasks?.find((t) => t.status === "running");
-  const currentTaskLabel = currentTask
-    ? (DeployTypes.TaskDescriptionMap[currentTask.name as DeployTypes.TaskName] ?? currentTask.name)
-    : undefined;
-
   // Find google email for invite screen
   const connectTask = state.tasks?.find((t) => t.name === "ConnectingGoogle");
   const googleEmail = connectTask?.result?.google_email as string | undefined;
@@ -113,7 +106,7 @@ function DeployContent() {
         </div>
         <div className="min-h-0 overflow-auto border border-neutral-300 bg-white rounded-2xl">
           {screen === "in-progress" && (
-            <InProgressScreen deployType={deploy_type} currentTaskLabel={currentTaskLabel} />
+            <InProgressScreen deployType={deploy_type} tasks={state.tasks} />
           )}
           {screen === "google-connect" && <GoogleConnectScreen />}
           {screen === "invite-accept" && (
@@ -138,7 +131,6 @@ function DeployContent() {
               deployEnvironment={deploy_environment}
             />
           )}
-          <DeployHistory />
           {screen === "deploy-error" && (
             <DeployErrorScreen consoleErrors={state.consoleErrors} onRetry={startDeploy} />
           )}

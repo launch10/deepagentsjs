@@ -1,6 +1,7 @@
 import type { Deploy } from "@shared";
 import DeploymentHistoryCard from "@components/website/deployment-history/DeploymentHistoryCard";
 import type { Deployment } from "@components/website/deployment-history/DeploymentHistory.types";
+import { DeployHistory } from "@components/deploy";
 import deployImage from "@assets/deploy.png";
 
 interface DeployCompleteScreenProps {
@@ -55,26 +56,27 @@ export default function DeployCompleteScreen({
         </p>
       </div>
 
-      {/* Content */}
-      <div className="flex flex-1 flex-col items-center justify-center px-10 py-7">
-        <img src={deployImage} alt="Deployment" className="w-28" />
-        <div className="flex flex-col items-center gap-5 py-6 text-center">
-          <div className="flex flex-col gap-3">
-            <h3 className="text-base font-semibold text-base-500">
-              {isCampaign
-                ? "You've just launched your first campaign"
-                : "You've just launched your website"}
-            </h3>
-            <p className="max-w-md text-sm leading-[18px] text-base-300">
-              Your big idea is now out in the world and attracting customers. This is just the
-              beginning of something amazing!
-            </p>
-          </div>
+      {/* Success banner */}
+      <div className="flex flex-col items-center px-10 pt-6 pb-4">
+        <img src={deployImage} alt="Deployment" className="w-20" />
+        <div className="flex flex-col items-center gap-1.5 pt-3 pb-4 text-center">
+          <h3 className="text-base font-semibold text-base-500">
+            {isCampaign
+              ? "You've just launched your first campaign"
+              : "You've just launched your website"}
+          </h3>
+          <p className="max-w-md text-sm leading-[18px] text-base-300">
+            Your big idea is now out in the world and attracting customers. This is just the
+            beginning of something amazing!
+          </p>
         </div>
-        <div className="w-full max-w-[580px]">
+        <div className="w-full">
           <DeploymentHistoryCard deployment={deployment} />
         </div>
       </div>
+
+      {/* Deploy history */}
+      <DeployHistory />
     </div>
   );
 }

@@ -3,7 +3,6 @@ import { usePage } from "@inertiajs/react";
 import { CheckCircleIcon, ExclamationTriangleIcon } from "@heroicons/react/16/solid";
 import { ArrowUturnLeftIcon } from "@heroicons/react/16/solid";
 import { cn } from "@lib/utils";
-import { Button } from "@components/ui/button";
 import DeploymentHistoryBadge from "@components/website/deployment-history/DeploymentHistoryBadge";
 import type { DeployProps, WebsiteDeployRecord } from "@hooks/useDeployChat";
 import { useRootPath } from "~/stores/sessionStore";
@@ -73,16 +72,14 @@ function DeployHistoryItem({ deploy }: { deploy: WebsiteDeployRecord }) {
         <DeploymentHistoryBadge variant={statusToBadgeVariant(deploy)} />
       </div>
       {canRollback && (
-        <Button
-          variant="outline"
-          size="sm"
+        <button
           onClick={handleRollback}
           disabled={rolling}
-          className="gap-1.5"
+          className="flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-50 px-3 py-1 text-xs font-medium text-base-400 transition-all hover:border-neutral-300 hover:bg-white hover:text-base-500 disabled:opacity-50"
         >
-          <ArrowUturnLeftIcon className="size-3.5" />
+          <ArrowUturnLeftIcon className="size-3" />
           {rolling ? "Rolling back..." : "Rollback"}
-        </Button>
+        </button>
       )}
     </div>
   );
@@ -102,7 +99,7 @@ export default function DeployHistory() {
       {liveDeploy && (
         <div className="flex flex-col gap-2">
           <span className="text-sm font-semibold text-base-500">Current</span>
-          <div className="max-w-[580px]">
+          <div>
             <DeployHistoryItem deploy={liveDeploy} />
           </div>
         </div>
@@ -110,7 +107,7 @@ export default function DeployHistory() {
       {previousDeploys.length > 0 && (
         <div className="flex flex-col gap-2">
           <span className="text-sm text-base-400">Previous</span>
-          <div className="flex flex-col gap-2 max-w-[580px]">
+          <div className="flex flex-col gap-2">
             {previousDeploys.map((d) => (
               <DeployHistoryItem key={d.id} deploy={d} />
             ))}
