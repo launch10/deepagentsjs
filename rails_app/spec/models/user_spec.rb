@@ -319,11 +319,11 @@ RSpec.describe User, type: :model do
   end
 
   describe "event tracking" do
-    it "tracks user_signed_up on create" do
-      new_user = build(:user)
+    it "tracks user_signed_up when track_signup is called" do
+      new_user = create(:user)
       expect(TrackEvent).to receive(:call).with("user_signed_up",
         hash_including(user: new_user, method: "email"))
-      new_user.save!
+      new_user.track_signup
     end
   end
 end

@@ -32,6 +32,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
     if resource.persisted?
       persist_signup_attribution(resource)
+      resource.track_signup
       clear_signup_attribution_cookie
 
       if resource.active_for_authentication?
@@ -108,7 +109,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
     attribution = signup_attribution
     return unless attribution.present?
 
-    user.owned_account&.update_column(:signup_attribution, attribution.to_json)
+    user.owned_account&.update_column(:signup_attribution, attribution)
   end
 
   def setup_captcha_session

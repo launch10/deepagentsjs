@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { router, usePage } from "@inertiajs/react";
+import { usePage } from "@inertiajs/react";
 import { Chat } from "@components/shared/chat/Chat";
 import { DeploySidebar, DeployHistory } from "@components/deploy";
 import {
@@ -81,14 +81,13 @@ function NewDeployButton() {
 
   return (
     <Button onClick={handleNewDeploy} disabled={creating} variant="outline">
-      {creating ? "Starting..." : "New Deploy"}
+      {creating ? "Starting..." : "Redeploy"}
     </Button>
   );
 }
 
 function DeployContent() {
-  const { deploy, deploy_type, website_url, deploy_environment, project } =
-    usePage<DeployProps>().props;
+  const { deploy, deploy_type, website_url, deploy_environment } = usePage<DeployProps>().props;
   const polling = useDeployInit();
   const { state, startDeploy } = polling;
   const screen = useDeployContentScreen(state, deploy?.status);
@@ -132,16 +131,14 @@ function DeployContent() {
             <WaitingGoogleScreen onCheckAgain={() => polling.updateState({ polling: true })} />
           )}
           {screen === "deploy-complete" && (
-            <>
-              <DeployCompleteScreen
-                deployType={deploy_type}
-                result={state.result}
-                websiteUrl={website_url}
-                deployEnvironment={deploy_environment}
-              />
-              <DeployHistory />
-            </>
+            <DeployCompleteScreen
+              deployType={deploy_type}
+              result={state.result}
+              websiteUrl={website_url}
+              deployEnvironment={deploy_environment}
+            />
           )}
+          <DeployHistory />
           {screen === "deploy-error" && (
             <DeployErrorScreen consoleErrors={state.consoleErrors} onRetry={startDeploy} />
           )}
@@ -154,19 +151,7 @@ function DeployContent() {
         <PaginationFooter.Actions>
           <RestartDeployButton />
           {isComplete && <NewDeployButton />}
-          <Button
-            variant="outline"
-            disabled={!isComplete}
-            onClick={() => router.visit(`/projects/${project.uuid}`)}
-          >
-            View Dashboard
-          </Button>
-          <Button
-            disabled={!isComplete}
-            onClick={() => router.visit(`/projects/${project.uuid}/performance`)}
-          >
-            Review Performance
-          </Button>
+          <PaginationFooter.ContinueButton disabled={!isComplete} />
         </PaginationFooter.Actions>
       </PaginationFooter.Root>
     </div>

@@ -60,8 +60,6 @@ class User < ApplicationRecord
   include Searchable
   include Theme
 
-  after_create_commit :track_signup
-
   has_one_attached :avatar
   has_person_name
 
@@ -93,10 +91,8 @@ class User < ApplicationRecord
     confirmed_at.present?
   end
 
-  private
-
   def track_signup
-    acct = accounts.first
+    acct = owned_account
     attribution = acct&.signup_attribution
     method = connected_accounts.any? ? connected_accounts.last.provider : "email"
     event_data = {
@@ -109,8 +105,10 @@ class User < ApplicationRecord
     PosthogTracker.identify(self, posthog_attribution_properties(attribution))
   end
 
+  private
+
   def posthog_attribution_properties(attribution = nil)
-    attribution ||= accounts.first&.signup_attribution
+    attribution ||= owned_account&.signup_attribution
     return {} unless attribution.present?
 
     {

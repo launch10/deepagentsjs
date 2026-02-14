@@ -66,7 +66,7 @@ Users sign up
 
 | Event               | Side   | Location                                                            | Key Properties                                                                                     |
 | ------------------- | ------ | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| `user_signed_up`    | Server | `user.rb` after_create_commit                                       | `method`, `referral_code`, `utm_source`, `utm_medium`, `utm_campaign`, `icp`, `gclid` (from attribution) |
+| `user_signed_up`    | Server | `registrations_controller.rb` → `user.track_signup`                 | `method`, `referral_code`, `utm_source`, `utm_medium`, `utm_campaign`, `icp`, `gclid` (from attribution) |
 | `user_signed_in`    | Server | `sessions_controller.rb` (email/OTP), `warden_callbacks.rb` (OAuth) | `method`, `days_since_signup`, `has_projects`, `project_count`                                     |
 | `landing_page_view` | Client | `landing_page/src/pages/Index.tsx`                                  | `page_path`, `variant_id`, UTMs                                                                    |
 | `pricing_page_view` | Client | `landing_page/src/pages/Pricing.tsx`                                | `page_path`, `source`, UTMs                                                                        |
@@ -171,7 +171,7 @@ AppEvent.where(event_name: "website_deployed").where("created_at > ?", 24.hours.
 
 ## Signup Attribution
 
-Tracks "where did this user come from?" — which landing page, ad campaign, UTM source led to signup. Uses a cookie-based first-touch model with data persisted to a JSONB column on User.
+Tracks "where did this user come from?" — which landing page, ad campaign, UTM source led to signup. Uses a cookie-based first-touch model with data persisted to a JSONB column on Account (the master account, not individual sub-users).
 
 ### How It Works
 
@@ -188,7 +188,7 @@ Tracks "where did this user come from?" — which landing page, ad campaign, UTM
        │
 3. User completes registration
        │
-       │ RegistrationsController reads cookie → saves to user.signup_attribution
+       │ RegistrationsController reads cookie → saves to account.signup_attribution
        │ PosthogTracker.identify(user, initial_utm_source: ..., initial_icp: ...)
        │ Cookie is cleared
        │
@@ -224,7 +224,7 @@ The `UtmTracking` concern (`app/controllers/concerns/utm_tracking.rb`) runs on e
 3. Adds `landing_page` (full URL) and `referrer` (HTTP Referer header)
 4. Stores as JSON in a 30-day httpOnly cookie
 
-At registration, `RegistrationsController` reads the cookie into `user.signup_attribution` (JSONB) and clears it.
+At registration, `RegistrationsController` reads the cookie into the account's `signup_attribution` (JSONB) and clears it.
 
 ### PostHog Person Properties
 
@@ -246,14 +246,14 @@ On signup, `PosthogTracker.identify` sets `initial_*` person properties from the
 ### Querying Attribution in Rails
 
 ```ruby
-# Users from Google Ads
-User.where("signup_attribution->>'utm_source' = ?", "google")
+# Accounts from Google Ads
+Account.where("signup_attribution->>'utm_source' = ?", "google")
 
-# Users from a specific ICP page
-User.where("signup_attribution->>'icp' = ?", "founders")
+# Accounts from a specific ICP page
+Account.where("signup_attribution->>'icp' = ?", "founders")
 
-# Users with any attribution data
-User.where.not(signup_attribution: nil)
+# Accounts with any attribution data
+Account.where.not(signup_attribution: nil)
 ```
 
 ### Key Files
@@ -262,7 +262,7 @@ User.where.not(signup_attribution: nil)
 |------|---------|
 | `app/controllers/concerns/utm_tracking.rb` | Cookie capture concern (first-touch) |
 | `app/controllers/users/registrations_controller.rb` | Persists attribution at signup |
-| `app/models/user.rb` | `signup_attribution` JSONB column, enriched `track_signup` |
+| `app/models/user.rb` | `track_signup` method, PostHog person property enrichment |
 | `landing_page/src/utils/utm.ts` | UTM capture + `buildAppUrl()` for forwarding |
 | `landing_page/src/utils/analytics.ts` | Landing page PostHog events |
 

@@ -87,7 +87,7 @@ jobs:
           command: |
             cd ~/project
             git submodule sync
-            git submodule update --init --recursive
+            git submodule update --init packages/langgraph-ai-sdk packages/deepagentsjs
       - run:
           name: Install Git LFS and pull files
           command: |
@@ -217,7 +217,7 @@ jobs:
           command: |
             cd ~/project
             git submodule sync
-            git submodule update --init --recursive
+            git submodule update --init packages/langgraph-ai-sdk packages/deepagentsjs
       - run:
           name: Install PostgreSQL 16 client
           command: |
@@ -295,7 +295,7 @@ jobs:
           command: |
             cd ~/project
             git submodule sync
-            git submodule update --init --recursive
+            git submodule update --init packages/langgraph-ai-sdk packages/deepagentsjs
       - run:
           name: Install pnpm
           command: |
@@ -347,7 +347,7 @@ jobs:
           command: |
             cd ~/project
             git submodule sync
-            git submodule update --init --recursive
+            git submodule update --init packages/langgraph-ai-sdk packages/deepagentsjs
       - run:
           name: Install Git LFS and pull files
           command: |
