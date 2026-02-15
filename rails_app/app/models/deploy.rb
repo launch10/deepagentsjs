@@ -86,9 +86,28 @@ class Deploy < ApplicationRecord
   end
 
   def deactivate!
+    cancel_in_progress! if status.in?(%w[pending running])
     update_column(:active, false)
     chat&.update!(active: false)
     true
+  end
+
+  def cancel_in_progress!
+    return unless status.in?(%w[pending running])
+
+    transaction do
+      update!(status: "failed", stacktrace: "Superseded by newer deploy")
+
+      # Fail all pending/running job_runs so Sidekiq retries stop notifying Langgraph
+      job_runs.where(status: %w[pending running]).find_each do |jr|
+        jr.fail!("Deploy superseded by newer deploy")
+      end
+
+      # Skip the website_deploy if it hasn't completed
+      if website_deploy&.status&.in?(%w[pending building uploading])
+        website_deploy.update!(status: "skipped")
+      end
+    end
   end
 
   private
@@ -98,7 +117,14 @@ class Deploy < ApplicationRecord
   end
 
   def deactivate_previous_deploy!
-    project.deploys.where(active: true).where.not(id: id).update_all(active: false)
+    previous_deploys = project.deploys.where(active: true).where.not(id: id)
+
+    # Cancel any in-progress deploys -- not just deactivate
+    previous_deploys.in_progress.find_each do |old_deploy|
+      old_deploy.cancel_in_progress!
+    end
+
+    previous_deploys.update_all(active: false)
   end
 
   def create_deploy_chat!

@@ -91,15 +91,11 @@ export const validateLinksTaskRunner: TaskRunner = {
     return true;
   },
 
-  shouldSkip: (state: DeployGraphState) => {
-    // Skip if not deploying a website
-    if (!state.instructions?.website) {
-      return true;
-    }
-
-    // Skip if already completed
-    const task = Task.findTask(state.tasks, TASK_NAME);
-    return task?.status === "completed";
+  shouldSkip: (_state: DeployGraphState) => {
+    // Always skip: anchor link validation finds issues (e.g. #problem, #features)
+    // that the bug fix agent can't meaningfully resolve during deploy.
+    // Re-enable when we have a fix for broken anchor links.
+    return true;
   },
 
   run: runValidateLinks,

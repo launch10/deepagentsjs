@@ -56,6 +56,8 @@ export type CodingAgentOptions = {
   maxTurnPairs?: number;
   /** Max total chars in context window. Default: 40000 */
   maxChars?: number;
+  /** Override subagents passed to createDeepAgent. Pass [] to disable subagents. */
+  subagents?: any[];
 };
 
 /**
@@ -178,7 +180,8 @@ export const getTheme = async (
 async function buildFullCodingAgent(
   state: MinimalCodingAgentState,
   systemPrompt?: string,
-  existingBackend?: WebsiteFilesBackend
+  existingBackend?: WebsiteFilesBackend,
+  overrideSubagents?: any[]
 ) {
   if (state.isCreateFlow === undefined) {
     throw new Error(
@@ -206,16 +209,19 @@ async function buildFullCodingAgent(
   }
 
   // Build prompt and subagents - now async
+  // Skip subagent creation when caller overrides (e.g. bugfix with subagents: [])
+  const hasSubagentOverride = overrideSubagents !== undefined;
   const [finalSystemPrompt, coderSubAgent] = await Promise.all([
     systemPrompt ? Promise.resolve(systemPrompt) : buildCodingPrompt(promptState),
-    buildCoderSubAgent(promptState, baseLlm),
+    hasSubagentOverride ? Promise.resolve(null) : buildCoderSubAgent(promptState, baseLlm),
   ]);
+  const subagents = hasSubagentOverride ? overrideSubagents : [coderSubAgent];
   const agent = createDeepAgent({
     model: notifyLlm as any,
     name: "coding-agent",
     systemPrompt: finalSystemPrompt,
     backend: () => backend as any,
-    subagents: [coderSubAgent],
+    subagents,
     tools: [
       new SearchIconsTool(),
       ...(state.websiteId && state.jwt
@@ -443,7 +449,8 @@ async function _createCodingAgentInternal(
   const { agent, backend: agentBackend } = await buildFullCodingAgent(
     state,
     options.systemPrompt,
-    backend
+    backend,
+    options.subagents
   );
 
   const result = (await agent.invoke(

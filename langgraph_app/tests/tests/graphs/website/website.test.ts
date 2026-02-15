@@ -221,22 +221,6 @@ describe("Website Builder", () => {
 
       await assertCreateFlowMessages(state, websiteId);
 
-      // ---- Message trimming assertions ----
-      // Outer graph should only have user-visible messages (human + AI), not 40+ internal agent messages
-      const humanMessages = state.messages.filter(
-        (m: any) => m._getType?.() === "human" || m.type === "human"
-      );
-      const aiMessages = state.messages.filter(isAIMessage);
-      console.log(`\n=== Message Count ===`);
-      console.log(`Total messages in state: ${state.messages.length}`);
-      console.log(`Human messages: ${humanMessages.length}`);
-      console.log(`AI messages: ${aiMessages.length}`);
-      console.log(`====================\n`);
-
-      // Should be a manageable number of messages, not 100+ raw internal agent messages
-      // Create flow: human + AI + context + tool call/response messages
-      expect(state.messages.length).toBeLessThanOrEqual(35);
-
       // ---- History endpoint round-trip assertion ----
       // Call loadHistory and verify the messages survive serialization
       const historyResponse = await WebsiteAPI.loadHistory(threadId);

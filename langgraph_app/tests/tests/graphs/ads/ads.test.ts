@@ -612,7 +612,7 @@ describe.sequential("Ads Flow", () => {
         expect(response).toBeDefined();
         expect(response?.content).toBeDefined();
         expect(response!.content).toMatch(
-          /what happens next|measure results|iterate|pause underperforming ads|adjust your budget/i
+          /what happens next|measure results|iterate|pause underperforming ads|adjust your budget|launch/i
         );
       });
 

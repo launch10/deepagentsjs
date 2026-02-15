@@ -88,7 +88,8 @@ export function useDeployContentScreen(
   railsDeployStatus?: string
 ): DeployScreen {
   return useMemo(
-    () => resolveContentScreen(state.tasks, state.status, state.instructions, railsDeployStatus),
+    () =>
+      resolveContentScreen(state.tasks, state.status, state.instructions ?? {}, railsDeployStatus),
     [state.tasks, state.status, state.instructions, railsDeployStatus]
   );
 }

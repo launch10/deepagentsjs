@@ -24,6 +24,7 @@ function getGraph() {
 }
 
 export const jobRunCallback = async (payload: JobRunCallbackPayload): Promise<boolean> => {
+  const log = getLogger({ component: "jobRunCallback" });
   const graph = getGraph();
 
   // Get current state to find the task by jobId
@@ -32,17 +33,37 @@ export const jobRunCallback = async (payload: JobRunCallbackPayload): Promise<bo
   });
 
   if (!currentState?.values) {
-    getLogger({ component: "jobRunCallback" }).error({ threadId: payload.thread_id }, "Thread not found");
-    return false
+    log.error({ threadId: payload.thread_id }, "Thread not found");
+    return false;
   }
 
   const tasks: Task.Task[] = currentState.values.tasks || [];
   const task = tasks.find((t) => t.jobId === payload.job_run_id);
 
   if (!task) {
-    getLogger({ component: "jobRunCallback" }).error({ jobId: payload.job_run_id }, "Task not found");
+    log.error({ jobId: payload.job_run_id }, "Task not found");
     return false;
   }
+
+  // Guard: ignore callbacks for tasks already in terminal state
+  if (task.status === "completed" || task.status === "skipped" || task.status === "failed") {
+    log.warn(
+      { jobId: payload.job_run_id, taskName: task.name, status: task.status },
+      "Ignoring stale callback -- task already terminal"
+    );
+    return true;
+  }
+
+  // Log the callback being processed
+  log.info(
+    {
+      jobId: payload.job_run_id,
+      taskName: task.name,
+      deployId: currentState.values.deployId,
+      callbackStatus: payload.status,
+    },
+    "Processing job run callback"
+  );
 
   // Update the task with result/error
   // Note: updateState RUNS the graph - this is intentional!
@@ -59,7 +80,7 @@ export const jobRunCallback = async (payload: JobRunCallbackPayload): Promise<bo
   );
 
   return true;
-}
+};
 
 jobRunCallbackRoutes.post("/webhooks/job_run_callback", async (c) => {
   const signature = c.req.header("X-Signature");

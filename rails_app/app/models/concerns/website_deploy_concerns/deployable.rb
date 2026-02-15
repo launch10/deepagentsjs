@@ -24,8 +24,9 @@ module WebsiteDeployConcerns
     def actually_deploy(job_run_id: nil)
       later_deploy_exists = WebsiteDeploy.live.where(website_id: website_id).where("id > ?", id).exists?
       if later_deploy_exists
+        Rails.logger.info "WebsiteDeploy #{id} skipped -- newer deploy already live for website #{website_id}"
         update!(status: "skipped")
-        return
+        return true
       end
 
       dist_path = build!

@@ -245,6 +245,125 @@ describe("jobRunCallback webhook route (tasks pattern)", () => {
       expect(json.error).toBe("Invalid signature");
     });
 
+    it("ignores stale callback when task is already completed", async () => {
+      const completedTask: Deploy.Task = {
+        ...Deploy.createTask("DeployingCampaign", 123),
+        status: "completed",
+        result: { campaign_id: 456 },
+      };
+
+      const payload = {
+        job_run_id: 123,
+        thread_id: "thread_abc123",
+        status: "completed" as const,
+        result: { campaign_id: 789 },
+      };
+
+      mockGetState.mockResolvedValue({
+        values: {
+          tasks: [completedTask],
+        },
+      });
+
+      const body = JSON.stringify(payload);
+      const signature = createSignature(body);
+
+      const res = await app.request("/webhooks/job_run_callback", {
+        method: "POST",
+        body,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Signature": signature,
+        },
+      });
+
+      expect(res.status).toBe(200);
+      const json = (await res.json()) as { success: boolean };
+      expect(json.success).toBe(true);
+
+      // Should NOT call updateState since task is already terminal
+      expect(mockUpdateState).not.toHaveBeenCalled();
+    });
+
+    it("ignores stale callback when task is already failed", async () => {
+      const failedTask: Deploy.Task = {
+        ...Deploy.createTask("DeployingCampaign", 123),
+        status: "failed",
+        error: "Previous error",
+      };
+
+      const payload = {
+        job_run_id: 123,
+        thread_id: "thread_abc123",
+        status: "completed" as const,
+        result: { campaign_id: 789 },
+      };
+
+      mockGetState.mockResolvedValue({
+        values: {
+          tasks: [failedTask],
+        },
+      });
+
+      const body = JSON.stringify(payload);
+      const signature = createSignature(body);
+
+      const res = await app.request("/webhooks/job_run_callback", {
+        method: "POST",
+        body,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Signature": signature,
+        },
+      });
+
+      expect(res.status).toBe(200);
+      const json = (await res.json()) as { success: boolean };
+      expect(json.success).toBe(true);
+
+      // Should NOT call updateState since task is already terminal
+      expect(mockUpdateState).not.toHaveBeenCalled();
+    });
+
+    it("ignores stale callback when task is already skipped", async () => {
+      const skippedTask: Deploy.Task = {
+        ...Deploy.createTask("DeployingCampaign", 123),
+        status: "skipped",
+      };
+
+      const payload = {
+        job_run_id: 123,
+        thread_id: "thread_abc123",
+        status: "completed" as const,
+        result: { campaign_id: 789 },
+      };
+
+      mockGetState.mockResolvedValue({
+        values: {
+          tasks: [skippedTask],
+        },
+      });
+
+      const body = JSON.stringify(payload);
+      const signature = createSignature(body);
+
+      const res = await app.request("/webhooks/job_run_callback", {
+        method: "POST",
+        body,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Signature": signature,
+        },
+      });
+
+      expect(res.status).toBe(200);
+      const json = (await res.json()) as { success: boolean };
+      expect(json.success).toBe(true);
+
+      // Should NOT call updateState since task is already terminal
+      expect(mockUpdateState).not.toHaveBeenCalled();
+    });
+
     it("returns 500 when updateState fails", async () => {
       const payload = {
         job_run_id: 123,

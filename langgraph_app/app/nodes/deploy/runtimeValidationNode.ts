@@ -4,7 +4,7 @@ import { NodeMiddleware } from "@middleware";
 import { ErrorExporter } from "@services";
 import { Deploy, Task } from "@types";
 import { getLogger } from "@core";
-import { type TaskRunner, registerTask, isTaskDone, isTaskFailed } from "./taskRunner";
+import { type TaskRunner, registerTask, isTaskDone } from "./taskRunner";
 
 const TASK_NAME: Deploy.TaskName = "RuntimeValidation";
 
@@ -141,7 +141,12 @@ export const runtimeValidationTaskRunner: TaskRunner = {
   isFailureRecoverable: true,
 
   readyToRun: (state: DeployGraphState) => {
-    return isTaskDone(state, "ValidateLinks");
+    // For campaign deploys, wait until billing is resolved
+    if (Deploy.shouldDeployGoogleAds(state)) {
+      return isTaskDone(state, "CheckingBilling");
+    }
+    // For website-only deploys, ready immediately
+    return true;
   },
 
   shouldSkip: (state: DeployGraphState) => {
@@ -150,7 +155,7 @@ export const runtimeValidationTaskRunner: TaskRunner = {
       return true;
     }
 
-    return isTaskFailed(state, "ValidateLinks"); // jump straight to FixBugs if ValidateLinks failed
+    return false;
   },
 
   run: runRuntimeValidation,

@@ -1,10 +1,11 @@
 import { usePage } from "@inertiajs/react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useLanggraph, type ChatSnapshot, type LanggraphChat } from "langgraph-ai-sdk-react";
 import type { UIMessage } from "ai";
 import { Deploy, type InertiaProps } from "@shared";
 import { useChatOptions } from "@hooks/useChatOptions";
 import { useDeployInstructions } from "@hooks/useDeployInstructions";
+import { useProjectId } from "~/stores/projectStore";
 
 export interface WebsiteDeployRecord {
   id: number;
@@ -106,4 +107,35 @@ export function useDeployStartDeploy() {
   return useCallback(() => {
     updateState(deployContext);
   }, [updateState, deployContext]);
+}
+
+/**
+ * Deactivate the current deploy and reload so useDeployInit auto-starts a fresh one.
+ * Used by both the "Redeploy" button (complete screen) and "Retry Deploy" (error screen).
+ */
+export function useDeployNewDeploy() {
+  const projectId = useProjectId();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const trigger = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
+      await fetch("/api/v1/deploys/deactivate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken || "",
+          Accept: "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ project_id: projectId }),
+      });
+      window.location.reload();
+    } catch {
+      setIsLoading(false);
+    }
+  }, [projectId]);
+
+  return { trigger, isLoading };
 }

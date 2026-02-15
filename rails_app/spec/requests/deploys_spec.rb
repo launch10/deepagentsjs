@@ -64,6 +64,83 @@ RSpec.describe "Deploys API", type: :request do
         end
       end
 
+      response "200", "returns existing in-progress deploy instead of creating new one" do
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let(:deploy_params) { { project_id: project.id, thread_id: thread_id } }
+        let!(:existing_deploy) { create(:deploy, project: project, status: "running") }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+
+          expect(data["id"]).to eq(existing_deploy.id)
+          expect(data["status"]).to eq("running")
+        end
+      end
+
+      it "does not create a new deploy when one is already in progress" do
+        existing_deploy = create(:deploy, project: project, status: "pending")
+
+        expect {
+          post "/api/v1/deploys", params: { project_id: project.id, thread_id: thread_id }, headers: auth_headers, as: :json
+        }.not_to change { project.deploys.count }
+
+        data = JSON.parse(response.body)
+        expect(data["id"]).to eq(existing_deploy.id)
+      end
+
+      it "creates a new deploy when previous deploy is completed" do
+        create(:deploy, project: project, status: "completed")
+
+        expect {
+          post "/api/v1/deploys", params: { project_id: project.id, thread_id: thread_id }, headers: auth_headers, as: :json
+        }.to change { project.deploys.count }.by(1)
+
+        expect(response).to have_http_status(:created)
+      end
+
+      it "creates a new deploy when previous deploy is failed" do
+        create(:deploy, project: project, status: "failed")
+
+        expect {
+          post "/api/v1/deploys", params: { project_id: project.id, thread_id: thread_id }, headers: auth_headers, as: :json
+        }.to change { project.deploys.count }.by(1)
+
+        expect(response).to have_http_status(:created)
+      end
+
+      it "handles TOCTOU race gracefully when unique index catches concurrent create" do
+        # Simulate the race: the idempotent check sees no deploy, but the INSERT
+        # hits the unique index. The rescue path re-checks and finds the winner.
+        #
+        # We stub create! to:
+        #   1. First call: insert the "race winner" via raw SQL (outside the transaction),
+        #      then raise RecordNotUnique as the DB would.
+        #   2. The rescue handler calls first! and finds the winner.
+        call_count = 0
+        allow_any_instance_of(ActiveRecord::Associations::CollectionProxy).to receive(:create!).and_wrap_original do |method, *args, **kwargs|
+          call_count += 1
+          if call_count == 1 && kwargs[:status] == "pending"
+            # Simulate the "other thread" winning — insert outside any open transaction
+            ActiveRecord::Base.connection.execute(<<~SQL)
+              INSERT INTO deploys (project_id, status, active, thread_id, is_live, created_at, updated_at)
+              VALUES (#{project.id}, 'pending', true, '#{SecureRandom.uuid}', false, NOW(), NOW())
+            SQL
+            raise ActiveRecord::RecordNotUnique.new("PG::UniqueViolation")
+          else
+            method.call(*args, **kwargs)
+          end
+        end
+
+        post "/api/v1/deploys", params: { project_id: project.id, thread_id: thread_id }, headers: auth_headers, as: :json
+
+        expect(response).to have_http_status(:ok)
+        data = JSON.parse(response.body)
+        expect(data["status"]).to eq("pending")
+        expect(data["project_id"]).to eq(project.id)
+      end
+
       response "404", "project not found" do
         let(:Authorization) { auth_headers["Authorization"] }
         let(:"X-Signature") { auth_headers["X-Signature"] }

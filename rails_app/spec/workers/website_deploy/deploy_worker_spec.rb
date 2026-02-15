@@ -37,6 +37,46 @@ RSpec.describe WebsiteDeploy::DeployWorker, type: :worker do
   end
 
   describe '#perform' do
+    context 'when deploy is already terminal' do
+      it 'returns true without deploying when deploy is skipped' do
+        deploy.update!(status: "skipped")
+        allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
+
+        expect(deploy).not_to receive(:actually_deploy)
+        result = worker.perform(deploy.id)
+        expect(result).to be true
+      end
+
+      it 'returns true without deploying when deploy is failed' do
+        deploy.update!(status: "failed")
+        allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
+
+        expect(deploy).not_to receive(:actually_deploy)
+        result = worker.perform(deploy.id)
+        expect(result).to be true
+      end
+
+      it 'returns true without deploying when deploy is completed' do
+        deploy.update!(status: "completed")
+        allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
+
+        expect(deploy).not_to receive(:actually_deploy)
+        result = worker.perform(deploy.id)
+        expect(result).to be true
+      end
+    end
+
+    context 'when job_run is already finished' do
+      it 'returns true without deploying' do
+        job_run.update!(status: "failed", started_at: 1.minute.ago, completed_at: Time.current, error_message: "superseded")
+        allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
+
+        expect(deploy).not_to receive(:actually_deploy)
+        result = worker.perform(deploy.id, job_run.id)
+        expect(result).to be true
+      end
+    end
+
     context 'without job_run_id' do
       before do
         allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
@@ -54,7 +94,7 @@ RSpec.describe WebsiteDeploy::DeployWorker, type: :worker do
       end
 
       it 'logs success' do
-        expect(Rails.logger).to receive(:info).with("Starting async deploy #{deploy.id} for website #{deploy.website_id}")
+        expect(Rails.logger).to receive(:info).with("Starting deploy #{deploy.id} for website #{deploy.website_id} (job_run: none)")
         expect(Rails.logger).to receive(:info).with("Successfully deployed #{deploy.id}")
         worker.perform(deploy.id)
       end

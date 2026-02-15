@@ -189,6 +189,101 @@ RSpec.describe Deploy, type: :model do
     end
   end
 
+  describe "#cancel_in_progress!" do
+    it "marks a pending deploy as failed with superseded reason" do
+      deploy = create(:deploy, project: project, status: "pending")
+
+      deploy.cancel_in_progress!
+
+      expect(deploy.reload.status).to eq("failed")
+      expect(deploy.stacktrace).to eq("Superseded by newer deploy")
+    end
+
+    it "marks a running deploy as failed with superseded reason" do
+      deploy = create(:deploy, project: project, status: "running")
+
+      deploy.cancel_in_progress!
+
+      expect(deploy.reload.status).to eq("failed")
+      expect(deploy.stacktrace).to eq("Superseded by newer deploy")
+    end
+
+    it "fails associated pending job_runs" do
+      deploy = create(:deploy, project: project, status: "running")
+      job_run = create(:job_run, deploy: deploy, account: account, status: "pending", job_class: "WebsiteDeploy")
+
+      deploy.cancel_in_progress!
+
+      expect(job_run.reload.status).to eq("failed")
+      expect(job_run.error_message).to include("superseded")
+    end
+
+    it "fails associated running job_runs" do
+      deploy = create(:deploy, project: project, status: "running")
+      job_run = create(:job_run, deploy: deploy, account: account, status: "running", started_at: Time.current, job_class: "WebsiteDeploy")
+
+      deploy.cancel_in_progress!
+
+      expect(job_run.reload.status).to eq("failed")
+    end
+
+    it "skips associated in-progress website_deploy" do
+      deploy = create(:deploy, project: project, status: "running")
+      website = create(:website, account: account, project: project)
+      # Insert directly to bypass before_create callbacks (file validation)
+      WebsiteDeploy.insert!({
+        website_id: website.id,
+        status: "building",
+        snapshot_id: SecureRandom.uuid,
+        shasum: "abc123",
+        environment: "production"
+      })
+      website_deploy = WebsiteDeploy.last
+      deploy.update_column(:website_deploy_id, website_deploy.id)
+      deploy.reload
+
+      deploy.cancel_in_progress!
+
+      expect(website_deploy.reload.status).to eq("skipped")
+    end
+
+    it "does nothing for already-completed deploys" do
+      deploy = create(:deploy, project: project, status: "completed")
+
+      expect { deploy.cancel_in_progress! }.not_to change { deploy.reload.attributes }
+    end
+
+    it "does nothing for already-failed deploys" do
+      deploy = create(:deploy, project: project, status: "failed")
+
+      expect { deploy.cancel_in_progress! }.not_to change { deploy.reload.attributes }
+    end
+
+    it "does not touch already-finished job_runs" do
+      deploy = create(:deploy, project: project, status: "running")
+      completed_jr = create(:job_run, deploy: deploy, account: account, status: "completed",
+                            started_at: 1.minute.ago, completed_at: Time.current, job_class: "WebsiteDeploy")
+
+      deploy.cancel_in_progress!
+
+      expect(completed_jr.reload.status).to eq("completed")
+    end
+
+    it "is atomic — rolls back all changes if any step fails" do
+      deploy = create(:deploy, project: project, status: "running")
+      job_run = create(:job_run, deploy: deploy, account: account, status: "pending", job_class: "WebsiteDeploy")
+
+      # Force any job_run's fail! to raise, simulating a mid-transaction error
+      allow_any_instance_of(JobRun).to receive(:fail!).and_raise(StandardError, "simulated failure")
+
+      expect { deploy.cancel_in_progress! }.to raise_error(StandardError, "simulated failure")
+
+      # Deploy status should NOT have changed — the transaction rolled back
+      expect(deploy.reload.status).to eq("running")
+      expect(job_run.reload.status).to eq("pending")
+    end
+  end
+
   describe "#deactivate!" do
     it "sets active to false on the deploy and its chat" do
       deploy = create(:deploy, project: project)
@@ -207,6 +302,28 @@ RSpec.describe Deploy, type: :model do
 
       expect { deploy.deactivate! }.not_to raise_error
       expect(deploy.reload.active).to be false
+    end
+
+    it "cancels in-progress deploys before deactivating" do
+      deploy = create(:deploy, project: project, status: "running")
+      job_run = create(:job_run, deploy: deploy, account: account, status: "running",
+                       started_at: Time.current, job_class: "WebsiteDeploy")
+
+      deploy.deactivate!
+
+      expect(deploy.reload.status).to eq("failed")
+      expect(deploy.stacktrace).to eq("Superseded by newer deploy")
+      expect(deploy.active).to be false
+      expect(job_run.reload.status).to eq("failed")
+    end
+
+    it "does not cancel completed deploys when deactivating" do
+      deploy = create(:deploy, project: project, status: "completed")
+
+      deploy.deactivate!
+
+      expect(deploy.reload.status).to eq("completed")
+      expect(deploy.active).to be false
     end
   end
 
@@ -231,6 +348,37 @@ RSpec.describe Deploy, type: :model do
       create(:deploy, project: project)
 
       expect(project.deploys.active.count).to eq(1)
+    end
+
+    it "creating a new deploy cancels in-progress previous deploys" do
+      first = create(:deploy, project: project, status: "running")
+      job_run = create(:job_run, deploy: first, account: account, status: "running",
+                       started_at: Time.current, job_class: "WebsiteDeploy")
+
+      create(:deploy, project: project)
+
+      expect(first.reload.status).to eq("failed")
+      expect(first.stacktrace).to eq("Superseded by newer deploy")
+      expect(job_run.reload.status).to eq("failed")
+    end
+
+    it "unique index rejects a second active deploy for the same project" do
+      # The unique partial index on (project_id, active) WHERE active = true
+      # is the DB-level backstop for the TOCTOU race. Verify it works.
+      create(:deploy, project: project, status: "pending")
+
+      # Bypass callbacks to simulate a raw INSERT that skips the Rails check
+      expect {
+        Deploy.insert!({
+          project_id: project.id,
+          status: "pending",
+          active: true,
+          thread_id: SecureRandom.uuid,
+          is_live: false,
+          created_at: Time.current,
+          updated_at: Time.current
+        })
+      }.to raise_error(ActiveRecord::RecordNotUnique)
     end
   end
 

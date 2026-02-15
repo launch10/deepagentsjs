@@ -54,7 +54,7 @@ function DeployContent() {
         </div>
       </main>
 
-      <PaginationFooter.Root layout="full-bleed" canGoForward={isComplete}>
+      <PaginationFooter.Root layout="full-bleed" canGoBack={isComplete} canGoForward={isComplete}>
         <PaginationFooter.BackButton />
         <PaginationFooter.Actions>
           <PaginationFooter.ContinueButton disabled={!isComplete} />

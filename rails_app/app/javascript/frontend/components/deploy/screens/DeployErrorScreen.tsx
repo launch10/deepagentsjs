@@ -2,13 +2,13 @@ import { useState } from "react";
 import { ExclamationTriangleIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import { Button } from "@components/ui/button";
 import { Deploy } from "@shared";
-import { useDeployChatState, useDeployStartDeploy } from "@hooks/useDeployChat";
+import { useDeployChatState, useDeployNewDeploy } from "@hooks/useDeployChat";
 
 export default function DeployErrorScreen() {
   const error = useDeployChatState("error");
   const consoleErrors = useDeployChatState("consoleErrors");
   const supportTicket = useDeployChatState("supportTicket");
-  const startDeploy = useDeployStartDeploy();
+  const { trigger: handleRetry, isLoading: retrying } = useDeployNewDeploy();
 
   const [showDetails, setShowDetails] = useState(false);
   const deployError = Deploy.getDeployError(error?.message, error?.node);
@@ -59,11 +59,12 @@ export default function DeployErrorScreen() {
 
         {deployError.canRetry && (
           <Button
-            onClick={startDeploy}
+            onClick={handleRetry}
+            disabled={retrying}
             variant={supportTicket ? "outline" : "default"}
             className="mt-6"
           >
-            Retry Deploy
+            {retrying ? "Retrying…" : "Retry Deploy"}
           </Button>
         )}
       </div>

@@ -4,12 +4,24 @@ class API::V1::DeploysController < API::BaseController
   # thread_id is stored directly on the deploy record.
   def create
     project = current_account.projects.find(params[:project_id])
+
+    # Idempotent: if an in-progress deploy exists, return it instead of creating a new one
+    existing = project.deploys.active.in_progress.first
+    if existing
+      return render json: deploy_json(existing), status: :ok
+    end
+
     deploy = project.deploys.create!(
       status: "pending",
       thread_id: params[:thread_id]
     )
 
     render json: deploy_json(deploy), status: :created
+  rescue ActiveRecord::RecordNotUnique
+    # TOCTOU: another thread created the deploy between our check and insert.
+    # The unique index on (project_id, active) caught it — return the winner.
+    existing = project.deploys.active.in_progress.first!
+    render json: deploy_json(existing), status: :ok
   end
 
   # GET /api/v1/deploys/:id

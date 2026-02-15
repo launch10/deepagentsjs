@@ -141,10 +141,11 @@ export function useCreateDomain(options?: CreateDomainMutationOptions) {
       queryClient.setQueryData<GetDomainContextResponse>(queryKey, (oldData) => {
         if (!oldData) return oldData;
 
-        const isPlatformSubdomain = variables.isPlatformSubdomain ?? variables.domain.endsWith(".launch10.site");
+        const isPlatformSubdomain =
+          variables.isPlatformSubdomain ?? variables.domain.endsWith(".launch10.site");
         const path = data.website_url?.path ?? variables.path ?? "/";
         const normalizedPath = path === "/" ? "" : path;
-        const fullUrl = `${data.domain}${normalizedPath}`;
+        const fullUrl = `${data.domain.domain}${normalizedPath}`;
 
         return {
           ...oldData,
@@ -155,8 +156,8 @@ export function useCreateDomain(options?: CreateDomainMutationOptions) {
           // Use data from the response - website_url.id is the assigned_url id
           assigned_url: {
             id: data.website_url?.id ?? 0,
-            domain_id: data.id,
-            domain: data.domain,
+            domain_id: data.domain.id,
+            domain: data.domain.domain,
             path,
             is_platform_subdomain: isPlatformSubdomain,
             dns_verification_status: isPlatformSubdomain ? "verified" : "pending",
@@ -187,9 +188,10 @@ export function useUpdateDomain(options?: UpdateDomainMutationOptions) {
 
   return useMutation({
     mutationFn: async ({ domainId, websiteId }: UpdateDomainVariables) => {
+      // website_id is accepted by the API but not in the generated OpenAPI types
       return service.update(domainId, {
         website_id: websiteId,
-      });
+      } as any);
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
@@ -262,10 +264,11 @@ export function useDomainAssignment(websiteId: number | undefined, debounceMs: n
       queryClient.setQueryData<GetDomainContextResponse>(queryKey, (oldData) => {
         if (!oldData) return oldData;
 
-        const isPlatformSubdomain = variables.isPlatformSubdomain ?? variables.domain.endsWith(".launch10.site");
+        const isPlatformSubdomain =
+          variables.isPlatformSubdomain ?? variables.domain.endsWith(".launch10.site");
         const path = data.website_url?.path ?? variables.path ?? "/";
         const normalizedPath = path === "/" ? "" : path;
-        const fullUrl = `${data.domain}${normalizedPath}`;
+        const fullUrl = `${data.domain.domain}${normalizedPath}`;
 
         return {
           ...oldData,
@@ -273,8 +276,8 @@ export function useDomainAssignment(websiteId: number | undefined, debounceMs: n
             data.platform_subdomain_credits as GetDomainContextResponse["platform_subdomain_credits"],
           assigned_url: {
             id: data.website_url?.id ?? 0,
-            domain_id: data.id,
-            domain: data.domain,
+            domain_id: data.domain.id,
+            domain: data.domain.domain,
             path,
             is_platform_subdomain: isPlatformSubdomain,
             dns_verification_status: isPlatformSubdomain ? "verified" : "pending",
@@ -296,7 +299,8 @@ export function useDomainAssignment(websiteId: number | undefined, debounceMs: n
           domain: variables.domain,
           website_id: variables.websiteId,
           path: variables.path ?? "/",
-          is_platform_subdomain: variables.isPlatformSubdomain ?? variables.domain.endsWith(".launch10.site"),
+          is_platform_subdomain:
+            variables.isPlatformSubdomain ?? variables.domain.endsWith(".launch10.site"),
         } as Parameters<typeof service.create>[0],
         { signal }
       );

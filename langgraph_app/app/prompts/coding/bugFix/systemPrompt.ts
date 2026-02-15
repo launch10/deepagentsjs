@@ -16,22 +16,17 @@ export const buildBugFixPrompt: CodingPromptFn = async (
   const guidelines = await codeGuidelinesPrompt(state, config);
   const errorContext = state.errors || "";
 
-  return `You are fixing runtime errors in a landing page.
+  return `You are fixing runtime errors in a landing page before deployment.
 
-The user has a simple, static landing page that uses:
-1. React Router
-2. Tailwind
-3. ShadCN
-
-<task>
-Fix the following errors:
-</task>
+The site uses React Router, Tailwind, and ShadCN.
 
 <errors>
 ${errorContext}
 </errors>
 
-${guidelines}
+<instructions>
+Make the minimal viable change to fix these errors. Target the affected files directly and make the fix — do not explore the filesystem broadly or refactor unrelated code.
+</instructions>
 
-Analyze the errors and modify the code files to resolve them.`;
+${guidelines}`;
 };

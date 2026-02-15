@@ -5,8 +5,8 @@ import type { Deployment } from "@components/website/deployment-history/Deployme
 import { DeployHistory } from "@components/deploy";
 import { Button } from "@components/ui/button";
 import DevButton from "@components/shared/DevButton";
-import { useDeployId, useProjectId } from "~/stores/projectStore";
-import { useDeployChatState, type DeployProps } from "@hooks/useDeployChat";
+import { useDeployId } from "~/stores/projectStore";
+import { useDeployChatState, useDeployNewDeploy, type DeployProps } from "@hooks/useDeployChat";
 import deployImage from "@assets/deploy.png";
 
 function RestartDeployButton() {
@@ -45,33 +45,16 @@ function RestartDeployButton() {
 }
 
 function NewDeployButton() {
-  const projectId = useProjectId();
-  const [creating, setCreating] = useState(false);
+  const { trigger, isLoading } = useDeployNewDeploy();
 
   const handleNewDeploy = useCallback(async () => {
     if (!confirm("Start a new deployment?")) return;
-    setCreating(true);
-    try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
-      await fetch("/api/v1/deploys/deactivate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": csrfToken || "",
-          Accept: "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ project_id: projectId }),
-      });
-      window.location.reload();
-    } catch {
-      setCreating(false);
-    }
-  }, [projectId]);
+    trigger();
+  }, [trigger]);
 
   return (
-    <Button onClick={handleNewDeploy} disabled={creating} variant="outline">
-      {creating ? "Starting..." : "Redeploy"}
+    <Button onClick={handleNewDeploy} disabled={isLoading} variant="outline">
+      {isLoading ? "Starting..." : "Redeploy"}
     </Button>
   );
 }
@@ -99,7 +82,7 @@ export default function DeployCompleteScreen() {
   const tasks = useDeployChatState("tasks");
   const hasCampaign = (tasks ?? []).some((t) => CAMPAIGN_TASK_NAMES.includes(t.name));
   const rawUrl = (result?.url as string | undefined) || website_url || undefined;
-  const deployUrl = buildDeployUrl(rawUrl, deploy_environment);
+  const deployUrl = buildDeployUrl(rawUrl, deploy_environment ?? undefined);
 
   const deployment: Deployment = {
     id: "current",
