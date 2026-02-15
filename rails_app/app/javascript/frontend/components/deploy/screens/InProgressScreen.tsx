@@ -2,42 +2,38 @@ import { useMemo } from "react";
 import { StepProgress } from "@components/ui/step-progress";
 import { Deploy } from "@shared";
 import { useDeployChatState } from "@hooks/useDeployChat";
-import { useDeployInstructions } from "@hooks/useDeployInstructions";
+
+const CAMPAIGN_TASK_NAMES: string[] = [
+  "ConnectingGoogle",
+  "VerifyingGoogle",
+  "CheckingBilling",
+  "DeployingCampaign",
+  "EnablingCampaign",
+];
 
 const fallbackSteps = [{ id: "preparing", label: "Preparing deployment" }];
 
-interface InProgressScreenProps {
-  /** Override instructions for stories/tests where usePage() isn't available */
-  instructions?: Deploy.Instructions;
-}
-
-export default function InProgressScreen({
-  instructions: instructionsProp,
-}: InProgressScreenProps) {
-  const hookInstructions = useDeployInstructions();
-  const instructions = instructionsProp ?? hookInstructions;
+export default function InProgressScreen() {
   const tasks = useDeployChatState("tasks");
-  const noun = instructions.googleAds ? "website & campaign" : "website";
 
-  const { steps, currentStep, subtitle, warning } = useMemo(() => {
-    // Filter to only tasks relevant to current instructions
-    const relevantNames = Deploy.findTasks(instructions);
-    const filtered = (tasks ?? []).filter((t) => relevantNames.includes(t.name as Deploy.TaskName));
+  const { steps, currentStep, subtitle, warning, hasCampaignTasks } = useMemo(() => {
+    const allTasks = tasks ?? [];
 
-    if (filtered.length === 0) {
+    if (allTasks.length === 0) {
       return {
         steps: fallbackSteps,
         currentStep: 0,
         subtitle: undefined as string | undefined,
         warning: undefined as string | undefined,
+        hasCampaignTasks: false,
       };
     }
 
     const isTerminal = (status: string) =>
       status === "completed" || status === "skipped" || status === "passed";
-    const completedCount = filtered.filter((t) => isTerminal(t.status)).length;
+    const completedCount = allTasks.filter((t) => isTerminal(t.status)).length;
 
-    const running = filtered.filter((t) => t.status === "running");
+    const running = allTasks.filter((t) => t.status === "running");
     let label: string | undefined;
     if (running.length === 1) {
       label = Deploy.TaskDescriptionMap[running[0].name as Deploy.TaskName] ?? running[0].name;
@@ -48,15 +44,18 @@ export default function InProgressScreen({
     }
 
     return {
-      steps: filtered.map((t) => ({
+      steps: allTasks.map((t) => ({
         id: t.name,
         label: Deploy.TaskDescriptionMap[t.name as Deploy.TaskName] ?? t.name,
       })),
       currentStep: completedCount,
       subtitle: label,
-      warning: filtered.find((t) => t.warning)?.warning,
+      warning: allTasks.find((t) => t.warning)?.warning,
+      hasCampaignTasks: allTasks.some((t) => CAMPAIGN_TASK_NAMES.includes(t.name)),
     };
-  }, [tasks, instructions]);
+  }, [tasks]);
+
+  const noun = hasCampaignTasks ? "website & campaign" : "website";
 
   return (
     <div className="flex flex-col items-center justify-center p-12 h-full">

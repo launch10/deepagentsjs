@@ -6,6 +6,7 @@
 #  active             :boolean          default(TRUE), not null
 #  current_step       :string
 #  deleted_at         :datetime
+#  finished_at        :datetime
 #  is_live            :boolean          default(FALSE)
 #  stacktrace         :text
 #  status             :string           default("pending"), not null
@@ -22,6 +23,7 @@
 #  index_deploys_on_active_project          (project_id,active) UNIQUE WHERE ((deleted_at IS NULL) AND (active = true))
 #  index_deploys_on_campaign_deploy_id      (campaign_deploy_id)
 #  index_deploys_on_deleted_at              (deleted_at)
+#  index_deploys_on_finished_at             (finished_at)
 #  index_deploys_on_is_live                 (is_live)
 #  index_deploys_on_project_id              (project_id)
 #  index_deploys_on_project_id_and_is_live  (project_id,is_live)

@@ -29,6 +29,14 @@ export default function InviteAcceptScreen() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
           <Button
             variant="outline"
+            onClick={() =>
+              window.open("https://ads.google.com/aw/accountaccess/invitations", "_blank")
+            }
+          >
+            Open Google Ads
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => window.open("https://mail.google.com", "_blank")}
           >
             Open Gmail

@@ -84,7 +84,7 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
     context "support ticket creation" do
       it "creates a support ticket for stuck jobs with a deploy" do
         deploy = create(:deploy, :running, project: create(:project, account: account))
-        stuck_job = create(:job_run, :pending, :with_langgraph_callback,
+        create(:job_run, :pending, :with_langgraph_callback,
           account: account, deploy: deploy, created_at: 15.minutes.ago)
 
         expect(Rollbar).to receive(:error).with("Stuck job run detected", anything)
@@ -97,7 +97,7 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
       end
 
       it "does not create a support ticket for stuck jobs without a deploy" do
-        stuck_job = create(:job_run, :pending, :with_langgraph_callback,
+        create(:job_run, :pending, :with_langgraph_callback,
           account: account, deploy: nil, created_at: 15.minutes.ago)
 
         expect(Rollbar).to receive(:error).with("Stuck job run detected", anything)
@@ -108,7 +108,7 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
       it "does not duplicate tickets if one already exists" do
         deploy = create(:deploy, :running, project: create(:project, account: account))
         create(:support_request, supportable: deploy, user: account.owner, account: account)
-        stuck_job = create(:job_run, :pending, :with_langgraph_callback,
+        create(:job_run, :pending, :with_langgraph_callback,
           account: account, deploy: deploy, created_at: 15.minutes.ago)
 
         expect(Rollbar).to receive(:error).with("Stuck job run detected", anything)

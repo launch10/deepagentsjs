@@ -6,6 +6,7 @@
 #  active             :boolean          default(TRUE), not null
 #  current_step       :string
 #  deleted_at         :datetime
+#  finished_at        :datetime
 #  is_live            :boolean          default(FALSE)
 #  stacktrace         :text
 #  status             :string           default("pending"), not null
@@ -22,6 +23,7 @@
 #  index_deploys_on_active_project          (project_id,active) UNIQUE WHERE ((deleted_at IS NULL) AND (active = true))
 #  index_deploys_on_campaign_deploy_id      (campaign_deploy_id)
 #  index_deploys_on_deleted_at              (deleted_at)
+#  index_deploys_on_finished_at             (finished_at)
 #  index_deploys_on_is_live                 (is_live)
 #  index_deploys_on_project_id              (project_id)
 #  index_deploys_on_project_id_and_is_live  (project_id,is_live)
@@ -301,6 +303,54 @@ RSpec.describe Deploy, type: :model do
     it "returns nil when deploy is nil" do
       props = project.send(:deploy_props, nil)
       expect(props).to be_nil
+    end
+  end
+
+  describe "#duration" do
+    it "returns nil when not finished" do
+      deploy = create(:deploy, project: project, status: "running")
+      expect(deploy.duration).to be_nil
+    end
+
+    it "returns seconds between created_at and finished_at" do
+      deploy = create(:deploy, project: project)
+      deploy.update!(status: "completed")
+
+      expect(deploy.duration).to be_a(Float).or be_a(Integer)
+      expect(deploy.duration).to be >= 0
+    end
+  end
+
+  describe "finished_at" do
+    it "is stamped when status transitions to completed" do
+      deploy = create(:deploy, project: project)
+      expect(deploy.finished_at).to be_nil
+
+      deploy.update!(status: "completed")
+      expect(deploy.finished_at).to be_present
+    end
+
+    it "is stamped when status transitions to failed" do
+      deploy = create(:deploy, project: project)
+      deploy.update!(status: "failed")
+
+      expect(deploy.finished_at).to be_present
+    end
+
+    it "is not overwritten on subsequent saves" do
+      deploy = create(:deploy, project: project)
+      deploy.update!(status: "completed")
+      original_finished_at = deploy.finished_at
+
+      deploy.update!(is_live: true)
+      expect(deploy.reload.finished_at).to eq(original_finished_at)
+    end
+
+    it "is not set for non-terminal status transitions" do
+      deploy = create(:deploy, project: project, status: "pending")
+      deploy.update!(status: "running")
+
+      expect(deploy.finished_at).to be_nil
     end
   end
 

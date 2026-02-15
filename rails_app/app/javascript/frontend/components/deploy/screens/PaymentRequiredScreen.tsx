@@ -1,9 +1,16 @@
+import { usePage } from "@inertiajs/react";
 import { CreditCardIcon } from "@heroicons/react/24/outline";
 import { Button } from "@components/ui/button";
-import { useDeployChatActions } from "@hooks/useDeployChat";
+import { useDeployChatActions, type DeployProps } from "@hooks/useDeployChat";
 
 export default function PaymentRequiredScreen() {
   const { updateState } = useDeployChatActions();
+  const { ads_account } = usePage<DeployProps>().props;
+
+  const customerId = ads_account?.platform_settings?.google?.customer_id?.replace(/-/g, "");
+  const billingUrl = customerId
+    ? `https://ads.google.com/aw/billing/payments?ocid=${customerId}`
+    : "https://ads.google.com/aw/billing/payments";
 
   return (
     <div className="flex flex-col items-center justify-center p-12 min-h-[400px]">
@@ -23,10 +30,7 @@ export default function PaymentRequiredScreen() {
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mt-6">
-          <Button
-            variant="outline"
-            onClick={() => window.open("https://ads.google.com/aw/billing/payments", "_blank")}
-          >
+          <Button variant="outline" onClick={() => window.open(billingUrl, "_blank")}>
             Add Payment Method
           </Button>
           <Button onClick={() => updateState({})}>Payment Method Added</Button>

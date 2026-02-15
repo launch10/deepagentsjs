@@ -72,6 +72,8 @@ class API::V1::DeploysController < API::BaseController
       is_live: deploy.is_live,
       thread_id: deploy.thread_id,
       support_ticket: deploy.support_request&.ticket_reference,
+      finished_at: deploy.finished_at,
+      duration: deploy.duration,
       created_at: deploy.created_at,
       updated_at: deploy.updated_at
     }

@@ -2,10 +2,8 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { Card } from "@components/ui/card";
 import DeployTaskList from "./DeployTaskList";
 import { useDeployChatState } from "@hooks/useDeployChat";
-import { useDeployInstructions } from "@hooks/useDeployInstructions";
 
 export default function DeploySidebar() {
-  const instructions = useDeployInstructions();
   const tasks = useDeployChatState("tasks");
   const contentRef = useRef<HTMLDivElement>(null);
   const [minHeight, setMinHeight] = useState<number | undefined>();
@@ -23,7 +21,7 @@ export default function DeploySidebar() {
       style={minHeight ? { minHeight } : undefined}
     >
       <div ref={contentRef}>
-        <DeployTaskList instructions={instructions} tasks={tasks} />
+        <DeployTaskList tasks={tasks} />
       </div>
     </Card>
   );

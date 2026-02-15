@@ -107,34 +107,38 @@ interface PhaseDisplay {
   status: string;
 }
 
+const CAMPAIGN_PHASE_NAMES: string[] = [
+  "ConnectingGoogle",
+  "VerifyingGoogle",
+  "CheckingBilling",
+  "DeployingCampaign",
+  "EnablingCampaign",
+];
+
 interface DeployTaskListProps {
-  instructions: Deploy.Instructions;
   tasks?: Deploy.DeployGraphState["tasks"];
 }
 
 /**
  * Deploy task checklist for the sidebar. Uses the shared Checklist compound component.
- * Filters phases based on deploy instructions and shows task-specific icons.
+ * Renders phases derived from whatever tasks the backend put in state.
  */
-export default function DeployTaskList({ instructions, tasks }: DeployTaskListProps) {
-  const title = instructions.googleAds ? "Launching Campaign" : "Launching Website";
-
+export default function DeployTaskList({ tasks }: DeployTaskListProps) {
   // Compute phases from current tasks (lightweight graph state tasks)
-  const phases: PhaseDisplay[] = useMemo(() => {
-    const relevantTaskNames = Deploy.findTasks(instructions);
+  const { phases, hasCampaignPhases } = useMemo(() => {
     const graphTasks = tasks ?? [];
+    const taskNames = new Set(graphTasks.map((t) => t.name));
 
-    return (Deploy.PhaseNames as readonly Deploy.PhaseName[])
+    const computed = (Deploy.PhaseNames as readonly Deploy.PhaseName[])
       .filter((phaseName) => {
         const phaseTasks = Deploy.PhaseTaskMap[phaseName];
-        // Show phase if any of its constituent tasks are in the relevant set
-        const isRelevant = phaseTasks.some((taskName) => relevantTaskNames.includes(taskName));
-        if (!isRelevant) return false;
+        // Show phase only if at least one of its tasks exists in state
+        const hasTask = phaseTasks.some((taskName) => taskNames.has(taskName));
+        if (!hasTask) return false;
 
         // Hide FixingBugs unless it actually has a task (only shows when validation fails)
         if (phaseName === "FixingBugs") {
-          const fixingBugsTask = graphTasks.find((t) => t.name === "FixingBugs");
-          if (!fixingBugsTask) return false;
+          if (!taskNames.has("FixingBugs")) return false;
         }
         return true;
       })
@@ -142,7 +146,14 @@ export default function DeployTaskList({ instructions, tasks }: DeployTaskListPr
         name: phaseName,
         status: computePhaseStatusFromGraphTasks(phaseName, graphTasks),
       }));
-  }, [tasks, instructions]);
+
+    return {
+      phases: computed,
+      hasCampaignPhases: computed.some((p) => CAMPAIGN_PHASE_NAMES.includes(p.name)),
+    };
+  }, [tasks]);
+
+  const title = hasCampaignPhases ? "Launching Campaign" : "Launching Website";
 
   return (
     <Checklist.Root title={title}>

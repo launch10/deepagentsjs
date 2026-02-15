@@ -44,11 +44,9 @@ const TasksForInstructions: Record<InstructionType, TaskName[]> = {
 }
 
 const findTasksForInstructions = (instructions: Instructions): TaskName[] => {
-  return Object.keys(instructions).map((key) => {
-    if (instructions[key as InstructionType]) {
-      return TasksForInstructions[key as InstructionType];
-    }
-  }).flat() as TaskName[];
+  return Object.keys(instructions)
+    .filter((key) => instructions[key as InstructionType])
+    .flatMap((key) => TasksForInstructions[key as InstructionType]);
 }
 
 export const isTaskRequired = (instructions: Instructions, taskName: TaskName): boolean => {

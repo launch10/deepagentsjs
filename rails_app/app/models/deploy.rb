@@ -6,6 +6,7 @@
 #  active             :boolean          default(TRUE), not null
 #  current_step       :string
 #  deleted_at         :datetime
+#  finished_at        :datetime
 #  is_live            :boolean          default(FALSE)
 #  stacktrace         :text
 #  status             :string           default("pending"), not null
@@ -22,6 +23,7 @@
 #  index_deploys_on_active_project          (project_id,active) UNIQUE WHERE ((deleted_at IS NULL) AND (active = true))
 #  index_deploys_on_campaign_deploy_id      (campaign_deploy_id)
 #  index_deploys_on_deleted_at              (deleted_at)
+#  index_deploys_on_finished_at             (finished_at)
 #  index_deploys_on_is_live                 (is_live)
 #  index_deploys_on_project_id              (project_id)
 #  index_deploys_on_project_id_and_is_live  (project_id,is_live)
@@ -60,15 +62,27 @@ class Deploy < ApplicationRecord
   after_save :refresh_project_status, if: :saved_change_to_is_live?
   after_save :auto_create_support_ticket,
     if: -> { saved_change_to_status? && status == "failed" && needs_support }
+  before_save :stamp_finished_at,
+    if: -> { status_changed? && status.in?(%w[completed failed]) }
 
   scope :active, -> { where(active: true) }
   scope :latest, -> { order(created_at: :desc).limit(1).last }
   scope :live, -> { where(is_live: true) }
   scope :in_progress, -> { where(status: %w[pending running]) }
   scope :user_recently_active, -> { where(user_active_at: 5.minutes.ago..) }
+  scope :slow, ->(threshold = 5.minutes) {
+    where.not(finished_at: nil).where("finished_at - created_at > ?", threshold)
+  }
 
   def touch_user_active!
     update_column(:user_active_at, Time.current)
+  end
+
+  # Duration in seconds, or nil if not yet finished
+  def duration
+    return nil unless finished_at
+
+    finished_at - created_at
   end
 
   def deactivate!
@@ -105,5 +119,9 @@ class Deploy < ApplicationRecord
 
   def auto_create_support_ticket
     Deploys::AutoSupportTicketService.new(self).call
+  end
+
+  def stamp_finished_at
+    self.finished_at ||= Time.current
   end
 end

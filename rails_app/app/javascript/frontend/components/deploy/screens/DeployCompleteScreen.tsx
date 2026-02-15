@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
 import { usePage } from "@inertiajs/react";
-import type { Deploy } from "@shared";
 import DeploymentHistoryCard from "@components/website/deployment-history/DeploymentHistoryCard";
 import type { Deployment } from "@components/website/deployment-history/DeploymentHistory.types";
 import { DeployHistory } from "@components/deploy";
@@ -8,7 +7,6 @@ import { Button } from "@components/ui/button";
 import DevButton from "@components/shared/DevButton";
 import { useDeployId, useProjectId } from "~/stores/projectStore";
 import { useDeployChatState, type DeployProps } from "@hooks/useDeployChat";
-import { useDeployInstructions } from "@hooks/useDeployInstructions";
 import deployImage from "@assets/deploy.png";
 
 function RestartDeployButton() {
@@ -87,10 +85,19 @@ function buildDeployUrl(baseUrl: string | undefined, environment?: string): stri
   return url.toString();
 }
 
+const CAMPAIGN_TASK_NAMES: string[] = [
+  "ConnectingGoogle",
+  "VerifyingGoogle",
+  "CheckingBilling",
+  "DeployingCampaign",
+  "EnablingCampaign",
+];
+
 export default function DeployCompleteScreen() {
   const { website_url, deploy_environment } = usePage<DeployProps>().props;
-  const instructions = useDeployInstructions();
   const result = useDeployChatState("result");
+  const tasks = useDeployChatState("tasks");
+  const hasCampaign = (tasks ?? []).some((t) => CAMPAIGN_TASK_NAMES.includes(t.name));
   const rawUrl = (result?.url as string | undefined) || website_url || undefined;
   const deployUrl = buildDeployUrl(rawUrl, deploy_environment);
 
@@ -116,8 +123,8 @@ export default function DeployCompleteScreen() {
           <h2 className="text-lg font-semibold leading-[22px] text-base-500">Deployment History</h2>
           <p className="text-xs leading-4 text-base-300">
             This page tracks all deployments for your landing page
-            {instructions.googleAds ? " and ad campaigns" : ""}. Review the status and details of
-            each deployment to ensure optimal performance and quickly identify any issues.
+            {hasCampaign ? " and ad campaigns" : ""}. Review the status and details of each
+            deployment to ensure optimal performance and quickly identify any issues.
           </p>
         </div>
         <div className="flex shrink-0 gap-3">
@@ -131,7 +138,7 @@ export default function DeployCompleteScreen() {
         <img src={deployImage} alt="Deployment" className="w-40 sm:w-56" />
         <div className="flex flex-col items-center gap-3 text-center">
           <h3 className="text-xl font-semibold text-base-500">
-            {instructions.googleAds
+            {hasCampaign
               ? "You've just launched your first campaign"
               : "You've just launched your website"}
           </h3>

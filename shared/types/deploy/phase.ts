@@ -164,7 +164,10 @@ export function createPhase(phaseName: PhaseName, allTasks: Task[]): Phase {
  */
 export function computePhases(tasks: Task[], phaseNames?: PhaseName[]): Phase[] {
   const namesToCompute = phaseNames ?? PhaseNames;
-  return namesToCompute.map((name) => createPhase(name, tasks));
+  const taskNames = new Set(tasks.map((t) => t.name));
+  return namesToCompute
+    .filter((name) => PhaseTaskMap[name].some((taskName) => taskNames.has(taskName)))
+    .map((name) => createPhase(name, tasks));
 }
 
 /**

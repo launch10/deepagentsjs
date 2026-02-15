@@ -2,7 +2,7 @@ import { usePage } from "@inertiajs/react";
 import { useCallback, useMemo } from "react";
 import { useLanggraph, type ChatSnapshot, type LanggraphChat } from "langgraph-ai-sdk-react";
 import type { UIMessage } from "ai";
-import { Deploy } from "@shared";
+import { Deploy, type InertiaProps } from "@shared";
 import { useChatOptions } from "@hooks/useChatOptions";
 import { useDeployInstructions } from "@hooks/useDeployInstructions";
 
@@ -15,23 +15,8 @@ export interface WebsiteDeployRecord {
   created_at: string;
 }
 
-export interface DeployProps {
-  thread_id: string | null;
-  jwt: string;
-  langgraph_path: string;
-  root_path: string;
-  deploy: {
-    id: number;
-    status: string;
-    current_step: string | null;
-  } | null;
-  website: { id: number } | null;
-  website_url: string | null;
-  deploy_environment: string;
-  campaign: { id: number } | null;
-  project: { id: number; uuid: string };
-  [key: string]: unknown;
-}
+export type DeployProps =
+  InertiaProps.paths["/projects/{uuid}/deploy"]["get"]["responses"]["200"]["content"]["application/json"];
 
 export type DeploySnapshot = ChatSnapshot<Deploy.DeployGraphState>;
 
@@ -96,7 +81,7 @@ export function useDeployChatThreadId() {
 export function useDeployContext() {
   const props = usePage<DeployProps>().props;
   const { website, campaign } = props;
-  const projectId = (props.project as { id?: number } | null)?.id;
+  const projectId = props.project?.id;
   const instructions = useDeployInstructions();
 
   return useMemo(

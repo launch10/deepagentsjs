@@ -1026,7 +1026,7 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_precreate_1" as ThreadIDType,
           projectId: 1,
           websiteId: 1,
-          instructions: { website: true },
+          instructions: { website: true, googleAds: false },
           tasks: [],
           chatId: 1,
         })
@@ -1042,6 +1042,9 @@ describe.sequential("Deploy Graph Tests", () => {
         "DeployingWebsite",
       ];
 
+      // Exact task count — no ghost undefined tasks from false instructions
+      expect(result.state.tasks.length).toBe(expectedWebsiteTasks.length);
+
       // All expected tasks should exist
       for (const taskName of expectedWebsiteTasks) {
         const task = Task.findTask(result.state.tasks, taskName);
@@ -1050,20 +1053,42 @@ describe.sequential("Deploy Graph Tests", () => {
       }
 
       // No campaign tasks should exist
-      const campaignTasks = [
+      const campaignTaskNames = [
         "ConnectingGoogle",
         "VerifyingGoogle",
         "CheckingBilling",
         "DeployingCampaign",
         "EnablingCampaign",
       ];
-      for (const taskName of campaignTasks) {
+      for (const taskName of campaignTaskNames) {
         const task = Task.findTask(result.state.tasks, taskName);
         expect(task, `Expected campaign task "${taskName}" to NOT exist`).toBeUndefined();
       }
 
-      // Phases should also be computed from the pending tasks
-      expect(result.state.phases.length).toBeGreaterThan(0);
+      // Only website phases should exist — no campaign phases
+      const expectedWebsitePhases: Deploy.PhaseName[] = [
+        "CheckingForBugs",
+        "FixingBugs",
+        "OptimizingSEO",
+        "AddingAnalytics",
+        "DeployingWebsite",
+      ];
+      expect(result.state.phases.length).toBe(expectedWebsitePhases.length);
+      for (const phaseName of expectedWebsitePhases) {
+        const phase = result.state.phases.find((p) => p.name === phaseName);
+        expect(phase, `Expected website phase "${phaseName}" to exist`).toBeDefined();
+      }
+      const campaignPhaseNames = [
+        "ConnectingGoogle",
+        "VerifyingGoogle",
+        "CheckingBilling",
+        "DeployingCampaign",
+        "EnablingCampaign",
+      ];
+      for (const phaseName of campaignPhaseNames) {
+        const phase = result.state.phases.find((p) => p.name === phaseName);
+        expect(phase, `Expected campaign phase "${phaseName}" to NOT exist`).toBeUndefined();
+      }
     });
 
     /**
@@ -1100,11 +1125,17 @@ describe.sequential("Deploy Graph Tests", () => {
         "EnablingCampaign",
       ];
 
+      // Exact task count — no ghost undefined tasks
+      expect(result.state.tasks.length).toBe(allExpectedTasks.length);
+
       for (const taskName of allExpectedTasks) {
         const task = Task.findTask(result.state.tasks, taskName);
         expect(task, `Expected task "${taskName}" to exist`).toBeDefined();
         expect(task?.status, `Expected task "${taskName}" to be pending`).toBe("pending");
       }
+
+      // All 10 phases should exist (both website + campaign)
+      expect(result.state.phases.length).toBe(10);
     });
 
     /**
@@ -1233,6 +1264,9 @@ describe.sequential("Deploy Graph Tests", () => {
         "EnablingCampaign",
       ];
 
+      // Exact task count — no ghost undefined tasks
+      expect(result.state.tasks.length).toBe(expectedCampaignTasks.length);
+
       for (const taskName of expectedCampaignTasks) {
         const task = Task.findTask(result.state.tasks, taskName);
         expect(task, `Expected task "${taskName}" to exist`).toBeDefined();
@@ -1240,7 +1274,7 @@ describe.sequential("Deploy Graph Tests", () => {
       }
 
       // No website tasks should exist
-      const websiteTasks = [
+      const websiteTaskNames = [
         "ValidateLinks",
         "RuntimeValidation",
         "FixingBugs",
@@ -1248,9 +1282,34 @@ describe.sequential("Deploy Graph Tests", () => {
         "AddingAnalytics",
         "DeployingWebsite",
       ];
-      for (const taskName of websiteTasks) {
+      for (const taskName of websiteTaskNames) {
         const task = Task.findTask(result.state.tasks, taskName);
         expect(task, `Expected website task "${taskName}" to NOT exist`).toBeUndefined();
+      }
+
+      // Only campaign phases should exist — no website phases
+      const expectedCampaignPhases: Deploy.PhaseName[] = [
+        "ConnectingGoogle",
+        "VerifyingGoogle",
+        "CheckingBilling",
+        "DeployingCampaign",
+        "EnablingCampaign",
+      ];
+      expect(result.state.phases.length).toBe(expectedCampaignPhases.length);
+      for (const phaseName of expectedCampaignPhases) {
+        const phase = result.state.phases.find((p) => p.name === phaseName);
+        expect(phase, `Expected campaign phase "${phaseName}" to exist`).toBeDefined();
+      }
+      const websitePhaseNames = [
+        "CheckingForBugs",
+        "FixingBugs",
+        "OptimizingSEO",
+        "AddingAnalytics",
+        "DeployingWebsite",
+      ];
+      for (const phaseName of websitePhaseNames) {
+        const phase = result.state.phases.find((p) => p.name === phaseName);
+        expect(phase, `Expected website phase "${phaseName}" to NOT exist`).toBeUndefined();
       }
     });
 
