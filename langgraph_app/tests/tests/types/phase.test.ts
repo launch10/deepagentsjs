@@ -204,7 +204,7 @@ describe("Phase", () => {
       expect(phase.name).toBe("CheckingForBugs");
       expect(phase.description).toBe("Checking for Bugs");
       expect(phase.status).toBe("failed");
-      expect(phase.progress).toBe(0.5); // 1 of 2 tasks completed
+      expect(phase.progress).toBe(1); // Both tasks terminal (completed + failed)
       expect(phase.taskNames).toEqual(["ValidateLinks", "RuntimeValidation"]);
       expect(phase.error).toBe("Build errors");
     });
@@ -259,14 +259,14 @@ describe("Phase", () => {
 
       expect(phases).toHaveLength(10); // All defined phases
       expect(phases.map((p) => p.name)).toEqual([
-        "AddingAnalytics",
-        "OptimizingSEO",
-        "CheckingForBugs",
-        "FixingBugs",
-        "DeployingWebsite",
         "ConnectingGoogle",
         "VerifyingGoogle",
         "CheckingBilling",
+        "CheckingForBugs",
+        "FixingBugs",
+        "OptimizingSEO",
+        "AddingAnalytics",
+        "DeployingWebsite",
         "DeployingCampaign",
         "EnablingCampaign",
       ]);

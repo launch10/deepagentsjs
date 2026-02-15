@@ -23,19 +23,12 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
-import {
-  db,
-  websites,
-  websiteFiles,
-  codeFiles,
-  chats,
-  eq,
-  and,
-} from "@db";
+import { db, websites, websiteFiles, codeFiles, chats, eq, and } from "@db";
 import { testGraph, consumeStream } from "@support";
 import { DatabaseSnapshotter } from "@services";
 import { WebsiteAPI } from "@api";
 import { getCodingAgentBackend } from "@nodes";
+import { startPolly, stopPolly, persistRecordings } from "@utils";
 import { Website, type ThreadIDType } from "@types";
 import { websiteGraph as uncompiledGraph } from "@graphs";
 import { graphParams } from "@core";
@@ -105,10 +98,7 @@ describe("Website Builder File Return Behavior", () => {
       expect(wfRows.length).toBe(0);
 
       // But codeFiles view DOES return files (from template_files fallback)
-      const cfRows = await db
-        .select()
-        .from(codeFiles)
-        .where(eq(codeFiles.websiteId, websiteId));
+      const cfRows = await db.select().from(codeFiles).where(eq(codeFiles.websiteId, websiteId));
 
       expect(cfRows.length).toBeGreaterThan(0);
 
@@ -153,10 +143,7 @@ describe("Website Builder File Return Behavior", () => {
     });
 
     it("codeFiles view returns agent content, not template content", async () => {
-      const cfRows = await db
-        .select()
-        .from(codeFiles)
-        .where(eq(codeFiles.websiteId, websiteId));
+      const cfRows = await db.select().from(codeFiles).where(eq(codeFiles.websiteId, websiteId));
 
       expect(cfRows.length).toBeGreaterThan(0);
 
@@ -248,10 +235,7 @@ describe("Website Builder File Return Behavior", () => {
         .execute();
 
       // Verify files in state match what's in the database
-      const dbFiles = await db
-        .select()
-        .from(codeFiles)
-        .where(eq(codeFiles.websiteId, websiteId));
+      const dbFiles = await db.select().from(codeFiles).where(eq(codeFiles.websiteId, websiteId));
 
       for (const dbFile of dbFiles) {
         const stateFile = result.state.files[dbFile.path!] as Website.File.File | undefined;
@@ -289,6 +273,8 @@ describe("Website Builder File Return Behavior", () => {
     });
 
     it("files are persisted to DB and visible in checkpoint after edit", async () => {
+      await startPolly("website-builder-file-persistence");
+
       // Snapshot files before edit
       const filesBefore = await db
         .select()
@@ -314,6 +300,9 @@ describe("Website Builder File Return Behavior", () => {
         },
       });
       await consumeStream(response);
+
+      await persistRecordings();
+      await stopPolly();
 
       // Verify files are persisted in DB
       const filesAfter = await db

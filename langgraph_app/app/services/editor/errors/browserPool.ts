@@ -24,6 +24,9 @@ class BrowserPool {
   private activeContexts = 0;
   private waitQueue: Array<() => void> = [];
   private contextTimers = new Map<BrowserContext, NodeJS.Timeout>();
+  private contextIdCounter = 0;
+  private contextIds = new Map<BrowserContext, number>();
+  private contextAcquiredAt = new Map<BrowserContext, number>();
 
   /**
    * Get a browser context for validation.
@@ -31,9 +34,20 @@ class BrowserPool {
    * Context auto-releases after CONTEXT_TIMEOUT_MS to prevent leaks.
    */
   async getContext(): Promise<BrowserContext> {
+    const log = getLogger({ component: "BrowserPool" });
+    const contextId = ++this.contextIdCounter;
+    const startMs = Date.now();
+
+    log.info(
+      { contextId, activeContexts: this.activeContexts, waitQueueLength: this.waitQueue.length },
+      "getContext requested"
+    );
+
     // Bounded concurrency - wait if at capacity
     if (this.activeContexts >= BrowserPool.MAX_CONTEXTS) {
+      log.warn({ contextId }, "At capacity, waiting in queue");
       await new Promise<void>((resolve) => this.waitQueue.push(resolve));
+      log.info({ contextId, waitedMs: Date.now() - startMs }, "Dequeued from wait queue");
     }
 
     // Lazy launch with race condition protection
@@ -41,12 +55,20 @@ class BrowserPool {
 
     this.activeContexts++;
     const context = await browser.newContext();
+    this.contextIds.set(context, contextId);
+    this.contextAcquiredAt.set(context, Date.now());
+
+    log.info(
+      { contextId, activeContexts: this.activeContexts, elapsedMs: Date.now() - startMs },
+      "Context acquired, starting 60s auto-release timer"
+    );
 
     // Auto-release after timeout to prevent resource leaks
     const timer = setTimeout(() => {
-      getLogger({ component: "BrowserPool" }).warn(
-        { timeoutMs: BrowserPool.CONTEXT_TIMEOUT_MS },
-        "Browser context held too long, force-releasing"
+      const heldMs = Date.now() - (this.contextAcquiredAt.get(context) || Date.now());
+      log.warn(
+        { contextId, timeoutMs: BrowserPool.CONTEXT_TIMEOUT_MS, heldMs },
+        "AUTO-RELEASE: Browser context held too long, force-releasing"
       );
       this.releaseContext(context);
     }, BrowserPool.CONTEXT_TIMEOUT_MS);
@@ -61,22 +83,35 @@ class BrowserPool {
    * Clears the auto-release timer and wakes up next waiter if any.
    */
   async releaseContext(context: BrowserContext): Promise<void> {
+    const log = getLogger({ component: "BrowserPool" });
+    const contextId = this.contextIds.get(context) || -1;
+    const acquiredAt = this.contextAcquiredAt.get(context);
+    const heldMs = acquiredAt ? Date.now() - acquiredAt : -1;
+
     // Clear auto-release timer if context was released properly
     const timer = this.contextTimers.get(context);
     if (timer) {
       clearTimeout(timer);
       this.contextTimers.delete(context);
+      log.info({ contextId, heldMs }, "MANUAL release (normal path)");
     } else {
       // Already released (likely by timeout) - no-op
+      log.warn(
+        { contextId },
+        "releaseContext called but no timer found (already released by auto-release?)"
+      );
       return;
     }
 
     try {
       await context.close();
     } catch (error) {
-      getLogger({ component: "BrowserPool" }).error({ err: error }, "Failed to close browser context");
+      log.error({ err: error, contextId }, "Failed to close browser context");
     } finally {
       this.activeContexts--;
+      this.contextIds.delete(context);
+      this.contextAcquiredAt.delete(context);
+      log.info({ contextId, activeContexts: this.activeContexts }, "Context released");
       // Wake up next waiter
       const next = this.waitQueue.shift();
       if (next) next();

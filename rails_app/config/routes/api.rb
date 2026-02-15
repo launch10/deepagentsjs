@@ -76,6 +76,7 @@ namespace :api, defaults: {format: :json} do
     get "credits/check", to: "credits#check"
     resources :deploys, only: [:create, :show, :update] do
       post :touch, on: :member
+      post :deactivate, on: :collection
     end
     resources :website_deploys, only: [:index] do
       post :rollback, on: :member

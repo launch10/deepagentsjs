@@ -79,7 +79,10 @@ export class WebsiteRunner implements AsyncDisposable {
    */
   async start(): Promise<void> {
     const log = getLogger({ component: "WebsiteRunner" });
-    log.info({ port: this.port }, "Starting dev server");
+    const t0 = Date.now();
+    const elapsed = () => Date.now() - t0;
+
+    log.info({ port: this.port, projectDir: this.projectDir }, "Starting dev server");
 
     return new Promise((resolve, reject) => {
       this.devServerProcess = spawn("pnpm", ["dev"], {
@@ -104,18 +107,29 @@ export class WebsiteRunner implements AsyncDisposable {
         if (trimmed) {
           this.stdoutLines.push(trimmed);
         }
-        getLogger({ component: "WebsiteRunner" }).debug({ output: trimmed }, "Server stdout");
+        log.debug({ output: trimmed, elapsedMs: elapsed() }, "Server stdout");
 
         // Look for the actual port being used
         const portMatch = output.match(/Local:\s+https?:\/\/localhost:(\d+)/);
         if (portMatch) {
+          const oldPort = this.port;
           this.port = parseInt(portMatch[1], 10);
           this.serverUrl = `http://localhost:${this.port}`;
+          log.info(
+            {
+              detectedPort: this.port,
+              previousPort: oldPort,
+              serverUrl: this.serverUrl,
+              elapsedMs: elapsed(),
+            },
+            "Port detected from Vite stdout"
+          );
         }
 
         // Look for signs the server is ready
         if (output.includes("Local:") || output.includes("ready in")) {
           serverStarted = true;
+          log.info({ elapsedMs: elapsed() }, "Server ready signal detected in stdout");
         }
       });
 
@@ -126,20 +140,26 @@ export class WebsiteRunner implements AsyncDisposable {
         if (trimmed) {
           this.stderrLines.push(trimmed);
         }
-        getLogger({ component: "WebsiteRunner" }).warn({ output: trimmed }, "Server stderr");
+        log.warn({ output: trimmed, elapsedMs: elapsed() }, "Server stderr");
       });
 
       this.devServerProcess.on("error", (error) => {
+        log.error({ err: error, elapsedMs: elapsed() }, "Dev server process error");
         reject(new Error(`Failed to start dev server: ${error.message}`));
       });
 
       // Wait for the server to be ready
       setTimeout(async () => {
+        log.info({ elapsedMs: elapsed() }, "waitForServer() starting");
         try {
           await this.waitForServer();
-          getLogger({ component: "WebsiteRunner" }).info({ url: this.serverUrl }, "Dev server running");
+          log.info(
+            { url: this.serverUrl, finalPort: this.port, elapsedMs: elapsed() },
+            "Dev server running — waitForServer() succeeded"
+          );
           resolve();
         } catch (error) {
+          log.error({ err: error, elapsedMs: elapsed(), errorOutput }, "waitForServer() FAILED");
           this.stop();
           reject(new Error(`Server failed to start: ${errorOutput || error}`));
         }

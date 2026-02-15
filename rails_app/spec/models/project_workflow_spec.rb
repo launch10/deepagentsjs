@@ -269,6 +269,57 @@ RSpec.describe ProjectWorkflow, type: :model do
     end
   end
 
+  describe "#chat" do
+    let!(:website_chat) do
+      create(:chat, project: project, account: account, chat_type: "website", thread_id: "website-thread")
+    end
+
+    it "returns the website chat when step is website/build" do
+      workflow.update!(step: "website", substep: "build")
+      expect(workflow.chat).to eq(website_chat)
+    end
+
+    it "returns the brainstorm chat when step is brainstorm" do
+      brainstorm_chat = create(:chat, project: project, account: account, chat_type: "brainstorm", thread_id: "brainstorm-thread")
+      workflow.update!(step: "brainstorm", substep: nil)
+      expect(workflow.chat).to eq(brainstorm_chat)
+    end
+
+    context "deploy contexts" do
+      let!(:deploy) { create(:deploy, project: project) }
+
+      it "returns the deploy chat when substep is deploy (website/deploy)" do
+        workflow.update!(step: "website", substep: "deploy")
+        expect(workflow.chat).to eq(deploy.chat)
+        expect(workflow.chat.chat_type).to eq("deploy")
+      end
+
+      it "returns the deploy chat when step is deploy (standalone)" do
+        workflow.update!(step: "deploy", substep: nil)
+        expect(workflow.chat).to eq(deploy.chat)
+      end
+
+      it "does NOT return the website chat when in deploy context" do
+        workflow.update!(step: "website", substep: "deploy")
+        expect(workflow.chat).not_to eq(website_chat)
+      end
+
+      it "returns nil when no deploy exists" do
+        deploy.destroy!
+        workflow.update!(step: "deploy", substep: nil)
+        expect(workflow.chat).to be_nil
+      end
+
+      it "returns the newest deploy's chat when multiple deploys exist" do
+        second_deploy = create(:deploy, project: project)
+        workflow.update!(step: "deploy", substep: nil)
+
+        expect(workflow.chat).to eq(second_deploy.chat)
+        expect(deploy.chat.reload.active).to be false
+      end
+    end
+  end
+
   describe "event tracking" do
     it "tracks workflow_step_reached on next_step!" do
       workflow.update(step: "brainstorm", substep: nil)

@@ -17,6 +17,7 @@ import type { WebsiteUrl } from "@components/website/domain-picker";
 interface WebsitePageProps {
   website?: { id?: number };
   project?: { id?: number; uuid?: string };
+  thread_id?: string;
   [key: string]: unknown;
 }
 
@@ -33,7 +34,7 @@ interface WebsitePageProps {
  * - Then the graph hasn't run, so trigger it
  */
 function useDomainPageInit() {
-  const { website, project } = usePage<WebsitePageProps>().props;
+  const { website, project, thread_id } = usePage<WebsitePageProps>().props;
   const websiteId = website?.id;
   const projectId = project?.id;
 
@@ -42,15 +43,18 @@ function useDomainPageInit() {
   const domainRecommendations = useWebsiteChatState("domainRecommendations");
   const files = useWebsiteChatState("files");
   const status = useWebsiteChatState("status");
+  const chatId = useWebsiteChatState("chatId");
 
-  const hasInitialized = useRef(false);
+  // If thread_id or chatId exists, the graph has already run on a previous visit.
+  // History will load the state (including domainRecommendations) — no need to re-invoke.
+  const hasInitialized = useRef(!!chatId || !!thread_id);
 
   const maybeInit = useEffectEvent(() => {
     if (hasInitialized.current) return;
     if (isStreaming) return;
     if (!websiteId || !projectId) return;
 
-    // Check if graph has already run
+    // Check if graph has already run (from loaded history)
     const hasFiles = files && Object.keys(files).length > 0;
     const hasRecommendations = !!domainRecommendations;
     const graphHasRun = hasRecommendations || hasFiles || (status && status !== "pending");

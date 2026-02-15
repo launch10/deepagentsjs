@@ -108,23 +108,16 @@ interface PhaseDisplay {
 }
 
 interface DeployTaskListProps {
-  deployType: "website" | "campaign";
+  instructions: Deploy.Instructions;
   tasks?: Deploy.DeployGraphState["tasks"];
 }
 
 /**
  * Deploy task checklist for the sidebar. Uses the shared Checklist compound component.
- * Filters phases based on deploy type and shows task-specific icons.
+ * Filters phases based on deploy instructions and shows task-specific icons.
  */
-export default function DeployTaskList({ deployType, tasks }: DeployTaskListProps) {
-  const isCampaign = deployType === "campaign";
-  const title = isCampaign ? "Launching Campaign" : "Launching Website";
-
-  // Determine which phases to show based on deploy instructions
-  const instructions: Deploy.Instructions = {
-    website: true,
-    googleAds: isCampaign,
-  };
+export default function DeployTaskList({ instructions, tasks }: DeployTaskListProps) {
+  const title = instructions.googleAds ? "Launching Campaign" : "Launching Website";
 
   // Compute phases from current tasks (lightweight graph state tasks)
   const phases: PhaseDisplay[] = useMemo(() => {
@@ -149,7 +142,7 @@ export default function DeployTaskList({ deployType, tasks }: DeployTaskListProp
         name: phaseName,
         status: computePhaseStatusFromGraphTasks(phaseName, graphTasks),
       }));
-  }, [tasks, isCampaign]);
+  }, [tasks, instructions]);
 
   return (
     <Checklist.Root title={title}>

@@ -74,10 +74,13 @@ async function runDeployCampaign(
   });
 
   return {
-    tasks: [...state.tasks, { 
-      ...Deploy.createTask(TASK_NAME, jobRun.id), 
-      status: "running" 
-    }],
+    tasks: [
+      ...state.tasks,
+      {
+        ...Deploy.createTask(TASK_NAME, jobRun.id),
+        status: "running",
+      },
+    ],
     status: "pending",
   };
 }
@@ -110,9 +113,18 @@ export const deployCampaignTaskRunner: TaskRunner = {
 
   isBlocking: (state: DeployGraphState, task: Task.Task) => {
     // Blocking when we have a jobId but no result yet
-    getLogger().debug({ taskName: TASK_NAME, isBlocking: task.status === "running" && !!task.jobId && !task.result && !task.error }, "Checking if campaign deploy is blocking");
+    getLogger().debug(
+      {
+        taskName: TASK_NAME,
+        isBlocking: task.status === "running" && !!task.jobId && !task.result && !task.error,
+      },
+      "Checking if campaign deploy is blocking"
+    );
     return task.status === "running" && !!task.jobId && !task.result && !task.error;
   },
+
+  blockingTimeout: 180_000, // 3 minutes between health checks
+  warningTimeout: 120_000, // Show "taking longer than expected" after 2 minutes
 
   run: runDeployCampaign,
 };

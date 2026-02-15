@@ -102,13 +102,16 @@ export const deployWebsiteTaskRunner: TaskRunner = {
   shouldSkip: (state: DeployGraphState) => {
     // Skip if not deploying a website
     // (executor handles already-completed tasks)
-    return !state.deploy?.website;
+    return !state.instructions?.website;
   },
 
   isBlocking: (state: DeployGraphState, task: Task.Task) => {
     // Blocking when we have a jobId but no result yet
     return task.status === "running" && !!task.jobId && !task.result && !task.error;
   },
+
+  blockingTimeout: 180_000, // 3 minutes between health checks
+  warningTimeout: 120_000, // Show "taking longer than expected" after 2 minutes
 
   run: runDeployWebsite,
 };

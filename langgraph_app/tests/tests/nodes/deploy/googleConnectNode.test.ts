@@ -23,7 +23,7 @@ vi.mock("@services", async () => {
 import {
   googleConnectNode,
   isGoogleConnected,
-  googleConnectTaskRunner as taskRunner
+  googleConnectTaskRunner as taskRunner,
 } from "@nodes";
 import { JobRunAPIService } from "@rails_api";
 import { GoogleAPIService } from "@services";
@@ -487,7 +487,7 @@ describe("shouldSkipGoogleConnect", () => {
     const state: Partial<DeployGraphState> = {
       jwt: "test-jwt",
       tasks: [],
-      deploy: { googleAds: true }, // Must deploy Google Ads to not skip
+      instructions: { googleAds: true }, // Must deploy Google Ads to not skip
     };
 
     const result = await taskRunner.shouldSkip(state as DeployGraphState);

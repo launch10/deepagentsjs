@@ -11,7 +11,8 @@ module APISchemas
           status: {type: :string, description: "Deploy status (pending, running, completed, failed)"},
           current_step: {type: :string, nullable: true, description: "Current deploy step"},
           is_live: {type: :boolean, description: "Whether the deploy is live"},
-          thread_id: {type: :string, nullable: true, description: "Chat thread ID"},
+          thread_id: {type: :string, nullable: true, description: "Langgraph thread ID"},
+          support_ticket: {type: :string, nullable: true, description: "Support ticket reference (SR-XXXXXXXX)"},
           **APISchemas.timestamps
         },
         required: %w[id project_id status is_live created_at updated_at]
@@ -23,7 +24,7 @@ module APISchemas
         type: :object,
         properties: {
           project_id: {type: :integer, description: "Project ID to create the deploy for"},
-          thread_id: {type: :string, description: "Thread ID from Langgraph for chat creation"}
+          thread_id: {type: :string, description: "Thread ID from Langgraph"}
         },
         required: ["project_id"]
       }
@@ -36,6 +37,16 @@ module APISchemas
           touched_at: APISchemas.timestamp_field
         },
         required: ["touched_at"]
+      }
+    end
+
+    def self.deactivate_response
+      {
+        type: :object,
+        properties: {
+          success: {type: :boolean}
+        },
+        required: ["success"]
       }
     end
   end

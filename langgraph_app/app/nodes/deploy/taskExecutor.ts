@@ -6,7 +6,7 @@ import { NodeMiddleware } from "@middleware";
 import { getLogger } from "@core";
 import { DeployAPIService, JobRunAPIService } from "@rails_api";
 
-const DEFAULT_BLOCKING_TIMEOUT = 300_000; // 5 minutes
+const MAX_TIMEOUT_EXTENSIONS = 2; // max extensions when blockingTimeout is set
 
 type NextTask = {
   taskName: Deploy.TaskName;
@@ -33,7 +33,7 @@ const anyTaskFailed = (state: Partial<DeployGraphState>): boolean => {
  */
 async function findNextTask(state: DeployGraphState): Promise<NextTask | null> {
   const log = getLogger({ component: "taskExecutor.findNextTask" });
-  const tasks = Deploy.findTasks(state.deploy); // Returns tasks based on instructions, in order of execution
+  const tasks = Deploy.findTasks(state.instructions); // Returns tasks based on instructions, in order of execution
 
   log.debug(
     {
@@ -75,12 +75,21 @@ async function findNextTask(state: DeployGraphState): Promise<NextTask | null> {
       const blocking = runner.isBlocking?.(state, task) ?? false;
       let timedOut = false;
 
-      if (blocking && task.blockingStartedAt) {
-        const timeout = runner.blockingTimeout ?? DEFAULT_BLOCKING_TIMEOUT;
+      // Only check timeout when runner explicitly sets blockingTimeout.
+      // User-managed tasks (ConnectingGoogle, VerifyingGoogle, CheckingBilling)
+      // don't set blockingTimeout and wait indefinitely for webhook.
+      if (blocking && task.blockingStartedAt && runner.blockingTimeout != null) {
         const elapsed = Date.now() - task.blockingStartedAt;
-        timedOut = elapsed > timeout;
+        timedOut = elapsed > runner.blockingTimeout;
         log.info(
-          { taskName, blocking, timedOut, elapsed, timeout, jobId: task.jobId },
+          {
+            taskName,
+            blocking,
+            timedOut,
+            elapsed,
+            timeout: runner.blockingTimeout,
+            jobId: task.jobId,
+          },
           "Task is blocking — checking timeout"
         );
       } else {
@@ -160,23 +169,38 @@ async function checkJobRunStatus(
 
 /**
  * Sync terminal deploy status back to Rails so page reloads show the correct screen.
+ * For failures, optionally passes needs_support + error to trigger auto-support-ticket creation.
+ * Returns the support ticket reference if one was created.
  */
 async function syncDeployStatus(
   state: DeployGraphState,
-  status: "completed" | "failed"
-): Promise<void> {
+  status: "completed" | "failed",
+  errorMessage?: string,
+  node?: string
+): Promise<{ supportTicket?: string }> {
   const log = getLogger({ component: "taskExecutor.syncDeployStatus" });
   if (!state.deployId || !state.jwt) {
     log.warn({ deployId: state.deployId }, "Cannot sync deploy status — missing deployId or jwt");
-    return;
+    return {};
   }
   try {
     const api = new DeployAPIService({ jwt: state.jwt });
-    await api.update(state.deployId as number, { status, is_live: status === "completed" });
-    log.info({ deployId: state.deployId, status }, "Synced deploy status to Rails");
+    const needsSupport = status === "failed" && Deploy.needsSupportTicket(errorMessage, node);
+    const result = await api.update(state.deployId as number, {
+      status,
+      is_live: status === "completed",
+      ...(needsSupport && { needs_support: true }),
+      ...(errorMessage && { stacktrace: errorMessage }),
+    });
+    log.info(
+      { deployId: state.deployId, status, supportTicket: result.support_ticket },
+      "Synced deploy status to Rails"
+    );
+    return { supportTicket: result.support_ticket ?? undefined };
   } catch (err) {
     // Non-critical — frontend falls back to langgraph state
     log.error({ error: err }, "Failed to sync deploy status to Rails");
+    return {};
   }
 }
 
@@ -217,11 +241,14 @@ async function runTaskExecutor(
       { failedTask: failedTask?.name, error: failedTask?.error },
       "No next task and not all complete — fatal failure"
     );
-    await syncDeployStatus(state, "failed");
+    const errorMsg = failedTask?.error ?? "Task failed";
+    const failedNode = failedTask?.name ?? "unknown";
+    const { supportTicket } = await syncDeployStatus(state, "failed", errorMsg, failedNode);
     return {
       ...withPhases(state, []),
       status: "failed",
-      error: { message: failedTask?.error ?? "Task failed", node: failedTask?.name ?? "unknown" },
+      error: { message: errorMsg, node: failedNode },
+      supportTicket,
     };
   }
 
@@ -255,15 +282,31 @@ async function runTaskExecutor(
               ],
             };
           }
-          // Job still running in Rails — extend timeout by resetting blockingStartedAt
+          // Job still running in Rails — extend timeout if extensions remain
           if (jobStatus.status === "running" || jobStatus.status === "pending") {
-            log.info(
-              { taskName: nextTask.taskName, jobId: task.jobId, railsStatus: jobStatus.status },
-              "Job still in progress in Rails — extending timeout"
-            );
-            return {
-              tasks: [{ ...task, blockingStartedAt: Date.now() }],
-            };
+            const extensions = task.timeoutExtensionCount ?? 0;
+            if (extensions >= MAX_TIMEOUT_EXTENSIONS) {
+              log.warn(
+                { taskName: nextTask.taskName, jobId: task.jobId, extensions },
+                "Timeout extensions exhausted — falling through to timeout failure"
+              );
+              // Fall through to timeout failure below
+            } else {
+              log.info(
+                {
+                  taskName: nextTask.taskName,
+                  jobId: task.jobId,
+                  railsStatus: jobStatus.status,
+                  extensions: extensions + 1,
+                },
+                "Job still in progress in Rails — extending timeout"
+              );
+              return {
+                tasks: [
+                  { ...task, blockingStartedAt: Date.now(), timeoutExtensionCount: extensions + 1 },
+                ],
+              };
+            }
           }
         }
       }
@@ -285,12 +328,18 @@ async function runTaskExecutor(
         };
       }
 
-      await syncDeployStatus(state, "failed");
+      const { supportTicket } = await syncDeployStatus(
+        state,
+        "failed",
+        timeoutError,
+        nextTask.taskName
+      );
       return {
         ...withPhases(state, [failedTask]),
         status: "failed",
         error: { message: timeoutError, node: nextTask.taskName },
         tasks: [failedTask],
+        supportTicket,
       };
     }
 
@@ -305,7 +354,22 @@ async function runTaskExecutor(
       };
     }
 
-    // Already has blockingStartedAt and within timeout — just wait
+    // Already has blockingStartedAt and within timeout — check if warning needed
+    const runner = getTaskRunner(nextTask.taskName);
+    const warningTimeout = runner?.warningTimeout;
+    const elapsed = Date.now() - task.blockingStartedAt;
+
+    if (warningTimeout && elapsed > warningTimeout && !task.warning) {
+      const taskLabel = Deploy.TaskDescriptionMap[nextTask.taskName] ?? nextTask.taskName;
+      log.info(
+        { taskName: nextTask.taskName, elapsed, warningTimeout },
+        "Task blocking past warning threshold — setting warning"
+      );
+      return {
+        tasks: [{ ...task, warning: `${taskLabel} is taking longer than expected` }],
+      };
+    }
+
     log.info(
       { taskName: nextTask.taskName },
       "Task is blocking, waiting for webhook — exiting graph"
@@ -373,15 +437,17 @@ async function runTaskExecutor(
         "Task runner returned failure"
       );
       if (!runner?.isFailureRecoverable) {
-        await syncDeployStatus(state, "failed");
+        const errorMsg = failedTask?.error ?? "Task failed";
+        const { supportTicket } = await syncDeployStatus(state, "failed", errorMsg);
         const failedTaskUpdate = { ...failedTask, status: "failed" } as Deploy.Task;
         return {
           ...withPhases(state, [failedTaskUpdate]),
           status: "failed",
           error: {
-            message: failedTask?.error ?? "Task failed",
+            message: errorMsg,
             node: failedTask?.name ?? "unknown",
           },
+          supportTicket,
         };
       }
       return partialGraphState;
@@ -398,7 +464,14 @@ async function runTaskExecutor(
     // a terminal status directly, and the graph exits via the router without
     // re-entering the executor's allTasksComplete branch.
     if (partialGraphState.status === "completed" || partialGraphState.status === "failed") {
-      await syncDeployStatus(state, partialGraphState.status);
+      const errorMsg =
+        partialGraphState.status === "failed"
+          ? (partialGraphState.error as any)?.message
+          : undefined;
+      const { supportTicket } = await syncDeployStatus(state, partialGraphState.status, errorMsg);
+      if (supportTicket) {
+        return { ...partialGraphState, supportTicket };
+      }
     }
 
     return partialGraphState;
@@ -412,12 +485,18 @@ async function runTaskExecutor(
       },
       "Task runner threw an exception"
     );
-    await syncDeployStatus(state, "failed");
+    const { supportTicket } = await syncDeployStatus(
+      state,
+      "failed",
+      errorMessage,
+      nextTask.taskName
+    );
     const failedTaskUpdate = { ...task, status: "failed", error: errorMessage } as Deploy.Task;
     return {
       ...withPhases(state, [failedTaskUpdate]),
       status: "failed",
-      error: { message: errorMessage, node: "taskExecutor" },
+      error: { message: errorMessage, node: nextTask.taskName },
+      supportTicket,
     };
   }
 }

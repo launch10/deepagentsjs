@@ -105,7 +105,7 @@ export class DeployPage {
     this.deploymentHistoryTitle = page.getByText("Deployment History");
 
     // Deploy Error screen
-    this.deployFailedHeading = page.getByText("Deploy Failed");
+    this.deployFailedHeading = page.getByText(/deployment failed|deployment timed out/i);
     this.retryDeployButton = page.getByRole("button", { name: "Retry Deploy" });
 
     // Footer

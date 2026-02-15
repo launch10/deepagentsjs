@@ -93,7 +93,7 @@ export const validateLinksTaskRunner: TaskRunner = {
 
   shouldSkip: (state: DeployGraphState) => {
     // Skip if not deploying a website
-    if (!state.deploy?.website) {
+    if (!state.instructions?.website) {
       return true;
     }
 

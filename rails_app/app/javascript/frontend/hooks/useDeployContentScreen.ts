@@ -12,7 +12,7 @@ export type DeployScreen =
   | "deploy-complete"
   | "deploy-error";
 
-type TaskState = Deploy.DeployGraphState["tasks"];
+type TaskState = Deploy.DeployGraphState["tasks"] | undefined;
 type DeployStatus = Deploy.DeployGraphState["status"];
 
 /**
@@ -26,6 +26,7 @@ type DeployStatus = Deploy.DeployGraphState["status"];
 export function resolveContentScreen(
   tasks: TaskState,
   status: DeployStatus,
+  instructions: Deploy.DeployGraphState["instructions"],
   railsDeployStatus?: string
 ): DeployScreen {
   // Terminal states — check both langgraph state and Rails record
@@ -36,7 +37,9 @@ export function resolveContentScreen(
   if (!tasks || tasks.length === 0) return "in-progress";
 
   // Check ConnectingGoogle — OAuth required
-  const connectTask = tasks.find((t) => t.name === "ConnectingGoogle");
+  const connectTask = instructions.googleAds
+    ? tasks.find((t) => t.name === "ConnectingGoogle")
+    : undefined;
   if (
     connectTask?.status === "running" &&
     connectTask.result?.action === "oauth_required" &&
@@ -46,13 +49,17 @@ export function resolveContentScreen(
   }
 
   // Check VerifyingGoogle — invite acceptance
-  const verifyTask = tasks.find((t) => t.name === "VerifyingGoogle");
+  const verifyTask = instructions.googleAds
+    ? tasks.find((t) => t.name === "VerifyingGoogle")
+    : undefined;
   if (verifyTask?.status === "running" && !verifyTask.result?.status) {
     return "invite-accept";
   }
 
   // Check CheckingBilling — payment flow
-  const billingTask = tasks.find((t) => t.name === "CheckingBilling");
+  const billingTask = instructions.googleAds
+    ? tasks.find((t) => t.name === "CheckingBilling")
+    : undefined;
   if (billingTask?.status === "running") {
     if (billingTask.result?.has_payment === true) {
       return "payment-confirmed";
@@ -81,7 +88,7 @@ export function useDeployContentScreen(
   railsDeployStatus?: string
 ): DeployScreen {
   return useMemo(
-    () => resolveContentScreen(state.tasks, state.status, railsDeployStatus),
-    [state.tasks, state.status, railsDeployStatus]
+    () => resolveContentScreen(state.tasks, state.status, state.instructions, railsDeployStatus),
+    [state.tasks, state.status, state.instructions, railsDeployStatus]
   );
 }

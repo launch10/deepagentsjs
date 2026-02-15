@@ -12,17 +12,20 @@
 #  subject            :string           not null
 #  submitted_from_url :string
 #  subscription_tier  :string
+#  supportable_type   :string
 #  created_at         :datetime         not null
 #  updated_at         :datetime         not null
 #  account_id         :bigint           not null
+#  supportable_id     :bigint
 #  ticket_id          :string           not null
 #  user_id            :bigint           not null
 #
 # Indexes
 #
-#  index_support_requests_on_account_id  (account_id)
-#  index_support_requests_on_ticket_id   (ticket_id) UNIQUE
-#  index_support_requests_on_user_id     (user_id)
+#  index_support_requests_on_account_id   (account_id)
+#  index_support_requests_on_supportable  (supportable_type,supportable_id)
+#  index_support_requests_on_ticket_id    (ticket_id) UNIQUE
+#  index_support_requests_on_user_id      (user_id)
 #
 # Foreign Keys
 #
@@ -32,6 +35,7 @@
 class SupportRequest < ApplicationRecord
   belongs_to :user
   belongs_to :account
+  belongs_to :supportable, polymorphic: true, optional: true
 
   has_many_attached :attachments
 

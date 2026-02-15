@@ -1,11 +1,10 @@
 import { ClockIcon } from "@heroicons/react/24/outline";
 import { Button } from "@components/ui/button";
+import { useDeployChatActions } from "@hooks/useDeployChat";
 
-interface WaitingGoogleScreenProps {
-  onCheckAgain?: () => void;
-}
+export default function WaitingGoogleScreen() {
+  const { updateState } = useDeployChatActions();
 
-export default function WaitingGoogleScreen({ onCheckAgain }: WaitingGoogleScreenProps) {
   return (
     <div className="flex flex-col items-center justify-center p-12 min-h-[400px]">
       <div className="max-w-md w-full text-center">
@@ -18,7 +17,7 @@ export default function WaitingGoogleScreen({ onCheckAgain }: WaitingGoogleScree
           Google is still processing your account setup. This can take a few minutes.
         </p>
 
-        <Button variant="outline" className="mt-6" onClick={onCheckAgain}>
+        <Button variant="outline" className="mt-6" onClick={() => updateState({})}>
           Check Again
         </Button>
       </div>

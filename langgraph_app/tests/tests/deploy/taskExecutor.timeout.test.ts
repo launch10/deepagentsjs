@@ -12,7 +12,7 @@ import { Deploy, Task } from "@types";
  */
 
 describe("Blocking Task Timeout", () => {
-  const DEFAULT_TIMEOUT = 300_000; // 5 minutes
+  const DEFAULT_TIMEOUT = 180_000; // 3 minutes
 
   describe("blockingStartedAt field on TaskSchema", () => {
     it("accepts blockingStartedAt as optional number", () => {
@@ -65,7 +65,7 @@ describe("Blocking Task Timeout", () => {
 
       const state = {
         status: "running",
-        deploy: { website: true, googleAds: false },
+        instructions: { website: true, googleAds: false },
         tasks,
       } as any;
 
@@ -94,7 +94,7 @@ describe("Blocking Task Timeout", () => {
 
       const state = {
         status: "running",
-        deploy: { website: true, googleAds: false },
+        instructions: { website: true, googleAds: false },
         tasks,
       } as any;
 
@@ -121,7 +121,7 @@ describe("Blocking Task Timeout", () => {
 
       const state = {
         status: "running",
-        deploy: { website: true, googleAds: false },
+        instructions: { website: true, googleAds: false },
         tasks,
         jwt: "test-jwt",
         deployId: 1,
@@ -165,7 +165,7 @@ describe("Blocking Task Timeout", () => {
 
       const state = {
         status: "running",
-        deploy: { website: true, googleAds: false },
+        instructions: { website: true, googleAds: false },
         tasks,
         jwt: "test-jwt",
         deployId: 1,
@@ -181,7 +181,7 @@ describe("Blocking Task Timeout", () => {
       expect(updatedTask?.result).toEqual({ url: "https://example.com" });
     });
 
-    it("extends timeout when Rails says job is still running", async () => {
+    it("extends timeout when Rails says job is still running and increments timeoutExtensionCount", async () => {
       const { taskExecutorNode } = await import("app/nodes/deploy/taskExecutor");
       await import("app/nodes/deploy/index");
 
@@ -200,12 +200,14 @@ describe("Blocking Task Timeout", () => {
         { DeployingWebsite: { status: "running" } },
         { after: "completed" }
       ).map((t) =>
-        t.name === "DeployingWebsite" ? { ...t, jobId: 42, blockingStartedAt: expiredTimestamp } : t
+        t.name === "DeployingWebsite"
+          ? { ...t, jobId: 42, blockingStartedAt: expiredTimestamp, timeoutExtensionCount: 0 }
+          : t
       );
 
       const state = {
         status: "running",
-        deploy: { website: true, googleAds: false },
+        instructions: { website: true, googleAds: false },
         tasks,
         jwt: "test-jwt",
         deployId: 1,
@@ -220,6 +222,48 @@ describe("Blocking Task Timeout", () => {
       const updatedTask = result.tasks?.find((t) => t.name === "DeployingWebsite");
       expect(updatedTask?.blockingStartedAt).toBeDefined();
       expect(updatedTask!.blockingStartedAt).toBeGreaterThan(expiredTimestamp);
+
+      // timeoutExtensionCount should be incremented
+      expect(updatedTask!.timeoutExtensionCount).toBe(1);
+    });
+
+    it("fails deploy when timeout extensions are exhausted", async () => {
+      const { taskExecutorNode } = await import("app/nodes/deploy/taskExecutor");
+      await import("app/nodes/deploy/index");
+
+      const { JobRunAPIService } = await import("@rails_api");
+      vi.spyOn(JobRunAPIService.prototype, "show").mockResolvedValueOnce({
+        id: 42,
+        status: "running",
+        result: null,
+        error: null,
+      });
+
+      const expiredTimestamp = Date.now() - DEFAULT_TIMEOUT - 60_000;
+
+      const tasks = Deploy.withTasks(
+        { website: true, googleAds: false },
+        { DeployingWebsite: { status: "running" } },
+        { after: "completed" }
+      ).map((t) =>
+        t.name === "DeployingWebsite"
+          ? { ...t, jobId: 42, blockingStartedAt: expiredTimestamp, timeoutExtensionCount: 2 }
+          : t
+      );
+
+      const state = {
+        status: "running",
+        instructions: { website: true, googleAds: false },
+        tasks,
+        jwt: "test-jwt",
+        deployId: 1,
+      } as any;
+
+      const result = (await taskExecutorNode(state, {} as any)) as Partial<DeployGraphState>;
+
+      // Should fail — extensions exhausted even though Rails says still running
+      expect(result.status).toBe("failed");
+      expect(result.error?.message).toMatch(/timed out/i);
     });
 
     it("preserves blockingStartedAt on subsequent polls (does not reset)", async () => {
@@ -240,7 +284,7 @@ describe("Blocking Task Timeout", () => {
 
       const state = {
         status: "running",
-        deploy: { website: true, googleAds: false },
+        instructions: { website: true, googleAds: false },
         tasks,
       } as any;
 
@@ -251,6 +295,347 @@ describe("Blocking Task Timeout", () => {
       const updatedTask = result.tasks?.find((t) => t.name === "DeployingWebsite");
       if (updatedTask?.blockingStartedAt) {
         expect(updatedTask.blockingStartedAt).toBe(originalTimestamp);
+      }
+    });
+  });
+
+  describe("Langgraph-driven stuck warnings", () => {
+    const WARNING_TIMEOUT = 120_000; // 2 minutes (matches deployWebsiteNode.warningTimeout)
+
+    it("does not set warning when blocking task is under warningTimeout", async () => {
+      const { taskExecutorNode } = await import("app/nodes/deploy/taskExecutor");
+      await import("app/nodes/deploy/index");
+
+      // 1.5 minutes ago — under the 2-minute warningTimeout
+      const recentTimestamp = Date.now() - 90_000;
+
+      const tasks = Deploy.withTasks(
+        { website: true, googleAds: false },
+        { DeployingWebsite: { status: "running" } },
+        { after: "completed" }
+      ).map((t) =>
+        t.name === "DeployingWebsite" ? { ...t, jobId: 42, blockingStartedAt: recentTimestamp } : t
+      );
+
+      const state = {
+        status: "running",
+        instructions: { website: true, googleAds: false },
+        tasks,
+      } as any;
+
+      const result = (await taskExecutorNode(state, {} as any)) as Partial<DeployGraphState>;
+
+      expect(result.status).not.toBe("failed");
+
+      // Should NOT have a warning — under 2-minute threshold
+      const updatedTask = result.tasks?.find((t) => t.name === "DeployingWebsite");
+      expect(updatedTask?.warning).toBeUndefined();
+    });
+
+    it("sets warning when blocking task exceeds warningTimeout", async () => {
+      const { taskExecutorNode } = await import("app/nodes/deploy/taskExecutor");
+      await import("app/nodes/deploy/index");
+
+      // 2.5 minutes ago — past the 2-minute warningTimeout, within 3-minute blockingTimeout
+      const warningTimestamp = Date.now() - 150_000;
+
+      const tasks = Deploy.withTasks(
+        { website: true, googleAds: false },
+        { DeployingWebsite: { status: "running" } },
+        { after: "completed" }
+      ).map((t) =>
+        t.name === "DeployingWebsite" ? { ...t, jobId: 42, blockingStartedAt: warningTimestamp } : t
+      );
+
+      const state = {
+        status: "running",
+        instructions: { website: true, googleAds: false },
+        tasks,
+      } as any;
+
+      const result = (await taskExecutorNode(state, {} as any)) as Partial<DeployGraphState>;
+
+      expect(result.status).not.toBe("failed");
+
+      // Should have a warning with task description
+      const updatedTask = result.tasks?.find((t) => t.name === "DeployingWebsite");
+      expect(updatedTask?.warning).toBeDefined();
+      expect(updatedTask!.warning).toContain("taking longer than expected");
+    });
+
+    it("does not re-set warning if already present (idempotent)", async () => {
+      const { taskExecutorNode } = await import("app/nodes/deploy/taskExecutor");
+      await import("app/nodes/deploy/index");
+
+      // Past warningTimeout
+      const warningTimestamp = Date.now() - 150_000;
+      const existingWarning = "Deploying website is taking longer than expected";
+
+      const tasks = Deploy.withTasks(
+        { website: true, googleAds: false },
+        { DeployingWebsite: { status: "running" } },
+        { after: "completed" }
+      ).map((t) =>
+        t.name === "DeployingWebsite"
+          ? { ...t, jobId: 42, blockingStartedAt: warningTimestamp, warning: existingWarning }
+          : t
+      );
+
+      const state = {
+        status: "running",
+        instructions: { website: true, googleAds: false },
+        tasks,
+      } as any;
+
+      const result = (await taskExecutorNode(state, {} as any)) as Partial<DeployGraphState>;
+
+      // Should not return a tasks update (no change needed)
+      // OR if it does return tasks, warning should be the same
+      const updatedTask = result.tasks?.find((t) => t.name === "DeployingWebsite");
+      if (updatedTask) {
+        expect(updatedTask.warning).toBe(existingWarning);
+      }
+    });
+  });
+
+  /**
+   * =============================================================================
+   * Blocking behavior per task type
+   * =============================================================================
+   *
+   * Blocking timeout is OPT-IN: only tasks with explicit blockingTimeout
+   * will time out. User-managed tasks (ConnectingGoogle, VerifyingGoogle,
+   * CheckingBilling) block indefinitely waiting for the user's webhook.
+   * Automated tasks (DeployingWebsite, DeployingCampaign, EnableCampaign)
+   * have explicit blockingTimeout and will time out + health-check.
+   */
+  describe("user-managed blocking tasks do NOT time out", () => {
+    it("ConnectingGoogle blocks indefinitely (no blockingTimeout)", async () => {
+      const { taskExecutorNode } = await import("app/nodes/deploy/taskExecutor");
+      await import("app/nodes/deploy/index");
+
+      // Way past any reasonable timeout — 30 minutes ago
+      const ancientTimestamp = Date.now() - 30 * 60 * 1000;
+
+      const tasks = Deploy.withTasks(
+        { googleAds: true },
+        { ConnectingGoogle: { status: "running" } }
+      ).map((t) =>
+        t.name === "ConnectingGoogle" ? { ...t, jobId: 99, blockingStartedAt: ancientTimestamp } : t
+      );
+
+      const state = {
+        status: "running",
+        instructions: { googleAds: true },
+        tasks,
+        jwt: "test-jwt",
+        deployId: 1,
+      } as any;
+
+      const result = (await taskExecutorNode(state, {} as any)) as Partial<DeployGraphState>;
+
+      // Should NOT fail — user-managed tasks wait indefinitely
+      expect(result.status).not.toBe("failed");
+      expect(result.error).toBeUndefined();
+    });
+
+    it("VerifyingGoogle blocks indefinitely (no blockingTimeout)", async () => {
+      const { taskExecutorNode } = await import("app/nodes/deploy/taskExecutor");
+      await import("app/nodes/deploy/index");
+
+      const ancientTimestamp = Date.now() - 30 * 60 * 1000;
+
+      const tasks = Deploy.withTasks(
+        { googleAds: true },
+        { ConnectingGoogle: "completed", VerifyingGoogle: { status: "running" } }
+      ).map((t) =>
+        t.name === "VerifyingGoogle" ? { ...t, jobId: 99, blockingStartedAt: ancientTimestamp } : t
+      );
+
+      const state = {
+        status: "running",
+        instructions: { googleAds: true },
+        tasks,
+        jwt: "test-jwt",
+        deployId: 1,
+      } as any;
+
+      const result = (await taskExecutorNode(state, {} as any)) as Partial<DeployGraphState>;
+
+      expect(result.status).not.toBe("failed");
+      expect(result.error).toBeUndefined();
+    });
+
+    it("CheckingBilling blocks indefinitely (no blockingTimeout)", async () => {
+      const { taskExecutorNode } = await import("app/nodes/deploy/taskExecutor");
+      await import("app/nodes/deploy/index");
+
+      const ancientTimestamp = Date.now() - 30 * 60 * 1000;
+
+      const tasks = Deploy.withTasks(
+        { googleAds: true },
+        {
+          ConnectingGoogle: "completed",
+          VerifyingGoogle: "completed",
+          CheckingBilling: { status: "running" },
+        }
+      ).map((t) =>
+        t.name === "CheckingBilling" ? { ...t, jobId: 99, blockingStartedAt: ancientTimestamp } : t
+      );
+
+      const state = {
+        status: "running",
+        instructions: { googleAds: true },
+        tasks,
+        jwt: "test-jwt",
+        deployId: 1,
+      } as any;
+
+      const result = (await taskExecutorNode(state, {} as any)) as Partial<DeployGraphState>;
+
+      expect(result.status).not.toBe("failed");
+      expect(result.error).toBeUndefined();
+    });
+  });
+
+  describe("automated blocking tasks DO time out", () => {
+    it("DeployingCampaign times out with explicit blockingTimeout", async () => {
+      const { taskExecutorNode } = await import("app/nodes/deploy/taskExecutor");
+      const { getTaskRunner } = await import("app/nodes/deploy/taskRunner");
+      await import("app/nodes/deploy/index");
+
+      // Verify the runner has blockingTimeout configured
+      const runner = getTaskRunner("DeployingCampaign");
+      expect(runner?.blockingTimeout).toBeDefined();
+      expect(typeof runner!.blockingTimeout).toBe("number");
+
+      const expiredTimestamp = Date.now() - runner!.blockingTimeout! - 60_000;
+
+      const tasks = Deploy.withTasks(
+        { googleAds: true },
+        { DeployingCampaign: { status: "running" } },
+        { after: "completed" }
+      ).map((t) =>
+        t.name === "DeployingCampaign"
+          ? { ...t, jobId: 99, blockingStartedAt: expiredTimestamp }
+          : t
+      );
+
+      const state = {
+        status: "running",
+        instructions: { googleAds: true },
+        tasks,
+        jwt: "test-jwt",
+        deployId: 1,
+      } as any;
+
+      const result = (await taskExecutorNode(state, {} as any)) as Partial<DeployGraphState>;
+
+      // Should fail — automated task timed out
+      expect(result.status).toBe("failed");
+      expect(result.error?.message).toMatch(/timed out/i);
+    });
+
+    it("EnableCampaign times out with explicit blockingTimeout", async () => {
+      const { taskExecutorNode } = await import("app/nodes/deploy/taskExecutor");
+      const { getTaskRunner } = await import("app/nodes/deploy/taskRunner");
+      await import("app/nodes/deploy/index");
+
+      const runner = getTaskRunner("EnablingCampaign");
+      expect(runner?.blockingTimeout).toBeDefined();
+      expect(typeof runner!.blockingTimeout).toBe("number");
+
+      const expiredTimestamp = Date.now() - runner!.blockingTimeout! - 60_000;
+
+      const tasks = Deploy.withTasks(
+        { googleAds: true },
+        { EnablingCampaign: { status: "running" } },
+        { after: "completed" }
+      ).map((t) =>
+        t.name === "EnablingCampaign" ? { ...t, jobId: 99, blockingStartedAt: expiredTimestamp } : t
+      );
+
+      const state = {
+        status: "running",
+        instructions: { googleAds: true },
+        tasks,
+        jwt: "test-jwt",
+        deployId: 1,
+      } as any;
+
+      const result = (await taskExecutorNode(state, {} as any)) as Partial<DeployGraphState>;
+
+      expect(result.status).toBe("failed");
+      expect(result.error?.message).toMatch(/timed out/i);
+    });
+  });
+
+  describe("non-blocking tasks never enter blocking path", () => {
+    it("task runners without isBlocking are not treated as blocking", async () => {
+      const { getTaskRunner } = await import("app/nodes/deploy/taskRunner");
+      await import("app/nodes/deploy/index");
+
+      const nonBlockingTasks: Deploy.TaskName[] = [
+        "AddingAnalytics",
+        "OptimizingSEO",
+        "ValidateLinks",
+        "RuntimeValidation",
+        "FixingBugs",
+      ];
+
+      for (const taskName of nonBlockingTasks) {
+        const runner = getTaskRunner(taskName);
+        expect(runner, `Expected runner for "${taskName}"`).toBeDefined();
+        expect(
+          runner!.isBlocking,
+          `Expected "${taskName}" to NOT define isBlocking`
+        ).toBeUndefined();
+        expect(
+          runner!.blockingTimeout,
+          `Expected "${taskName}" to NOT define blockingTimeout`
+        ).toBeUndefined();
+      }
+    });
+
+    it("automated blocking tasks all define both isBlocking and blockingTimeout", async () => {
+      const { getTaskRunner } = await import("app/nodes/deploy/taskRunner");
+      await import("app/nodes/deploy/index");
+
+      const automatedBlockingTasks: Deploy.TaskName[] = [
+        "DeployingWebsite",
+        "DeployingCampaign",
+        "EnablingCampaign",
+      ];
+
+      for (const taskName of automatedBlockingTasks) {
+        const runner = getTaskRunner(taskName);
+        expect(runner, `Expected runner for "${taskName}"`).toBeDefined();
+        expect(runner!.isBlocking, `Expected "${taskName}" to define isBlocking`).toBeDefined();
+        expect(
+          runner!.blockingTimeout,
+          `Expected "${taskName}" to define blockingTimeout`
+        ).toBeDefined();
+      }
+    });
+
+    it("user-managed blocking tasks define isBlocking but NOT blockingTimeout", async () => {
+      const { getTaskRunner } = await import("app/nodes/deploy/taskRunner");
+      await import("app/nodes/deploy/index");
+
+      const userManagedTasks: Deploy.TaskName[] = [
+        "ConnectingGoogle",
+        "VerifyingGoogle",
+        "CheckingBilling",
+      ];
+
+      for (const taskName of userManagedTasks) {
+        const runner = getTaskRunner(taskName);
+        expect(runner, `Expected runner for "${taskName}"`).toBeDefined();
+        expect(runner!.isBlocking, `Expected "${taskName}" to define isBlocking`).toBeDefined();
+        expect(
+          runner!.blockingTimeout,
+          `Expected "${taskName}" to NOT define blockingTimeout (user-managed)`
+        ).toBeUndefined();
       }
     });
   });

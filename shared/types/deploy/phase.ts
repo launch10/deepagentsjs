@@ -101,9 +101,9 @@ function isTerminalStatus(status: string): boolean {
  * Rules:
  * - If no tasks exist yet: "pending"
  * - If any task is "running": "running"
- * - If all tasks are terminal (completed/passed/skipped/failed): "completed"
- *   (A phase "completes" when all its work is done, even if a child failed —
- *    e.g. CheckingForBugs is "completed" whether it found bugs or not)
+ * - If all tasks are terminal (completed/passed/skipped/failed):
+ *   - If any task failed: "failed"
+ *   - Otherwise: "completed"
  * - Otherwise: "running" (some tasks started, some pending)
  */
 export function computePhaseStatus(tasks: Task[]): Status {
@@ -112,7 +112,10 @@ export function computePhaseStatus(tasks: Task[]): Status {
   const hasRunning = tasks.some((t) => t.status === "running");
   if (hasRunning) return "running";
 
-  if (tasks.every((t) => isTerminalStatus(t.status))) return "completed";
+  if (tasks.every((t) => isTerminalStatus(t.status))) {
+    if (tasks.some((t) => t.status === "failed")) return "failed";
+    return "completed";
+  }
 
   return "running"; // Some tasks started, some pending
 }

@@ -6,22 +6,26 @@ import type { Deployment } from "@components/website/deployment-history/Deployme
 import { DeployHistory } from "@components/deploy";
 import { Button } from "@components/ui/button";
 import DevButton from "@components/shared/DevButton";
-import type { DeployProps } from "@hooks/useDeployChat";
-import { useRootPath } from "~/stores/sessionStore";
+import { useDeployId, useProjectId } from "~/stores/projectStore";
+import { useDeployChatState, type DeployProps } from "@hooks/useDeployChat";
+import { useDeployInstructions } from "@hooks/useDeployInstructions";
 import deployImage from "@assets/deploy.png";
 
 function RestartDeployButton() {
-  const { deploy } = usePage<DeployProps>().props;
+  const deployId = useDeployId();
   const [restarting, setRestarting] = useState(false);
 
   const handleRestart = useCallback(async () => {
-    if (!deploy?.id) return;
-    if (!confirm("Restart deploy? This deletes the deploy chat and resets to pending.")) return;
+    if (!deployId) return;
+    if (
+      !confirm("Restart deploy? This deletes the current deploy so Langgraph creates a fresh one.")
+    )
+      return;
 
     setRestarting(true);
     try {
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
-      await fetch(`/test/deploys/${deploy.id}/restart`, {
+      await fetch(`/test/deploys/${deployId}/restart`, {
         method: "DELETE",
         headers: {
           "X-CSRF-Token": csrfToken || "",
@@ -33,7 +37,7 @@ function RestartDeployButton() {
       console.error("Failed to restart deploy:", e);
       setRestarting(false);
     }
-  }, [deploy?.id]);
+  }, [deployId]);
 
   return (
     <DevButton onClick={handleRestart} disabled={restarting}>
@@ -43,8 +47,7 @@ function RestartDeployButton() {
 }
 
 function NewDeployButton() {
-  const { project } = usePage<DeployProps>().props;
-  const rootPath = useRootPath();
+  const projectId = useProjectId();
   const [creating, setCreating] = useState(false);
 
   const handleNewDeploy = useCallback(async () => {
@@ -52,33 +55,27 @@ function NewDeployButton() {
     setCreating(true);
     try {
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
-      await fetch(`${rootPath}/api/v1/deploys`, {
+      await fetch("/api/v1/deploys/deactivate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-CSRF-Token": csrfToken || "",
+          Accept: "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({ project_id: project.id }),
+        body: JSON.stringify({ project_id: projectId }),
       });
       window.location.reload();
     } catch {
       setCreating(false);
     }
-  }, [project.id, rootPath]);
+  }, [projectId]);
 
   return (
     <Button onClick={handleNewDeploy} disabled={creating} variant="outline">
       {creating ? "Starting..." : "Redeploy"}
     </Button>
   );
-}
-
-interface DeployCompleteScreenProps {
-  deployType: "website" | "campaign";
-  result?: Deploy.DeployGraphState["result"];
-  websiteUrl?: string | null;
-  deployEnvironment?: string;
 }
 
 function buildDeployUrl(baseUrl: string | undefined, environment?: string): string | undefined {
@@ -90,15 +87,12 @@ function buildDeployUrl(baseUrl: string | undefined, environment?: string): stri
   return url.toString();
 }
 
-export default function DeployCompleteScreen({
-  deployType,
-  result,
-  websiteUrl,
-  deployEnvironment,
-}: DeployCompleteScreenProps) {
-  const isCampaign = deployType === "campaign";
-  const rawUrl = (result?.url as string | undefined) || websiteUrl || undefined;
-  const deployUrl = buildDeployUrl(rawUrl, deployEnvironment);
+export default function DeployCompleteScreen() {
+  const { website_url, deploy_environment } = usePage<DeployProps>().props;
+  const instructions = useDeployInstructions();
+  const result = useDeployChatState("result");
+  const rawUrl = (result?.url as string | undefined) || website_url || undefined;
+  const deployUrl = buildDeployUrl(rawUrl, deploy_environment);
 
   const deployment: Deployment = {
     id: "current",
@@ -122,8 +116,8 @@ export default function DeployCompleteScreen({
           <h2 className="text-lg font-semibold leading-[22px] text-base-500">Deployment History</h2>
           <p className="text-xs leading-4 text-base-300">
             This page tracks all deployments for your landing page
-            {isCampaign ? " and ad campaigns" : ""}. Review the status and details of each
-            deployment to ensure optimal performance and quickly identify any issues.
+            {instructions.googleAds ? " and ad campaigns" : ""}. Review the status and details of
+            each deployment to ensure optimal performance and quickly identify any issues.
           </p>
         </div>
         <div className="flex shrink-0 gap-3">
@@ -134,10 +128,10 @@ export default function DeployCompleteScreen({
 
       {/* Success banner — optical center (1/3 from top) */}
       <div className="flex flex-1 flex-col items-center justify-center gap-6 px-10">
-        <img src={deployImage} alt="Deployment" className="w-56" />
+        <img src={deployImage} alt="Deployment" className="w-40 sm:w-56" />
         <div className="flex flex-col items-center gap-3 text-center">
           <h3 className="text-xl font-semibold text-base-500">
-            {isCampaign
+            {instructions.googleAds
               ? "You've just launched your first campaign"
               : "You've just launched your website"}
           </h3>

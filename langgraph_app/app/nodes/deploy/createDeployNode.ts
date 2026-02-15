@@ -5,15 +5,14 @@ import { type DeployGraphState } from "@annotation";
 import { getLogger } from "@core";
 
 /**
- * Node that creates a Deploy record (and its Chat) via Rails API.
+ * Node that creates a Deploy record via Rails API.
  * Mirrors the brainstorm pattern: first node in graph creates the record.
  *
- * ChatCreatable on the Deploy model auto-creates the Chat using
- * the thread_id passed to the create endpoint.
+ * The thread_id is stored directly on the Deploy record.
  *
  * Idempotent: skips if deployId already exists in state.
  */
-export const initDeployNode = NodeMiddleware.use(
+export const createDeployNode = NodeMiddleware.use(
   {},
   async (
     state: DeployGraphState,

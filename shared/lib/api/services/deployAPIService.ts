@@ -31,6 +31,7 @@ export interface DeployRecord {
   current_step?: string | null;
   is_live: boolean;
   thread_id?: string | null;
+  support_ticket?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -50,9 +51,8 @@ export class DeployAPIService extends RailsAPIBase {
   }
 
   /**
-   * Creates a new deploy with an associated chat.
+   * Creates a new deploy with a thread_id stored directly on the record.
    * Called by the deploy graph's first node (initDeploy).
-   * ChatCreatable on the Deploy model auto-creates the chat.
    */
   async create({ projectId, threadId }: CreateDeployParams): Promise<DeployRecord> {
     const client = await this.getClient();
@@ -101,7 +101,7 @@ export class DeployAPIService extends RailsAPIBase {
    */
   async update(
     deployId: number,
-    updates: { status?: string; current_step?: string; is_live?: boolean }
+    updates: { status?: string; current_step?: string; is_live?: boolean; needs_support?: boolean; stacktrace?: string }
   ): Promise<DeployRecord> {
     const client = await this.getClient();
     const response = await client.PATCH("/api/v1/deploys/{id}", {

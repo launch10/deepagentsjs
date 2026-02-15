@@ -5,3 +5,4 @@ export * from "./insights";
 export * from "./support";
 
 export type { CoreGraphState, ErrorStateType } from "../types/graph";
+export type { DeployGraphState } from "../types/deploy/bridge";

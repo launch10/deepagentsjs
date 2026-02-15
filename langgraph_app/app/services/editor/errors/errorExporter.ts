@@ -387,30 +387,50 @@ export class ErrorExporter implements AsyncDisposable {
 
   async run(): Promise<CombinedErrors> {
     const log = getLogger({ component: "ErrorExporter" });
+    const t0 = Date.now();
+    const elapsed = () => Date.now() - t0;
+
+    log.info({ websiteId: this.websiteId }, "run() BEGIN");
 
     this.exporter = new FileExporter(this.websiteId);
     const outputDir = await this.exporter.export();
+    log.info({ elapsedMs: elapsed(), outputDir }, "export() completed");
 
     this.runner = new WebsiteRunner(outputDir);
+
+    log.info({ elapsedMs: elapsed() }, "install() starting");
     await this.runner.install();
-    log.info({ websiteId: this.websiteId }, "Starting website runner");
+    log.info({ elapsedMs: elapsed() }, "install() completed");
+
+    log.info({ websiteId: this.websiteId, elapsedMs: elapsed() }, "start() starting");
     await this.runner.start();
+    log.info({ elapsedMs: elapsed(), url: this.runner.getUrl() }, "start() completed");
 
     // Capture browser errors
-    log.debug("Capturing browser errors");
+    log.info(
+      { elapsedMs: elapsed(), url: this.runner.getUrl() },
+      "captureBrowserErrors() starting"
+    );
     const browserErrors = await this.captureBrowserErrors();
+    log.info(
+      { elapsedMs: elapsed(), browserErrorCount: browserErrors.length },
+      "captureBrowserErrors() completed"
+    );
+
     const viteOverlayErrors = this.errorCapture?.getViteOverlayErrors() || [];
 
     // Get server output
     const serverErrors = this.runner.getStderr();
 
-    log.debug({ browserErrorCount: browserErrors.length }, "Received browser errors");
-    log.debug({ serverErrorCount: serverErrors.length }, "Received server errors");
-    log.debug({ viteOverlayCount: viteOverlayErrors.length }, "Received vite overlay errors");
+    log.info({ browserErrorCount: browserErrors.length }, "Received browser errors");
+    log.info({ serverErrorCount: serverErrors.length }, "Received server errors");
+    log.info({ viteOverlayCount: viteOverlayErrors.length }, "Received vite overlay errors");
 
-    log.debug("Stopping error exporter");
+    log.info({ elapsedMs: elapsed() }, "stop() starting");
     await this.stop();
+    log.info({ elapsedMs: elapsed() }, "stop() completed");
 
+    log.info({ elapsedMs: elapsed() }, "run() END");
     return createCombinedErrors(browserErrors, serverErrors, viteOverlayErrors);
   }
 

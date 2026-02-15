@@ -2,21 +2,17 @@ import { useState } from "react";
 import { ExclamationTriangleIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import { Button } from "@components/ui/button";
 import { Deploy } from "@shared";
+import { useDeployChatState, useDeployStartDeploy } from "@hooks/useDeployChat";
 
-interface DeployErrorScreenProps {
-  error?: string;
-  consoleErrors?: Array<{ message: string }>;
-  onRetry: () => void;
-}
+export default function DeployErrorScreen() {
+  const error = useDeployChatState("error");
+  const consoleErrors = useDeployChatState("consoleErrors");
+  const supportTicket = useDeployChatState("supportTicket");
+  const startDeploy = useDeployStartDeploy();
 
-export default function DeployErrorScreen({
-  error,
-  consoleErrors,
-  onRetry,
-}: DeployErrorScreenProps) {
   const [showDetails, setShowDetails] = useState(false);
-  const deployError = Deploy.getDeployError(error);
-  const hasRawDetails = error || (consoleErrors && consoleErrors.length > 0);
+  const deployError = Deploy.getDeployError(error?.message, error?.node);
+  const hasRawDetails = error?.message || (consoleErrors && consoleErrors.length > 0);
 
   return (
     <div className="flex flex-col items-center justify-center p-12 min-h-[400px]">
@@ -41,7 +37,7 @@ export default function DeployErrorScreen({
             </button>
             {showDetails && (
               <div className="mt-2 bg-red-50 border border-red-200 rounded-lg p-4 text-left">
-                {error && <p className="text-xs text-red-600">{error}</p>}
+                {error?.message && <p className="text-xs text-red-600">{error.message}</p>}
                 {consoleErrors?.map((err, i) => (
                   <p key={i} className="text-xs text-red-600 mt-1">
                     {err.message}
@@ -52,8 +48,21 @@ export default function DeployErrorScreen({
           </div>
         )}
 
+        {supportTicket && (
+          <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-center">
+            <p className="text-sm font-medium text-blue-800">
+              We've been notified and are looking into this
+            </p>
+            <p className="mt-1 text-xs text-blue-600">Reference: {supportTicket}</p>
+          </div>
+        )}
+
         {deployError.canRetry && (
-          <Button onClick={onRetry} className="mt-6">
+          <Button
+            onClick={startDeploy}
+            variant={supportTicket ? "outline" : "default"}
+            className="mt-6"
+          >
             Retry Deploy
           </Button>
         )}

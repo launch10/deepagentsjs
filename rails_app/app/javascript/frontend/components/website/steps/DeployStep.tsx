@@ -1,9 +1,9 @@
 import DeployPage from "@pages/Deploy";
 
 /**
- * Website Deploy step — renders the shared Deploy UI configured for website-only deploy.
- * The controller passes deploy_type: "website" in page props, which the deploy hooks
- * use to send deploy={ website: true, googleAds: false } to langgraph.
+ * Website Deploy step — renders the shared Deploy UI.
+ * The URL path (/website/deploy) is used by useDeployInstructions() to derive
+ * deploy instructions: { website: true, googleAds: false }.
  */
 export default function DeployStep() {
   return <DeployPage />;

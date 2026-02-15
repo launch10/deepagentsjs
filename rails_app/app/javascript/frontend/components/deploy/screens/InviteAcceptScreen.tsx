@@ -1,17 +1,13 @@
 import { EnvelopeIcon } from "@heroicons/react/24/outline";
 import { Button } from "@components/ui/button";
+import { useDeployChatActions, useDeployChatState } from "@hooks/useDeployChat";
 
-interface InviteAcceptScreenProps {
-  googleEmail?: string;
-  onAccepted?: () => void;
-  onResend?: () => void;
-}
+export default function InviteAcceptScreen() {
+  const { updateState } = useDeployChatActions();
+  const tasks = useDeployChatState("tasks");
+  const connectTask = tasks?.find((t) => t.name === "ConnectingGoogle");
+  const googleEmail = connectTask?.result?.google_email as string | undefined;
 
-export default function InviteAcceptScreen({
-  googleEmail,
-  onAccepted,
-  onResend,
-}: InviteAcceptScreenProps) {
   return (
     <div className="flex flex-col items-center justify-center p-12 min-h-[400px]">
       <div className="max-w-md w-full text-center">
@@ -37,17 +33,8 @@ export default function InviteAcceptScreen({
           >
             Open Gmail
           </Button>
-          <Button onClick={onAccepted}>I accepted the invite</Button>
+          <Button onClick={() => updateState({})}>I accepted the invite</Button>
         </div>
-
-        {onResend && (
-          <button
-            onClick={onResend}
-            className="mt-4 text-xs text-base-400 hover:text-base-600 underline transition-colors"
-          >
-            Resend Invite
-          </button>
-        )}
       </div>
     </div>
   );

@@ -108,8 +108,13 @@ export const enableCampaignTaskRunner: TaskRunner = {
 
   isBlocking: (state: DeployGraphState, task: Task.Task) => {
     // Blocking when we have a jobId but no result yet
-    return task.status === "running" && !!task.jobId && task.result?.enabled === undefined && !task.error;
+    return (
+      task.status === "running" && !!task.jobId && task.result?.enabled === undefined && !task.error
+    );
   },
+
+  blockingTimeout: 180_000, // 3 minutes between health checks
+  warningTimeout: 120_000, // Show "taking longer than expected" after 2 minutes
 
   run: enableCampaignNode,
 };

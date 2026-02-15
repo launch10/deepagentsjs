@@ -24,11 +24,12 @@ deployRoutes.post("/stream", ...streamMiddleware, async (c) => {
   const body = await c.req.json();
 
   const { threadId, state } = body;
-  // Support both top-level and state.deploy.* patterns for SDK compatibility
+  // Extract fields from top-level body or nested state (SDK may send either way)
   const projectId = body.projectId ?? state?.projectId;
-  const deployId = body.deployId ?? state?.deploy?.deployId;
-  const websiteId = body.websiteId ?? state?.deploy?.websiteId;
-  const campaignId = body.campaignId ?? state?.deploy?.campaignId;
+  const deployId = body.deployId ?? state?.deployId;
+  const websiteId = body.websiteId ?? state?.websiteId;
+  const campaignId = body.campaignId ?? state?.campaignId;
+  const instructions = body.instructions ?? state?.instructions;
 
   log.info(
     {
@@ -37,6 +38,7 @@ deployRoutes.post("/stream", ...streamMiddleware, async (c) => {
       deployId,
       websiteId,
       campaignId,
+      instructions,
       stateOnly: body.stateOnly,
       hasState: !!state,
       stateKeys: state ? Object.keys(state) : [],
@@ -68,6 +70,8 @@ deployRoutes.post("/stream", ...streamMiddleware, async (c) => {
     messages: [],
     threadId,
     state: {
+      // Spread raw state first so explicit fields below take precedence
+      ...state,
       threadId,
       jwt: auth.jwt,
       projectId,
@@ -75,9 +79,8 @@ deployRoutes.post("/stream", ...streamMiddleware, async (c) => {
       websiteId,
       campaignId,
       ...creditState,
-      // Default deploy instructions - deploy both if not specified
-      deploy: state?.deploy ?? { website: true, googleAds: true },
-      ...state,
+      // Deploy instructions — extracted from body or state, defaulting to both
+      instructions: instructions ?? { website: true, googleAds: true },
     },
   });
 });

@@ -3,16 +3,16 @@ export type InstructionType = (typeof InstructionTypes)[number];
 
 export type Instructions = Partial<Record<InstructionType, boolean>>;
 
-export const shouldDeployWebsite = (state: {deploy: Instructions}) => {
-    return state.deploy?.website ?? false;
+export const shouldDeployWebsite = (state: {instructions: Instructions}) => {
+    return state.instructions?.website ?? false;
 }
 
-export const shouldDeployGoogleAds = (state: {deploy: Instructions}) => {
-    return state.deploy?.googleAds ?? false;
+export const shouldDeployGoogleAds = (state: {instructions: Instructions}) => {
+    return state.instructions?.googleAds ?? false;
 }
 
-export const shouldDeployAnything = (state: {deploy: Instructions}) => {
-    return (state.deploy?.website ?? false) || (state.deploy?.googleAds ?? false);
+export const shouldDeployAnything = (state: {instructions: Instructions}) => {
+    return (state.instructions?.website ?? false) || (state.instructions?.googleAds ?? false);
 }
 
 export type { Status } from "../core";

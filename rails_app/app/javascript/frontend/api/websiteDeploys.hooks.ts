@@ -28,7 +28,7 @@ export function useWebsiteDeploys(websiteId: number, page: number) {
       if (!res.ok) throw new Error("Failed to fetch deploys");
       return res.json();
     },
-    enabled: websiteId > 0,
+    enabled: websiteId > 0 && !!rootPath,
     staleTime: 30_000,
     placeholderData: keepPreviousData,
   });

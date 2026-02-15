@@ -28,7 +28,7 @@ RSpec.describe "Deploys API", type: :request do
 
       parameter name: :deploy_params, in: :body, schema: APISchemas::Deploy.params_schema
 
-      response "201", "deploy created with chat" do
+      response "201", "deploy created with thread_id" do
         schema APISchemas::Deploy.response
         let(:Authorization) { auth_headers["Authorization"] }
         let(:"X-Signature") { auth_headers["X-Signature"] }
@@ -46,9 +46,7 @@ RSpec.describe "Deploys API", type: :request do
           deploy = Deploy.find(data["id"])
           expect(deploy.project).to eq(project)
           expect(deploy.status).to eq("pending")
-          expect(deploy.chat).to be_present
-          expect(deploy.chat.thread_id).to eq(thread_id)
-          expect(deploy.chat.chat_type).to eq("deploy")
+          expect(deploy.thread_id).to eq(thread_id)
         end
       end
 
@@ -210,6 +208,58 @@ RSpec.describe "Deploys API", type: :request do
 
           deploy.reload
           expect(deploy.is_live).to be true
+        end
+      end
+    end
+  end
+
+  path "/api/v1/deploys/deactivate" do
+    post "Deactivates the active deploy for a project" do
+      tags "Deploys"
+      consumes "application/json"
+      produces "application/json"
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: "X-Signature", in: :header, type: :string, required: false
+      parameter name: "X-Timestamp", in: :header, type: :string, required: false
+
+      parameter name: :deactivate_params, in: :body, schema: {
+        type: :object,
+        properties: { project_id: { type: :integer } },
+        required: ["project_id"]
+      }
+
+      let!(:deploy) { create(:deploy, project: project, status: "completed") }
+
+      response "200", "deploy deactivated" do
+        schema APISchemas::Deploy.deactivate_response
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let(:deactivate_params) { { project_id: project.id } }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["success"]).to be true
+
+          deploy.reload
+          expect(deploy.active).to be false
+          expect(deploy.chat.active).to be false
+        end
+      end
+
+      response "200", "succeeds even with no active deploy" do
+        schema APISchemas::Deploy.deactivate_response
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let(:deactivate_params) { { project_id: project.id } }
+
+        before { deploy.deactivate! }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["success"]).to be true
         end
       end
     end

@@ -44,6 +44,7 @@ class ProjectsController < SubscribedController
   end
 
   def brainstorm
+    @project.current_workflow.update!(step: "brainstorm", substep: nil)
     render inertia: "Brainstorm", props: @project.to_brainstorm_json, layout: "layouts/webcontainer"
   end
 
@@ -73,14 +74,10 @@ class ProjectsController < SubscribedController
   WorkflowConfig.substeps_for("launch", "ad_campaign").each do |substep|
     define_method("campaigns_#{substep}") do
       @campaign = @project.campaigns.first
+      @project.current_workflow.update!(step: "ad_campaign", substep: substep)
+
       if @campaign.present?
-        # If this fails, it's because the user hasn't completed the previous steps
-        # before the page they're trying to go to. We'll just stay on the same page.
-        # Don't use update! here because it will raise an exception if the update fails.
-        Campaign.transaction do
-          @campaign.update!(stage: substep)
-          @project.current_workflow.update!(substep: substep)
-        end
+        @campaign.update!(stage: substep)
 
         if @campaign.reload.stage != substep
           redirect_to action: "campaigns_#{@campaign.stage}" and return
@@ -94,6 +91,7 @@ class ProjectsController < SubscribedController
   end
 
   def deploy
+    @project.current_workflow.update!(step: "deploy", substep: nil)
     @deploy = find_existing_deploy
 
     render inertia: "Deploy",
@@ -150,10 +148,8 @@ class ProjectsController < SubscribedController
     (Date.current - first_metric.date).to_i
   end
 
-  # Find existing deploy — does NOT create. The graph's initDeploy node handles creation.
-  # Returns the most recent deploy (which is always the one the graph created/is working on).
   def find_existing_deploy
-    @project.deploys.order(created_at: :desc).first
+    @project.deploys.find_by(active: true)
   end
 
   def set_project

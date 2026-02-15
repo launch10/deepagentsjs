@@ -169,7 +169,7 @@ describe.sequential("Deploy Graph Tests", () => {
             websiteId: 1,
             campaignId,
 
-            deploy: { googleAds: true },
+            instructions: { googleAds: true },
             tasks: [],
             chatId: 1,
           })
@@ -204,7 +204,7 @@ describe.sequential("Deploy Graph Tests", () => {
               websiteId: 1,
               campaignId: 123,
 
-              deploy: { googleAds: true },
+              instructions: { googleAds: true },
               tasks: [],
               chatId: 1,
             })
@@ -230,7 +230,7 @@ describe.sequential("Deploy Graph Tests", () => {
               websiteId: 1,
               campaignId: 123,
 
-              deploy: { googleAds: true },
+              instructions: { googleAds: true },
               tasks: Deploy.withTasks({ googleAds: true }, { ConnectingGoogle: "running" }),
               chatId: 1,
             })
@@ -253,7 +253,7 @@ describe.sequential("Deploy Graph Tests", () => {
               websiteId: 1,
               campaignId,
 
-              deploy: { googleAds: true },
+              instructions: { googleAds: true },
               tasks: [],
               chatId: 1,
             });
@@ -317,7 +317,7 @@ describe.sequential("Deploy Graph Tests", () => {
               websiteId: 1,
               campaignId,
 
-              deploy: { googleAds: true },
+              instructions: { googleAds: true },
               tasks: Deploy.withTasks({ googleAds: true }, { ConnectingGoogle: "completed" }),
               chatId: 1,
             });
@@ -389,7 +389,7 @@ describe.sequential("Deploy Graph Tests", () => {
               websiteId: 1,
               campaignId,
 
-              deploy: { googleAds: true, website: true },
+              instructions: { googleAds: true, website: true },
               tasks: Deploy.withTasks(
                 { googleAds: true, website: true },
                 { VerifyingGoogle: "pending" }
@@ -474,7 +474,7 @@ describe.sequential("Deploy Graph Tests", () => {
           jwt: "test-jwt",
           threadId: "thread_123" as ThreadIDType,
           websiteId: 1,
-          deploy: { website: true },
+          instructions: { website: true },
           tasks: [Deploy.createTask("AddingAnalytics")],
           chatId: 1,
         })
@@ -568,7 +568,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
 
-          deploy: { website: true },
+          instructions: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
             { OptimizingSEO: "pending" },
@@ -607,7 +607,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
 
-          deploy: { website: true },
+          instructions: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
             { OptimizingSEO: "pending" },
@@ -670,7 +670,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
 
-          deploy: { website: true },
+          instructions: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
             { OptimizingSEO: "pending" },
@@ -715,7 +715,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
 
-          deploy: { website: true },
+          instructions: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
             { OptimizingSEO: "pending" },
@@ -781,7 +781,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
 
-          deploy: { website: true },
+          instructions: { website: true },
           tasks: Deploy.withTasks({ website: true }, { ValidateLinks: "pending" }),
           chatId: 1,
         })
@@ -830,7 +830,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
 
-          deploy: { website: true },
+          instructions: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
             {
@@ -879,7 +879,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
 
-          deploy: { website: true },
+          instructions: { website: true },
           tasks: Deploy.withTasks(
             { website: true },
             {
@@ -949,7 +949,7 @@ describe.sequential("Deploy Graph Tests", () => {
           websiteId: 1,
           campaignId: 1,
 
-          deploy: { googleAds: true },
+          instructions: { googleAds: true },
           tasks: [],
           chatId: 1,
         })
@@ -971,7 +971,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
 
-          deploy: { website: true },
+          instructions: { website: true },
           tasks: Deploy.withTasks({ website: true }, { DeployingWebsite: "pending" }),
           chatId: 1,
         })
@@ -1026,7 +1026,7 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_precreate_1" as ThreadIDType,
           projectId: 1,
           websiteId: 1,
-          deploy: { website: true },
+          instructions: { website: true },
           tasks: [],
           chatId: 1,
         })
@@ -1078,7 +1078,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
           campaignId: 1,
-          deploy: { website: true, googleAds: true },
+          instructions: { website: true, googleAds: true },
           tasks: [],
           chatId: 1,
         })
@@ -1123,7 +1123,7 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_precreate_3" as ThreadIDType,
           projectId: 1,
           websiteId: 1,
-          deploy: { website: true },
+          instructions: { website: true },
           tasks: existingTasks,
           chatId: 1,
         })
@@ -1159,7 +1159,7 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_precreate_4" as ThreadIDType,
           projectId: 1,
           websiteId: 1,
-          deploy: { website: true },
+          instructions: { website: true },
           tasks: pendingTasks,
           chatId: 1,
         })
@@ -1195,7 +1195,7 @@ describe.sequential("Deploy Graph Tests", () => {
           threadId: "thread_precreate_5" as ThreadIDType,
           projectId: 1,
           websiteId: 1,
-          deploy: { website: true },
+          instructions: { website: true },
           tasks,
           chatId: 1,
         })
@@ -1218,7 +1218,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
           campaignId: 1,
-          deploy: { googleAds: true },
+          instructions: { googleAds: true },
           tasks: [],
           chatId: 1,
         })
@@ -1295,7 +1295,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
           campaignId: 1,
-          deploy: { googleAds: true },
+          instructions: { googleAds: true },
           tasks,
           chatId: 1,
         })
@@ -1333,7 +1333,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
           campaignId: 1,
-          deploy: { googleAds: true },
+          instructions: { googleAds: true },
           tasks,
           chatId: 1,
         })
@@ -1379,7 +1379,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
           campaignId,
-          deploy: { website: true, googleAds: true },
+          instructions: { website: true, googleAds: true },
           tasks,
           chatId: 1,
         })
@@ -1399,7 +1399,7 @@ describe.sequential("Deploy Graph Tests", () => {
       const { taskExecutorNode } = await import("@nodes");
 
       // Campaign-only deploy: website tasks like DeployingWebsite should be skipped
-      // because shouldSkip checks !state.deploy?.website (deploy instructions),
+      // because shouldSkip checks !state.instructions?.website,
       // NOT whether the task exists in state.
       // Pre-create only campaign tasks (as initPhasesNode would)
       const tasks = Deploy.createTasks({ googleAds: true });
@@ -1424,7 +1424,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
           campaignId: 1,
-          deploy: { googleAds: true },
+          instructions: { googleAds: true },
           tasks,
           chatId: 1,
         })
@@ -1468,7 +1468,7 @@ describe.sequential("Deploy Graph Tests", () => {
           projectId: 1,
           websiteId: 1,
           campaignId,
-          deploy: { googleAds: true },
+          instructions: { googleAds: true },
           tasks,
           chatId: 1,
         })
@@ -1533,7 +1533,7 @@ describe.sequential("Deploy Graph Tests", () => {
           websiteId: 1,
           campaignId,
 
-          deploy: { googleAds: true },
+          instructions: { googleAds: true },
           tasks: Deploy.withTasks({ googleAds: true }, { CheckingBilling: "pending" }),
           chatId: 1,
         })
@@ -1569,7 +1569,7 @@ describe.sequential("Deploy Graph Tests", () => {
           websiteId: 1,
           campaignId,
 
-          deploy: { googleAds: true },
+          instructions: { googleAds: true },
           tasks: Deploy.withTasks({ googleAds: true }, { CheckingBilling: "pending" }),
           chatId: 1,
         })
@@ -1593,7 +1593,7 @@ describe.sequential("Deploy Graph Tests", () => {
           websiteId: 1,
           campaignId,
 
-          deploy: { googleAds: true },
+          instructions: { googleAds: true },
           tasks: Deploy.withTasks({ googleAds: true }, { EnablingCampaign: "pending" }),
           chatId: 1,
         })

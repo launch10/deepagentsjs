@@ -1,7 +1,7 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { DeployAnnotation, type DeployGraphState } from "@annotation";
 import { Deploy } from "@types";
-import { initDeployNode, initPhasesNode, taskExecutorNode, taskExecutorRouter } from "@nodes";
+import { createDeployNode, initPhasesNode, taskExecutorNode, taskExecutorRouter } from "@nodes";
 import { withCreditExhaustion } from "./shared";
 import { getLogger } from "@core";
 
@@ -64,7 +64,7 @@ export const deployGraph = withCreditExhaustion(
     // --------------------------------------------------------------------------
     // Init Deploy: Idempotent chat creation via Rails API
     // --------------------------------------------------------------------------
-    .addNode("initDeploy", initDeployNode)
+    .addNode("createDeploy", createDeployNode)
 
     // --------------------------------------------------------------------------
     // Init Phases: Compute phases from any pre-existing tasks (for tests)
@@ -86,7 +86,7 @@ export const deployGraph = withCreditExhaustion(
       log.info(
         {
           deployId: state.deployId,
-          deploy: state.deploy,
+          instructions: state.instructions,
           taskCount: state.tasks?.length ?? 0,
           status: state.status,
         },
@@ -94,16 +94,16 @@ export const deployGraph = withCreditExhaustion(
       );
 
       if (!Deploy.shouldDeployAnything(state)) {
-        log.info({ deploy: state.deploy }, "Nothing to deploy, exiting early");
+        log.info({ instructions: state.instructions }, "Nothing to deploy, exiting early");
         return END;
       }
 
       log.info("Proceeding to initDeploy");
-      return "initDeploy";
+      return "createDeploy";
     })
 
     // After init deploy, initialize phases
-    .addEdge("initDeploy", "initPhases")
+    .addEdge("createDeploy", "initPhases")
 
     // After init phases, proceed to task executor
     .addEdge("initPhases", "taskExecutor")

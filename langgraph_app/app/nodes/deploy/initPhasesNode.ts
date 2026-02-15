@@ -12,10 +12,14 @@ import { Deploy } from "@types";
  */
 export function initPhasesNode(state: DeployGraphState): Partial<DeployGraphState> {
   const log = getLogger({ component: "initPhasesNode" });
+  if (state.tasks && state.tasks.length > 0) {
+    log.info("Tasks already exist, skipping initPhases");
+    return {}; // noop
+  }
 
   // Fresh deploy: pre-create all expected tasks as pending
   if (!state.tasks || state.tasks.length === 0) {
-    const pendingTasks = state.deploy ? Deploy.createTasks(state.deploy) : [];
+    const pendingTasks = state.instructions ? Deploy.createTasks(state.instructions) : [];
     if (pendingTasks.length === 0) {
       log.info("No tasks to create (no deploy instructions), marking as running");
       return { status: "running" };
@@ -33,15 +37,5 @@ export function initPhasesNode(state: DeployGraphState): Partial<DeployGraphStat
     return { tasks: pendingTasks, phases, status: "running" };
   }
 
-  // Resumed deploy: compute phases from existing tasks
-  const phases = getPhasesFromState(state);
-  log.info(
-    {
-      taskCount: state.tasks.length,
-      taskSummary: state.tasks.map((t) => ({ name: t.name, status: t.status })),
-      phaseCount: phases.length,
-    },
-    "Computed initial phases from existing tasks"
-  );
-  return { phases, status: "running" };
+  return {}; // noop
 }

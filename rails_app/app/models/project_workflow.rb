@@ -41,8 +41,12 @@ class ProjectWorkflow < ApplicationRecord
   scope :archived, -> { where(status: "archived") }
   scope :launch, -> { where(workflow_type: "launch") }
 
+  # Substeps that are their own chat_type (e.g. website/deploy → chat_type "deploy", not "website")
+  SUBSTEP_CHAT_TYPES = %w[deploy].freeze
+
   def chat
-    project.chats.find_by(chat_type: step)
+    chat_type = substep.in?(SUBSTEP_CHAT_TYPES) ? substep : step
+    project.chats.find_by(chat_type: chat_type, active: true)
   end
 
   def next_step!

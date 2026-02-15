@@ -1,11 +1,10 @@
 import { CreditCardIcon } from "@heroicons/react/24/outline";
 import { Button } from "@components/ui/button";
+import { useDeployChatActions } from "@hooks/useDeployChat";
 
-interface PaymentRequiredScreenProps {
-  onPaymentAdded?: () => void;
-}
+export default function PaymentRequiredScreen() {
+  const { updateState } = useDeployChatActions();
 
-export default function PaymentRequiredScreen({ onPaymentAdded }: PaymentRequiredScreenProps) {
   return (
     <div className="flex flex-col items-center justify-center p-12 min-h-[400px]">
       <div className="max-w-md w-full text-center">
@@ -30,7 +29,7 @@ export default function PaymentRequiredScreen({ onPaymentAdded }: PaymentRequire
           >
             Add Payment Method
           </Button>
-          <Button onClick={onPaymentAdded}>Payment Method Added</Button>
+          <Button onClick={() => updateState({})}>Payment Method Added</Button>
         </div>
       </div>
     </div>

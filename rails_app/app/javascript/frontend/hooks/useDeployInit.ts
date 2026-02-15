@@ -1,21 +1,34 @@
 import { useEffect, useRef } from "react";
 import { usePage } from "@inertiajs/react";
-import { useDeployChatWithPolling } from "@hooks/useDeployChat";
-import type { DeployProps } from "@hooks/useDeployChat";
+import {
+  useDeployChat,
+  useDeployContext,
+  useDeployStartDeploy,
+  type DeployProps,
+} from "@hooks/useDeployChat";
+import { useProjectStore } from "~/stores/projectStore";
 import { useRootPath } from "~/stores/sessionStore";
 
 /**
- * Deploy initialization hook. Follows the same pattern as useWebsiteInit.
+ * Deploy initialization hook.
  *
- * - Prevents double-init via ref (React StrictMode safe)
- * - Auto-starts deploy when no deploy exists (or pending with no thread)
+ * - Auto-starts deploy when no deploy exists (first visit)
+ * - Resumes polling when reloading with an in-progress deploy
+ * - Polls the graph on an interval while deploy is running
+ * - Syncs deployId from graph state to project store
  * - Touches user_active_at on mount (for OAuth callback linkage)
  */
 export function useDeployInit() {
   const { deploy } = usePage<DeployProps>().props;
   const rootPath = useRootPath();
-  const polling = useDeployChatWithPolling();
-  const hasStarted = useRef(!!deploy?.langgraph_thread_id);
+  const startDeploy = useDeployStartDeploy();
+  const { updateState, state, status } = useDeployChat((s) => ({
+    updateState: s.actions.updateState,
+    state: s.state,
+    status: s.status,
+  }));
+  const deployContext = useDeployContext();
+  const hasActed = useRef(false);
 
   // Touch user_active_at on mount so OAuth callback can find the active deploy
   useEffect(() => {
@@ -23,23 +36,60 @@ export function useDeployInit() {
       fetch(`${rootPath}/api/v1/deploys/${deploy.id}/touch`, {
         method: "POST",
         credentials: "include",
-      }).catch(() => {
-        // Non-critical — just for OAuth linkage
-      });
+      }).catch(() => {});
     }
   }, [deploy?.id, rootPath]);
 
-  // Auto-start deploy if no deploy exists, or if pending with no thread (restart case)
+  // Auto-start: no deploy exists → kick the graph
   useEffect(() => {
-    const shouldStart =
-      !hasStarted.current &&
-      (!deploy || (deploy.status === "pending" && !deploy.langgraph_thread_id));
-
-    if (shouldStart) {
-      hasStarted.current = true;
-      polling.startDeploy();
+    if (hasActed.current) return;
+    if (!deploy) {
+      hasActed.current = true;
+      startDeploy();
     }
-  }, [deploy, polling.startDeploy]);
+  }, [deploy, startDeploy]);
 
-  return polling;
+  // Resume: deploy is in-progress on page load → kick one update so polling takes over
+  useEffect(() => {
+    if (hasActed.current) return;
+    const isInProgress = deploy?.status === "pending" || deploy?.status === "running";
+    if (isInProgress) {
+      hasActed.current = true;
+      updateState(deployContext);
+    }
+  }, [deploy?.status, updateState, deployContext]);
+
+  // Sync deployId from graph state → project store
+  const setStore = useProjectStore((s) => s.set);
+  useEffect(() => {
+    if (state.deployId !== undefined) {
+      setStore({ deployId: state.deployId });
+    }
+  }, [state.deployId, setStore]);
+
+  // Poll: while deploy is running and we're not already streaming, ping the graph
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isRunning = state.status === "running";
+  const isStreaming = status === "streaming" || status === "submitted";
+  const isTerminal = state.status === "completed" || state.status === "failed";
+
+  useEffect(() => {
+    const shouldPoll = isRunning && !isStreaming;
+
+    if (shouldPoll && !pollRef.current) {
+      pollRef.current = setInterval(() => updateState(deployContext), 3000);
+    }
+
+    if ((!shouldPoll || isTerminal) && pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+
+    return () => {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+    };
+  }, [updateState, deployContext, isRunning, isStreaming, isTerminal]);
 }

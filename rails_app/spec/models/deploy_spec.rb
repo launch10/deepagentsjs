@@ -3,6 +3,7 @@
 # Table name: deploys
 #
 #  id                 :bigint           not null, primary key
+#  active             :boolean          default(TRUE), not null
 #  current_step       :string
 #  deleted_at         :datetime
 #  is_live            :boolean          default(FALSE)
@@ -13,10 +14,12 @@
 #  updated_at         :datetime         not null
 #  campaign_deploy_id :bigint
 #  project_id         :bigint           not null
+#  thread_id          :string           not null
 #  website_deploy_id  :bigint
 #
 # Indexes
 #
+#  index_deploys_on_active_project          (project_id,active) UNIQUE WHERE ((deleted_at IS NULL) AND (active = true))
 #  index_deploys_on_campaign_deploy_id      (campaign_deploy_id)
 #  index_deploys_on_deleted_at              (deleted_at)
 #  index_deploys_on_is_live                 (is_live)
@@ -24,6 +27,7 @@
 #  index_deploys_on_project_id_and_is_live  (project_id,is_live)
 #  index_deploys_on_project_id_and_status   (project_id,status)
 #  index_deploys_on_status                  (status)
+#  index_deploys_on_thread_id               (thread_id)
 #  index_deploys_on_website_deploy_id       (website_deploy_id)
 #
 # Foreign Keys
@@ -159,6 +163,144 @@ RSpec.describe Deploy, type: :model do
       create(:deploy, project: project, is_live: false)
 
       expect(project.live_deploy).to be_nil
+    end
+  end
+
+  describe "thread_id" do
+    it "has a thread_id after creation" do
+      deploy = create(:deploy, project: project)
+      expect(deploy.thread_id).to be_present
+    end
+
+    it "second deploy for the same project has its own thread_id" do
+      create(:deploy, project: project, status: "completed")
+      second_deploy = create(:deploy, project: project)
+
+      expect(second_deploy.thread_id).to be_present
+    end
+
+    it "second deploy has a different thread_id than the first" do
+      first_deploy = create(:deploy, project: project, status: "completed")
+      second_deploy = create(:deploy, project: project)
+
+      expect(second_deploy.thread_id).not_to eq(first_deploy.thread_id)
+    end
+  end
+
+  describe "#deactivate!" do
+    it "sets active to false on the deploy and its chat" do
+      deploy = create(:deploy, project: project)
+      chat = deploy.chat
+
+      deploy.deactivate!
+
+      expect(deploy.reload.active).to be false
+      expect(chat.reload.active).to be false
+    end
+
+    it "handles deploys without a chat" do
+      deploy = create(:deploy, project: project)
+      deploy.chat.destroy!
+      deploy.reload
+
+      expect { deploy.deactivate! }.not_to raise_error
+      expect(deploy.reload.active).to be false
+    end
+  end
+
+  describe "active scope and lifecycle" do
+    it "new deploys are active by default" do
+      deploy = create(:deploy, project: project)
+      expect(deploy.active).to be true
+      expect(Deploy.active).to include(deploy)
+    end
+
+    it "creating a new deploy deactivates the previous one" do
+      first = create(:deploy, project: project)
+      second = create(:deploy, project: project)
+
+      expect(first.reload.active).to be false
+      expect(second.active).to be true
+    end
+
+    it "only one active deploy per project" do
+      create(:deploy, project: project)
+      create(:deploy, project: project)
+      create(:deploy, project: project)
+
+      expect(project.deploys.active.count).to eq(1)
+    end
+  end
+
+  describe "deploy chat lifecycle" do
+    it "creates a chat on deploy creation" do
+      deploy = create(:deploy, project: project)
+      expect(deploy.chat).to be_present
+      expect(deploy.chat.chat_type).to eq("deploy")
+      expect(deploy.chat.thread_id).to eq(deploy.thread_id)
+      expect(deploy.chat.active).to be true
+    end
+
+    it "deactivates old deploy chat when creating a new deploy" do
+      first_deploy = create(:deploy, project: project)
+      first_chat = first_deploy.chat
+
+      second_deploy = create(:deploy, project: project)
+
+      expect(first_chat.reload.active).to be false
+      expect(second_deploy.chat.active).to be true
+    end
+
+    it "only one active deploy chat per project at a time" do
+      create(:deploy, project: project)
+      create(:deploy, project: project)
+      create(:deploy, project: project)
+
+      active_chats = project.chats.where(chat_type: "deploy", active: true)
+      expect(active_chats.count).to eq(1)
+    end
+
+    it "deactivates chat when deploy is soft-deleted (not destroyed)" do
+      deploy = create(:deploy, project: project)
+      chat = deploy.chat
+
+      deploy.destroy!
+
+      expect(Chat.find_by(id: chat.id)).to be_present
+      expect(chat.reload.active).to be false
+    end
+
+    it "chat stays active after deploy completes" do
+      deploy = create(:deploy, project: project)
+      deploy.update!(status: "completed")
+
+      expect(deploy.chat.reload.active).to be true
+    end
+
+    it "chat stays active after deploy fails" do
+      deploy = create(:deploy, project: project)
+      deploy.update!(status: "failed")
+
+      expect(deploy.chat.reload.active).to be true
+    end
+  end
+
+  describe "deploy_props serialization" do
+    let!(:template) { create(:template) }
+    let!(:website) { create(:website, account: account, project: project, template: template) }
+
+    it "includes id, status, and current_step" do
+      deploy = create(:deploy, project: project, status: "completed")
+
+      props = project.send(:deploy_props, deploy)
+      expect(props[:id]).to eq(deploy.id)
+      expect(props[:status]).to eq("completed")
+      expect(props).not_to have_key(:langgraph_thread_id)
+    end
+
+    it "returns nil when deploy is nil" do
+      props = project.send(:deploy_props, nil)
+      expect(props).to be_nil
     end
   end
 

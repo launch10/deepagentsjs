@@ -119,9 +119,8 @@ module ProjectConcerns
       Project.with_launch_relations.find_by(id: id)
 
       to_ad_campaign_json.merge!({
-        thread_id: deploy&.thread_id,
+        chat: nil,
         deploy: deploy_props(deploy),
-        deploy_type: "campaign",
         website_url: primary_url_string,
         deploy_environment: Rails.env.production? ? nil : Cloudflare.deploy_env
       })
@@ -129,9 +128,8 @@ module ProjectConcerns
 
     def to_website_deploy_json(deploy = nil)
       to_website_json.merge!({
-        thread_id: deploy&.thread_id,
+        chat: nil,
         deploy: deploy_props(deploy),
-        deploy_type: "website",
         website_url: primary_url_string,
         deploy_environment: Rails.env.production? ? nil : Cloudflare.deploy_env,
         campaign: nil
@@ -146,8 +144,7 @@ module ProjectConcerns
       {
         id: deploy.id,
         status: deploy.status,
-        current_step: deploy.current_step,
-        langgraph_thread_id: deploy.thread_id
+        current_step: deploy.current_step
       }
     end
   end

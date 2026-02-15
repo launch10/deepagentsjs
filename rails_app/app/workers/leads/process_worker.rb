@@ -68,7 +68,7 @@ module Leads
           website: website,
           project_uuid: website.project&.uuid,
           has_gclid: options[:gclid].present?,
-          total_leads_for_project: website.project&.leads&.count || 0)
+          total_leads_for_project: website.leads.count)
       end
     end
   end

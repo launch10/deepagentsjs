@@ -249,8 +249,7 @@ RSpec.describe "Job Runs API", type: :request do
         job_class: "WebsiteDeploy",
         status: "completed",
         result_data: { "url" => "https://example.com" },
-        langgraph_thread_id: "thread_show123"
-      )
+        langgraph_thread_id: "thread_show123")
     end
 
     path '/api/v1/job_runs/{id}' do
@@ -288,8 +287,7 @@ RSpec.describe "Job Runs API", type: :request do
               job_class: "WebsiteDeploy",
               status: "failed",
               error_message: "Deploy failed: timeout",
-              langgraph_thread_id: "thread_fail123"
-            )
+              langgraph_thread_id: "thread_fail123")
           end
           let(:auth_headers) { auth_headers_for(user) }
           let(:Authorization) { auth_headers['Authorization'] }
@@ -312,8 +310,7 @@ RSpec.describe "Job Runs API", type: :request do
               account: other_account,
               job_class: "WebsiteDeploy",
               status: "completed",
-              langgraph_thread_id: "thread_other123"
-            )
+              langgraph_thread_id: "thread_other123")
           end
           let(:auth_headers) { auth_headers_for(user) }
           let(:Authorization) { auth_headers['Authorization'] }
