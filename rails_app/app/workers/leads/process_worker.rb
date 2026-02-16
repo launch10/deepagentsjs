@@ -11,7 +11,7 @@ module Leads
     end
 
     # Options hash keys:
-    #   email (required), name, visit_id, visitor_token, gclid,
+    #   email (required), name, visit_id, visitor_token, gclid, fbclid,
     #   conversion_value, conversion_currency,
     #   utm_source, utm_medium, utm_campaign, utm_content, utm_term
     def perform(account_id, website_id, options = {})
@@ -31,6 +31,7 @@ module Leads
           visit: visit,
           visitor_token: options[:visitor_token],
           gclid: options[:gclid],
+          fbclid: options[:fbclid],
           utm_source: options[:utm_source],
           utm_medium: options[:utm_medium],
           utm_campaign: options[:utm_campaign],

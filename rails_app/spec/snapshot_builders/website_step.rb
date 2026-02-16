@@ -16,7 +16,9 @@ class WebsiteStep < BaseBuilder
 
     project = account.projects.first
     if project.nil?
-      data = Brainstorm.create_brainstorm!(account, name: "Test Project", thread_id: SecureRandom.uuid)
+      # thread_id must equal project UUID so the frontend URL-based thread lookup works
+      project_uuid = SecureRandom.uuid
+      data = Brainstorm.create_brainstorm!(account, name: "Test Project", thread_id: project_uuid, project_attributes: { uuid: project_uuid })
 
       brainstorm = data[:brainstorm]
       brainstorm.update!(
@@ -119,7 +121,8 @@ class WebsiteStep < BaseBuilder
 
     # 1. Platform subdomain assigned to a DIFFERENT website (root path)
     # Useful for testing path conflicts when same domain has multiple websites
-    other_data = Brainstorm.create_brainstorm!(account, name: "Meeting Tool Project", thread_id: SecureRandom.uuid)
+    other_uuid = SecureRandom.uuid
+    other_data = Brainstorm.create_brainstorm!(account, name: "Meeting Tool Project", thread_id: other_uuid, project_attributes: { uuid: other_uuid })
     other_website = other_data[:website]
     other_website.update!(name: "Meeting Tool")
     other_data[:brainstorm].update!(
@@ -144,7 +147,8 @@ class WebsiteStep < BaseBuilder
 
     # 2. Create another website using the same domain with /landing path
     # This is useful for testing path collision detection (same domain, different path, different website)
-    landing_data = Brainstorm.create_brainstorm!(account, name: "Landing Page Project", thread_id: SecureRandom.uuid)
+    landing_uuid = SecureRandom.uuid
+    landing_data = Brainstorm.create_brainstorm!(account, name: "Landing Page Project", thread_id: landing_uuid, project_attributes: { uuid: landing_uuid })
     landing_website = landing_data[:website]
     landing_website.update!(name: "Landing Page")
     landing_data[:brainstorm].update!(

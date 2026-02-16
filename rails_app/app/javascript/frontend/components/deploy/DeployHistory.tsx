@@ -5,9 +5,9 @@ import { ArrowUturnLeftIcon } from "@heroicons/react/16/solid";
 import { cn } from "@lib/utils";
 import DeploymentHistoryBadge from "@components/website/deployment-history/DeploymentHistoryBadge";
 import { ProjectsPagination } from "@components/projects/ProjectsPagination";
-import type { DeployProps, WebsiteDeployRecord } from "@hooks/useDeployChat";
+import type { DeployProps } from "@hooks/useDeployChat";
 import { Skeleton } from "@components/ui/skeleton";
-import { useWebsiteDeploys } from "@api/websiteDeploys.hooks";
+import { useDeploys, type DeployRecord } from "@api/deploys.hooks";
 import { useRootPath } from "~/stores/sessionStore";
 
 function formatTimestamp(dateStr: string) {
@@ -19,13 +19,13 @@ function formatTimestamp(dateStr: string) {
   });
 }
 
-function statusToBadgeVariant(deploy: WebsiteDeployRecord): "live" | "success" | "failed" {
+function statusToBadgeVariant(deploy: DeployRecord): "live" | "success" | "failed" {
   if (deploy.is_live) return "live";
   if (deploy.status === "completed") return "success";
   return "failed";
 }
 
-function DeployHistoryItem({ deploy }: { deploy: WebsiteDeployRecord }) {
+function DeployHistoryItem({ deploy }: { deploy: DeployRecord }) {
   const rootPath = useRootPath();
   const [rolling, setRolling] = useState(false);
 
@@ -37,7 +37,7 @@ function DeployHistoryItem({ deploy }: { deploy: WebsiteDeployRecord }) {
     setRolling(true);
     try {
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
-      const res = await fetch(`${rootPath}/api/v1/website_deploys/${deploy.id}/rollback`, {
+      const res = await fetch(`${rootPath}/api/v1/deploys/${deploy.id}/rollback`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -105,14 +105,14 @@ function DeployHistorySkeleton() {
 }
 
 export default function DeployHistory() {
-  const { website } = usePage<DeployProps>().props;
+  const { project } = usePage<DeployProps>().props;
   const [page, setPage] = useState(1);
-  const pinnedLiveDeploy = useRef<WebsiteDeployRecord | null>(null);
+  const pinnedLiveDeploy = useRef<DeployRecord | null>(null);
 
-  const websiteId = website?.id;
-  const { data, isLoading } = useWebsiteDeploys(websiteId ?? 0, page);
+  const projectId = project?.id;
+  const { data, isLoading } = useDeploys(projectId ?? 0, page);
 
-  const deploys = data?.website_deploys ?? [];
+  const deploys = data?.deploys ?? [];
   const pagination = data?.pagination;
 
   // Cache the live deploy from whichever page first returns it (always page 1)
@@ -122,7 +122,7 @@ export default function DeployHistory() {
     if (live) pinnedLiveDeploy.current = live;
   }, [deploys]);
 
-  if (!websiteId) return null;
+  if (!projectId) return null;
   if (isLoading && !deploys.length) return <DeployHistorySkeleton />;
   if (!deploys.length && !pinnedLiveDeploy.current) return null;
 

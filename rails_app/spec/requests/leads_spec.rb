@@ -399,6 +399,38 @@ RSpec.describe "Leads API", type: :request do
       end
     end
 
+    describe 'fbclid capture' do
+      it 'stores fbclid on the website_lead' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'fbclid-test@example.com',
+          fbclid: 'test-fbclid-67890'
+        }
+
+        expect(response.status).to eq(202)
+
+        lead = Lead.find_by(email: 'fbclid-test@example.com')
+        website_lead = lead.website_leads.find_by(website: website)
+        expect(website_lead.fbclid).to eq('test-fbclid-67890')
+      end
+
+      it 'stores both gclid and fbclid together' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'both-click-ids@example.com',
+          gclid: 'test-gclid-combo',
+          fbclid: 'test-fbclid-combo'
+        }
+
+        expect(response.status).to eq(202)
+
+        lead = Lead.find_by(email: 'both-click-ids@example.com')
+        website_lead = lead.website_leads.find_by(website: website)
+        expect(website_lead.gclid).to eq('test-gclid-combo')
+        expect(website_lead.fbclid).to eq('test-fbclid-combo')
+      end
+    end
+
     describe 'visit association' do
       let!(:visit) do
         Ahoy::Visit.create!(
@@ -406,6 +438,7 @@ RSpec.describe "Leads API", type: :request do
           visitor_token: 'visitor-abc',
           visit_token: 'visit-xyz',
           gclid: 'visit-gclid-999',
+          fbclid: 'visit-fbclid-888',
           started_at: Time.current
         )
       end
@@ -469,6 +502,37 @@ RSpec.describe "Leads API", type: :request do
         lead = Lead.find_by(email: 'prefer-direct-gclid@example.com')
         website_lead = lead.website_leads.find_by(website: website)
         expect(website_lead.gclid).to eq('direct-gclid-override')
+      end
+
+      it 'inherits fbclid from visit if not provided directly' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'inherit-fbclid@example.com',
+          visitor_token: 'visitor-abc',
+          visit_token: 'visit-xyz'
+        }
+
+        expect(response.status).to eq(202)
+
+        lead = Lead.find_by(email: 'inherit-fbclid@example.com')
+        website_lead = lead.website_leads.find_by(website: website)
+        expect(website_lead.fbclid).to eq('visit-fbclid-888')
+      end
+
+      it 'prefers directly provided fbclid over visit fbclid' do
+        post '/api/v1/leads', params: {
+          token: valid_token,
+          email: 'prefer-direct-fbclid@example.com',
+          visitor_token: 'visitor-abc',
+          visit_token: 'visit-xyz',
+          fbclid: 'direct-fbclid-override'
+        }
+
+        expect(response.status).to eq(202)
+
+        lead = Lead.find_by(email: 'prefer-direct-fbclid@example.com')
+        website_lead = lead.website_leads.find_by(website: website)
+        expect(website_lead.fbclid).to eq('direct-fbclid-override')
       end
     end
 
@@ -706,7 +770,8 @@ RSpec.describe "Leads API", type: :request do
           token: valid_token,
           email: 'args-test@example.com',
           name: 'Test Person',
-          gclid: 'test-gclid'
+          gclid: 'test-gclid',
+          fbclid: 'test-fbclid'
         }
 
         job = Leads::ProcessWorker.jobs.last
@@ -716,7 +781,8 @@ RSpec.describe "Leads API", type: :request do
           {
             'email' => 'args-test@example.com',
             'name' => 'Test Person',
-            'gclid' => 'test-gclid'
+            'gclid' => 'test-gclid',
+            'fbclid' => 'test-fbclid'
           }
         ])
       end

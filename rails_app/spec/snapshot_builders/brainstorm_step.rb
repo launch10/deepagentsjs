@@ -14,7 +14,10 @@ class BrainstormStep < BaseBuilder
       account = user.owned_account
     end
 
-    data = Brainstorm.create_brainstorm!(account, name: "Test Project", thread_id: SecureRandom.uuid)
+    # thread_id must equal project UUID so the frontend URL-based thread lookup works
+    # (URL is /projects/{uuid}/brainstorm, and getThreadIdFromUrl extracts the UUID)
+    project_uuid = SecureRandom.uuid
+    data = Brainstorm.create_brainstorm!(account, name: "Test Project", thread_id: project_uuid, project_attributes: { uuid: project_uuid })
 
     # Seed brainstorm checkpoint so Langgraph recognises the project
     seed_brainstorm_checkpoint(

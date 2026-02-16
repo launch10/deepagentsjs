@@ -133,12 +133,14 @@ RSpec.describe Lead, type: :model do
         email: 'attributed@example.com',
         visit: visit,
         visitor_token: 'visitor-xyz',
-        gclid: 'gclid-123'
+        gclid: 'gclid-123',
+        fbclid: 'fbclid-456'
       )
 
       expect(result[:website_lead].visit).to eq(visit)
       expect(result[:website_lead].visitor_token).to eq('visitor-xyz')
       expect(result[:website_lead].gclid).to eq('gclid-123')
+      expect(result[:website_lead].fbclid).to eq('fbclid-456')
     end
 
     it 'stores UTM parameters denormalized on the website_lead' do

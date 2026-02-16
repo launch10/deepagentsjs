@@ -33,6 +33,7 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
   private
 
   def continue_active_deploy!(connected_account)
+    puts "Signed into Google account #{connected_account.email}!!!"
     account = connected_account.owner.owned_account
     return unless account
 

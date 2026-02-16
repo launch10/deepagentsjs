@@ -36,6 +36,10 @@ class JobRun < ApplicationRecord
   STATUSES = %w[pending running completed failed].freeze
   ALLOWED_JOBS = %w[CampaignDeploy WebsiteDeploy GoogleOAuthConnect GoogleAdsInvite GoogleAdsPaymentCheck CampaignEnable GoogleDocs::ExtractQA].freeze
 
+  # Jobs that wait on user action (OAuth consent, invite acceptance, billing setup).
+  # These may legitimately run for hours and should not be killed by the stuck detector.
+  USER_BLOCKING_JOBS = %w[GoogleOAuthConnect GoogleAdsInvite GoogleAdsPaymentCheck].freeze
+
   validates :job_class, presence: true, inclusion: { in: ALLOWED_JOBS }
   validates :status, presence: true, inclusion: { in: STATUSES }
   validates :account, presence: true
@@ -46,7 +50,11 @@ class JobRun < ApplicationRecord
   scope :failed, -> { where(status: "failed") }
   scope :for_job, ->(job_class) { where(job_class: job_class) }
   scope :recent, -> { order(created_at: :desc) }
-  scope :stuck, -> { where(status: %w[pending running]).where("created_at < ?", 10.minutes.ago) }
+  scope :stuck, -> {
+    where(status: %w[pending running])
+      .where.not(job_class: USER_BLOCKING_JOBS)
+      .where("created_at < ?", 10.minutes.ago)
+  }
 
   # Create a job run for tracking purposes (non-Langgraph usage)
   # For Langgraph-triggered jobs, use the API endpoint instead

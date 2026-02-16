@@ -59,6 +59,10 @@ class API::V1::JobRunsController < API::BaseController
       # No worker dispatch - OAuth callback completes this job
     when "GoogleAdsInvite"
       GoogleAds::SendInviteWorker.perform_async(job_run.id)
+    when "GoogleAdsPaymentCheck"
+      GoogleAds::PaymentCheckWorker.perform_async(job_run.id)
+    when "CampaignEnable"
+      GoogleAds::CampaignEnableWorker.perform_async(job_run.id)
     end
   end
 

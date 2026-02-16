@@ -52,6 +52,7 @@ export const createDeployNode = NodeMiddleware.use(
     const deploy = await apiService.create({
       projectId: state.projectId as number,
       threadId: config.configurable.thread_id,
+      instructions: state.instructions,
     });
 
     log.info({ deployId: deploy.id, threadId: deploy.thread_id }, "Deploy created");

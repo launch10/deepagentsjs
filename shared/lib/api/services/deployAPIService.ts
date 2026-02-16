@@ -31,7 +31,9 @@ export interface DeployRecord {
   current_step?: string | null;
   is_live: boolean;
   thread_id?: string | null;
+  instructions?: Record<string, boolean>;
   support_ticket?: string | null;
+  revertible?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -39,6 +41,7 @@ export interface DeployRecord {
 export interface CreateDeployParams {
   projectId: number;
   threadId: string;
+  instructions?: Record<string, boolean>;
 }
 
 /**
@@ -54,12 +57,13 @@ export class DeployAPIService extends RailsAPIBase {
    * Creates a new deploy with a thread_id stored directly on the record.
    * Called by the deploy graph's first node (initDeploy).
    */
-  async create({ projectId, threadId }: CreateDeployParams): Promise<DeployRecord> {
+  async create({ projectId, threadId, instructions }: CreateDeployParams): Promise<DeployRecord> {
     const client = await this.getClient();
     const response = await client.POST("/api/v1/deploys", {
       body: {
         project_id: projectId,
         thread_id: threadId,
+        instructions: instructions ?? {},
       },
     });
 

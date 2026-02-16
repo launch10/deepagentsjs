@@ -81,6 +81,55 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
       end
     end
 
+    context "with user-blocking jobs older than 10 minutes" do
+      it "does not mark GoogleOAuthConnect as stuck" do
+        job = create(:job_run, :pending, account: account,
+          job_class: "GoogleOAuthConnect", created_at: 30.minutes.ago)
+
+        expect(Rollbar).not_to receive(:error)
+
+        described_class.new.perform
+
+        expect(job.reload.status).to eq("pending")
+      end
+
+      it "does not mark GoogleAdsInvite as stuck" do
+        job = create(:job_run, :running, :with_langgraph_callback, account: account,
+          job_class: "GoogleAdsInvite", created_at: 1.hour.ago)
+
+        expect(Rollbar).not_to receive(:error)
+
+        described_class.new.perform
+
+        expect(job.reload.status).to eq("running")
+      end
+
+      it "does not mark GoogleAdsPaymentCheck as stuck" do
+        job = create(:job_run, :running, :with_langgraph_callback, account: account,
+          job_class: "GoogleAdsPaymentCheck", created_at: 20.minutes.ago)
+
+        expect(Rollbar).not_to receive(:error)
+
+        described_class.new.perform
+
+        expect(job.reload.status).to eq("running")
+      end
+
+      it "still marks non-user-blocking jobs as stuck" do
+        blocking_job = create(:job_run, :pending, account: account,
+          job_class: "GoogleOAuthConnect", created_at: 30.minutes.ago)
+        regular_job = create(:job_run, :pending, :with_langgraph_callback, account: account,
+          job_class: "CampaignDeploy", created_at: 15.minutes.ago)
+
+        expect(Rollbar).to receive(:error).with("Stuck job run detected", hash_including(job_run_id: regular_job.id))
+
+        described_class.new.perform
+
+        expect(blocking_job.reload.status).to eq("pending")
+        expect(regular_job.reload.status).to eq("failed")
+      end
+    end
+
     context "support ticket creation" do
       it "creates a support ticket for stuck jobs with a deploy" do
         deploy = create(:deploy, :running, project: create(:project, account: account))

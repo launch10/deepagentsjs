@@ -39,6 +39,7 @@ class API::V1::LeadsController < ActionController::API
         visit_id: visit&.id,
         visitor_token: params[:visitor_token],
         gclid: params[:gclid],
+        fbclid: params[:fbclid],
         conversion_value: params[:conversion_value]&.to_f,
         conversion_currency: params[:conversion_currency],
         utm_source: params[:utm_source],
@@ -80,6 +81,7 @@ class API::V1::LeadsController < ActionController::API
       visitor_token: params[:visitor_token],
       visit_token: params[:visit_token],
       gclid: params[:gclid],
+      fbclid: params[:fbclid],
       user_agent: request.user_agent,
       ip: request.remote_ip,
       started_at: Time.current

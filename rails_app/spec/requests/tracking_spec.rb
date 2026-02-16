@@ -38,7 +38,8 @@ RSpec.describe "Tracking API", type: :request do
         utm_campaign: "summer_sale",
         utm_content: "headline_a",
         utm_term: "buy shoes",
-        gclid: "test-gclid-123"
+        gclid: "test-gclid-123",
+        fbclid: "test-fbclid-456"
       }
     end
 
@@ -68,6 +69,13 @@ RSpec.describe "Tracking API", type: :request do
 
         visit = Ahoy::Visit.last
         expect(visit.gclid).to eq("test-gclid-123")
+      end
+
+      it "stores fbclid for attribution" do
+        post "/api/v1/tracking/visit", params: valid_params, as: :json
+
+        visit = Ahoy::Visit.last
+        expect(visit.fbclid).to eq("test-fbclid-456")
       end
 
       it "stores referrer and landing page" do

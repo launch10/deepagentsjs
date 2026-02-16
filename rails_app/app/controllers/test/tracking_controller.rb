@@ -31,6 +31,7 @@ class Test::TrackingController < Test::TestController
           email: wl.lead.email,
           name: wl.lead.name,
           gclid: wl.gclid,
+          fbclid: wl.fbclid,
           visitor_token: wl.visitor_token,
           visit_token: wl.visit&.visit_token,
           utm_source: wl.utm_source,

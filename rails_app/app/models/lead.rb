@@ -32,7 +32,7 @@ class Lead < ApplicationRecord
   before_validation :normalize_email
 
   # Find or create a lead for a signup, returning the lead and website_lead
-  def self.find_or_create_for_signup(account:, website:, email:, name: nil, visit: nil, visitor_token: nil, gclid: nil,
+  def self.find_or_create_for_signup(account:, website:, email:, name: nil, visit: nil, visitor_token: nil, gclid: nil, fbclid: nil,
     utm_source: nil, utm_medium: nil, utm_campaign: nil, utm_content: nil, utm_term: nil)
     normalized_email = normalize_email(email)
 
@@ -56,6 +56,7 @@ class Lead < ApplicationRecord
       visit: visit,
       visitor_token: visitor_token,
       gclid: gclid || visit&.gclid,
+      fbclid: fbclid || visit&.fbclid,
       utm_source: utm_source || visit&.utm_source,
       utm_medium: utm_medium || visit&.utm_medium,
       utm_campaign: utm_campaign || visit&.utm_campaign,

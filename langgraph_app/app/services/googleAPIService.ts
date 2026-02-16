@@ -71,6 +71,24 @@ export class GoogleAPIService extends RailsAPIBase {
   }
 
   /**
+   * Live-refresh invite status from Google and return result.
+   * If accepted, Rails completes the JobRun. If not, enqueues a quick follow-up poll.
+   */
+  async refreshInviteStatus(jobRunId?: number): Promise<GoogleInviteStatus> {
+    const client = await this.getClient();
+
+    const response = await client.POST("/api/v1/google/refresh_invite_status" as any, {
+      body: { job_run_id: jobRunId },
+    });
+
+    if (response.error) {
+      throw new Error(`Failed to refresh invite status: ${JSON.stringify(response.error)}`);
+    }
+
+    return response.data as GoogleInviteStatus;
+  }
+
+  /**
    * Check if Google Ads has a payment method configured
    * Used by shouldCheckPayment routing
    */

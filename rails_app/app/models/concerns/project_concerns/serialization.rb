@@ -144,7 +144,8 @@ module ProjectConcerns
       {
         id: deploy.id,
         status: deploy.status,
-        current_step: deploy.current_step
+        current_step: deploy.current_step,
+        instructions: deploy.instructions
       }
     end
   end

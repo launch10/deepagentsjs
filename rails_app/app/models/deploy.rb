@@ -7,6 +7,7 @@
 #  current_step       :string
 #  deleted_at         :datetime
 #  finished_at        :datetime
+#  instructions       :jsonb
 #  is_live            :boolean          default(FALSE)
 #  stacktrace         :text
 #  status             :string           default("pending"), not null
@@ -24,6 +25,7 @@
 #  index_deploys_on_campaign_deploy_id      (campaign_deploy_id)
 #  index_deploys_on_deleted_at              (deleted_at)
 #  index_deploys_on_finished_at             (finished_at)
+#  index_deploys_on_instructions            (instructions) USING gin
 #  index_deploys_on_is_live                 (is_live)
 #  index_deploys_on_project_id              (project_id)
 #  index_deploys_on_project_id_and_is_live  (project_id,is_live)
@@ -55,6 +57,7 @@ class Deploy < ApplicationRecord
 
   attr_accessor :needs_support
 
+  before_validation :normalize_instructions!
   before_create :set_thread_id
   before_create :deactivate_previous_deploy!
   after_create :create_deploy_chat!
@@ -73,6 +76,26 @@ class Deploy < ApplicationRecord
   scope :slow, ->(threshold = 5.minutes) {
     where.not(finished_at: nil).where("finished_at - created_at > ?", threshold)
   }
+  scope :with_instructions, ->(instructions) { where(instructions: instructions) }
+  scope :completed, -> { where(status: "completed") }
+
+  # Has this project ever had a completed deploy with these exact instructions?
+  # Accepts either camelCase or snake_case keys — normalizes before querying.
+  def self.ever_completed_with_instructions?(project, instructions)
+    normalized = normalize_instructions(instructions)
+    project.deploys.completed.with_instructions(normalized).exists?
+  end
+
+  # Normalize instruction keys to snake_case for consistent DB storage.
+  # Accepts string or symbol keys, camelCase or snake_case.
+  # Also casts string booleans ("true"/"false") from HTTP params.
+  def self.normalize_instructions(raw)
+    return {} if raw.blank?
+
+    raw.to_h.each_with_object({}) do |(k, v), h|
+      h[k.to_s.underscore] = ActiveModel::Type::Boolean.new.cast(v)
+    end
+  end
 
   def touch_user_active!
     update_column(:user_active_at, Time.current)
@@ -111,6 +134,10 @@ class Deploy < ApplicationRecord
   end
 
   private
+
+  def normalize_instructions!
+    self.instructions = self.class.normalize_instructions(instructions)
+  end
 
   def set_thread_id
     self.thread_id ||= SecureRandom.uuid

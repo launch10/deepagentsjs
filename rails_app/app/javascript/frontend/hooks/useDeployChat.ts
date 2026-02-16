@@ -7,15 +7,6 @@ import { useChatOptions } from "@hooks/useChatOptions";
 import { useDeployInstructions } from "@hooks/useDeployInstructions";
 import { useProjectId } from "~/stores/projectStore";
 
-export interface WebsiteDeployRecord {
-  id: number;
-  status: string;
-  environment: string;
-  is_live: boolean;
-  revertible: boolean;
-  created_at: string;
-}
-
 export type DeployProps =
   InertiaProps.paths["/projects/{uuid}/deploy"]["get"]["responses"]["200"]["content"]["application/json"];
 

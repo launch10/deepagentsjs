@@ -40,6 +40,7 @@ namespace :api, defaults: {format: :json} do
     resources :campaigns, only: [:create, :update] do
       post :advance, on: :member
       post :back, on: :member
+      post :validate_deploy, on: :member
     end
 
     resources :geo_target_constants, only: [:index]
@@ -74,18 +75,17 @@ namespace :api, defaults: {format: :json} do
     post "llm_usage/notify", to: "llm_usage#notify"
     post "app_events", to: "app_events#create"
     get "credits/check", to: "credits#check"
-    resources :deploys, only: [:create, :show, :update] do
+    resources :deploys, only: [:index, :create, :show, :update] do
       post :touch, on: :member
-      post :deactivate, on: :collection
-    end
-    resources :website_deploys, only: [:index] do
       post :rollback, on: :member
+      post :deactivate, on: :collection
     end
 
     # Google status APIs for deploy flow
     scope :google do
       get "connection_status", to: "google#connection_status"
       get "invite_status", to: "google#invite_status"
+      post "refresh_invite_status", to: "google#refresh_invite_status"
       get "payment_status", to: "google#payment_status"
     end
 

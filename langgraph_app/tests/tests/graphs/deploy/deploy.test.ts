@@ -448,27 +448,29 @@ describe.sequential("Deploy Graph Tests", () => {
    */
   describe("AddingAnalytics", () => {
     beforeEach(async () => {
-      // Use a snapshot that doesn't have analytics
       await DatabaseSnapshotter.restoreSnapshot("website_deploy_step");
     });
 
-    it("adds L10.createLead() instrumentation to landing pages", async () => {
-      // Verify the actual USER OUTCOME: L10.createLead is now in the codebase
-      // Check all website files for the instrumentation
+    it("skips instrumentation when analytics already present", async () => {
+      // The website_deploy_step snapshot already has L10.createLead in the files
+      // (analytics is now added during website generation). The analytics node
+      // should detect this and complete without calling the coding agent.
       const filesBeforeRunning = await db
         .select()
         .from(websiteFiles)
         .where(eq(websiteFiles.websiteId, 1))
         .execute();
 
-      // At least one file should contain L10.createLead for lead capture
+      // Confirm analytics is already present in the snapshot
       const hasAnalyticsBeforeRunning = filesBeforeRunning.some(
         (file) => file.content?.includes("L10.createLead") || file.content?.includes("createLead")
       );
+      expect(hasAnalyticsBeforeRunning).toBe(true);
 
-      expect(hasAnalyticsBeforeRunning).toBe(false);
+      // Spy on createCodingAgent to verify it's NOT called
+      const createCodingAgentSpy = vi.spyOn(await import("@nodes"), "createCodingAgent");
 
-      // Run just the analytics node in isolation - no need to run the full graph
+      // Run just the analytics node in isolation
       const result = await testGraph<DeployGraphState>()
         .withState({
           jwt: "test-jwt",
@@ -486,27 +488,10 @@ describe.sequential("Deploy Graph Tests", () => {
       expect(analyticsTask).toBeDefined();
       expect(analyticsTask?.status).toBe("completed");
 
-      // Verify the actual USER OUTCOME: L10.createLead is now in the codebase
-      // Check all website files for the instrumentation
-      const allFiles = await db
-        .select()
-        .from(websiteFiles)
-        .where(eq(websiteFiles.websiteId, 1))
-        .execute();
+      // Verify the agent was NOT called (files already instrumented)
+      expect(createCodingAgentSpy).not.toHaveBeenCalled();
 
-      // At least one file should contain L10.createLead for lead capture
-      const hasAddingAnalytics = allFiles.some(
-        (file) => file.content?.includes("L10.createLead") || file.content?.includes("createLead")
-      );
-
-      expect(hasAddingAnalytics).toBe(true);
-
-      // Cleanup the coding agent backend
-      const backend = await getCodingAgentBackend({
-        websiteId: 1,
-        jwt: "test-jwt",
-      } as any);
-      await backend.cleanup();
+      createCodingAgentSpy.mockRestore();
     });
   });
 
@@ -531,16 +516,11 @@ describe.sequential("Deploy Graph Tests", () => {
     it("skips agent when SEO is already done", async () => {
       await DatabaseSnapshotter.restoreSnapshot("website_deploy_step");
 
-      // Add SEO meta tags to index.html so it's already optimized
-      const existingIndexHtml = await db
-        .select()
-        .from(websiteFiles)
-        .where(and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "index.html")))
-        .execute()
-        .then((files) => files.at(-1));
-
-      // Inject SEO meta tags into the existing index.html
-      const seoTags = `
+      // Insert an index.html with SEO meta tags already present
+      const seoContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
     <title>Test Landing Page</title>
     <meta name="description" content="This is a test landing page with great content">
     <meta property="og:title" content="Test Landing Page">
@@ -548,13 +528,19 @@ describe.sequential("Deploy Graph Tests", () => {
     <meta property="og:image" content="https://example.com/image.png">
     <meta name="twitter:card" content="summary_large_image">
     <link rel="icon" href="https://example.com/favicon.ico">
-`;
-      const updatedContent = existingIndexHtml?.content?.replace("<head>", `<head>${seoTags}`);
+</head>
+<body><div id="root"></div></body>
+</html>`;
 
       await db
-        .update(websiteFiles)
-        .set({ content: updatedContent })
-        .where(and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "index.html")))
+        .insert(websiteFiles)
+        .values({
+          websiteId: 1,
+          path: "index.html",
+          content: seoContent,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
         .execute();
 
       // Spy on createCodingAgent to verify it's NOT called
@@ -762,37 +748,8 @@ describe.sequential("Deploy Graph Tests", () => {
    *
    * USER OUTCOME: Broken links are caught before going live.
    */
-  describe("Link Validation", () => {
-    beforeEach(async () => {
-      vi.clearAllMocks();
-      await DatabaseSnapshotter.restoreSnapshot("website_deploy_step");
-    });
-
-    /**
-     * USER OUTCOME: Broken links are caught before going live.
-     * The snapshot includes Footer.tsx with placeholder href="#" links.
-     */
-    it("detects broken anchor links", async () => {
-      const result = await testGraph<DeployGraphState>()
-        .withGraph(deployGraph)
-        .withState({
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          projectId: 1,
-          websiteId: 1,
-
-          instructions: { website: true },
-          tasks: Deploy.withTasks({ website: true }, { ValidateLinks: "pending" }),
-          chatId: 1,
-        })
-        .stopAfter("validateLinks")
-        .execute();
-
-      const validateTask = result.state.tasks.find((t) => t.name === "ValidateLinks");
-      expect(validateTask?.status).toBe("skipped"); // temporary, until we figure out a better way to fix broken links
-      expect(validateTask?.error).toContain("Broken anchor");
-    });
-  });
+  // Link Validation tests removed: anchor link validation is permanently disabled
+  // (shouldSkip always returns true). Re-add tests when link validation is re-enabled.
 
   /**
    * =============================================================================
@@ -851,67 +808,9 @@ describe.sequential("Deploy Graph Tests", () => {
       createCodingAgentSpy.mockRestore();
     });
 
-    /**
-     * USER OUTCOME: Broken links are fixed after bug fix runs.
-     */
-    it("fixes broken links", async () => {
-      // Use the website_with_broken_links snapshot which has broken anchor links
-      await DatabaseSnapshotter.restoreSnapshot("website_with_broken_links");
-
-      // Verify broken links exist before (Nav.tsx has #TestimonialsBorked and #CTABorked)
-      const navBefore = await db
-        .select()
-        .from(websiteFiles)
-        .where(
-          and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "src/components/Header.tsx"))
-        )
-        .execute()
-        .then((files) => files.at(-1));
-
-      expect(navBefore?.content).toContain("#testimonials-borked");
-
-      // Run bug fix (validation already failed with broken anchor errors)
-      const result = await testGraph<DeployGraphState>()
-        .withGraph(deployGraph)
-        .withState({
-          jwt: "test-jwt",
-          threadId: "thread_123" as ThreadIDType,
-          projectId: 1,
-          websiteId: 1,
-
-          instructions: { website: true },
-          tasks: Deploy.withTasks(
-            { website: true },
-            {
-              ValidateLinks: {
-                status: "failed",
-                error: "Broken anchor: #testimonials-borked - no element with id",
-              },
-              FixingBugs: "pending",
-            },
-            { after: "completed" }
-          ),
-          chatId: 1,
-        })
-        .execute();
-
-      // Verify bug fix completed
-      const fixingBugsTask = result.state.tasks.find((t) => t.name === "FixingBugs");
-      expect(fixingBugsTask?.status).toBe("skipped"); // temporary, until we figure out a better way to fix broken links
-
-      // Verify broken links are fixed - the borked anchors should be replaced with valid ones
-      const navAfter = await db
-        .select()
-        .from(websiteFiles)
-        .where(
-          and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "src/components/Header.tsx"))
-        )
-        .execute()
-        .then((files) => files.at(-1));
-
-      // The broken anchors should no longer exist
-      expect(navAfter?.content).not.toContain("#testimonials-borked");
-    });
+    // "fixes broken links" test removed: link validation is permanently disabled
+    // (shouldSkip always returns true), so there are no broken link errors to fix.
+    // Re-add when link validation is re-enabled.
   });
 
   /**
@@ -1667,6 +1566,145 @@ describe.sequential("Deploy Graph Tests", () => {
       const billingTask = result.state.tasks.find((t) => t.name === "CheckingBilling");
       expect(billingTask?.status).toBe("running");
       expect(billingTask?.jobId).toBeDefined();
+    });
+
+    /**
+     * USER OUTCOME: When payment check returns has_payment: false,
+     * billing task stays blocking (does NOT complete).
+     */
+    it("keeps blocking when payment callback returns has_payment: false", async () => {
+      mockGoogleAPIService.mockImplementation(
+        () =>
+          ({
+            getConnectionStatus: vi
+              .fn()
+              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
+            getInviteStatus: vi
+              .fn()
+              .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
+            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: false }),
+          }) as any
+      );
+
+      // Start with CheckingBilling pending (earlier tasks completed)
+      const graph = testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          campaignId,
+
+          instructions: { googleAds: true },
+          tasks: Deploy.withTasks({ googleAds: true }, { CheckingBilling: "pending" }),
+          chatId: 1,
+        });
+
+      // First execution: creates the job run, task becomes running with jobId
+      const result = await graph.execute();
+      const billingTask = result.state.tasks.find((t) => t.name === "CheckingBilling");
+      expect(billingTask?.status).toBe("running");
+      expect(billingTask?.jobId).toBeDefined();
+
+      // Simulate webhook callback with has_payment: false
+      await jobRunCallback({
+        job_run_id: billingTask?.jobId!,
+        thread_id: graph.threadId!,
+        status: "completed",
+        result: { has_payment: false },
+      });
+
+      // Resume graph after callback
+      const updates = (
+        await deployGraph.getState({
+          configurable: { thread_id: graph.threadId },
+        })
+      ).values;
+
+      const updatedResult = await deployGraph.invoke(updates, {
+        configurable: { thread_id: graph.threadId },
+      });
+
+      const updatedBillingTask = updatedResult.tasks.find(
+        (t: Deploy.Task) => t.name === "CheckingBilling"
+      );
+
+      // Task should NOT be completed — payment is not set up
+      expect(updatedBillingTask?.status).not.toBe("completed");
+      expect(updatedBillingTask?.status).toBe("running");
+
+      // Should NOT have advanced to EnableCampaign
+      const enableTask = updatedResult.tasks.find(
+        (t: Deploy.Task) => t.name === "EnablingCampaign"
+      );
+      expect(enableTask?.status).not.toBe("running");
+    });
+
+    /**
+     * USER OUTCOME: When payment check returns has_payment: true,
+     * billing task completes and deploy proceeds.
+     */
+    it("completes billing when payment callback returns has_payment: true", async () => {
+      // Mock: payment NOT yet configured (so shouldSkip returns false and job is created)
+      mockGoogleAPIService.mockImplementation(
+        () =>
+          ({
+            getConnectionStatus: vi
+              .fn()
+              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
+            getInviteStatus: vi
+              .fn()
+              .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
+            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: false }),
+          }) as any
+      );
+
+      // Start with CheckingBilling pending (earlier tasks completed)
+      const graph = testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_123" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          campaignId,
+
+          instructions: { googleAds: true },
+          tasks: Deploy.withTasks({ googleAds: true }, { CheckingBilling: "pending" }),
+          chatId: 1,
+        });
+
+      // First execution: creates the job run
+      const result = await graph.execute();
+      const billingTask = result.state.tasks.find((t) => t.name === "CheckingBilling");
+      expect(billingTask?.status).toBe("running");
+
+      // Simulate webhook callback with has_payment: true
+      await jobRunCallback({
+        job_run_id: billingTask?.jobId!,
+        thread_id: graph.threadId!,
+        status: "completed",
+        result: { has_payment: true },
+      });
+
+      // Resume graph after callback
+      const updates = (
+        await deployGraph.getState({
+          configurable: { thread_id: graph.threadId },
+        })
+      ).values;
+
+      const updatedResult = await deployGraph.invoke(updates, {
+        configurable: { thread_id: graph.threadId },
+      });
+
+      const updatedBillingTask = updatedResult.tasks.find(
+        (t: Deploy.Task) => t.name === "CheckingBilling"
+      );
+
+      // Task SHOULD be completed — payment is configured
+      expect(updatedBillingTask?.status).toBe("completed");
     });
 
     /**

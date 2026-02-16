@@ -92,6 +92,7 @@ class API::V1::TrackingController < ActionController::API
       utm_content: params[:utm_content],
       utm_term: params[:utm_term],
       gclid: params[:gclid],
+      fbclid: params[:fbclid],
       user_agent: request.user_agent,
       ip: request.remote_ip,
       started_at: Time.current

@@ -206,6 +206,24 @@ module CampaignConcerns
       errors.empty?
     end
 
+    def ready_to_deploy?
+      deploy_validation_errors.none?
+    end
+
+    def deploy_validation_errors
+      errs = []
+
+      %i[content highlights keywords settings launch].each do |stage_name|
+        errors.clear
+        unless send("done_#{stage_name}_stage?")
+          errs.concat(errors.full_messages)
+        end
+      end
+      errors.clear
+
+      errs.uniq
+    end
+
     def deployable?
       cannot_deploy_reasons.none?
     end

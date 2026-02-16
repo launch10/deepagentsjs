@@ -69,8 +69,13 @@ export const googleConnectTaskRunner: TaskRunner = {
       return withPhases(state, [{ ...task, status: "failed" } as Task.Task], [TASK_NAME]);
     }
 
-    // 4. Task running with jobId? Waiting for OAuth callback (handled by isBlocking)
-    if (task?.status === "running" && task.jobId) {
+    // 4. Self-heal: task running with jobId but no result?
+    //    Check if Google is already connected (OAuth callback may have missed the job)
+    if (task?.status === "running" && task.jobId && !task.result?.google_email && !task.error) {
+      if (await isGoogleConnected(state)) {
+        return withPhases(state, [{ ...task, status: "completed", result: { google_email: "connected" } } as Task.Task], [TASK_NAME]);
+      }
+      // Not connected yet — fall through to no-op (isBlocking will exit graph)
       return {};
     }
 

@@ -41,6 +41,7 @@ export interface LeadInfo {
   email: string;
   name: string | null;
   gclid: string | null;
+  fbclid: string | null;
   visitor_token: string | null;
   visit_token: string | null;
   utm_source: string | null;

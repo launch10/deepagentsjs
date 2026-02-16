@@ -28,8 +28,8 @@ export const checkPaymentNode = async (
     return {};
   }
 
-  // 2. Task running with result from webhook (has_payment)? Mark completed
-  if (task?.status === "running" && task.result?.has_payment !== undefined) {
+  // 2. Task running with result from webhook (has_payment: true)? Mark completed
+  if (task?.status === "running" && task.result?.has_payment === true) {
     return withPhases(state, [{ ...task, status: "completed" } as Task.Task], [TASK_NAME]);
   }
 
@@ -38,12 +38,16 @@ export const checkPaymentNode = async (
     return withPhases(state, [{ ...task, status: "failed" } as Task.Task], [TASK_NAME]);
   }
 
-  // 4. Task running with jobId? Waiting for worker to complete
-  //    Touch the deploy to indicate user is still active
-  if (task?.status === "running" && task.jobId) {
+  // 4. Self-heal: task running with jobId but no result?
+  //    Check if payment is already verified (webhook may have missed the job)
+  if (task?.status === "running" && task.jobId && task.result?.has_payment === undefined && !task.error) {
     if (state.deployId) {
       DeployService.touch(state.deployId).catch(() => {});
     }
+    if (await isPaymentVerified(state)) {
+      return withPhases(state, [{ ...task, status: "completed", result: { has_payment: true } } as Task.Task], [TASK_NAME]);
+    }
+    // Not verified yet — fall through to no-op (isBlocking will exit graph)
     return {};
   }
 
@@ -150,11 +154,11 @@ export const checkPaymentTaskRunner: TaskRunner = {
   },
 
   isBlocking: (state: DeployGraphState, task: Task.Task) => {
-    // Blocking when we have a jobId but no result yet
+    // Blocking when we have a jobId but payment not yet confirmed
     return (
       task.status === "running" &&
       !!task.jobId &&
-      task.result?.has_payment === undefined &&
+      task.result?.has_payment !== true &&
       !task.error
     );
   },

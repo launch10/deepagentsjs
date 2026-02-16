@@ -1,4 +1,23 @@
 class API::V1::DeploysController < API::BaseController
+  DEPLOYS_PER_PAGE = 5
+
+  # GET /api/v1/deploys
+  # Lists deploys for a project, paginated. Supports filtering by instructions and status.
+  def index
+    project = current_account.projects.find(params[:project_id])
+    scope = project.deploys.where.not(status: "pending").order(created_at: :desc)
+
+    scope = scope.with_instructions(Deploy.normalize_instructions(params[:instructions].to_unsafe_h)) if params[:instructions].present?
+    scope = scope.where(status: params[:status]) if params[:status].present?
+
+    @pagy, @deploys = pagy(scope, limit: DEPLOYS_PER_PAGE)
+
+    render json: {
+      deploys: @deploys.map { |d| deploy_json(d) },
+      pagination: pagy_metadata(@pagy)
+    }
+  end
+
   # POST /api/v1/deploys
   # Creates a new deploy for a project.
   # thread_id is stored directly on the deploy record.
@@ -13,7 +32,8 @@ class API::V1::DeploysController < API::BaseController
 
     deploy = project.deploys.create!(
       status: "pending",
-      thread_id: params[:thread_id]
+      thread_id: params[:thread_id],
+      instructions: params[:instructions].present? ? params[:instructions].to_unsafe_h : {}
     )
 
     render json: deploy_json(deploy), status: :created
@@ -63,6 +83,33 @@ class API::V1::DeploysController < API::BaseController
     render json: { touched_at: deploy.user_active_at }
   end
 
+  # POST /api/v1/deploys/:id/rollback
+  # Delegates rollback to the linked website_deploy
+  def rollback
+    deploy = find_deploy
+    wd = deploy.website_deploy
+
+    unless wd&.status == "completed"
+      return render json: { errors: ["Cannot rollback non-completed deploy"] }, status: :unprocessable_entity
+    end
+
+    if wd.is_preview?
+      return render json: { errors: ["Cannot rollback preview deploys"] }, status: :unprocessable_entity
+    end
+
+    unless wd.revertible?
+      return render json: { errors: ["Cannot rollback non-revertible deploy"] }, status: :unprocessable_entity
+    end
+
+    if wd.is_live?
+      return render json: { errors: ["Cannot roll back any further!"] }, status: :unprocessable_entity
+    end
+
+    wd.rollback(async: true)
+
+    render json: { success: true }
+  end
+
   private
 
   def find_deploy
@@ -76,6 +123,8 @@ class API::V1::DeploysController < API::BaseController
   end
 
   def deploy_json(deploy)
+    wd = deploy.website_deploy
+
     {
       id: deploy.id,
       project_id: deploy.project_id,
@@ -83,11 +132,37 @@ class API::V1::DeploysController < API::BaseController
       current_step: deploy.current_step,
       is_live: deploy.is_live,
       thread_id: deploy.thread_id,
+      instructions: camelcase_instructions(deploy.instructions),
       support_ticket: deploy.support_request&.ticket_reference,
       finished_at: deploy.finished_at,
       duration: deploy.duration,
+      # Website deploy fields for history/rollback
+      revertible: wd&.revertible? || false,
+      website_deploy_status: wd&.status,
       created_at: deploy.created_at,
       updated_at: deploy.updated_at
+    }
+  end
+
+  # Convert snake_case DB keys back to camelCase for the TS frontend
+  def camelcase_instructions(instructions)
+    return {} if instructions.blank?
+
+    instructions.each_with_object({}) do |(k, v), h|
+      h[k.to_s.camelize(:lower)] = v
+    end
+  end
+
+  def pagy_metadata(pagy)
+    {
+      current_page: pagy.page,
+      total_pages: pagy.pages,
+      total_count: pagy.count,
+      prev_page: pagy.prev,
+      next_page: pagy.next,
+      from: pagy.from,
+      to: pagy.to,
+      series: pagy.series
     }
   end
 end

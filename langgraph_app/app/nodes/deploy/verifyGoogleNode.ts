@@ -39,13 +39,25 @@ export const verifyGoogleNode = async (
     return withPhases(state, [{ ...task, status: "failed" } as Task.Task], [TASK_NAME]);
   }
 
-  // 4. Task running with jobId? Waiting for polling to complete
-  //    Touch the deploy to indicate user is still active (for batch scheduler)
-  if (task?.status === "running" && task.jobId) {
+  // 4. Self-heal: task running with jobId but no result?
+  //    Live-refresh invite status from Google. If accepted, complete immediately.
+  //    If not, Rails enqueues PollInviteAcceptanceWorker for a quick follow-up.
+  if (task?.status === "running" && task.jobId && !task.result?.status && !task.error) {
     if (state.deployId) {
-      // Fire-and-forget: write directly to DB, don't wait or fail if it errors
       DeployService.touch(state.deployId).catch(() => {});
     }
+
+    if (state.jwt) {
+      const googleApi = new GoogleAPIService({ jwt: state.jwt });
+      const { accepted } = await googleApi.refreshInviteStatus(task.jobId);
+
+      if (accepted) {
+        return withPhases(state, [{ ...task, status: "completed", result: { status: "accepted" } } as Task.Task], [TASK_NAME]);
+      }
+    }
+
+    // Not accepted yet — async worker enqueued by Rails for quick follow-up.
+    // Fall through to no-op (isBlocking will exit graph)
     return {};
   }
 

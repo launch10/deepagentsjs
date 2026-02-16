@@ -1232,7 +1232,8 @@ CREATE TABLE public.ahoy_visits (
     app_version character varying,
     os_version character varying,
     platform character varying,
-    started_at timestamp(6) without time zone
+    started_at timestamp(6) without time zone,
+    fbclid character varying
 );
 
 
@@ -2234,7 +2235,8 @@ CREATE TABLE public.deploys (
     deleted_at timestamp(6) without time zone,
     thread_id character varying NOT NULL,
     active boolean DEFAULT true NOT NULL,
-    finished_at timestamp(6) without time zone
+    finished_at timestamp(6) without time zone,
+    instructions jsonb DEFAULT '{}'::jsonb
 );
 
 
@@ -4313,7 +4315,8 @@ CREATE TABLE public.website_leads (
     utm_campaign character varying,
     utm_content character varying,
     utm_term character varying,
-    deleted_at timestamp(6) without time zone
+    deleted_at timestamp(6) without time zone,
+    fbclid character varying
 );
 
 
@@ -8145,6 +8148,13 @@ CREATE INDEX index_ahoy_events_on_visit_id ON public.ahoy_events USING btree (vi
 
 
 --
+-- Name: index_ahoy_visits_on_fbclid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ahoy_visits_on_fbclid ON public.ahoy_visits USING btree (fbclid);
+
+
+--
 -- Name: index_ahoy_visits_on_gclid; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8779,6 +8789,13 @@ CREATE INDEX index_deploys_on_deleted_at ON public.deploys USING btree (deleted_
 --
 
 CREATE INDEX index_deploys_on_finished_at ON public.deploys USING btree (finished_at);
+
+
+--
+-- Name: index_deploys_on_instructions; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_instructions ON public.deploys USING gin (instructions);
 
 
 --
@@ -10109,6 +10126,13 @@ CREATE INDEX index_website_histories_on_website_id ON public.website_histories U
 --
 
 CREATE INDEX index_website_leads_on_deleted_at ON public.website_leads USING btree (deleted_at);
+
+
+--
+-- Name: index_website_leads_on_fbclid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_leads_on_fbclid ON public.website_leads USING btree (fbclid);
 
 
 --
@@ -11793,6 +11817,8 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260216182055'),
+('20260216180433'),
 ('20260216145338'),
 ('20260215170847'),
 ('20260214233252'),

@@ -7,6 +7,7 @@
 #  current_step       :string
 #  deleted_at         :datetime
 #  finished_at        :datetime
+#  instructions       :jsonb
 #  is_live            :boolean          default(FALSE)
 #  stacktrace         :text
 #  status             :string           default("pending"), not null
@@ -24,6 +25,7 @@
 #  index_deploys_on_campaign_deploy_id      (campaign_deploy_id)
 #  index_deploys_on_deleted_at              (deleted_at)
 #  index_deploys_on_finished_at             (finished_at)
+#  index_deploys_on_instructions            (instructions) USING gin
 #  index_deploys_on_is_live                 (is_live)
 #  index_deploys_on_project_id              (project_id)
 #  index_deploys_on_project_id_and_is_live  (project_id,is_live)
@@ -45,6 +47,15 @@ FactoryBot.define do
     status { "pending" }
     current_step { nil }
     is_live { false }
+    instructions { {} }
+
+    trait :website_only do
+      instructions { { "website" => true, "googleAds" => false } }
+    end
+
+    trait :full_deploy do
+      instructions { { "website" => true, "googleAds" => true } }
+    end
 
     trait :running do
       status { "running" }

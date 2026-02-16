@@ -37,7 +37,7 @@ module GoogleAds
       # Find all deploy-related jobs that have been running too long
       stale_jobs = JobRun
         .running
-        .where(job_class: %w[GoogleOAuthConnect GoogleAdsInvite])
+        .where(job_class: %w[GoogleAdsInvite])
         .where(started_at: ...TIMEOUT_DURATION.ago)
 
       stale_jobs.find_each do |job_run|

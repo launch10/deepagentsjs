@@ -50,6 +50,14 @@ declare const document:
     }
   | undefined;
 
+// --- Attribution storage (localStorage with 30-day TTL) ---
+
+const CLICK_ID_STORAGE_KEY = "l10_click_ids";
+const CLICK_ID_TS_KEY = "l10_click_ids_ts";
+const CLICK_ID_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+type ClickIds = { gclid?: string; fbclid?: string };
+
 // Helper to get URL parameters
 function getParam(name: string): string | null {
   if (typeof window === "undefined") return null;
@@ -57,20 +65,69 @@ function getParam(name: string): string | null {
   return urlParams.get(name);
 }
 
-// Get gclid from URL or sessionStorage
-function getGclid(): string | null {
-  if (typeof window === "undefined") return null;
+/**
+ * Capture gclid/fbclid from the URL and persist in localStorage (30-day TTL).
+ * Always overwrites when new click IDs are in the URL — each ad click is its own
+ * attribution event. localStorage is only a cross-session fallback for when a
+ * visitor returns without click IDs in the URL (e.g., day 1 ad click → day 2 conversion).
+ * Server-side Ahoy visits preserve the full multi-touch history independently.
+ */
+function captureClickIds(): void {
+  if (typeof window === "undefined") return;
 
-  const urlParams = new URLSearchParams(window.location.search);
-  const gclid = urlParams.get("gclid");
+  const gclid = getParam("gclid");
+  const fbclid = getParam("fbclid");
 
-  if (gclid) {
-    window.sessionStorage?.setItem("gclid", gclid);
-    return gclid;
+  if (gclid || fbclid) {
+    const ids: ClickIds = {};
+    if (gclid) ids.gclid = gclid;
+    if (fbclid) ids.fbclid = fbclid;
+    window.localStorage?.setItem(CLICK_ID_STORAGE_KEY, JSON.stringify(ids));
+    window.localStorage?.setItem(CLICK_ID_TS_KEY, String(Date.now()));
+  }
+}
+
+/**
+ * Retrieve stored click IDs, or empty object if none or expired.
+ */
+function getClickIds(): ClickIds {
+  if (typeof window === "undefined") return {};
+
+  const stored = window.localStorage?.getItem(CLICK_ID_STORAGE_KEY);
+  const storedTs = window.localStorage?.getItem(CLICK_ID_TS_KEY);
+
+  if (!stored || !storedTs) return {};
+
+  const age = Date.now() - Number(storedTs);
+  if (age >= CLICK_ID_TTL_MS) {
+    window.localStorage?.removeItem(CLICK_ID_STORAGE_KEY);
+    window.localStorage?.removeItem(CLICK_ID_TS_KEY);
+    return {};
   }
 
-  return window.sessionStorage?.getItem("gclid") || null;
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return {};
+  }
 }
+
+/**
+ * Get gclid — prefer URL (current ad click) over localStorage (cross-session fallback).
+ */
+function getGclid(): string | null {
+  return getParam("gclid") || getClickIds().gclid || null;
+}
+
+/**
+ * Get fbclid — prefer URL (current ad click) over localStorage (cross-session fallback).
+ */
+function getFbclid(): string | null {
+  return getParam("fbclid") || getClickIds().fbclid || null;
+}
+
+// Capture click IDs on module load
+captureClickIds();
 
 export const L10 = {
   /**
@@ -132,6 +189,7 @@ export const L10 = {
           utm_content: getParam("utm_content"),
           utm_term: getParam("utm_term"),
           gclid: getGclid(),
+          fbclid: getFbclid(),
         }),
       });
     } catch (error) {
@@ -212,6 +270,7 @@ export const L10 = {
           visitor_token: this.getVisitorToken(),
           visit_token: this.getVisitToken(),
           gclid: getGclid(),
+          fbclid: getFbclid(),
           conversion_value: conversionValue,
           conversion_currency: conversionValue !== undefined ? conversionCurrency : undefined,
           utm_source: getParam("utm_source"),
