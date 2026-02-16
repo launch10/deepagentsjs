@@ -9,7 +9,7 @@ module Credits
   #
   # Protection against new credit grants is handled elsewhere:
   # - RenewalHandler skips inactive subscriptions (no new monthly allocations)
-  # - DailyReconciliationWorker excludes subscriptions with ends_at set
+  # - AnnualSubscriberMonthlyAllocationWorker excludes subscriptions with ends_at set
   #   (no monthly resets for yearly subscribers pending cancellation)
   #
   # Usage:
@@ -22,7 +22,7 @@ module Credits
       #
       # New credit grants are prevented by:
       # 1. RenewalHandler checks subscription.active? (canceled subs are skipped)
-      # 2. DailyReconciliationWorker excludes subs with ends_at set
+      # 2. AnnualSubscriberMonthlyAllocationWorker excludes subs with ends_at set
 
       subscription = Pay::Subscription
         .joins(:customer)

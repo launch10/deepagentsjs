@@ -57,6 +57,8 @@ export async function validateThreadOwnership(
  * For POST (new conversations), brainstorm and deploy skip this —
  * JWT auth is sufficient since chats are created during graph execution.
  *
+ * @deprecated Use validateThreadGraphOrError instead — it also checks graph type match.
+ *
  * @example
  * ```ts
  * const validationError = await validateThreadOrError(c, threadId, auth);
@@ -78,6 +80,57 @@ export async function validateThreadOrError(
     return null; // No error, validation passed
   } catch (error) {
     getLogger().error({ err: error }, "Thread validation error");
+    return c.json({ error: "Thread validation failed", details: String(error) }, 500);
+  }
+}
+
+/**
+ * Validates thread ownership AND graph type match.
+ * Prevents cross-graph thread contamination (e.g. deploy using a website thread).
+ *
+ * - New threads (exists: false): allowed — chat will be created by graph node
+ * - Existing threads: chat_type must match expectedChatType
+ * - Wrong account: 403 Forbidden
+ * - Wrong graph: 409 Conflict
+ *
+ * @example
+ * ```ts
+ * const validationError = await validateThreadGraphOrError(c, threadId, auth, "website");
+ * if (validationError) return validationError;
+ * ```
+ */
+export async function validateThreadGraphOrError(
+  c: Context,
+  threadId: string,
+  auth: AuthContext,
+  expectedChatType: string
+): Promise<Response | null> {
+  try {
+    const result = await validateThreadOwnership(threadId, auth);
+
+    if (!result.valid) {
+      return c.json({ error: "Forbidden: Unauthorized" }, 403);
+    }
+
+    // Thread exists but belongs to a different graph — reject
+    if (result.exists && result.chat_type && result.chat_type !== expectedChatType) {
+      getLogger().warn(
+        { threadId, expectedChatType, actualChatType: result.chat_type },
+        "Thread-graph mismatch: thread belongs to different graph"
+      );
+      return c.json(
+        {
+          error: "Conflict: Thread belongs to a different graph",
+          expected: expectedChatType,
+          actual: result.chat_type,
+        },
+        409
+      );
+    }
+
+    return null; // Validation passed
+  } catch (error) {
+    getLogger().error({ err: error }, "Thread-graph validation error");
     return c.json({ error: "Thread validation failed", details: String(error) }, 500);
   }
 }

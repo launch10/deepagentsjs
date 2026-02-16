@@ -248,7 +248,7 @@ RSpec.describe Campaign, type: :model do
       campaign, ad_group, ad = create_campaign(account)
       chat = Chat.find_by(
         project_id: campaign.project_id,
-        chat_type: "ad_campaign",
+        chat_type: "ads",
         contextable: campaign
       )
 

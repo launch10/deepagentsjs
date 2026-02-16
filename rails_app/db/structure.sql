@@ -11793,6 +11793,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260216145338'),
 ('20260215170847'),
 ('20260214233252'),
 ('20260214233149'),

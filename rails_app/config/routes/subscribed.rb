@@ -26,7 +26,7 @@ authenticated :user do
       get :website, to: redirect { |params, _req| "/projects/#{params[:uuid]}/website/build" }
 
       scope :campaigns do
-        WorkflowConfig.substeps_for("launch", "ad_campaign").each do |substep|
+        WorkflowConfig.substeps_for("launch", "ads").each do |substep|
           get substep, to: "projects#campaigns_#{substep}", as: "campaigns_#{substep}"
         end
       end

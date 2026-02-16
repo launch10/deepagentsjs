@@ -7,7 +7,7 @@ import LaunchForm from "./launch-form/LaunchForm";
 import ReviewForm from "./review-form/ReviewForm";
 import SettingsForm from "./settings-form/SettingsForm";
 
-const FORMS: Partial<Record<Workflow.AdCampaignSubstepName, React.ComponentType>> = {
+const FORMS: Partial<Record<Workflow.AdsSubstepName, React.ComponentType>> = {
   content: ContentForm,
   highlights: HighlightsForm,
   keywords: KeywordsForm,
@@ -18,7 +18,7 @@ const FORMS: Partial<Record<Workflow.AdCampaignSubstepName, React.ComponentType>
 
 export default function AdsForm() {
   const substep = useWorkflow(selectSubstep);
-  const FormComponent = substep ? FORMS[substep as Workflow.AdCampaignSubstepName] : null;
+  const FormComponent = substep ? FORMS[substep as Workflow.AdsSubstepName] : null;
   if (!FormComponent) return null;
 
   return <FormComponent />;

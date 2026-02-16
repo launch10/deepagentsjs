@@ -2128,7 +2128,7 @@ RSpec.describe "Campaigns API", type: :request do
           let!(:first_stage_campaign) do
             campaign, _, _ = create_campaign(user1_account)
             expect(campaign.stage).to eq("content")
-            expect(campaign.launch_workflow.step).to eq("ad_campaign")
+            expect(campaign.launch_workflow.step).to eq("ads")
             expect(campaign.launch_workflow.substep).to eq("content")
 
             campaign

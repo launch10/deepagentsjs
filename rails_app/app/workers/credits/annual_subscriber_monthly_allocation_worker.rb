@@ -6,7 +6,7 @@ module Credits
   # Yearly subscribers get their credits refreshed monthly on their reset day.
   # This worker identifies accounts due for reset and delegates to ResetPlanCreditsWorker.
   #
-  class DailyReconciliationWorker < ApplicationWorker
+  class AnnualSubscriberMonthlyAllocationWorker < ApplicationWorker
     sidekiq_options queue: :billing
 
     def perform

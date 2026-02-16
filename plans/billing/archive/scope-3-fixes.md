@@ -10,17 +10,17 @@ This plan addresses critical issues identified in the architectural review of Sc
 
 ## Priority Order
 
-| # | Issue | Severity | Effort |
-|---|-------|----------|--------|
-| 1 | PaySubscriptionCredits concern (showstopper) | P0 | Medium |
-| 2 | `update_columns` transaction isolation bug | P0 | Low |
-| 3 | Expire transaction missing idempotency key | P0 | Low |
-| 4 | `.new.perform` → `.perform_async` in batch worker | P1 | Trivial |
-| 5 | SQL interpolation → parameterized queries | P1 | Low |
-| 6 | Balance sequence validation | P1 | Medium |
-| 7 | Remove duplicate idempotency check in worker | P1 | Trivial |
-| 8 | Downgrade after upgrade edge case | P2 | Medium |
-| 9 | Rewrite tests for public interfaces | P1 | Medium |
+| #   | Issue                                             | Severity | Effort  |
+| --- | ------------------------------------------------- | -------- | ------- |
+| 1   | PaySubscriptionCredits concern (showstopper)      | P0       | Medium  |
+| 2   | `update_columns` transaction isolation bug        | P0       | Low     |
+| 3   | Expire transaction missing idempotency key        | P0       | Low     |
+| 4   | `.new.perform` → `.perform_async` in batch worker | P1       | Trivial |
+| 5   | SQL interpolation → parameterized queries         | P1       | Low     |
+| 6   | Balance sequence validation                       | P1       | Medium  |
+| 7   | Remove duplicate idempotency check in worker      | P1       | Trivial |
+| 8   | Downgrade after upgrade edge case                 | P2       | Medium  |
+| 9   | Rewrite tests for public interfaces               | P1       | Medium  |
 
 ---
 
@@ -233,7 +233,7 @@ expire_plan_credits!(
 
 ### Problem
 
-`DailyReconciliationWorker` calls `.new.perform` which blocks. 10,000 accounts = hours of blocking.
+`AnnualSubscriberMonthlyAllocationWorker` calls `.new.perform` which blocks. 10,000 accounts = hours of blocking.
 
 ### Fix
 
@@ -428,6 +428,7 @@ end
 **Test the subscription lifecycle, not the plumbing.**
 
 Users don't call `AllocationService#reset_plan_credits!`. They:
+
 - Subscribe to a plan
 - Renew their subscription
 - Upgrade their plan
@@ -439,10 +440,12 @@ Tests should simulate these events and verify credits are correct.
 ### New Test Structure
 
 Delete or minimize:
+
 - `spec/services/credits/allocation_service_spec.rb` (internal plumbing)
 - `spec/workers/credits/reset_plan_credits_worker_spec.rb` (internal plumbing)
 
 Create:
+
 - `spec/integration/credits/subscription_lifecycle_spec.rb`
 
 ### Test File
@@ -638,7 +641,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       next_reset = (Date.current + 1.month).beginning_of_month + (billing_day - 1).days
 
       travel_to next_reset do
-        Credits::DailyReconciliationWorker.new.perform
+        Credits::AnnualSubscriberMonthlyAllocationWorker.new.perform
 
         account.reload
         expect(account.plan_credits).to eq(5000)  # Fresh allocation
@@ -654,7 +657,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
 
       # February only has 28 days, should reset on Feb 28
       travel_to Date.new(2026, 2, 28) do
-        Credits::DailyReconciliationWorker.new.perform
+        Credits::AnnualSubscriberMonthlyAllocationWorker.new.perform
 
         account.reload
         expect(account.plan_credits).to eq(5000)

@@ -23,7 +23,7 @@ Rails                          Langgraph
 |------|-------|-------------|---------|
 | brainstorm | Project | Brainstorm | Idea capture conversation |
 | website | Project | Website | Website editing conversation |
-| ad_campaign | Project | Campaign | Ad creation conversation |
+| ads | Project | Campaign | Ad creation conversation |
 | deploy | Project | Deploy | Deployment conversation |
 | insights | Account | — | Dashboard insights |
 | support | Account | — | Help center chat |

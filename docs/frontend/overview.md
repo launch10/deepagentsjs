@@ -118,7 +118,7 @@ WorkflowStore decides which mode to use:
 URL is the single source of truth. The store syncs FROM the URL, not the other way around.
 
 **State:**
-- `page` — current workflow page ("brainstorm" | "website" | "ad_campaign" | "deploy")
+- `page` — current workflow page ("brainstorm" | "website" | "ads" | "deploy")
 - `substep` — current substep within page
 - `projectUUID` — active project
 - `hasVisitedReview` — enables "Return to Review" button

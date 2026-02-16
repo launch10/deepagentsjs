@@ -34,7 +34,7 @@ class Chat < ApplicationRecord
   belongs_to :contextable, polymorphic: true, optional: true
 
   # Project-level chat types (require project_id)
-  PROJECT_CHAT_TYPES = ProjectWorkflow.steps_for(:launch) # brainstorm, website, ad_campaign, etc
+  PROJECT_CHAT_TYPES = ProjectWorkflow.steps_for(:launch) # brainstorm, website, ads, deploy
 
   # Account-level chat types (no project_id)
   ACCOUNT_CHAT_TYPES = %w[insights support].freeze

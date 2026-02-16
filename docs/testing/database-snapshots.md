@@ -44,7 +44,7 @@ core_data (plans, templates, themes, FAQs)
           ├─ website_generated (scheduling-tool content)
           ├─ website_with_import_errors
           ├─ website_with_broken_links
-          └─ website_step_finished (workflow → ad_campaign)
+          └─ website_step_finished (workflow → ads)
               └─ campaign_content_step → highlights → keywords → settings → launch → review → complete
                   └─ deploy_step (Google OAuth, pending deploy)
                       └─ website_deployed (25 test leads)

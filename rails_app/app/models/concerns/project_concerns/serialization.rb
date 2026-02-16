@@ -39,8 +39,8 @@ module ProjectConcerns
         to_brainstorm_json
       when "website"
         to_website_json
-      when "ad_campaign"
-        to_ad_campaign_json
+      when "ads"
+        to_ads_json
       else
         to_mini_json
       end
@@ -74,7 +74,7 @@ module ProjectConcerns
       }.merge!(core_json)
     end
 
-    def to_ad_campaign_json
+    def to_ads_json
       project = Project.with_launch_relations.find_by(id: id)
       campaign = project.campaigns.first
 
@@ -118,7 +118,7 @@ module ProjectConcerns
     def to_deploy_json(deploy = nil)
       Project.with_launch_relations.find_by(id: id)
 
-      to_ad_campaign_json.merge!({
+      to_ads_json.merge!({
         chat: nil,
         deploy: deploy_props(deploy),
         website_url: primary_url_string,

@@ -8,7 +8,7 @@ import WorkflowPanel from "@components/ads/WorkflowPanel";
 import { selectSubstep, useWorkflow } from "@context/WorkflowProvider";
 import { cn } from "@lib/utils";
 
-export default function Campaign() {
+export default function Ads() {
   const isLoadingHistory = useAdsChatIsLoadingHistory();
   const substep = useWorkflow(selectSubstep);
 

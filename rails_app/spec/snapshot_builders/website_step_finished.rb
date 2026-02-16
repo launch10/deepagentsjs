@@ -29,9 +29,9 @@ class WebsiteStepFinished < BaseBuilder
     domain = website.website_url&.domain || create(:domain, account: account, domain: "example-site.com")
     website_url = website.website_url || create(:website_url, website: website, domain: domain, account: account, path: "/bingo?cloudEnv=staging")
 
-    project.current_workflow.update!(step: "ad_campaign", substep: "content")
+    project.current_workflow.update!(step: "ads", substep: "content")
 
-    puts "Advanced workflow to ad_campaign:content"
+    puts "Advanced workflow to ads:content"
     puts "  - Account: #{account.name} (ID: #{account.id})"
     puts "  - Project: #{project.name} (ID: #{project.id})"
     puts "  - Website: #{website.id}"

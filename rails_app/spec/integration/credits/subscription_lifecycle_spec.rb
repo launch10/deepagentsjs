@@ -546,9 +546,9 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       next_reset = (Date.current + 1.month).change(day: [billing_day, (Date.current + 1.month).end_of_month.day].min)
 
       travel_to next_reset do
-        # DailyReconciliationWorker calls ResetPlanCreditsWorker.perform_async
+        # AnnualSubscriberMonthlyAllocationWorker calls ResetPlanCreditsWorker.perform_async
         # which runs inline due to Sidekiq::Testing.inline!
-        Credits::DailyReconciliationWorker.new.perform
+        Credits::AnnualSubscriberMonthlyAllocationWorker.new.perform
 
         account.reload
         expect(account.plan_credits).to eq(5000)  # Fresh allocation
@@ -563,7 +563,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       initial_credits = account.plan_credits
 
       # Daily reconciliation should not affect monthly subscribers
-      Credits::DailyReconciliationWorker.new.perform
+      Credits::AnnualSubscriberMonthlyAllocationWorker.new.perform
 
       account.reload
       expect(account.plan_credits).to eq(initial_credits)
@@ -883,7 +883,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
         travel_to next_reset do
           initial_count = account.credit_transactions.count
 
-          Credits::DailyReconciliationWorker.new.perform
+          Credits::AnnualSubscriberMonthlyAllocationWorker.new.perform
 
           # Should NOT grant new credits - ends_at is set (pending cancellation)
           expect(account.credit_transactions.count).to eq(initial_count)
@@ -906,7 +906,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
         next_reset = (Date.current + 1.month).change(day: [billing_day, (Date.current + 1.month).end_of_month.day].min)
 
         travel_to next_reset do
-          Credits::DailyReconciliationWorker.new.perform
+          Credits::AnnualSubscriberMonthlyAllocationWorker.new.perform
 
           account.reload
           expect(account.plan_credits).to eq(5000)  # Fresh allocation

@@ -34,16 +34,16 @@ When the new plan has fewer credits, the system pro-rates based on actual consum
 
 ### Yearly Subscriber Monthly Resets
 
-Yearly subscribers pay once but get monthly credit resets. The `DailyReconciliationWorker` (runs daily via Zhong scheduler) checks if today matches the subscriber's billing anchor day and enqueues a reset if due.
+Yearly subscribers pay once but get monthly credit resets. The `AnnualSubscriberMonthlyAllocationWorker` (runs daily via Zhong scheduler) checks if today matches the subscriber's billing anchor day and enqueues a reset if due.
 
 ## Key Files
 
-| File | Purpose |
-|------|---------|
-| `rails_app/app/services/credits/allocation_service.rb` | `reset_plan_credits!` — main allocation entry point |
-| `rails_app/app/workers/credits/reset_plan_credits_worker.rb` | Async worker with idempotency key handling |
-| `rails_app/app/models/concerns/pay_subscription_credits.rb` | `after_commit` hook for initial allocation |
-| `rails_app/app/workers/credits/daily_reconciliation_worker.rb` | Monthly reset for yearly subscribers |
+| File                                                           | Purpose                                             |
+| -------------------------------------------------------------- | --------------------------------------------------- |
+| `rails_app/app/services/credits/allocation_service.rb`         | `reset_plan_credits!` — main allocation entry point |
+| `rails_app/app/workers/credits/reset_plan_credits_worker.rb`   | Async worker with idempotency key handling          |
+| `rails_app/app/models/concerns/pay_subscription_credits.rb`    | `after_commit` hook for initial allocation          |
+| `rails_app/app/workers/credits/daily_reconciliation_worker.rb` | Monthly reset for yearly subscribers                |
 
 ## Key Concepts
 
@@ -59,13 +59,13 @@ This is the single entry point for all plan credit operations. It accepts:
 
 The worker accepts a hash of options that determine behavior:
 
-| Option | Effect |
-|--------|--------|
-| `stripe_event_id` | Uses `plan_credits:{event_id}` as idempotency key |
-| `previous_plan_id` | Passes previous plan to AllocationService for upgrade/downgrade |
-| `monthly_reset: true` | Uses `monthly_reset:{sub_id}:{month_start}` as idempotency key |
+| Option                | Effect                                                          |
+| --------------------- | --------------------------------------------------------------- |
+| `stripe_event_id`     | Uses `plan_credits:{event_id}` as idempotency key               |
+| `previous_plan_id`    | Passes previous plan to AllocationService for upgrade/downgrade |
+| `monthly_reset: true` | Uses `monthly_reset:{sub_id}:{month_start}` as idempotency key  |
 
-### DailyReconciliationWorker Logic
+### AnnualSubscriberMonthlyAllocationWorker Logic
 
 1. Finds yearly subscribers where `ends_at IS NULL` (excludes pending cancellations)
 2. Checks if today's day-of-month matches the subscription's `current_period_start.day`

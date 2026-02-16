@@ -2,7 +2,7 @@ module CampaignConcerns
   module Stages
     extend ActiveSupport::Concern
 
-    STAGES = WorkflowConfig.substeps_for("launch", "ad_campaign")
+    STAGES = WorkflowConfig.substeps_for("launch", "ads")
 
     included do
       const_set(:STAGES, CampaignConcerns::Stages::STAGES)
@@ -62,7 +62,7 @@ module CampaignConcerns
       workflow = project&.launch_workflow
       return unless workflow
 
-      workflow.advance_to(step: "ad_campaign", substep: stage)
+      workflow.advance_to(step: "ads", substep: stage)
     end
 
     def can_go_back?

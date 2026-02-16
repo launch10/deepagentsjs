@@ -5,7 +5,7 @@ import {
   readOnlyMiddleware,
   getCreditState,
 } from "@server/middleware";
-import { validateThreadOrError } from "../middleware/threadValidation";
+import { validateThreadGraphOrError } from "../middleware/threadValidation";
 import { AdsAPI } from "@api";
 import { getLogger } from "@core";
 import { trackChatMessage } from "./shared";
@@ -27,8 +27,8 @@ adsRoutes.post("/stream", ...streamMiddleware, async (c) => {
     return c.json({ error: "Missing required field: threadId" }, 400);
   }
 
-  // Validate thread ownership - chat must exist (pre-created via ChatCreatable)
-  const validationError = await validateThreadOrError(c, threadId, auth);
+  // Validate thread ownership + graph type (pre-created via ChatCreatable)
+  const validationError = await validateThreadGraphOrError(c, threadId, auth, "ads");
   if (validationError) return validationError;
 
   let stateObj = state || {};
@@ -62,8 +62,8 @@ adsRoutes.get("/stream", ...readOnlyMiddleware, async (c) => {
     return c.json({ error: "Missing threadId" }, 400);
   }
 
-  // Validate thread ownership - chat must exist (pre-created via ChatCreatable)
-  const validationError = await validateThreadOrError(c, threadId, auth);
+  // Validate thread ownership + graph type (pre-created via ChatCreatable)
+  const validationError = await validateThreadGraphOrError(c, threadId, auth, "ads");
   if (validationError) return validationError;
 
   // loadHistory doesn't make LLM calls - no billing needed

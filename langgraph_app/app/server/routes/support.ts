@@ -6,7 +6,7 @@ import {
   readOnlyMiddleware,
   getCreditState,
 } from "@server/middleware";
-import { validateThreadOrError } from "../middleware/threadValidation";
+import { validateThreadGraphOrError } from "../middleware/threadValidation";
 import { SupportAPI } from "@api";
 import { trackChatMessage } from "./shared";
 
@@ -31,6 +31,10 @@ supportRoutes.post("/stream", ...streamMiddleware, async (c) => {
   if (!messages || !threadId) {
     return c.json({ error: "Missing required fields: messages, threadId" }, 400);
   }
+
+  // Validate thread ownership + graph type (new threads allowed — chat created during execution)
+  const validationError = await validateThreadGraphOrError(c, threadId, auth, "support");
+  if (validationError) return validationError;
 
   const stateObj = state || {};
 
@@ -61,8 +65,8 @@ supportRoutes.get("/stream", ...readOnlyMiddleware, async (c) => {
     return c.json({ error: "Missing threadId" }, 400);
   }
 
-  // Validate thread ownership
-  const validationError = await validateThreadOrError(c, threadId, auth);
+  // Validate thread ownership + graph type for loading history
+  const validationError = await validateThreadGraphOrError(c, threadId, auth, "support");
   if (validationError) return validationError;
 
   return SupportAPI.loadHistory(threadId);

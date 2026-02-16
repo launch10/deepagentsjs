@@ -36,7 +36,7 @@ class ProjectsController < SubscribedController
       # Redirect to website substep (default to build)
       substep = @project.substep.presence || "build"
       redirect_to action: "website_#{substep}"
-    when "ad_campaign"
+    when "ads"
       redirect_to action: "campaigns_#{@project.substep}"
     when "deploy"
       redirect_to action: "deploy"
@@ -74,10 +74,10 @@ class ProjectsController < SubscribedController
       layout: "layouts/webcontainer"
   end
 
-  WorkflowConfig.substeps_for("launch", "ad_campaign").each do |substep|
+  WorkflowConfig.substeps_for("launch", "ads").each do |substep|
     define_method("campaigns_#{substep}") do
       @campaign = @project.campaigns.first
-      @project.current_workflow.update!(step: "ad_campaign", substep: substep)
+      @project.current_workflow.update!(step: "ads", substep: substep)
 
       if @campaign.present?
         @campaign.update!(stage: substep)
@@ -87,8 +87,8 @@ class ProjectsController < SubscribedController
         end
       end
 
-      render inertia: "Campaign",
-        props: @project.to_ad_campaign_json,
+      render inertia: "Ads",
+        props: @project.to_ads_json,
         layout: "layouts/webcontainer"
     end
   end

@@ -190,7 +190,7 @@ end
 
 **File:** `app/workers/credits/find_unprocessed_runs_worker.rb`
 
-Uses the same pattern as `DailyReconciliationWorker`: testable query method + `find_each` for batching + delegation to individual workers for proper retries.
+Uses the same pattern as `AnnualSubscriberMonthlyAllocationWorker`: testable query method + `find_each` for batching + delegation to individual workers for proper retries.
 
 ```ruby
 module Credits

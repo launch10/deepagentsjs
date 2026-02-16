@@ -60,7 +60,7 @@ export default function ReviewForm() {
 
   useScrollToSection(returnToSection, clearReturnToSection);
 
-  const navigateTo = (substep: Workflow.AdCampaignSubstepName, sectionId: string) => {
+  const navigateTo = (substep: Workflow.AdsSubstepName, sectionId: string) => {
     // Store the section ID so we can scroll back to it when returning
     // This preserves the user's placement on the page
     setSubstep?.(substep, sectionId);

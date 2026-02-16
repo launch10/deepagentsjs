@@ -5,7 +5,7 @@ import {
   readOnlyMiddleware,
   getCreditState,
 } from "@server/middleware";
-import { validateThreadOrError } from "../middleware/threadValidation";
+import { validateThreadGraphOrError } from "../middleware/threadValidation";
 import { BrainstormAPI } from "@api";
 import { trackChatMessage } from "./shared";
 
@@ -25,6 +25,10 @@ brainstormRoutes.post("/stream", ...streamMiddleware, async (c) => {
   if (!messages || !threadId) {
     return c.json({ error: "Missing required fields: messages, threadId" }, 400);
   }
+
+  // Validate thread ownership + graph type (new threads allowed — chat created during execution)
+  const validationError = await validateThreadGraphOrError(c, threadId, auth, "brainstorm");
+  if (validationError) return validationError;
 
   let stateObj = state || {};
 
@@ -52,8 +56,8 @@ brainstormRoutes.get("/stream", ...readOnlyMiddleware, async (c) => {
     return c.json({ error: "Missing threadId" }, 400);
   }
 
-  // Validate thread ownership for loading history - chat must exist
-  const validationError = await validateThreadOrError(c, threadId, auth);
+  // Validate thread ownership + graph type for loading history
+  const validationError = await validateThreadGraphOrError(c, threadId, auth, "brainstorm");
   if (validationError) return validationError;
 
   // loadHistory doesn't make LLM calls - no billing needed

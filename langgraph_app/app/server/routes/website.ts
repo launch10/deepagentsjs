@@ -6,7 +6,7 @@ import {
   readOnlyMiddleware,
   getCreditState,
 } from "@server/middleware";
-import { validateThreadOrError } from "../middleware/threadValidation";
+import { validateThreadGraphOrError } from "../middleware/threadValidation";
 import { WebsiteAPI } from "@api";
 import { env } from "@core";
 import { trackChatMessage } from "./shared";
@@ -33,8 +33,8 @@ websiteRoutes.post("/stream", ...streamMiddleware, async (c) => {
     return c.json({ error: "Missing required field: websiteId" }, 400);
   }
 
-  // Validate thread ownership (new threads pass — chat created by updateWebsite node)
-  const validationError = await validateThreadOrError(c, threadId, auth);
+  // Validate thread ownership + graph type (new threads pass — chat created by updateWebsite node)
+  const validationError = await validateThreadGraphOrError(c, threadId, auth, "website");
   if (validationError) return validationError;
 
   trackChatMessage(auth, messages, threadId, "website", state);
@@ -62,8 +62,8 @@ websiteRoutes.get("/stream", ...readOnlyMiddleware, async (c) => {
     return c.json({ error: "Missing threadId" }, 400);
   }
 
-  // Validate thread ownership - chat must exist (created by updateWebsite node)
-  const validationError = await validateThreadOrError(c, threadId, auth);
+  // Validate thread ownership + graph type (created by updateWebsite node)
+  const validationError = await validateThreadGraphOrError(c, threadId, auth, "website");
   if (validationError) return validationError;
 
   // loadHistory doesn't make LLM calls - no billing needed

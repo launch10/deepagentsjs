@@ -18,6 +18,7 @@ bundle exec rspec spec/models/credit_gift_spec.rb
 ```
 
 Key assertions:
+
 - Sequence validation catches balance drift
 - `balance_after` equals previous `balance_after` + `amount`
 - `plan_balance_after + pack_balance_after == balance_after`
@@ -45,7 +46,7 @@ bundle exec rspec spec/workers/credits/
 
 **ResetPlanCreditsWorker**: Test idempotency key formats, upgrade/downgrade detection, and monthly reset handling.
 
-**DailyReconciliationWorker**: Test billing anchor day matching, exclusion of canceled subscriptions, and month boundary handling.
+**AnnualSubscriberMonthlyAllocationWorker**: Test billing anchor day matching, exclusion of canceled subscriptions, and month boundary handling.
 
 **FindUnprocessedRunsWorker**: Test detection of stale records and ChargeRunWorker enqueueing.
 
@@ -75,16 +76,17 @@ end
 
 Key fixture methods:
 
-| Method | Tests |
-|--------|-------|
-| `invoice_paid_event(billing_reason: "subscription_cycle")` | Renewal allocation |
-| `invoice_paid_event(billing_reason: "subscription_update")` | Proration ignored |
-| `subscription_plan_changed_event(old_price_id:, new_price_id:)` | Upgrade/downgrade |
-| `subscription_deleted_event` | Cancellation no-op |
+| Method                                                          | Tests              |
+| --------------------------------------------------------------- | ------------------ |
+| `invoice_paid_event(billing_reason: "subscription_cycle")`      | Renewal allocation |
+| `invoice_paid_event(billing_reason: "subscription_update")`     | Proration ignored  |
+| `subscription_plan_changed_event(old_price_id:, new_price_id:)` | Upgrade/downgrade  |
+| `subscription_deleted_event`                                    | Cancellation no-op |
 
 ### Idempotency Testing
 
 Process the same webhook event twice and verify:
+
 - Only one `CreditTransaction` is created
 - Account balance reflects a single allocation
 
@@ -107,12 +109,12 @@ cd langgraph_app && pnpm test
 
 Test the `BUFFER_THRESHOLD` (5 millicredits) behavior in `deriveCreditStatus()`:
 
-| Pre-run Balance | Estimated Cost | Expected `justExhausted` |
-|----------------|---------------|--------------------------|
-| 1000 | 500 | `false` |
-| 1000 | 995 | `false` |
-| 1000 | 996 | `true` (remaining 4 <= threshold) |
-| 0 | any | `false` (was already exhausted) |
+| Pre-run Balance | Estimated Cost | Expected `justExhausted`          |
+| --------------- | -------------- | --------------------------------- |
+| 1000            | 500            | `false`                           |
+| 1000            | 995            | `false`                           |
+| 1000            | 996            | `true` (remaining 4 <= threshold) |
+| 0               | any            | `false` (was already exhausted)   |
 
 ## Manual Testing with Stripe
 
@@ -124,15 +126,15 @@ Test the `BUFFER_THRESHOLD` (5 millicredits) behavior in `deriveCreditStatus()`:
 
 ### Test Matrix
 
-| # | Scenario | Stripe Event | Handler |
-|---|----------|-------------|---------|
-| 1 | New subscription (via UI) | `subscription.created` | `PaySubscriptionCredits` callback |
-| 2 | Renewal (test clock) | `invoice.paid` (subscription_cycle) | `RenewalHandler` |
-| 3 | Plan upgrade | `subscription.updated` | `PlanChangeHandler` |
-| 4 | Plan downgrade | `subscription.updated` | `PlanChangeHandler` |
-| 5 | Yearly monthly reset | N/A (cron) | `DailyReconciliationWorker` |
-| 6 | Duplicate webhook | Any | Idempotency check |
-| 7 | Non-credit events | `subscription.updated` | Ignored |
+| #   | Scenario                  | Stripe Event                        | Handler                                   |
+| --- | ------------------------- | ----------------------------------- | ----------------------------------------- |
+| 1   | New subscription (via UI) | `subscription.created`              | `PaySubscriptionCredits` callback         |
+| 2   | Renewal (test clock)      | `invoice.paid` (subscription_cycle) | `RenewalHandler`                          |
+| 3   | Plan upgrade              | `subscription.updated`              | `PlanChangeHandler`                       |
+| 4   | Plan downgrade            | `subscription.updated`              | `PlanChangeHandler`                       |
+| 5   | Yearly monthly reset      | N/A (cron)                          | `AnnualSubscriberMonthlyAllocationWorker` |
+| 6   | Duplicate webhook         | Any                                 | Idempotency check                         |
+| 7   | Non-credit events         | `subscription.updated`              | Ignored                                   |
 
 ### Using Stripe Test Clocks
 
@@ -162,15 +164,15 @@ bundle exec rails runner "
 
 ## Key Test Files
 
-| File | Purpose |
-|------|---------|
-| `rails_app/spec/models/credit_transaction_spec.rb` | Transaction model tests |
-| `rails_app/spec/services/credits/` | Service layer tests |
-| `rails_app/spec/workers/credits/` | Worker tests |
-| `rails_app/spec/integration/credits/` | Integration tests |
-| `rails_app/spec/support/stripe/webhook_fixtures.rb` | Stripe event builders |
-| `rails_app/spec/support/stripe/test_examples.rb` | Example test patterns |
-| `langgraph_app/app/core/billing/__tests__/` | Langgraph billing tests |
+| File                                                | Purpose                 |
+| --------------------------------------------------- | ----------------------- |
+| `rails_app/spec/models/credit_transaction_spec.rb`  | Transaction model tests |
+| `rails_app/spec/services/credits/`                  | Service layer tests     |
+| `rails_app/spec/workers/credits/`                   | Worker tests            |
+| `rails_app/spec/integration/credits/`               | Integration tests       |
+| `rails_app/spec/support/stripe/webhook_fixtures.rb` | Stripe event builders   |
+| `rails_app/spec/support/stripe/test_examples.rb`    | Example test patterns   |
+| `langgraph_app/app/core/billing/__tests__/`         | Langgraph billing tests |
 
 ## Related Docs
 

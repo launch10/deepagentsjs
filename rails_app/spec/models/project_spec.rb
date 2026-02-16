@@ -66,8 +66,8 @@ RSpec.describe Project, type: :model do
       expect(project.current_workflow.substep).to eq "deploy"
       workflow.next_step!
 
-      expect(project.current_workflow.step).to eq "ad_campaign"
-      expect(project.current_chat.chat_type).to eq "ad_campaign"
+      expect(project.current_workflow.step).to eq "ads"
+      expect(project.current_chat.chat_type).to eq "ads"
     end
   end
 

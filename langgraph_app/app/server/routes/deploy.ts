@@ -6,7 +6,7 @@ import {
   authMiddleware,
   getCreditState,
 } from "@server/middleware";
-import { validateThreadOrError } from "../middleware/threadValidation";
+import { validateThreadGraphOrError } from "../middleware/threadValidation";
 import { DeployAPI } from "@api";
 import { env, getLogger } from "@core";
 
@@ -59,9 +59,9 @@ deployRoutes.post("/stream", ...streamMiddleware, async (c) => {
     return c.json({ error: "Missing required field: projectId" }, 400);
   }
 
-  // No thread validation on POST - chat doesn't exist yet.
-  // The graph's initDeploy node creates the deploy + chat via Rails API.
-  // This mirrors the brainstorm pattern where JWT auth is sufficient for new threads.
+  // Validate thread ownership + graph type (new threads allowed — chat created by initDeploy node)
+  const validationError = await validateThreadGraphOrError(c, threadId, auth, "deploy");
+  if (validationError) return validationError;
 
   const finalInstructions = instructions ?? { website: true, googleAds: true };
   log.info(
@@ -99,8 +99,8 @@ deployRoutes.get("/stream", ...readOnlyMiddleware, async (c) => {
     return c.json({ error: "Missing threadId" }, 400);
   }
 
-  // Validate thread ownership for loading history - chat must exist
-  const validationError = await validateThreadOrError(c, threadId, auth);
+  // Validate thread ownership + graph type for loading history
+  const validationError = await validateThreadGraphOrError(c, threadId, auth, "deploy");
   if (validationError) return validationError;
 
   // loadHistory doesn't make LLM calls - no billing needed

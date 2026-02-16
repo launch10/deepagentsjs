@@ -19,8 +19,8 @@ export function useAdsChat(): LanggraphChat<UIMessage, AdsGraphState> {
   const options = useAdsChatOptions();
   const chat = useLanggraph(options, (s) => s.chat);
 
-  // Register the "ad campaign chat" so we can sync state to current chat from other components
-  useChatRegistration("ad_campaign", chat);
+  // Register the ads chat so we can sync state to current chat from other components
+  useChatRegistration("ads", chat);
   syncCampaignToStore();
 
   return chat;

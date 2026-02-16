@@ -50,7 +50,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
   let!(:project) { create(:project, account: account) }
   let!(:website) { create(:website, account: account, project: project, template: template) }
   let!(:brainstorm) { create(:brainstorm, website: website, project: project) }
-  let!(:workflow) { create(:project_workflow, project: project, workflow_type: 'launch', step: 'ad_campaign', substep: 'content') }
+  let!(:workflow) { create(:project_workflow, project: project, workflow_type: 'launch', step: 'ads', substep: 'content') }
 
   describe 'GET /projects (index) with projects' do
     it 'props conform to Projects schema' do
@@ -111,10 +111,10 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     let!(:ad_group) { create(:ad_group, campaign: campaign) }
     let!(:ad) { create(:ad, ad_group: ad_group) }
 
-    WorkflowConfig.substeps_for('launch', 'ad_campaign').each do |substep|
+    WorkflowConfig.substeps_for('launch', 'ads').each do |substep|
       describe "GET /projects/:uuid/campaigns/#{substep}" do
         before do
-          workflow.update!(step: 'ad_campaign', substep: substep)
+          workflow.update!(step: 'ads', substep: substep)
           # Set the campaign stage directly to avoid validation that requires previous stages to be complete
           campaign.update_column(:stage, substep)
         end
@@ -123,7 +123,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
           get send("campaigns_#{substep}_project_path", project.uuid)
 
           expect(response).to have_http_status(:ok)
-          expect(inertia.component).to eq("Campaign")
+          expect(inertia.component).to eq("Ads")
         end
 
         it "props conform to Campaigns::#{substep.camelize} schema" do
@@ -177,7 +177,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     # Ensure each step has its own chat with a distinct thread_id
     let!(:brainstorm_chat) { project.chats.find_by(chat_type: 'brainstorm') }
     let!(:website_chat) { create(:chat, project: project, account: account, chat_type: 'website', thread_id: 'website-thread') }
-    let!(:ad_campaign_chat) { project.chats.find_by(chat_type: 'ad_campaign') }
+    let!(:ads_chat) { project.chats.find_by(chat_type: 'ads') }
 
     shared_examples 'updates workflow step' do |expected_step, expected_substep|
       it "sets workflow step to #{expected_step.inspect} and substep to #{expected_substep.inspect}" do
@@ -232,22 +232,22 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
       before { workflow.update!(step: 'deploy', substep: nil) }
       let(:make_request) { get campaigns_content_project_path(project.uuid) }
 
-      include_examples 'updates workflow step', 'ad_campaign', 'content'
-      include_examples 'returns correct thread_id for step', 'ad_campaign'
+      include_examples 'updates workflow step', 'ads', 'content'
+      include_examples 'returns correct thread_id for step', 'ads'
     end
 
     context 'website → campaigns/content (skipping deploy)' do
       before { workflow.update!(step: 'website', substep: 'build') }
       let(:make_request) { get campaigns_content_project_path(project.uuid) }
 
-      include_examples 'updates workflow step', 'ad_campaign', 'content'
-      include_examples 'returns correct thread_id for step', 'ad_campaign'
+      include_examples 'updates workflow step', 'ads', 'content'
+      include_examples 'returns correct thread_id for step', 'ads'
     end
 
     # ── Backward transitions ──
 
     context 'campaigns/content → website/build (navigating back)' do
-      before { workflow.update!(step: 'ad_campaign', substep: 'content') }
+      before { workflow.update!(step: 'ads', substep: 'content') }
       let(:make_request) { get website_build_project_path(project.uuid) }
 
       include_examples 'updates workflow step', 'website', 'build'
@@ -255,7 +255,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     end
 
     context 'campaigns/content → brainstorm (navigating back)' do
-      before { workflow.update!(step: 'ad_campaign', substep: 'content') }
+      before { workflow.update!(step: 'ads', substep: 'content') }
       let(:make_request) { get brainstorm_project_path(project.uuid) }
 
       include_examples 'updates workflow step', 'brainstorm', nil
@@ -273,14 +273,14 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
 
     context 'campaigns/content → campaigns/keywords (same page)' do
       before do
-        workflow.update!(step: 'ad_campaign', substep: 'content')
+        workflow.update!(step: 'ads', substep: 'content')
         # Bypass campaign stage validation (requires previous stages complete)
         campaign.update_column(:stage, 'keywords')
       end
       let(:make_request) { get campaigns_keywords_project_path(project.uuid) }
 
-      include_examples 'updates workflow step', 'ad_campaign', 'keywords'
-      include_examples 'returns correct thread_id for step', 'ad_campaign'
+      include_examples 'updates workflow step', 'ads', 'keywords'
+      include_examples 'returns correct thread_id for step', 'ads'
     end
   end
 

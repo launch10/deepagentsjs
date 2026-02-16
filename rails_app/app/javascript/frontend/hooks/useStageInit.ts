@@ -4,7 +4,7 @@ import { useAdsChatState, useAdsChatActions } from "@components/ads/hooks";
 import type { CampaignProps } from "@components/ads/workflow-panel/workflow-buddy/ad-campaign.types";
 import { Workflow, type UUIDType, Ads } from "@shared";
 
-export function useStageInit(stage: Workflow.AdCampaignSubstepName) {
+export function useStageInit(stage: Workflow.AdsSubstepName) {
   const { project } = usePage<CampaignProps>().props;
   const { updateState } = useAdsChatActions();
   const headlines = useAdsChatState("headlines");

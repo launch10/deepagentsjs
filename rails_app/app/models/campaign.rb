@@ -67,7 +67,7 @@ class Campaign < ApplicationRecord
   has_many :ad_schedules, dependent: :destroy
 
   def self.chat_type
-    "ad_campaign"
+    "ads"
   end
 
   # Ad creative

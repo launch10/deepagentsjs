@@ -10,28 +10,28 @@ We always use Red/Green/Refactor, with a heavy focus on TDD.
 
 ## Key Decisions (CTO Confirmed)
 
-| # | Decision | Choice |
-|---|----------|--------|
-| 1 | Transaction strategy | **Separate transactions** for expire + allocate |
-| 2 | Upgrade/downgrade handling | **Same method with conditional logic** |
-| 3 | Balance caching | **Add cached columns to Account** (plan_credits, pack_credits, total_credits) |
-| 4 | Column names | `plan_credits`, `pack_credits`, `total_credits` |
-| 5 | Expire reason | New reason: `plan_credits_expired` |
-| 6 | Idempotency | Check for existing allocate, skip entire operation if found |
-| 7 | First subscription | **Skip expire** if balance is 0 |
-| 8 | Downgrade debt | **Floor at 0** (no negative balance from downgrade) |
-| 9 | Downgrade transaction type | New type: `adjust` |
-| 10 | Audit column | Use Account's existing `updated_at` (no credits_updated_at) |
-| 11 | REASONS type | Simple constant array (not enum) |
-| 12 | Expire reference | Same as allocate: `Pay::Subscription` |
-| 13 | Upgrade reason | New reason: `plan_upgrade` |
-| 14 | CreditBalance class | **Remove it** - use Account columns directly |
-| 15 | Migration scope | Include Account columns in scope-3 |
-| 16 | Backfill | Not needed (no existing accounts) |
-| 17 | Cache update location | **CreditTransaction callback** (after_create) |
-| 18 | Callback style | `update_columns` (skip validations) |
-| 19 | Snapshot builder | Call `Credits::ResetPlanCreditsWorker.new.perform(subscription.id)` inline |
-| 20 | Callback scope | **All transaction types** update Account |
+| #   | Decision                   | Choice                                                                        |
+| --- | -------------------------- | ----------------------------------------------------------------------------- |
+| 1   | Transaction strategy       | **Separate transactions** for expire + allocate                               |
+| 2   | Upgrade/downgrade handling | **Same method with conditional logic**                                        |
+| 3   | Balance caching            | **Add cached columns to Account** (plan_credits, pack_credits, total_credits) |
+| 4   | Column names               | `plan_credits`, `pack_credits`, `total_credits`                               |
+| 5   | Expire reason              | New reason: `plan_credits_expired`                                            |
+| 6   | Idempotency                | Check for existing allocate, skip entire operation if found                   |
+| 7   | First subscription         | **Skip expire** if balance is 0                                               |
+| 8   | Downgrade debt             | **Floor at 0** (no negative balance from downgrade)                           |
+| 9   | Downgrade transaction type | New type: `adjust`                                                            |
+| 10  | Audit column               | Use Account's existing `updated_at` (no credits_updated_at)                   |
+| 11  | REASONS type               | Simple constant array (not enum)                                              |
+| 12  | Expire reference           | Same as allocate: `Pay::Subscription`                                         |
+| 13  | Upgrade reason             | New reason: `plan_upgrade`                                                    |
+| 14  | CreditBalance class        | **Remove it** - use Account columns directly                                  |
+| 15  | Migration scope            | Include Account columns in scope-3                                            |
+| 16  | Backfill                   | Not needed (no existing accounts)                                             |
+| 17  | Cache update location      | **CreditTransaction callback** (after_create)                                 |
+| 18  | Callback style             | `update_columns` (skip validations)                                           |
+| 19  | Snapshot builder           | Call `Credits::ResetPlanCreditsWorker.new.perform(subscription.id)` inline    |
+| 20  | Callback scope             | **All transaction types** update Account                                      |
 
 ---
 
@@ -86,13 +86,13 @@ end
 
 ### Transaction Flow by Scenario
 
-| Scenario | Transactions Created | Reason |
-|----------|---------------------|--------|
-| First subscription | 1. `allocate` | `plan_renewal` |
-| Renewal (positive balance) | 1. `expire` → 2. `allocate` | `plan_credits_expired`, `plan_renewal` |
-| Renewal (zero/negative balance) | 1. `allocate` | `plan_renewal` |
-| Upgrade | 1. `expire` (if balance > 0) → 2. `allocate` | `plan_credits_expired`, `plan_upgrade` |
-| Downgrade | 1. `adjust` | `plan_downgrade` |
+| Scenario                        | Transactions Created                         | Reason                                 |
+| ------------------------------- | -------------------------------------------- | -------------------------------------- |
+| First subscription              | 1. `allocate`                                | `plan_renewal`                         |
+| Renewal (positive balance)      | 1. `expire` → 2. `allocate`                  | `plan_credits_expired`, `plan_renewal` |
+| Renewal (zero/negative balance) | 1. `allocate`                                | `plan_renewal`                         |
+| Upgrade                         | 1. `expire` (if balance > 0) → 2. `allocate` | `plan_credits_expired`, `plan_upgrade` |
+| Downgrade                       | 1. `adjust`                                  | `plan_downgrade`                       |
 
 ---
 
@@ -143,15 +143,15 @@ rails_app/spec/services/credits/allocation_service_spec.rb
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `app/models/credit_transaction.rb` | Add `expire`, `adjust` to TRANSACTION_TYPES. Add new REASONS. Add `after_create :update_account_balances` callback |
-| `app/services/credit_balance.rb` | **DELETE** - no longer needed |
-| `config/initializers/pay.rb` | Include PaySubscriptionCredits concern |
-| `config/schedule.rb` | Add daily reconciliation job (Zhong) |
-| `spec/factories/credit_transactions.rb` | Add traits |
-| `spec/factories/plans.rb` | Add yearly/monthly traits |
-| Snapshot builder (`BasicAccount`) | Add `Credits::ResetPlanCreditsWorker.new.perform(subscription.id)` after subscription creation |
+| File                                    | Changes                                                                                                            |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `app/models/credit_transaction.rb`      | Add `expire`, `adjust` to TRANSACTION_TYPES. Add new REASONS. Add `after_create :update_account_balances` callback |
+| `app/services/credit_balance.rb`        | **DELETE** - no longer needed                                                                                      |
+| `config/initializers/pay.rb`            | Include PaySubscriptionCredits concern                                                                             |
+| `config/schedule.rb`                    | Add daily reconciliation job (Zhong)                                                                               |
+| `spec/factories/credit_transactions.rb` | Add traits                                                                                                         |
+| `spec/factories/plans.rb`               | Add yearly/monthly traits                                                                                          |
+| Snapshot builder (`BasicAccount`)       | Add `Credits::ResetPlanCreditsWorker.new.perform(subscription.id)` after subscription creation                     |
 
 ---
 
@@ -470,10 +470,10 @@ class Credits::ResetPlanCreditsWorker < ApplicationWorker
 end
 ```
 
-### 4. Credits::DailyReconciliationWorker
+### 4. Credits::AnnualSubscriberMonthlyAllocationWorker
 
 ```ruby
-class Credits::DailyReconciliationWorker < ApplicationWorker
+class Credits::AnnualSubscriberMonthlyAllocationWorker < ApplicationWorker
   def perform
     query.in_batches(of: 100) do |accounts|
       accounts.each do |account|
@@ -606,7 +606,7 @@ end
 
 ---
 
-## DailyReconciliationWorker Query Logic
+## AnnualSubscriberMonthlyAllocationWorker Query Logic
 
 ```ruby
 def query
@@ -651,7 +651,7 @@ end
 ## Batch Processing Pattern
 
 ```ruby
-class Credits::DailyReconciliationWorker < ApplicationWorker
+class Credits::AnnualSubscriberMonthlyAllocationWorker < ApplicationWorker
   def perform
     query.in_batches(of: 100) do |accounts|
       accounts.each do |account|
@@ -703,6 +703,7 @@ Beyond the 12 required scenarios:
 ### Implementation Summary
 
 **Files Created:**
+
 - `db/migrate/20260125205452_add_credit_columns_to_accounts.rb` - Adds plan_credits, pack_credits, total_credits columns
 - `app/services/credits/allocation_service.rb` - Core business logic for credit allocation
 - `app/workers/credits/reset_plan_credits_worker.rb` - Worker to reset plan credits for a subscription
@@ -710,9 +711,10 @@ Beyond the 12 required scenarios:
 - `app/workers/credits/reconcile_one_account_worker.rb` - Worker to reconcile a single account
 - `spec/services/credits/allocation_service_spec.rb` - Tests for AllocationService (14 examples)
 - `spec/workers/credits/reset_plan_credits_worker_spec.rb` - Tests for ResetPlanCreditsWorker (6 examples)
-- `spec/workers/credits/daily_reconciliation_worker_spec.rb` - Tests for DailyReconciliationWorker (6 examples)
+- `spec/workers/credits/daily_reconciliation_worker_spec.rb` - Tests for AnnualSubscriberMonthlyAllocationWorker (6 examples)
 
 **Files Modified:**
+
 - `app/models/credit_transaction.rb` - Added `expire` to TRANSACTION_TYPES, added REASONS constant, added `after_create :update_account_balances` callback
 - `app/models/account.rb` - Added `has_many :credit_transactions` association
 - `spec/models/credit_transaction_spec.rb` - Updated validation test, added callback tests (21 examples)
@@ -733,7 +735,7 @@ bundle exec rspec spec/models/concerns/pay_subscription_credits_spec.rb
 
 1. Create yearly subscription via Stripe test mode
 2. Travel time forward using console
-3. Run `Credits::DailyReconciliationWorker.new.perform`
+3. Run `Credits::AnnualSubscriberMonthlyAllocationWorker.new.perform`
 4. Verify CreditTransaction created with correct balances
 
 ### Integration Testing

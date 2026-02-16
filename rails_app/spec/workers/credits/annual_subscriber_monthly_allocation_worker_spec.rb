@@ -2,7 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe Credits::DailyReconciliationWorker do
+RSpec.describe Credits::AnnualSubscriberMonthlyAllocationWorker do
   include ActiveSupport::Testing::TimeHelpers
 
   # Run Sidekiq jobs inline since the worker uses perform_async

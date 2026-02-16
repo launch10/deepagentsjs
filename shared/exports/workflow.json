@@ -30,7 +30,7 @@
         ]
       },
       {
-        "name": "ad_campaign",
+        "name": "ads",
         "label": "Ad Campaign",
         "order": 3,
         "steps": [
