@@ -1,82 +1,67 @@
 export function HowItWorks() {
   const steps = [
     {
-      number: "1",
+      number: 1,
       title: "Connect Your Calendar",
-      description: "Link your Google, Outlook, or Apple calendar in seconds",
-      imagePosition: "right" as const,
+      description: "Link your Google Calendar, Outlook, or any calendar in 30 seconds. We sync your availability in real-time."
     },
     {
-      number: "2",
+      number: 2,
       title: "Set Your Preferences",
-      description: "Tell us your working hours and timezone preferences",
-      imagePosition: "left" as const,
+      description: "Tell us your ideal meeting hours, buffer times, and timezone. We remember so you don't have to explain every time."
     },
     {
-      number: "3",
-      title: "Share & Schedule",
-      description: "We instantly suggest optimal times that work for everyone",
-      imagePosition: "right" as const,
-    },
+      number: 3,
+      title: "Share & Schedule Instantly",
+      description: "Send one link to your team. We analyze everyone's availability and suggest the perfect times. Everyone clicks yes. Done."
+    }
   ];
 
   return (
-    <section className="py-16 md:py-20 lg:py-24 bg-background">
+    <section className="bg-background py-16 md:py-20 lg:py-24">
       <div className="container mx-auto px-4 md:px-6">
-        {/* Section Headline */}
-        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-center mb-16 md:mb-20 lg:mb-24">
-          Three Steps to Perfect Scheduling
-        </h2>
+        {/* Header */}
+        <div className="text-center mb-12 md:mb-16">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
+            Three Steps to Effortless Scheduling
+          </h2>
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+            No more timezone math. No more endless threads. Just meetings that work.
+          </p>
+        </div>
 
-        {/* Steps */}
-        <div className="space-y-20 md:space-y-24 lg:space-y-32">
-          {steps.map((step, index) => (
+        {/* Steps Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mb-12 md:mb-16">
+          {steps.map((step) => (
             <div
               key={step.number}
-              className={`grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-center ${
-                step.imagePosition === "left" ? "lg:flex-row-reverse" : ""
-              }`}
+              className="bg-card rounded-2xl shadow-md p-6 md:p-8 hover:-translate-y-1 transition-all duration-300"
             >
-              {/* Text Content */}
-              <div
-                className={`space-y-4 md:space-y-6 ${
-                  step.imagePosition === "left" ? "lg:order-2" : "lg:order-1"
-                }`}
-              >
-                {/* Large Step Number */}
-                <div className="flex items-start gap-4 md:gap-6">
-                  <span className="text-6xl md:text-7xl lg:text-8xl font-bold text-accent leading-none">
-                    {step.number}
-                  </span>
-                  <div className="pt-2 md:pt-3 lg:pt-4">
-                    <h3 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-3 md:mb-4">
-                      {step.title}
-                    </h3>
-                    <p className="text-base md:text-lg lg:text-xl text-muted-foreground leading-relaxed">
-                      {step.description}
-                    </p>
-                  </div>
-                </div>
+              {/* Number Badge */}
+              <div className="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 bg-primary text-primary-foreground rounded-full text-2xl md:text-3xl font-bold mb-6">
+                {step.number}
               </div>
 
-              {/* Image */}
-              <div
-                className={`${
-                  step.imagePosition === "left" ? "lg:order-1" : "lg:order-2"
-                }`}
-              >
-                <div className="relative group">
-                  <img
-                    src="https://dev-uploads.launch10.ai/uploads/21b36cfc-f657-471f-8256-d36bea9689fc.png"
-                    alt={`${step.title} illustration`}
-                    className="w-full rounded-xl shadow-2xl transition-all duration-300 group-hover:shadow-3xl group-hover:-translate-y-1"
-                  />
-                  {/* Decorative accent behind image */}
-                  <div className="absolute -inset-4 bg-accent/10 rounded-2xl -z-10 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                </div>
-              </div>
+              {/* Content */}
+              <h3 className="text-xl md:text-2xl font-semibold mb-3">
+                {step.title}
+              </h3>
+              <p className="text-muted-foreground leading-relaxed">
+                {step.description}
+              </p>
             </div>
           ))}
+        </div>
+
+        {/* Product Screenshot */}
+        <div className="max-w-5xl mx-auto">
+          <div className="bg-card rounded-2xl shadow-lg overflow-hidden">
+            <img
+              src="https://dev-uploads.launch10.ai/uploads/024dfc6c-335d-4f11-883b-f8e241f91744.png"
+              alt="Scheduling tool interface showing calendar availability"
+              className="w-full h-auto"
+            />
+          </div>
         </div>
       </div>
     </section>

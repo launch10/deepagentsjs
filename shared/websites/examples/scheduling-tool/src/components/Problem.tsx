@@ -1,22 +1,27 @@
-import { MessageSquare, Clock, Calendar } from 'lucide-react';
+import { Clock, Globe, Calendar, AlertCircle } from 'lucide-react';
 
 export function Problem() {
-  const painPoints = [
-    {
-      icon: MessageSquare,
-      title: "Endless Back-and-Forth",
-      description: "12+ messages in Slack just to schedule a 30-minute meeting"
-    },
+  const problems = [
     {
       icon: Clock,
-      title: "Someone Always Loses",
-      description: "Early morning calls for Tokyo, late nights for New York"
+      title: "Endless Back-and-Forth",
+      description: "12 messages later and you still don't have a meeting time. Someone's always asleep when you suggest a slot.",
+    },
+    {
+      icon: Globe,
+      title: "Manual Timezone Math",
+      description: "Is 3pm EST too early for the Sydney team? Wait, are they in daylight savings? Let me Google that...",
     },
     {
       icon: Calendar,
-      title: "Meetings About Meetings",
-      description: "Spending more time coordinating than actually collaborating"
-    }
+      title: "Calendar Chaos",
+      description: "Juggling 5 different calendars, trying to find that magical 30-minute window where everyone's free.",
+    },
+    {
+      icon: AlertCircle,
+      title: "Wasted Hours Weekly",
+      description: "Your project managers spend 15+ hours per week just coordinating schedules instead of doing actual work.",
+    },
   ];
 
   return (
@@ -24,36 +29,36 @@ export function Problem() {
       <div className="container mx-auto px-4 md:px-6">
         {/* Section Header */}
         <div className="text-center mb-12 md:mb-16">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
             The Timezone Coordination Nightmare
           </h2>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
-            Distributed teams waste hours every week just trying to find a time that works
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+            Every distributed team knows the pain
           </p>
         </div>
 
-        {/* Pain Points Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto">
-          {painPoints.map((point, index) => {
-            const Icon = point.icon;
+        {/* Problem Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+          {problems.map((problem, index) => {
+            const Icon = problem.icon;
             return (
               <div
                 key={index}
-                className="bg-card rounded-2xl shadow-md p-6 transition-all duration-200 hover:shadow-lg hover:-translate-y-1"
+                className="bg-card rounded-2xl p-6 md:p-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group"
               >
                 {/* Icon */}
-                <div className="mb-4">
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Icon className="w-6 h-6 text-primary" />
-                  </div>
+                <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
+                  <Icon className="w-6 h-6" />
                 </div>
 
-                {/* Content */}
-                <h3 className="text-xl font-semibold text-card-foreground mb-3">
-                  {point.title}
+                {/* Title */}
+                <h3 className="text-xl md:text-2xl font-semibold mb-3">
+                  {problem.title}
                 </h3>
+
+                {/* Description */}
                 <p className="text-muted-foreground leading-relaxed">
-                  {point.description}
+                  {problem.description}
                 </p>
               </div>
             );

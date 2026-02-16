@@ -1,7 +1,8 @@
 import type { NodeFunction } from "../types";
 import type { CoreGraphState } from "@types";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
-import { startPolly, persistRecordings, getPollyNamespace } from "@utils";
+import { startPolly, persistRecordings } from "@utils";
+import { getNodeContext } from "./withContext";
 import { kebabCase } from "change-case";
 import { env } from "@core";
 
@@ -20,14 +21,9 @@ export const withPolly = <TState extends CoreGraphState>(
       return nodeFunction(state, config);
     }
 
-    // Read the node name directly from LangGraph config metadata.
-    // Previously this used getNodeContext() (AsyncLocalStorage), but withContext
-    // is the innermost middleware while withPolly is outermost — so the store
-    // was always empty here, causing every recording to land in "unknown-node-execution".
-    const nodeName = (config?.metadata?.langgraph_node as string) || "unknown-node-execution";
-    const namespace = getPollyNamespace();
-    const baseName = kebabCase(nodeName);
-    const recordingName = namespace ? `${namespace}/${baseName}` : baseName;
+    const nodeCtx = getNodeContext();
+    const nodeName = nodeCtx?.name || "unknown-node-execution";
+    const recordingName = kebabCase(nodeName);
 
     await startPolly(recordingName);
 

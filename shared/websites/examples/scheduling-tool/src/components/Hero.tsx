@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import { ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, Calendar, Sparkles } from 'lucide-react';
 import { L10 } from '@/lib/tracking';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 
 export function Hero() {
   const [email, setEmail] = useState('');
@@ -27,88 +25,93 @@ export function Hero() {
   };
 
   return (
-    <section className="relative bg-primary overflow-hidden py-20 md:py-24 lg:py-32">
+    <section className="relative bg-primary text-primary-foreground py-20 md:py-24 lg:py-32 overflow-hidden">
       {/* Atmospheric gradient orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-primary-foreground/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-0 left-1/3 w-[500px] h-[500px] bg-primary-foreground/5 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 right-1/3 w-64 h-64 bg-primary-foreground/8 rounded-full blur-2xl" />
+        <div className="absolute top-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl animate-pulse" 
+             style={{ animationDuration: '4s' }} />
+        <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-accent/15 rounded-full blur-3xl animate-pulse" 
+             style={{ animationDuration: '6s', animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-foreground/5 rounded-full blur-3xl" />
       </div>
 
       <div className="container mx-auto px-4 md:px-6 relative z-10">
-        <div className="max-w-4xl mx-auto text-center">
+        <div className="max-w-5xl mx-auto text-center">
           {/* Logo */}
           <div className="flex justify-center mb-8 md:mb-10">
             <img 
-              src="https://dev-uploads.launch10.ai/uploads/024dfc6c-335d-4f11-883b-f8e241f91744.png" 
+              src="https://dev-uploads.launch10.ai/uploads/21b36cfc-f657-471f-8256-d36bea9689fc.png" 
               alt="Logo" 
-              className="max-w-24 md:max-w-32 animate-pulse"
+              className="h-12 md:h-16 w-auto transition-transform duration-300 hover:scale-105"
             />
           </div>
 
           {/* Headline */}
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-primary-foreground mb-6 md:mb-8 leading-tight">
-            Stop Playing Timezone Tetris
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6 md:mb-8">
+            Stop Playing Calendar Tetris{' '}
+            <span className="inline-flex items-center gap-2">
+              Across Time Zones
+              <Calendar className="w-12 h-12 md:w-16 md:h-16 inline-block opacity-90 animate-bounce" 
+                        style={{ animationDuration: '3s' }} />
+            </span>
           </h1>
 
           {/* Subheadline */}
-          <p className="text-xl md:text-2xl text-primary-foreground/90 mb-10 md:mb-12 leading-relaxed max-w-3xl mx-auto">
-            Automatically find meeting times that work across continents. No more endless Slack threads asking{' '}
-            <span className="text-primary-foreground font-semibold">"when works for everyone?"</span>
+          <p className="text-lg md:text-xl lg:text-2xl text-primary-foreground/90 mb-10 md:mb-12 max-w-3xl mx-auto leading-relaxed">
+            Your distributed team deserves better than endless Slack threads about "when works for everyone?" 
+            Connect calendars, share preferences, and let us find the perfect meeting time—instantly.
           </p>
 
           {/* Email capture form */}
           {status === 'success' ? (
-            <div className="bg-primary-foreground/10 backdrop-blur-sm border border-primary-foreground/20 rounded-2xl p-8 max-w-md mx-auto">
+            <div className="max-w-md mx-auto bg-primary-foreground/10 backdrop-blur-sm border border-primary-foreground/20 rounded-2xl p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="flex items-center justify-center gap-3 mb-4">
-                <div className="bg-primary-foreground/20 rounded-full p-2">
-                  <Check className="w-6 h-6 text-primary-foreground" />
-                </div>
-                <h3 className="text-2xl font-bold text-primary-foreground">You're in!</h3>
+                <Sparkles className="w-8 h-8 text-secondary animate-pulse" />
+                <h3 className="text-2xl font-bold">You're on the list!</h3>
               </div>
-              <p className="text-primary-foreground/80">
-                We'll send you early access details soon. Get ready to schedule smarter.
+              <p className="text-primary-foreground/80 text-lg">
+                We'll be in touch soon with early access to smarter scheduling.
               </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="max-w-md mx-auto mb-8">
               <div className="flex flex-col sm:flex-row gap-3">
-                <Input
+                <input
                   type="email"
-                  placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
                   required
                   disabled={status === 'loading'}
-                  className="flex-1 h-14 px-6 text-lg bg-primary-foreground/95 text-primary border-0 placeholder:text-primary/50 focus-visible:ring-2 focus-visible:ring-primary-foreground/50"
+                  className="flex-1 px-6 py-4 rounded-xl text-lg bg-primary-foreground text-primary placeholder:text-primary/60 focus:outline-none focus:ring-4 focus:ring-secondary/50 transition-all duration-200 disabled:opacity-50"
                 />
-                <Button
+                <button
                   type="submit"
-                  size="lg"
                   disabled={status === 'loading'}
-                  className="h-14 px-8 bg-primary-foreground text-primary hover:bg-primary-foreground/90 hover:scale-105 transition-all duration-200 font-semibold text-lg group"
+                  className="group px-8 py-4 bg-secondary text-secondary-foreground rounded-xl font-semibold text-lg hover:scale-105 hover:shadow-2xl transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 flex items-center justify-center gap-2"
                 >
                   {status === 'loading' ? (
                     'Joining...'
                   ) : (
                     <>
                       Start Scheduling Smarter
-                      <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-200" />
                     </>
                   )}
-                </Button>
+                </button>
               </div>
               {status === 'error' && (
-                <p className="text-primary-foreground/90 text-sm mt-3 bg-primary-foreground/10 rounded-lg p-3 border border-primary-foreground/20">
+                <p className="mt-3 text-red-300 text-sm bg-red-500/20 backdrop-blur-sm px-4 py-2 rounded-lg border border-red-400/30">
                   {errorMessage}
                 </p>
               )}
             </form>
           )}
 
-          {/* Secondary text */}
+          {/* Social proof */}
           {status !== 'success' && (
-            <p className="text-primary-foreground/70 text-sm md:text-base">
+            <p className="text-primary-foreground/70 text-sm md:text-base flex items-center justify-center gap-2">
+              <Sparkles className="w-4 h-4" />
               Join 2,000+ distributed teams
             </p>
           )}

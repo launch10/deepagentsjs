@@ -1,114 +1,106 @@
 import { useState } from 'react';
+import { ArrowRight, CheckCircle, Sparkles } from 'lucide-react';
 import { L10 } from '@/lib/tracking';
-import { ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
 
 export function CTA() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!email || !email.includes('@')) {
-      setErrorMessage('Please enter a valid email address');
-      setStatus('error');
-      return;
-    }
+    if (!email) return;
 
     setStatus('loading');
-    setErrorMessage('');
+    setError('');
 
     try {
       await L10.createLead(email);
       setStatus('success');
       setEmail('');
-    } catch (error) {
+    } catch (err) {
       setStatus('error');
-      setErrorMessage(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     }
   };
 
   return (
-    <section className="relative bg-primary py-20 md:py-24 lg:py-28 overflow-hidden">
-      {/* Atmospheric background elements */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary-foreground rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary-foreground rounded-full blur-3xl" />
+    <section className="relative bg-primary py-20 md:py-24 lg:py-32 overflow-hidden">
+      {/* Atmospheric gradient effects */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary-foreground/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-0 right-1/4 w-[32rem] h-[32rem] bg-primary-foreground/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40rem] h-[40rem] bg-primary-foreground/5 rounded-full blur-3xl" />
       </div>
 
-      <div className="relative max-w-4xl mx-auto px-4 md:px-6 text-center">
-        {status === 'success' ? (
-          // Success state
-          <div className="flex flex-col items-center gap-6 animate-in fade-in duration-500">
-            <div className="w-16 h-16 rounded-full bg-primary-foreground/20 flex items-center justify-center">
-              <CheckCircle className="w-8 h-8 text-primary-foreground" />
-            </div>
-            <div className="space-y-3">
-              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary-foreground">
-                You're All Set!
-              </h2>
-              <p className="text-xl md:text-2xl text-primary-foreground/90">
-                Check your inbox for next steps to get started
-              </p>
-            </div>
+      <div className="container mx-auto px-4 md:px-6 relative z-10">
+        <div className="max-w-4xl mx-auto text-center">
+          {/* Sparkle icon */}
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary-foreground/10 mb-6 md:mb-8">
+            <Sparkles className="w-8 h-8 text-primary-foreground" />
           </div>
-        ) : (
-          // Default state
-          <div className="space-y-8">
-            <div className="space-y-4">
-              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary-foreground leading-tight">
-                Ready to End Scheduling Chaos?
-              </h2>
-              <p className="text-xl md:text-2xl text-primary-foreground/90 max-w-2xl mx-auto">
-                Join thousands of teams who've reclaimed their time
-              </p>
-            </div>
 
-            <form onSubmit={handleSubmit} className="max-w-md mx-auto space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3">
+          {/* Headline */}
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary-foreground mb-4 md:mb-6">
+            Ready to Stop the Scheduling Madness?
+          </h2>
+
+          {/* Subheadline */}
+          <p className="text-lg md:text-xl lg:text-2xl text-primary-foreground/90 mb-8 md:mb-10 lg:mb-12 max-w-3xl mx-auto">
+            Join 2,000+ teams who've reclaimed their time. Start coordinating meetings in seconds, not hours.
+          </p>
+
+          {/* Email capture form */}
+          {status === 'success' ? (
+            <div className="inline-flex items-center gap-3 px-8 py-6 rounded-2xl bg-primary-foreground/10 backdrop-blur-sm border border-primary-foreground/20">
+              <CheckCircle className="w-6 h-6 text-primary-foreground" />
+              <div className="text-left">
+                <p className="text-lg font-semibold text-primary-foreground">You're all set!</p>
+                <p className="text-sm text-primary-foreground/80">Check your email to get started.</p>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="max-w-xl mx-auto mb-6">
+              <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => {
-                    setEmail(e.target.value);
-                    if (status === 'error') setStatus('idle');
-                  }}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
-                  className="flex-1 px-6 py-4 rounded-xl bg-primary-foreground text-foreground placeholder:text-muted-foreground text-lg focus:outline-none focus:ring-2 focus:ring-primary-foreground/50 transition-all"
+                  required
                   disabled={status === 'loading'}
+                  className="flex-1 px-6 py-4 rounded-xl bg-primary-foreground text-primary placeholder:text-primary/50 text-lg focus:outline-none focus:ring-2 focus:ring-primary-foreground/50 disabled:opacity-50 shadow-lg"
                 />
                 <button
                   type="submit"
                   disabled={status === 'loading'}
-                  className="px-8 py-4 bg-secondary text-secondary-foreground rounded-xl font-semibold text-lg hover:scale-105 hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2 whitespace-nowrap"
+                  className="group px-8 py-4 rounded-xl bg-primary-foreground text-primary font-semibold text-lg hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 shadow-lg flex items-center justify-center gap-2 whitespace-nowrap"
                 >
                   {status === 'loading' ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Signing up...</span>
-                    </>
+                    'Starting...'
                   ) : (
                     <>
-                      <span>Get Started Free</span>
-                      <ArrowRight className="w-5 h-5" />
+                      Get Started Free
+                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                     </>
                   )}
                 </button>
               </div>
-
-              {status === 'error' && errorMessage && (
-                <p className="text-sm text-primary-foreground/90 bg-primary-foreground/10 px-4 py-2 rounded-lg">
-                  {errorMessage}
+              {error && (
+                <p className="text-primary-foreground/90 text-sm mt-3 bg-primary-foreground/10 px-4 py-2 rounded-lg">
+                  {error}
                 </p>
               )}
-
-              <p className="text-sm text-primary-foreground/80">
-                No credit card required • 14-day free trial
-              </p>
             </form>
-          </div>
-        )}
+          )}
+
+          {/* Secondary text */}
+          {status !== 'success' && (
+            <p className="text-primary-foreground/70 text-sm md:text-base">
+              No credit card required • 14-day free trial
+            </p>
+          )}
+        </div>
       </div>
     </section>
   );

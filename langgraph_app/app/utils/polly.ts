@@ -178,41 +178,6 @@ class PollyManager {
     server.any().recordingName(nodeName);
   }
 
-  /**
-   * Monkey-patch the persister's findEntry to use O(1) Map lookup
-   * instead of O(n) Array.find(). Polly already computes an MD5 hash
-   * per request and stores it as entry._id in HAR files, but findEntry
-   * does a linear scan. We build a Map index on first access per recording.
-   *
-   * Uses a WeakMap keyed by the recording object so the index is
-   * automatically GC'd when the recording is evicted from Polly's cache.
-   */
-  private static patchFindEntry(): void {
-    const persister = PollyManager.polly?.persister as any;
-    if (!persister) return;
-
-    const entryIndex = new WeakMap<object, Map<string, any>>();
-
-    persister.findEntry = async function (pollyRequest: any) {
-      const { id, order, recordingId } = pollyRequest;
-      const recording = await this.findRecording(recordingId);
-      if (!recording) return null;
-
-      if (!entryIndex.has(recording)) {
-        const index = new Map<string, any>();
-        for (const entry of recording.log.entries) {
-          const key = `${entry._id}_${entry._order}`;
-          if (!index.has(key)) {
-            index.set(key, entry);
-          }
-        }
-        entryIndex.set(recording, index);
-      }
-
-      return entryIndex.get(recording)!.get(`${id}_${order}`) || null;
-    };
-  }
-
   private static configurePassthroughs() {
     const { server } = PollyManager.polly!;
 
@@ -332,7 +297,7 @@ class PollyManager {
         fs: {
           recordingsDir: PollyManager.RECORDINGS_DIR,
         },
-        keepUnusedRequests: false, // Safe: recordings are namespaced per test file
+        keepUnusedRequests: true, // CRITICAL: Keep entries from previous nodes
       },
       recordIfMissing: !process.env.CI,
       matchRequestsBy: {
@@ -349,7 +314,6 @@ class PollyManager {
     PollyManager.configurePassthroughs();
     PollyManager.configureRequestLogging();
     PollyManager.configureHeaders();
-    PollyManager.patchFindEntry();
 
     // --- ALLOW CUSTOM CONFIGURATION BEFORE DEFAULT HANDLERS ---
     if (options.configure) {
