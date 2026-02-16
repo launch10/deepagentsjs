@@ -19,9 +19,9 @@ The PaginationFooter's `FullBleedLayout` also hardcodes `grid-cols-[1fr_3fr] gap
 ## Goals
 
 - **Up consistency** — all sidebar pages should feel like the same app
-- **Responsive by default** — all variants collapse to single-column on mobile
 - **Opacity transitions everywhere** — smooth content appearance on all pages (currently only Brainstorm does this)
 - **Fix latent bugs** — DomainStep sidebar is missing `min-h-0 overflow-hidden`
+- **No mobile layout** — the app is desktop-only (WebContainers, website editing). No responsive breakpoints.
 
 ## Approach
 
@@ -61,24 +61,16 @@ index.ts                    — Barrel exports
 
 - `Root` — Provides layout config context via variant. Renders a wrapper `<div className="h-full flex flex-col">`. Includes a built-in opacity transition (`transition-opacity duration-300 ease-out`) controlled by a `visible` prop (defaults to `true`). Page passes `className` for any additional styling.
 - `Content` — The `<main>` grid. Reads variant from context to apply correct `grid-cols`, `gap`, `px`, `py`. Props: `verticalPadding` (`"all"` | `"top-only"` | `"none"`), `container` (adds `mx-auto container max-w-7xl` for fixed variant)
-- `Sidebar` — Left column wrapper. Applies `min-h-0 overflow-hidden` by default. Optional `sticky` prop adds `sticky top-24`. Optional `responsive` prop (default `true`) adds `hidden lg:block` to hide sidebar on mobile.
+- `Sidebar` — Left column wrapper. Applies `min-h-0 overflow-hidden` by default. Optional `sticky` prop adds `sticky top-24`.
 - `Main` — Right column wrapper. Just `min-h-0` + caller's `className` for page-specific styling
 
-**Variant config (centralized, responsive by default):**
+**Variant config (centralized):**
 ```ts
-proportional: {
-  gridCols: "grid-cols-1 lg:grid-cols-[1fr_3fr]",
-  gap: "gap-x-[3%]",
-  padding: "px-[2.5%]"
-}
-fixed: {
-  gridCols: "grid-cols-1 lg:grid-cols-[288px_1fr]",
-  gap: "gap-8",
-  padding: "px-8"
-}
+proportional: { gridCols: "grid-cols-[1fr_3fr]", gap: "gap-x-[3%]", padding: "px-[2.5%]" }
+fixed:        { gridCols: "grid-cols-[288px_1fr]", gap: "gap-8",     padding: "px-8" }
 ```
 
-Both variants collapse to `grid-cols-1` below `lg`, matching the pattern Brainstorm already uses. This brings responsive behavior to BuildStep, DomainStep, Deploy, and Campaign for free.
+No responsive breakpoints. The app is desktop-only.
 
 ### 2. `SidebarCard` — Card variant with shared sidebar styling
 
@@ -115,13 +107,13 @@ Update `FullBleedLayout` in `pagination-footer/Root.tsx` to read grid config fro
 
 ### Page migrations (replace hardcoded grid with SidebarLayout)
 
-1. **`app/javascript/frontend/components/website/steps/BuildStep.tsx`** — Replace `div.h-full > main.grid` with `SidebarLayout.Root variant="proportional"` + `Content verticalPadding="top-only"`. Sidebar gets default responsive behavior.
+1. **`app/javascript/frontend/components/website/steps/BuildStep.tsx`** — Replace `div.h-full > main.grid` with `SidebarLayout.Root variant="proportional"` + `Content verticalPadding="top-only"`
 
 2. **`app/javascript/frontend/components/website/steps/DomainStep.tsx`** — Same pattern as BuildStep. Sidebar gains `min-h-0 overflow-hidden` it was previously missing (bug fix).
 
 3. **`app/javascript/frontend/pages/Deploy.tsx`** — `SidebarLayout.Root variant="proportional"` + `Content verticalPadding="all"`
 
-4. **`app/javascript/frontend/components/brainstorm/conversation-page/BrainstormConversationPage.tsx`** — `SidebarLayout.Root variant="fixed" visible={contentVisible}` + `Content container`. Sidebar gets `sticky className="pt-[46px]"`. The opacity transition moves from a manual div to Root's built-in `visible` prop.
+4. **`app/javascript/frontend/components/brainstorm/conversation-page/BrainstormConversationPage.tsx`** — `SidebarLayout.Root variant="fixed" visible={contentVisible}` + `Content container`. Sidebar gets `sticky className="pt-[46px]"`. The opacity transition moves from a manual div to Root's built-in `visible` prop. Remove the `grid-cols-1 lg:` responsive breakpoint (was the only page that had one).
 
 5. **`app/javascript/frontend/pages/Campaign.tsx`** — `SidebarLayout.Root variant="fixed"` + `Content container`
 
@@ -141,9 +133,8 @@ Update `FullBleedLayout` in `pagination-footer/Root.tsx` to read grid config fro
 These are changes we're making deliberately for consistency:
 
 - **Opacity transition on all pages** — Root includes `transition-opacity duration-300 ease-out` by default. Currently only Brainstorm does this. Adds a polished feel to all sidebar pages.
-- **Responsive grid on all pages** — Both variants use `grid-cols-1 lg:grid-cols-[...]`. Currently only Brainstorm is responsive. Brings mobile support to BuildStep, DomainStep, Deploy, Campaign.
 - **DomainStep sidebar overflow fix** — Sidebar wrapper gains `min-h-0 overflow-hidden` to match BuildStep. Was missing before (likely a bug from copy-paste).
-- **Sidebar hidden on mobile by default** — `Sidebar` adds `hidden lg:block` by default. Pages that need the sidebar visible on mobile can pass `responsive={false}`.
+- **Brainstorm loses responsive breakpoint** — Was the only page with `grid-cols-1 lg:grid-cols-[288px_1fr]`. Now uses `grid-cols-[288px_1fr]` at all screen sizes, consistent with every other page. The app is desktop-only.
 
 ## What stays the same
 
@@ -163,6 +154,5 @@ These are changes we're making deliberately for consistency:
    - `/projects/{uuid}/ads` — Campaign
 2. Verify PaginationFooter border line still aligns with content column on BuildStep/DomainStep/Deploy
 3. Verify sticky sidebar behavior on Brainstorm and Campaign pages
-4. Verify responsive behavior: sidebar hides on mobile across all pages
-5. Verify opacity transition: pages fade in smoothly on load
-6. Run `pnpm typecheck` to confirm no type errors
+4. Verify opacity transition: pages fade in smoothly on load
+5. Run `pnpm typecheck` to confirm no type errors

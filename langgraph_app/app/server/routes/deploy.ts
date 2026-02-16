@@ -63,6 +63,12 @@ deployRoutes.post("/stream", ...streamMiddleware, async (c) => {
   // The graph's initDeploy node creates the deploy + chat via Rails API.
   // This mirrors the brainstorm pattern where JWT auth is sufficient for new threads.
 
+  const finalInstructions = instructions ?? { website: true, googleAds: true };
+  log.info(
+    { finalInstructions, rawInstructions: instructions, hadExplicitInstructions: !!instructions },
+    "Final deploy instructions"
+  );
+
   // Stream with automatic billing via middleware
   // ChatId is looked up from threadId at stream completion
   // Note: Deploy doesn't use chat messages, but Bridge API requires the field
@@ -80,7 +86,7 @@ deployRoutes.post("/stream", ...streamMiddleware, async (c) => {
       campaignId,
       ...creditState,
       // Deploy instructions — extracted from body or state, defaulting to both
-      instructions: instructions ?? { website: true, googleAds: true },
+      instructions: finalInstructions,
     },
   });
 });

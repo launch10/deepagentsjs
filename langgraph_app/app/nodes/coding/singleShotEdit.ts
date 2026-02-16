@@ -202,7 +202,12 @@ export async function singleShotEdit(
   state: MinimalCodingAgentState & { messages?: BaseMessage[] },
   contextMessages: BaseMessage[],
   existingBackend?: WebsiteFilesBackend
-): Promise<{ messages: BaseMessage[]; status: "completed"; allFailed?: boolean; files?: Website.FileMap }> {
+): Promise<{
+  messages: BaseMessage[];
+  status: "completed";
+  allFailed?: boolean;
+  files?: Website.FileMap;
+}> {
   const backend = existingBackend ?? (await getCodingAgentBackend(state));
 
   // Pre-load source files into context: page components, pages, app root, CSS, libs.
@@ -339,9 +344,12 @@ export async function singleShotEdit(
 
     // Retry also failed completely — signal escalation to full agent
     return {
-      messages: [new AIMessage({
-        content: "I attempted to make the changes but encountered errors applying the edits. Could you try rephrasing your request?",
-      })],
+      messages: [
+        new AIMessage({
+          content:
+            "I attempted to make the changes but encountered errors applying the edits. Could you try rephrasing your request?",
+        }),
+      ],
       status: "completed",
       allFailed: true,
     };
@@ -352,8 +360,20 @@ export async function singleShotEdit(
   // This prevents hallucination by showing the model that tools are required for changes.
   const returnMessages: BaseMessage[] = [];
 
-  // 1. Original AIMessage with tool_use blocks preserved
-  returnMessages.push(response);
+  // 1. Original AIMessage with tool_use blocks preserved (strip text blocks
+  //    to avoid duplication — the summary AIMessage below carries the user-facing text)
+  const toolOnlyContent = Array.isArray(response.content)
+    ? response.content.filter((block: any) => block.type !== "text")
+    : [];
+  returnMessages.push(
+    new AIMessage({
+      content: toolOnlyContent,
+      id: response.id,
+      tool_calls: response.tool_calls,
+      usage_metadata: response.usage_metadata,
+      response_metadata: response.response_metadata,
+    })
+  );
 
   // 2. ToolMessages paired to every tool_call (views + edits)
   for (const vc of viewCalls) {
@@ -384,7 +404,9 @@ export async function singleShotEdit(
   } else {
     messageContent = textContent || "Done! Your changes have been applied.";
   }
-  returnMessages.push(new AIMessage({ content: messageContent, id: `sse-summary-${crypto.randomUUID()}` }));
+  returnMessages.push(
+    new AIMessage({ content: messageContent, id: `sse-summary-${crypto.randomUUID()}` })
+  );
 
   return {
     messages: returnMessages,
@@ -510,10 +532,11 @@ async function retryWithErrorContext(
     }
 
     const retryViewCalls = retryToolCalls.filter((tc: any) => (tc.args as any)?.command === "view");
-    const { successCount: retrySuccessCount, errors: retryErrors, results: retryResults } = await applyEdits(
-      backend,
-      retryEditCalls
-    );
+    const {
+      successCount: retrySuccessCount,
+      errors: retryErrors,
+      results: retryResults,
+    } = await applyEdits(backend, retryEditCalls);
 
     if (retrySuccessCount === 0) {
       // Retry also failed completely
@@ -558,7 +581,9 @@ async function retryWithErrorContext(
       messageContent +=
         "\n\nNote: some edits could not be applied. You may want to verify the changes.";
     }
-    returnMessages.push(new AIMessage({ content: messageContent, id: `sse-retry-summary-${crypto.randomUUID()}` }));
+    returnMessages.push(
+      new AIMessage({ content: messageContent, id: `sse-retry-summary-${crypto.randomUUID()}` })
+    );
 
     return {
       messages: returnMessages,

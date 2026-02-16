@@ -4,8 +4,9 @@ import type { Deploy } from "@shared";
 export function useDeployInstructions(): Deploy.Instructions {
   const { url } = usePage();
   const isWebsiteOnly = url.includes("/website/deploy");
-  return {
+  const instructions = {
     website: true,
     googleAds: !isWebsiteOnly,
   };
+  return instructions;
 }

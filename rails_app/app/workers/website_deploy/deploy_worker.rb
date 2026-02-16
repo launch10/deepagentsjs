@@ -45,7 +45,7 @@ class WebsiteDeploy
         job_run.update!(status: "running", started_at: Time.current)
       end
 
-      Rails.logger.info "Starting deploy #{deploy_id} for website #{deploy.website_id} (job_run: #{job_run_id || 'none'})"
+      Rails.logger.info "Starting deploy #{deploy_id} for website #{deploy.website_id} (job_run: #{job_run_id || "none"})"
 
       result = deploy.actually_deploy
 

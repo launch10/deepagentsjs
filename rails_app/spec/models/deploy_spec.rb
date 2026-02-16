@@ -262,7 +262,7 @@ RSpec.describe Deploy, type: :model do
     it "does not touch already-finished job_runs" do
       deploy = create(:deploy, project: project, status: "running")
       completed_jr = create(:job_run, deploy: deploy, account: account, status: "completed",
-                            started_at: 1.minute.ago, completed_at: Time.current, job_class: "WebsiteDeploy")
+        started_at: 1.minute.ago, completed_at: Time.current, job_class: "WebsiteDeploy")
 
       deploy.cancel_in_progress!
 
@@ -307,7 +307,7 @@ RSpec.describe Deploy, type: :model do
     it "cancels in-progress deploys before deactivating" do
       deploy = create(:deploy, project: project, status: "running")
       job_run = create(:job_run, deploy: deploy, account: account, status: "running",
-                       started_at: Time.current, job_class: "WebsiteDeploy")
+        started_at: Time.current, job_class: "WebsiteDeploy")
 
       deploy.deactivate!
 
@@ -353,7 +353,7 @@ RSpec.describe Deploy, type: :model do
     it "creating a new deploy cancels in-progress previous deploys" do
       first = create(:deploy, project: project, status: "running")
       job_run = create(:job_run, deploy: first, account: account, status: "running",
-                       started_at: Time.current, job_class: "WebsiteDeploy")
+        started_at: Time.current, job_class: "WebsiteDeploy")
 
       create(:deploy, project: project)
 

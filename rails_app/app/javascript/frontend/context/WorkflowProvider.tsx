@@ -10,9 +10,9 @@
  * which properly registers with Inertia's history tracking. This eliminates the need
  * for custom history patching or URL detection hacks.
  */
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, type ReactNode } from "react";
 import { useStore, type StoreApi } from "zustand";
-import { router } from "@inertiajs/react";
+import { usePage, router } from "@inertiajs/react";
 import { createWorkflowStore, type WorkflowStore } from "@stores/workflowStore";
 import { chatsRegistryStore } from "@stores/chatsRegistry";
 
@@ -26,6 +26,21 @@ interface WorkflowProviderProps {
 
 export function WorkflowProvider({ children }: WorkflowProviderProps) {
   const [store] = useState(() => createWorkflowStore());
+  const { url } = usePage();
+
+  // Sync store from URL during render, BEFORE children render.
+  // Previously this was in useLayoutEffect, which fires AFTER children render
+  // (layout effects fire bottom-up). That created a window where children saw
+  // stale state (e.g., substep: "deploy" on the build page), causing DeployStep
+  // to render and auto-start a deploy against the wrong thread_id.
+  //
+  // React blesses this pattern: "if you can compute state from props during
+  // render, do it during render instead of in an effect."
+  const prevUrlRef = useRef(url);
+  if (prevUrlRef.current !== url) {
+    prevUrlRef.current = url;
+    store.getState().syncFromUrl();
+  }
 
   // Sync from URL on browser back/forward
   useEffect(() => {
@@ -35,13 +50,6 @@ export function WorkflowProvider({ children }: WorkflowProviderProps) {
 
     window.addEventListener("popstate", handlePopstate);
     return () => window.removeEventListener("popstate", handlePopstate);
-  }, [store]);
-
-  // Sync on Inertia navigation (including router.push)
-  useEffect(() => {
-    return router.on("navigate", () => {
-      store.getState().syncFromUrl();
-    });
   }, [store]);
 
   // Sync substep to chat registry so chats know current stage

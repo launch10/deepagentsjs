@@ -14,6 +14,7 @@ import { useRootPath } from "~/stores/sessionStore";
  *
  * - Auto-starts deploy when no deploy exists (first visit)
  * - Resumes polling when reloading with an in-progress deploy
+ * - Guards against re-invocation for terminal (completed/failed) deploys
  * - Polls the graph on an interval while deploy is running
  * - Syncs deployId from graph state to project store
  * - Touches user_active_at on mount (for OAuth callback linkage)
@@ -39,6 +40,17 @@ export function useDeployInit() {
       }).catch(() => {});
     }
   }, [deploy?.id, rootPath]);
+
+  // Terminal: deploy already completed/failed → mark as acted so nothing re-triggers.
+  // SDK history loader (GET) handles populating state for the sidebar/screen.
+  // Do NOT call updateState here — that POSTs and re-invokes the graph.
+  useEffect(() => {
+    if (hasActed.current) return;
+    const isTerminal = deploy?.status === "completed" || deploy?.status === "failed";
+    if (isTerminal) {
+      hasActed.current = true;
+    }
+  }, [deploy?.status]);
 
   // Auto-start: no deploy exists → kick the graph
   useEffect(() => {

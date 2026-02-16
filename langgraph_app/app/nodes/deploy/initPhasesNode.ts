@@ -10,6 +10,16 @@ import { Deploy } from "@types";
 export function initPhasesNode(state: DeployGraphState): Partial<DeployGraphState> {
   const log = getLogger({ component: "initPhasesNode" });
 
+  log.info(
+    {
+      instructions: state.instructions,
+      existingTaskCount: state.tasks?.length ?? 0,
+      existingTaskNames: state.tasks?.map((t) => t.name) ?? [],
+      deployId: state.deployId,
+    },
+    "initPhasesNode entry"
+  );
+
   if (state.tasks && state.tasks.length > 0) {
     log.info("Tasks already exist, resuming");
     return { status: "running" };
@@ -17,7 +27,7 @@ export function initPhasesNode(state: DeployGraphState): Partial<DeployGraphStat
 
   const pendingTasks = state.instructions ? Deploy.createTasks(state.instructions) : [];
   if (pendingTasks.length === 0) {
-    log.info("No tasks to create, marking as running");
+    log.info({ instructions: state.instructions }, "No tasks to create, marking as running");
     return { status: "running" };
   }
 

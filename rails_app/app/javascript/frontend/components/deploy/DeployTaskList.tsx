@@ -3,6 +3,7 @@ import { Checklist, ChecklistItem, type ChecklistItemStatus } from "@components/
 import { Deploy } from "@shared";
 import {
   BugAntIcon,
+  MagnifyingGlassIcon,
   ChatBubbleBottomCenterTextIcon,
   ChartBarIcon,
   RocketLaunchIcon,
@@ -46,7 +47,7 @@ const PHASE_ICON_MAP: Record<Deploy.PhaseName, IconComponent> = {
   ConnectingGoogle: GoogleIcon as IconComponent,
   VerifyingGoogle: SignalIcon,
   CheckingBilling: CreditCardIcon,
-  CheckingForBugs: BugAntIcon,
+  CheckingForBugs: MagnifyingGlassIcon,
   FixingBugs: BugAntIcon,
   OptimizingSEO: ChatBubbleBottomCenterTextIcon,
   AddingAnalytics: ChartBarIcon,

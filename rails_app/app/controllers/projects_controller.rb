@@ -66,6 +66,9 @@ class ProjectsController < SubscribedController
     @project.current_workflow.update!(step: "website", substep: "deploy")
     @deploy = find_existing_deploy
 
+    deploy_chat = @project.current_chat
+    Rails.logger.info "[website_deploy] project=#{@project.id} deploy=#{@deploy&.id} deploy_status=#{@deploy&.status} deploy_active=#{@deploy&.active} current_chat=#{deploy_chat&.id} thread_id=#{deploy_chat&.thread_id} chat_type=#{deploy_chat&.chat_type}"
+
     render inertia: "Website",
       props: @project.to_website_deploy_json(@deploy),
       layout: "layouts/webcontainer"

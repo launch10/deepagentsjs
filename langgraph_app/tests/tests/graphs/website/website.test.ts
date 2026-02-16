@@ -147,7 +147,13 @@ describe("Website Builder", () => {
     it("generates a complete landing page with required sections", async () => {
       // Use WebsiteAPI.stream to go through the bridge with usageTrackingMiddleware
       const response = WebsiteAPI.stream({
-        messages: [{ role: "user", content: "howdy big guy, let's make the landing page" }],
+        messages: [
+          {
+            role: "user",
+            content:
+              "Let's make the landing page. Include these sections: Hero, HowItWorks (step-by-step process), Problem, Features, SocialProof, CTA, and Footer.",
+          },
+        ],
         threadId,
         state: {
           websiteId,
@@ -155,7 +161,11 @@ describe("Website Builder", () => {
           accountId: website.accountId ?? undefined,
           projectId: website.projectId ?? undefined,
           jwt: "test-jwt",
-          messages: [new HumanMessage("howdy big guy, let's make the landing page")],
+          messages: [
+            new HumanMessage(
+              "Let's make the landing page. Include these sections: Hero, HowItWorks (step-by-step process), Problem, Features, SocialProof, CTA, and Footer."
+            ),
+          ],
         },
       });
       await consumeStream(response);

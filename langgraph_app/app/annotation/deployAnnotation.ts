@@ -121,14 +121,3 @@ export function withPhases(
 
   return { tasks: taskUpdates, phases };
 }
-
-/**
- * Compute phases from current state without updating tasks
- * Useful when you just need to read phase status
- */
-export function getPhasesFromState(
-  state: { tasks: Task.Task[] },
-  phaseNames?: Deploy.PhaseName[]
-): Deploy.Phase[] {
-  return Deploy.computePhases(state.tasks, phaseNames);
-}

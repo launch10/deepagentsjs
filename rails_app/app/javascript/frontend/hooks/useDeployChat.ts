@@ -85,15 +85,15 @@ export function useDeployContext() {
   const projectId = props.project?.id;
   const instructions = useDeployInstructions();
 
-  return useMemo(
-    () => ({
+  return useMemo(() => {
+    const ctx = {
       projectId,
       websiteId: website?.id,
       campaignId: instructions.googleAds ? campaign?.id : undefined,
       instructions,
-    }),
-    [projectId, website?.id, campaign?.id, instructions]
-  );
+    };
+    return ctx;
+  }, [projectId, website?.id, campaign?.id, instructions]);
 }
 
 /**

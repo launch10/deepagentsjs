@@ -39,8 +39,13 @@ export const createDeployNode = NodeMiddleware.use(
     }
 
     log.info(
-      { projectId: state.projectId, threadId: config.configurable.thread_id },
-      "Creating deploy via Rails API"
+      {
+        projectId: state.projectId,
+        threadId: config.configurable.thread_id,
+        instructions: state.instructions,
+        hasDeployId: !!state.deployId,
+      },
+      "Creating NEW deploy via Rails API — no existing deployId in state"
     );
 
     const apiService = new DeployAPIService({ jwt: state.jwt });
