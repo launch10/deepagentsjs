@@ -218,13 +218,13 @@ export function backWorkflow(position: WorkflowPosition): WorkflowPosition {
     if (prevSubstep) {
       return { page: "ads", substep: prevSubstep };
     }
-    // At first substep → go back to website/deploy
-    return { page: "website", substep: "deploy" };
+    // At first substep → go back to first substep of website
+    return { page: "website", substep: getFirstSubstep("website") };
   }
 
-  // Case 5: Deploy → go back to ads/review
+  // Case 5: Deploy → go back to first substep of ads
   if (page === "deploy") {
-    return { page: "ads", substep: "review" };
+    return { page: "ads", substep: getFirstSubstep("ads") };
   }
 
   return position;

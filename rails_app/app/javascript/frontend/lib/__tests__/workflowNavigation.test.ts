@@ -293,16 +293,16 @@ describe("workflowNavigation", () => {
         expect(result2).toEqual({ page: "ads", substep: "content" });
       });
 
-      it("moves from ads/content to website/deploy", () => {
+      it("moves from ads/content to website/build (first substep of previous boundary)", () => {
         const result = backWorkflow({ page: "ads", substep: "content" });
-        expect(result).toEqual({ page: "website", substep: "deploy" });
+        expect(result).toEqual({ page: "website", substep: "build" });
       });
     });
 
     describe("from deploy", () => {
-      it("moves from deploy to ads/review", () => {
+      it("moves from deploy to ads/content (first substep of previous boundary)", () => {
         const result = backWorkflow({ page: "deploy", substep: null });
-        expect(result).toEqual({ page: "ads", substep: "review" });
+        expect(result).toEqual({ page: "ads", substep: "content" });
       });
     });
   });
@@ -350,14 +350,7 @@ describe("workflowNavigation", () => {
       }
 
       expect(visited).toEqual([
-        "ads/review",
-        "ads/launch",
-        "ads/settings",
-        "ads/keywords",
-        "ads/highlights",
         "ads/content",
-        "website/deploy",
-        "website/domain",
         "website/build",
         "brainstorm/null",
       ]);
