@@ -61,7 +61,7 @@ export const PhaseDescriptionMap: Record<PhaseName, string> = {
 export const PhaseTaskMap: Record<PhaseName, TaskName[]> = {
   // 1:1 phases: task name === phase name
   AddingAnalytics: ["AddingAnalytics"],
-  OptimizingSEO: ["OptimizingSEO"],
+  OptimizingSEO: ["OptimizingSEO", "OptimizingPageForLLMs"],
   FixingBugs: ["FixingBugs"],
   DeployingWebsite: ["DeployingWebsite"],
   ConnectingGoogle: ["ConnectingGoogle"],

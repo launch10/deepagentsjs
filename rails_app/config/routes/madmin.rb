@@ -46,6 +46,14 @@ namespace :madmin, path: :admin do
   # Credits management
   resources :credit_packs
 
+  # Friends & Family invitations
+  resources :friends_and_family, only: [:index, :create] do
+    member do
+      post :resend
+      post :revoke
+    end
+  end
+
   # Documents / FAQs
   resources :documents, only: [:index, :show] do
     collection do

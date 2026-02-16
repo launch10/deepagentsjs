@@ -50,6 +50,8 @@ export type DeployGraphState = Simplify<
     tasks: Task[];
     // Signal from frontend that this is a polling request
     polling: boolean;
+    // Nothing changed — deploy skipped because no content changed since last deploy
+    nothingChanged: boolean;
     // Phases computed from tasks for frontend display
     phases: Phase[];
   }

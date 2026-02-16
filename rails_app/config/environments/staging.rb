@@ -87,5 +87,13 @@ Rails.application.configure do
   # Skip DNS rebinding protection for the default health check endpoint.
   # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 
-  config.action_mailer.smtp_settings = Jumpstart.config.smtp_settings
+  config.action_mailer.smtp_settings = {
+    address: "smtp.resend.com",
+    port: 465,
+    user_name: "resend",
+    password: Rails.application.credentials.dig(:resend, :api_key),
+    authentication: :plain,
+    tls: true,
+    domain: "launch10.com"
+  }
 end

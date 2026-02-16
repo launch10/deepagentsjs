@@ -79,6 +79,7 @@ namespace :api, defaults: {format: :json} do
       post :touch, on: :member
       post :rollback, on: :member
       post :deactivate, on: :collection
+      post :check_changes, on: :collection
     end
 
     # Google status APIs for deploy flow

@@ -1502,7 +1502,8 @@ CREATE TABLE public.campaign_deploys (
     stacktrace text,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    deleted_at timestamp(6) without time zone
+    deleted_at timestamp(6) without time zone,
+    shasum character varying
 );
 
 
@@ -8337,6 +8338,13 @@ CREATE INDEX index_campaign_deploys_on_deleted_at ON public.campaign_deploys USI
 
 
 --
+-- Name: index_campaign_deploys_on_shasum; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaign_deploys_on_shasum ON public.campaign_deploys USING btree (shasum);
+
+
+--
 -- Name: index_campaign_deploys_on_status; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -11817,6 +11825,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260216214522'),
 ('20260216182055'),
 ('20260216180433'),
 ('20260216145338'),

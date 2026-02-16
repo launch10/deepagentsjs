@@ -123,6 +123,33 @@ export class DeployAPIService extends RailsAPIBase {
   }
 
   /**
+   * Checks whether content has changed since the last deploy.
+   * Returns granular flags per instruction type (true = changed, false = unchanged).
+   */
+  async checkChanges(
+    projectId: number,
+    instructions: Record<string, boolean>
+  ): Promise<{ website?: boolean; campaign?: boolean }> {
+    const client = await this.getClient();
+    const response = await client.POST("/api/v1/deploys/check_changes" as any, {
+      body: {
+        project_id: projectId,
+        instructions,
+      },
+    });
+
+    if (response.error) {
+      throw new Error(`Failed to check changes: ${JSON.stringify(response.error)}`);
+    }
+
+    if (!response.data) {
+      throw new Error("Failed to check changes: No data returned");
+    }
+
+    return response.data as { website?: boolean; campaign?: boolean };
+  }
+
+  /**
    * Updates the user_active_at timestamp for a deploy.
    * Called when the user is actively viewing the deploy page.
    */

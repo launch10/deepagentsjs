@@ -26,6 +26,7 @@ export const TaskNames = [
 
   // Website Preparation
   "OptimizingSEO",
+  "OptimizingPageForLLMs",
   "AddingAnalytics",
 
   // Deploy
@@ -39,7 +40,7 @@ export type TaskName = (typeof TaskNames)[number];
 export const TASK_ORDER = TaskNames;
 
 const TasksForInstructions: Record<InstructionType, TaskName[]> = {
-  website: ["ValidateLinks", "RuntimeValidation", "FixingBugs", "OptimizingSEO", "AddingAnalytics", "DeployingWebsite"],
+  website: ["ValidateLinks", "RuntimeValidation", "FixingBugs", "OptimizingSEO", "OptimizingPageForLLMs", "AddingAnalytics", "DeployingWebsite"],
   googleAds: ["ConnectingGoogle", "VerifyingGoogle", "CheckingBilling", "DeployingCampaign", "EnablingCampaign"],
 }
 
@@ -77,6 +78,7 @@ export const TaskDescriptionMap: Record<TaskName, string> = {
   // 1:1 with phases (use phase descriptions)
   AddingAnalytics: "Adding Analytics",
   OptimizingSEO: "Optimizing SEO",
+  OptimizingPageForLLMs: "Optimizing Page for LLMs",
   FixingBugs: "Squashing Bugs",
   DeployingWebsite: "Launching Website",
   ConnectingGoogle: "Signing into Google",

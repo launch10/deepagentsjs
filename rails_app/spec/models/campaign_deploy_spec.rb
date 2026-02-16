@@ -5,6 +5,7 @@
 #  id                  :bigint           not null, primary key
 #  current_step        :string
 #  deleted_at          :datetime
+#  shasum              :string
 #  stacktrace          :text
 #  status              :string           default("pending"), not null
 #  created_at          :datetime         not null
@@ -20,6 +21,7 @@
 #  index_campaign_deploys_on_created_at              (created_at)
 #  index_campaign_deploys_on_current_step            (current_step)
 #  index_campaign_deploys_on_deleted_at              (deleted_at)
+#  index_campaign_deploys_on_shasum                  (shasum)
 #  index_campaign_deploys_on_status                  (status)
 #
 require 'rails_helper'

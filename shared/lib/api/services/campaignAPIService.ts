@@ -225,6 +225,30 @@ export class CampaignAPIService extends RailsAPIBase {
   }
 
   /**
+   * Validates that a campaign has all required data for deployment.
+   * Returns { valid: true } if ready, or { valid: false, errors: [...] } if not.
+   */
+  async validateDeploy(campaignId: number): Promise<{ valid: boolean; errors: string[] }> {
+    const client = await this.getClient();
+    const response = await client.POST(
+      "/api/v1/campaigns/{id}/validate_deploy" as any,
+      {
+        params: { path: { id: campaignId } },
+      }
+    );
+
+    if (response.error) {
+      const errorData = response.error as any;
+      return {
+        valid: false,
+        errors: errorData?.errors ?? ["Campaign validation failed"],
+      };
+    }
+
+    return (response.data as any) ?? { valid: false, errors: ["No response from validation"] };
+  }
+
+  /**
    * Moves campaign back to previous stage
    */
   async back(options: BackCampaignRequest): Promise<BackCampaignResponse> {
