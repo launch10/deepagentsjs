@@ -4,6 +4,7 @@ import { Deploy } from "@types";
 import {
   createDeployNode,
   initPhasesNode,
+  nothingChangedDeployNode,
   taskExecutorNode,
   taskExecutorRouter,
   validateDeployNode,
@@ -83,6 +84,11 @@ export const deployGraph = withCreditExhaustion(
     .addNode("createDeploy", createDeployNode)
 
     // --------------------------------------------------------------------------
+    // Nothing Changed: Skip deploy when no content changed since last deploy
+    // --------------------------------------------------------------------------
+    .addNode("nothingChangedDeploy", nothingChangedDeployNode)
+
+    // --------------------------------------------------------------------------
     // Init Phases: Compute phases from any pre-existing tasks (for tests)
     // --------------------------------------------------------------------------
     .addNode("initPhases", initPhasesNode)
@@ -118,13 +124,15 @@ export const deployGraph = withCreditExhaustion(
       return "validateDeploy";
     })
 
-    // After validation: exit on failure, continue to createDeploy on success
+    // After validation: exit on failure, skip if nothing changed, otherwise create deploy
     .addConditionalEdges("validateDeploy", (state: DeployGraphState) => {
-      if (state.status === "failed") {
-        return END;
-      }
+      if (state.status === "failed") return END;
+      if (state.nothingChanged) return "nothingChangedDeploy";
       return "createDeploy";
     })
+
+    // Nothing changed → END
+    .addEdge("nothingChangedDeploy", END)
 
     // After init deploy, initialize phases
     .addEdge("createDeploy", "initPhases")

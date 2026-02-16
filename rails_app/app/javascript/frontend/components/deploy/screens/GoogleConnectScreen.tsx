@@ -1,5 +1,6 @@
 import { CheckIcon } from "@heroicons/react/24/solid";
 import { GoogleOAuthButton } from "@components/auth/GoogleOAuthButton";
+import FullResetButton from "@components/deploy/FullResetButton";
 
 const ACCESS_ITEMS = [
   "Your email address",
@@ -38,13 +39,16 @@ export default function GoogleConnectScreen() {
   return (
     <div className="flex flex-col h-full p-10">
       {/* Header — top-left aligned */}
-      <div className="flex flex-col gap-0.5">
-        <h2 className="text-lg font-semibold text-base-500">
-          Connect your Google Account
-        </h2>
-        <p className="text-xs text-base-300">
-          Google Ads requires an account with Google. Connect here so your ads run and results track. You stay in control and own the accounts.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-lg font-semibold text-base-500">
+            Connect your Google Account
+          </h2>
+          <p className="text-xs text-base-300">
+            Google Ads requires an account with Google. Connect here so your ads run and results track. You stay in control and own the accounts.
+          </p>
+        </div>
+        <FullResetButton />
       </div>
 
       {/* Centered content block — fills remaining space, vertically centered */}

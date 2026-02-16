@@ -1,5 +1,6 @@
 import { EnvelopeIcon, ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { Button } from "@components/ui/button";
+import FullResetButton from "@components/deploy/FullResetButton";
 import { useDeployChatActions, useDeployChatState } from "@hooks/useDeployChat";
 
 export interface InviteAcceptViewProps {
@@ -17,14 +18,17 @@ export function InviteAcceptView({
   return (
     <div className="flex flex-col h-full p-10">
       {/* Header — top-left aligned */}
-      <div className="flex flex-col gap-0.5">
-        <h2 className="text-lg font-semibold text-base-500">
-          Finish setting up your new Google Ads account
-        </h2>
-        <p className="text-xs text-base-300">
-          An email was sent to {googleEmail ?? "your email"}. Accept the Google invitation and
-          return to this screen to finish setup.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-0.5">
+          <h2 className="text-lg font-semibold text-base-500">
+            Finish setting up your new Google Ads account
+          </h2>
+          <p className="text-xs text-base-300">
+            An email was sent to {googleEmail ?? "your email"}. Accept the Google invitation and
+            return to this screen to finish setup.
+          </p>
+        </div>
+        <FullResetButton />
       </div>
 
       {/* Centered content — fills remaining space */}
@@ -104,7 +108,11 @@ export default function InviteAcceptScreen() {
     <InviteAcceptView
       googleEmail={googleEmail}
       onResendInvite={() => updateState({})}
-      onAccepted={() => updateState({})}
+      onAccepted={() =>
+        updateState({
+          tasks: [{ name: "VerifyingGoogle", result: { status: "accepted" } }],
+        })
+      }
     />
   );
 }

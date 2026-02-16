@@ -28,7 +28,7 @@ export interface FlashMessage {
 // Type for shared page props that all pages receive
 export interface SharedPageProps {
   // Session/identity
-  current_user?: { id: number; name: string; email: string };
+  current_user?: { id: number; name: string; email: string; admin?: boolean };
   true_user?: { id: number; name: string; email: string };
   impersonating?: boolean;
   // API config

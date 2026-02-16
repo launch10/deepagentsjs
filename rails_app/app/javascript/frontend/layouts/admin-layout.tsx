@@ -5,6 +5,7 @@ import { AdminSidebar } from "@components/navigation";
 import AdminHeader from "@components/shared/header/AdminHeader";
 import { Toaster } from "@components/ui/sonner";
 import { useSessionStore } from "~/stores/sessionStore";
+import { useFlashMessages } from "@hooks/layout";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,8 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }): React.
     });
   }, [props]);
 
+  useFlashMessages();
+
   // Scroll to top on route change
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0);
@@ -46,7 +49,7 @@ export const AdminLayout = ({ children }: { children: React.ReactNode }): React.
             {children}
           </main>
         </div>
-        <Toaster />
+        <Toaster position="top-right" />
       </div>
     </QueryClientProvider>
   );

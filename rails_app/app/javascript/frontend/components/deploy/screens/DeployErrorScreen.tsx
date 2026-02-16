@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ExclamationTriangleIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import { Button } from "@components/ui/button";
+import FullResetButton from "@components/deploy/FullResetButton";
 import { Deploy } from "@shared";
 import { useDeployChatState, useDeployNewDeploy } from "@hooks/useDeployChat";
 
@@ -67,6 +68,10 @@ export default function DeployErrorScreen() {
             {retrying ? "Retrying…" : "Retry Deploy"}
           </Button>
         )}
+
+        <div className="mt-4">
+          <FullResetButton />
+        </div>
       </div>
     </div>
   );

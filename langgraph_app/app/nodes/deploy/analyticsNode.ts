@@ -156,8 +156,8 @@ export const analyticsTaskRunner: TaskRunner = {
   taskName: TASK_NAME,
 
   readyToRun: (state: DeployGraphState) => {
-    // Ready after SEO optimization is done
-    return isTaskDone(state, "OptimizingSEO");
+    // Ready after page optimization for LLMs is done
+    return isTaskDone(state, "OptimizingPageForLLMs");
   },
 
   shouldSkip: (state: DeployGraphState) => {

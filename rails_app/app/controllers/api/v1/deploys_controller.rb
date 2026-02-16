@@ -83,6 +83,25 @@ class API::V1::DeploysController < API::BaseController
     render json: { touched_at: deploy.user_active_at }
   end
 
+  # POST /api/v1/deploys/check_changes
+  # Checks whether website files or campaign data have changed since last deploy
+  def check_changes
+    project = current_account.projects.find(params[:project_id])
+    result = {}
+
+    if params.dig(:instructions, :website).present?
+      website = project.website
+      result[:website] = website ? website.files_changed? : true
+    end
+
+    if params.dig(:instructions, :google_ads).present?
+      campaign = project.campaigns.first
+      result[:campaign] = campaign ? campaign.campaign_changed? : true
+    end
+
+    render json: result
+  end
+
   # POST /api/v1/deploys/:id/rollback
   # Delegates rollback to the linked website_deploy
   def rollback
@@ -132,7 +151,7 @@ class API::V1::DeploysController < API::BaseController
       current_step: deploy.current_step,
       is_live: deploy.is_live,
       thread_id: deploy.thread_id,
-      instructions: camelcase_instructions(deploy.instructions),
+      instructions: deploy.camelcase_instructions,
       support_ticket: deploy.support_request&.ticket_reference,
       finished_at: deploy.finished_at,
       duration: deploy.duration,
@@ -142,15 +161,6 @@ class API::V1::DeploysController < API::BaseController
       created_at: deploy.created_at,
       updated_at: deploy.updated_at
     }
-  end
-
-  # Convert snake_case DB keys back to camelCase for the TS frontend
-  def camelcase_instructions(instructions)
-    return {} if instructions.blank?
-
-    instructions.each_with_object({}) do |(k, v), h|
-      h[k.to_s.camelize(:lower)] = v
-    end
   end
 
   def pagy_metadata(pagy)

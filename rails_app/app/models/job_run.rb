@@ -89,8 +89,12 @@ class JobRun < ApplicationRecord
 
   # Enqueues async webhook delivery - no bang since it doesn't raise
   def notify_langgraph(status:, result: nil, error: nil)
-    return unless langgraph_thread_id.present? && langgraph_callback_url.present?
+    unless langgraph_thread_id.present? && langgraph_callback_url.present?
+      Rails.logger.warn "[VerifyGoogle::notify_langgraph] #{Time.current.iso8601(3)} job_run=#{id} SKIPPED — thread_id=#{langgraph_thread_id.present?} callback_url=#{langgraph_callback_url.present?}"
+      return
+    end
 
+    Rails.logger.info "[VerifyGoogle::notify_langgraph] #{Time.current.iso8601(3)} job_run=#{id} status=#{status} result=#{result.inspect} thread_id=#{langgraph_thread_id} callback_url=#{langgraph_callback_url}"
     LanggraphCallbackWorker.perform_async(id, callback_payload(status, result, error))
   end
 

@@ -66,14 +66,14 @@ export const useSessionStore = create<SessionStore>()(
     set: (updates) => set((state) => ({ ...state, ...updates })),
 
     hydrateFromPageProps: (props) => {
-      set({
-        currentUser: props.current_user ?? null,
-        trueUser: props.true_user ?? null,
-        impersonating: props.impersonating ?? false,
-        jwt: props.jwt ?? null,
-        langgraphPath: props.langgraph_path ?? null,
-        rootPath: props.root_path ?? null,
-      });
+      set((state) => ({
+        currentUser: props.current_user !== undefined ? props.current_user ?? null : state.currentUser,
+        trueUser: props.true_user !== undefined ? props.true_user ?? null : state.trueUser,
+        impersonating: props.impersonating !== undefined ? props.impersonating ?? false : state.impersonating,
+        jwt: props.jwt !== undefined ? props.jwt ?? null : state.jwt,
+        langgraphPath: props.langgraph_path !== undefined ? props.langgraph_path ?? null : state.langgraphPath,
+        rootPath: props.root_path !== undefined ? props.root_path ?? null : state.rootPath,
+      }));
     },
   }))
 );

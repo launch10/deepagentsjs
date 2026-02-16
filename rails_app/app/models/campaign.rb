@@ -48,6 +48,7 @@ class Campaign < ApplicationRecord
   include CampaignConcerns::GooglePlatformSettings
   include CampaignConcerns::MetaPlatformSettings
   include CampaignConcerns::GoogleSyncable
+  include CampaignConcerns::ShasumHashable
   include ChatCreatable
 
   acts_as_paranoid

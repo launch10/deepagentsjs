@@ -9,10 +9,16 @@ module Madmin
     impersonates :user
 
     inertia_share do
+      flash_messages = []
+      {notice: "success", alert: "error"}.each do |key, type|
+        flash_messages << {type: type, message: flash[key]} if flash[key]
+      end
+
       {
         current_user: current_user&.slice(:id, :name, :email)&.merge(admin: current_user.admin?),
         true_user: true_user&.slice(:id, :name, :email)&.merge(admin: true_user.admin?),
-        impersonating: current_user && true_user && current_user.id != true_user.id
+        impersonating: current_user && true_user && current_user.id != true_user.id,
+        flash: flash_messages
       }
     end
 

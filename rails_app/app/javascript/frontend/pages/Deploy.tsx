@@ -20,6 +20,8 @@ import {
 } from "@hooks/useDeployChat";
 import { useDeployInit } from "@hooks/useDeployInit";
 import { useDeployContentScreen, type DeployScreen } from "@hooks/useDeployContentScreen";
+import { useDeployInstructions } from "@hooks/useDeployInstructions";
+import FullResetButton from "@components/deploy/FullResetButton";
 
 const SCREENS: Record<DeployScreen, React.ComponentType> = {
   "in-progress": InProgressScreen,
@@ -38,8 +40,9 @@ function DeployContent() {
   useDeployInit();
 
   const state = useDeployChatFullState();
-  const screen = useDeployContentScreen(state, deploy?.status);
-  const isComplete = state.status === "completed" || deploy?.status === "completed";
+  const pageInstructions = useDeployInstructions();
+  const screen = useDeployContentScreen(state, deploy?.status, deploy?.instructions, pageInstructions);
+  const isComplete = screen === "deploy-complete";
 
   const DeployScreen = SCREENS[screen];
 
@@ -57,6 +60,7 @@ function DeployContent() {
       <PaginationFooter.Root layout="full-bleed" canGoBack={isComplete} canGoForward={isComplete}>
         <PaginationFooter.BackButton />
         <PaginationFooter.Actions>
+          <FullResetButton />
           <PaginationFooter.ContinueButton disabled={!isComplete} />
         </PaginationFooter.Actions>
       </PaginationFooter.Root>

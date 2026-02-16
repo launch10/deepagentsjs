@@ -25,6 +25,12 @@ function statusToBadgeVariant(deploy: DeployRecord): "live" | "success" | "faile
   return "failed";
 }
 
+function instructionLabel(instructions: Record<string, boolean> | undefined): string {
+  if (!instructions || Object.keys(instructions).length === 0) return "Website";
+  const hasAds = instructions.googleAds || instructions.google_ads;
+  return hasAds ? "Website | Campaign" : "Website";
+}
+
 function DeployHistoryItem({ deploy }: { deploy: DeployRecord }) {
   const rootPath = useRootPath();
   const [rolling, setRolling] = useState(false);
@@ -73,6 +79,9 @@ function DeployHistoryItem({ deploy }: { deploy: DeployRecord }) {
         )}
         <span className="text-sm text-base-500">{formatTimestamp(deploy.created_at)}</span>
         <DeploymentHistoryBadge variant={statusToBadgeVariant(deploy)} />
+        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-base-400">
+          {instructionLabel(deploy.instructions)}
+        </span>
       </div>
       {canRollback && (
         <button

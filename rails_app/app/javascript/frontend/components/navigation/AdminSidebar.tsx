@@ -8,6 +8,7 @@ import {
   CreditCardIcon,
   DocumentTextIcon,
   ChatBubbleLeftRightIcon,
+  HeartIcon,
   ArrowRightStartOnRectangleIcon,
   ArrowLeftStartOnRectangleIcon,
 } from "@heroicons/react/24/outline";
@@ -36,6 +37,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: "Users", href: "/admin/users", icon: UsersIcon },
       { label: "Accounts", href: "/admin/accounts", icon: BuildingOfficeIcon },
+      { label: "Friends & Family", href: "/admin/friends_and_family", icon: HeartIcon },
     ],
   },
   {

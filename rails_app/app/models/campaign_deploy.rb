@@ -5,6 +5,7 @@
 #  id                  :bigint           not null, primary key
 #  current_step        :string
 #  deleted_at          :datetime
+#  shasum              :string
 #  stacktrace          :text
 #  status              :string           default("pending"), not null
 #  created_at          :datetime         not null
@@ -20,6 +21,7 @@
 #  index_campaign_deploys_on_created_at              (created_at)
 #  index_campaign_deploys_on_current_step            (current_step)
 #  index_campaign_deploys_on_deleted_at              (deleted_at)
+#  index_campaign_deploys_on_shasum                  (shasum)
 #  index_campaign_deploys_on_status                  (status)
 #
 class CampaignDeploy < ApplicationRecord
@@ -37,6 +39,9 @@ class CampaignDeploy < ApplicationRecord
   validates :status, presence: true, inclusion: { in: STATUS }
 
   scope :in_progress, -> { where(status: %w[pending]) }
+  scope :completed, -> { where(status: "completed") }
+
+  before_create :set_shasum
 
   def self.deploy(campaign, async: true, job_run_id: nil)
     lock_key = "campaign_deploy:#{campaign.id}"
@@ -427,5 +432,11 @@ class CampaignDeploy < ApplicationRecord
     end
 
     false  # More steps remain (we just enqueued/recursed)
+  end
+
+  private
+
+  def set_shasum
+    self.shasum = campaign.generate_shasum
   end
 end

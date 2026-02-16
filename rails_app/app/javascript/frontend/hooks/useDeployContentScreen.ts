@@ -20,6 +20,8 @@ type DeployStatus = Deploy.DeployGraphState["status"];
  *
  * Priority order:
  * 1. Terminal states (from langgraph state or Rails deploy record)
+ *    — Rails status is only used when the deploy's instructions match the page's expectations.
+ *      A stale deploy with different instructions is ignored.
  * 2. Task-specific blocking states (OAuth, invite, payment)
  * 3. Default in-progress
  */
@@ -27,12 +29,22 @@ export function resolveContentScreen(
   tasks: TaskState,
   status: DeployStatus,
   instructions: Deploy.DeployGraphState["instructions"],
-  railsDeployStatus?: string
+  railsDeployStatus?: string,
+  railsDeployInstructions?: Record<string, boolean>,
+  pageInstructions?: Record<string, boolean>
 ): DeployScreen {
+  // Only trust Rails deploy status when its instructions match what this page expects
+  const railsInstructionsMatch =
+    !!railsDeployInstructions &&
+    !!pageInstructions &&
+    JSON.stringify(railsDeployInstructions) === JSON.stringify(pageInstructions);
+
+  const effectiveRailsStatus = railsInstructionsMatch ? railsDeployStatus : undefined;
+
   // Terminal states — check both langgraph state and Rails record
   // Rails status is the fallback for page reloads before langgraph state loads
-  if (status === "completed" || railsDeployStatus === "completed") return "deploy-complete";
-  if (status === "failed" || railsDeployStatus === "failed") return "deploy-error";
+  if (status === "completed" || effectiveRailsStatus === "completed") return "deploy-complete";
+  if (status === "failed" || effectiveRailsStatus === "failed") return "deploy-error";
 
   if (!tasks || tasks.length === 0) return "in-progress";
 
@@ -85,11 +97,20 @@ export function resolveContentScreen(
  */
 export function useDeployContentScreen(
   state: Partial<Deploy.DeployGraphState>,
-  railsDeployStatus?: string
+  railsDeployStatus?: string,
+  railsDeployInstructions?: Record<string, boolean>,
+  pageInstructions?: Record<string, boolean>
 ): DeployScreen {
   return useMemo(
     () =>
-      resolveContentScreen(state.tasks, state.status, state.instructions ?? {}, railsDeployStatus),
-    [state.tasks, state.status, state.instructions, railsDeployStatus]
+      resolveContentScreen(
+        state.tasks,
+        state.status,
+        state.instructions ?? {},
+        railsDeployStatus,
+        railsDeployInstructions,
+        pageInstructions
+      ),
+    [state.tasks, state.status, state.instructions, railsDeployStatus, railsDeployInstructions, pageInstructions]
   );
 }

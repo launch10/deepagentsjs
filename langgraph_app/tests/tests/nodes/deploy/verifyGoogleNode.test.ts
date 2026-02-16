@@ -48,6 +48,9 @@ describe("verifyGoogleNode", () => {
           getInviteStatus: vi
             .fn()
             .mockResolvedValue({ accepted: false, status: "sent", email: "user@gmail.com" }),
+          refreshInviteStatus: vi
+            .fn()
+            .mockResolvedValue({ accepted: false, status: "pending" }),
         }) as any
     );
   });
@@ -105,6 +108,37 @@ describe("verifyGoogleNode", () => {
       // Should update task to completed
       const updatedTask = result.tasks?.find((t: Task.Task) => t.name === "VerifyingGoogle");
       expect(updatedTask?.status).toBe("completed");
+    });
+
+    /**
+     * USER OUTCOME: When user clicks "I accepted the invite" on InviteAcceptScreen,
+     * the frontend sends updateState({ tasks: [{ name: "VerifyingGoogle", result: { status: "accepted" } }] }).
+     * The MergeReducer merges this into the existing running task — same code path as webhook,
+     * but triggered by user action rather than polling. Graph trusts the user and proceeds.
+     */
+    it("marks task completed when user confirms acceptance via frontend updateState", async () => {
+      // Simulates the merged state after MergeReducer processes
+      // updateState({ tasks: [{ name: "VerifyingGoogle", result: { status: "accepted" } }] })
+      // The existing running task (with jobId) gets result merged in
+      const state: Partial<DeployGraphState> = {
+        jwt: "test-jwt",
+        threadId: "thread_123" as ThreadIDType,
+        tasks: [
+          {
+            ...Deploy.createTask("VerifyingGoogle"),
+            status: "running",
+            jobId: 123,
+            result: { status: "accepted" },
+          } as Task.Task,
+        ],
+      };
+
+      const result = await verifyGoogleNode(state as DeployGraphState);
+
+      const updatedTask = result.tasks?.find((t: Task.Task) => t.name === "VerifyingGoogle");
+      expect(updatedTask?.status).toBe("completed");
+      // Should NOT have called any external APIs — trusts the signal directly
+      expect(mockJobRunAPIService).not.toHaveBeenCalled();
     });
 
     it("marks task failed when running with error from webhook", async () => {
@@ -292,23 +326,26 @@ describe("verifyGoogleNode", () => {
       expect(result).toEqual({});
     });
 
-    it("handles result with unexpected status (not 'accepted')", async () => {
+    it("re-creates job when result has unexpected status (not 'accepted')", async () => {
       const state: Partial<DeployGraphState> = {
         jwt: "test-jwt",
         threadId: "thread_123" as ThreadIDType,
+        accountId: 1,
         tasks: [
           {
             ...Deploy.createTask("VerifyingGoogle"),
             status: "running",
             jobId: 123,
-            result: { status: "pending" }, // Not 'accepted', still waiting
+            result: { status: "pending" }, // Not 'accepted' — falls through to re-create
           } as Task.Task,
         ],
       };
 
-      // Should return empty (still waiting for 'accepted')
       const result = await verifyGoogleNode(state as DeployGraphState);
-      expect(result).toEqual({});
+      // Falls through to step 6 (create new JobRun) since result.status !== "accepted"
+      // and self-heal condition (!task.result?.status) is false
+      const updatedTask = result.tasks?.find((t: Task.Task) => t.name === "VerifyingGoogle");
+      expect(updatedTask?.jobId).toBeDefined();
     });
   });
 

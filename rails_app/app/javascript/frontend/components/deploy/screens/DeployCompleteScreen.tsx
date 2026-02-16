@@ -5,6 +5,7 @@ import type { Deployment } from "@components/website/deployment-history/Deployme
 import { DeployHistory } from "@components/deploy";
 import { Button } from "@components/ui/button";
 import DevButton from "@components/shared/DevButton";
+import FullResetButton from "@components/deploy/FullResetButton";
 import { useDeployId } from "~/stores/projectStore";
 import { useDeployChatState, useDeployNewDeploy, type DeployProps } from "@hooks/useDeployChat";
 import deployImage from "@assets/deploy.png";
@@ -80,6 +81,7 @@ export default function DeployCompleteScreen() {
   const { website_url, deploy_environment } = usePage<DeployProps>().props;
   const result = useDeployChatState("result");
   const tasks = useDeployChatState("tasks");
+  const nothingChanged = useDeployChatState("nothingChanged");
   const hasCampaign = (tasks ?? []).some((t) => CAMPAIGN_TASK_NAMES.includes(t.name));
   const rawUrl = (result?.url as string | undefined) || website_url || undefined;
   const deployUrl = buildDeployUrl(rawUrl, deploy_environment ?? undefined);
@@ -111,6 +113,7 @@ export default function DeployCompleteScreen() {
           </p>
         </div>
         <div className="flex shrink-0 gap-3">
+          <FullResetButton />
           <RestartDeployButton />
           <NewDeployButton />
         </div>
@@ -121,13 +124,16 @@ export default function DeployCompleteScreen() {
         <img src={deployImage} alt="Deployment" className="w-40 sm:w-56" />
         <div className="flex flex-col items-center gap-3 text-center">
           <h3 className="text-xl font-semibold text-base-500">
-            {hasCampaign
-              ? "You've just launched your first campaign"
-              : "You've just launched your website"}
+            {nothingChanged
+              ? "Everything is already up to date"
+              : hasCampaign
+                ? "You've just launched your first campaign"
+                : "You've just launched your website"}
           </h3>
           <p className="max-w-md text-sm leading-[18px] text-base-300">
-            Your big idea is now out in the world and attracting customers. This is just the
-            beginning of something amazing!
+            {nothingChanged
+              ? "No changes were detected since your last deployment. Your website and campaigns are running the latest version."
+              : "Your big idea is now out in the world and attracting customers. This is just the beginning of something amazing!"}
           </p>
         </div>
       </div>

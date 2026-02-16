@@ -18,26 +18,29 @@ vi.mock("@rails_api", async () => {
     ...actual,
     JobRunAPIService: vi.fn(),
     DeployAPIService: vi.fn(),
+    CampaignAPIService: vi.fn(),
   };
 });
 
 vi.mock("@services", async () => {
   const actual = await vi.importActual("@services");
-  // Re-use the same JobRunAPIService mock from @rails_api so both import paths share one mock
-  const { JobRunAPIService } = await import("@rails_api");
+  // Re-use the same mocks from @rails_api so both import paths share one mock
+  const { JobRunAPIService, CampaignAPIService } = await import("@rails_api");
   return {
     ...actual,
     GoogleAPIService: vi.fn(),
     JobRunAPIService,
+    CampaignAPIService,
   };
 });
 
 import { GoogleAPIService } from "@services";
-import { JobRunAPIService, DeployAPIService } from "@rails_api";
+import { JobRunAPIService, DeployAPIService, CampaignAPIService } from "@rails_api";
 
 const mockGoogleAPIService = vi.mocked(GoogleAPIService);
 const mockJobRunAPIService = vi.mocked(JobRunAPIService);
 const mockDeployAPIService = vi.mocked(DeployAPIService);
+const mockCampaignAPIService = vi.mocked(CampaignAPIService);
 
 const deployGraph = uncompiledGraph.compile({ ...graphParams, name: "deploy" });
 
@@ -77,7 +80,15 @@ afterEach(async () => {
 describe.sequential("Deploy Graph Tests", () => {
   // Mock DeployAPIService globally — initDeployNode creates the deploy,
   // syncDeployStatus updates it at terminal states.
+  // Mock CampaignAPIService globally — validateDeployNode checks campaign readiness.
   beforeEach(() => {
+    mockCampaignAPIService.mockImplementation(
+      () =>
+        ({
+          validateDeploy: vi.fn().mockResolvedValue({ valid: true, errors: [] }),
+        }) as any
+    );
+
     mockDeployAPIService.mockImplementation(
       () =>
         ({
@@ -889,6 +900,92 @@ describe.sequential("Deploy Graph Tests", () => {
     });
 
     /**
+     * USER OUTCOME: Deploy fails early when campaign is missing required data.
+     * This prevents the CampaignDeploy worker from crashing with nil budget/keywords.
+     */
+    it("fails when campaign is missing required data", async () => {
+      mockCampaignAPIService.mockImplementation(
+        () =>
+          ({
+            validateDeploy: vi.fn().mockResolvedValue({
+              valid: false,
+              errors: ["Daily budget must be greater than 0", "Keywords must have between 5-15 keywords per ad group (currently has 0)"],
+            }),
+          }) as any
+      );
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_no_campaign_data" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          campaignId: 1,
+
+          instructions: { googleAds: true },
+          tasks: [],
+          chatId: 1,
+        })
+        .execute();
+
+      // Should fail before any tasks are created/run
+      expect(result.state.status).toBe("failed");
+      expect(result.state.error).toBeDefined();
+      expect(result.state.error?.message).toContain("Campaign is not ready to deploy");
+      expect(result.state.error?.message).toContain("budget");
+      // No tasks should have been executed
+      expect(result.state.tasks.length).toBe(0);
+    });
+
+    /**
+     * USER OUTCOME: Deploy proceeds when campaign passes validation.
+     */
+    it("passes validation when campaign is complete", async () => {
+      await DatabaseSnapshotter.restoreSnapshot("campaign_complete");
+      const campaignId = (await db.select().from(campaigns).limit(1).execute())[0]?.id;
+
+      mockCampaignAPIService.mockImplementation(
+        () =>
+          ({
+            validateDeploy: vi.fn().mockResolvedValue({ valid: true, errors: [] }),
+          }) as any
+      );
+
+      mockGoogleAPIService.mockImplementation(
+        () =>
+          ({
+            getConnectionStatus: vi
+              .fn()
+              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
+            getInviteStatus: vi
+              .fn()
+              .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
+            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: true }),
+          }) as any
+      );
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_valid_campaign" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          campaignId,
+
+          instructions: { googleAds: true },
+          tasks: [],
+          chatId: 1,
+        })
+        .execute();
+
+      // Should NOT fail — validation passed, tasks should be created
+      expect(result.state.status).not.toBe("failed");
+      expect(result.state.tasks.length).toBeGreaterThan(0);
+    });
+
+    /**
      * USER OUTCOME: Website deployment job is created.
      */
     it("creates deployment job", async () => {
@@ -967,6 +1064,7 @@ describe.sequential("Deploy Graph Tests", () => {
         "RuntimeValidation",
         "FixingBugs",
         "OptimizingSEO",
+        "OptimizingPageForLLMs",
         "AddingAnalytics",
         "DeployingWebsite",
       ];
@@ -1048,6 +1146,7 @@ describe.sequential("Deploy Graph Tests", () => {
         "RuntimeValidation",
         "FixingBugs",
         "OptimizingSEO",
+        "OptimizingPageForLLMs",
         "AddingAnalytics",
         "DeployingWebsite",
         "DeployingCampaign",
@@ -1208,6 +1307,7 @@ describe.sequential("Deploy Graph Tests", () => {
         "RuntimeValidation",
         "FixingBugs",
         "OptimizingSEO",
+        "OptimizingPageForLLMs",
         "AddingAnalytics",
         "DeployingWebsite",
       ];
@@ -1352,6 +1452,7 @@ describe.sequential("Deploy Graph Tests", () => {
             "RuntimeValidation",
             "FixingBugs",
             "OptimizingSEO",
+            "OptimizingPageForLLMs",
             "AddingAnalytics",
           ].includes(t.name)
         ) {
@@ -1729,6 +1830,200 @@ describe.sequential("Deploy Graph Tests", () => {
       const enableTask = result.state.tasks.find((t) => t.name === "EnablingCampaign");
       expect(enableTask?.status).toBe("running");
       expect(enableTask?.jobId).toBeDefined();
+    });
+  });
+
+  /**
+   * =============================================================================
+   * 9. NOTHING CHANGED DETECTION TESTS
+   * =============================================================================
+   * These tests verify the change detection flow that skips deploy when
+   * no content has changed since the last deployment.
+   *
+   * USER OUTCOME: Redeploying without changes completes instantly with
+   * "Everything is already up to date" instead of running the full pipeline.
+   */
+  describe("Nothing Changed Detection", () => {
+    beforeEach(async () => {
+      vi.clearAllMocks();
+      await DatabaseSnapshotter.restoreSnapshot("website_deploy_step");
+    });
+
+    it("skips deploy when nothing changed", async () => {
+      // Mock checkChanges returning all false (nothing changed)
+      mockDeployAPIService.mockImplementation(
+        () =>
+          ({
+            create: vi.fn().mockResolvedValue({
+              id: 1,
+              project_id: 1,
+              status: "pending",
+              is_live: false,
+              thread_id: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }),
+            update: vi.fn().mockResolvedValue({
+              id: 1,
+              project_id: 1,
+              status: "completed",
+              is_live: true,
+              thread_id: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }),
+            checkChanges: vi.fn().mockResolvedValue({ website: false }),
+          }) as any
+      );
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_nothing_changed" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          instructions: { website: true },
+          tasks: [],
+          chatId: 1,
+        })
+        .execute();
+
+      // Should exit with nothingChanged and completed status
+      expect(result.state.nothingChanged).toBe(true);
+      expect(result.state.status).toBe("completed");
+      expect(result.state.deployId).toBeDefined();
+      // No tasks should have been created (skipped the full pipeline)
+      expect(result.state.tasks.length).toBe(0);
+    });
+
+    it("narrows instructions when only some things changed", async () => {
+      // Mock checkChanges: website changed, campaign did not
+      mockDeployAPIService.mockImplementation(
+        () =>
+          ({
+            create: vi.fn().mockResolvedValue({
+              id: 1,
+              project_id: 1,
+              status: "pending",
+              is_live: false,
+              thread_id: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }),
+            update: vi.fn().mockResolvedValue({
+              id: 1,
+              project_id: 1,
+              status: "completed",
+              is_live: true,
+              thread_id: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }),
+            checkChanges: vi.fn().mockResolvedValue({ website: true, campaign: false }),
+          }) as any
+      );
+
+      mockGoogleAPIService.mockImplementation(
+        () =>
+          ({
+            getConnectionStatus: vi
+              .fn()
+              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
+            getInviteStatus: vi
+              .fn()
+              .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
+            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: true }),
+          }) as any
+      );
+
+      // Mock JobRunAPIService to prevent real Rails worker dispatch
+      mockJobRunAPIService.mockImplementation(
+        () =>
+          ({
+            create: vi.fn().mockResolvedValue({ id: 999, status: "pending" }),
+          }) as any
+      );
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_partial_changed" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          campaignId: 1,
+          instructions: { website: true, googleAds: true },
+          tasks: [],
+          chatId: 1,
+        })
+        .stopAfter("initPhases")
+        .execute();
+
+      // Should NOT be nothingChanged (website did change)
+      expect(result.state.nothingChanged).toBe(false);
+      // Instructions should be narrowed — googleAds set to false
+      expect(result.state.instructions.website).toBe(true);
+      expect(result.state.instructions.googleAds).toBe(false);
+      // Should only have website tasks, no campaign tasks
+      const campaignTasks = result.state.tasks.filter((t) =>
+        ["ConnectingGoogle", "VerifyingGoogle", "CheckingBilling", "DeployingCampaign", "EnablingCampaign"].includes(t.name)
+      );
+      expect(campaignTasks.length).toBe(0);
+    });
+
+    it("proceeds with full deploy when change check fails", async () => {
+      // Mock checkChanges throwing an error
+      mockDeployAPIService.mockImplementation(
+        () =>
+          ({
+            create: vi.fn().mockResolvedValue({
+              id: 1,
+              project_id: 1,
+              status: "pending",
+              is_live: false,
+              thread_id: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }),
+            update: vi.fn().mockResolvedValue({
+              id: 1,
+              project_id: 1,
+              status: "completed",
+              is_live: true,
+              thread_id: null,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }),
+            checkChanges: vi.fn().mockRejectedValue(new Error("Network error")),
+          }) as any
+      );
+
+      mockJobRunAPIService.mockImplementation(
+        () =>
+          ({
+            create: vi.fn().mockResolvedValue({ id: 999, status: "pending" }),
+          }) as any
+      );
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_check_failed" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          instructions: { website: true },
+          tasks: [],
+          chatId: 1,
+        })
+        .stopAfter("initPhases")
+        .execute();
+
+      // Should proceed normally — not nothingChanged
+      expect(result.state.nothingChanged).toBe(false);
+      // Should have tasks created (full deploy pipeline)
+      expect(result.state.tasks.length).toBeGreaterThan(0);
     });
   });
 });

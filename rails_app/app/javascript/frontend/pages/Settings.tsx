@@ -59,7 +59,7 @@ export default function Settings() {
             subscriptionPrefixId={subscription?.prefix_id}
             paymentMethod={payment_method}
           />
-          <SubscriptionSection subscription={subscription ?? null} />
+          <SubscriptionSection subscription={subscription ?? null} stripePortalUrl={stripe_portal_url} />
         </div>
       </div>
     </main>

@@ -1,0 +1,12 @@
+You've been invited to test Launch10!
+
+<%= @admin.name %> has invited you to try Launch10 as part of our friends & family preview.
+
+<% if @credits > 0 %>
+You've been gifted <%= @credits %> credits to get started.
+<% end %>
+
+Set up your password and start using Launch10:
+<%= @reset_url %>
+
+This link will expire in 6 hours. If it expires, ask your inviter to resend.

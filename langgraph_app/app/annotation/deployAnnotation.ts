@@ -67,6 +67,12 @@ export const DeployAnnotation = Annotation.Root({
     reducer: (current, next) => next ?? current,
   }),
 
+  // Nothing changed — deploy skipped because no content changed since last deploy
+  nothingChanged: Annotation<boolean>({
+    default: () => false,
+    reducer: (current, next) => next ?? current,
+  }),
+
   // Phases - "poppa tasks" computed from child tasks for frontend display
   // Updated alongside tasks via the withPhases() helper
   phases: Annotation<Deploy.Phase[]>({

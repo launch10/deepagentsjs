@@ -97,6 +97,14 @@ class Deploy < ApplicationRecord
     end
   end
 
+  def camelcase_instructions
+    return {} if instructions.blank?
+
+    instructions.each_with_object({}) do |(k, v), h|
+      h[k.to_s.camelize(:lower)] = v
+    end
+  end
+
   def touch_user_active!
     update_column(:user_active_at, Time.current)
   end
