@@ -170,7 +170,14 @@ app.get('*', async (c) => {
   }
   
   headers.set('content-type', contentType);
-  
+
+  // Security headers
+  headers.set('X-Frame-Options', 'DENY');
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+
   console.log(`Serving ${objectKey} with content-type: ${contentType}`);
 
   return new Response(object.body, {
