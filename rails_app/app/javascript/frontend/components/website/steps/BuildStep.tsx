@@ -137,7 +137,7 @@ export default function BuildStep() {
         </main>
 
         {/* Footer - full width background, content aligned with preview */}
-        <PaginationFooter.Root layout="full-bleed" isPending={isInitialLoading} canGoBack={false}>
+        <PaginationFooter.Root layout="full-bleed" isPending={isInitialLoading}>
           <PaginationFooter.BackButton />
           <PaginationFooter.Actions>
             <RestartChatButton />

@@ -1,7 +1,13 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { DeployAnnotation, type DeployGraphState } from "@annotation";
 import { Deploy } from "@types";
-import { createDeployNode, initPhasesNode, taskExecutorNode, taskExecutorRouter } from "@nodes";
+import {
+  createDeployNode,
+  initPhasesNode,
+  taskExecutorNode,
+  taskExecutorRouter,
+  validateDeployNode,
+} from "@nodes";
 import { withCreditExhaustion } from "./shared";
 import { getLogger } from "@core";
 
@@ -21,7 +27,12 @@ import { getLogger } from "@core";
  * │   ├──[nothing to deploy?]──► END                                         │
  * │   │                                                                      │
  * │   ▼                                                                      │
- * │ initDeploy (idempotent chat creation via Rails API)                      │
+ * │ validateDeploy (check preconditions: domain assigned, etc.)              │
+ * │   │                                                                      │
+ * │   ├──[validation failed?]──► END (with error)                            │
+ * │   │                                                                      │
+ * │   ▼                                                                      │
+ * │ createDeploy (idempotent chat creation via Rails API)                    │
  * │   │                                                                      │
  * │   ▼                                                                      │
  * │ initPhases                                                               │
@@ -36,7 +47,7 @@ import { getLogger } from "@core";
  * │   └──[end]──► END                                                        │
  * └──────────────────────────────────────────────────────────────────────────┘
  *
- * Chat is created by initDeploy node (first node in graph) via Rails API.
+ * Chat is created by createDeploy node via Rails API.
  * Frontend triggers the graph with a fresh thread_id; the node idempotently
  * creates the Chat record. Thread ownership is validated by JWT auth.
  *
@@ -62,6 +73,11 @@ import { getLogger } from "@core";
 export const deployGraph = withCreditExhaustion(
   new StateGraph(DeployAnnotation)
     // --------------------------------------------------------------------------
+    // Validate Deploy: Check preconditions (domain assigned, etc.)
+    // --------------------------------------------------------------------------
+    .addNode("validateDeploy", validateDeployNode)
+
+    // --------------------------------------------------------------------------
     // Init Deploy: Idempotent chat creation via Rails API
     // --------------------------------------------------------------------------
     .addNode("createDeploy", createDeployNode)
@@ -80,7 +96,7 @@ export const deployGraph = withCreditExhaustion(
     // ROUTING
     // ==========================================================================
 
-    // Route from START: exit early if nothing to deploy, or init the deploy
+    // Route from START: exit early if nothing to deploy, or validate first
     .addConditionalEdges(START, (state: DeployGraphState) => {
       const log = getLogger({ component: "deployGraph" });
       log.info(
@@ -98,7 +114,15 @@ export const deployGraph = withCreditExhaustion(
         return END;
       }
 
-      log.info("Proceeding to initDeploy");
+      log.info("Proceeding to validateDeploy");
+      return "validateDeploy";
+    })
+
+    // After validation: exit on failure, continue to createDeploy on success
+    .addConditionalEdges("validateDeploy", (state: DeployGraphState) => {
+      if (state.status === "failed") {
+        return END;
+      }
       return "createDeploy";
     })
 

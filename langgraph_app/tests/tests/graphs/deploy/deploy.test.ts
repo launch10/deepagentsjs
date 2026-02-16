@@ -960,6 +960,36 @@ describe.sequential("Deploy Graph Tests", () => {
     });
 
     /**
+     * USER OUTCOME: Deploy fails early when no domain (website_url) is assigned.
+     * This prevents running the entire deploy checklist with no URL to serve on.
+     */
+    it("fails when website has no website_url assigned", async () => {
+      // website_step snapshot has website_id=1 but NO website_url for it
+      await DatabaseSnapshotter.restoreSnapshot("website_step");
+
+      const result = await testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_no_url" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+
+          instructions: { website: true },
+          tasks: [],
+          chatId: 1,
+        })
+        .execute();
+
+      // Should fail before any tasks are created/run
+      expect(result.state.status).toBe("failed");
+      expect(result.state.error).toBeDefined();
+      expect(result.state.error?.message).toContain("website_url");
+      // No tasks should have been executed
+      expect(result.state.tasks.length).toBe(0);
+    });
+
+    /**
      * USER OUTCOME: Website deployment job is created.
      */
     it("creates deployment job", async () => {
