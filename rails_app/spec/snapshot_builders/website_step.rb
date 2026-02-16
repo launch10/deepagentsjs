@@ -67,12 +67,47 @@ class WebsiteStep < BaseBuilder
     # Create domains with website_urls for testing domain picker
     create_domains_with_urls(account, website)
 
+    # Seed brainstorm checkpoints for all projects so Langgraph recognises them
+    seed_all_brainstorm_checkpoints(account)
+
     puts "Created website with brainstorm: #{brainstorm.id}"
     puts "Website ID: #{website.id}, Theme ID: #{website.theme_id}"
     puts "Total uploads for website: #{website.uploads.count}"
   end
 
   private
+
+  def seed_all_brainstorm_checkpoints(account)
+    account.projects.each do |proj|
+      bs = proj.brainstorm
+      next unless bs&.chat
+
+      seed_brainstorm_checkpoint(
+        thread_id: bs.chat.thread_id,
+        website_id: proj.website.id,
+        brainstorm_id: bs.id,
+        project_id: proj.id,
+        chat_id: bs.chat.id
+      )
+    end
+  end
+
+  def seed_brainstorm_checkpoint(thread_id:, website_id:, brainstorm_id:, project_id:, chat_id:)
+    langgraph_dir = Rails.root.join("..", "langgraph_app")
+    script = langgraph_dir.join("scripts", "seed-brainstorm-checkpoint.ts")
+
+    cmd = "cd #{langgraph_dir} && npx tsx #{script}" \
+      " --thread-id=#{thread_id}" \
+      " --website-id=#{website_id}" \
+      " --brainstorm-id=#{brainstorm_id}" \
+      " --project-id=#{project_id}" \
+      " --chat-id=#{chat_id}"
+    result = system({"NODE_ENV" => "test"}, cmd)
+
+    raise "Failed to seed brainstorm checkpoint for thread #{thread_id}" unless result
+
+    puts "Seeded brainstorm checkpoint for thread #{thread_id} (project: #{project_id})"
+  end
 
   def create_domains_with_urls(account, _main_website)
     # NOTE: We use Domain.new + save!(validate: false) to bypass the subdomain limit
