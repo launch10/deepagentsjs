@@ -449,7 +449,7 @@ describe.sequential("Deploy Graph Tests", () => {
   describe("AddingAnalytics", () => {
     beforeEach(async () => {
       // Use a snapshot that doesn't have analytics
-      await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
+      await DatabaseSnapshotter.restoreSnapshot("website_deploy_step");
     });
 
     it("adds L10.createLead() instrumentation to landing pages", async () => {
@@ -529,7 +529,7 @@ describe.sequential("Deploy Graph Tests", () => {
      * sufficient SEO meta tags.
      */
     it("skips agent when SEO is already done", async () => {
-      await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
+      await DatabaseSnapshotter.restoreSnapshot("website_deploy_step");
 
       // Add SEO meta tags to index.html so it's already optimized
       const existingIndexHtml = await db
@@ -596,8 +596,8 @@ describe.sequential("Deploy Graph Tests", () => {
      * TODO: These tests hit real AI APIs - need recorded responses or database snapshots
      */
     it("adds SEO meta tags to index.html", async () => {
-      // Use website_step_finished snapshot which has a complete website
-      await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
+      // Use website_deploy_step snapshot which has a complete website
+      await DatabaseSnapshotter.restoreSnapshot("website_deploy_step");
 
       const result = await testGraph<DeployGraphState>()
         .withGraph(deployGraph)
@@ -660,7 +660,7 @@ describe.sequential("Deploy Graph Tests", () => {
     });
 
     it("sets og:image with absolute URL", async () => {
-      await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
+      await DatabaseSnapshotter.restoreSnapshot("website_deploy_step");
 
       const result = await testGraph<DeployGraphState>()
         .withGraph(deployGraph)
@@ -705,7 +705,7 @@ describe.sequential("Deploy Graph Tests", () => {
 
     it("includes favicon URL for logo uploads in SEO context", async () => {
       // Use website_finished snapshot which has uploads including logos
-      await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
+      await DatabaseSnapshotter.restoreSnapshot("website_deploy_step");
 
       const result = await testGraph<DeployGraphState>()
         .withGraph(deployGraph)
@@ -765,7 +765,7 @@ describe.sequential("Deploy Graph Tests", () => {
   describe("Link Validation", () => {
     beforeEach(async () => {
       vi.clearAllMocks();
-      await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
+      await DatabaseSnapshotter.restoreSnapshot("website_deploy_step");
     });
 
     /**
@@ -805,7 +805,7 @@ describe.sequential("Deploy Graph Tests", () => {
   describe("Bug Fixing", () => {
     beforeEach(async () => {
       vi.clearAllMocks();
-      await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
+      await DatabaseSnapshotter.restoreSnapshot("website_deploy_step");
     });
 
     afterEach(async () => {
@@ -925,7 +925,7 @@ describe.sequential("Deploy Graph Tests", () => {
   describe("Website Deployment", () => {
     beforeEach(async () => {
       vi.clearAllMocks();
-      await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
+      await DatabaseSnapshotter.restoreSnapshot("website_deploy_step");
 
       // Mock JobRunAPIService to prevent real Rails worker dispatch
       mockJobRunAPIService.mockImplementation(
@@ -999,7 +999,7 @@ describe.sequential("Deploy Graph Tests", () => {
   describe("Task Pre-Creation", () => {
     beforeEach(async () => {
       vi.clearAllMocks();
-      await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
+      await DatabaseSnapshotter.restoreSnapshot("website_deploy_step");
 
       mockJobRunAPIService.mockImplementation(
         () =>

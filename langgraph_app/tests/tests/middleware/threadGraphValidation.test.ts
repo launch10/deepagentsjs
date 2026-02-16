@@ -57,7 +57,7 @@ describe("validateThreadGraphOrError", () => {
 
     const res = await app.request("/test", { method: "POST" });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as Record<string, unknown>;
     expect(body.ok).toBe(true);
   });
 
@@ -77,7 +77,7 @@ describe("validateThreadGraphOrError", () => {
 
     const res = await app.request("/test", { method: "POST" });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as Record<string, unknown>;
     expect(body.ok).toBe(true);
   });
 
@@ -92,8 +92,8 @@ describe("validateThreadGraphOrError", () => {
 
     const res = await app.request("/test", { method: "POST" });
     expect(res.status).toBe(403);
-    const body = await res.json();
-    expect(body.error).toContain("Forbidden");
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.error as string).toContain("Forbidden");
   });
 
   it("rejects threads belonging to different graph (409)", async () => {
@@ -113,8 +113,8 @@ describe("validateThreadGraphOrError", () => {
 
     const res = await app.request("/test", { method: "POST" });
     expect(res.status).toBe(409);
-    const body = await res.json();
-    expect(body.error).toContain("Conflict");
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.error as string).toContain("Conflict");
     expect(body.expected).toBe("deploy");
     expect(body.actual).toBe("website");
   });
@@ -130,8 +130,8 @@ describe("validateThreadGraphOrError", () => {
 
     const res = await app.request("/test", { method: "POST" });
     expect(res.status).toBe(500);
-    const body = await res.json();
-    expect(body.error).toContain("Thread validation failed");
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.error as string).toContain("Thread validation failed");
   });
 
   it("allows thread when chat_type is null but thread exists and is valid", async () => {
@@ -151,7 +151,7 @@ describe("validateThreadGraphOrError", () => {
 
     const res = await app.request("/test", { method: "POST" });
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as Record<string, unknown>;
     expect(body.ok).toBe(true);
   });
 });

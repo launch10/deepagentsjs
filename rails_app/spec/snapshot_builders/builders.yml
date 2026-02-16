@@ -41,24 +41,19 @@ website_deploy_step:
   base_snapshot: domain_step
   description: "Completed website deploy with all tasks finished and deploy checkpoint seeded"
 
-website_step_finished:
-  class: WebsiteStepFinished
-  base_snapshot: website_step
-  description: "Finishes website step and advances workflow to ad_campaign:content"
-
 website_with_import_errors:
   class: WebsiteWithImportErrors
-  base_snapshot: website_step_finished
+  base_snapshot: website_deploy_step
   description: "Website with import errors for deploy validation testing"
 
 website_with_broken_links:
   class: WebsiteWithBrokenLinks
-  base_snapshot: website_step_finished
+  base_snapshot: website_deploy_step
   description: "Website with broken anchor links for deploy validation testing"
 
 campaign_content_step:
   class: CampaignContentStep
-  base_snapshot: website_step_finished
+  base_snapshot: website_deploy_step
   description: "Campaign content step with headlines and descriptions"
 
 campaign_highlights_step:

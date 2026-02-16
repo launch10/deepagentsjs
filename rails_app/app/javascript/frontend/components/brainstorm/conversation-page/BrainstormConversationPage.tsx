@@ -103,8 +103,7 @@ export function BrainstormConversationPage() {
   const currentQuestionNumber = useMemo(() => computeQuestionNumber(messages), [messages]);
 
   // Determine if we're waiting for history to load
-  const isEmpty = messages.length === 0;
-  const isLoading = isLoadingHistory || isEmpty;
+  const isLoading = isLoadingHistory;
 
   // Delayed skeleton: only show after SKELETON_DELAY_MS
   const [showSkeleton, setShowSkeleton] = useState(false);

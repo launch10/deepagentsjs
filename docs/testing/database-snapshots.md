@@ -41,18 +41,19 @@ core_data (plans, templates, themes, FAQs)
   │
   └─ brainstorm_step (project at brainstorm)
       └─ website_step (theme, uploads, domains)
-          ├─ website_generated (scheduling-tool content)
-          ├─ website_with_import_errors
-          ├─ website_with_broken_links
-          └─ website_step_finished (workflow → ads)
-              └─ campaign_content_step → highlights → keywords → settings → launch → review → complete
-                  └─ deploy_step (Google OAuth, pending deploy)
-                      └─ website_deployed (25 test leads)
-                          ├─ campaign_with_metrics (4 projects, 30-day data)
-                          ├─ analytics/healthy_account (3 projects, ~47 leads)
-                          ├─ analytics/struggling_account (0 leads, $320 spent)
-                          ├─ analytics/stalled_project (14+ days no leads)
-                          └─ analytics/new_account (3 days old)
+          └─ website_generated (scheduling-tool content)
+              └─ domain_step (domain + URL)
+                  └─ website_deploy_step (completed deploy, workflow → ads)
+                      ├─ website_with_import_errors
+                      ├─ website_with_broken_links
+                      └─ campaign_content_step → highlights → keywords → settings → launch → review → complete
+                          └─ deploy_step (Google OAuth, pending deploy)
+                              └─ website_deployed (25 test leads)
+                                  ├─ campaign_with_metrics (4 projects, 30-day data)
+                                  ├─ analytics/healthy_account (3 projects, ~47 leads)
+                                  ├─ analytics/struggling_account (0 leads, $320 spent)
+                                  ├─ analytics/stalled_project (14+ days no leads)
+                                  └─ analytics/new_account (3 days old)
 ```
 
 ## Usage in Tests

@@ -198,11 +198,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
                   asChild
                   className="px-4 py-3 rounded-lg text-sm font-sans text-base-600 cursor-pointer"
                 >
-                  <Link
-                    href={Insights.ACTION_REGISTRY.review_landing_page.urlBuilder(project.uuid)}
-                  >
-                    Edit Page
-                  </Link>
+                  <Link href={`/projects/${project.uuid}`}>Edit Page</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="px-4 py-3 rounded-lg text-sm font-sans text-error-500 cursor-pointer focus:text-error-500"

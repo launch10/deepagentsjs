@@ -2,7 +2,7 @@
 
 class WebsiteWithImportErrors < BaseBuilder
   def base_snapshot
-    "website_step_finished"
+    "website_deploy_step"
   end
 
   def output_name

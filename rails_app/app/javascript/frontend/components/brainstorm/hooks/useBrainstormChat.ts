@@ -1,5 +1,5 @@
 import { usePage, router } from "@inertiajs/react";
-import { useMemo, useCallback, useEffect } from "react";
+import { useMemo, useCallback, useEffect, useRef } from "react";
 import type { UIMessage } from "ai";
 import {
   type ChatSnapshot,

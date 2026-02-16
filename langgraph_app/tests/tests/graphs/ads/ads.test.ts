@@ -28,7 +28,7 @@ describe.sequential("Ads Flow", () => {
   let threadId = uuid() as ThreadIDType;
 
   beforeEach(async () => {
-    await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
+    await DatabaseSnapshotter.restoreSnapshot("website_deploy_step");
     projectUUID = await db
       .select()
       .from(projectsTable)

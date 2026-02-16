@@ -32,6 +32,9 @@ class WebsiteDeployStep < BaseBuilder
       result_url: "https://test-project.launch10.site/"
     )
 
+    # Advance workflow to ads:content (required by campaign_content_step and downstream)
+    project.current_workflow.update!(step: "ads", substep: "content")
+
     puts "Created website_deploy_step snapshot"
     puts "  - WebsiteDeploy: #{website_deploy.id} (status: #{website_deploy.status})"
     puts "  - Deploy: #{deploy.id} (status: #{deploy.status}, is_live: #{deploy.is_live})"
