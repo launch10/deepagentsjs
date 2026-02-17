@@ -30,6 +30,10 @@ module CampaignConcerns::GoogleSyncable
     GoogleAds::Resources::StructuredSnippet.sync_plan(self)
   end
 
+  def structured_snippets_sync_result
+    GoogleAds::Resources::StructuredSnippet.sync_result(self)
+  end
+
   def sync_location_targets
     GoogleAds::Resources::LocationTarget.sync_all(self)
   end
@@ -40,6 +44,10 @@ module CampaignConcerns::GoogleSyncable
 
   def location_targets_sync_plan
     GoogleAds::Resources::LocationTarget.sync_plan(self)
+  end
+
+  def location_targets_sync_result
+    GoogleAds::Resources::LocationTarget.sync_result(self)
   end
 
   def google_syncer
@@ -78,6 +86,10 @@ module CampaignConcerns::GoogleSyncable
     GoogleAds::Resources::AdSchedule.sync_plan(self)
   end
 
+  def ad_schedules_sync_result
+    GoogleAds::Resources::AdSchedule.sync_result(self)
+  end
+
   def sync_ad_groups
     GoogleAds::Resources::AdGroup.sync_all(self)
   end
@@ -112,5 +124,9 @@ module CampaignConcerns::GoogleSyncable
 
   def callouts_sync_plan
     GoogleAds::Resources::Callout.sync_plan(self)
+  end
+
+  def callouts_sync_result
+    GoogleAds::Resources::Callout.sync_result(self)
   end
 end

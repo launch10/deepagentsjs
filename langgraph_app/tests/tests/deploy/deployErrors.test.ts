@@ -25,6 +25,52 @@ describe("Deploy Error Classification", () => {
       expect(error.canRetry).toBe(true);
     });
 
+    it("maps Google Ads policy violation errors", () => {
+      const error = Deploy.getDeployError(
+        'Step create_ads did not complete successfully. Diagnostic: [{:entity=>:ad_group_ad, :status=>:error, :error=>"GoogleAdsError: policy_finding: PROHIBITED"}]',
+        "DeployingCampaign"
+      );
+      expect(error.title).toBe("Ad rejected by Google");
+      expect(error.canRetry).toBe(true);
+      expect(error.needsSupport).toBe(true);
+    });
+
+    it("maps PROHIBITED policy errors", () => {
+      const error = Deploy.getDeployError(
+        "Sidekiq retries exhausted: Step create_ads did not complete successfully. Diagnostic: PROHIBITED",
+        "DeployingCampaign"
+      );
+      expect(error.title).toBe("Ad rejected by Google");
+    });
+
+    it("maps general GoogleAdsError errors", () => {
+      const error = Deploy.getDeployError(
+        "Step create_campaign did not complete successfully. Diagnostic: GoogleAdsError: INVALID_ARGUMENT",
+        "DeployingCampaign"
+      );
+      expect(error.title).toBe("Google Ads error");
+      expect(error.canRetry).toBe(true);
+      expect(error.needsSupport).toBe(true);
+    });
+
+    it("policy errors take priority over sidekiq retries exhausted", () => {
+      const error = Deploy.getDeployError(
+        "Sidekiq retries exhausted: Step create_ads did not complete successfully. Diagnostic: policy_finding: PROHIBITED",
+        "DeployingCampaign"
+      );
+      expect(error.title).toBe("Ad rejected by Google");
+      expect(error.title).not.toBe("Deployment failed after multiple attempts");
+    });
+
+    it("GoogleAdsError takes priority over sidekiq retries exhausted", () => {
+      const error = Deploy.getDeployError(
+        "Sidekiq retries exhausted: Step create_campaign did not complete successfully. Diagnostic: GoogleAdsError: INVALID_ARGUMENT",
+        "DeployingCampaign"
+      );
+      expect(error.title).toBe("Google Ads error");
+      expect(error.title).not.toBe("Deployment failed after multiple attempts");
+    });
+
     it("maps Sidekiq exhausted retries", () => {
       const error = Deploy.getDeployError(
         "Sidekiq retries exhausted: connection refused",

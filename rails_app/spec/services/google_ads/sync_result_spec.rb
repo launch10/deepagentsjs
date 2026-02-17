@@ -121,3 +121,55 @@ RSpec.describe GoogleAds::Sync::SyncResult do
     end
   end
 end
+
+RSpec.describe GoogleAds::SyncResult, type: :model do
+  include GoogleAdsMocks
+
+  before { mock_google_ads_client }
+
+  describe '#to_h error formatting' do
+    it 'returns nil error when no error present' do
+      result = described_class.created(:budget, "123")
+      expect(result.to_h[:error]).to be_nil
+    end
+
+    it 'returns standard error message for non-GoogleAdsError' do
+      error = StandardError.new("Something went wrong")
+      result = described_class.error(:budget, error)
+      expect(result.to_h[:error]).to eq("Something went wrong")
+    end
+
+    it 'extracts failure details from GoogleAdsError' do
+      google_error = mock_google_ads_error(
+        message: "User doesn't have permission to access customer",
+        error_type: :authorization_error,
+        error_value: :USER_PERMISSION_DENIED
+      )
+      result = described_class.error(:campaign, google_error)
+
+      error_text = result.to_h[:error]
+      expect(error_text).to include("User doesn't have permission to access customer")
+    end
+
+    it 'includes human-readable message from GoogleAdsError failure' do
+      google_error = mock_google_ads_error(
+        message: "A policy was violated",
+        error_type: :policy_finding_error,
+        error_value: :POLICY_FINDING
+      )
+      result = described_class.error(:ad_group_ad, google_error)
+
+      error_text = result.to_h[:error]
+      # The human-readable message from failure.errors[].message is extracted
+      expect(error_text).to include("A policy was violated")
+      # Note: error_code details require real protobuf objects (not test doubles),
+      # so they won't appear in mocked tests but will in production
+    end
+
+    it 'handles SyncVerificationError' do
+      error = GoogleAds::SyncVerificationError.new("Ad sync verification failed. Mismatched fields: status")
+      result = described_class.error(:ad_group_ad, error)
+      expect(result.to_h[:error]).to eq("Ad sync verification failed. Mismatched fields: status")
+    end
+  end
+end

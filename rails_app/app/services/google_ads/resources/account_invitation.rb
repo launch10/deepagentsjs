@@ -57,6 +57,36 @@ module GoogleAds
         fetch_remote
       end
 
+      # Upgrades an accepted user's access role on the Google Ads subaccount.
+      # Used when a user was previously invited with STANDARD and needs ADMIN.
+      def upgrade_access_role(role = :ADMIN)
+        return not_found_result(:customer_user_access) unless customer_id.present?
+
+        user_access = fetch_user_access
+        return not_found_result(:customer_user_access) unless user_access
+
+        return already_at_role_result(user_access, role) if user_access.access_role == role
+
+        operation = client.operation.update_resource.customer_user_access(user_access) do |ua|
+          ua.access_role = role
+        end
+
+        response = client.service.customer_user_access.mutate_customer_user_access(
+          customer_id: customer_id,
+          operation: operation
+        )
+
+        record.google_access_role = role.to_s
+        record.save!
+
+        GoogleAds::Sync::SyncResult.new(
+          resource_type: :customer_user_access,
+          resource_name: response.result.resource_name,
+          action: :updated,
+          comparisons: []
+        )
+      end
+
       def refresh_status
         flush_cache(:remote_resource)
         flush_cache(:synced?)
@@ -240,6 +270,15 @@ module GoogleAds
           resource_type: resource_type,
           resource_name: nil,
           action: :not_found,
+          comparisons: []
+        )
+      end
+
+      def already_at_role_result(user_access, role)
+        GoogleAds::Sync::SyncResult.new(
+          resource_type: :customer_user_access,
+          resource_name: user_access.resource_name,
+          action: :unchanged,
           comparisons: []
         )
       end

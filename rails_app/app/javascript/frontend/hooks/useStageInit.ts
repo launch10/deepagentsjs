@@ -26,6 +26,10 @@ export function useStageInit(stage: Workflow.AdsSubstepName) {
   const isGenerating = useRef(false);
 
   const maybeInitializeStage = useEffectEvent(() => {
+    console.log("maybeInitializeStage", stage);
+    console.log("hasStartedStep", hasStartedStep);
+    console.log("Ads.stageLoadedSuccessfully", Ads.stageLoadedSuccessfully(assets, stage));
+    console.log("projectUUID", project?.uuid);
     if (isGenerating.current) return;
     if (hasStartedStep && Ads.stageLoadedSuccessfully(assets, stage)) return;
     if (!project?.uuid) return;

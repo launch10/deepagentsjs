@@ -52,6 +52,26 @@ const CROSS_CUTTING_PATTERNS: Array<{ pattern: RegExp; error: DeployError }> = [
     },
   },
   {
+    pattern: /policy.*prohibited|PROHIBITED|disapproved.*policy/i,
+    error: {
+      title: "Ad rejected by Google",
+      message:
+        "Google flagged your ad for a policy violation. Review your ad copy for restricted content, then retry.",
+      canRetry: true,
+      needsSupport: true,
+    },
+  },
+  {
+    pattern: /GoogleAdsError|Google::Ads::GoogleAds::Errors/,
+    error: {
+      title: "Google Ads error",
+      message:
+        "Google Ads returned an error while setting up your campaign. Check technical details below and retry.",
+      canRetry: true,
+      needsSupport: true,
+    },
+  },
+  {
     pattern: /sidekiq retries exhausted/i,
     error: {
       title: "Deployment failed after multiple attempts",

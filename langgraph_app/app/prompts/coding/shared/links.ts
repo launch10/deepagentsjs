@@ -16,7 +16,7 @@ export const linksPrompt: CodingPromptFn = async (
     For multi-page navigation (if needed):
 
     - Use React Router's Link component: <Link to="/about">
-    - Define routes in src/App.tsx
+    - Define routes in src/App.tsx (DO NOT add BrowserRouter — it's handled by main.tsx)
 
     ## Footer Guidelines
 

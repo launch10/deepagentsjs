@@ -65,6 +65,7 @@ RSpec.describe Deploys::FullResetService do
     # Stub Google API calls
     allow_any_instance_of(Campaign).to receive(:google_delete)
     allow(account).to receive(:dangerously_destroy_google_ads_account!).and_return(true)
+    allow_any_instance_of(GoogleAds::Resources::AccountInvitation).to receive(:upgrade_access_role)
 
     # Stub Langgraph thread deletion
     langgraph_client = instance_double(LanggraphClient)
@@ -73,6 +74,21 @@ RSpec.describe Deploys::FullResetService do
   end
 
   describe "#call" do
+    it "upgrades accepted invitation access role to ADMIN" do
+      syncer = instance_double(GoogleAds::Resources::AccountInvitation)
+      allow(GoogleAds::Resources::AccountInvitation).to receive(:new).with(invitation).and_return(syncer)
+      expect(syncer).to receive(:upgrade_access_role).with(:ADMIN)
+
+      described_class.new(deploy).call
+    end
+
+    it "does not raise if upgrade access role fails" do
+      allow_any_instance_of(GoogleAds::Resources::AccountInvitation)
+        .to receive(:upgrade_access_role).and_raise(StandardError, "API error")
+
+      expect { described_class.new(deploy).call }.not_to raise_error
+    end
+
     it "soft-deletes the deploy" do
       expect { described_class.new(deploy).call }.to change { Deploy.count }.by(-1)
       expect(deploy.reload.deleted_at).to be_present

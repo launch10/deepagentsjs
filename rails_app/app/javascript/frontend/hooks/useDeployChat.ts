@@ -32,10 +32,11 @@ let resolvedDeployThreadId: string | undefined;
 function useDeployChatOptions() {
  const { thread_id } = usePage<DeployProps>().props;
 
-  // Reset cache when server provides a new thread_id (or null for new deploy)
-  // Make the cached threadId bulletproof to stale threadIds
-  if (thread_id !== undefined && thread_id !== resolvedDeployThreadId) {
-    resolvedDeployThreadId = thread_id ?? undefined;
+  // Reset cache only when the server provides a real (non-null) thread_id.
+  // When thread_id is null (no active deploy), we must NOT overwrite the
+  // SDK-generated threadId that onThreadIdAvailable already cached.
+  if (thread_id && thread_id !== resolvedDeployThreadId) {
+    resolvedDeployThreadId = thread_id;
   }
 
   return useChatOptions<Deploy.DeployBridgeType>({

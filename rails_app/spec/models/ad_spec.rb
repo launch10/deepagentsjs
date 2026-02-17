@@ -62,8 +62,8 @@ RSpec.describe Ad, type: :model do
         create(:website_url, website: website, account: account, domain: domain, path: "/")
       end
 
-      it 'returns the full URL array' do
-        expect(ad.final_urls).to eq(["https://example.launch10.ai/"])
+      it 'returns the full URL array with cloudEnv in non-production' do
+        expect(ad.final_urls).to eq(["https://example.launch10.ai/?cloudEnv=#{Cloudflare.deploy_env}"])
       end
     end
 
@@ -73,8 +73,8 @@ RSpec.describe Ad, type: :model do
         create(:website_url, website: website, account: account, domain: domain, path: "/campaign")
       end
 
-      it 'returns the full URL with path' do
-        expect(ad.final_urls).to eq(["https://example.launch10.ai/campaign"])
+      it 'returns the full URL with path and cloudEnv in non-production' do
+        expect(ad.final_urls).to eq(["https://example.launch10.ai/campaign?cloudEnv=#{Cloudflare.deploy_env}"])
       end
     end
 

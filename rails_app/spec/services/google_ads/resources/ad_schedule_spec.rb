@@ -308,6 +308,122 @@ RSpec.describe GoogleAds::Resources::AdSchedule do
   end
 
   # ═══════════════════════════════════════════════════════════════
+  # SYNC RESULT (instance + class + campaign wrapper)
+  # ═══════════════════════════════════════════════════════════════
+
+  describe "#sync_result" do
+    context "when no google_criterion_id" do
+      it "returns not_found" do
+        result = resource.sync_result
+        expect(result.not_found?).to be true
+      end
+    end
+
+    context "when google_criterion_id exists but remote not found" do
+      before do
+        schedule.update!(platform_settings: { "google" => { "criterion_id" => 111 } })
+      end
+
+      it "returns not_found" do
+        allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+        result = resource.sync_result
+        expect(result.not_found?).to be true
+      end
+    end
+
+    context "when remote matches" do
+      before do
+        schedule.update!(platform_settings: { "google" => { "criterion_id" => 111 } })
+      end
+
+      it "returns unchanged" do
+        criterion_response = mock_search_response_with_ad_schedule(
+          criterion_id: 111,
+          campaign_id: 789,
+          customer_id: 1234567890,
+          day_of_week: :MONDAY,
+          start_hour: 9,
+          start_minute: :ZERO,
+          end_hour: 17,
+          end_minute: :ZERO
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+        result = resource.sync_result
+        expect(result.unchanged?).to be true
+        expect(result.resource_name).to eq(111)
+      end
+    end
+
+    context "when remote does not match" do
+      before do
+        schedule.update!(platform_settings: { "google" => { "criterion_id" => 111 } })
+      end
+
+      it "returns error with SyncVerificationError" do
+        criterion_response = mock_search_response_with_ad_schedule(
+          criterion_id: 111,
+          campaign_id: 789,
+          customer_id: 1234567890,
+          day_of_week: :TUESDAY,
+          start_hour: 9,
+          start_minute: :ZERO,
+          end_hour: 17,
+          end_minute: :ZERO
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+        result = resource.sync_result
+        expect(result.error?).to be true
+        expect(result.error).to be_a(GoogleAds::SyncVerificationError)
+        expect(result.error.message).to include("Ad schedule sync verification failed")
+      end
+    end
+  end
+
+  describe ".sync_result" do
+    it "returns a CollectionSyncResult" do
+      schedule.update!(platform_settings: { "google" => { "criterion_id" => 111 } })
+
+      criterion_response = mock_search_response_with_ad_schedule(
+        criterion_id: 111,
+        campaign_id: 789,
+        customer_id: 1234567890,
+        day_of_week: :MONDAY,
+        start_hour: 9,
+        start_minute: :ZERO,
+        end_hour: 17,
+        end_minute: :ZERO
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+      result = described_class.sync_result(campaign)
+      expect(result).to be_a(GoogleAds::Sync::CollectionSyncResult)
+    end
+  end
+
+  describe "Campaign#ad_schedules_sync_result" do
+    it "delegates to the resource class" do
+      schedule.update!(platform_settings: { "google" => { "criterion_id" => 111 } })
+
+      criterion_response = mock_search_response_with_ad_schedule(
+        criterion_id: 111,
+        campaign_id: 789,
+        customer_id: 1234567890,
+        day_of_week: :MONDAY,
+        start_hour: 9,
+        start_minute: :ZERO,
+        end_hour: 17,
+        end_minute: :ZERO
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+      result = campaign.ad_schedules_sync_result
+      expect(result).to be_a(GoogleAds::Sync::CollectionSyncResult)
+    end
+  end
+
+  # ═══════════════════════════════════════════════════════════════
   # #sync
   # ═══════════════════════════════════════════════════════════════
 

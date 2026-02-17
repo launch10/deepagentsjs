@@ -26,11 +26,10 @@ module WebsiteDeployConcerns
       # Inject Google Ads gtag.js script if configured
       inject_gtag_script!
 
-      # Generate SEO files for deployed site
+      # Generate robots.txt before build (goes into public/ → copied to dist/)
       generate_robots_txt!
-      generate_sitemap_xml!
 
-      # Run pnpm install and build
+      # Run pnpm install and build (includes prerendering)
       unless build_exists?
         system("pnpm install --ignore-workspace", chdir: temp_dir) or raise "pnpm install failed"
         system("pnpm run build", chdir: temp_dir) or raise "pnpm build failed"
@@ -38,6 +37,9 @@ module WebsiteDeployConcerns
 
       dist_path = File.join(temp_dir, "dist")
       raise "Build failed: dist directory not found" unless Dir.exist?(dist_path)
+
+      # Generate sitemap after build so we can include prerendered routes
+      generate_sitemap_xml!
 
       dist_path
     end
@@ -113,22 +115,34 @@ module WebsiteDeployConcerns
       base_url = website_deploy_domain_url
       return unless base_url
 
-      public_dir = File.join(temp_dir, "public")
-      FileUtils.mkdir_p(public_dir)
-
+      dist_path = File.join(temp_dir, "dist")
       lastmod = website.updated_at.strftime("%Y-%m-%d")
+
+      # Read prerendered routes if available, otherwise fall back to just "/"
+      routes = ["/"]
+      routes_file = File.join(dist_path, "prerendered-routes.json")
+      if File.exist?(routes_file)
+        routes = JSON.parse(File.read(routes_file))
+      end
+
+      urls = routes.map do |route|
+        loc = route == "/" ? "#{base_url}/" : "#{base_url}#{route}"
+        <<~URL
+          <url>
+            <loc>#{loc}</loc>
+            <lastmod>#{lastmod}</lastmod>
+          </url>
+        URL
+      end.join
 
       content = <<~XML
         <?xml version="1.0" encoding="UTF-8"?>
         <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-          <url>
-            <loc>#{base_url}/</loc>
-            <lastmod>#{lastmod}</lastmod>
-          </url>
+        #{urls.strip}
         </urlset>
       XML
 
-      File.write(File.join(public_dir, "sitemap.xml"), content)
+      File.write(File.join(dist_path, "sitemap.xml"), content)
     end
 
     def website_deploy_domain_url

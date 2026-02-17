@@ -400,6 +400,121 @@ RSpec.describe GoogleAds::Resources::LocationTarget do
     end
   end
 
+  # ═══════════════════════════════════════════════════════════════
+  # SYNC RESULT (instance + class + campaign wrapper)
+  # ═══════════════════════════════════════════════════════════════
+
+  describe "#sync_result" do
+    context "when no google_criterion_id" do
+      before do
+        ad_location_target.platform_settings["google"].delete("criterion_id")
+        ad_location_target.save!
+      end
+
+      it "returns not_found" do
+        result = location_target_syncer.sync_result
+        expect(result.not_found?).to be true
+      end
+    end
+
+    context "when google_criterion_id exists but remote not found" do
+      before do
+        ad_location_target.platform_settings["google"]["criterion_id"] = 111
+        ad_location_target.save!
+      end
+
+      it "returns not_found" do
+        allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+        result = location_target_syncer.sync_result
+        expect(result.not_found?).to be true
+      end
+    end
+
+    context "when remote matches" do
+      before do
+        ad_location_target.platform_settings["google"]["criterion_id"] = 111
+        ad_location_target.save!
+      end
+
+      it "returns unchanged" do
+        criterion_response = mock_search_response_with_campaign_criterion(
+          criterion_id: 111,
+          campaign_id: 789,
+          customer_id: 1234567890,
+          location_id: 21167,
+          negative: false
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+        result = location_target_syncer.sync_result
+        expect(result.unchanged?).to be true
+        expect(result.resource_name).to eq(111)
+      end
+    end
+
+    context "when remote does not match" do
+      before do
+        ad_location_target.platform_settings["google"]["criterion_id"] = 111
+        ad_location_target.targeted = false
+        ad_location_target.save!
+      end
+
+      it "returns error with SyncVerificationError" do
+        criterion_response = mock_search_response_with_campaign_criterion(
+          criterion_id: 111,
+          campaign_id: 789,
+          customer_id: 1234567890,
+          location_id: 21167,
+          negative: false # local targeted=false means negative=true, so this mismatches
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+        result = location_target_syncer.sync_result
+        expect(result.error?).to be true
+        expect(result.error).to be_a(GoogleAds::SyncVerificationError)
+        expect(result.error.message).to include("Location target sync verification failed")
+      end
+    end
+  end
+
+  describe ".sync_result" do
+    it "returns a CollectionSyncResult" do
+      ad_location_target.platform_settings["google"]["criterion_id"] = 111
+      ad_location_target.save!
+
+      criterion_response = mock_search_response_with_campaign_criterion(
+        criterion_id: 111,
+        campaign_id: 789,
+        customer_id: 1234567890,
+        location_id: 21167,
+        negative: false
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+      result = described_class.sync_result(campaign)
+      expect(result).to be_a(GoogleAds::Sync::CollectionSyncResult)
+    end
+  end
+
+  describe "Campaign#location_targets_sync_result" do
+    it "delegates to the resource class" do
+      ad_location_target.platform_settings["google"]["criterion_id"] = 111
+      ad_location_target.save!
+
+      criterion_response = mock_search_response_with_campaign_criterion(
+        criterion_id: 111,
+        campaign_id: 789,
+        customer_id: 1234567890,
+        location_id: 21167,
+        negative: false
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(criterion_response)
+
+      result = campaign.location_targets_sync_result
+      expect(result).to be_a(GoogleAds::Sync::CollectionSyncResult)
+    end
+  end
+
   describe '#delete' do
     let(:mock_remove_resource) { double("RemoveResource") }
 

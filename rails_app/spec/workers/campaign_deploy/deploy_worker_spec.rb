@@ -209,6 +209,17 @@ RSpec.describe CampaignDeploy::DeployWorker, type: :worker do
         described_class.sidekiq_retries_exhausted_block.call(msg, ex)
       end
 
+      it 'propagates diagnostic details to Langgraph callback' do
+        msg = { 'args' => [deploy.id, job_run.id], 'retry_count' => 5 }
+        diagnostic_message = 'Step create_ads did not complete successfully. Diagnostic: [{:resource_type=>:ad_group_ad, :action=>:not_found}] | Run errors: [{:resource_type=>:ad_group_ad, :action=>:error, :error=>"policy_finding_error: POLICY_FINDING: A policy was violated"}]'
+        ex = CampaignDeploy::StepNotFinishedError.new(diagnostic_message)
+
+        expect(LanggraphCallbackWorker).to receive(:perform_async)
+          .with(job_run.id, hash_including(status: "failed", error: diagnostic_message))
+
+        described_class.sidekiq_retries_exhausted_block.call(msg, ex)
+      end
+
       it 'does not fail already-finished job_run' do
         job_run.update!(status: "completed", completed_at: Time.current)
         msg = { 'args' => [deploy.id, job_run.id], 'retry_count' => 5 }

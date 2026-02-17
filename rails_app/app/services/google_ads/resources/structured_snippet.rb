@@ -62,6 +62,17 @@ module GoogleAds
           ::GoogleAds::Sync::CollectionSyncResult.new(results: results)
         end
 
+        def sync_result(campaign)
+          results = []
+          ::AdStructuredSnippet.only_deleted.where(campaign_id: campaign.id).each do |snippet|
+            next unless snippet.google_asset_id.present?
+            results << new(snippet).sync_result
+          end
+          snippet = ::AdStructuredSnippet.where(campaign_id: campaign.id).first
+          results << new(snippet).sync_result if snippet
+          ::GoogleAds::Sync::CollectionSyncResult.new(results: results)
+        end
+
         def sync_plan(campaign)
           operations = []
 
@@ -106,6 +117,21 @@ module GoogleAds
         end
       rescue Google::Ads::GoogleAds::Errors::GoogleAdsError => e
         GoogleAds::SyncResult.error(:asset, e)
+      end
+
+      def sync_result
+        return GoogleAds::SyncResult.not_found(:asset) unless record.google_asset_id.present?
+        remote = fetch
+        return GoogleAds::SyncResult.not_found(:asset) unless remote
+        if fields_match?(remote)
+          GoogleAds::SyncResult.unchanged(:asset, record.google_asset_id)
+        else
+          comparison = compare_fields(remote)
+          GoogleAds::SyncResult.error(:asset,
+            GoogleAds::SyncVerificationError.new(
+              "Structured snippet sync verification failed. Mismatched fields: #{comparison.failures.join(", ")}"
+            ))
+        end
       end
 
       def sync_plan
@@ -212,6 +238,8 @@ module GoogleAds
           customer_id: customer_id,
           operations: [operation]
         )
+      rescue Google::Ads::GoogleAds::Errors::GoogleAdsError => e
+        raise unless resource_not_found_error?(e)
       end
 
       # ═══════════════════════════════════════════════════════════════

@@ -87,8 +87,11 @@ RSpec.describe 'WebsiteConcerns::ShasumHashable' do
       end
     end
 
-    context 'with a completed deploy' do
-      let!(:deploy) { create(:website_deploy, website: website, status: 'completed', shasum: website.generate_shasum) }
+    context 'with a completed deploy that actually deployed' do
+      let!(:deploy) do
+        create(:website_deploy, website: website, status: 'completed',
+          version_path: "#{website.id}/20240101000000")
+      end
 
       it 'returns false when files have not changed' do
         expect(website.files_changed?).to be false
@@ -99,9 +102,7 @@ RSpec.describe 'WebsiteConcerns::ShasumHashable' do
         website_file.update!(content: 'changed')
         website_file.reload
 
-        # Debug: ensure file shasum changed
         expect(website_file.shasum).not_to eq(original_file_shasum), "File shasum didn't change: #{website_file.shasum}"
-
         expect(website.files_changed?).to be true
       end
 
@@ -117,11 +118,23 @@ RSpec.describe 'WebsiteConcerns::ShasumHashable' do
     end
 
     context 'with multiple deploys' do
-      let!(:old_deploy) { create(:website_deploy, website: website, status: 'completed', shasum: 'old', created_at: 2.days.ago) }
-      let!(:latest_deploy) { create(:website_deploy, website: website, status: 'completed', shasum: website.generate_shasum, created_at: 1.day.ago) }
-      let!(:failed_deploy) { create(:website_deploy, website: website, status: 'failed', shasum: 'failed', created_at: 1.hour.ago) }
+      let!(:old_deploy) do
+        create(:website_deploy, website: website, status: 'completed',
+          version_path: "#{website.id}/20240101000000", created_at: 2.days.ago).tap do |d|
+          d.update_column(:shasum, 'old')
+        end
+      end
 
-      it 'compares against the latest completed deploy' do
+      let!(:latest_deploy) do
+        create(:website_deploy, website: website, status: 'completed',
+          version_path: "#{website.id}/20240102000000", created_at: 1.day.ago)
+      end
+
+      let!(:failed_deploy) do
+        create(:website_deploy, website: website, status: 'failed', created_at: 1.hour.ago)
+      end
+
+      it 'compares against the latest completed deploy that actually deployed' do
         expect(website.files_changed?).to be false
 
         website_file.update!(content: 'changed')
@@ -129,8 +142,37 @@ RSpec.describe 'WebsiteConcerns::ShasumHashable' do
       end
 
       it 'ignores failed deploys' do
-        # Even though failed_deploy is more recent, it should compare against latest_deploy
-        expect(website.deploys.completed.order(created_at: :desc).first).to eq(latest_deploy)
+        expect(website.deploys.completed.where.not(version_path: nil).order(created_at: :desc).first).to eq(latest_deploy)
+      end
+    end
+
+    context 'with a no-op deploy (no version_path)' do
+      let!(:noop_deploy) do
+        create(:website_deploy, website: website, status: 'completed', version_path: nil)
+      end
+
+      it 'returns true because website was never actually deployed' do
+        expect(website.files_changed?).to be true
+      end
+    end
+
+    context 'with a real deploy followed by a no-op deploy' do
+      let!(:real_deploy) do
+        create(:website_deploy, website: website, status: 'completed',
+          version_path: "#{website.id}/20240101000000", created_at: 2.days.ago).tap do |d|
+          d.update_column(:shasum, 'old_shasum')
+        end
+      end
+
+      let!(:noop_deploy) do
+        create(:website_deploy, website: website, status: 'completed',
+          version_path: nil, created_at: 1.day.ago)
+      end
+
+      it 'compares against the real deploy, not the no-op' do
+        # The no-op has the current shasum (set by callback), but files_changed?
+        # should compare against the real deploy which has a different shasum
+        expect(website.files_changed?).to be true
       end
     end
   end

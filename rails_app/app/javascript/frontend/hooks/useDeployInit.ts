@@ -7,13 +7,12 @@ import {
   type DeployProps,
 } from "@hooks/useDeployChat";
 import { useProjectStore } from "~/stores/projectStore";
-import { useHasCompletedDeploy, useDeployService } from "@api/deploys.hooks";
-import { useDeployInstructions, useDeployType } from "@hooks/useDeployInstructions";
+import { useDeployService } from "@api/deploys.hooks";
 
 /**
  * Deploy initialization hook.
  *
- * Decides what to do on mount (start / resume / deactivate+restart / nothing),
+ * Decides what to do on mount (start / resume / nothing),
  * then polls while a deploy is running. Also touches user_active_at on mount
  * and syncs deployId to the project store.
  */
@@ -27,13 +26,7 @@ export function useDeployInit() {
     status: s.status,
   }));
   const deployContext = useDeployContext();
-  const instructions = useDeployInstructions();
-  const deployType = useDeployType();
-  const projectId = deployContext.projectId;
   const hasInitialized = useRef(false);
-
-  const { data: hasEverCompleted, isLoading: checkingHistory } =
-    useHasCompletedDeploy(projectId ?? 0, deployType);
 
   // Touch user_active_at on mount so OAuth callback can find the active deploy
   useEffect(() => {
@@ -44,60 +37,36 @@ export function useDeployInit() {
 
   // ── Initialize: decide what to do on mount ──
   useEffect(() => {
-    if (hasInitialized.current || checkingHistory) return;
+    console.log("useDeployInit, hasInitialized: ", hasInitialized.current);
+    console.log("useDeployInit, deploy: ", deploy);
+    if (hasInitialized.current) return;
 
     const isInProgress =
       deploy?.status === "pending" || deploy?.status === "running";
     const isTerminal =
       deploy?.status === "completed" || deploy?.status === "failed";
 
-    // Resume an in-progress deploy — kick one updateState so polling takes over
+    // 1. Resume an in-progress deploy
     if (isInProgress) {
+      console.log("Resuming deploy");
       hasInitialized.current = true;
       updateState(deployContext);
       return;
     }
 
-    // Terminal deploy — check if instructions match the current page
+    // 2. Show terminal state as-is
     if (isTerminal) {
-      const instructionsMatch =
-        JSON.stringify(deploy?.instructions ?? {}) ===
-        JSON.stringify(instructions);
-
-      if (instructionsMatch || hasEverCompleted) {
-        hasInitialized.current = true;
-        return; // show the terminal state as-is
-      }
-
-      if (hasEverCompleted === false) {
-        hasInitialized.current = true;
-        service.deactivate(projectId!).then(() => startDeploy());
-        return;
-      }
-
-      return; // hasEverCompleted still loading — wait
+      console.log("Terminal state");
+      hasInitialized.current = true;
+      return;
     }
 
-    // No deploy exists
-    if (hasEverCompleted === false) {
-      hasInitialized.current = true;
-      startDeploy();
-    } else if (hasEverCompleted === true) {
-      hasInitialized.current = true;
-    }
-    // hasEverCompleted undefined → still loading, wait
-  }, [
-    deploy?.status,
-    deploy?.instructions,
-    instructions,
-    hasEverCompleted,
-    checkingHistory,
-    updateState,
-    deployContext,
-    service,
-    projectId,
-    startDeploy,
-  ]);
+    // 3. No deploy exists — start fresh
+    //    (first visit OR after redeploy deactivated the old one)
+    hasInitialized.current = true;
+    console.log("Starting deploy");
+    startDeploy();
+  }, [deploy?.status, updateState, deployContext, startDeploy]);
 
   // Sync deployId from graph state → project store
   const setStore = useProjectStore((s) => s.set);

@@ -7,6 +7,7 @@ module Deploys
     end
 
     def call
+      upgrade_invitation_access_role
       cleanup_google_ads_remote
       cleanup_google_ads_local
       cleanup_oauth
@@ -17,6 +18,15 @@ module Deploys
     end
 
     private
+
+    def upgrade_invitation_access_role
+      invitation = @account.google_account_invitation
+      return unless invitation&.google_status == "accepted"
+
+      invitation.google_syncer.upgrade_access_role(:ADMIN)
+    rescue => e
+      Rails.logger.warn("[FullResetService] Upgrade access role failed: #{e.message}")
+    end
 
     def cleanup_google_ads_remote
       @project.campaigns.each do |campaign|

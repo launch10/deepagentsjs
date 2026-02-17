@@ -311,6 +311,101 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     end
   end
 
+  describe 'deploy page props contract (useDeployInit relies on these)' do
+    # The frontend useDeployInit hook decides what to do based solely on
+    # the deploy prop returned by the backend:
+    #   - deploy with pending/running status → resume
+    #   - deploy with completed/failed status → show terminal state
+    #   - deploy is nil → start fresh deploy
+    #
+    # These tests verify the backend returns the correct deploy prop
+    # for each scenario, especially after redeploy (deactivation).
+
+    before { workflow.update!(step: 'deploy', substep: nil) }
+
+    it 'returns deploy: nil when no deploy exists (first visit)' do
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:deploy]).to be_nil
+    end
+
+    it 'returns the active pending deploy' do
+      deploy = create(:deploy, project: project, status: 'pending')
+
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:deploy]).to be_present
+      expect(inertia.props[:deploy][:id]).to eq(deploy.id)
+      expect(inertia.props[:deploy][:status]).to eq('pending')
+    end
+
+    it 'returns the active running deploy' do
+      deploy = create(:deploy, project: project, status: 'running')
+
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:deploy]).to be_present
+      expect(inertia.props[:deploy][:id]).to eq(deploy.id)
+      expect(inertia.props[:deploy][:status]).to eq('running')
+    end
+
+    it 'returns the active completed deploy' do
+      deploy = create(:deploy, project: project, status: 'completed')
+
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:deploy]).to be_present
+      expect(inertia.props[:deploy][:id]).to eq(deploy.id)
+      expect(inertia.props[:deploy][:status]).to eq('completed')
+    end
+
+    it 'returns the active failed deploy' do
+      deploy = create(:deploy, project: project, status: 'failed')
+
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:deploy]).to be_present
+      expect(inertia.props[:deploy][:id]).to eq(deploy.id)
+      expect(inertia.props[:deploy][:status]).to eq('failed')
+    end
+
+    it 'returns deploy: nil after redeploy deactivates the old deploy' do
+      # Simulate the redeploy flow:
+      # 1. A completed deploy exists
+      deploy = create(:deploy, project: project, status: 'completed')
+
+      # 2. User clicks "Redeploy" → frontend calls deactivate
+      deploy.deactivate!
+
+      # 3. Page reloads → backend should return deploy: nil
+      #    so useDeployInit takes the "start fresh" path
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:deploy]).to be_nil
+    end
+
+    it 'returns deploy: nil after redeploy deactivates a failed deploy' do
+      deploy = create(:deploy, project: project, status: 'failed')
+      deploy.deactivate!
+
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:deploy]).to be_nil
+    end
+
+    it 'returns the most recent active deploy when multiple exist' do
+      old_deploy = create(:deploy, project: project, status: 'completed')
+      old_deploy.deactivate!
+      new_deploy = create(:deploy, project: project, status: 'running')
+
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:deploy]).to be_present
+      expect(inertia.props[:deploy][:id]).to eq(new_deploy.id)
+      expect(inertia.props[:deploy][:status]).to eq('running')
+    end
+  end
+
   describe 'GET /projects/:uuid/performance' do
     it 'tracks project_performance_viewed' do
       expect(TrackEvent).to receive(:call).with("project_performance_viewed",

@@ -557,7 +557,8 @@ RSpec.describe WebsiteDeploy, type: :model do
       context 'when files have not changed' do
         let!(:existing_deploy) do
           deploy = website_with_files.deploys.create!(environment: 'development')
-          deploy.update!(status: 'completed', shasum: website_with_files.generate_shasum)
+          deploy.update!(status: 'completed', shasum: website_with_files.generate_shasum,
+            version_path: "#{website_with_files.id}/20240101000000")
           deploy
         end
 
@@ -610,7 +611,8 @@ RSpec.describe WebsiteDeploy, type: :model do
     describe 'rebuild detection' do
       let!(:completed_deploy) do
         deploy = website_with_files.deploys.create!(environment: 'development')
-        deploy.update!(status: 'completed', shasum: website_with_files.generate_shasum)
+        deploy.update!(status: 'completed', shasum: website_with_files.generate_shasum,
+          version_path: "#{website_with_files.id}/20240101000000")
         deploy
       end
 

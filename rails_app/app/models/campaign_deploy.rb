@@ -416,14 +416,18 @@ class CampaignDeploy < ApplicationRecord
         return true  # All steps complete
       end
 
-      step.run unless step.finished?
+      run_result = step.finished? ? nil : step.run
 
       unless step.finished? # There was some API error that prevented us from successfully completing the task, retry
+        diagnostic = format_step_diagnostic(step)
+        run_diagnostic = format_run_result(run_result)
+        full_diagnostic = [diagnostic, run_diagnostic].compact.join(" | Run errors: ")
+
         GoogleAds::Instrumentation.google_ads_logger.error(
           "[CampaignDeploy] Step #{step.class.step_name} did not complete for deploy=#{id} campaign=#{campaign_id}. " \
-          "Diagnostic: #{format_step_diagnostic(step)}"
+          "Diagnostic: #{full_diagnostic}"
         )
-        raise StepNotFinishedError, "Step #{step.class.step_name} did not complete successfully"
+        raise StepNotFinishedError, "Step #{step.class.step_name} did not complete successfully. Diagnostic: #{full_diagnostic}"
       end
 
       update!(current_step: step.class.step_name.to_s)
@@ -455,6 +459,21 @@ class CampaignDeploy < ApplicationRecord
     end
   rescue => e
     "diagnostic error: #{e.message}"
+  end
+
+  # Extract error details from the return value of step.run.
+  # step.run returns SyncResult(s) including any GoogleAdsError details,
+  # but these are normally discarded. This captures them.
+  def format_run_result(result)
+    return nil if result.nil?
+
+    items = result.is_a?(Array) ? result.flatten : [result]
+    errors = items.select { |r| r.respond_to?(:error?) && r.error? }
+    return nil if errors.empty?
+
+    errors.map { |r| r.respond_to?(:to_h) ? r.to_h : r.inspect }.inspect
+  rescue => e
+    "run_result error: #{e.message}"
   end
 
   def set_shasum

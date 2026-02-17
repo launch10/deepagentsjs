@@ -33,7 +33,7 @@ class AdsAccountInvitation < ApplicationRecord
   validates :platform, presence: true, inclusion: { in: PLATFORMS }
   validates :email_address, presence: true
 
-  platform_setting :google, :access_role, default: "STANDARD", in: ACCESS_ROLES
+  platform_setting :google, :access_role, default: "ADMIN", in: ACCESS_ROLES
   platform_setting :google, :status, default: "pending", in: STATUSES
   platform_setting :google, :invitation_id
   platform_setting :google, :user_access_id

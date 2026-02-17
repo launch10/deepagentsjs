@@ -335,6 +335,50 @@ RSpec.describe GoogleAds::Resources::StructuredSnippet do
         expect(result.created?).to be true
         expect(result.resource_name).to eq(99999)
       end
+
+      it "handles RESOURCE_NOT_FOUND during unlink and proceeds to recreate" do
+        asset_response = mock_search_response_with_structured_snippet_asset(
+          asset_id: 88888,
+          customer_id: 1234567890,
+          header: "Service catalog",
+          values: ["Web Design", "SEO", "Marketing"]
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(asset_response)
+
+        # Unlink fails with RESOURCE_NOT_FOUND on first call, then link succeeds on second
+        mock_remove_operation = double("RemoveOperation")
+        allow(@mock_remove_resource).to receive(:campaign_asset)
+          .with("customers/1234567890/campaignAssets/789~88888~STRUCTURED_SNIPPET")
+          .and_return(mock_remove_operation)
+
+        resource_not_found_error = mock_google_ads_error(
+          message: "Resource not found",
+          error_type: :mutate_error,
+          error_value: :RESOURCE_NOT_FOUND
+        )
+
+        mutate_calls = 0
+        allow(@mock_campaign_asset_service).to receive(:mutate_campaign_assets) do |**_args|
+          mutate_calls += 1
+          raise resource_not_found_error if mutate_calls == 1
+          double("MutateResponse")
+        end
+
+        # After RESOURCE_NOT_FOUND, proceeds to create new asset
+        mock_asset = mock_asset_with_structured_snippet_resource
+        mock_snippet_asset = mock_structured_snippet_asset_resource
+        allow(@mock_resource).to receive(:structured_snippet_asset).and_yield(mock_snippet_asset).and_return(mock_snippet_asset)
+        allow(mock_create_resource).to receive(:asset).and_yield(mock_asset)
+
+        mutate_asset_response = mock_mutate_asset_response(asset_id: 99999, customer_id: 1234567890)
+        allow(@mock_asset_service).to receive(:mutate_assets).and_return(mutate_asset_response)
+
+        mock_campaign_asset = mock_campaign_asset_resource
+        allow(mock_create_resource).to receive(:campaign_asset).and_yield(mock_campaign_asset)
+
+        result = resource.sync
+        expect(result.created?).to be true
+      end
     end
 
     context "when API call fails" do
@@ -357,6 +401,110 @@ RSpec.describe GoogleAds::Resources::StructuredSnippet do
         result = resource.sync
         expect(result.error?).to be true
       end
+    end
+  end
+
+  # ═══════════════════════════════════════════════════════════════
+  # SYNC RESULT (instance + class)
+  # ═══════════════════════════════════════════════════════════════
+
+  describe "#sync_result" do
+    before do
+      allow(@mock_client).to receive(:service).and_return(
+        double("Services",
+          customer: @mock_customer_service,
+          google_ads: @mock_google_ads_service)
+      )
+    end
+
+    context "when no google_asset_id" do
+      it "returns not_found" do
+        result = resource.sync_result
+        expect(result.not_found?).to be true
+      end
+    end
+
+    context "when google_asset_id exists but remote not found" do
+      before do
+        structured_snippet.platform_settings["google"]["asset_id"] = "88888"
+        structured_snippet.save!
+      end
+
+      it "returns not_found" do
+        allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+        result = resource.sync_result
+        expect(result.not_found?).to be true
+      end
+    end
+
+    context "when remote matches" do
+      before do
+        structured_snippet.platform_settings["google"]["asset_id"] = "88888"
+        structured_snippet.save!
+      end
+
+      it "returns unchanged" do
+        asset_response = mock_search_response_with_structured_snippet_asset(
+          asset_id: 88888,
+          customer_id: 1234567890,
+          header: "Service catalog",
+          values: ["Web Design", "SEO", "Marketing"]
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(asset_response)
+
+        result = resource.sync_result
+        expect(result.unchanged?).to be true
+        expect(result.resource_name).to eq("88888")
+      end
+    end
+
+    context "when remote does not match" do
+      before do
+        structured_snippet.platform_settings["google"]["asset_id"] = "88888"
+        structured_snippet.values = ["Different", "Values", "Here"]
+        structured_snippet.save!
+      end
+
+      it "returns error with SyncVerificationError" do
+        asset_response = mock_search_response_with_structured_snippet_asset(
+          asset_id: 88888,
+          customer_id: 1234567890,
+          header: "Service catalog",
+          values: ["Web Design", "SEO", "Marketing"]
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(asset_response)
+
+        result = resource.sync_result
+        expect(result.error?).to be true
+        expect(result.error).to be_a(GoogleAds::SyncVerificationError)
+        expect(result.error.message).to include("Structured snippet sync verification failed")
+      end
+    end
+  end
+
+  describe ".sync_result" do
+    before do
+      allow(@mock_client).to receive(:service).and_return(
+        double("Services",
+          customer: @mock_customer_service,
+          google_ads: @mock_google_ads_service)
+      )
+    end
+
+    it "returns a CollectionSyncResult" do
+      structured_snippet.platform_settings["google"]["asset_id"] = "88888"
+      structured_snippet.save!
+
+      asset_response = mock_search_response_with_structured_snippet_asset(
+        asset_id: 88888,
+        customer_id: 1234567890,
+        header: "Service catalog",
+        values: ["Web Design", "SEO", "Marketing"]
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(asset_response)
+
+      result = described_class.sync_result(campaign)
+      expect(result).to be_a(GoogleAds::Sync::CollectionSyncResult)
     end
   end
 
@@ -765,6 +913,24 @@ RSpec.describe GoogleAds::Resources::StructuredSnippet do
         structured_snippet # ensure snippet exists
         allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
         expect(campaign.structured_snippets_synced?).to be false
+      end
+    end
+
+    describe "#structured_snippets_sync_result" do
+      it "delegates to the resource class" do
+        structured_snippet.platform_settings["google"]["asset_id"] = "88888"
+        structured_snippet.save!
+
+        asset_response = mock_search_response_with_structured_snippet_asset(
+          asset_id: 88888,
+          customer_id: 1234567890,
+          header: "Service catalog",
+          values: ["Web Design", "SEO", "Marketing"]
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(asset_response)
+
+        result = campaign.structured_snippets_sync_result
+        expect(result).to be_a(GoogleAds::Sync::CollectionSyncResult)
       end
     end
 

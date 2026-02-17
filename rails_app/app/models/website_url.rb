@@ -58,7 +58,17 @@ class WebsiteUrl < ApplicationRecord
   end
 
   def full_url
-    "https://#{domain_string}#{path}"
+    url = "https://#{domain_string}#{path}"
+
+    unless Rails.env.production?
+      uri = URI.parse(url)
+      params = URI.decode_www_form(uri.query || "")
+      params << ["cloudEnv", Cloudflare.deploy_env]
+      uri.query = URI.encode_www_form(params)
+      url = uri.to_s
+    end
+
+    url
   end
 
   def to_api_json

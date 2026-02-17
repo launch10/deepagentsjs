@@ -369,6 +369,42 @@ RSpec.describe CampaignDeploy, type: :model do
         expect(campaign_deploy.reload.current_step).to eq(previous_step)
       end
 
+      it 'includes diagnostic in the error message' do
+        sync_result = double("SyncResult", to_h: { entity: :ad_group_ad, status: :error, error: "GoogleAdsError: policy_finding: PROHIBITED" })
+        allow(mock_step).to receive(:respond_to?).with(:sync_result).and_return(true)
+        allow(mock_step).to receive(:sync_result).and_return(sync_result)
+
+        expect {
+          campaign_deploy.actually_deploy(async: false)
+        }.to raise_error(CampaignDeploy::StepNotFinishedError, /Diagnostic:.*PROHIBITED/)
+      end
+
+      it 'includes run result errors when step.run returns SyncResult errors' do
+        error_result = double("ErrorResult",
+          error?: true,
+          to_h: { resource_type: :ad_group_ad, action: :error, error: "policy_finding_error: POLICY_FINDING" }
+        )
+        allow(mock_step).to receive(:run).and_return([error_result])
+
+        expect {
+          campaign_deploy.actually_deploy(async: false)
+        }.to raise_error(CampaignDeploy::StepNotFinishedError, /Run errors:.*POLICY_FINDING/)
+      end
+
+      it 'includes GoogleAdsError failure details from run result' do
+        google_error = mock_google_ads_error(
+          message: "A]policy was violated",
+          error_type: :policy_finding_error,
+          error_value: :POLICY_FINDING
+        )
+        error_result = GoogleAds::SyncResult.error(:ad_group_ad, google_error)
+        allow(mock_step).to receive(:run).and_return([error_result])
+
+        expect {
+          campaign_deploy.actually_deploy(async: false)
+        }.to raise_error(CampaignDeploy::StepNotFinishedError, /Run errors:.*policy was violated/)
+      end
+
       it 'logs the failure to the google_ads logger' do
         log_output = StringIO.new
         test_logger = ActiveSupport::TaggedLogging.new(Logger.new(log_output))
