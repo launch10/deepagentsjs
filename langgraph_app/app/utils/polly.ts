@@ -195,6 +195,37 @@ class PollyManager {
     });
   }
 
+  /**
+   * On CI, fail immediately when Polly has no matching recording for an LLM request.
+   * Without this, the SDK retries with exponential backoff (80-200s per test).
+   */
+  private static configureCIGuard() {
+    if (!process.env.CI) return;
+
+    const { server } = PollyManager.polly!;
+
+    const LLM_HOSTS = [
+      "api.anthropic.com",
+      "api.openai.com",
+      "api.groq.com",
+      "api.cohere.com",
+      "generativelanguage.googleapis.com",
+    ];
+
+    server.any().on("beforeResponse", (req: any) => {
+      const action = req.action?.toUpperCase();
+      if (action !== "REPLAY") {
+        const url = new URL(req.url);
+        if (LLM_HOSTS.some((host) => url.hostname === host)) {
+          throw new Error(
+            `[CI Guard] Stale Polly recording! No match for: ${req.method} ${req.url}\n` +
+              `Re-run tests locally to update recordings, then commit the HAR files.`
+          );
+        }
+      }
+    });
+  }
+
   private static configureRequestLogging() {
     const { server } = PollyManager.polly!;
 
@@ -312,6 +343,7 @@ class PollyManager {
       logLevel: "silent",
     });
     PollyManager.configurePassthroughs();
+    PollyManager.configureCIGuard();
     PollyManager.configureRequestLogging();
     PollyManager.configureHeaders();
 
