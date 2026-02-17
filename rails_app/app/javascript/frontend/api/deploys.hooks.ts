@@ -1,4 +1,4 @@
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useQuery, useMutation, keepPreviousData } from "@tanstack/react-query";
 import { useMemo } from "react";
 import {
   DeployAPIService,
@@ -59,6 +59,34 @@ export function useDeploys(projectId: number, page: number) {
  * Check if a project has EVER had a completed deploy with the given instructions.
  * Used by useDeployInit to decide whether to auto-trigger.
  */
+// ============================================================================
+// Mutation Hooks
+// ============================================================================
+
+/**
+ * Deactivate the active deploy for a project.
+ */
+export function useDeactivateDeploy() {
+  const service = useDeployService();
+  return useMutation({
+    mutationFn: (projectId: number) => service.deactivate(projectId),
+  });
+}
+
+/**
+ * Roll back a completed deploy to a previous version.
+ */
+export function useRollbackDeploy() {
+  const service = useDeployService();
+  return useMutation({
+    mutationFn: (deployId: number) => service.rollback(deployId),
+  });
+}
+
+// ============================================================================
+// Additional Query Hooks
+// ============================================================================
+
 export function useHasCompletedDeploy(
   projectId: number,
   instructions: Record<string, boolean>

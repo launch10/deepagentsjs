@@ -6,6 +6,7 @@ import { Deploy, type InertiaProps } from "@shared";
 import { useChatOptions } from "@hooks/useChatOptions";
 import { useDeployInstructions } from "@hooks/useDeployInstructions";
 import { useProjectId } from "~/stores/projectStore";
+import { useDeployService } from "@api/deploys.hooks";
 
 export type DeployProps =
   InertiaProps.paths["/projects/{uuid}/deploy"]["get"]["responses"]["200"]["content"]["application/json"];
@@ -106,27 +107,19 @@ export function useDeployStartDeploy() {
  */
 export function useDeployNewDeploy() {
   const projectId = useProjectId();
+  const service = useDeployService();
   const [isLoading, setIsLoading] = useState(false);
 
   const trigger = useCallback(async () => {
+    if (!projectId) return;
     setIsLoading(true);
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
-      await fetch("/api/v1/deploys/deactivate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": csrfToken || "",
-          Accept: "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ project_id: projectId }),
-      });
+      await service.deactivate(projectId);
       window.location.reload();
     } catch {
       setIsLoading(false);
     }
-  }, [projectId]);
+  }, [projectId, service]);
 
   return { trigger, isLoading };
 }

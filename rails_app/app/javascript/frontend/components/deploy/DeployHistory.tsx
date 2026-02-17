@@ -7,8 +7,7 @@ import DeploymentHistoryBadge from "@components/website/deployment-history/Deplo
 import { ProjectsPagination } from "@components/projects/ProjectsPagination";
 import type { DeployProps } from "@hooks/useDeployChat";
 import { Skeleton } from "@components/ui/skeleton";
-import { useDeploys, type DeployRecord } from "@api/deploys.hooks";
-import { useRootPath } from "~/stores/sessionStore";
+import { useDeploys, useDeployService, type DeployRecord } from "@api/deploys.hooks";
 
 function formatTimestamp(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-US", {
@@ -32,7 +31,7 @@ function instructionLabel(instructions: Record<string, boolean> | undefined): st
 }
 
 function DeployHistoryItem({ deploy }: { deploy: DeployRecord }) {
-  const rootPath = useRootPath();
+  const service = useDeployService();
   const [rolling, setRolling] = useState(false);
 
   const canRollback = deploy.revertible && !deploy.is_live && deploy.status === "completed";
@@ -42,27 +41,14 @@ function DeployHistoryItem({ deploy }: { deploy: DeployRecord }) {
       return;
     setRolling(true);
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
-      const res = await fetch(`${rootPath}/api/v1/deploys/${deploy.id}/rollback`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": csrfToken || "",
-        },
-        credentials: "include",
-      });
-      if (res.ok) {
-        window.location.reload();
-      } else {
-        const data = await res.json();
-        alert(data.errors?.[0] || "Rollback failed");
-        setRolling(false);
-      }
-    } catch {
-      alert("Rollback failed");
+      await service.rollback(deploy.id);
+      window.location.reload();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Rollback failed";
+      alert(message);
       setRolling(false);
     }
-  }, [deploy.id, rootPath]);
+  }, [deploy.id, service]);
 
   return (
     <div

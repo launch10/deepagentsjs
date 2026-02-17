@@ -430,10 +430,11 @@ RSpec.describe "Deploys API", type: :request do
       parameter name: "X-Timestamp", in: :header, type: :string, required: false
 
       let!(:website) { create(:website, project: project) }
-      let!(:deploy) { create(:deploy, project: project, status: "completed") }
       let!(:website_deploy) do
-        create(:website_deploy, website: website, deploy: deploy, status: "completed", is_live: false)
+        allow_any_instance_of(WebsiteDeploy).to receive(:validate_website_has_files)
+        create(:website_deploy, website: website, status: "completed", is_live: false)
       end
+      let!(:deploy) { create(:deploy, project: project, status: "completed", website_deploy: website_deploy) }
 
       response "200", "deploy rolled back" do
         schema APISchemas::Deploy.rollback_response
@@ -459,7 +460,7 @@ RSpec.describe "Deploys API", type: :request do
         let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
         let(:id) { deploy.id }
 
-        before { website_deploy.update!(status: "running") }
+        before { website_deploy.update!(status: "building") }
 
         run_test! do |response|
           expect(response.code).to eq("422")

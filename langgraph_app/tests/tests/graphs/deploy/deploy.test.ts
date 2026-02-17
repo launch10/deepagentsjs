@@ -1962,6 +1962,11 @@ describe.sequential("Deploy Graph Tests", () => {
         .stopAfter("initPhases")
         .execute();
 
+      // Debug: see what state looks like
+      console.log("DEBUG contentChanged:", JSON.stringify(result.state.contentChanged));
+      console.log("DEBUG instructions:", JSON.stringify(result.state.instructions));
+      console.log("DEBUG tasks:", result.state.tasks.map((t: any) => t.name));
+
       // Should NOT be nothingChanged (website did change)
       expect(result.state.nothingChanged).toBe(false);
       // Instructions stay pure — never mutated
@@ -1972,7 +1977,7 @@ describe.sequential("Deploy Graph Tests", () => {
       expect(result.state.contentChanged.googleAds).toBe(false);
       // Should only have website tasks, no campaign tasks
       // (initPhases uses shouldDeployGoogleAds which checks contentChanged)
-      const campaignTasks = result.state.tasks.filter((t) =>
+      const campaignTasks = result.state.tasks.filter((t: any) =>
         ["ConnectingGoogle", "VerifyingGoogle", "CheckingBilling", "DeployingCampaign", "EnablingCampaign"].includes(t.name)
       );
       expect(campaignTasks.length).toBe(0);

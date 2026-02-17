@@ -32,6 +32,16 @@ export function initPhasesNode(state: DeployGraphState): Partial<DeployGraphStat
   if (Deploy.shouldDeployWebsite(state)) effectiveInstructions.website = true;
   if (Deploy.shouldDeployGoogleAds(state)) effectiveInstructions.googleAds = true;
 
+  log.info(
+    {
+      contentChanged: state.contentChanged,
+      shouldDeployWebsite: Deploy.shouldDeployWebsite(state),
+      shouldDeployGoogleAds: Deploy.shouldDeployGoogleAds(state),
+      effectiveInstructions,
+    },
+    "Effective instructions after contentChanged filter"
+  );
+
   const pendingTasks = Deploy.createTasks(effectiveInstructions);
   if (pendingTasks.length === 0) {
     log.info({ instructions: state.instructions }, "No tasks to create, marking as running");

@@ -4145,6 +4145,52 @@ paths:
                   type: integer
               required:
               - project_id
+  "/api/v1/deploys/{id}/rollback":
+    parameters:
+    - name: id
+      in: path
+      description: Deploy ID
+      required: true
+      schema:
+        type: integer
+    post:
+      summary: Rolls back a deploy
+      tags:
+      - Deploys
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: deploy rolled back
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required:
+                - success
+        '422':
+          description: non-revertible deploy
+        '404':
+          description: deploy not found
   "/api/v1/deploys/{id}/touch":
     parameters:
     - name: id

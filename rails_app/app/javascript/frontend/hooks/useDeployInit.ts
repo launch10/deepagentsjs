@@ -7,8 +7,7 @@ import {
   type DeployProps,
 } from "@hooks/useDeployChat";
 import { useProjectStore } from "~/stores/projectStore";
-import { useRootPath } from "~/stores/sessionStore";
-import { useHasCompletedDeploy } from "@api/deploys.hooks";
+import { useHasCompletedDeploy, useDeployService } from "@api/deploys.hooks";
 import { useDeployInstructions } from "@hooks/useDeployInstructions";
 
 /**
@@ -25,7 +24,7 @@ import { useDeployInstructions } from "@hooks/useDeployInstructions";
  */
 export function useDeployInit() {
   const { deploy } = usePage<DeployProps>().props;
-  const rootPath = useRootPath();
+  const service = useDeployService();
   const startDeploy = useDeployStartDeploy();
   const { updateState, state, status } = useDeployChat((s) => ({
     updateState: s.actions.updateState,
@@ -44,37 +43,22 @@ export function useDeployInit() {
 
   // Deactivate current deploy and start a fresh one (no page reload needed)
   const deactivateAndRestart = useCallback(async () => {
-    if (isDeactivating.current) return;
+    if (isDeactivating.current || !projectId) return;
     isDeactivating.current = true;
     try {
-      const csrfToken = document
-        .querySelector('meta[name="csrf-token"]')
-        ?.getAttribute("content");
-      await fetch(`${rootPath}/api/v1/deploys/deactivate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": csrfToken || "",
-          Accept: "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ project_id: projectId }),
-      });
+      await service.deactivate(projectId);
       startDeploy();
     } finally {
       isDeactivating.current = false;
     }
-  }, [rootPath, projectId, startDeploy]);
+  }, [service, projectId, startDeploy]);
 
   // Touch user_active_at on mount so OAuth callback can find the active deploy
   useEffect(() => {
-    if (deploy?.id && rootPath) {
-      fetch(`${rootPath}/api/v1/deploys/${deploy.id}/touch`, {
-        method: "POST",
-        credentials: "include",
-      }).catch(() => {});
+    if (deploy?.id) {
+      service.touch(deploy.id).catch(() => {});
     }
-  }, [deploy?.id, rootPath]);
+  }, [deploy?.id, service]);
 
   // Terminal deploy logic:
   // If deploy is completed/failed, check if its instructions match the current page.
