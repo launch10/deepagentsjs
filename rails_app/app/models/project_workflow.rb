@@ -41,12 +41,9 @@ class ProjectWorkflow < ApplicationRecord
   scope :archived, -> { where(status: "archived") }
   scope :launch, -> { where(workflow_type: "launch") }
 
-  # Substeps that are their own chat_type (e.g. website/deploy → chat_type "deploy", not "website")
-  SUBSTEP_CHAT_TYPES = %w[deploy].freeze
-
   def chat
-    chat_type = substep.in?(SUBSTEP_CHAT_TYPES) ? substep : step
-    project.chats.find_by(chat_type: chat_type, active: true)
+    return deploy_chat if deploy_context?
+    project.chats.find_by(chat_type: step, active: true)
   end
 
   def next_step!
@@ -140,6 +137,19 @@ class ProjectWorkflow < ApplicationRecord
   end
 
   private
+
+  # Are we on a deploy page? (website/deploy substep or top-level deploy step)
+  def deploy_context?
+    step == "deploy" || substep == "deploy"
+  end
+
+  # Resolve the correct deploy chat based on workflow position.
+  # website/deploy → find the website-only deploy
+  # deploy (top-level) → find the google_ads deploy
+  def deploy_chat
+    instruction = (substep == "deploy") ? :website : :google_ads
+    project.deploys.current_for(instruction).last&.chat
+  end
 
   def valid_step?(step, substep)
     WorkflowConfig.step_exists?(workflow_type, step) && (substep.nil? || WorkflowConfig.substep_exists?(workflow_type, step, substep))

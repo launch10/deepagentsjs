@@ -30,7 +30,13 @@ export type DeploySnapshot = ChatSnapshot<Deploy.DeployGraphState>;
 let resolvedDeployThreadId: string | undefined;
 
 function useDeployChatOptions() {
- const { thread_id } = usePage<DeployProps>().props;
+  const { deploy, thread_id } = usePage<DeployProps>().props;
+
+  // Server says no active deploy → clear stale cache from previous SPA navigation.
+  // The cache will be repopulated by onThreadIdAvailable once the SDK starts a new thread.
+  if (!deploy && !thread_id) {
+    resolvedDeployThreadId = undefined;
+  }
 
   // Reset cache only when the server provides a real (non-null) thread_id.
   // When thread_id is null (no active deploy), we must NOT overwrite the

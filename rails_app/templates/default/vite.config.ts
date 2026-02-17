@@ -18,6 +18,6 @@ export default defineConfig(({ mode }) => ({
     },
   },
   ssr: {
-    noExternal: ["sonner", "lucide-react"],
+    noExternal: [/^@radix-ui\//, "sonner", "lucide-react", "class-variance-authority", "clsx", "tailwind-merge"],
   },
 }));

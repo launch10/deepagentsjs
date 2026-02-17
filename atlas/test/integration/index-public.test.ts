@@ -278,7 +278,7 @@ describe('Public Worker - index-public', () => {
   });
 
   describe('Path Normalization', () => {
-    it('appends index.html for directory paths ending with /', async () => {
+    it('redirects inner page trailing slash then serves content via non-trailing path', async () => {
       await setupWebsiteWithUrl({
         website: { id: 'ws-1' },
         websiteUrl: { domain: 'example.com', path: '/' },
@@ -287,7 +287,13 @@ describe('Public Worker - index-public', () => {
         },
       });
 
-      const res = await app.request('https://example.com/about/', {}, env);
+      // /about/ redirects to /about to fix relative asset paths
+      const redirectRes = await app.request('https://example.com/about/', { redirect: 'manual' }, env);
+      expect(redirectRes.status).toBe(301);
+      expect(redirectRes.headers.get('location')).toBe('https://example.com/about');
+
+      // /about then serves about/index.html
+      const res = await app.request('https://example.com/about', {}, env);
       expect(await res.text()).toBe('<html>About</html>');
     });
 
@@ -608,6 +614,78 @@ describe('Public Worker - index-public', () => {
       const res = await app.request('https://example.launch10.site/bingo', { redirect: 'manual' }, env);
       expect(res.status).toBe(301);
       expect(res.headers.get('location')).toBe('https://example.launch10.site/bingo/');
+    });
+
+    it('redirects inner page trailing slash to non-trailing slash (root site)', async () => {
+      await setupWebsiteWithUrl({
+        website: { id: 'ws-root' },
+        websiteUrl: { id: 'url-root', domain: 'example.launch10.site', path: '/' },
+        r2Files: {
+          'production/ws-root/live/index.html': '<html>Root</html>',
+          'production/ws-root/live/pricing/index.html': '<html>Pricing</html>',
+        },
+      });
+
+      const res = await app.request('https://example.launch10.site/pricing/', { redirect: 'manual' }, env);
+      expect(res.status).toBe(301);
+      expect(res.headers.get('location')).toBe('https://example.launch10.site/pricing');
+    });
+
+    it('redirects inner page trailing slash to non-trailing slash (subpath site)', async () => {
+      await setupWebsiteWithUrl({
+        website: { id: 'ws-bingo' },
+        websiteUrl: { id: 'url-bingo', domain: 'example.launch10.site', path: '/bingo' },
+        r2Files: {
+          'production/ws-bingo/live/index.html': '<html>Bingo</html>',
+          'production/ws-bingo/live/pricing/index.html': '<html>Bingo Pricing</html>',
+        },
+      });
+
+      const res = await app.request('https://example.launch10.site/bingo/pricing/', { redirect: 'manual' }, env);
+      expect(res.status).toBe(301);
+      expect(res.headers.get('location')).toBe('https://example.launch10.site/bingo/pricing');
+    });
+
+    it('does not redirect root trailing slash', async () => {
+      await setupWebsiteWithUrl({
+        website: { id: 'ws-root' },
+        websiteUrl: { id: 'url-root', domain: 'example.launch10.site', path: '/' },
+        r2Files: {
+          'production/ws-root/live/index.html': '<html>Root</html>',
+        },
+      });
+
+      const res = await app.request('https://example.launch10.site/', { redirect: 'manual' }, env);
+      expect(res.status).toBe(200);
+    });
+
+    it('does not redirect subpath root trailing slash', async () => {
+      await setupWebsiteWithUrl({
+        website: { id: 'ws-bingo' },
+        websiteUrl: { id: 'url-bingo', domain: 'example.launch10.site', path: '/bingo' },
+        r2Files: {
+          'production/ws-bingo/live/index.html': '<html>Bingo</html>',
+        },
+      });
+
+      // /bingo/ should NOT be redirected (it's the subpath root)
+      const res = await app.request('https://example.launch10.site/bingo/', { redirect: 'manual' }, env);
+      expect(res.status).toBe(200);
+    });
+
+    it('does not redirect asset requests with trailing slash', async () => {
+      await setupWebsiteWithUrl({
+        website: { id: 'ws-root' },
+        websiteUrl: { id: 'url-root', domain: 'example.launch10.site', path: '/' },
+        r2Files: {
+          'production/ws-root/live/index.html': '<html>Root</html>',
+        },
+      });
+
+      // /assets/foo.js should never be redirected (isAssetRequest = true)
+      const res = await app.request('https://example.launch10.site/assets/foo.js', { redirect: 'manual' }, env);
+      // Should be 404 since the asset doesn't exist, not a redirect
+      expect(res.status).toBe(404);
     });
 
     it('serves assets from subpath website when both root and subpath exist', async () => {

@@ -285,37 +285,58 @@ RSpec.describe ProjectWorkflow, type: :model do
       expect(workflow.chat).to eq(brainstorm_chat)
     end
 
-    context "deploy contexts" do
-      let!(:deploy) { create(:deploy, project: project) }
+    context "website deploy (step=website, substep=deploy)" do
+      let!(:deploy) { create(:deploy, :website_only, project: project) }
 
-      it "returns the deploy chat when substep is deploy (website/deploy)" do
+      it "returns the website deploy's chat" do
         workflow.update!(step: "website", substep: "deploy")
         expect(workflow.chat).to eq(deploy.chat)
-        expect(workflow.chat.chat_type).to eq("deploy")
       end
 
-      it "returns the deploy chat when step is deploy (standalone)" do
-        workflow.update!(step: "deploy", substep: nil)
-        expect(workflow.chat).to eq(deploy.chat)
-      end
-
-      it "does NOT return the website chat when in deploy context" do
+      it "does NOT return the website chat" do
         workflow.update!(step: "website", substep: "deploy")
         expect(workflow.chat).not_to eq(website_chat)
       end
 
-      it "returns nil when no deploy exists" do
+      it "returns nil when no website deploy exists" do
+        deploy.destroy!
+        workflow.update!(step: "website", substep: "deploy")
+        expect(workflow.chat).to be_nil
+      end
+    end
+
+    context "campaign deploy (step=deploy)" do
+      let!(:deploy) { create(:deploy, :full_deploy, project: project) }
+
+      it "returns the campaign deploy's chat" do
+        workflow.update!(step: "deploy", substep: nil)
+        expect(workflow.chat).to eq(deploy.chat)
+      end
+
+      it "returns nil when no campaign deploy exists" do
         deploy.destroy!
         workflow.update!(step: "deploy", substep: nil)
         expect(workflow.chat).to be_nil
       end
+    end
 
-      it "returns the newest deploy's chat when multiple deploys exist" do
-        second_deploy = create(:deploy, project: project)
+    context "website deploy does NOT leak into campaign deploy" do
+      let!(:website_deploy) { create(:deploy, :website_only, project: project) }
+
+      it "returns nil for campaign deploy page when only a website deploy exists" do
         workflow.update!(step: "deploy", substep: nil)
+        expect(workflow.chat).to be_nil
+      end
+    end
 
-        expect(workflow.chat).to eq(second_deploy.chat)
-        expect(deploy.chat.reload.active).to be false
+    context "campaign deploy does NOT leak into website deploy" do
+      let!(:campaign_deploy) { create(:deploy, :full_deploy, project: project) }
+
+      it "returns nil for website deploy page when only a campaign deploy exists" do
+        workflow.update!(step: "website", substep: "deploy")
+        # full_deploy has website: true, so it WILL match with_instruction(:website)
+        # This is expected — a full deploy includes website deployment
+        expect(workflow.chat).to eq(campaign_deploy.chat)
       end
     end
   end

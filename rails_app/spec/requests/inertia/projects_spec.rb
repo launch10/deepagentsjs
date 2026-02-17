@@ -288,26 +288,69 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     # Regression: after a redeploy, the deploy page must still pass a thread_id
     # (via core_json from the deploy's Chat) so the frontend doesn't auto-start a new deploy.
 
-    let!(:first_deploy) { create(:deploy, project: project, status: 'completed') }
-    let!(:second_deploy) { create(:deploy, project: project, status: 'completed') }
+    context 'website deploy' do
+      let!(:first_deploy) { create(:deploy, :website_only, project: project, status: 'completed') }
+      let!(:second_deploy) { create(:deploy, :website_only, project: project, status: 'completed') }
 
-    before { workflow.update!(step: 'website', substep: 'deploy') }
+      before { workflow.update!(step: 'website', substep: 'deploy') }
 
-    it 'passes thread_id from the deploy chat (website deploy)' do
-      get website_deploy_project_path(project.uuid)
+      it 'passes thread_id from the deploy chat' do
+        get website_deploy_project_path(project.uuid)
 
-      expect(inertia.props[:thread_id]).to be_present
-      expect(inertia.props[:deploy]).to be_present
-      expect(inertia.props[:deploy]).not_to have_key(:langgraph_thread_id)
+        expect(inertia.props[:thread_id]).to be_present
+        expect(inertia.props[:deploy]).to be_present
+        expect(inertia.props[:deploy]).not_to have_key(:langgraph_thread_id)
+      end
     end
 
-    it 'passes thread_id from the deploy chat (standalone deploy)' do
+    context 'campaign deploy' do
+      let!(:first_deploy) { create(:deploy, :full_deploy, project: project, status: 'completed') }
+      let!(:second_deploy) { create(:deploy, :full_deploy, project: project, status: 'completed') }
+
+      before { workflow.update!(step: 'deploy', substep: nil) }
+
+      it 'passes thread_id from the deploy chat' do
+        get deploy_project_path(project.uuid)
+
+        expect(inertia.props[:thread_id]).to be_present
+        expect(inertia.props[:deploy]).to be_present
+        expect(inertia.props[:deploy]).not_to have_key(:langgraph_thread_id)
+      end
+    end
+  end
+
+  describe 'deploy thread_id isolation' do
+    # Regression: website deploy thread_id must NOT leak into campaign deploy page.
+    # ProjectWorkflow#chat resolves the correct deploy via instruction type.
+
+    it 'does not leak website deploy thread_id to campaign deploy page' do
+      website_deploy = create(:deploy, :website_only, project: project, status: 'completed')
+      website_thread_id = website_deploy.chat.thread_id
+
       workflow.update!(step: 'deploy', substep: nil)
       get deploy_project_path(project.uuid)
 
-      expect(inertia.props[:thread_id]).to be_present
-      expect(inertia.props[:deploy]).to be_present
-      expect(inertia.props[:deploy]).not_to have_key(:langgraph_thread_id)
+      expect(inertia.props[:thread_id]).to be_nil
+      expect(inertia.props[:deploy]).to be_nil
+    end
+
+    it 'does not leak campaign deploy thread_id to website deploy page' do
+      campaign_deploy = create(:deploy, :full_deploy, project: project, status: 'completed')
+
+      workflow.update!(step: 'website', substep: 'deploy')
+      get website_deploy_project_path(project.uuid)
+
+      # full_deploy has website: true, so it matches with_instruction(:website)
+      # This is expected — finding it on the website deploy page is correct
+      expect(inertia.props[:thread_id]).to eq(campaign_deploy.chat.thread_id)
+    end
+
+    it 'returns nil thread_id when no matching deploy exists' do
+      workflow.update!(step: 'deploy', substep: nil)
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:thread_id]).to be_nil
+      expect(inertia.props[:deploy]).to be_nil
     end
   end
 
@@ -330,7 +373,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     end
 
     it 'returns the active pending deploy' do
-      deploy = create(:deploy, project: project, status: 'pending')
+      deploy = create(:deploy, :full_deploy, project: project, status: 'pending')
 
       get deploy_project_path(project.uuid)
 
@@ -340,7 +383,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     end
 
     it 'returns the active running deploy' do
-      deploy = create(:deploy, project: project, status: 'running')
+      deploy = create(:deploy, :full_deploy, project: project, status: 'running')
 
       get deploy_project_path(project.uuid)
 
@@ -350,7 +393,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     end
 
     it 'returns the active completed deploy' do
-      deploy = create(:deploy, project: project, status: 'completed')
+      deploy = create(:deploy, :full_deploy, project: project, status: 'completed')
 
       get deploy_project_path(project.uuid)
 
@@ -360,7 +403,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     end
 
     it 'returns the active failed deploy' do
-      deploy = create(:deploy, project: project, status: 'failed')
+      deploy = create(:deploy, :full_deploy, project: project, status: 'failed')
 
       get deploy_project_path(project.uuid)
 
@@ -372,7 +415,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     it 'returns deploy: nil after redeploy deactivates the old deploy' do
       # Simulate the redeploy flow:
       # 1. A completed deploy exists
-      deploy = create(:deploy, project: project, status: 'completed')
+      deploy = create(:deploy, :full_deploy, project: project, status: 'completed')
 
       # 2. User clicks "Redeploy" → frontend calls deactivate
       deploy.deactivate!
@@ -385,7 +428,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     end
 
     it 'returns deploy: nil after redeploy deactivates a failed deploy' do
-      deploy = create(:deploy, project: project, status: 'failed')
+      deploy = create(:deploy, :full_deploy, project: project, status: 'failed')
       deploy.deactivate!
 
       get deploy_project_path(project.uuid)
@@ -394,9 +437,9 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     end
 
     it 'returns the most recent active deploy when multiple exist' do
-      old_deploy = create(:deploy, project: project, status: 'completed')
+      old_deploy = create(:deploy, :full_deploy, project: project, status: 'completed')
       old_deploy.deactivate!
-      new_deploy = create(:deploy, project: project, status: 'running')
+      new_deploy = create(:deploy, :full_deploy, project: project, status: 'running')
 
       get deploy_project_path(project.uuid)
 

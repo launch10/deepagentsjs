@@ -5,13 +5,42 @@ import { Ads } from "@shared";
 import { useChatRegistration } from "@hooks/useChatRegistration";
 import { useChatOptions } from "@hooks/useChatOptions";
 import { syncLanggraphToStore } from "~/stores/useSyncProject";
+import { useCallback } from "react";
+import { usePage, router } from "@inertiajs/react";
+import type { CampaignProps } from "../workflow-panel/workflow-buddy/ad-campaign.types";
 
 export type AdsSnapshot = ChatSnapshot<AdsGraphState>;
 
 function useAdsChatOptions() {
+  const page = usePage<CampaignProps>();
+
+  const onThreadIdAvailable = useCallback(
+    (threadId: string) => {
+      if (!threadId || threadId === "undefined" || threadId === "null") {
+        console.error(
+          "[useAdsChat] onThreadIdAvailable called with invalid threadId:",
+          threadId
+        );
+        return;
+      }
+
+      // Update Inertia page props with the new thread_id (URL stays the same)
+      router.push({
+        url: window.location.pathname,
+        component: "Ads",
+        props: {
+          ...page.props,
+          thread_id: threadId,
+        },
+      });
+    },
+    [page.props]
+  );
+
   return useChatOptions<AdsBridgeType>({
     apiPath: "api/ads/stream",
     merge: Ads.MergeReducer as any,
+    onThreadIdAvailable,
   });
 }
 

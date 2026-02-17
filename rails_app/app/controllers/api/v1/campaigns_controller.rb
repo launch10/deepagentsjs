@@ -95,7 +95,7 @@ class API::V1::CampaignsController < API::BaseController
   end
 
   def create_params
-    params.require(:campaign).permit(:name, :project_id, :website_id)
+    params.require(:campaign).permit(:name, :project_id, :website_id, :thread_id)
   end
 
   def campaign_params

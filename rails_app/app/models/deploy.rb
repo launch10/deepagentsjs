@@ -79,6 +79,7 @@ class Deploy < ApplicationRecord
   scope :with_instructions, ->(instructions) { where(instructions: instructions) }
   scope :with_instruction, ->(key) { where("instructions @> ?", { key.to_s.underscore => true }.to_json) }
   scope :completed, -> { where(status: "completed") }
+  scope :current_for, ->(instruction) { active.with_instruction(instruction).order(id: :desc) }
 
   # Has this project ever had a completed deploy with these exact instructions?
   # Accepts either camelCase or snake_case keys — normalizes before querying.

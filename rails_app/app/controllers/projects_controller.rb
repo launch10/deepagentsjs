@@ -64,10 +64,7 @@ class ProjectsController < SubscribedController
 
   def website_deploy
     @project.current_workflow.update!(step: "website", substep: "deploy")
-    @deploy = find_existing_deploy
-
-    deploy_chat = @project.current_chat
-    Rails.logger.info "[website_deploy] project=#{@project.id} deploy=#{@deploy&.id} deploy_status=#{@deploy&.status} deploy_active=#{@deploy&.active} current_chat=#{deploy_chat&.id} thread_id=#{deploy_chat&.thread_id} chat_type=#{deploy_chat&.chat_type}"
+    @deploy = @project.deploys.current_for(:website).last
 
     render inertia: "Website",
       props: @project.to_website_deploy_json(@deploy),
@@ -95,7 +92,7 @@ class ProjectsController < SubscribedController
 
   def deploy
     @project.current_workflow.update!(step: "deploy", substep: nil)
-    @deploy = find_existing_deploy
+    @deploy = @project.deploys.current_for(:google_ads).last
 
     render inertia: "Deploy",
       props: @project.to_deploy_json(@deploy),
@@ -152,7 +149,6 @@ class ProjectsController < SubscribedController
   end
 
   def find_existing_deploy
-    @project.deploys.find_by(active: true)
   end
 
   def set_project

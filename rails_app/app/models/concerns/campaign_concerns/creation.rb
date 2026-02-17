@@ -27,7 +27,8 @@ module CampaignConcerns
           campaign = account.campaigns.create!(
             name: campaign_params[:name],
             project_id: campaign_params[:project_id],
-            website_id: website_id
+            website_id: website_id,
+            initial_thread_id: campaign_params[:thread_id]
           )
 
           ad_group = campaign.ad_groups.create!(
