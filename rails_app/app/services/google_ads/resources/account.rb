@@ -39,7 +39,7 @@ module GoogleAds
         { account_id: record.id, google_customer_id: record.google_customer_id }
       end
 
-      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
+      instrument_methods :sync, :synced?, :sync_result, :sync_plan, :delete, :fetch
 
       # ═══════════════════════════════════════════════════════════════
       # INSTANCE METHODS (5 core methods + sync_plan)

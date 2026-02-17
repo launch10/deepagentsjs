@@ -49,7 +49,7 @@ RSpec.describe GoogleAds::Resources::AdGroup do
       allow(@mock_google_ads_service).to receive(:search).and_return(ad_group_response)
 
       # Instrumentation formats tags as "key=value" strings for log aggregator compatibility
-      expect(Rails.logger).to receive(:tagged).with(
+      expect(GoogleAds::Instrumentation.google_ads_logger).to receive(:tagged).with(
         "ad_group_id=#{ad_group.id}",
         "campaign_id=#{campaign.id}"
       ).at_least(:once).and_yield

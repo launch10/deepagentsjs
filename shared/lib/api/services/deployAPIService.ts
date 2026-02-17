@@ -194,8 +194,8 @@ export class DeployAPIService extends RailsAPIBase {
       body: { project_id: projectId },
     });
 
-    if (response.error) {
-      throw new Error(`Failed to deactivate deploy: ${JSON.stringify(response.error)}`);
+    if ((response as any).error) {
+      throw new Error(`Failed to deactivate deploy: ${JSON.stringify((response as any).error)}`);
     }
 
     if (!response.data) {
@@ -216,8 +216,8 @@ export class DeployAPIService extends RailsAPIBase {
       },
     });
 
-    if (response.error) {
-      throw new Error(`Failed to rollback deploy: ${JSON.stringify(response.error)}`);
+    if ((response as any).error) {
+      throw new Error(`Failed to rollback deploy: ${JSON.stringify((response as any).error)}`);
     }
 
     if (!response.data) {

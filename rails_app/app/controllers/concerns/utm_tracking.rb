@@ -20,9 +20,15 @@ module UtmTracking
     end
 
     attribution["landing_page"] = request.original_url if attribution.any?
-    attribution["referrer"] = request.referer if request.referer.present?
 
-    return if attribution.except("referrer").empty? # don't set cookie for just a referrer with no UTMs
+    # Prefer referrer forwarded from landing page (original referrer) over HTTP Referer header
+    referrer = params[:referrer].presence || request.referer.presence
+    if referrer.present?
+      attribution["referrer"] = referrer
+      attribution["referring_domain"] = params[:referring_domain].presence || (URI.parse(referrer).host rescue nil)
+    end
+
+    return if attribution.except("referrer", "referring_domain").empty? # don't set cookie for just a referrer with no UTMs
 
     cookies[UTM_COOKIE] = {
       value: attribution.to_json,

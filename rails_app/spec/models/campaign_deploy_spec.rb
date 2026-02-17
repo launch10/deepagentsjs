@@ -358,6 +358,31 @@ RSpec.describe CampaignDeploy, type: :model do
           campaign_deploy.actually_deploy(async: false)
         }.to raise_error(CampaignDeploy::StepNotFinishedError)
       end
+
+      it 'does not advance current_step so retry re-runs the same step' do
+        previous_step = campaign_deploy.current_step
+        begin
+          campaign_deploy.actually_deploy(async: false)
+        rescue CampaignDeploy::StepNotFinishedError
+          # expected
+        end
+        expect(campaign_deploy.reload.current_step).to eq(previous_step)
+      end
+
+      it 'logs the failure to the google_ads logger' do
+        log_output = StringIO.new
+        test_logger = ActiveSupport::TaggedLogging.new(Logger.new(log_output))
+        allow(GoogleAds::Instrumentation).to receive(:google_ads_logger).and_return(test_logger)
+
+        begin
+          campaign_deploy.actually_deploy(async: false)
+        rescue CampaignDeploy::StepNotFinishedError
+          # expected
+        end
+
+        expect(log_output.string).to include("[CampaignDeploy]")
+        expect(log_output.string).to include("test_step")
+      end
     end
 
     context 'async mode with successful step' do

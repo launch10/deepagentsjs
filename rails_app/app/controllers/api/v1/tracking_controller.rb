@@ -80,11 +80,18 @@ class API::V1::TrackingController < ActionController::API
     end
 
     # Create new visit
+    referring_domain = begin
+      URI.parse(params[:referrer]).host if params[:referrer].present?
+    rescue URI::InvalidURIError
+      nil
+    end
+
     Ahoy::Visit.create!(
       website_id: website.id,
       visitor_token: params[:visitor_token],
       visit_token: params[:visit_token] || SecureRandom.uuid,
       referrer: params[:referrer],
+      referring_domain: referring_domain,
       landing_page: params[:landing_page],
       utm_source: params[:utm_source],
       utm_medium: params[:utm_medium],

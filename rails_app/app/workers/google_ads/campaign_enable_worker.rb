@@ -14,6 +14,7 @@ module GoogleAds
       job_run.start!
 
       campaign_id = job_run.job_args["campaign_id"]
+      raise ArgumentError, "campaign_id is required in job_args" unless campaign_id.present?
       campaign = job_run.account.campaigns.find(campaign_id)
 
       # Skip if already enabled
@@ -22,13 +23,22 @@ module GoogleAds
         return
       end
 
-      # Enable the campaign and sync with Google
+      # Update local statuses
       campaign.enable!
+
+      # Sync just the status changes to Google (not a full CampaignDeploy re-sync)
+      GoogleAds::Resources::Campaign.new(campaign).sync
+      campaign.ad_groups.without_deleted.each do |ag|
+        GoogleAds::Resources::AdGroup.new(ag).sync
+      end
+      campaign.ads.without_deleted.each do |ad|
+        GoogleAds::Resources::Ad.new(ad).sync
+      end
 
       complete_with_status(job_run, enabled: true, campaign_id: campaign.id)
     rescue => e
       job_run.fail!(e)
-      job_run.notify_langgraph(status: "failed", error: e.message)
+      job_run.notify_langgraph(status: "failed", error: e.message || e.class.name)
     end
 
     private

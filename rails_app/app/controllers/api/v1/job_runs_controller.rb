@@ -38,7 +38,7 @@ class API::V1::JobRunsController < API::BaseController
 
   def validate_resources(job_type)
     case job_type
-    when "CampaignDeploy"
+    when "CampaignDeploy", "CampaignEnable"
       campaign_id = params[:arguments]&.dig(:campaign_id) || params[:arguments]&.dig("campaign_id")
       { campaign: current_account.campaigns.find(campaign_id) }
     when "WebsiteDeploy"
@@ -79,7 +79,7 @@ class API::V1::JobRunsController < API::BaseController
 
   def permitted_job_args
     args = case params[:job_class]
-    when "CampaignDeploy"
+    when "CampaignDeploy", "CampaignEnable"
       params.require(:arguments).permit(:campaign_id)
     when "WebsiteDeploy"
       params.require(:arguments).permit(:website_id)

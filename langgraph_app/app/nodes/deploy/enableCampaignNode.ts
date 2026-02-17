@@ -38,7 +38,7 @@ export const enableCampaignNode = async (
   }
 
   // 3. Task running with error from webhook? Mark failed
-  if (task?.status === "running" && task.error) {
+  if (task?.status === "running" && task.error !== undefined) {
     return withPhases(state, [{ ...task, status: "failed" } as Task.Task], [TASK_NAME]);
   }
 

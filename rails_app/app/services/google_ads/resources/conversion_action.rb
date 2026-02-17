@@ -13,7 +13,7 @@ module GoogleAds
         { account_id: record.id, google_customer_id: record.google_customer_id }
       end
 
-      instrument_methods :sync, :create_lead_form_conversion_action, :fetch_conversion_info
+      instrument_methods :sync, :synced?, :create_lead_form_conversion_action, :fetch_conversion_info
 
       # ═══════════════════════════════════════════════════════════════
       # SYNC - Main entry point

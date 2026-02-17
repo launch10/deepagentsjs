@@ -1120,6 +1120,140 @@ describe.sequential("Deploy Graph Tests", () => {
     });
 
     /**
+     * Test initPhasesNode directly: when instructions include both website and googleAds
+     * but contentChanged says googleAds hasn't changed, only website tasks should be created.
+     * Instructions stay pure — contentChanged filters what gets created.
+     */
+    it("respects contentChanged — excludes campaign tasks when googleAds unchanged", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_precreate_cc1" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          campaignId: 1,
+          instructions: { website: true, googleAds: true },
+          contentChanged: { website: true, googleAds: false },
+          tasks: [],
+          chatId: 1,
+        })
+        .runNode(asyncInitPhases)
+        .execute();
+
+      // Instructions are pure — both still true
+      expect(result.state.instructions).toEqual({ website: true, googleAds: true });
+
+      // Only website tasks should exist (contentChanged filtered out campaign)
+      const expectedWebsiteTasks: Deploy.TaskName[] = [
+        "ValidateLinks",
+        "RuntimeValidation",
+        "FixingBugs",
+        "OptimizingSEO",
+        "OptimizingPageForLLMs",
+        "AddingAnalytics",
+        "DeployingWebsite",
+      ];
+      expect(result.state.tasks.length).toBe(expectedWebsiteTasks.length);
+      for (const taskName of expectedWebsiteTasks) {
+        const task = Task.findTask(result.state.tasks, taskName);
+        expect(task, `Expected task "${taskName}" to exist`).toBeDefined();
+        expect(task?.status).toBe("pending");
+      }
+
+      // No campaign tasks
+      const campaignTaskNames: Deploy.TaskName[] = [
+        "ConnectingGoogle",
+        "VerifyingGoogle",
+        "CheckingBilling",
+        "DeployingCampaign",
+        "EnablingCampaign",
+      ];
+      for (const taskName of campaignTaskNames) {
+        expect(Task.findTask(result.state.tasks, taskName)).toBeUndefined();
+      }
+
+      // No campaign phases
+      for (const phaseName of campaignTaskNames) {
+        expect(result.state.phases.find((p) => p.name === phaseName)).toBeUndefined();
+      }
+    });
+
+    /**
+     * Test initPhasesNode directly: when contentChanged says website hasn't changed
+     * but googleAds has, only campaign tasks should be created.
+     */
+    it("respects contentChanged — excludes website tasks when website unchanged", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_precreate_cc2" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          campaignId: 1,
+          instructions: { website: true, googleAds: true },
+          contentChanged: { website: false, googleAds: true },
+          tasks: [],
+          chatId: 1,
+        })
+        .runNode(asyncInitPhases)
+        .execute();
+
+      // Only campaign tasks should exist
+      const expectedCampaignTasks: Deploy.TaskName[] = [
+        "ConnectingGoogle",
+        "VerifyingGoogle",
+        "CheckingBilling",
+        "DeployingCampaign",
+        "EnablingCampaign",
+      ];
+      expect(result.state.tasks.length).toBe(expectedCampaignTasks.length);
+      for (const taskName of expectedCampaignTasks) {
+        const task = Task.findTask(result.state.tasks, taskName);
+        expect(task, `Expected task "${taskName}" to exist`).toBeDefined();
+        expect(task?.status).toBe("pending");
+      }
+
+      // No website tasks
+      const websiteTaskNames: Deploy.TaskName[] = [
+        "ValidateLinks",
+        "RuntimeValidation",
+        "FixingBugs",
+        "OptimizingSEO",
+        "OptimizingPageForLLMs",
+        "AddingAnalytics",
+        "DeployingWebsite",
+      ];
+      for (const taskName of websiteTaskNames) {
+        expect(Task.findTask(result.state.tasks, taskName)).toBeUndefined();
+      }
+    });
+
+    /**
+     * Test initPhasesNode directly: when contentChanged is empty (not yet computed),
+     * all requested tasks should still be created — empty contentChanged means
+     * "treat everything as changed".
+     */
+    it("creates all tasks when contentChanged is empty (not yet computed)", async () => {
+      const result = await testGraph<DeployGraphState>()
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_precreate_cc3" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          campaignId: 1,
+          instructions: { website: true, googleAds: true },
+          contentChanged: {},
+          tasks: [],
+          chatId: 1,
+        })
+        .runNode(asyncInitPhases)
+        .execute();
+
+      // All tasks should exist — empty contentChanged means "assume everything changed"
+      expect(result.state.tasks.length).toBe(12);
+    });
+
+    /**
      * Test initPhasesNode directly: when deploy includes both website and googleAds,
      * it should pre-create ALL tasks (website + campaign) as pending.
      */
@@ -1833,6 +1967,62 @@ describe.sequential("Deploy Graph Tests", () => {
       expect(enableTask?.status).toBe("running");
       expect(enableTask?.jobId).toBeDefined();
     });
+
+    /**
+     * USER OUTCOME: When EnableCampaign worker fails, the deploy is marked failed
+     * (not "succeeded"). Regression test for the stripped campaign_id bug.
+     */
+    it("marks deploy as failed when EnableCampaign job fails", async () => {
+      const graph = testGraph<DeployGraphState>()
+        .withGraph(deployGraph)
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_enable_fail" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          campaignId,
+
+          instructions: { googleAds: true },
+          tasks: Deploy.withTasks({ googleAds: true }, { EnablingCampaign: "pending" }),
+          chatId: 1,
+        });
+
+      // First execution: creates the job run, task becomes running with jobId
+      const result = await graph.execute();
+      const enableTask = result.state.tasks.find((t) => t.name === "EnablingCampaign");
+      expect(enableTask?.status).toBe("running");
+      expect(enableTask?.jobId).toBeDefined();
+
+      // Simulate webhook callback with failure (e.g. "Couldn't find Campaign without an ID")
+      await jobRunCallback({
+        job_run_id: enableTask?.jobId!,
+        thread_id: graph.threadId!,
+        status: "failed",
+        error: "Couldn't find Campaign without an ID",
+      });
+
+      // Resume graph after callback
+      const updates = (
+        await deployGraph.getState({
+          configurable: { thread_id: graph.threadId },
+        })
+      ).values;
+
+      const updatedResult = await deployGraph.invoke(updates, {
+        configurable: { thread_id: graph.threadId },
+      });
+
+      // Task should be failed
+      const updatedEnableTask = updatedResult.tasks.find(
+        (t: Deploy.Task) => t.name === "EnablingCampaign"
+      );
+      expect(updatedEnableTask?.status).toBe("failed");
+      expect(updatedEnableTask?.error).toContain("Couldn't find Campaign");
+
+      // Deploy should be failed, NOT succeeded
+      expect(updatedResult.status).toBe("failed");
+      expect(updatedResult.error).toBeDefined();
+    });
   });
 
   /**
@@ -1959,13 +2149,7 @@ describe.sequential("Deploy Graph Tests", () => {
           tasks: [],
           chatId: 1,
         })
-        .stopAfter("initPhases")
         .execute();
-
-      // Debug: see what state looks like
-      console.log("DEBUG contentChanged:", JSON.stringify(result.state.contentChanged));
-      console.log("DEBUG instructions:", JSON.stringify(result.state.instructions));
-      console.log("DEBUG tasks:", result.state.tasks.map((t: any) => t.name));
 
       // Should NOT be nothingChanged (website did change)
       expect(result.state.nothingChanged).toBe(false);
@@ -1975,11 +2159,10 @@ describe.sequential("Deploy Graph Tests", () => {
       // contentChanged captures the change detection results
       expect(result.state.contentChanged.website).toBe(true);
       expect(result.state.contentChanged.googleAds).toBe(false);
-      // Should only have website tasks, no campaign tasks
-      // (initPhases uses shouldDeployGoogleAds which checks contentChanged)
-      const campaignTasks = result.state.tasks.filter((t: any) =>
-        ["ConnectingGoogle", "VerifyingGoogle", "CheckingBilling", "DeployingCampaign", "EnablingCampaign"].includes(t.name)
-      );
+      // Campaign tasks should not exist — they were never created
+      // because contentChanged.googleAds === false filtered them out
+      const campaignTaskNames = ["ConnectingGoogle", "VerifyingGoogle", "CheckingBilling", "DeployingCampaign", "EnablingCampaign"];
+      const campaignTasks = result.state.tasks.filter((t: any) => campaignTaskNames.includes(t.name));
       expect(campaignTasks.length).toBe(0);
     });
 

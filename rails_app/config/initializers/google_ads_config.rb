@@ -4,11 +4,13 @@ require "google/ads/google_ads"
 # - Production: Rails.logger (INFO level - summaries only)
 # - Development/Test: Dedicated file (DEBUG level - full request/response payloads)
 Rails.application.config.google_ads_logger = if Rails.env.production?
-  Rails.logger
+  ActiveSupport::TaggedLogging.new(Rails.logger)
 else
-  Logger.new(Rails.root.join("log", "google_ads.log")).tap do |logger|
-    logger.level = Logger::DEBUG
-  end
+  ActiveSupport::TaggedLogging.new(
+    Logger.new(Rails.root.join("log", "google_ads.log")).tap do |logger|
+      logger.level = Logger::DEBUG
+    end
+  )
 end
 
 # Allow GOOGLE_ADS_LOGIN_CUSTOMER_ID env var to override credentials for testing

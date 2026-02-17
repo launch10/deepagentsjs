@@ -1,10 +1,11 @@
 import { usePage } from "@inertiajs/react";
 import { CreditCardIcon } from "@heroicons/react/24/outline";
 import { Button } from "@components/ui/button";
-import { useDeployChatActions, type DeployProps } from "@hooks/useDeployChat";
+import { useDeployChatActions, useDeployContext, type DeployProps } from "@hooks/useDeployChat";
 
 export default function PaymentRequiredScreen() {
   const { updateState } = useDeployChatActions();
+  const deployContext = useDeployContext();
   const { ads_account } = usePage<DeployProps>().props;
 
   const customerId = ads_account?.platform_settings?.google?.customer_id?.replace(/-/g, "");
@@ -33,7 +34,7 @@ export default function PaymentRequiredScreen() {
           <Button variant="outline" onClick={() => window.open(billingUrl, "_blank")}>
             Add Payment Method
           </Button>
-          <Button onClick={() => updateState({})}>Payment Method Added</Button>
+          <Button onClick={() => updateState(deployContext)}>Payment Method Added</Button>
         </div>
       </div>
     </div>

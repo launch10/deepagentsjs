@@ -2889,6 +2889,8 @@ export interface paths {
                     page?: number;
                     /** @description Filter by status (completed, failed, running) */
                     status?: string;
+                    /** @description Filter by deploy type (website, google_ads) — matches deploys whose instructions include this key as true */
+                    deploy_type?: string;
                 };
                 header?: {
                     Authorization?: string;

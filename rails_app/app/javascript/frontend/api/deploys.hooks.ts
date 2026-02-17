@@ -18,7 +18,7 @@ export const deploysKeys = {
   lists: () => [...deploysKeys.all, "list"] as const,
   list: (params: { project_id: number; page: number }) =>
     [...deploysKeys.lists(), params] as const,
-  hasCompleted: (params: { project_id: number; instructions: Record<string, boolean> }) =>
+  hasCompleted: (params: { project_id: number; deploy_type: "website" | "google_ads" }) =>
     [...deploysKeys.all, "hasCompleted", params] as const,
 };
 
@@ -89,17 +89,18 @@ export function useRollbackDeploy() {
 
 export function useHasCompletedDeploy(
   projectId: number,
-  instructions: Record<string, boolean>
+  deployType: "website" | "google_ads"
 ) {
   const service = useDeployService();
   const rootPath = useRootPath();
 
   return useQuery<boolean>({
-    queryKey: deploysKeys.hasCompleted({ project_id: projectId, instructions }),
+    queryKey: deploysKeys.hasCompleted({ project_id: projectId, deploy_type: deployType }),
     queryFn: async () => {
       const data = await service.list({
         project_id: projectId,
         status: "completed",
+        deploy_type: deployType,
       });
       return data.deploys.length > 0;
     },

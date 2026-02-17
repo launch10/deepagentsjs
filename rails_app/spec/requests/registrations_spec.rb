@@ -109,6 +109,69 @@ RSpec.describe "Registrations", type: :request do
       expect(attribution["referrer"]).to eq("https://launch10.ai/pricing")
     end
 
+    it "includes referring_domain extracted from referrer" do
+      get new_user_registration_path,
+        params: { utm_source: "google" },
+        headers: { "HTTP_REFERER" => "https://www.google.com/search?q=test" }
+
+      attribution = JSON.parse(cookies[:signup_attribution])
+      expect(attribution["referring_domain"]).to eq("www.google.com")
+    end
+
+    it "prefers forwarded referrer param over HTTP Referer header" do
+      get new_user_registration_path,
+        params: {
+          utm_source: "google",
+          referrer: "https://www.google.com/search?q=test",
+          referring_domain: "www.google.com"
+        },
+        headers: { "HTTP_REFERER" => "https://landing.launch10.site/coaches" }
+
+      attribution = JSON.parse(cookies[:signup_attribution])
+      expect(attribution["referrer"]).to eq("https://www.google.com/search?q=test")
+      expect(attribution["referring_domain"]).to eq("www.google.com")
+    end
+
+    it "falls back to HTTP Referer when no forwarded referrer param" do
+      get new_user_registration_path,
+        params: { utm_source: "google" },
+        headers: { "HTTP_REFERER" => "https://facebook.com/post/123" }
+
+      attribution = JSON.parse(cookies[:signup_attribution])
+      expect(attribution["referrer"]).to eq("https://facebook.com/post/123")
+      expect(attribution["referring_domain"]).to eq("facebook.com")
+    end
+
+    it "extracts referring_domain from forwarded referrer when no referring_domain param" do
+      get new_user_registration_path,
+        params: {
+          utm_source: "google",
+          referrer: "https://www.google.com/search?q=test"
+        }
+
+      attribution = JSON.parse(cookies[:signup_attribution])
+      expect(attribution["referring_domain"]).to eq("www.google.com")
+    end
+
+    it "does not set cookie for just a referrer with no UTMs" do
+      get new_user_registration_path,
+        headers: { "HTTP_REFERER" => "https://google.com" }
+
+      expect(cookies[:signup_attribution]).to be_blank
+    end
+
+    it "handles malformed referrer URL gracefully" do
+      get new_user_registration_path,
+        params: {
+          utm_source: "google",
+          referrer: "not-a-valid-url"
+        }
+
+      attribution = JSON.parse(cookies[:signup_attribution])
+      expect(attribution["referrer"]).to eq("not-a-valid-url")
+      expect(attribution["referring_domain"]).to be_nil
+    end
+
     it "includes landing_page URL in attribution" do
       get new_user_registration_path, params: { utm_source: "google", utm_campaign: "test" }
 

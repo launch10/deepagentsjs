@@ -326,4 +326,36 @@ RSpec.describe User, type: :model do
       new_user.track_signup
     end
   end
+
+  describe "#posthog_attribution_properties" do
+    let(:user) { create(:user) }
+    let(:account) { user.owned_account }
+
+    it "includes initial_referring_domain from attribution" do
+      account.update_column(:signup_attribution, {
+        "utm_source" => "google",
+        "referrer" => "https://www.google.com/search?q=test",
+        "referring_domain" => "www.google.com"
+      })
+
+      properties = user.send(:posthog_attribution_properties)
+      expect(properties[:initial_referring_domain]).to eq("www.google.com")
+      expect(properties[:initial_referrer]).to eq("https://www.google.com/search?q=test")
+      expect(properties[:initial_utm_source]).to eq("google")
+    end
+
+    it "omits initial_referring_domain when not in attribution" do
+      account.update_column(:signup_attribution, {
+        "utm_source" => "google"
+      })
+
+      properties = user.send(:posthog_attribution_properties)
+      expect(properties).not_to have_key(:initial_referring_domain)
+      expect(properties[:initial_utm_source]).to eq("google")
+    end
+
+    it "returns empty hash when no attribution exists" do
+      expect(user.send(:posthog_attribution_properties)).to eq({})
+    end
+  end
 end

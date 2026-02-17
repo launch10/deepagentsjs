@@ -114,24 +114,18 @@ class Campaign < ApplicationRecord
     status == "paused"
   end
 
-  def enable!(async: true)
-    # Update local statuses
+  def enable!
     self.google_status = "ENABLED"
     save!
     ad_groups.each(&:enable!)
     ads.each(&:enable!)
-
-    CampaignDeploy.deploy(self, async: async)
   end
 
-  def pause!(async: true)
-    # Update local statuses
+  def pause!
     self.google_status = "PAUSED"
     save!
     ad_groups.each(&:pause!)
     ads.each(&:pause!)
-
-    CampaignDeploy.deploy(self, async: async)
   end
 
   def daily_budget_cents

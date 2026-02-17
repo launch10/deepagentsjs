@@ -38,8 +38,9 @@ RSpec.describe GoogleAds::Resources::Campaign do
       allow(@mock_google_ads_service).to receive(:search).and_return(campaign_response)
 
       # Instrumentation formats tags as "key=value" strings for log aggregator compatibility
-      expect(Rails.logger).to receive(:tagged).with(
+      expect(GoogleAds::Instrumentation.google_ads_logger).to receive(:tagged).with(
         "campaign_id=#{campaign.id}",
+        "project_id=#{campaign.project_id}",
         "google_customer_id=1234567890",
         "account_id=#{account.id}"
       ).at_least(:once).and_yield

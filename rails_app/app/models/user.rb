@@ -120,6 +120,7 @@ class User < ApplicationRecord
       initial_icp: attribution["icp"],
       initial_landing_page: attribution["landing_page"],
       initial_referrer: attribution["referrer"],
+      initial_referring_domain: attribution["referring_domain"],
       initial_gclid: attribution["gclid"],
       initial_fbclid: attribution["fbclid"]
     }.compact

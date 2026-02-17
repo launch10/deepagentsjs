@@ -8,6 +8,7 @@ class API::V1::DeploysController < API::BaseController
     scope = project.deploys.where.not(status: "pending").order(created_at: :desc)
 
     scope = scope.with_instructions(Deploy.normalize_instructions(params[:instructions].to_unsafe_h)) if params[:instructions].present?
+    scope = scope.with_instruction(params[:deploy_type]) if params[:deploy_type].present?
     scope = scope.where(status: params[:status]) if params[:status].present?
 
     @pagy, @deploys = pagy(scope, limit: DEPLOYS_PER_PAGE)

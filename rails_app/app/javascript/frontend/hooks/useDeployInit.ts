@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { usePage } from "@inertiajs/react";
 import {
   useDeployChat,
@@ -8,19 +8,14 @@ import {
 } from "@hooks/useDeployChat";
 import { useProjectStore } from "~/stores/projectStore";
 import { useHasCompletedDeploy, useDeployService } from "@api/deploys.hooks";
-import { useDeployInstructions } from "@hooks/useDeployInstructions";
+import { useDeployInstructions, useDeployType } from "@hooks/useDeployInstructions";
 
 /**
  * Deploy initialization hook.
  *
- * - Auto-starts deploy when no completed deploy with these instructions exists
- * - If a completed deploy with matching instructions exists, shows completed state
- * - If the active deploy has different instructions, deactivates and restarts
- * - Resumes polling when reloading with an in-progress deploy
- * - Guards against re-invocation for terminal deploys
- * - Polls the graph on an interval while deploy is running
- * - Syncs deployId from graph state to project store
- * - Touches user_active_at on mount (for OAuth callback linkage)
+ * Decides what to do on mount (start / resume / deactivate+restart / nothing),
+ * then polls while a deploy is running. Also touches user_active_at on mount
+ * and syncs deployId to the project store.
  */
 export function useDeployInit() {
   const { deploy } = usePage<DeployProps>().props;
@@ -33,25 +28,12 @@ export function useDeployInit() {
   }));
   const deployContext = useDeployContext();
   const instructions = useDeployInstructions();
+  const deployType = useDeployType();
   const projectId = deployContext.projectId;
-  const hasActed = useRef(false);
-  const isDeactivating = useRef(false);
+  const hasInitialized = useRef(false);
 
-  // Check: has this project EVER had a completed deploy with these instructions?
   const { data: hasEverCompleted, isLoading: checkingHistory } =
-    useHasCompletedDeploy(projectId ?? 0, instructions);
-
-  // Deactivate current deploy and start a fresh one (no page reload needed)
-  const deactivateAndRestart = useCallback(async () => {
-    if (isDeactivating.current || !projectId) return;
-    isDeactivating.current = true;
-    try {
-      await service.deactivate(projectId);
-      startDeploy();
-    } finally {
-      isDeactivating.current = false;
-    }
-  }, [service, projectId, startDeploy]);
+    useHasCompletedDeploy(projectId ?? 0, deployType);
 
   // Touch user_active_at on mount so OAuth callback can find the active deploy
   useEffect(() => {
@@ -60,67 +42,62 @@ export function useDeployInit() {
     }
   }, [deploy?.id, service]);
 
-  // Terminal deploy logic:
-  // If deploy is completed/failed, check if its instructions match the current page.
-  // If they match → show completed state (mark as acted).
-  // If they don't match AND we've never completed with these instructions → deactivate + restart.
+  // ── Initialize: decide what to do on mount ──
   useEffect(() => {
-    if (hasActed.current || checkingHistory) return;
+    if (hasInitialized.current || checkingHistory) return;
+
+    const isInProgress =
+      deploy?.status === "pending" || deploy?.status === "running";
     const isTerminal =
       deploy?.status === "completed" || deploy?.status === "failed";
-    if (!isTerminal) return;
 
-    // Check if instructions match
-    const deployInstructions = deploy?.instructions ?? {};
-    const instructionsMatch =
-      JSON.stringify(deployInstructions) === JSON.stringify(instructions);
-
-    if (instructionsMatch) {
-      // Same instructions — show the terminal state
-      hasActed.current = true;
+    // Resume an in-progress deploy — kick one updateState so polling takes over
+    if (isInProgress) {
+      hasInitialized.current = true;
+      updateState(deployContext);
       return;
     }
 
-    // Different instructions — only auto-trigger if we've NEVER completed with these
-    if (hasEverCompleted === false) {
-      hasActed.current = true;
-      deactivateAndRestart();
-    } else if (hasEverCompleted === true) {
-      // We HAVE completed this type before — don't auto-trigger, just show terminal state
-      hasActed.current = true;
+    // Terminal deploy — check if instructions match the current page
+    if (isTerminal) {
+      const instructionsMatch =
+        JSON.stringify(deploy?.instructions ?? {}) ===
+        JSON.stringify(instructions);
+
+      if (instructionsMatch || hasEverCompleted) {
+        hasInitialized.current = true;
+        return; // show the terminal state as-is
+      }
+
+      if (hasEverCompleted === false) {
+        hasInitialized.current = true;
+        service.deactivate(projectId!).then(() => startDeploy());
+        return;
+      }
+
+      return; // hasEverCompleted still loading — wait
     }
-    // If hasEverCompleted is undefined, we're still loading — wait
+
+    // No deploy exists
+    if (hasEverCompleted === false) {
+      hasInitialized.current = true;
+      startDeploy();
+    } else if (hasEverCompleted === true) {
+      hasInitialized.current = true;
+    }
+    // hasEverCompleted undefined → still loading, wait
   }, [
     deploy?.status,
     deploy?.instructions,
     instructions,
     hasEverCompleted,
     checkingHistory,
-    deactivateAndRestart,
+    updateState,
+    deployContext,
+    service,
+    projectId,
+    startDeploy,
   ]);
-
-  // Auto-start: no deploy exists AND we've never completed with these instructions
-  useEffect(() => {
-    if (hasActed.current || checkingHistory) return;
-    if (!deploy && hasEverCompleted === false) {
-      hasActed.current = true;
-      startDeploy();
-    } else if (!deploy && hasEverCompleted === true) {
-      // We've completed this type before — don't auto-start
-      hasActed.current = true;
-    }
-  }, [deploy, startDeploy, hasEverCompleted, checkingHistory]);
-
-  // Resume: deploy is in-progress on page load → kick one update so polling takes over
-  useEffect(() => {
-    if (hasActed.current) return;
-    const isInProgress =
-      deploy?.status === "pending" || deploy?.status === "running";
-    if (isInProgress) {
-      hasActed.current = true;
-      updateState(deployContext);
-    }
-  }, [deploy?.status, updateState, deployContext]);
 
   // Sync deployId from graph state → project store
   const setStore = useProjectStore((s) => s.set);
@@ -132,9 +109,9 @@ export function useDeployInit() {
 
   // Poll: while deploy is running and we're not already streaming, ping the graph
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isRunning = state.status === "running";
+  const isRunning = state.status === "running" || state.status === "pending";
   const isStreaming = status === "streaming" || status === "submitted";
-  const isTerminal = state.status === "completed" || state.status === "failed";
+  const isTerminalState = state.status === "completed" || state.status === "failed";
 
   useEffect(() => {
     const shouldPoll = isRunning && !isStreaming;
@@ -143,7 +120,7 @@ export function useDeployInit() {
       pollRef.current = setInterval(() => updateState(deployContext), 3000);
     }
 
-    if ((!shouldPoll || isTerminal) && pollRef.current) {
+    if ((!shouldPoll || isTerminalState) && pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
     }
@@ -154,5 +131,5 @@ export function useDeployInit() {
         pollRef.current = null;
       }
     };
-  }, [updateState, deployContext, isRunning, isStreaming, isTerminal]);
+  }, [updateState, deployContext, isRunning, isStreaming, isTerminalState]);
 }

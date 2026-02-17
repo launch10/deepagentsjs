@@ -54,7 +54,7 @@ RSpec.describe GoogleAds::Resources::Ad do
       allow(@mock_google_ads_service).to receive(:search).and_return(ad_response)
 
       # Instrumentation formats tags as "key=value" strings for log aggregator compatibility
-      expect(Rails.logger).to receive(:tagged).with(
+      expect(GoogleAds::Instrumentation.google_ads_logger).to receive(:tagged).with(
         "ad_id=#{ad.id}",
         "ad_group_id=#{ad_group.id}"
       ).at_least(:once).and_yield
@@ -224,8 +224,31 @@ RSpec.describe GoogleAds::Resources::Ad do
       end
     end
 
-    context 'when ad has no google_ad_id' do
+    context 'when ad has no google_ad_id but exists in ad group' do
+      it 'finds by final_urls and backfills google_ad_id' do
+        ad_response = mock_search_response_with_ad_group_ad(
+          ad_id: 55555,
+          ad_group_id: 999,
+          customer_id: 1234567890,
+          status: :PAUSED,
+          final_urls: ad.final_urls,
+          path1: "Shop",
+          path2: "Now"
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(ad_response)
+
+        remote = ad_syncer.fetch
+        expect(remote).not_to be_nil
+        expect(remote.ad.id).to eq(55555)
+        expect(ad.reload.google_ad_id).to eq(55555)
+      end
+    end
+
+    context 'when ad has no google_ad_id and no match in ad group' do
       it 'returns nil' do
+        allow(@mock_google_ads_service).to receive(:search)
+          .and_return(mock_empty_search_response)
+
         expect(ad_syncer.fetch).to be_nil
       end
     end

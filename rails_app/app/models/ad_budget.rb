@@ -27,6 +27,18 @@ class AdBudget < ApplicationRecord
 
   acts_as_paranoid
 
+  def budget_dollars
+    daily_budget_cents / 100.0
+  end
+  alias_method :amount_dollars, :budget_dollars
+  alias_method :daily_budget_dollars, :budget_dollars
+  alias_method :budget, :budget_dollars
+  alias_method :dollars, :budget_dollars
+
+  def cents
+    daily_budget_cents
+  end
+
   def google_syncer
     GoogleAds::Resources::Budget.new(self)
   end

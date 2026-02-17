@@ -514,6 +514,96 @@ RSpec.describe "Job Runs API", type: :request do
     end
   end
 
+  # CampaignEnable job type tests
+  describe 'CampaignEnable job' do
+    path '/api/v1/job_runs' do
+      post 'Creates a CampaignEnable job run' do
+        tags 'Job Runs'
+        consumes 'application/json'
+        produces 'application/json'
+        security [bearer_auth: []]
+        parameter name: :Authorization, in: :header, type: :string, required: false
+        parameter name: 'X-Signature', in: :header, type: :string, required: false
+        parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+        parameter name: :job_run_params, in: :body, schema: APISchemas::JobRun.params_schema
+
+        response '201', 'creates job run and preserves campaign_id in job_args' do
+          schema APISchemas::JobRun.response
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:job_run_params) do
+            {
+              job_class: "CampaignEnable",
+              arguments: { campaign_id: campaign.id },
+              thread_id: "thread_enable123"
+            }
+          end
+
+          before do
+            allow(GoogleAds::CampaignEnableWorker).to receive(:perform_async)
+          end
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data['id']).to be_present
+            expect(data['status']).to eq('pending')
+
+            job_run = JobRun.find(data['id'])
+            expect(job_run.job_class).to eq("CampaignEnable")
+            expect(job_run.langgraph_thread_id).to eq("thread_enable123")
+            expect(job_run.job_args["campaign_id"]).to eq(campaign.id)
+            expect(job_run.job_args["account_id"]).to eq(account.id)
+
+            expect(GoogleAds::CampaignEnableWorker).to have_received(:perform_async)
+              .with(job_run.id)
+          end
+        end
+
+        response '404', 'campaign not found' do
+          schema APISchemas::JobRun.error_response
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:job_run_params) do
+            {
+              job_class: "CampaignEnable",
+              arguments: { campaign_id: 999999 },
+              thread_id: "thread_enable123"
+            }
+          end
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data['errors']).to be_present
+          end
+        end
+
+        response '404', 'campaign_id is nil' do
+          schema APISchemas::JobRun.error_response
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:job_run_params) do
+            {
+              job_class: "CampaignEnable",
+              arguments: {},
+              thread_id: "thread_enable123"
+            }
+          end
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data['errors']).to be_present
+          end
+        end
+      end
+    end
+  end
+
   # Cross-account security tests
   describe 'Cross-account security' do
     let!(:other_user) { create(:user) }

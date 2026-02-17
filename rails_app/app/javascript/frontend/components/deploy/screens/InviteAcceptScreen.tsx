@@ -1,7 +1,7 @@
 import { EnvelopeIcon, ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { Button } from "@components/ui/button";
 import FullResetButton from "@components/deploy/FullResetButton";
-import { useDeployChatActions, useDeployChatState } from "@hooks/useDeployChat";
+import { useDeployChatActions, useDeployChatState, useDeployContext } from "@hooks/useDeployChat";
 
 export interface InviteAcceptViewProps {
   googleEmail?: string;
@@ -100,6 +100,7 @@ export function InviteAcceptView({
 /** Connected component — reads from deploy chat state */
 export default function InviteAcceptScreen() {
   const { updateState } = useDeployChatActions();
+  const deployContext = useDeployContext();
   const tasks = useDeployChatState("tasks");
   const connectTask = tasks?.find((t) => t.name === "ConnectingGoogle");
   const googleEmail = connectTask?.result?.google_email as string | undefined;
@@ -107,9 +108,10 @@ export default function InviteAcceptScreen() {
   return (
     <InviteAcceptView
       googleEmail={googleEmail}
-      onResendInvite={() => updateState({})}
+      onResendInvite={() => updateState(deployContext)}
       onAccepted={() =>
         updateState({
+          ...deployContext,
           tasks: [{ name: "VerifyingGoogle", result: { status: "accepted" } }],
         })
       }

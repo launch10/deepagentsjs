@@ -33,7 +33,12 @@ const anyTaskFailed = (state: Partial<DeployGraphState>): boolean => {
  */
 async function findNextTask(state: DeployGraphState): Promise<NextTask | null> {
   const log = getLogger({ component: "taskExecutor.findNextTask" });
-  const tasks = Deploy.findTasks(state.instructions); // Returns tasks based on instructions, in order of execution
+  // Build effective task list: respect contentChanged to exclude unchanged parts.
+  // This mirrors initPhasesNode's logic so we don't process tasks that were never created.
+  const effectiveInstructions: Deploy.Instructions = {};
+  if (Deploy.shouldDeployWebsite(state)) effectiveInstructions.website = true;
+  if (Deploy.shouldDeployGoogleAds(state)) effectiveInstructions.googleAds = true;
+  const tasks = Deploy.findTasks(effectiveInstructions);
 
   log.debug(
     {
@@ -131,10 +136,10 @@ function allTasksComplete(state: DeployGraphState): boolean {
       continue;
     }
 
-    // If task doesn't exist, check if it should be skipped
-    // (we can't call shouldSkip here without async, so assume not done)
+    // If task doesn't exist in state.tasks, it was intentionally excluded
+    // by initPhasesNode (e.g. contentChanged filtered it out). Treat as done.
     if (!task) {
-      return false;
+      continue;
     }
 
     // Any other status means not complete

@@ -77,6 +77,7 @@ class Deploy < ApplicationRecord
     where.not(finished_at: nil).where("finished_at - created_at > ?", threshold)
   }
   scope :with_instructions, ->(instructions) { where(instructions: instructions) }
+  scope :with_instruction, ->(key) { where("instructions @> ?", { key.to_s.underscore => true }.to_json) }
   scope :completed, -> { where(status: "completed") }
 
   # Has this project ever had a completed deploy with these exact instructions?

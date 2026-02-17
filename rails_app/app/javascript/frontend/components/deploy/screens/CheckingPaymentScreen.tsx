@@ -2,7 +2,7 @@ import { usePage } from "@inertiajs/react";
 import { CreditCardIcon, ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { Button } from "@components/ui/button";
 import FullResetButton from "@components/deploy/FullResetButton";
-import { useDeployChatActions, type DeployProps } from "@hooks/useDeployChat";
+import { useDeployChatActions, useDeployContext, type DeployProps } from "@hooks/useDeployChat";
 
 export interface CheckingPaymentViewProps {
   billingUrl: string;
@@ -80,6 +80,7 @@ export function CheckingPaymentView({
 /** Connected component — reads from deploy chat state */
 export default function CheckingPaymentScreen() {
   const { updateState } = useDeployChatActions();
+  const deployContext = useDeployContext();
   const { ads_account } = usePage<DeployProps>().props;
 
   const customerId = ads_account?.platform_settings?.google?.customer_id?.replace(/-/g, "");
@@ -92,6 +93,7 @@ export default function CheckingPaymentScreen() {
       billingUrl={billingUrl}
       onPaymentAdded={() =>
         updateState({
+          ...deployContext,
           tasks: [{ name: "CheckingBilling", result: { has_payment: true } }],
         })
       }

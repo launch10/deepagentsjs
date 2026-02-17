@@ -417,11 +417,16 @@ class CampaignDeploy < ApplicationRecord
       end
 
       step.run unless step.finished?
-      update!(current_step: step.class.step_name.to_s)
 
       unless step.finished? # There was some API error that prevented us from successfully completing the task, retry
+        GoogleAds::Instrumentation.google_ads_logger.error(
+          "[CampaignDeploy] Step #{step.class.step_name} did not complete for deploy=#{id} campaign=#{campaign_id}. " \
+          "Diagnostic: #{format_step_diagnostic(step)}"
+        )
         raise StepNotFinishedError, "Step #{step.class.step_name} did not complete successfully"
       end
+
+      update!(current_step: step.class.step_name.to_s)
     end
 
     # Enqueue next step outside the lock to avoid holding it during queue operations
@@ -435,6 +440,22 @@ class CampaignDeploy < ApplicationRecord
   end
 
   private
+
+  def format_step_diagnostic(step)
+    return "no sync_result defined" unless step.respond_to?(:sync_result)
+
+    results = step.sync_result
+    case results
+    when Array
+      results.map { |r| r.respond_to?(:to_h) ? r.to_h : r.inspect }.inspect
+    when nil
+      "sync_result returned nil"
+    else
+      results.respond_to?(:to_h) ? results.to_h.inspect : results.inspect
+    end
+  rescue => e
+    "diagnostic error: #{e.message}"
+  end
 
   def set_shasum
     self.shasum = campaign.generate_shasum

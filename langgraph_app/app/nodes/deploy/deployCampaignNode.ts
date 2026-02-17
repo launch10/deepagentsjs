@@ -30,22 +30,14 @@ async function runDeployCampaign(
     return {};
   }
 
-  // 2. Task exists with result? Process it
+  // 2. Task exists with result? Mark task completed (not graph-level — taskExecutor handles that)
   if (task?.status === "running" && task.result) {
-    return {
-      tasks: Task.updateTask(state.tasks, TASK_NAME, { status: "completed" }),
-      status: "completed",
-      result: task.result,
-    };
+    return withPhases(state, [{ ...task, status: "completed" } as Task.Task], [TASK_NAME]);
   }
 
-  // 3. Task exists with error? Mark failed
-  if (task?.status === "running" && task.error) {
-    return {
-      tasks: Task.updateTask(state.tasks, TASK_NAME, { status: "failed" }),
-      status: "failed",
-      error: { message: task.error, node: "deployCampaignNode" },
-    };
+  // 3. Task exists with error? Mark task failed (not graph-level — taskExecutor handles that)
+  if (task?.status === "running" && task.error !== undefined) {
+    return withPhases(state, [{ ...task, status: "failed" } as Task.Task], [TASK_NAME]);
   }
 
   // 4. Task already pending/running? Just waiting, no-op
@@ -73,15 +65,15 @@ async function runDeployCampaign(
     threadId: state.threadId,
   });
 
+  // Return updated task with jobId — do NOT set graph-level status here.
+  // The deploy status must stay "running" so frontend polling continues.
   return {
     tasks: [
-      ...state.tasks,
       {
         ...Deploy.createTask(TASK_NAME, jobRun.id),
         status: "running",
       },
     ],
-    status: "pending",
   };
 }
 
@@ -120,7 +112,7 @@ export const deployCampaignTaskRunner: TaskRunner = {
       },
       "Checking if campaign deploy is blocking"
     );
-    return task.status === "running" && !!task.jobId && !task.result && !task.error;
+    return task.status === "running" && !!task.jobId && !task.result && task.error === undefined;
   },
 
   blockingTimeout: 180_000, // 3 minutes between health checks

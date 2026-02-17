@@ -3657,6 +3657,13 @@ paths:
         description: Filter by status (completed, failed, running)
         schema:
           type: string
+      - name: deploy_type
+        in: query
+        required: false
+        description: Filter by deploy type (website, google_ads) — matches deploys
+          whose instructions include this key as true
+        schema:
+          type: string
       responses:
         '200':
           description: filters by status

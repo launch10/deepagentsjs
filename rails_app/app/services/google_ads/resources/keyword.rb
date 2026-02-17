@@ -28,7 +28,7 @@ module GoogleAds
         { keyword: record }
       end
 
-      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
+      instrument_methods :sync, :synced?, :sync_result, :sync_plan, :delete, :fetch
 
       # ═══════════════════════════════════════════════════════════════
       # CLASS METHODS: Collection Operations (AdGroup has many keywords)

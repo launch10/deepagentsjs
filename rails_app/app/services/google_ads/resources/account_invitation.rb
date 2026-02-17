@@ -28,7 +28,7 @@ module GoogleAds
         { google_customer_id: record.customer_id }
       end
 
-      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
+      instrument_methods :sync, :synced?, :sync_result, :sync_plan, :delete, :fetch
 
       # ═══════════════════════════════════════════════════════════════
       # PUBLIC API

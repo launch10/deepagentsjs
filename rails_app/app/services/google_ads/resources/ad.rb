@@ -96,8 +96,6 @@ module GoogleAds
       # ═══════════════════════════════════════════════════════════════
 
       def synced?
-        return false unless record.google_ad_id
-
         remote = fetch
         return false unless remote
         return false if remote.status == :REMOVED
@@ -108,7 +106,7 @@ module GoogleAds
       def sync
         return GoogleAds::SyncResult.unchanged(:ad_group_ad, record.google_ad_id) if synced?
 
-        if record.google_ad_id && fetch
+        if fetch
           update
         else
           create
@@ -166,6 +164,10 @@ module GoogleAds
       end
 
       def fetch
+        fetch_by_id || fetch_by_ad_group
+      end
+
+      def fetch_by_id
         return nil unless record.google_ad_id
 
         results = client.service.google_ads.search(
@@ -178,6 +180,26 @@ module GoogleAds
         row.ad_group_ad
       end
 
+      def fetch_by_ad_group
+        return nil unless ad_group.google_ad_group_id
+
+        results = client.service.google_ads.search(
+          customer_id: customer_id,
+          query: fetch_by_ad_group_query
+        )
+
+        target_urls = record.final_urls
+        results.each do |row|
+          remote_urls = row.ad_group_ad.ad.final_urls.to_a
+          if remote_urls == target_urls
+            backfill_ad_id(row.ad_group_ad.ad.id)
+            return row.ad_group_ad
+          end
+        end
+
+        nil
+      end
+
       # compare_fields provided by FieldMappable
 
       # ═══════════════════════════════════════════════════════════════
@@ -185,7 +207,7 @@ module GoogleAds
       # Wrap public methods with logging context
       # ═══════════════════════════════════════════════════════════════
 
-      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
+      instrument_methods :sync, :synced?, :sync_result, :sync_plan, :delete, :fetch
 
       private
 
@@ -306,6 +328,10 @@ module GoogleAds
         record.update_column(:platform_settings, record.platform_settings.deep_merge("google" => { "ad_id" => ad_id }))
       end
 
+      def backfill_ad_id(id)
+        record.update_column(:platform_settings, record.platform_settings.deep_merge("google" => { "ad_id" => id }))
+      end
+
       def client
         GoogleAds.client
       end
@@ -335,6 +361,18 @@ module GoogleAds
           FROM ad_group_ad
           WHERE ad_group_ad.ad.id = #{record.google_ad_id}
           AND ad_group_ad.ad_group = '#{ad_group_resource_name}'
+        GAQL
+      end
+
+      def fetch_by_ad_group_query
+        <<~GAQL.squish
+          SELECT ad_group_ad.resource_name, ad_group_ad.ad.id, ad_group_ad.ad.final_urls,
+                 ad_group_ad.ad.responsive_search_ad.headlines, ad_group_ad.ad.responsive_search_ad.descriptions,
+                 ad_group_ad.ad.responsive_search_ad.path1, ad_group_ad.ad.responsive_search_ad.path2,
+                 ad_group_ad.status
+          FROM ad_group_ad
+          WHERE ad_group_ad.ad_group = '#{ad_group_resource_name}'
+          AND ad_group_ad.status != 'REMOVED'
         GAQL
       end
     end

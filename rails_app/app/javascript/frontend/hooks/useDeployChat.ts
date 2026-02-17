@@ -13,13 +13,36 @@ export type DeployProps =
 
 export type DeploySnapshot = ChatSnapshot<Deploy.DeployGraphState>;
 
+/**
+ * Module-level cache of the resolved deploy threadId.
+ *
+ * When `thread_id` is null in page props (no active deploy chat on page load),
+ * the SDK generates a random threadId and rekeys the registry entry from
+ * `api::__new__` to `api::<threadId>`. Late-mounting components (e.g.
+ * InviteAcceptScreen, CheckingPaymentScreen) that call getOrCreateChat with
+ * threadId=undefined would create a SECOND chat instance because the __new__
+ * key is gone.
+ *
+ * Fix: when the first chat establishes, stash the threadId here so
+ * late-mounting hooks resolve to the correct registry entry.
+ * Cleared automatically on full page reload (JS runtime restarts).
+ */
+let resolvedDeployThreadId: string | undefined;
+
 function useDeployChatOptions() {
-  const { thread_id } = usePage<DeployProps>().props;
+ const { thread_id } = usePage<DeployProps>().props;
+
+  // Reset cache when server provides a new thread_id (or null for new deploy)
+  // Make the cached threadId bulletproof to stale threadIds
+  if (thread_id !== undefined && thread_id !== resolvedDeployThreadId) {
+    resolvedDeployThreadId = thread_id ?? undefined;
+  }
 
   return useChatOptions<Deploy.DeployBridgeType>({
     apiPath: "api/deploy/stream",
     merge: Deploy.MergeReducer as any,
-    getInitialThreadId: () => thread_id ?? undefined,
+    getInitialThreadId: () => thread_id ?? resolvedDeployThreadId,
+    onThreadIdAvailable: (id) => { resolvedDeployThreadId = id; },
     includeAttachments: false,
   });
 }

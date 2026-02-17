@@ -137,12 +137,14 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
           account: account, deploy: deploy, created_at: 15.minutes.ago)
 
         expect(Rollbar).to receive(:error).with("Stuck job run detected", anything)
+          .and_return({"uuid" => "stuck-job-uuid"})
 
         expect { described_class.new.perform }.to change(SupportRequest, :count).by(1)
 
         ticket = SupportRequest.last
         expect(ticket.supportable).to eq(deploy)
         expect(ticket.subject).to include("Deploy ##{deploy.id} failed")
+        expect(ticket.description).to include("Rollbar: https://rollbar.com/occurrence/uuid/?uuid=stuck-job-uuid")
       end
 
       it "does not create a support ticket for stuck jobs without a deploy" do
@@ -150,6 +152,7 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
           account: account, deploy: nil, created_at: 15.minutes.ago)
 
         expect(Rollbar).to receive(:error).with("Stuck job run detected", anything)
+          .and_return({"uuid" => "stuck-job-uuid"})
 
         expect { described_class.new.perform }.not_to change(SupportRequest, :count)
       end
@@ -161,6 +164,7 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
           account: account, deploy: deploy, created_at: 15.minutes.ago)
 
         expect(Rollbar).to receive(:error).with("Stuck job run detected", anything)
+          .and_return({"uuid" => "stuck-job-uuid"})
 
         expect { described_class.new.perform }.not_to change(SupportRequest, :count)
       end
@@ -171,6 +175,7 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
           account: account, deploy: deploy, created_at: 15.minutes.ago)
 
         expect(Rollbar).to receive(:error).with("Stuck job run detected", anything)
+          .and_return({"uuid" => "stuck-job-uuid"})
         allow(Deploys::AutoSupportTicketService).to receive_message_chain(:new, :call)
           .and_raise(StandardError, "ticket creation failed")
         expect(Rollbar).to receive(:error).with(

@@ -1,9 +1,10 @@
 import { ClockIcon } from "@heroicons/react/24/outline";
 import { Button } from "@components/ui/button";
-import { useDeployChatActions } from "@hooks/useDeployChat";
+import { useDeployChatActions, useDeployContext } from "@hooks/useDeployChat";
 
 export default function WaitingGoogleScreen() {
   const { updateState } = useDeployChatActions();
+  const deployContext = useDeployContext();
 
   return (
     <div className="flex flex-col items-center justify-center p-12 min-h-[400px]">
@@ -17,7 +18,7 @@ export default function WaitingGoogleScreen() {
           Google is still processing your account setup. This can take a few minutes.
         </p>
 
-        <Button variant="outline" className="mt-6" onClick={() => updateState({})}>
+        <Button variant="outline" className="mt-6" onClick={() => updateState(deployContext)}>
           Check Again
         </Button>
       </div>
