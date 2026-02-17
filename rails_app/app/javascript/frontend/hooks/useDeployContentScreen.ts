@@ -85,6 +85,8 @@ export function resolveContentScreen(
     if (billingTask.result?.action === "waiting_google") {
       return "waiting-google";
     }
+    // Default: billing task is running but no specific action yet
+    return "checking-payment";
   }
 
   return "in-progress";

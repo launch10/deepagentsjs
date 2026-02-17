@@ -17,6 +17,82 @@ RSpec.describe "Deploys API", type: :request do
   let(:thread_id) { SecureRandom.uuid }
 
   path "/api/v1/deploys" do
+    get "Lists paginated deploys for a project" do
+      tags "Deploys"
+      produces "application/json"
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: "X-Signature", in: :header, type: :string, required: false
+      parameter name: "X-Timestamp", in: :header, type: :string, required: false
+      parameter name: :project_id, in: :query, type: :integer, required: true, description: "Project ID"
+      parameter name: :page, in: :query, type: :integer, required: false, description: "Page number (default 1)"
+      parameter name: :status, in: :query, type: :string, required: false, description: "Filter by status (completed, failed, running)"
+
+      response "200", "returns paginated deploys" do
+        schema APISchemas::Deploy.list_response
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let(:project_id) { project.id }
+
+        before do
+          7.times do |i|
+            d = create(:deploy, :website_only, project: project, status: "completed")
+            d.update_column(:created_at, (7 - i).days.ago)
+          end
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+
+          expect(data["deploys"].length).to eq(5)
+          expect(data["pagination"]["total_pages"]).to eq(2)
+          expect(data["pagination"]["total_count"]).to eq(7)
+        end
+      end
+
+      response "200", "filters by status" do
+        schema APISchemas::Deploy.list_response
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let(:project_id) { project.id }
+        let(:status) { "completed" }
+
+        before do
+          create(:deploy, :website_only, project: project, status: "completed")
+          create(:deploy, :website_only, project: project, status: "failed")
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+
+          statuses = data["deploys"].map { |d| d["status"] }
+          expect(statuses).to all(eq("completed"))
+        end
+      end
+
+      response "401", "unauthorized" do
+        let(:Authorization) { nil }
+        let(:project_id) { project.id }
+
+        run_test! do |response|
+          expect(response.code).to eq("401")
+        end
+      end
+
+      response "404", "project not found" do
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let(:project_id) { 999999 }
+
+        run_test! do |response|
+          expect(response.code).to eq("404")
+        end
+      end
+    end
+
     post "Creates a deploy" do
       tags "Deploys"
       consumes "application/json"
@@ -337,6 +413,82 @@ RSpec.describe "Deploys API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data["success"]).to be true
+        end
+      end
+    end
+  end
+
+  path "/api/v1/deploys/{id}/rollback" do
+    parameter name: :id, in: :path, type: :integer, description: "Deploy ID"
+
+    post "Rolls back a deploy" do
+      tags "Deploys"
+      produces "application/json"
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: "X-Signature", in: :header, type: :string, required: false
+      parameter name: "X-Timestamp", in: :header, type: :string, required: false
+
+      let!(:website) { create(:website, project: project) }
+      let!(:deploy) { create(:deploy, project: project, status: "completed") }
+      let!(:website_deploy) do
+        create(:website_deploy, website: website, deploy: deploy, status: "completed", is_live: false)
+      end
+
+      response "200", "deploy rolled back" do
+        schema APISchemas::Deploy.rollback_response
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let(:id) { deploy.id }
+
+        before do
+          allow_any_instance_of(WebsiteDeploy).to receive(:revertible?).and_return(true)
+          allow_any_instance_of(WebsiteDeploy).to receive(:rollback)
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["success"]).to be true
+        end
+      end
+
+      response "422", "non-completed deploy" do
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let(:id) { deploy.id }
+
+        before { website_deploy.update!(status: "running") }
+
+        run_test! do |response|
+          expect(response.code).to eq("422")
+        end
+      end
+
+      response "422", "non-revertible deploy" do
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let(:id) { deploy.id }
+
+        before do
+          allow_any_instance_of(WebsiteDeploy).to receive(:revertible?).and_return(false)
+        end
+
+        run_test! do |response|
+          expect(response.code).to eq("422")
+        end
+      end
+
+      response "404", "deploy not found" do
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let(:id) { 999999 }
+
+        run_test! do |response|
+          expect(response.code).to eq("404")
         end
       end
     end

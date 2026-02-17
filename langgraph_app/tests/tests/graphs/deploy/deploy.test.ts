@@ -1097,6 +1097,7 @@ describe.sequential("Deploy Graph Tests", () => {
         "CheckingForBugs",
         "FixingBugs",
         "OptimizingSEO",
+        "OptimizingPageForLLMs",
         "AddingAnalytics",
         "DeployingWebsite",
       ];
@@ -1162,8 +1163,8 @@ describe.sequential("Deploy Graph Tests", () => {
         expect(task?.status, `Expected task "${taskName}" to be pending`).toBe("pending");
       }
 
-      // All 10 phases should exist (both website + campaign)
-      expect(result.state.phases.length).toBe(10);
+      // All 11 phases should exist (both website + campaign)
+      expect(result.state.phases.length).toBe(11);
     });
 
     /**
@@ -1333,6 +1334,7 @@ describe.sequential("Deploy Graph Tests", () => {
         "CheckingForBugs",
         "FixingBugs",
         "OptimizingSEO",
+        "OptimizingPageForLLMs",
         "AddingAnalytics",
         "DeployingWebsite",
       ];
@@ -1897,7 +1899,7 @@ describe.sequential("Deploy Graph Tests", () => {
       expect(result.state.tasks.length).toBe(0);
     });
 
-    it("narrows instructions when only some things changed", async () => {
+    it("sets contentChanged when only some things changed (instructions stay pure)", async () => {
       // Mock checkChanges: website changed, campaign did not
       mockDeployAPIService.mockImplementation(
         () =>
@@ -1962,10 +1964,14 @@ describe.sequential("Deploy Graph Tests", () => {
 
       // Should NOT be nothingChanged (website did change)
       expect(result.state.nothingChanged).toBe(false);
-      // Instructions should be narrowed — googleAds set to false
+      // Instructions stay pure — never mutated
       expect(result.state.instructions.website).toBe(true);
-      expect(result.state.instructions.googleAds).toBe(false);
+      expect(result.state.instructions.googleAds).toBe(true);
+      // contentChanged captures the change detection results
+      expect(result.state.contentChanged.website).toBe(true);
+      expect(result.state.contentChanged.googleAds).toBe(false);
       // Should only have website tasks, no campaign tasks
+      // (initPhases uses shouldDeployGoogleAds which checks contentChanged)
       const campaignTasks = result.state.tasks.filter((t) =>
         ["ConnectingGoogle", "VerifyingGoogle", "CheckingBilling", "DeployingCampaign", "EnablingCampaign"].includes(t.name)
       );

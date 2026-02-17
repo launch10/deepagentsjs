@@ -4,7 +4,7 @@ import type { CoreGraphState } from "../graph";
 import type { Simplify } from "type-fest";
 import type { PrimaryKeyType } from "../core";
 import type { ConsoleError } from "../website/errors";
-import type { Instructions } from "./types";
+import type { Instructions, ContentChanged } from "./types";
 import type { Phase } from "./phase";
 import type { Task } from "../../types/task";
 import type { Status } from "../core";
@@ -52,6 +52,8 @@ export type DeployGraphState = Simplify<
     polling: boolean;
     // Nothing changed — deploy skipped because no content changed since last deploy
     nothingChanged: boolean;
+    // Per-instruction change detection result (undefined = not checked, treat as changed)
+    contentChanged: ContentChanged;
     // Phases computed from tasks for frontend display
     phases: Phase[];
   }

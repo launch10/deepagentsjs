@@ -11,7 +11,8 @@ module InertiaSchemas
           properties: {
             id: { type: :integer, description: 'Deploy ID' },
             status: { type: :string, description: 'Deploy status' },
-            current_step: { type: :string, nullable: true, description: 'Current deploy step' }
+            current_step: { type: :string, nullable: true, description: 'Current deploy step' },
+            instructions: { type: :object, additionalProperties: { type: :boolean }, description: 'Deploy instruction flags' }
           }
         ),
         website_url: { type: :string, nullable: true, description: 'Published website URL' },

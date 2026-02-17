@@ -99,7 +99,7 @@ namespace :inertia do
       params: [UUID_PARAM]
     )
 
-    WorkflowConfig.substeps_for("launch", "ad_campaign").each do |substep|
+    WorkflowConfig.substeps_for("launch", "ads").each do |substep|
       generator.add_page(
         "/projects/{uuid}/campaigns/#{substep}",
         ref: "CampaignsProps",

@@ -25,7 +25,14 @@ export function initPhasesNode(state: DeployGraphState): Partial<DeployGraphStat
     return { status: "running" };
   }
 
-  const pendingTasks = state.instructions ? Deploy.createTasks(state.instructions) : [];
+  // Build effective instructions: start from what the user requested,
+  // then exclude anything contentChanged says hasn't changed.
+  // This avoids showing tasks in the UI that will just be skipped.
+  const effectiveInstructions: Deploy.Instructions = {};
+  if (Deploy.shouldDeployWebsite(state)) effectiveInstructions.website = true;
+  if (Deploy.shouldDeployGoogleAds(state)) effectiveInstructions.googleAds = true;
+
+  const pendingTasks = Deploy.createTasks(effectiveInstructions);
   if (pendingTasks.length === 0) {
     log.info({ instructions: state.instructions }, "No tasks to create, marking as running");
     return { status: "running" };

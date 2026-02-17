@@ -73,6 +73,13 @@ export const DeployAnnotation = Annotation.Root({
     reducer: (current, next) => next ?? current,
   }),
 
+  // Per-instruction change detection from validateDeployNode
+  // Empty = not checked (treat as changed). Populated = { website: true/false, googleAds: true/false }
+  contentChanged: Annotation<Deploy.ContentChanged>({
+    default: () => ({}),
+    reducer: (current, next) => (Object.keys(next).length > 0 ? next : current),
+  }),
+
   // Phases - "poppa tasks" computed from child tasks for frontend display
   // Updated alongside tasks via the withPhases() helper
   phases: Annotation<Deploy.Phase[]>({

@@ -1258,6 +1258,10 @@ export interface components {
                 status?: string;
                 /** @description Current deploy step */
                 current_step?: string | null;
+                /** @description Deploy instruction flags */
+                instructions?: {
+                    [key: string]: boolean;
+                };
             } | null;
             /** @description Published website URL */
             website_url?: string | null;

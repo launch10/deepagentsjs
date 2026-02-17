@@ -26,6 +26,10 @@ module WebsiteDeployConcerns
       # Inject Google Ads gtag.js script if configured
       inject_gtag_script!
 
+      # Generate SEO files for deployed site
+      generate_robots_txt!
+      generate_sitemap_xml!
+
       # Run pnpm install and build
       unless build_exists?
         system("pnpm install --ignore-workspace", chdir: temp_dir) or raise "pnpm install failed"
@@ -47,7 +51,7 @@ module WebsiteDeployConcerns
     def write_env_file!
       env_vars = {
         "VITE_SIGNUP_TOKEN" => website.project.signup_token,
-        "VITE_API_BASE_URL" => Rails.configuration.x.api_base_url,
+        "VITE_API_BASE_URL" => ENV.fetch("DEPLOY_API_BASE_URL", "https://launch10.ai"),
         "VITE_GOOGLE_ADS_SEND_TO" => google_send_to
       }
       File.write(File.join(temp_dir, ".env"), env_vars.compact.map { |k, v| "#{k}=#{v}" }.join("\n"))
@@ -86,6 +90,49 @@ module WebsiteDeployConcerns
 
     def ads_account
       @ads_account ||= website.project.account.ads_accounts.find_by(platform: "google")
+    end
+
+    def generate_robots_txt!
+      base_url = website_deploy_domain_url
+      return unless base_url
+
+      public_dir = File.join(temp_dir, "public")
+      FileUtils.mkdir_p(public_dir)
+
+      content = <<~TXT
+        User-agent: *
+        Allow: /
+
+        Sitemap: #{base_url}/sitemap.xml
+      TXT
+
+      File.write(File.join(public_dir, "robots.txt"), content)
+    end
+
+    def generate_sitemap_xml!
+      base_url = website_deploy_domain_url
+      return unless base_url
+
+      public_dir = File.join(temp_dir, "public")
+      FileUtils.mkdir_p(public_dir)
+
+      lastmod = website.updated_at.strftime("%Y-%m-%d")
+
+      content = <<~XML
+        <?xml version="1.0" encoding="UTF-8"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+          <url>
+            <loc>#{base_url}/</loc>
+            <lastmod>#{lastmod}</lastmod>
+          </url>
+        </urlset>
+      XML
+
+      File.write(File.join(public_dir, "sitemap.xml"), content)
+    end
+
+    def website_deploy_domain_url
+      website.website_url&.full_url&.chomp("/")
     end
 
     def validate_website_has_files

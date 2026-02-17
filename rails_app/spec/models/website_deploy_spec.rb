@@ -683,14 +683,11 @@ RSpec.describe WebsiteDeploy, type: :model do
         expect(env_content).to include("VITE_SIGNUP_TOKEN=#{expected_token}")
       end
 
-      it 'writes .env file with VITE_API_BASE_URL' do
+      it 'writes .env file with VITE_API_BASE_URL using production URL for deployed sites' do
         deploy.send(:write_env_file!)
 
         env_content = File.read(File.join(temp_dir, ".env"))
-        expect(env_content).to include("VITE_API_BASE_URL=")
-
-        # Verify it matches Rails config
-        expected_url = Rails.configuration.x.api_base_url
+        expected_url = ENV.fetch("DEPLOY_API_BASE_URL", "https://launch10.ai")
         expect(env_content).to include("VITE_API_BASE_URL=#{expected_url}")
       end
 
@@ -734,6 +731,131 @@ RSpec.describe WebsiteDeploy, type: :model do
         expect(env_file_written).to be true
         expect(env_content).to include("VITE_SIGNUP_TOKEN=")
         expect(env_content).to include("VITE_API_BASE_URL=")
+      end
+    end
+  end
+
+  describe 'robots.txt and sitemap.xml generation', :sitemap do
+    let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
+
+    before do
+      website_with_files.snapshot
+    end
+
+    describe '#generate_robots_txt!' do
+      let(:deploy) { website_with_files.deploys.create!(environment: 'development') }
+      let(:temp_dir) { Dir.mktmpdir("launch10_deploy_test") }
+
+      before do
+        allow(deploy).to receive(:temp_dir).and_return(temp_dir)
+      end
+
+      after do
+        FileUtils.rm_rf(temp_dir)
+      end
+
+      context 'when website has a domain' do
+        let(:domain) { create(:domain, account: account) }
+
+        before do
+          create(:website_url, website: website_with_files, domain: domain, account: account)
+          website_with_files.reload
+        end
+
+        it 'writes robots.txt with sitemap reference' do
+          deploy.send(:generate_robots_txt!)
+
+          robots_path = File.join(temp_dir, "public", "robots.txt")
+          expect(File.exist?(robots_path)).to be true
+
+          content = File.read(robots_path)
+          expect(content).to include("User-agent: *")
+          expect(content).to include("Allow: /")
+          expect(content).to include("Sitemap: https://#{domain.domain}/sitemap.xml")
+        end
+      end
+
+      context 'when website has no domain' do
+        it 'skips writing robots.txt' do
+          deploy.send(:generate_robots_txt!)
+
+          robots_path = File.join(temp_dir, "public", "robots.txt")
+          expect(File.exist?(robots_path)).to be false
+        end
+      end
+    end
+
+    describe '#generate_sitemap_xml!' do
+      let(:deploy) { website_with_files.deploys.create!(environment: 'development') }
+      let(:temp_dir) { Dir.mktmpdir("launch10_deploy_test") }
+
+      before do
+        allow(deploy).to receive(:temp_dir).and_return(temp_dir)
+      end
+
+      after do
+        FileUtils.rm_rf(temp_dir)
+      end
+
+      context 'when website has a domain' do
+        let(:domain) { create(:domain, account: account) }
+
+        before do
+          create(:website_url, website: website_with_files, domain: domain, account: account)
+          website_with_files.reload
+        end
+
+        it 'writes sitemap.xml with homepage URL and lastmod' do
+          deploy.send(:generate_sitemap_xml!)
+
+          sitemap_path = File.join(temp_dir, "public", "sitemap.xml")
+          expect(File.exist?(sitemap_path)).to be true
+
+          content = File.read(sitemap_path)
+          expect(content).to include('<?xml version="1.0" encoding="UTF-8"?>')
+          expect(content).to include("<loc>https://#{domain.domain}/</loc>")
+          expect(content).to include("<lastmod>#{website_with_files.updated_at.strftime('%Y-%m-%d')}</lastmod>")
+        end
+      end
+
+      context 'when website has no domain' do
+        it 'skips writing sitemap.xml' do
+          deploy.send(:generate_sitemap_xml!)
+
+          sitemap_path = File.join(temp_dir, "public", "sitemap.xml")
+          expect(File.exist?(sitemap_path)).to be false
+        end
+      end
+    end
+
+    describe 'build! includes robots.txt and sitemap.xml' do
+      let(:deploy) { website_with_files.deploys.create!(environment: 'development') }
+      let(:domain) { create(:domain, account: account) }
+
+      before do
+        create(:website_url, website: website_with_files, domain: domain, account: account)
+        website_with_files.reload
+
+        allow(FileUtils).to receive(:mkdir_p).and_call_original
+        allow(File).to receive(:write).and_call_original
+        allow(Dir).to receive(:exist?).and_return(true)
+        allow(deploy).to receive(:system).and_return(true)
+      end
+
+      it 'writes both files during build' do
+        robots_written = false
+        sitemap_written = false
+
+        allow(File).to receive(:write).and_wrap_original do |method, path, content|
+          robots_written = true if path.end_with?('public/robots.txt')
+          sitemap_written = true if path.end_with?('public/sitemap.xml')
+          method.call(path, content)
+        end
+
+        deploy.build!
+
+        expect(robots_written).to be true
+        expect(sitemap_written).to be true
       end
     end
   end

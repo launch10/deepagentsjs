@@ -1,14 +1,17 @@
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { useRootPath } from "~/stores/sessionStore";
-import type { PaginationMeta } from "@rails_api_base";
-import type { DeployRecord } from "./deploys.types";
+import { useMemo } from "react";
+import {
+  DeployAPIService,
+  type DeploysListResponse,
+  type DeployRecord,
+} from "@rails_api_base";
+import { useJwt, useRootPath } from "~/stores/sessionStore";
 
-export type { DeployRecord } from "./deploys.types";
+export type { DeployRecord, DeploysListResponse } from "@rails_api_base";
 
-export interface DeploysResponse {
-  deploys: DeployRecord[];
-  pagination: PaginationMeta;
-}
+// ============================================================================
+// Query Keys
+// ============================================================================
 
 export const deploysKeys = {
   all: ["deploys"] as const,
@@ -19,22 +22,33 @@ export const deploysKeys = {
     [...deploysKeys.all, "hasCompleted", params] as const,
 };
 
+// ============================================================================
+// Service Hook
+// ============================================================================
+
+export function useDeployService() {
+  const jwt = useJwt();
+  const rootPath = useRootPath();
+  return useMemo(
+    () => new DeployAPIService({ jwt: jwt ?? "", baseUrl: rootPath ?? "" }),
+    [jwt, rootPath]
+  );
+}
+
+// ============================================================================
+// Query Hooks
+// ============================================================================
+
 /**
  * Fetch paginated deploy history for a project.
  */
 export function useDeploys(projectId: number, page: number) {
+  const service = useDeployService();
   const rootPath = useRootPath();
 
-  return useQuery<DeploysResponse>({
+  return useQuery<DeploysListResponse>({
     queryKey: deploysKeys.list({ project_id: projectId, page }),
-    queryFn: async () => {
-      const res = await fetch(
-        `${rootPath}/api/v1/deploys?project_id=${projectId}&page=${page}`,
-        { credentials: "include" }
-      );
-      if (!res.ok) throw new Error("Failed to fetch deploys");
-      return res.json();
-    },
+    queryFn: () => service.list({ project_id: projectId, page }),
     enabled: projectId > 0 && !!rootPath,
     staleTime: 30_000,
     placeholderData: keepPreviousData,
@@ -49,24 +63,16 @@ export function useHasCompletedDeploy(
   projectId: number,
   instructions: Record<string, boolean>
 ) {
+  const service = useDeployService();
   const rootPath = useRootPath();
 
   return useQuery<boolean>({
     queryKey: deploysKeys.hasCompleted({ project_id: projectId, instructions }),
     queryFn: async () => {
-      const params = new URLSearchParams({
-        project_id: String(projectId),
+      const data = await service.list({
+        project_id: projectId,
         status: "completed",
       });
-      // Add instruction filters as nested params
-      for (const [key, val] of Object.entries(instructions)) {
-        params.append(`instructions[${key}]`, String(val));
-      }
-      const res = await fetch(`${rootPath}/api/v1/deploys?${params}`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error("Failed to check deploy history");
-      const data: DeploysResponse = await res.json();
       return data.deploys.length > 0;
     },
     enabled: projectId > 0 && !!rootPath,

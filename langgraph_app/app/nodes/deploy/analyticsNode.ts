@@ -161,7 +161,7 @@ export const analyticsTaskRunner: TaskRunner = {
   },
 
   shouldSkip: (state: DeployGraphState) => {
-    return !state.instructions?.website;
+    return !Deploy.shouldDeployWebsite(state);
   },
 
   run: async (

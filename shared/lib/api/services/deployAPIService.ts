@@ -24,6 +24,22 @@ export type TouchDeployResponse = NonNullable<
   paths["/api/v1/deploys/{id}/touch"]["post"]["responses"][200]["content"]
 >["application/json"];
 
+export type DeactivateDeployResponse = NonNullable<
+  paths["/api/v1/deploys/deactivate"]["post"]["responses"][200]["content"]
+>["application/json"];
+
+export type RollbackDeployResponse = NonNullable<
+  paths["/api/v1/deploys/{id}/rollback"]["post"]["responses"][200]["content"]
+>["application/json"];
+
+/** Full response type from GET /api/v1/deploys */
+export type DeploysListResponse = NonNullable<
+  paths["/api/v1/deploys"]["get"]["responses"][200]["content"]
+>["application/json"];
+
+/** Request parameters for GET /api/v1/deploys */
+export type GetDeploysRequest = paths["/api/v1/deploys"]["get"]["parameters"]["query"];
+
 export interface DeployRecord {
   id: number;
   project_id: number;
@@ -51,6 +67,26 @@ export interface CreateDeployParams {
 export class DeployAPIService extends RailsAPIBase {
   constructor(options: Simplify<ConstructorParameters<typeof RailsAPIBase>[0]>) {
     super(options);
+  }
+
+  /**
+   * Lists paginated deploys for a project, with optional status filtering.
+   */
+  async list(params: GetDeploysRequest): Promise<DeploysListResponse> {
+    const client = await this.getClient();
+    const response = await client.GET("/api/v1/deploys", {
+      params: { query: params },
+    });
+
+    if (response.error) {
+      throw new Error(`Failed to list deploys: ${JSON.stringify(response.error)}`);
+    }
+
+    if (!response.data) {
+      throw new Error("Failed to list deploys: No data returned");
+    }
+
+    return response.data;
   }
 
   /**
@@ -147,6 +183,48 @@ export class DeployAPIService extends RailsAPIBase {
     }
 
     return response.data as { website?: boolean; campaign?: boolean };
+  }
+
+  /**
+   * Deactivates the active deploy for a project.
+   */
+  async deactivate(projectId: number): Promise<DeactivateDeployResponse> {
+    const client = await this.getClient();
+    const response = await client.POST("/api/v1/deploys/deactivate", {
+      body: { project_id: projectId },
+    });
+
+    if (response.error) {
+      throw new Error(`Failed to deactivate deploy: ${JSON.stringify(response.error)}`);
+    }
+
+    if (!response.data) {
+      throw new Error("Failed to deactivate deploy: No data returned");
+    }
+
+    return response.data;
+  }
+
+  /**
+   * Rolls back a completed deploy to a previous version.
+   */
+  async rollback(deployId: number): Promise<RollbackDeployResponse> {
+    const client = await this.getClient();
+    const response = await client.POST("/api/v1/deploys/{id}/rollback", {
+      params: {
+        path: { id: deployId },
+      },
+    });
+
+    if (response.error) {
+      throw new Error(`Failed to rollback deploy: ${JSON.stringify(response.error)}`);
+    }
+
+    if (!response.data) {
+      throw new Error("Failed to rollback deploy: No data returned");
+    }
+
+    return response.data;
   }
 
   /**

@@ -28,6 +28,7 @@ export const PhaseNames = [
 
   // Website preparation (1:1)
   "OptimizingSEO",
+  "OptimizingPageForLLMs",
   "AddingAnalytics",
 
   // Website deployment (1:1)
@@ -42,6 +43,7 @@ export type PhaseName = (typeof PhaseNames)[number];
 export const PhaseDescriptionMap: Record<PhaseName, string> = {
   AddingAnalytics: "Adding Analytics",
   OptimizingSEO: "Optimizing SEO",
+  OptimizingPageForLLMs: "Optimizing for LLMs",
   CheckingForBugs: "Checking for Bugs",
   FixingBugs: "Squashing Bugs",
   DeployingWebsite: "Launching Website",
@@ -61,7 +63,8 @@ export const PhaseDescriptionMap: Record<PhaseName, string> = {
 export const PhaseTaskMap: Record<PhaseName, TaskName[]> = {
   // 1:1 phases: task name === phase name
   AddingAnalytics: ["AddingAnalytics"],
-  OptimizingSEO: ["OptimizingSEO", "OptimizingPageForLLMs"],
+  OptimizingSEO: ["OptimizingSEO"],
+  OptimizingPageForLLMs: ["OptimizingPageForLLMs"],
   FixingBugs: ["FixingBugs"],
   DeployingWebsite: ["DeployingWebsite"],
   ConnectingGoogle: ["ConnectingGoogle"],

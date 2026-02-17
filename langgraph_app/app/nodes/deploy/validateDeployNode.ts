@@ -64,6 +64,16 @@ export async function validateDeployNode(
 
   log.info("Deploy validation passed");
 
+  // Skip change detection if a deploy is already in progress.
+  // The deploy graph is re-entrant (polled from the frontend), and re-running
+  // change detection on a running deploy would find "nothing changed" (the files
+  // haven't changed since THIS deploy started), routing to nothingChangedDeploy
+  // which prematurely marks the deploy as completed.
+  if (state.deployId) {
+    log.info({ deployId: state.deployId }, "Deploy already in progress, skipping change detection");
+    return {};
+  }
+
   // Change detection: check if content has actually changed since last deploy
   if (state.projectId && state.jwt) {
     try {
@@ -86,21 +96,20 @@ export async function validateDeployNode(
         return { nothingChanged: true };
       }
 
-      // Partial changes: narrow instructions for unchanged items
-      const narrowedInstructions = { ...state.instructions };
-      if (changes.website === false && narrowedInstructions.website) {
-        log.info("Website unchanged, narrowing instructions");
-        narrowedInstructions.website = false;
+      // Store change detection results in contentChanged — task nodes check this
+      // in shouldSkip to avoid re-deploying unchanged parts.
+      // Instructions stay pure (what the user requested), contentChanged records
+      // what actually needs work.
+      const contentChanged: Record<string, boolean> = {};
+      if (state.instructions?.website) {
+        contentChanged.website = changes.website !== false;
       }
-      if (changes.campaign === false && narrowedInstructions.googleAds) {
-        log.info("Campaign unchanged, narrowing instructions");
-        narrowedInstructions.googleAds = false;
+      if (state.instructions?.googleAds) {
+        contentChanged.googleAds = changes.campaign !== false;
       }
 
-      // Only return narrowed instructions if something actually changed
-      if (JSON.stringify(narrowedInstructions) !== JSON.stringify(state.instructions)) {
-        return { instructions: narrowedInstructions };
-      }
+      log.info({ contentChanged }, "Content change flags for task nodes");
+      return { contentChanged };
     } catch (error) {
       log.warn({ error }, "Change detection failed, proceeding with full deploy");
     }

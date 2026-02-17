@@ -100,9 +100,9 @@ export const deployWebsiteTaskRunner: TaskRunner = {
   },
 
   shouldSkip: (state: DeployGraphState) => {
-    // Skip if not deploying a website
+    // Skip if not deploying a website (or content unchanged)
     // (executor handles already-completed tasks)
-    return !state.instructions?.website;
+    return !Deploy.shouldDeployWebsite(state);
   },
 
   isBlocking: (state: DeployGraphState, task: Task.Task) => {

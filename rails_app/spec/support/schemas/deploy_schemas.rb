@@ -12,7 +12,12 @@ module APISchemas
           current_step: {type: :string, nullable: true, description: "Current deploy step"},
           is_live: {type: :boolean, description: "Whether the deploy is live"},
           thread_id: {type: :string, nullable: true, description: "Langgraph thread ID"},
+          instructions: {type: :object, additionalProperties: {type: :boolean}, description: "Deploy instruction flags"},
           support_ticket: {type: :string, nullable: true, description: "Support ticket reference (SR-XXXXXXXX)"},
+          finished_at: {type: :string, format: "date-time", nullable: true, description: "When the deploy finished"},
+          duration: {type: [:number, :null], description: "Deploy duration in seconds"},
+          revertible: {type: :boolean, description: "Whether this deploy can be rolled back"},
+          website_deploy_status: {type: :string, nullable: true, description: "Status of the linked website deploy"},
           **APISchemas.timestamps
         },
         required: %w[id project_id status is_live created_at updated_at]
@@ -40,7 +45,28 @@ module APISchemas
       }
     end
 
+    def self.list_response
+      {
+        type: :object,
+        properties: {
+          deploys: {type: :array, items: response},
+          pagination: APISchemas::Project.pagination_response
+        },
+        required: %w[deploys pagination]
+      }
+    end
+
     def self.deactivate_response
+      {
+        type: :object,
+        properties: {
+          success: {type: :boolean}
+        },
+        required: ["success"]
+      }
+    end
+
+    def self.rollback_response
       {
         type: :object,
         properties: {

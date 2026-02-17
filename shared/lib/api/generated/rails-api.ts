@@ -1132,168 +1132,6 @@ export interface paths {
         };
         trace?: never;
     };
-    "/api/v1/website_deploys": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Lists paginated website deploys */
-        get: {
-            parameters: {
-                query: {
-                    /** @description Website ID to list deploys for */
-                    website_id: number;
-                    /** @description Page number (default 1) */
-                    page?: number;
-                };
-                header?: {
-                    Authorization?: string;
-                    "X-Signature"?: string;
-                    "X-Timestamp"?: string;
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description scoped to current account's website */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            website_deploys: {
-                                /** @description Unique identifier */
-                                id: number;
-                                /** @description Deploy status (pending, building, uploading, completed, failed, skipped) */
-                                status: string;
-                                /** @description Deploy environment (development, staging, production) */
-                                environment: string;
-                                /** @description Whether this deploy is currently live */
-                                is_live: boolean;
-                                /** @description Whether this is a preview deploy */
-                                is_preview?: boolean;
-                                /** @description Whether this deploy can be rolled back to */
-                                revertible: boolean;
-                                /**
-                                 * Format: date-time
-                                 * @description Timestamp
-                                 */
-                                created_at: string;
-                            }[];
-                            pagination: {
-                                /** @description Current page number */
-                                current_page: number;
-                                /** @description Total number of pages */
-                                total_pages: number;
-                                /** @description Total number of items */
-                                total_count: number;
-                                /** @description Previous page number or null */
-                                prev_page?: number | null;
-                                /** @description Next page number or null */
-                                next_page?: number | null;
-                                /** @description First item index on current page */
-                                from?: number | null;
-                                /** @description Last item index on current page */
-                                to?: number | null;
-                                /** @description Page series for pagination controls */
-                                series?: (number | string)[];
-                            };
-                        };
-                    };
-                };
-                /** @description unauthorized - missing token */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description website not found for another account */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/website_deploys/{id}/rollback": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Rolls back to a previous website deploy */
-        post: {
-            parameters: {
-                query?: never;
-                header: {
-                    Authorization: string;
-                    "X-Signature"?: string;
-                    "X-Timestamp"?: string;
-                };
-                path: {
-                    id: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description successfully triggers rollback */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": {
-                            success: boolean;
-                        };
-                    };
-                };
-                /** @description unauthorized - missing token */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description returns not found for non-existent deploy */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description cannot rollback a non-completed deploy */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/website_urls/search": {
         parameters: {
             query?: never;
@@ -3041,7 +2879,112 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Lists paginated deploys for a project */
+        get: {
+            parameters: {
+                query: {
+                    /** @description Project ID */
+                    project_id: number;
+                    /** @description Page number (default 1) */
+                    page?: number;
+                    /** @description Filter by status (completed, failed, running) */
+                    status?: string;
+                };
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description filters by status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            deploys: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Unique identifier */
+                                project_id: number;
+                                /** @description Deploy status (pending, running, completed, failed) */
+                                status: string;
+                                /** @description Current deploy step */
+                                current_step?: string | null;
+                                /** @description Whether the deploy is live */
+                                is_live: boolean;
+                                /** @description Langgraph thread ID */
+                                thread_id?: string | null;
+                                /** @description Deploy instruction flags */
+                                instructions?: {
+                                    [key: string]: boolean;
+                                };
+                                /** @description Support ticket reference (SR-XXXXXXXX) */
+                                support_ticket?: string | null;
+                                /**
+                                 * Format: date-time
+                                 * @description When the deploy finished
+                                 */
+                                finished_at?: string | null;
+                                /** @description Deploy duration in seconds */
+                                duration?: number | null;
+                                /** @description Whether this deploy can be rolled back */
+                                revertible?: boolean;
+                                /** @description Status of the linked website deploy */
+                                website_deploy_status?: string | null;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                created_at: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                updated_at: string;
+                            }[];
+                            pagination: {
+                                /** @description Current page number */
+                                current_page: number;
+                                /** @description Total number of pages */
+                                total_pages: number;
+                                /** @description Total number of items */
+                                total_count: number;
+                                /** @description Previous page number or null */
+                                prev_page?: number | null;
+                                /** @description Next page number or null */
+                                next_page?: number | null;
+                                /** @description First item index on current page */
+                                from?: number | null;
+                                /** @description Last item index on current page */
+                                to?: number | null;
+                                /** @description Page series for pagination controls */
+                                series?: (number | string)[];
+                            };
+                        };
+                    };
+                };
+                /** @description unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description project not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         put?: never;
         /** Creates a deploy */
         post: {
@@ -3060,12 +3003,19 @@ export interface paths {
                     "application/json": {
                         /** @description Project ID to create the deploy for */
                         project_id: number;
-                        /** @description Thread ID from Langgraph for chat creation */
+                        /** @description Thread ID from Langgraph */
                         thread_id?: string;
                     };
                 };
             };
             responses: {
+                /** @description returns existing in-progress deploy instead of creating new one */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
                 /** @description deploy created increments deploy count */
                 201: {
                     headers: {
@@ -3083,8 +3033,25 @@ export interface paths {
                             current_step?: string | null;
                             /** @description Whether the deploy is live */
                             is_live: boolean;
-                            /** @description Chat thread ID */
+                            /** @description Langgraph thread ID */
                             thread_id?: string | null;
+                            /** @description Deploy instruction flags */
+                            instructions?: {
+                                [key: string]: boolean;
+                            };
+                            /** @description Support ticket reference (SR-XXXXXXXX) */
+                            support_ticket?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description When the deploy finished
+                             */
+                            finished_at?: string | null;
+                            /** @description Deploy duration in seconds */
+                            duration?: number | null;
+                            /** @description Whether this deploy can be rolled back */
+                            revertible?: boolean;
+                            /** @description Status of the linked website deploy */
+                            website_deploy_status?: string | null;
                             /**
                              * Format: date-time
                              * @description Timestamp
@@ -3164,8 +3131,25 @@ export interface paths {
                             current_step?: string | null;
                             /** @description Whether the deploy is live */
                             is_live: boolean;
-                            /** @description Chat thread ID */
+                            /** @description Langgraph thread ID */
                             thread_id?: string | null;
+                            /** @description Deploy instruction flags */
+                            instructions?: {
+                                [key: string]: boolean;
+                            };
+                            /** @description Support ticket reference (SR-XXXXXXXX) */
+                            support_ticket?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description When the deploy finished
+                             */
+                            finished_at?: string | null;
+                            /** @description Deploy duration in seconds */
+                            duration?: number | null;
+                            /** @description Whether this deploy can be rolled back */
+                            revertible?: boolean;
+                            /** @description Status of the linked website deploy */
+                            website_deploy_status?: string | null;
                             /**
                              * Format: date-time
                              * @description Timestamp
@@ -3236,8 +3220,25 @@ export interface paths {
                             current_step?: string | null;
                             /** @description Whether the deploy is live */
                             is_live: boolean;
-                            /** @description Chat thread ID */
+                            /** @description Langgraph thread ID */
                             thread_id?: string | null;
+                            /** @description Deploy instruction flags */
+                            instructions?: {
+                                [key: string]: boolean;
+                            };
+                            /** @description Support ticket reference (SR-XXXXXXXX) */
+                            support_ticket?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description When the deploy finished
+                             */
+                            finished_at?: string | null;
+                            /** @description Deploy duration in seconds */
+                            duration?: number | null;
+                            /** @description Whether this deploy can be rolled back */
+                            revertible?: boolean;
+                            /** @description Status of the linked website deploy */
+                            website_deploy_status?: string | null;
                             /**
                              * Format: date-time
                              * @description Timestamp
@@ -3253,6 +3254,54 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/v1/deploys/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deactivates the active deploy for a project */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        project_id: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description succeeds even with no active deploy */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            success: boolean;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/deploys/{id}/touch": {
@@ -3469,6 +3518,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/google/refresh_invite_status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Live-refreshes Google Ads invite status */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        job_run_id?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description enqueues PollInviteAcceptanceWorker when not yet accepted */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/google/payment_status": {
         parameters: {
             query?: never;
@@ -3603,6 +3703,67 @@ export interface paths {
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/job_runs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Returns job run status and result */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns error for failed job run */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /**
+                             * @description Current status of the job run
+                             * @enum {string}
+                             */
+                            status: "pending" | "running" | "completed" | "failed";
+                            /** @description Result data from the completed job */
+                            result?: Record<string, never> | null;
+                            /** @description Error message if the job failed */
+                            error?: string | null;
+                        };
+                    };
+                };
+                /** @description cannot access other accounts job run */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
