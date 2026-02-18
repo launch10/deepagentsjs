@@ -6,7 +6,7 @@ import {
   getCreditState,
 } from "@server/middleware";
 import { validateThreadGraphOrError } from "../middleware/threadValidation";
-import { AdsAPI } from "@api";
+import { AdsAPI, compiledAdsGraph } from "@api";
 import { getLogger } from "@core";
 import { trackChatMessage } from "./shared";
 
@@ -68,6 +68,34 @@ adsRoutes.get("/stream", ...readOnlyMiddleware, async (c) => {
 
   // loadHistory doesn't make LLM calls - no billing needed
   return await AdsAPI.loadHistory(threadId);
+});
+
+adsRoutes.patch("/state", async (c) => {
+  const auth = c.get("auth") as AuthContext;
+  const body = await c.req.json();
+  const { threadId, state } = body;
+
+  if (!threadId) {
+    return c.json({ error: "Missing required field: threadId" }, 400);
+  }
+
+  if (!state || typeof state !== "object") {
+    return c.json({ error: "Missing required field: state" }, 400);
+  }
+
+  const validationError = await validateThreadGraphOrError(c, threadId, auth, "ads");
+  if (validationError) return validationError;
+
+  try {
+    await compiledAdsGraph.updateState(
+      { configurable: { thread_id: threadId } },
+      state
+    );
+    return c.json({ success: true });
+  } catch (error) {
+    getLogger().error({ err: error }, "Failed to save ads state to checkpoint");
+    return c.json({ error: "Failed to save state", details: String(error) }, 500);
+  }
 });
 
 adsRoutes.get("/health", (c) => {

@@ -6,7 +6,6 @@ import { useBrainstormSelector } from "@components/brainstorm/hooks";
 import { Chat } from "@components/shared/chat/Chat";
 import { BrainstormAIMessage } from "./BrainstormAIMessage";
 import { QuestionBadge } from "./QuestionBadge";
-import { getTextareaRef } from "@lib/brainstormTextarea";
 
 // The LanggraphData type for the Brainstorm graph (used for MessageBlock generic)
 type BrainstormLanggraphData = InferBridgeData<BrainstormBridgeType>;
@@ -37,8 +36,6 @@ export interface BrainstormMessagesViewProps {
   isStreaming: boolean;
   /** Available intent buttons to show */
   availableIntents: Brainstorm.BrainstormIntentName[];
-  /** Callback when user clicks an example suggestion */
-  onExampleClick: (text: string) => void;
   /** Callback when user clicks an intent button */
   onIntentClick: (intentName: Brainstorm.BrainstormIntentName) => void;
   /** Total number of questions in the brainstorm flow */
@@ -54,7 +51,6 @@ export function BrainstormMessagesView({
   messages,
   isStreaming,
   availableIntents,
-  onExampleClick,
   onIntentClick,
   totalQuestions = Brainstorm.TotalQuestions,
 }: BrainstormMessagesViewProps) {
@@ -111,8 +107,7 @@ export function BrainstormMessagesView({
 
         // AI message - check if it has content
         const hasContent = message.blocks.some(
-          (b) =>
-            (b.type === "text" && "text" in b && b.text && b.text.trim()) || b.type === "structured"
+          (b) => b.type === "text" && "text" in b && b.text && b.text.trim()
         );
 
         if (!hasContent && isLastMessage && isStreaming) {
@@ -130,7 +125,6 @@ export function BrainstormMessagesView({
             <BrainstormAIMessage
               blocks={message.blocks as BrainstormBlock[]}
               isActive={isLastMessage}
-              onExampleClick={onExampleClick}
             />
             {/* Intent buttons appear after last AI message */}
             {showIntentButtons && (
@@ -164,18 +158,7 @@ export function BrainstormMessages() {
   const messages = useBrainstormSelector((s) => s.messages);
   const isStreaming = useBrainstormSelector(ChatSelectors.isStreaming);
   const sendMessage = useBrainstormSelector(ChatSelectors.sendMessage);
-  const composer = useBrainstormSelector(ChatSelectors.composer);
   const availableIntents = useBrainstormSelector((s) => s.state.availableIntents);
-
-  // Handle clicking on example suggestions - memoized to prevent unnecessary re-renders
-  const handleExampleClick = useCallback(
-    (text: string) => {
-      composer.setText(text);
-      const textareaRef = getTextareaRef();
-      textareaRef.current?.focus();
-    },
-    [composer]
-  );
 
   // Handle clicking on intent buttons - sends the label as message text
   // and sets the intent in graph state
@@ -198,7 +181,6 @@ export function BrainstormMessages() {
       messages={messages as any}
       isStreaming={isStreaming}
       availableIntents={availableIntents ?? []}
-      onExampleClick={handleExampleClick}
       onIntentClick={handleIntentClick}
     />
   );

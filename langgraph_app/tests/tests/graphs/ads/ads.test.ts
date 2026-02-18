@@ -11,7 +11,7 @@ import { type AdsGraphState } from "@state";
 import { adsGraph as uncompiledGraph } from "@graphs";
 import { graphParams } from "@core";
 import { DatabaseSnapshotter } from "@services";
-import { db, projects as projectsTable } from "@db";
+import { db, projects as projectsTable, campaigns, adGroups, ads as adsTable, adHeadlines, adDescriptions, adCallouts, eq, and, sql } from "@db";
 import { type UUIDType, Ads, type ThreadIDType, switchPage, refreshAssets } from "@types";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { v7 as uuid } from "uuid";
@@ -49,6 +49,47 @@ describe.sequential("Ads Flow", () => {
   }, 30000);
 
   describe("Chat flow", () => {
+    /** Helper: query Rails DB for active (non-soft-deleted) headlines for a campaign */
+    async function queryDbHeadlines(campaignId: number) {
+      const adGroup = await db.select().from(adGroups)
+        .where(and(eq(adGroups.campaignId, campaignId), sql`${adGroups.deletedAt} IS NULL`))
+        .limit(1).execute().then(r => r[0]);
+      if (!adGroup) return [];
+      const ad = await db.select().from(adsTable)
+        .where(and(eq(adsTable.adGroupId, adGroup.id), sql`${adsTable.deletedAt} IS NULL`))
+        .limit(1).execute().then(r => r[0]);
+      if (!ad) return [];
+      return db.select().from(adHeadlines)
+        .where(and(eq(adHeadlines.adId, ad.id), sql`${adHeadlines.deletedAt} IS NULL`))
+        .execute();
+    }
+
+    /** Helper: query Rails DB for active descriptions for a campaign */
+    async function queryDbDescriptions(campaignId: number) {
+      const adGroup = await db.select().from(adGroups)
+        .where(and(eq(adGroups.campaignId, campaignId), sql`${adGroups.deletedAt} IS NULL`))
+        .limit(1).execute().then(r => r[0]);
+      if (!adGroup) return [];
+      const ad = await db.select().from(adsTable)
+        .where(and(eq(adsTable.adGroupId, adGroup.id), sql`${adsTable.deletedAt} IS NULL`))
+        .limit(1).execute().then(r => r[0]);
+      if (!ad) return [];
+      return db.select().from(adDescriptions)
+        .where(and(eq(adDescriptions.adId, ad.id), sql`${adDescriptions.deletedAt} IS NULL`))
+        .execute();
+    }
+
+    /** Helper: query Rails DB for active callouts for a campaign */
+    async function queryDbCallouts(campaignId: number) {
+      const adGroup = await db.select().from(adGroups)
+        .where(and(eq(adGroups.campaignId, campaignId), sql`${adGroups.deletedAt} IS NULL`))
+        .limit(1).execute().then(r => r[0]);
+      if (!adGroup) return [];
+      return db.select().from(adCallouts)
+        .where(and(eq(adCallouts.adGroupId, adGroup.id), sql`${adCallouts.deletedAt} IS NULL`))
+        .execute();
+    }
+
     describe("Campaign creation", () => {
       it("creates campaign", async () => {
         const result = await testGraph<AdsGraphState>()
@@ -416,6 +457,204 @@ describe.sequential("Ads Flow", () => {
       });
     });
 
+    describe("User modifies assets then retriggers graph", () => {
+      it("saves generated assets to Rails DB after graph run", async () => {
+        // Run the graph — this creates a campaign, generates assets, then
+        // the reset node PATCHes to Rails via CampaignAPIService.update()
+        const result = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            projectUUID,
+            threadId,
+            intent: switchPage("content"),
+          })
+          .execute();
+
+        const campaignId = result.state.campaignId;
+        expect(campaignId).toBeDefined();
+        expect(result.state.headlines?.length).toEqual(6);
+        expect(result.state.descriptions?.length).toEqual(4);
+
+        // Verify assets were persisted to Rails DB
+        const dbHeadlines = await queryDbHeadlines(campaignId!);
+        expect(dbHeadlines.length).toEqual(6);
+
+        // Verify the headline texts match what the graph generated (non-rejected)
+        const graphHeadlineTexts = result.state.headlines!
+          .filter(h => !h.rejected)
+          .map(h => h.text)
+          .sort();
+        const dbHeadlineTexts = dbHeadlines.map(h => h.text).sort();
+        expect(dbHeadlineTexts).toEqual(graphHeadlineTexts);
+
+        const dbDescriptions = await queryDbDescriptions(campaignId!);
+        expect(dbDescriptions.length).toEqual(4);
+
+        const graphDescTexts = result.state.descriptions!
+          .filter(d => !d.rejected)
+          .map(d => d.text)
+          .sort();
+        const dbDescTexts = dbDescriptions.map(d => d.text).sort();
+        expect(dbDescTexts).toEqual(graphDescTexts);
+      });
+
+      it("preserves user modifications when retriggering with chat message", async () => {
+        // Step 1: Graph generates initial headlines & descriptions
+        const result = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            projectUUID,
+            threadId,
+            intent: switchPage("content"),
+          })
+          .execute();
+
+        const campaignId = result.state.campaignId!;
+        expect(result.state.headlines?.length).toEqual(6);
+        expect(result.state.descriptions?.length).toEqual(4);
+
+        // Step 2: Simulate user modifications (what happens between graph runs)
+        const headlines = [...(result.state.headlines as Ads.Asset[])];
+        headlines[0]!.text = "My Custom Headline";
+        headlines[0]!.locked = true;
+        headlines[1]!.text = "Another User Edit";
+        headlines[1]!.locked = true;
+        // User removes a headline by marking it rejected
+        headlines[2]!.rejected = true;
+
+        // User also edits a description
+        const descriptions = [...(result.state.descriptions as Ads.Asset[])];
+        descriptions[0]!.text = "User-written description for their product";
+        descriptions[0]!.locked = true;
+
+        // Step 3: User sends a chat message to retrigger the graph
+        const retriggeredResult = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            ...result.state,
+            headlines,
+            descriptions,
+            messages: [
+              ...result.messages,
+              new HumanMessage("Make the remaining headlines more action-oriented"),
+            ],
+          })
+          .execute();
+
+        const updatedHeadlines = retriggeredResult.state.headlines || [];
+
+        // User's locked headlines are preserved with exact text
+        const lockedHeadlines = updatedHeadlines.filter(h => h.locked);
+        expect(lockedHeadlines.length).toBeGreaterThanOrEqual(2);
+        expect(lockedHeadlines.map(h => h.text)).toContain("My Custom Headline");
+        expect(lockedHeadlines.map(h => h.text)).toContain("Another User Edit");
+
+        // User's rejected headline stays rejected
+        const rejectedHeadline = updatedHeadlines.find(h => h.id === headlines[2]!.id);
+        if (rejectedHeadline) {
+          expect(rejectedHeadline.rejected).toBe(true);
+        }
+
+        // New headlines were generated (not locked, not rejected)
+        const newHeadlines = updatedHeadlines.filter(h => !h.locked && !h.rejected);
+        expect(newHeadlines.length).toBeGreaterThan(0);
+
+        // User's locked description is preserved
+        const updatedDescriptions = retriggeredResult.state.descriptions || [];
+        const lockedDescriptions = updatedDescriptions.filter(d => d.locked);
+        expect(lockedDescriptions.map(d => d.text)).toContain("User-written description for their product");
+
+        // Verify Rails DB has the final state after retrigger
+        const dbHeadlines = await queryDbHeadlines(campaignId);
+        const activeGraphHeadlines = updatedHeadlines.filter(h => !h.rejected);
+        expect(dbHeadlines.length).toEqual(activeGraphHeadlines.length);
+
+        // DB should contain the user's custom headlines
+        const dbTexts = dbHeadlines.map(h => h.text);
+        expect(dbTexts).toContain("My Custom Headline");
+        expect(dbTexts).toContain("Another User Edit");
+
+        // DB should also contain the user's custom description
+        const dbDescriptions = await queryDbDescriptions(campaignId);
+        const dbDescTexts = dbDescriptions.map(d => d.text);
+        expect(dbDescTexts).toContain("User-written description for their product");
+      });
+
+      it("handles user adding new assets and retriggering via refresh", async () => {
+        // Step 1: Graph generates initial content
+        const result = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            projectUUID,
+            threadId,
+            intent: switchPage("content"),
+          })
+          .execute();
+
+        const campaignId = result.state.campaignId!;
+        expect(result.state.headlines?.length).toEqual(6);
+
+        // Step 2: User adds a custom headline and locks existing ones
+        const headlines = [...(result.state.headlines as Ads.Asset[])];
+        const userHeadline: Ads.Asset = {
+          id: uuid(),
+          text: "User-Created Headline",
+          locked: true,
+          rejected: false,
+        };
+        // Lock 2 existing + add 1 new = 3 locked
+        headlines[0]!.locked = true;
+        headlines[1]!.locked = true;
+        headlines.push(userHeadline);
+
+        // Mark remaining unlocked as rejected (refresh pattern)
+        const refreshHeadlines = headlines.map(h => ({
+          ...h,
+          rejected: h.locked ? false : true,
+        }));
+        const numLocked = refreshHeadlines.filter(h => h.locked).length;
+
+        // Step 3: User triggers refresh with their modifications
+        const refreshedResult = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            ...result.state,
+            headlines: refreshHeadlines,
+            intent: refreshAssets("content", [
+              { asset: "headlines", nVariants: 6 - numLocked },
+            ]),
+          })
+          .execute();
+
+        const updatedHeadlines = refreshedResult.state.headlines || [];
+
+        // All 3 locked headlines are preserved (including user-created)
+        const lockedInResult = updatedHeadlines.filter(h => h.locked);
+        expect(lockedInResult.length).toEqual(3);
+        expect(lockedInResult.map(h => h.text)).toContain("User-Created Headline");
+
+        // New headlines were generated to fill the remaining slots
+        const newActiveHeadlines = updatedHeadlines.filter(h => !h.locked && !h.rejected);
+        expect(newActiveHeadlines.length).toEqual(6 - numLocked);
+
+        // Total active (non-rejected) headlines = locked + new
+        const activeHeadlines = updatedHeadlines.filter(h => !h.rejected);
+        expect(activeHeadlines.length).toEqual(6);
+
+        // Verify Rails DB reflects the final state
+        const dbHeadlines = await queryDbHeadlines(campaignId);
+        expect(dbHeadlines.length).toEqual(6); // Only active headlines saved
+
+        // DB should contain user-created headline
+        const dbTexts = dbHeadlines.map(h => h.text);
+        expect(dbTexts).toContain("User-Created Headline");
+
+        // DB should contain the 2 locked original headlines
+        expect(dbTexts).toContain(headlines[0]!.text);
+        expect(dbTexts).toContain(headlines[1]!.text);
+      });
+    });
+
     describe("Highlights Stage", () => {
       it("automatically populates callouts and structured snippets on highlights stage", async () => {
         const result = await testGraph<AdsGraphState>()
@@ -447,6 +686,19 @@ describe.sequential("Ads Flow", () => {
         expect(structuredSnippets?.details?.length).toEqual(
           Ads.DefaultNumAssets.structuredSnippets
         );
+
+        // Verify callouts were persisted to Rails DB
+        const campaignId = result.state.campaignId;
+        expect(campaignId).toBeDefined();
+        const dbCallouts = await queryDbCallouts(campaignId!);
+        expect(dbCallouts.length).toEqual(6);
+
+        const graphCalloutTexts = callouts
+          .filter(c => !c.rejected)
+          .map(c => c.text)
+          .sort();
+        const dbCalloutTexts = dbCallouts.map(c => c.text).sort();
+        expect(dbCalloutTexts).toEqual(graphCalloutTexts);
       });
 
       it("refreshes only callouts, when using refresh intent", async () => {

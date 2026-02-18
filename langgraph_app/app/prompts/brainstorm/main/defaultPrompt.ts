@@ -1,6 +1,6 @@
 import { type BrainstormGraphState } from "@state";
 import { Brainstorm, type LangGraphRunnableConfig, isHumanMessage } from "@types";
-import { structuredOutputPrompt, renderPrompt } from "@prompts";
+import { renderPrompt } from "@prompts";
 import {
   whereWeArePrompt,
   currentTopicPrompt,
@@ -19,9 +19,8 @@ export const defaultPrompt = async (
   }
   const topic = Brainstorm.getTopic(state.currentTopic as Brainstorm.TopicName);
 
-  const [outputInstructions, whereWeAre, currentTopic, remainingTopics, collectedAnswers, process] =
+  const [whereWeAre, currentTopic, remainingTopics, collectedAnswers, process] =
     await Promise.all([
-      structuredOutputPrompt({ schema: Brainstorm.replySchema }),
       whereWeArePrompt(state, config),
       currentTopicPrompt(state, config),
       remainingTopicsPrompt(state, config),
@@ -102,18 +101,15 @@ export const defaultPrompt = async (
             </skipped_topics>
 
             <output_format_rules>
-                IMPORTANT: Your response MUST be in this exact format:
+                Respond in natural GitHub-flavored markdown. Do NOT output JSON.
 
-                {
-                  "text": "Brief intro to the question",
-                  "examples": ["Example 1", "Example 2", "Example 3"], // Optional
-                  "conclusion": "Restate what you're asking for" // Optional
-                }
+                Structure your response as:
+                1. Brief intro or acknowledgment
+                2. If helpful, include example answers as a bulleted list
+                3. End with a clear question or call to action
 
-                You MUST output valid JSON in this format.
+                Keep it conversational and concise.
             </output_format_rules>
-
-            ${outputInstructions}
         `
   );
 };

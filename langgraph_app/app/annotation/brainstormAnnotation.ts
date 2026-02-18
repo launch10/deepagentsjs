@@ -1,6 +1,7 @@
 import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
-import { Brainstorm, type PrimaryKeyType } from "@types";
+import { type PrimaryKeyType } from "@types";
+import { Brainstorm } from "@types";
 import type { Equal, Expect, ShowMismatches, UUIDType } from "@types";
 import type { BrainstormGraphState } from "@state";
 import { uniq } from "@utils";
@@ -48,6 +49,4 @@ type _Assertion = Expect<Equal<BrainstormGraphState, typeof BrainstormAnnotation
 export const BrainstormBridge = createAppBridge({
   endpoint: "/api/brainstorm/stream",
   stateAnnotation: BrainstormAnnotation,
-  messageSchema: Brainstorm.structuredMessageSchemas,
-  jsonTarget: "messages",
 });

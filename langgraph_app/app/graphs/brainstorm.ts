@@ -3,6 +3,7 @@ import { BrainstormAnnotation } from "@annotation";
 import {
   brainstormAgent,
   createBrainstorm,
+  ensureAnswersSaved,
   skipTopic,
   createCompactConversationNode,
 } from "@nodes";
@@ -24,10 +25,12 @@ import type { BrainstormIntent } from "@types";
 const defaultSubgraph = new StateGraph(BrainstormAnnotation)
   .addNode("createBrainstorm", createBrainstorm)
   .addNode("brainstormAgent", brainstormAgent)
+  .addNode("ensureAnswersSaved", ensureAnswersSaved)
   .addNode("compactConversation", createCompactConversationNode())
   .addEdge(START, "createBrainstorm")
   .addEdge("createBrainstorm", "brainstormAgent")
-  .addEdge("brainstormAgent", "compactConversation")
+  .addEdge("brainstormAgent", "ensureAnswersSaved")
+  .addEdge("ensureAnswersSaved", "compactConversation")
   .addEdge("compactConversation", END)
   .compile();
 
@@ -35,11 +38,13 @@ const skipTopicSubgraph = new StateGraph(BrainstormAnnotation)
   .addNode("skipTopic", skipTopic)
   .addNode("createBrainstorm", createBrainstorm)
   .addNode("brainstormAgent", brainstormAgent)
+  .addNode("ensureAnswersSaved", ensureAnswersSaved)
   .addNode("compactConversation", createCompactConversationNode())
   .addEdge(START, "skipTopic")
   .addEdge("skipTopic", "createBrainstorm")
   .addEdge("createBrainstorm", "brainstormAgent")
-  .addEdge("brainstormAgent", "compactConversation")
+  .addEdge("brainstormAgent", "ensureAnswersSaved")
+  .addEdge("ensureAnswersSaved", "compactConversation")
   .addEdge("compactConversation", END)
   .compile();
 

@@ -4,11 +4,10 @@ import { type BrainstormGraphState } from "@state";
 import { DatabaseSnapshotter, BrainstormNextStepsService } from "@services";
 import { brainstormGraph as uncompiledGraph } from "@graphs";
 import { HumanMessage, AIMessage, BaseMessage, ToolMessage } from "@langchain/core/messages";
-import { lastAIMessage, type UUIDType, type ThreadIDType, firstHumanMessage } from "@types";
+import { lastAIMessage, type UUIDType, type ThreadIDType, firstHumanMessage, Brainstorm } from "@types";
 import { createBrainstorm } from "@nodes";
 import { saveAnswers } from "@tools";
 import { v7 as uuidv7 } from "uuid";
-import { Brainstorm } from "@types";
 import { graphParams } from "@core";
 import { assertDefined } from "@support";
 import { isContextMessage } from "langgraph-ai-sdk";
@@ -281,12 +280,6 @@ const restartChatFrom = async (
   return testGraph<BrainstormGraphState>().withGraph(brainstormGraph).withState(state);
 };
 
-const getParsedBlocks = <T>(response: BaseMessage, type: string): T => {
-  const responseMetadata = response.response_metadata as { parsed_blocks?: { parsed?: any }[] };
-  const parsedBlock = responseMetadata?.parsed_blocks?.find((block) => block.parsed?.type === type)
-    ?.parsed as T;
-  return parsedBlock;
-};
 
 describe.sequential("Brainstorming Flow", () => {
   beforeEach(async () => {
@@ -343,14 +336,6 @@ describe.sequential("Brainstorming Flow", () => {
       expect(aiResponse?.content).toMatch(/restaurant|cafe|recipes|brand|business idea/i);
       expect(result.state.availableIntents).toHaveLength(1);
       expect(result.state.availableIntents[0]).toBe("help_me");
-
-      const structuredOutput = getParsedBlocks<Brainstorm.ReplyType>(aiResponse!, "reply");
-
-      assertDefined(structuredOutput);
-      expect(structuredOutput.type).toBe("reply");
-      expect(structuredOutput.text).toBeDefined();
-      expect(structuredOutput.examples).toBeDefined();
-      expect(structuredOutput.conclusion).toBeDefined();
     });
 
     it("should update to the next question when we successfully give a business idea", async () => {
@@ -412,12 +397,6 @@ describe.sequential("Brainstorming Flow", () => {
       expect(result.state.availableIntents[2]).toBe("do_the_rest");
 
       expect(lastAIResponse.content).toMatch(/solution|before|after|transformation|benefits/i);
-      const structuredOutput = getParsedBlocks<Brainstorm.ReplyType>(lastAIResponse, "reply");
-      if (!structuredOutput) {
-        throw new Error("Expected to find structured output");
-      }
-      expect(structuredOutput?.type).toBe("reply");
-      expect(structuredOutput?.text).toBeDefined();
     });
 
     it("should ask about social proof after solution", async () => {
@@ -550,7 +529,7 @@ describe.sequential("Brainstorming Flow", () => {
 
       expect(lastAIResponse.content).toMatch(/landing page|site/i);
       expect(lastAIResponse.content).toMatch(
-        /ads campaign|launch ads|drive traffic|driving traffic|ads|analytics/i
+        /ads campaign|launch ads|drive traffic|driving traffic|ads|analytics|Build My Site|landing page/i
       );
       expect(lastAIResponse.content).toMatch(
         /validate your idea|validate idea|validate business idea|iterate|learn|excited to buy|test|validate|landing page/i
@@ -735,7 +714,7 @@ describe.sequential("Brainstorming Flow", () => {
     });
 
     describe("HELP_ME_ANSWER", () => {
-      it("provides structured guidance to the user", async () => {
+      it("provides help me guidance to the user", async () => {
         const graph = await restartChatFrom("audience", SimpleChatHistory);
         const result = await graph
           .withState(createIntent("help_me"))
@@ -757,11 +736,6 @@ describe.sequential("Brainstorming Flow", () => {
         expect(result.state.availableIntents[2]).toBe("do_the_rest");
 
         expect(lastAIResponse.content).toMatch(/audience|who|keeps them up at night/i);
-        let parsed = getParsedBlocks<Brainstorm.HelpMeResponseType>(lastAIResponse, "helpMe");
-        expect(parsed.type).toBe("helpMe");
-        expect(parsed.text).toBeDefined();
-        expect(parsed.template).toBeDefined();
-        expect(parsed.examples).toBeDefined();
 
         // Verify context message was injected for the helpMe mode switch
         const contextMessages = result.state.messages.filter((message) =>

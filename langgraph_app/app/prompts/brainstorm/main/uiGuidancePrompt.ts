@@ -1,17 +1,15 @@
 import { type BrainstormGraphState } from "@state";
 import { type LangGraphRunnableConfig, Brainstorm } from "@types";
- import { finishedTool} from "@tools";
-import { structuredOutputPrompt } from "@prompts";
+import { finishedTool} from "@tools";
 import { collectedAnswersPrompt, backgroundPrompt } from "../shared";
 
 export const uiGuidancePrompt = async (
   state: BrainstormGraphState,
   config?: LangGraphRunnableConfig
 ) => {
-  const [background, collectedAnswers, outputInstructions] = await Promise.all([
+  const [background, collectedAnswers] = await Promise.all([
     backgroundPrompt(state, config),
     collectedAnswersPrompt(state, config),
-    structuredOutputPrompt({ schema: Brainstorm.replySchema }),
   ]);
 
   // TODO: Use tagged messages to determine if we've JUST finished brainstorming
@@ -82,36 +80,29 @@ export const uiGuidancePrompt = async (
             ## Example Messages
 
             ### First-Time Completion:
-            json
-            {
-            "text": "Amazing work! You've given me everything I need to create a compelling landing page for you. Now you have two options:",
-            "examples": [
-                "Personalize the design (optional): Upload your logo, pick brand colors, add social links, or choose specific images. Check out the Brand Personalization panel on the left.",
-                "Build right away: Skip personalization for now and hit 'Build My Site' to see your page. You can always customize later!"
-            ],
-            "conclusion": "What sounds good to you?"
-            }
+            "Amazing work! You've given me everything I need to create a compelling landing page for you. Now you have two options:
+
+            - **Personalize the design** (optional): Upload your logo, pick brand colors, add social links, or choose specific images. Check out the Brand Personalization panel on the left.
+            - **Build right away**: Skip personalization for now and hit 'Build My Site' to see your page. You can always customize later!
+
+            What sounds good to you?"
 
             ### If They Ask What to Do Next:
-            {
-            "text": "Great question! You're all set to build. Here's what you can do:",
-            "examples": [
-                "If you have brand assets ready (logo, colors, images) - add them in the Brand Personalization panel on the left",
-                "If you want to see the page first - just click 'Build My Site' and we'll use smart defaults"
-            ],
-            "conclusion": "Both paths work great. Which feels right to you?"
-            }
+            "Great question! You're all set to build. Here's what you can do:
+
+            - If you have brand assets ready (logo, colors, images) — add them in the Brand Personalization panel on the left
+            - If you want to see the page first — just click 'Build My Site' and we'll use smart defaults
+
+            Both paths work great. Which feels right to you?"
 
             ### If They're Hesitating:
-            {
-            "text": "No pressure at all! Here's the deal:",
-            "examples": [
-                "You can build now with our smart defaults and customize later",
-                "Or you can upload your logo and brand colors first if you have them handy",
-                "The page will look great either way"
-            ],
-            "conclusion": "Whatever's easier for you is the right choice!"
-            }
+            "No pressure at all! Here's the deal:
+
+            - You can build now with our smart defaults and customize later
+            - Or you can upload your logo and brand colors first if you have them handy
+            - The page will look great either way
+
+            Whatever's easier for you is the right choice!"
 
             ## Handling Different Scenarios
 
@@ -176,15 +167,8 @@ export const uiGuidancePrompt = async (
         </task>
 
         <output>
-            If outputting a response, use the following JSON schema:
-
-            Output JSON: {
-                "text": "Guide the user to the next step",
-                "examples": ["Option 1 explanation", "Option 2 explanation"], // Optional, only if necessary
-                "conclusion": "Clearly state the next step" // Optional, only if necessary
-            }
+            Respond in natural GitHub-flavored markdown. Do NOT output JSON.
+            Keep it conversational and concise. Use bullet points for options.
         </output>
-
-        ${outputInstructions}
     `;
 };

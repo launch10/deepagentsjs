@@ -10,7 +10,7 @@ import { type BrainstormGraphState, type BrainstormModeType } from "@state";
 import z from "zod";
 import { BrainstormNextStepsService } from "@services";
 import { lastAIMessage } from "@types";
-import { BrainstormBridge } from "@annotation";
+import { toStructuredMessage } from "langgraph-ai-sdk";
 import { Conversation } from "@conversation";
 
 /**
@@ -50,12 +50,13 @@ type MiddlewareTracker = {
 const createBrainstormMiddleware = (
   initialState: BrainstormGraphState,
   tracker: MiddlewareTracker,
+  initialMode: BrainstormModeType,
   config?: LangGraphRunnableConfig
 ) => {
-  // Initialize tracker with mode from state (persisted across turns).
-  // Default to "default" when brainstormMode is unset (first turn) so that
-  // intent-driven mode changes (e.g., helpMe, doTheRest) are detected as switches.
-  tracker.lastSeenMode = initialState.brainstormMode ?? "default";
+  // Start tracking from the current mode — the initial mode switch
+  // is already handled by prepareTurn() before the agent runs.
+  // The middleware only needs to catch MID-TURN switches (after tool calls).
+  tracker.lastSeenMode = initialMode;
   tracker.injectedContextMessages = [];
 
   return createMiddleware({
@@ -121,10 +122,11 @@ const createBrainstormMiddleware = (
  *
  * Architecture:
  * - brainstormMode is tracked in STATE (persists across turns)
- * - Middleware checks database state BEFORE EACH model call
- * - System prompt is regenerated based on current state (reflects mode changes)
- * - ContextMessage is injected when mode switches are detected
- * - This preserves the switch in traces while keeping the agent informed
+ * - Initial mode switch detected before agent, context passed to prepareTurn()
+ *   for proper CTX-before-HUMAN ordering (same pattern as coding/ads agents)
+ * - Middleware catches MID-TURN switches (after tool calls like saveAnswers)
+ * - System prompt is regenerated per model call based on current state
+ * - compactConversation runs after this node (graph-level)
  */
 export const brainstormAgent = NodeMiddleware.use(
   {},
@@ -156,10 +158,23 @@ export const brainstormAgent = NodeMiddleware.use(
       intent: validatedIntent,
     };
 
-    // Window messages to fit context limits before sending to the agent.
-    // Brainstorm middleware handles context injection during model calls,
-    // so we only need windowing here (no contextMessages to inject).
+    // Detect initial mode switch (out-of-band UI interactions like helpMe,
+    // doTheRest, skip). Build context message and pass through prepareTurn()
+    // so it's positioned correctly (CTX before HUMAN for user-message turns,
+    // appended for intent-driven turns). Same pattern as coding/ads agents.
+    const previousMode = (state.brainstormMode ?? "default") as BrainstormModeType;
+    const currentMode = getBrainstormMode(initialState);
+
+    let initialContextMessages: BaseMessage[] = [];
+    if (previousMode !== currentMode) {
+      const ctx = await getBrainstormContextMessage(
+        initialState, currentMode, previousMode, config
+      );
+      if (ctx) initialContextMessages.push(ctx as unknown as BaseMessage);
+    }
+
     const windowedMessages = new Conversation(state.messages || []).prepareTurn({
+      contextMessages: initialContextMessages,
       maxTurnPairs: 10,
       maxChars: 40_000,
     });
@@ -170,10 +185,12 @@ export const brainstormAgent = NodeMiddleware.use(
       messages: windowedMessages,
     };
 
-    // Create tracker to capture context messages injected by middleware
+    // Create tracker — starts at currentMode since initial switch is
+    // already handled by prepareTurn(). Middleware only catches mid-turn
+    // switches (e.g., after saveAnswers changes brainstorm state).
     const middlewareTracker: MiddlewareTracker = {
       injectedContextMessages: [],
-      lastSeenMode: state.brainstormMode,
+      lastSeenMode: currentMode,
     };
 
     const llm = (await getLLM({ maxTier: 2 })).withConfig({ tags: ["notify"] });
@@ -184,7 +201,7 @@ export const brainstormAgent = NodeMiddleware.use(
       tools,
       middleware: [
         createPromptCachingMiddleware(),
-        createBrainstormMiddleware(initialState, middlewareTracker, config),
+        createBrainstormMiddleware(initialState, middlewareTracker, currentMode, config),
       ],
     });
 
@@ -194,7 +211,7 @@ export const brainstormAgent = NodeMiddleware.use(
       throw new Error("Agent did not return an AI message");
     }
 
-    const [message, updates] = await BrainstormBridge.toStructuredMessage(lastMessage);
+    const [message] = await toStructuredMessage(lastMessage);
     // Get updated next steps after agent processing
     const { memories, remainingTopics, currentTopic, placeholderText, availableIntents } =
       await new BrainstormNextStepsService(state).nextSteps();
@@ -207,8 +224,8 @@ export const brainstormAgent = NodeMiddleware.use(
     };
     const finalMode = getBrainstormMode(finalState);
 
-    // Build final messages array from agent result
-    // Include context messages that middleware injected (they're not in result.messages)
+    // Build final messages array from agent result.
+    // Context messages need to be persisted in state so future turns see them.
     const resultMessages = (result as any).messages || [];
     const originalMessageCount = windowedMessages.length;
     const newMessages = resultMessages.slice(originalMessageCount);
@@ -216,8 +233,12 @@ export const brainstormAgent = NodeMiddleware.use(
     // Start with original messages
     let messages: BaseMessage[] = [...(state.messages || [])];
 
-    // Add any context messages that were injected mid-turn
-    // These need to be added BEFORE the new messages from the agent
+    // Add initial context (out-of-band mode switch detected before agent ran)
+    if (initialContextMessages.length > 0) {
+      messages = [...messages, ...initialContextMessages];
+    }
+
+    // Add mid-turn context (injected by middleware during tool calls, e.g. after saveAnswers)
     if (middlewareTracker.injectedContextMessages.length > 0) {
       messages = [...messages, ...middlewareTracker.injectedContextMessages];
     }

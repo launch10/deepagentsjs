@@ -159,7 +159,7 @@ const createHelpMeSwitchMessage = (state: BrainstormGraphState): ContextMessage 
   - Do NOT ask follow-up questions
   - Make the template immediately usable
 
-  OUTPUT FORMAT: JSON with type: "helpMe", text, template, and examples array
+  OUTPUT FORMAT: Natural markdown with template and example sections
 </context_switch>
   `.trim();
 

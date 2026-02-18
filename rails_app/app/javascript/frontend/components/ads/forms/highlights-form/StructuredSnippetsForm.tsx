@@ -45,13 +45,38 @@ export default function StructuredSnippetsForm() {
     },
   });
 
+  const { getData, saveNow } = useAutosaveCampaign<Ads.StructuredSnippetsOutput>({
+    methods,
+    formId: "structured-snippets",
+    transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
+      const values = data.details?.filter((d) => d.text?.trim()).map((d) => d.text) ?? [];
+
+      if (!data.category || values.length === 0) return null;
+
+      return {
+        structured_snippet: {
+          category: data.category,
+          values,
+        },
+      };
+    },
+  });
+
+  const saveNowRef = useRef(saveNow);
+  saveNowRef.current = saveNow;
+
   useEffect(() => {
     const currentIds = filteredDetails.map((d) => d.id).join(",");
     const prevIds = prevIdsRef.current.join(",");
 
     if (currentIds !== prevIds) {
+      const hadPrevIds = prevIdsRef.current.length > 0;
       methods.reset({ category, details: filteredDetails });
       prevIdsRef.current = filteredDetails.map((d) => d.id);
+
+      if (hadPrevIds) {
+        saveNowRef.current();
+      }
     }
   }, [filteredDetails, category, methods]);
 
@@ -89,7 +114,7 @@ export default function StructuredSnippetsForm() {
   );
 
   const handleAddDetail = () => {
-    const newDetail = { id: generateUUID(), text: "", locked: false, rejected: false };
+    const newDetail = { id: generateUUID(), text: "", locked: true, rejected: false };
     setState({
       structuredSnippets: {
         ...structuredSnippets,
@@ -156,23 +181,6 @@ export default function StructuredSnippetsForm() {
       },
     });
   };
-
-  const { getData } = useAutosaveCampaign<Ads.StructuredSnippetsOutput>({
-    methods,
-    formId: "structured-snippets",
-    transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
-      const values = data.details?.filter((d) => d.text?.trim()).map((d) => d.text) ?? [];
-
-      if (!data.category || values.length === 0) return null;
-
-      return {
-        structured_snippet: {
-          category: data.category,
-          values,
-        },
-      };
-    },
-  });
 
   useFormRegistration("highlights", methods, getData);
 

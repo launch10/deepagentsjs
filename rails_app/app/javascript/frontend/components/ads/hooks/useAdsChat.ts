@@ -5,14 +5,28 @@ import { Ads } from "@shared";
 import { useChatRegistration } from "@hooks/useChatRegistration";
 import { useChatOptions } from "@hooks/useChatOptions";
 import { syncLanggraphToStore } from "~/stores/useSyncProject";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { usePage, router } from "@inertiajs/react";
 import type { CampaignProps } from "../workflow-panel/workflow-buddy/ad-campaign.types";
+import { transformRailsAssetsToState } from "../utils/transformRailsAssets";
 
 export type AdsSnapshot = ChatSnapshot<AdsGraphState>;
 
 function useAdsChatOptions() {
   const page = usePage<CampaignProps>();
+
+  // Build initial state from Rails data (Inertia props)
+  const initialState = useMemo(
+    () =>
+      transformRailsAssetsToState({
+        headlines: page.props.headlines,
+        descriptions: page.props.descriptions,
+        keywords: page.props.keywords,
+        callouts: page.props.callouts,
+        structured_snippet: page.props.structured_snippet,
+      }),
+    [page.props.headlines, page.props.descriptions, page.props.keywords, page.props.callouts, page.props.structured_snippet]
+  );
 
   const onThreadIdAvailable = useCallback(
     (threadId: string) => {
@@ -41,6 +55,7 @@ function useAdsChatOptions() {
     apiPath: "api/ads/stream",
     merge: Ads.MergeReducer as any,
     onThreadIdAvailable,
+    initialState,
   });
 }
 
