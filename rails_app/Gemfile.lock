@@ -768,6 +768,16 @@ GEM
       rexml (~> 3.2, >= 3.2.5)
       rubyzip (>= 1.2.2, < 4.0)
       websocket (~> 1.0)
+    sentry-rails (6.3.1)
+      railties (>= 5.2.0)
+      sentry-ruby (~> 6.3.1)
+    sentry-ruby (6.3.1)
+      bigdecimal
+      concurrent-ruby (~> 1.0, >= 1.0.2)
+      logger
+    sentry-sidekiq (6.3.1)
+      sentry-ruby (~> 6.3.1)
+      sidekiq (>= 5.0)
     shellany (0.0.1)
     shoulda-matchers (6.5.0)
       activesupport (>= 5.2.0)
@@ -990,7 +1000,6 @@ DEPENDENCIES
   rails (~> 8.0.0)
   receipts (~> 2.1)
   redis
-  rollbar
   rotp (~> 6.2)
   rqrcode (~> 2.1)
   rspec (~> 3.13)
@@ -1001,6 +1010,9 @@ DEPENDENCIES
   ruby_llm
   rubyzip
   selenium-webdriver (>= 4.20.1)
+  sentry-rails
+  sentry-ruby
+  sentry-sidekiq
   shoulda-matchers (~> 6.0)
   sidekiq
   sidekiq-unique-jobs (~> 8.0)

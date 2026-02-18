@@ -1,8 +1,8 @@
 module Deploys
   class AutoSupportTicketService
-    def initialize(deploy, rollbar_uuid: nil)
+    def initialize(deploy, sentry_event_id: nil)
       @deploy = deploy
-      @rollbar_uuid = rollbar_uuid
+      @sentry_event_id = sentry_event_id
     end
 
     def call
@@ -28,31 +28,33 @@ module Deploys
         "Project: #{@deploy.project.name} (#{@deploy.project.uuid})",
         ("Step: #{@deploy.current_step}" if @deploy.current_step.present?),
         ("Error: #{@deploy.stacktrace}" if @deploy.stacktrace.present?),
-        ("Rollbar: #{rollbar_url}" if rollbar_url.present?)
+        ("Sentry: #{sentry_url}" if sentry_url.present?)
       ].compact.join("\n")
     end
 
-    def rollbar_url
-      @rollbar_url ||= rollbar_uuid_to_url(@rollbar_uuid) || report_to_rollbar
+    def sentry_url
+      @sentry_url ||= sentry_event_id_to_url(@sentry_event_id) || report_to_sentry
     end
 
-    def rollbar_uuid_to_url(uuid)
-      "https://rollbar.com/occurrence/uuid/?uuid=#{uuid}" if uuid.present?
+    def sentry_event_id_to_url(event_id)
+      "https://sentry.io/organizations/launch10/issues/?query=#{event_id}" if event_id.present?
     end
 
-    def report_to_rollbar
-      response = Rollbar.error(
+    def report_to_sentry
+      event = Sentry.capture_message(
         "Deploy ##{@deploy.id} failed",
-        deploy_id: @deploy.id,
-        project_id: @deploy.project_id,
-        project_uuid: @deploy.project.uuid,
-        current_step: @deploy.current_step,
-        stacktrace: @deploy.stacktrace
+        extra: {
+          deploy_id: @deploy.id,
+          project_id: @deploy.project_id,
+          project_uuid: @deploy.project.uuid,
+          current_step: @deploy.current_step,
+          stacktrace: @deploy.stacktrace
+        }
       )
-      uuid = response.is_a?(Hash) && response["uuid"]
-      rollbar_uuid_to_url(uuid)
+      event_id = event&.event_id
+      sentry_event_id_to_url(event_id)
     rescue => e
-      Rails.logger.warn("Failed to report deploy failure to Rollbar: #{e.message}")
+      Rails.logger.warn("Failed to report deploy failure to Sentry: #{e.message}")
       nil
     end
   end

@@ -9,9 +9,9 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
         stuck_job = create(:job_run, :pending, :with_langgraph_callback,
           account: account, created_at: 15.minutes.ago)
 
-        expect(Rollbar).to receive(:error).with(
+        expect(Sentry).to receive(:capture_message).with(
           "Stuck job run detected",
-          hash_including(job_run_id: stuck_job.id, status: "pending")
+          extra: hash_including(job_run_id: stuck_job.id, status: "pending")
         )
 
         described_class.new.perform
@@ -28,9 +28,9 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
         stuck_job = create(:job_run, :running, :with_langgraph_callback,
           account: account, created_at: 15.minutes.ago)
 
-        expect(Rollbar).to receive(:error).with(
+        expect(Sentry).to receive(:capture_message).with(
           "Stuck job run detected",
-          hash_including(job_run_id: stuck_job.id, status: "running")
+          extra: hash_including(job_run_id: stuck_job.id, status: "running")
         )
 
         described_class.new.perform
@@ -46,7 +46,7 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
         recent_pending = create(:job_run, :pending, account: account, created_at: 2.minutes.ago)
         recent_running = create(:job_run, :running, account: account, created_at: 5.minutes.ago)
 
-        expect(Rollbar).not_to receive(:error)
+        expect(Sentry).not_to receive(:capture_message)
 
         described_class.new.perform
 
@@ -60,7 +60,7 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
         create(:job_run, :completed, account: account, created_at: 15.minutes.ago)
         create(:job_run, :failed, account: account, created_at: 15.minutes.ago)
 
-        expect(Rollbar).not_to receive(:error)
+        expect(Sentry).not_to receive(:capture_message)
 
         described_class.new.perform
       end
@@ -71,7 +71,7 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
         stuck_job = create(:job_run, :pending,
           account: account, created_at: 15.minutes.ago, langgraph_thread_id: nil)
 
-        expect(Rollbar).to receive(:error).with("Stuck job run detected", anything)
+        expect(Sentry).to receive(:capture_message).with("Stuck job run detected", anything)
 
         described_class.new.perform
 
@@ -86,7 +86,7 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
         job = create(:job_run, :pending, account: account,
           job_class: "GoogleOAuthConnect", created_at: 30.minutes.ago)
 
-        expect(Rollbar).not_to receive(:error)
+        expect(Sentry).not_to receive(:capture_message)
 
         described_class.new.perform
 
@@ -97,7 +97,7 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
         job = create(:job_run, :running, :with_langgraph_callback, account: account,
           job_class: "GoogleAdsInvite", created_at: 1.hour.ago)
 
-        expect(Rollbar).not_to receive(:error)
+        expect(Sentry).not_to receive(:capture_message)
 
         described_class.new.perform
 
@@ -108,7 +108,7 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
         job = create(:job_run, :running, :with_langgraph_callback, account: account,
           job_class: "GoogleAdsPaymentCheck", created_at: 20.minutes.ago)
 
-        expect(Rollbar).not_to receive(:error)
+        expect(Sentry).not_to receive(:capture_message)
 
         described_class.new.perform
 
@@ -121,7 +121,7 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
         regular_job = create(:job_run, :pending, :with_langgraph_callback, account: account,
           job_class: "CampaignDeploy", created_at: 15.minutes.ago)
 
-        expect(Rollbar).to receive(:error).with("Stuck job run detected", hash_including(job_run_id: regular_job.id))
+        expect(Sentry).to receive(:capture_message).with("Stuck job run detected", extra: hash_including(job_run_id: regular_job.id))
 
         described_class.new.perform
 
@@ -136,23 +136,23 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
         create(:job_run, :pending, :with_langgraph_callback,
           account: account, deploy: deploy, created_at: 15.minutes.ago)
 
-        expect(Rollbar).to receive(:error).with("Stuck job run detected", anything)
-          .and_return({"uuid" => "stuck-job-uuid"})
+        expect(Sentry).to receive(:capture_message).with("Stuck job run detected", anything)
+          .and_return(double(event_id: "stuck-job-event-id"))
 
         expect { described_class.new.perform }.to change(SupportRequest, :count).by(1)
 
         ticket = SupportRequest.last
         expect(ticket.supportable).to eq(deploy)
         expect(ticket.subject).to include("Deploy ##{deploy.id} failed")
-        expect(ticket.description).to include("Rollbar: https://rollbar.com/occurrence/uuid/?uuid=stuck-job-uuid")
+        expect(ticket.description).to include("Sentry: https://sentry.io/organizations/launch10/issues/?query=stuck-job-event-id")
       end
 
       it "does not create a support ticket for stuck jobs without a deploy" do
         create(:job_run, :pending, :with_langgraph_callback,
           account: account, deploy: nil, created_at: 15.minutes.ago)
 
-        expect(Rollbar).to receive(:error).with("Stuck job run detected", anything)
-          .and_return({"uuid" => "stuck-job-uuid"})
+        expect(Sentry).to receive(:capture_message).with("Stuck job run detected", anything)
+          .and_return(double(event_id: "stuck-job-event-id"))
 
         expect { described_class.new.perform }.not_to change(SupportRequest, :count)
       end
@@ -163,8 +163,8 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
         create(:job_run, :pending, :with_langgraph_callback,
           account: account, deploy: deploy, created_at: 15.minutes.ago)
 
-        expect(Rollbar).to receive(:error).with("Stuck job run detected", anything)
-          .and_return({"uuid" => "stuck-job-uuid"})
+        expect(Sentry).to receive(:capture_message).with("Stuck job run detected", anything)
+          .and_return(double(event_id: "stuck-job-event-id"))
 
         expect { described_class.new.perform }.not_to change(SupportRequest, :count)
       end
@@ -174,13 +174,13 @@ RSpec.describe Monitoring::StuckJobDetectorWorker, type: :worker do
         stuck_job = create(:job_run, :pending, :with_langgraph_callback,
           account: account, deploy: deploy, created_at: 15.minutes.ago)
 
-        expect(Rollbar).to receive(:error).with("Stuck job run detected", anything)
-          .and_return({"uuid" => "stuck-job-uuid"})
+        expect(Sentry).to receive(:capture_message).with("Stuck job run detected", anything)
+          .and_return(double(event_id: "stuck-job-event-id"))
         allow(Deploys::AutoSupportTicketService).to receive_message_chain(:new, :call)
           .and_raise(StandardError, "ticket creation failed")
-        expect(Rollbar).to receive(:error).with(
+        expect(Sentry).to receive(:capture_message).with(
           "Failed to create support ticket for stuck job",
-          hash_including(job_run_id: stuck_job.id)
+          extra: hash_including(job_run_id: stuck_job.id)
         )
 
         expect { described_class.new.perform }.not_to raise_error

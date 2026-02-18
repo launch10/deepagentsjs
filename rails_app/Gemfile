@@ -42,7 +42,7 @@ gem "dotenv"
 gem "devise-jwt"
 gem "activerecord-import"
 gem "typhoeus"
-gem "rollbar"
+gem "sentry-ruby"
 gem "zhong"
 gem "sinatra", require: false # Required for Zhong web
 gem "rswag"

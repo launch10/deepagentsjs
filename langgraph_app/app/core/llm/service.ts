@@ -5,7 +5,7 @@ import { ChatGroq } from "@langchain/groq";
 import { ChatOllama } from "@langchain/ollama";
 import { env } from "@app";
 import { cache } from "@core";
-import { rollbar } from "../errors";
+import { sentry } from "../errors";
 import { getLogger } from "../logger";
 import { createRailsApiClient } from "@rails_api";
 import { hasValidCostConfig } from "./cost";
@@ -202,7 +202,7 @@ class LLMService {
       if (!hasValidCostConfig(modelConfig)) {
         if (models.length === 0) {
           // First-choice model is uncosted — alert ops
-          rollbar.error(
+          sentry.error(
             new Error(
               `Model ${key} (${modelConfig.model_card}) has no cost configuration — skipping`
             ),

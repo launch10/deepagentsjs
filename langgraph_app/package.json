@@ -113,7 +113,7 @@
     "react-toastify": "^11.0.5",
     "readdirp": "^4.1.2",
     "redis-connection-pool": "^4.0.1",
-    "rollbar": "^2.26.5",
+    "@sentry/node": "^9.0.0",
     "shiki": "^3.19.0",
     "tsx": "^4.21.0",
     "uuid": "^11.1.0",

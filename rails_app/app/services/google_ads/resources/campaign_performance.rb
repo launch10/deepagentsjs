@@ -42,7 +42,7 @@ module GoogleAds
           end
 
           Rails.logger.error("[CampaignPerformance] Failed to fetch metrics: #{e.message}")
-          Rollbar.error(e, ads_account_id: ads_account.id)
+          Sentry.capture_exception(e, extra: { ads_account_id: ads_account.id })
           return []
         end
 

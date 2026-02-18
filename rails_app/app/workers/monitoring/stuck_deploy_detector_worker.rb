@@ -6,13 +6,13 @@ module Monitoring
 
     def perform
       Deploy.stuck.find_each do |deploy|
-        response = Rollbar.error("Stuck deploy detected", {
+        event = Sentry.capture_message("Stuck deploy detected", extra: {
           deploy_id: deploy.id,
           project_id: deploy.project_id,
           status: deploy.status,
           created_at: deploy.created_at
         })
-        rollbar_uuid = response.is_a?(Hash) && response["uuid"]
+        sentry_event_id = event&.event_id
 
         deploy.update!(
           status: "failed",
@@ -20,9 +20,9 @@ module Monitoring
           needs_support: false
         )
 
-        Deploys::AutoSupportTicketService.new(deploy, rollbar_uuid: rollbar_uuid || nil).call
+        Deploys::AutoSupportTicketService.new(deploy, sentry_event_id: sentry_event_id).call
       rescue => e
-        Rollbar.error("Failed to handle stuck deploy", {
+        Sentry.capture_message("Failed to handle stuck deploy", extra: {
           deploy_id: deploy.id,
           error: e.message
         })

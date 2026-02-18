@@ -14,10 +14,10 @@ import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 
 // ─── Hoisted mocks (vi.mock factories can only reference these) ─────────────
 
-const { mockExecuteTextEditorCommand, mockInvoke, mockRollbarError } = vi.hoisted(() => ({
+const { mockExecuteTextEditorCommand, mockInvoke, mockSentryError } = vi.hoisted(() => ({
   mockExecuteTextEditorCommand: vi.fn(),
   mockInvoke: vi.fn(),
-  mockRollbarError: vi.fn(),
+  mockSentryError: vi.fn(),
 }));
 
 // Mock executeTextEditorCommand — controls success/failure per call
@@ -39,8 +39,8 @@ vi.mock("@core", async (importOriginal) => {
         invoke: mockInvoke,
       }),
     }),
-    rollbar: {
-      error: mockRollbarError,
+    sentry: {
+      error: mockSentryError,
       warn: vi.fn(),
       info: vi.fn(),
     },
@@ -220,7 +220,7 @@ describe("singleShotEdit error handling", () => {
     expect(content).toContain("could not be applied");
   });
 
-  it("reports errors to rollbar when edits fail", async () => {
+  it("reports errors to sentry when edits fail", async () => {
     const backend = makeFakeBackend();
     // First call fails, retry also fails
     mockInvoke
@@ -233,7 +233,7 @@ describe("singleShotEdit error handling", () => {
 
     await singleShotEdit(baseState, [new HumanMessage("Change stuff")], backend);
 
-    expect(mockRollbarError).toHaveBeenCalled();
+    expect(mockSentryError).toHaveBeenCalled();
   });
 
   it("uses improved fallback text when LLM provides no text content", async () => {

@@ -52,7 +52,7 @@ vi.mock("@core", async (importOriginal) => {
       error: vi.fn(),
       debug: vi.fn(),
     }),
-    rollbar: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
+    sentry: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
   };
 });
 

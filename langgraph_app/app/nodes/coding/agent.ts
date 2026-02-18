@@ -7,7 +7,7 @@ import {
   createPromptCachingMiddleware,
   createToolErrorSurfacingMiddleware,
   getLogger,
-  rollbar,
+  sentry,
 } from "@core";
 import { WebsiteFilesBackend } from "@services";
 import { SearchIconsTool, ChangeColorSchemeTool } from "@tools";
@@ -366,7 +366,7 @@ export async function createCodingAgent(
     // Maximum durability: never let an unhandled error leave the user with no response.
     // Log + report the error, then return a user-friendly message.
     getLogger().error({ err: error }, "createCodingAgent crashed — returning fallback message");
-    rollbar.error(error instanceof Error ? error : new Error(String(error)), {
+    sentry.error(error instanceof Error ? error : new Error(String(error)), {
       context: "createCodingAgent",
       websiteId: state.websiteId,
       isCreateFlow: state.isCreateFlow,

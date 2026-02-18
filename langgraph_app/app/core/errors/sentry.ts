@@ -1,17 +1,16 @@
-import Rollbar from "rollbar";
+import * as Sentry from "@sentry/node";
 import { getLoggerContext } from "../logger/context";
 
-const ROLLBAR_ACCESS_TOKEN = process.env.ROLLBAR_ACCESS_TOKEN;
-const ENABLED = !!process.env.ROLLBAR_ACCESS_TOKEN;
+const SENTRY_DSN = process.env.SENTRY_DSN;
+const ENABLED = !!SENTRY_DSN;
 
-const logger = new Rollbar({
-  accessToken: ROLLBAR_ACCESS_TOKEN,
-  captureUncaught: ENABLED,
-  captureUnhandledRejections: ENABLED,
-  environment: process.env.NODE_ENV || "development",
-  enabled: ENABLED,
-  verbose: true,
-});
+if (ENABLED) {
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    environment: process.env.NODE_ENV || "development",
+    enabled: ENABLED,
+  });
+}
 
 type LogContext = Record<string, string | number | boolean | null | undefined>;
 
@@ -23,17 +22,17 @@ function enrichContext(context?: LogContext): LogContext {
   return enriched;
 }
 
-export const rollbar = {
+export const sentry = {
   error: async (error: Error, context?: LogContext) => {
     if (!ENABLED) return;
-    await logger.error(error, enrichContext(context));
+    Sentry.captureException(error, { extra: enrichContext(context) });
   },
   warn: async (message: string, context?: LogContext) => {
     if (!ENABLED) return;
-    await logger.warning(message, enrichContext(context));
+    Sentry.captureMessage(message, { level: "warning", extra: enrichContext(context) });
   },
   info: async (message: string, context?: LogContext) => {
     if (!ENABLED) return;
-    await logger.info(message, enrichContext(context));
+    Sentry.captureMessage(message, { level: "info", extra: enrichContext(context) });
   },
 };

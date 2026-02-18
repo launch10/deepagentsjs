@@ -9,10 +9,10 @@ RSpec.describe Monitoring::StuckDeployDetectorWorker, type: :worker do
       it "marks it failed, sets stacktrace, and creates a support ticket" do
         deploy = create(:deploy, :running, project: project, created_at: 20.minutes.ago)
 
-        expect(Rollbar).to receive(:error).with(
+        expect(Sentry).to receive(:capture_message).with(
           "Stuck deploy detected",
-          hash_including(deploy_id: deploy.id, status: "running")
-        ).and_return({"uuid" => "stuck-deploy-uuid"})
+          extra: hash_including(deploy_id: deploy.id, status: "running")
+        ).and_return(double(event_id: "stuck-deploy-event-id"))
 
         expect { described_class.new.perform }.to change(SupportRequest, :count).by(1)
 
@@ -24,7 +24,7 @@ RSpec.describe Monitoring::StuckDeployDetectorWorker, type: :worker do
         ticket = SupportRequest.last
         expect(ticket.supportable).to eq(deploy)
         expect(ticket.subject).to include("Deploy ##{deploy.id} failed")
-        expect(ticket.description).to include("Rollbar: https://rollbar.com/occurrence/uuid/?uuid=stuck-deploy-uuid")
+        expect(ticket.description).to include("Sentry: https://sentry.io/organizations/launch10/issues/?query=stuck-deploy-event-id")
       end
     end
 
@@ -32,12 +32,12 @@ RSpec.describe Monitoring::StuckDeployDetectorWorker, type: :worker do
       it "marks it failed" do
         deploy = create(:deploy, project: project, status: "pending", created_at: 20.minutes.ago)
 
-        expect(Rollbar).to receive(:error).with(
+        expect(Sentry).to receive(:capture_message).with(
           "Stuck deploy detected",
-          hash_including(deploy_id: deploy.id, status: "pending")
-        ).and_return({})
-        # AutoSupportTicketService also calls Rollbar.error when no rollbar_uuid
-        allow(Rollbar).to receive(:error).with(/Deploy #/, anything).and_return({})
+          extra: hash_including(deploy_id: deploy.id, status: "pending")
+        ).and_return(double(event_id: nil))
+        # AutoSupportTicketService also calls Sentry.capture_message when no sentry_event_id
+        allow(Sentry).to receive(:capture_message).with(/Deploy #/, anything).and_return(double(event_id: nil))
 
         described_class.new.perform
 
@@ -51,7 +51,7 @@ RSpec.describe Monitoring::StuckDeployDetectorWorker, type: :worker do
       it "leaves it alone" do
         deploy = create(:deploy, :running, project: project, created_at: 5.minutes.ago)
 
-        expect(Rollbar).not_to receive(:error)
+        expect(Sentry).not_to receive(:capture_message)
 
         described_class.new.perform
 
@@ -63,7 +63,7 @@ RSpec.describe Monitoring::StuckDeployDetectorWorker, type: :worker do
       it "leaves it alone" do
         deploy = create(:deploy, :completed, project: project, created_at: 20.minutes.ago)
 
-        expect(Rollbar).not_to receive(:error)
+        expect(Sentry).not_to receive(:capture_message)
 
         described_class.new.perform
 
@@ -75,7 +75,7 @@ RSpec.describe Monitoring::StuckDeployDetectorWorker, type: :worker do
       it "leaves it alone" do
         deploy = create(:deploy, :failed, project: project, created_at: 20.minutes.ago)
 
-        expect(Rollbar).not_to receive(:error)
+        expect(Sentry).not_to receive(:capture_message)
 
         described_class.new.perform
 
@@ -87,8 +87,8 @@ RSpec.describe Monitoring::StuckDeployDetectorWorker, type: :worker do
       it "does not create duplicate support tickets" do
         deploy = create(:deploy, :running, project: project, created_at: 20.minutes.ago)
 
-        expect(Rollbar).to receive(:error).with("Stuck deploy detected", anything)
-          .and_return({"uuid" => "uuid-1"})
+        expect(Sentry).to receive(:capture_message).with("Stuck deploy detected", anything)
+          .and_return(double(event_id: "event-1"))
 
         described_class.new.perform
 
@@ -112,13 +112,13 @@ RSpec.describe Monitoring::StuckDeployDetectorWorker, type: :worker do
       it "logs error but does not raise" do
         deploy = create(:deploy, :running, project: project, created_at: 20.minutes.ago)
 
-        expect(Rollbar).to receive(:error).with("Stuck deploy detected", anything)
-          .and_return({"uuid" => "uuid-1"})
+        expect(Sentry).to receive(:capture_message).with("Stuck deploy detected", anything)
+          .and_return(double(event_id: "event-1"))
         allow(Deploys::AutoSupportTicketService).to receive_message_chain(:new, :call)
           .and_raise(StandardError, "ticket creation failed")
-        expect(Rollbar).to receive(:error).with(
+        expect(Sentry).to receive(:capture_message).with(
           "Failed to handle stuck deploy",
-          hash_including(deploy_id: deploy.id)
+          extra: hash_including(deploy_id: deploy.id)
         )
 
         expect { described_class.new.perform }.not_to raise_error

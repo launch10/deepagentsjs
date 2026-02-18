@@ -1,4 +1,4 @@
-import { rollbar } from "./rollbar";
+import { sentry } from "./sentry";
 import { ReporterRegistry } from "./reporterRegistry";
 import { env } from "@app";
 import { getLogger } from "../logger/context";
@@ -11,4 +11,4 @@ const devLogger = (e: unknown) => {
 
 export const ErrorReporters = new ReporterRegistry().addReporter("dev", devLogger);
 
-export { rollbar };
+export { sentry };

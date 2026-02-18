@@ -11,7 +11,7 @@ RSpec.describe Deploys::AutoSupportTicketService do
     allow(SupportMailer).to receive_message_chain(:support_request, :deliver_later)
     allow(Support::SlackNotificationWorker).to receive(:perform_async)
     allow(Support::NotionCreationWorker).to receive(:perform_async)
-    allow(Rollbar).to receive(:error).and_return({"uuid" => "test-rollbar-uuid-123"})
+    allow(Sentry).to receive(:capture_message).and_return(double(event_id: "test-sentry-event-id-123"))
   end
 
   describe "#call" do
@@ -51,22 +51,22 @@ RSpec.describe Deploys::AutoSupportTicketService do
       expect(result.description).to include("Build error: exit code 1")
     end
 
-    it "includes Rollbar URL from its own report when no UUID provided" do
+    it "includes Sentry URL from its own report when no event ID provided" do
       result = described_class.new(deploy).call
-      expect(result.description).to include("Rollbar: https://rollbar.com/occurrence/uuid/?uuid=test-rollbar-uuid-123")
+      expect(result.description).to include("Sentry: https://sentry.io/organizations/launch10/issues/?query=test-sentry-event-id-123")
     end
 
-    it "uses the provided rollbar_uuid instead of reporting again" do
-      result = described_class.new(deploy, rollbar_uuid: "existing-uuid-456").call
-      expect(result.description).to include("Rollbar: https://rollbar.com/occurrence/uuid/?uuid=existing-uuid-456")
-      expect(Rollbar).not_to have_received(:error)
+    it "uses the provided sentry_event_id instead of reporting again" do
+      result = described_class.new(deploy, sentry_event_id: "existing-event-456").call
+      expect(result.description).to include("Sentry: https://sentry.io/organizations/launch10/issues/?query=existing-event-456")
+      expect(Sentry).not_to have_received(:capture_message)
     end
 
-    it "still creates ticket when Rollbar is unavailable" do
-      allow(Rollbar).to receive(:error).and_raise(StandardError, "Rollbar down")
+    it "still creates ticket when Sentry is unavailable" do
+      allow(Sentry).to receive(:capture_message).and_raise(StandardError, "Sentry down")
       result = described_class.new(deploy).call
       expect(result).to be_persisted
-      expect(result.description).not_to include("Rollbar:")
+      expect(result.description).not_to include("Sentry:")
     end
 
     it "skips if support_request already exists (no duplicates)" do

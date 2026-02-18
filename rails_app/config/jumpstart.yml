@@ -11,7 +11,7 @@ account_types: team
 apns: false
 fcm: false
 integrations:
-- rollbar
+- sentry
 omniauth_providers:
 - google-oauth2
 payment_processors:

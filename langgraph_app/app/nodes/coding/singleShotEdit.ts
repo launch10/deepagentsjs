@@ -1,7 +1,7 @@
 import { AIMessage, ToolMessage } from "@langchain/core/messages";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import type { BaseMessage } from "@langchain/core/messages";
-import { getLLM, rollbar, getLogger } from "@core";
+import { getLLM, sentry, getLogger } from "@core";
 import { executeTextEditorCommand, type TextEditorInput } from "@tools";
 import { getCodingAgentBackend, getTheme, type MinimalCodingAgentState } from "./agent";
 import { buildFileTree, preReadFiles } from "./fileContext";
@@ -298,7 +298,7 @@ export async function singleShotEdit(
         { errorCount: errors.length, errors },
         "Single-shot edit had failed tool calls"
       );
-      rollbar.error(new Error(`Single-shot edit failures: ${errors.length}/${editCalls.length}`), {
+      sentry.error(new Error(`Single-shot edit failures: ${errors.length}/${editCalls.length}`), {
         errors: errors.join("; "),
         successCount,
         totalEdits: editCalls.length,

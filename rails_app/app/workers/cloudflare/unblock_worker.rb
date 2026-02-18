@@ -17,7 +17,7 @@ class Cloudflare::UnblockWorker
     if rule
       rule.mark_failed!("Maximum retries exceeded after 5 attempts - manual intervention required")
 
-      Rollbar.error("Cloudflare unblocking failed after max retries", {
+      Sentry.capture_message("Cloudflare unblocking failed after max retries", extra: {
         firewall_rule_id: rule.id,
         domain: rule.domain,
         cloudflare_rule_id: rule.cloudflare_rule_id,
