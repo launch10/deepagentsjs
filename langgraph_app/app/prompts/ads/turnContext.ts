@@ -1,7 +1,6 @@
 import { type BaseMessage, HumanMessage } from "@langchain/core/messages";
 import { type LangGraphRunnableConfig, Ads } from "@types";
 import { type AdsGraphState } from "@state";
-import { getAssetPrompts, getOutputPrompt } from "./assets/assets/builder";
 import { createContextMessage, isContextMessage } from "langgraph-ai-sdk";
 
 export const PAGE_NAMES: Record<Ads.StageName, string> = {
@@ -20,13 +19,14 @@ const STAGE_ASSETS: Partial<Record<Ads.StageName, string>> = {
 };
 
 /**
- * Build a per-turn context message for the ads agent.
+ * Build a lightweight per-turn context message for the ads agent.
  *
- * Always returns at least a minimal page-awareness context so the
- * agent knows which page the user is on — even on user-message turns.
+ * Context messages are now small, authoritative system instructions —
+ * NOT user-mimicking triggers. They tell the agent what's happening
+ * (page change, refresh, user feedback) and carry preferences (locked/
+ * rejected assets), but NO asset instructions or output format.
  *
- * For intent-driven turns (no user message), returns a rich context
- * with asset instructions, output format, and preferences.
+ * All asset instructions live in the system prompt (buildSystemPrompt).
  */
 export const buildTurnContext = async (
   state: AdsGraphState,
@@ -35,65 +35,47 @@ export const buildTurnContext = async (
   const stage = state.stage as Ads.StageName;
   if (!stage) return null;
 
+  // Non-content stages: minimal page awareness
+  if (!Ads.isContentStage(stage)) {
+    return createContextMessage(
+      `[[SYSTEM INSTRUCTIONS -- USER CANNOT SEE THIS]]\nThe user is on ${PAGE_NAMES[stage]}.`
+    );
+  }
+
+  // Content stages: lightweight trigger + preferences
+  const isRefresh = !!state.refresh?.length;
   const lastMsg = state.messages?.at(-1);
   const hasUserMessage =
     lastMsg && HumanMessage.isInstance(lastMsg) && !isContextMessage(lastMsg);
 
-  // Content stages without a user message: full asset generation context
-  if (Ads.isContentStage(stage) && !hasUserMessage) {
-    return buildAssetContext(state, config);
-  }
-
-  // All other cases: minimal page awareness so the agent knows where we are
-  return createContextMessage(`The user is on ${PAGE_NAMES[stage]}.`);
-};
-
-/**
- * Build rich context for content stages (headlines, callouts, keywords).
- * Only called for intent-driven turns (no user message).
- */
-async function buildAssetContext(
-  state: AdsGraphState,
-  config: LangGraphRunnableConfig
-): Promise<BaseMessage | null> {
-  const stage = state.stage as Ads.StageName;
-  const isRefresh = !!state.refresh?.length;
-  const [assetInstructions, outputFormat] = await Promise.all([
-    getAssetPrompts(state, config),
-    getOutputPrompt(state, config),
-  ]);
   const prefs = buildPreferencesContext(state);
+  const parts: string[] = [
+    "[[SYSTEM INSTRUCTIONS -- USER CANNOT SEE THIS]]",
+  ];
 
-  const parts: string[] = [];
-
-  // 1. Conversational opening
   if (isRefresh) {
+    const reqs = state.refresh!.map((r) => `${r.nVariants} fresh ${r.asset}`).join(" and ");
+    parts.push(
+      `The user clicked the refresh button on ${PAGE_NAMES[stage]}. Auto-generate ${reqs}. Keep the intro brief — one sentence, then the JSON block.`
+    );
     if (prefs) parts.push(prefs);
-    const assetRequests = state
-      .refresh!.map((r) => `${r.nVariants} fresh ${r.asset}`)
-      .join(" and ");
-    parts.push(`Give me ${assetRequests}.`);
+  } else if (hasUserMessage) {
+    parts.push(
+      `The user sent a message on ${PAGE_NAMES[stage]}. Respond to what they said. If they're sharing preferences or feedback, incorporate it into updated ${STAGE_ASSETS[stage]}.`
+    );
+    if (prefs) parts.push(prefs);
   } else {
-    parts.push(`I'm on ${PAGE_NAMES[stage]}. Generate my ${STAGE_ASSETS[stage]}.`);
+    parts.push(
+      `The user has navigated to ${PAGE_NAMES[stage]}. Auto-generate their ${STAGE_ASSETS[stage]} now.`
+    );
     if (prefs) parts.push(prefs);
-  }
-
-  // 2. Asset instructions (char limits, guidelines)
-  parts.push(assetInstructions);
-
-  // 3. Output format (JSON example for this stage)
-  parts.push(outputFormat);
-
-  // 4. Response framing
-  if (isRefresh) {
-    parts.push("Keep the intro brief — one sentence, then the JSON block.");
   }
 
   return createContextMessage(parts.join("\n\n"));
-}
+};
 
 /**
- * Conversational framing of locked/rejected assets.
+ * Locked/rejected asset preferences.
  */
 export function buildPreferencesContext(state: AdsGraphState): string | null {
   const stage = state.stage as Ads.StageName;
@@ -113,7 +95,7 @@ export function buildPreferencesContext(state: AdsGraphState): string | null {
 
     if (liked.length) {
       lines.push(
-        `I liked these ${assetKind}: ${liked.map((a) => `"${a.text}"`).join(", ")}.`
+        `These ${assetKind} are already saved — do NOT regenerate them: ${liked.map((a) => `"${a.text}"`).join(", ")}. Only generate new ones.`
       );
     }
     if (rejected.length) {

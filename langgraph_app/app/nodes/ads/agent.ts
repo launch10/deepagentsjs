@@ -1,7 +1,7 @@
 import { createAgent } from "langchain";
 import { type BaseMessage } from "@langchain/core/messages";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
-import { getLLM, createPromptCachingMiddleware, getLogger } from "@core";
+import { getLLM, getLogger } from "@core";
 import { buildSystemPrompt } from "@prompts";
 import { Conversation } from "@conversation";
 import { NodeMiddleware } from "@middleware";
@@ -19,21 +19,22 @@ export const adsAgent = NodeMiddleware.use(
     const llm = (await getLLM({})).withConfig({ tags: ["notify"] });
     const tools = getTools(state);
 
-    // 1. Stable system prompt — same string every turn, fully cached
-    const systemPrompt = buildSystemPrompt(state);
+    // 1. Semi-dynamic system prompt — changes per page, stable within page
+    //    No prompt caching middleware needed; the system prompt IS the authority
+    const systemPrompt = await buildSystemPrompt(state, config!);
 
-    // 2. Create agent — systemPrompt passed directly, no dynamic middleware
+    // 2. Create agent — no caching middleware, system prompt carries everything
     const agent = await createAgent({
       model: llm,
       tools,
       systemPrompt,
-      middleware: [createPromptCachingMiddleware()],
     });
 
-    // 3. Window messages — context already committed by prepareContext node
+    // 3. Aggressively trim stale history — keep recent turns only
+    //    Context messages are small triggers now, so old ones don't compete
     const windowedMessages = new Conversation(state.messages || []).window({
-      maxTurnPairs: 10,
-      maxChars: 40_000,
+      maxTurnPairs: 4,
+      maxChars: 20_000,
     });
 
     const stateWithMessages = {
@@ -42,7 +43,6 @@ export const adsAgent = NodeMiddleware.use(
     };
 
     getLogger().info({ stage: state.stage }, "Running ads agent");
-    getLogger().info({ messages: windowedMessages }, "Windowed messages");
     const result = (await agent.invoke(
       stateWithMessages as any,
       config

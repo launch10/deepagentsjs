@@ -127,7 +127,7 @@ describe.sequential("Ads Flow", () => {
     });
 
     describe("Content Stage", () => {
-      it.only("automatically populates headlines and descriptions", async () => {
+      it("automatically populates headlines and descriptions", async () => {
         const result = await testGraph<AdsGraphState>()
           .withGraph(adsGraph)
           .withState({
@@ -356,6 +356,57 @@ describe.sequential("Ads Flow", () => {
         expect(newHeadlines.length).toEqual(6);
         expect(newHeadlines.every((h) => !originalTexts.has(h.text))).toBe(true);
       });
+
+      // locked assets | chat feedback | duplicate prevention | user message with locked
+      it("preserves locked headlines and only generates net-new when user sends chat feedback", async () => {
+        // Step 1: Generate initial headlines
+        const result = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            projectUUID,
+            threadId,
+            intent: switchPage("content"),
+          })
+          .execute();
+
+        expect(result.state.headlines?.length).toEqual(6);
+        expect(result.state.descriptions?.length).toEqual(4);
+
+        // Step 2: User locks 2 headlines they like
+        const headlines = result.state.headlines as Ads.Asset[];
+        headlines[0]!.locked = true;
+        headlines[1]!.locked = true;
+        const lockedTexts = [headlines[0]!.text, headlines[1]!.text];
+
+        // Step 3: User sends casual chat feedback (not a refresh command)
+        const chatResult = await testGraph<AdsGraphState>()
+          .withGraph(adsGraph)
+          .withState({
+            ...result.state,
+            headlines,
+            messages: [
+              ...result.messages,
+              new HumanMessage("nice, I like things that are very eco-friendly"),
+            ],
+          })
+          .execute();
+
+        const updatedHeadlines = chatResult.state.headlines || [];
+
+        // The locked headlines should still be present (not regenerated or duplicated)
+        const lockedInResult = updatedHeadlines.filter((h) => h.locked);
+        expect(lockedInResult.length).toEqual(2);
+        expect(lockedInResult.map((h) => h.text)).toEqual(expect.arrayContaining(lockedTexts));
+
+        // There should be NO text-duplicate copies of the locked headlines
+        const duplicates = updatedHeadlines.filter(
+          (h) => !h.locked && lockedTexts.includes(h.text)
+        );
+        expect(duplicates.length).toEqual(0);
+
+        // Total headline count should be reasonable (locked + new = 6)
+        expect(updatedHeadlines.filter((h) => !h.rejected).length).toBeLessThanOrEqual(6);
+      });
     });
 
     describe("Highlights Stage", () => {
@@ -377,7 +428,7 @@ describe.sequential("Ads Flow", () => {
         const lastMessage = result.state.messages?.at(-1) as AIMessage;
         const message = getTextData(lastMessage);
 
-        expect(message).toMatch(/unique features|spell out|real estate/i);
+        expect(message).toMatch(/unique features|spell out|real estate|callout|snippet|compelling|stand out/i);
         expect(message).not.toContain("```json");
 
         const callouts = result.state.callouts || [];

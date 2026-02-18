@@ -4,7 +4,10 @@ import { Ads } from "@types";
 export const Keywords: Partial<Ads.AssetPromptMap> = {
   keywords: {
     prompt: async (state: AdsGraphState, _config?: any) => {
-      const nVariants = Ads.getNVariantsForAsset(state.refresh, "keywords") ?? Ads.DefaultNumAssets.keywords;
+      const lockedCount = (state.keywords || []).filter((a) => a.locked).length;
+      const nVariants =
+        Ads.getNVariantsForAsset(state.refresh, "keywords") ??
+        Math.max(1, Ads.DefaultNumAssets.keywords - lockedCount);
 
       return `
             ## Keywords
@@ -40,7 +43,10 @@ export const Keywords: Partial<Ads.AssetPromptMap> = {
         `;
     },
     outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
-      const nVariants = Ads.getNVariantsForAsset(state.refresh, "keywords") ?? Ads.DefaultNumAssets.keywords;
+      const lockedCount = (state.keywords || []).filter((a) => a.locked).length;
+      const nVariants =
+        Ads.getNVariantsForAsset(state.refresh, "keywords") ??
+        Math.max(1, Ads.DefaultNumAssets.keywords - lockedCount);
       const keywords = Array.from({ length: nVariants }, (_, i) => `Keyword ${i + 1}`);
       return { keywords };
     },

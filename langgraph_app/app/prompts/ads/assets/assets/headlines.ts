@@ -4,8 +4,10 @@ import { type AdsGraphState } from "@state";
 export const Headlines: Partial<Ads.AssetPromptMap> = {
   headlines: {
     prompt: async (state: AdsGraphState, _config?: any): Promise<string> => {
+      const lockedCount = (state.headlines || []).filter((a) => a.locked).length;
       const nVariants =
-        Ads.getNVariantsForAsset(state.refresh, "headlines") ?? Ads.DefaultNumAssets.headlines;
+        Ads.getNVariantsForAsset(state.refresh, "headlines") ??
+        Math.max(1, Ads.DefaultNumAssets.headlines - lockedCount);
 
       return `
             ## Headlines
@@ -34,8 +36,10 @@ export const Headlines: Partial<Ads.AssetPromptMap> = {
         `;
     },
     outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
+      const lockedCount = (state.headlines || []).filter((a) => a.locked).length;
       const nVariants =
-        Ads.getNVariantsForAsset(state.refresh, "headlines") ?? Ads.DefaultNumAssets.headlines;
+        Ads.getNVariantsForAsset(state.refresh, "headlines") ??
+        Math.max(1, Ads.DefaultNumAssets.headlines - lockedCount);
       const headlines = Array.from({ length: nVariants }, (_, i) => `Headline ${i + 1}`);
       return { headlines };
     },

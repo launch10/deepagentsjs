@@ -11,9 +11,10 @@ export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
   structuredSnippets: {
     prompt: async (state: AdsGraphState, _config?: any) => {
       const snippetCategory = state?.structuredSnippets?.category;
+      const lockedCount = (state.structuredSnippets?.details || []).filter((a) => a.locked).length;
       const numberOfDetails =
         Ads.getNVariantsForAsset(state.refresh, "structuredSnippets") ??
-        Ads.DefaultNumAssets.structuredSnippets;
+        Math.max(1, Ads.DefaultNumAssets.structuredSnippets - lockedCount);
 
       return `
             ## Product or Service Offerings (Structured Snippets)
@@ -40,9 +41,10 @@ export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
         `;
     },
     outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
+      const lockedCount = (state.structuredSnippets?.details || []).filter((a) => a.locked).length;
       const numberOfDetails =
         Ads.getNVariantsForAsset(state.refresh, "structuredSnippets") ??
-        Ads.DefaultNumAssets.structuredSnippets;
+        Math.max(1, Ads.DefaultNumAssets.structuredSnippets - lockedCount);
       return {
         structuredSnippets: {
           category: "types", // Use keys like "types", "services", "brands" - not display names

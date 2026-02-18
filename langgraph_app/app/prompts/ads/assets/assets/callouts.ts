@@ -4,8 +4,10 @@ import { type AdsGraphState } from "@state";
 export const Callouts: Partial<Ads.AssetPromptMap> = {
   callouts: {
     prompt: async (state: AdsGraphState, _config?: any) => {
+      const lockedCount = (state.callouts || []).filter((a) => a.locked).length;
       const nVariants =
-        Ads.getNVariantsForAsset(state.refresh, "callouts") ?? Ads.DefaultNumAssets.callouts;
+        Ads.getNVariantsForAsset(state.refresh, "callouts") ??
+        Math.max(1, Ads.DefaultNumAssets.callouts - lockedCount);
 
       return `
             ## Unique Features (Callouts)
@@ -27,8 +29,10 @@ export const Callouts: Partial<Ads.AssetPromptMap> = {
         `;
     },
     outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
+      const lockedCount = (state.callouts || []).filter((a) => a.locked).length;
       const nVariants =
-        Ads.getNVariantsForAsset(state.refresh, "callouts") ?? Ads.DefaultNumAssets.callouts;
+        Ads.getNVariantsForAsset(state.refresh, "callouts") ??
+        Math.max(1, Ads.DefaultNumAssets.callouts - lockedCount);
       const callouts = Array.from({ length: nVariants }, (_, i) => `Feature ${i + 1}`);
       return { callouts };
     },

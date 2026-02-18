@@ -3,7 +3,7 @@ import { buildTurnContext, buildPreferencesContext, PAGE_NAMES } from "@prompts"
 import { type AdsGraphState } from "@state";
 import { HumanMessage, AIMessage } from "@langchain/core/messages";
 import { isContextMessage, createContextMessage } from "langgraph-ai-sdk";
-import { type LangGraphRunnableConfig } from "@types";
+import { type LangGraphRunnableConfig, Ads } from "@types";
 
 const makeBrainstorm = () => ({
   idea: "A scheduling tool for remote teams",
@@ -23,8 +23,32 @@ const makeState = (overrides: Partial<AdsGraphState> = {}): AdsGraphState =>
 const fakeConfig = {} as LangGraphRunnableConfig;
 
 describe("buildTurnContext", () => {
+  describe("lightweight context messages (no asset instructions)", () => {
+    it("context messages never contain asset_instructions or example_response", async () => {
+      for (const stage of ["content", "highlights", "keywords"] as Ads.StageName[]) {
+        const state = makeState({ stage, messages: [] });
+        const result = await buildTurnContext(state, fakeConfig);
+
+        expect(result).not.toBeNull();
+        const content = result!.content as string;
+        // Asset instructions belong in the system prompt, not context messages
+        expect(content).not.toContain("<asset_instructions>");
+        expect(content).not.toContain("<example_response>");
+      }
+    });
+
+    it("uses authoritative system instruction framing", async () => {
+      const state = makeState({ stage: "content", messages: [] });
+      const result = await buildTurnContext(state, fakeConfig);
+
+      expect(result).not.toBeNull();
+      const content = result!.content as string;
+      expect(content).toContain("[[SYSTEM INSTRUCTIONS");
+    });
+  });
+
   describe("first visit to content stage", () => {
-    it("returns context message with page name and asset instructions", async () => {
+    it("returns a lightweight trigger to auto-generate headlines and descriptions", async () => {
       const state = makeState({ stage: "content", messages: [] });
       const result = await buildTurnContext(state, fakeConfig);
 
@@ -32,34 +56,32 @@ describe("buildTurnContext", () => {
       expect(isContextMessage(result!)).toBe(true);
 
       const content = result!.content as string;
-      expect(content).toContain("headlines and descriptions page");
-      expect(content).toContain("Generate my headlines and descriptions");
-      expect(content).toContain("<asset_instructions>");
-      expect(content).toContain("<example_response>");
+      expect(content).toContain("headlines and descriptions");
+      // Should be a clear instruction, not pretending to be the user
+      expect(content).not.toContain("Generate my");
+      expect(content).not.toContain("I'm on");
     });
   });
 
   describe("first visit to highlights stage", () => {
-    it("returns context with callouts and structured snippets instructions", async () => {
+    it("returns a lightweight trigger for callouts and structured snippets", async () => {
       const state = makeState({ stage: "highlights", messages: [] });
       const result = await buildTurnContext(state, fakeConfig);
 
       expect(result).not.toBeNull();
       const content = result!.content as string;
-      expect(content).toContain("callouts and structured snippets page");
-      expect(content).toContain("Generate my callouts and structured snippets");
+      expect(content).toContain("callouts and structured snippets");
     });
   });
 
   describe("first visit to keywords stage", () => {
-    it("returns context with keywords instructions", async () => {
+    it("returns a lightweight trigger for keywords", async () => {
       const state = makeState({ stage: "keywords", messages: [] });
       const result = await buildTurnContext(state, fakeConfig);
 
       expect(result).not.toBeNull();
       const content = result!.content as string;
-      expect(content).toContain("keywords page");
-      expect(content).toContain("Generate my keywords");
+      expect(content).toContain("keywords");
     });
   });
 
@@ -81,12 +103,33 @@ describe("buildTurnContext", () => {
       expect(content).toContain("3 fresh headlines");
       expect(content).toContain('"Great Headline"');
       expect(content).toContain('"Bad Headline"');
-      expect(content).toContain("Keep the intro brief");
     });
   });
 
-  describe("user message on content stage", () => {
-    it("returns minimal page context (not full asset instructions)", async () => {
+  describe("user message on content stage with locked assets", () => {
+    it("returns a lightweight context with preferences but no asset instructions", async () => {
+      const state = makeState({
+        stage: "content",
+        headlines: [
+          { id: "1", text: "Locked Headline", locked: true, rejected: false },
+          { id: "2", text: "Unlocked One", locked: false, rejected: false },
+        ],
+        messages: [new HumanMessage("nice, I like things that are very eco-friendly")],
+      });
+      const result = await buildTurnContext(state, fakeConfig);
+
+      expect(result).not.toBeNull();
+      expect(isContextMessage(result!)).toBe(true);
+      const content = result!.content as string;
+      // Should include preferences but NOT full asset instructions
+      expect(content).toContain('"Locked Headline"');
+      expect(content).not.toContain("<asset_instructions>");
+      expect(content).not.toContain("<example_response>");
+    });
+  });
+
+  describe("user message on content stage without locked assets (pure Q&A)", () => {
+    it("returns a lightweight context acknowledging user message", async () => {
       const state = makeState({
         stage: "content",
         messages: [new HumanMessage("How do headlines pair with descriptions?")],
@@ -96,10 +139,8 @@ describe("buildTurnContext", () => {
       expect(result).not.toBeNull();
       expect(isContextMessage(result!)).toBe(true);
       const content = result!.content as string;
-      // Minimal page awareness — no asset instructions or output format
-      expect(content).toContain("headlines and descriptions page");
+      expect(content).toContain("sent a message");
       expect(content).not.toContain("<asset_instructions>");
-      expect(content).not.toContain("Generate my");
     });
   });
 
@@ -155,7 +196,7 @@ describe("buildPreferencesContext", () => {
     expect(result).toBeNull();
   });
 
-  it("includes liked assets", () => {
+  it("tells the agent not to regenerate locked assets", () => {
     const state = makeState({
       stage: "content",
       headlines: [
@@ -163,7 +204,9 @@ describe("buildPreferencesContext", () => {
       ],
     });
     const result = buildPreferencesContext(state);
-    expect(result).toContain('I liked these headlines: "Great Headline"');
+    expect(result).toContain('"Great Headline"');
+    expect(result).toMatch(/do NOT regenerate|already saved|don't regenerate/i);
+    expect(result).not.toContain("I liked");
   });
 
   it("includes rejected assets", () => {
@@ -177,7 +220,7 @@ describe("buildPreferencesContext", () => {
     expect(result).toContain('Skip anything like: "Bad Headline"');
   });
 
-  it("includes both liked and rejected", () => {
+  it("includes both locked (don't regenerate) and rejected (skip) assets", () => {
     const state = makeState({
       stage: "content",
       headlines: [
@@ -192,9 +235,11 @@ describe("buildPreferencesContext", () => {
     expect(result).toContain('"Good One"');
     expect(result).toContain('"Bad One"');
     expect(result).toContain('"Nice Desc"');
+    expect(result).toMatch(/do NOT regenerate|already saved|don't regenerate/i);
+    expect(result).not.toContain("I liked");
   });
 
-  it("handles structured snippets", () => {
+  it("handles structured snippets with don't-regenerate framing", () => {
     const state = makeState({
       stage: "highlights",
       structuredSnippets: {
@@ -208,6 +253,7 @@ describe("buildPreferencesContext", () => {
     const result = buildPreferencesContext(state);
     expect(result).toContain('"Good Service"');
     expect(result).toContain('"Bad Service"');
+    expect(result).toMatch(/do NOT regenerate|already saved|don't regenerate/i);
   });
 
   it("returns null for non-content stages", () => {

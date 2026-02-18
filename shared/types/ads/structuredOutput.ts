@@ -24,8 +24,11 @@ export const StreamingTransforms = {
     if (!streamed?.details || !streamed?.category) {
       return undefined;
     }
+    const category = (Ads.StructuredSnippetCategoryKeys as readonly string[]).includes(streamed.category)
+      ? (streamed.category as Ads.StructuredSnippetCategoryKey)
+      : ("types" as Ads.StructuredSnippetCategoryKey);
     return {
-      category: streamed.category as Ads.StructuredSnippetCategoryKey,
+      category,
       details: toAssets(streamed.details)
     }
   },
@@ -36,8 +39,10 @@ export type TransformsType = {
 }
 
 const mergeAssets = <T extends Ads.Asset>(incoming: T[], current: T[] | undefined, kind: Ads.AssetKind): T[] => {
-  const kept = (current || []).filter((c) => c.locked) // Since we know we're merging, it's now safe to filter out existing headlines that aren't locked
-  const merged = uniqBy([...kept, ...incoming], "id");
+  const kept = (current || []).filter((c) => c.locked);
+  const keptTexts = new Set(kept.map((c) => c.text));
+  const deduped = incoming.filter((a) => !keptTexts.has(a.text));
+  const merged = uniqBy([...kept, ...deduped], "id");
   return Ads.limitAssets(merged, kind);
 };
 
