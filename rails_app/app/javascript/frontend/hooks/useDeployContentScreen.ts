@@ -36,11 +36,15 @@ export function resolveContentScreen(
   pageInstructions?: Record<string, boolean>,
   historyFailed?: boolean
 ): DeployScreen {
-  // Only trust Rails deploy status when its instructions match what this page expects
+  // Only trust Rails deploy status when its instructions match what this page expects.
+  // Semantic comparison: every key the page cares about must match the Rails value.
+  // This handles key-order differences and extra keys (e.g. explicit false) in Rails.
   const railsInstructionsMatch =
     !!railsDeployInstructions &&
     !!pageInstructions &&
-    JSON.stringify(railsDeployInstructions) === JSON.stringify(pageInstructions);
+    Object.entries(pageInstructions).every(
+      ([key, value]) => railsDeployInstructions[key] === value
+    );
 
   const effectiveRailsStatus = railsInstructionsMatch ? railsDeployStatus : undefined;
 

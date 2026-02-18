@@ -67,9 +67,9 @@ describe("Conversation context message ordering", () => {
 
       // CRITICAL: Context messages must NOT bunch up at the end.
       // They must stay with their respective AI responses.
-      // Storage order: HUMAN comes before its CTX (prepareContextNode
-      // appends CTX after the human message). prepareTurn() handles
-      // reordering for the LLM.
+      // Storage order: HUMAN comes before its CTX (the agent returns
+      // CTX in its messages, which the reducer appends after HUMAN).
+      // prepareTurn() handles placing CTX before HUMAN for the LLM.
       assertOrder(windowed, [
         "CTX:navigated to content",
         "AI:here are your headlines",
@@ -110,6 +110,59 @@ describe("Conversation context message ordering", () => {
           );
         }
       }
+    });
+  });
+
+  describe("prepareTurn() places context before human for the LLM", () => {
+    it("injects new context before the last human message", () => {
+      // State has: [CTX, AI, HUMAN] — user sent a message on a page
+      // that already had an auto-init turn.
+      const messages = [
+        ctx("navigated to content"),
+        new AIMessage("here are your headlines"),
+        new HumanMessage("make them funnier"),
+      ];
+
+      const turnCtx = ctx("user sent feedback on content");
+
+      const conv = new Conversation(messages);
+      const prepared = conv.prepareTurn({
+        contextMessages: [turnCtx],
+        maxTurnPairs: 10,
+        maxChars: 100_000,
+      });
+
+      // LLM should see: [CTX, AI, CTX(new), HUMAN]
+      assertOrder(prepared, [
+        "CTX:navigated to content",
+        "AI:here are your headlines",
+        "CTX:user sent feedback on content",
+        "HUMAN:make them funnier",
+      ]);
+    });
+
+    it("appends context at end for intent-driven turns (no trailing human)", () => {
+      // State has: [CTX, AI] — auto-init, now switching pages
+      const messages = [
+        ctx("navigated to content"),
+        new AIMessage("here are your headlines"),
+      ];
+
+      const turnCtx = ctx("navigated to highlights");
+
+      const conv = new Conversation(messages);
+      const prepared = conv.prepareTurn({
+        contextMessages: [turnCtx],
+        maxTurnPairs: 10,
+        maxChars: 100_000,
+      });
+
+      // LLM should see: [CTX, AI, CTX(new)]
+      assertOrder(prepared, [
+        "CTX:navigated to content",
+        "AI:here are your headlines",
+        "CTX:navigated to highlights",
+      ]);
     });
   });
 

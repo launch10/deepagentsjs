@@ -1,5 +1,6 @@
 import { usePage } from "@inertiajs/react";
 import { Chat } from "@components/shared/chat/Chat";
+import { DeployErrorBoundary } from "@components/deploy/DeployErrorBoundary";
 import { DeploySidebar } from "@components/deploy";
 import {
   InProgressScreen,
@@ -40,12 +41,12 @@ const SCREENS: Record<DeployScreen, React.ComponentType> = {
 
 function DeployContent() {
   const { deploy } = usePage<DeployProps>().props;
-  useDeployInit();
+  const pollingFailed = useDeployInit();
 
   const state = useDeployChatFullState();
   const historyFailed = useDeployChat((s) => s.historyFailed);
   const pageInstructions = useDeployInstructions();
-  const screen = useDeployContentScreen(state, deploy?.status, deploy?.instructions, pageInstructions, historyFailed);
+  const screen = useDeployContentScreen(state, deploy?.status, deploy?.instructions, pageInstructions, historyFailed || pollingFailed);
   const isComplete = screen === "deploy-complete";
 
   const DeployScreen = SCREENS[screen];
@@ -77,7 +78,9 @@ export default function DeployPage() {
 
   return (
     <Chat.Root chat={chat}>
-      <DeployContent />
+      <DeployErrorBoundary>
+        <DeployContent />
+      </DeployErrorBoundary>
     </Chat.Root>
   );
 }

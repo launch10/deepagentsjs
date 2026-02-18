@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePage } from "@inertiajs/react";
 import {
   useDeployChat,
@@ -9,6 +9,8 @@ import {
 import { useProjectStore } from "~/stores/projectStore";
 import { useDeployService } from "@api/deploys.hooks";
 import { logger } from "@lib/logger";
+
+const MAX_POLL_FAILURES = 5;
 
 /**
  * Deploy initialization hook.
@@ -28,6 +30,8 @@ export function useDeployInit() {
   }));
   const deployContext = useDeployContext();
   const hasInitialized = useRef(false);
+  const [pollingFailed, setPollingFailed] = useState(false);
+  const consecutiveFailures = useRef(0);
 
   // Touch user_active_at on mount so OAuth callback can find the active deploy
   useEffect(() => {
@@ -87,7 +91,18 @@ export function useDeployInit() {
     const shouldPoll = isRunning && !isStreaming;
 
     if (shouldPoll && !pollRef.current) {
-      pollRef.current = setInterval(() => updateState(deployContext), 3000);
+      pollRef.current = setInterval(async () => {
+        try {
+          await updateState(deployContext);
+          consecutiveFailures.current = 0;
+          if (pollingFailed) setPollingFailed(false);
+        } catch {
+          consecutiveFailures.current++;
+          if (consecutiveFailures.current >= MAX_POLL_FAILURES) {
+            setPollingFailed(true);
+          }
+        }
+      }, 3000);
     }
 
     if ((!shouldPoll || isTerminalState) && pollRef.current) {
@@ -101,5 +116,7 @@ export function useDeployInit() {
         pollRef.current = null;
       }
     };
-  }, [updateState, deployContext, isRunning, isStreaming, isTerminalState]);
+  }, [updateState, deployContext, isRunning, isStreaming, isTerminalState, pollingFailed]);
+
+  return pollingFailed;
 }

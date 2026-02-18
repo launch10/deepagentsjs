@@ -60,15 +60,9 @@ export const adsAgent = NodeMiddleware.use(
 
     const allMessages = result.messages.slice(0, -1).concat([message]) as BaseMessage[];
 
-    // Prepend the turn context so it's committed to state for history/tracing.
-    // This gives us [CTX, ...agent messages, AI] in state — correct order.
-    const returnMessages = turnContext
-      ? [turnContext, ...allMessages] as BaseMessage[]
-      : allMessages;
-
     return {
       ...mergedAssets,
-      messages: returnMessages,
+      messages: allMessages,
     };
   }
 );

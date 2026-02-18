@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { testGraph } from "@support";
+import {
+  testGraph,
+  tagMessage,
+  dumpTimeline,
+  assertNoBunching,
+  assertMessageTypes,
+  assertCtxBeforeHumanInLLMView,
+} from "@support";
 import { type AdsGraphState } from "@state";
 import { adsGraph as uncompiledGraph } from "@graphs";
 import { graphParams } from "@core";
@@ -8,7 +15,7 @@ import { db, projects as projectsTable } from "@db";
 import { type UUIDType, Ads, type ThreadIDType, switchPage, refreshAssets } from "@types";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { v7 as uuid } from "uuid";
-import { isContextMessage } from "langgraph-ai-sdk";
+import { isContextMessage, createContextMessage } from "langgraph-ai-sdk";
 import { Conversation } from "@conversation";
 
 const adsGraph = uncompiledGraph.compile({ ...graphParams, name: "ads" });
@@ -1200,63 +1207,12 @@ describe.sequential("Ads Flow", () => {
   });
 
   describe("Walking the frontend", () => {
-    /**
-     * Tag a message as CTX / AI / HUMAN for readable assertions.
-     */
-    const tag = (m: any): string => {
-      if (isContextMessage(m)) return "CTX";
-      return m._getType().toUpperCase();
-    };
-
-    /**
-     * Dump a readable message timeline. Called on every assertion failure
-     * so the developer sees exactly what the conversation looks like.
-     */
-    const dumpTimeline = (msgs: any[]): string =>
-      msgs
-        .map((m, i) => {
-          const t = tag(m);
-          const raw = typeof m.content === "string" ? m.content : "[complex]";
-          return `  [${i}] ${t}: ${raw.slice(0, 80)}`;
-        })
-        .join("\n");
-
-    /**
-     * THE core assertion: no two consecutive context messages.
-     * If this fails, context messages are bunching up instead of
-     * staying interspersed with their AI responses.
-     */
-    const assertNoBunching = (msgs: any[], label: string) => {
-      for (let i = 1; i < msgs.length; i++) {
-        if (isContextMessage(msgs[i]!) && isContextMessage(msgs[i - 1]!)) {
-          throw new Error(
-            `${label}: BUNCHING DETECTED — consecutive CTX at [${i - 1}] and [${i}].\n` +
-              `Full timeline:\n${dumpTimeline(msgs)}`
-          );
-        }
-      }
-    };
-
-    /**
-     * Assert expected message type pattern.
-     * e.g. ["CTX", "AI", "HUMAN", "CTX", "AI"]
-     */
-    const assertTypes = (msgs: any[], expected: string[], label: string) => {
-      const actual = msgs.map(tag);
-      if (actual.length !== expected.length || actual.some((t, i) => t !== expected[i])) {
-        throw new Error(
-          `${label}: Message types don't match.\n` +
-            `Expected: [${expected.join(", ")}]\n` +
-            `Actual:   [${actual.join(", ")}]\n` +
-            `Timeline:\n${dumpTimeline(msgs)}`
-        );
-      }
-    };
+    const tag = tagMessage;
+    const assertTypes = assertMessageTypes;
 
     /**
      * After Conversation prepareTurn (what the agent actually uses),
      * verify order is still preserved and no bunching occurs.
-     * prepareTurn reorders [HUMAN, CTX] → [CTX, HUMAN] for the LLM.
      */
     const assertWindowingPreservesOrder = (msgs: any[], label: string) => {
       const conv = new Conversation(msgs);
@@ -1295,9 +1251,18 @@ describe.sequential("Ads Flow", () => {
         .execute();
 
       const msgs2 = step2.state.messages!;
-      assertTypes(msgs2, ["CTX", "AI", "HUMAN", "CTX", "AI"], "step2: user feedback");
+      assertTypes(msgs2, ["CTX", "AI", "CTX", "HUMAN", "AI"], "step2: user feedback");
       assertNoBunching(msgs2, "step2");
       assertWindowingPreservesOrder(msgs2, "step2");
+
+      // THE FIX: verify the LLM sees CTX before HUMAN (not the state order)
+      // Simulate what happens when the next user-feedback turn runs:
+      // the agent builds context and injects it via prepareTurn({ contextMessages }).
+      assertCtxBeforeHumanInLLMView(
+        [...msgs2, new HumanMessage("follow-up")],
+        createContextMessage("[[SYSTEM]] mock context for user feedback"),
+        "step2: LLM view"
+      );
 
       // ─── Step 3: Refresh headlines ─────────────────────────────
       // Frontend pattern: user locks 2 favorites, clicks "Refresh All".
@@ -1325,7 +1290,7 @@ describe.sequential("Ads Flow", () => {
       const msgs3 = step3.state.messages!;
       assertTypes(
         msgs3,
-        ["CTX", "AI", "HUMAN", "CTX", "AI", "CTX", "AI"],
+        ["CTX", "AI", "CTX", "HUMAN", "AI", "CTX", "AI"],
         "step3: refresh headlines"
       );
       assertNoBunching(msgs3, "step3");
@@ -1345,7 +1310,7 @@ describe.sequential("Ads Flow", () => {
       const msgs4 = step4.state.messages!;
       assertTypes(
         msgs4,
-        ["CTX", "AI", "HUMAN", "CTX", "AI", "CTX", "AI", "CTX", "AI"],
+        ["CTX", "AI", "CTX", "HUMAN", "AI", "CTX", "AI", "CTX", "AI"],
         "step4: switch to highlights"
       );
       assertNoBunching(msgs4, "step4");
@@ -1366,11 +1331,16 @@ describe.sequential("Ads Flow", () => {
       const msgs5 = step5.state.messages!;
       assertTypes(
         msgs5,
-        ["CTX", "AI", "HUMAN", "CTX", "AI", "CTX", "AI", "CTX", "AI", "HUMAN", "CTX", "AI"],
+        ["CTX", "AI", "CTX", "HUMAN", "AI", "CTX", "AI", "CTX", "AI", "CTX", "HUMAN", "AI"],
         "step5: user feedback on highlights"
       );
       assertNoBunching(msgs5, "step5");
       assertWindowingPreservesOrder(msgs5, "step5");
+      assertCtxBeforeHumanInLLMView(
+        [...msgs5, new HumanMessage("follow-up")],
+        createContextMessage("[[SYSTEM]] mock context for user feedback"),
+        "step5: LLM view"
+      );
 
       // ─── Step 6: Refresh callouts ──────────────────────────────
       // Same frontend pattern: lock 2, mark rest rejected
@@ -1398,8 +1368,8 @@ describe.sequential("Ads Flow", () => {
       assertTypes(
         msgs6,
         [
-          "CTX", "AI", "HUMAN", "CTX", "AI", "CTX", "AI",
-          "CTX", "AI", "HUMAN", "CTX", "AI", "CTX", "AI",
+          "CTX", "AI", "CTX", "HUMAN", "AI", "CTX", "AI",
+          "CTX", "AI", "CTX", "HUMAN", "AI", "CTX", "AI",
         ],
         "step6: refresh callouts"
       );
@@ -1443,10 +1413,15 @@ describe.sequential("Ads Flow", () => {
       expect(msgs8.length).toEqual(19);
       assertNoBunching(msgs8, "step8");
       assertWindowingPreservesOrder(msgs8, "step8");
-      // Last three: HUMAN, CTX, AI
-      expect(tag(msgs8[msgs8.length - 3]!)).toEqual("HUMAN");
-      expect(tag(msgs8[msgs8.length - 2]!)).toEqual("CTX");
+      // Last three: CTX, HUMAN, AI (context precedes human for the LLM)
+      expect(tag(msgs8[msgs8.length - 3]!)).toEqual("CTX");
+      expect(tag(msgs8[msgs8.length - 2]!)).toEqual("HUMAN");
       expect(tag(msgs8[msgs8.length - 1]!)).toEqual("AI");
+      assertCtxBeforeHumanInLLMView(
+        [...msgs8, new HumanMessage("follow-up")],
+        createContextMessage("[[SYSTEM]] mock context for user feedback"),
+        "step8: LLM view"
+      );
 
       // ─── Step 9: Refresh keywords ──────────────────────────────
       // Same frontend pattern: lock 2, mark rest rejected
@@ -1523,6 +1498,15 @@ describe.sequential("Ads Flow", () => {
           ).toBe(true);
         }
       }
+
+      // ─── Final LLM-view check ─────────────────────────────────
+      // Simulate one more user-feedback turn on the full 10-step history.
+      // The LLM must see CTX before the last HUMAN.
+      assertCtxBeforeHumanInLLMView(
+        [...msgs10, new HumanMessage("final follow-up")],
+        createContextMessage("[[SYSTEM]] final mock context"),
+        "step10: final LLM view"
+      );
     });
   });
 });
