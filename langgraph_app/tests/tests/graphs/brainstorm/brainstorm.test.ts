@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { testGraph, GraphTestBuilder } from "@support";
 import { type BrainstormGraphState } from "@state";
 import { DatabaseSnapshotter, BrainstormNextStepsService } from "@services";
 import { brainstormGraph as uncompiledGraph } from "@graphs";
 import { HumanMessage, AIMessage, BaseMessage, ToolMessage } from "@langchain/core/messages";
 import { lastAIMessage, type UUIDType, type ThreadIDType, firstHumanMessage, Brainstorm } from "@types";
-import { createBrainstorm } from "@nodes";
+import { createBrainstorm, ensureAnswersSaved } from "@nodes";
 import { saveAnswers } from "@tools";
 import { v7 as uuidv7 } from "uuid";
 import { graphParams } from "@core";
@@ -1037,6 +1037,106 @@ describe.sequential("Brainstorming Flow", () => {
         toolMessage,
         "query_uploads tool should have been called for recent images request"
       );
+    });
+  });
+
+  describe("ensureAnswersSaved safety net", () => {
+    const buildState = (overrides: Partial<BrainstormGraphState>) =>
+      ({
+        messages: [],
+        remainingTopics: [],
+        skippedTopics: [],
+        websiteId: undefined,
+        threadId: undefined,
+        jwt: undefined,
+        ...overrides,
+      }) as unknown as BrainstormGraphState;
+
+    it("skips when save_answers was already called this turn", async () => {
+      const state = buildState({
+        messages: [
+          new HumanMessage("my business idea"),
+          new AIMessage("great idea!"),
+          new ToolMessage({ content: "saved", tool_call_id: "tc1", name: "save_answers" }),
+        ],
+        remainingTopics: ["audience", "solution"] as Brainstorm.TopicName[],
+        websiteId: 1,
+        threadId: "thread-123" as any,
+        jwt: "test-jwt",
+      });
+
+      const result = await ensureAnswersSaved(state, {} as any);
+      expect(result).toEqual({});
+    });
+
+    it("skips when no conversational topics need answers", async () => {
+      const state = buildState({
+        messages: [new HumanMessage("my business idea")],
+        remainingTopics: ["lookAndFeel"] as Brainstorm.TopicName[], // UI topic, not conversational
+        skippedTopics: [],
+        websiteId: 1,
+        threadId: "thread-123" as any,
+        jwt: "test-jwt",
+      });
+
+      const result = await ensureAnswersSaved(state, {} as any);
+      expect(result).toEqual({});
+    });
+
+    it("skips when no websiteId", async () => {
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const state = buildState({
+        messages: [new HumanMessage("my business idea")],
+        remainingTopics: ["audience"] as Brainstorm.TopicName[],
+        websiteId: undefined,
+      });
+
+      const result = await ensureAnswersSaved(state, {} as any);
+      expect(result).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("No websiteId")
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it("skips when no threadId or jwt", async () => {
+      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const state = buildState({
+        messages: [new HumanMessage("my business idea")],
+        remainingTopics: ["audience"] as Brainstorm.TopicName[],
+        websiteId: 1,
+        threadId: undefined,
+        jwt: undefined,
+      });
+
+      const result = await ensureAnswersSaved(state, {} as any);
+      expect(result).toEqual({});
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("No threadId or jwt")
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it("fires summarizeAndSaveAnswers when conditions are met", async () => {
+      const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+      const state = buildState({
+        messages: [new HumanMessage("my business idea"), new AIMessage("tell me more")],
+        remainingTopics: ["audience", "solution"] as Brainstorm.TopicName[],
+        skippedTopics: [],
+        websiteId: 1,
+        threadId: "thread-123" as any,
+        jwt: "test-jwt",
+      });
+
+      const result = await ensureAnswersSaved(state, {} as any);
+
+      // Node always returns {} (fire-and-forget)
+      expect(result).toEqual({});
+      // But it should have logged that it's triggering the background save
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("[ensureAnswersSaved] Background save for topics:")
+      );
+      consoleSpy.mockRestore();
     });
   });
 });
