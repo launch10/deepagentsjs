@@ -68,6 +68,10 @@ Zhong.schedule do
     every(5.minutes, "detect stuck job runs") do
       Monitoring::StuckJobDetectorWorker.perform_async
     end
+
+    every(5.minutes, "detect stuck deploys") do
+      Monitoring::StuckDeployDetectorWorker.perform_async
+    end
   end
 
   category "Analytics" do

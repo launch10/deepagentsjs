@@ -8,6 +8,7 @@ import {
 } from "@hooks/useDeployChat";
 import { useProjectStore } from "~/stores/projectStore";
 import { useDeployService } from "@api/deploys.hooks";
+import { logger } from "@lib/logger";
 
 /**
  * Deploy initialization hook.
@@ -37,8 +38,8 @@ export function useDeployInit() {
 
   // ── Initialize: decide what to do on mount ──
   useEffect(() => {
-    console.log("useDeployInit, hasInitialized: ", hasInitialized.current);
-    console.log("useDeployInit, deploy: ", deploy);
+    logger.debug("DeployInit", "deploy prop:", deploy);
+    logger.debug("DeployInit", "hasInitialized:", hasInitialized.current);
     if (hasInitialized.current) return;
 
     const isInProgress =
@@ -48,7 +49,7 @@ export function useDeployInit() {
 
     // 1. Resume an in-progress deploy
     if (isInProgress) {
-      console.log("Resuming deploy");
+      logger.info("DeployInit", "Resuming in-progress deploy");
       hasInitialized.current = true;
       updateState(deployContext);
       return;
@@ -56,7 +57,7 @@ export function useDeployInit() {
 
     // 2. Show terminal state as-is
     if (isTerminal) {
-      console.log("Terminal state");
+      logger.info("DeployInit", "Terminal state, skipping init");
       hasInitialized.current = true;
       return;
     }
@@ -64,7 +65,7 @@ export function useDeployInit() {
     // 3. No deploy exists — start fresh
     //    (first visit OR after redeploy deactivated the old one)
     hasInitialized.current = true;
-    console.log("Starting deploy");
+    logger.info("DeployInit", "Starting fresh deploy");
     startDeploy();
   }, [deploy?.status, updateState, deployContext, startDeploy]);
 

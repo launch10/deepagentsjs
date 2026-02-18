@@ -394,9 +394,15 @@ export class Conversation {
    * Parse a flat message array into structured conversation data.
    *
    * A turn starts when we encounter a non-context HumanMessage.
-   * Everything from that point until the next non-context HumanMessage
-   * belongs to that turn — including any preceding context messages
-   * that accumulated since the previous turn ended.
+   *
+   * Context messages are buffered in `pendingContext`:
+   * - When a HumanMessage arrives: pending context is absorbed into the
+   *   new turn (context placed before the human message by prepareTurn).
+   * - When an AI/tool message arrives and a turn exists: pending context
+   *   is flushed into the current turn first, preserving ctx → ai pairing.
+   *   This prevents context messages from being separated from their
+   *   AI responses and bunching up at the end.
+   * - When no turn exists (orphaned AI before any human): stays in pending.
    */
   static parse(messages: BaseMessage[]): {
     summaryMessages: BaseMessage[];
@@ -419,8 +425,9 @@ export class Conversation {
     let currentTurnMsgs: BaseMessage[] | null = null;
 
     for (const msg of remaining) {
-      // Context messages accumulate — they'll attach to the next human turn
       if (isContextMessage(msg)) {
+        // Always buffer context — it'll be placed correctly when the
+        // next non-context message arrives.
         pendingContext.push(msg);
         continue;
       }
@@ -436,11 +443,17 @@ export class Conversation {
         continue;
       }
 
-      // AI or tool: part of the current turn
+      // AI or tool message
       if (currentTurnMsgs !== null) {
+        // Flush pending context into the current turn, then append AI/tool.
+        // This keeps ctx → ai pairs together and prevents bunching.
+        if (pendingContext.length > 0) {
+          currentTurnMsgs.push(...pendingContext);
+          pendingContext = [];
+        }
         currentTurnMsgs.push(msg);
       } else {
-        // Orphaned AI/tool before any human — treat as trailing
+        // Orphaned AI/tool before any human — keep in pending
         pendingContext.push(msg);
       }
     }
@@ -483,4 +496,5 @@ export class Conversation {
       name: (msg as any).name,
     });
   }
+
 }

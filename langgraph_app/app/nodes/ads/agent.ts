@@ -2,7 +2,7 @@ import { createAgent } from "langchain";
 import { type BaseMessage } from "@langchain/core/messages";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLLM, getLogger } from "@core";
-import { buildSystemPrompt } from "@prompts";
+import { buildSystemPrompt, buildTurnContext } from "@prompts";
 import { Conversation } from "@conversation";
 import { NodeMiddleware } from "@middleware";
 import { type AdsGraphState } from "@state";
@@ -30,9 +30,13 @@ export const adsAgent = NodeMiddleware.use(
       systemPrompt,
     });
 
-    // 3. Aggressively trim stale history — keep recent turns only
-    //    Context messages are small triggers now, so old ones don't compete
-    const windowedMessages = new Conversation(state.messages || []).window({
+    // 3. Build turn context and pass through prepareTurn() so it's placed
+    //    correctly (CTX before HUMAN). Same pattern as coding/brainstorm agents.
+    const turnContext = await buildTurnContext(state, config!);
+    const contextMessages = turnContext ? [turnContext] : [];
+
+    const windowedMessages = new Conversation(state.messages || []).prepareTurn({
+      contextMessages,
       maxTurnPairs: 4,
       maxChars: 20_000,
     });
@@ -56,9 +60,15 @@ export const adsAgent = NodeMiddleware.use(
 
     const allMessages = result.messages.slice(0, -1).concat([message]) as BaseMessage[];
 
+    // Prepend the turn context so it's committed to state for history/tracing.
+    // This gives us [CTX, ...agent messages, AI] in state — correct order.
+    const returnMessages = turnContext
+      ? [turnContext, ...allMessages] as BaseMessage[]
+      : allMessages;
+
     return {
       ...mergedAssets,
-      messages: allMessages,
+      messages: returnMessages,
     };
   }
 );

@@ -5,7 +5,6 @@ import {
   createCampaign,
   getBusinessContext,
   handleIntentNode,
-  prepareContextNode,
   prepareRefreshNode,
   resetNode,
   guardrailsNode,
@@ -48,7 +47,6 @@ export const adsGraph = withCreditExhaustion(
     .addNode("beforeGenerate", beforeGenerateNode)
     .addNode("getBusinessContext", getBusinessContext)
     .addNode("prepareRefresh", prepareRefreshNode)
-    .addNode("prepareContext", prepareContextNode)
     .addNode("adsAgent", adsAgent)
     .addNode("compactConversation", createCompactConversationNode())
     .addNode("reset", resetNode)
@@ -62,8 +60,7 @@ export const adsGraph = withCreditExhaustion(
     })
     .addEdge("beforeGenerate", "getBusinessContext")
     .addEdge("getBusinessContext", "prepareRefresh")
-    .addEdge("prepareRefresh", "prepareContext")
-    .addEdge("prepareContext", "adsAgent")
+    .addEdge("prepareRefresh", "adsAgent")
     .addEdge("adsAgent", "compactConversation")
     .addEdge("compactConversation", "reset")
     .addEdge("reset", END),

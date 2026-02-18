@@ -1,4 +1,4 @@
-import { type DeployGraphState } from "@annotation";
+import { type DeployGraphState, withPhases } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { JobRunAPIService } from "@services";
@@ -31,22 +31,14 @@ async function runDeployWebsite(
     return {};
   }
 
-  // 2. Did webhook return us a result? We're done.
+  // 2. Did webhook return us a result? Mark task completed (not graph-level — taskExecutor handles that)
   if (task?.result) {
-    return {
-      tasks: Task.updateTask(state.tasks, TASK_NAME, { status: "completed" }),
-      status: "completed",
-      result: task.result,
-    };
+    return withPhases(state, [{ ...task, status: "completed" } as Task.Task], [TASK_NAME]);
   }
 
-  // 3. Did webhook return us an error? We're done.
-  if (task.error) {
-    return {
-      tasks: Task.updateTask(state.tasks, TASK_NAME, { status: "failed" }),
-      status: "failed",
-      error: { message: task.error, node: "deployWebsiteNode" },
-    };
+  // 3. Did webhook return us an error? Mark task failed (not graph-level — taskExecutor handles that)
+  if (task.error !== undefined) {
+    return withPhases(state, [{ ...task, status: "failed" } as Task.Task], [TASK_NAME]);
   }
 
   if (task.jobId) {

@@ -11,11 +11,13 @@ import {
   WaitingGoogleScreen,
   DeployCompleteScreen,
   DeployErrorScreen,
+  ConnectionErrorScreen,
 } from "@components/deploy/screens";
 import { PaginationFooter } from "@components/shared/pagination-footer";
 import {
   useDeployChatInstance,
   useDeployChatFullState,
+  useDeployChat,
   type DeployProps,
 } from "@hooks/useDeployChat";
 import { useDeployInit } from "@hooks/useDeployInit";
@@ -33,6 +35,7 @@ const SCREENS: Record<DeployScreen, React.ComponentType> = {
   "waiting-google": WaitingGoogleScreen,
   "deploy-complete": DeployCompleteScreen,
   "deploy-error": DeployErrorScreen,
+  "connection-error": ConnectionErrorScreen,
 };
 
 function DeployContent() {
@@ -40,8 +43,9 @@ function DeployContent() {
   useDeployInit();
 
   const state = useDeployChatFullState();
+  const historyFailed = useDeployChat((s) => s.historyFailed);
   const pageInstructions = useDeployInstructions();
-  const screen = useDeployContentScreen(state, deploy?.status, deploy?.instructions, pageInstructions);
+  const screen = useDeployContentScreen(state, deploy?.status, deploy?.instructions, pageInstructions, historyFailed);
   const isComplete = screen === "deploy-complete";
 
   const DeployScreen = SCREENS[screen];

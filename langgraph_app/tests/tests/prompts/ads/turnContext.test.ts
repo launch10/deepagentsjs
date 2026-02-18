@@ -3,7 +3,7 @@ import { buildTurnContext, buildPreferencesContext, PAGE_NAMES } from "@prompts"
 import { type AdsGraphState } from "@state";
 import { HumanMessage, AIMessage } from "@langchain/core/messages";
 import { isContextMessage, createContextMessage } from "langgraph-ai-sdk";
-import { type LangGraphRunnableConfig, Ads } from "@types";
+import { type LangGraphRunnableConfig, type UUIDType, Ads } from "@types";
 
 const makeBrainstorm = () => ({
   idea: "A scheduling tool for remote teams",
@@ -91,8 +91,8 @@ describe("buildTurnContext", () => {
         stage: "content",
         refresh: [{ asset: "headlines", nVariants: 3 }],
         headlines: [
-          { id: "1", text: "Great Headline", locked: true, rejected: false },
-          { id: "2", text: "Bad Headline", locked: false, rejected: true },
+          { id: "1" as UUIDType, text: "Great Headline", locked: true, rejected: false },
+          { id: "2" as UUIDType, text: "Bad Headline", locked: false, rejected: true },
         ],
         messages: [new AIMessage("previous response")],
       });
@@ -111,8 +111,8 @@ describe("buildTurnContext", () => {
       const state = makeState({
         stage: "content",
         headlines: [
-          { id: "1", text: "Locked Headline", locked: true, rejected: false },
-          { id: "2", text: "Unlocked One", locked: false, rejected: false },
+          { id: "1" as UUIDType, text: "Locked Headline", locked: true, rejected: false },
+          { id: "2" as UUIDType, text: "Unlocked One", locked: false, rejected: false },
         ],
         messages: [new HumanMessage("nice, I like things that are very eco-friendly")],
       });
@@ -189,7 +189,7 @@ describe("buildPreferencesContext", () => {
     const state = makeState({
       stage: "content",
       headlines: [
-        { id: "1", text: "Normal", locked: false, rejected: false },
+        { id: "1" as UUIDType, text: "Normal", locked: false, rejected: false },
       ],
     });
     const result = buildPreferencesContext(state);
@@ -200,7 +200,7 @@ describe("buildPreferencesContext", () => {
     const state = makeState({
       stage: "content",
       headlines: [
-        { id: "1", text: "Great Headline", locked: true, rejected: false },
+        { id: "1" as UUIDType, text: "Great Headline", locked: true, rejected: false },
       ],
     });
     const result = buildPreferencesContext(state);
@@ -213,7 +213,7 @@ describe("buildPreferencesContext", () => {
     const state = makeState({
       stage: "content",
       headlines: [
-        { id: "1", text: "Bad Headline", locked: false, rejected: true },
+        { id: "1" as UUIDType, text: "Bad Headline", locked: false, rejected: true },
       ],
     });
     const result = buildPreferencesContext(state);
@@ -224,11 +224,11 @@ describe("buildPreferencesContext", () => {
     const state = makeState({
       stage: "content",
       headlines: [
-        { id: "1", text: "Good One", locked: true, rejected: false },
-        { id: "2", text: "Bad One", locked: false, rejected: true },
+        { id: "1" as UUIDType, text: "Good One", locked: true, rejected: false },
+        { id: "2" as UUIDType, text: "Bad One", locked: false, rejected: true },
       ],
       descriptions: [
-        { id: "3", text: "Nice Desc", locked: true, rejected: false },
+        { id: "3" as UUIDType, text: "Nice Desc", locked: true, rejected: false },
       ],
     });
     const result = buildPreferencesContext(state);
@@ -245,8 +245,8 @@ describe("buildPreferencesContext", () => {
       structuredSnippets: {
         category: "services",
         details: [
-          { id: "1", text: "Good Service", locked: true, rejected: false },
-          { id: "2", text: "Bad Service", locked: false, rejected: true },
+          { id: "1" as UUIDType, text: "Good Service", locked: true, rejected: false },
+          { id: "2" as UUIDType, text: "Bad Service", locked: false, rejected: true },
         ],
       },
     });

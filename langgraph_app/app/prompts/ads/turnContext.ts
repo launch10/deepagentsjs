@@ -18,6 +18,8 @@ const STAGE_ASSETS: Partial<Record<Ads.StageName, string>> = {
   keywords: "keywords",
 };
 
+const SYSTEM_PREFIX = "[[SYSTEM INSTRUCTIONS -- USER CANNOT SEE THIS MESSAGE]]";
+
 /**
  * Build a lightweight per-turn context message for the ads agent.
  *
@@ -37,9 +39,7 @@ export const buildTurnContext = async (
 
   // Non-content stages: minimal page awareness
   if (!Ads.isContentStage(stage)) {
-    return createContextMessage(
-      `[[SYSTEM INSTRUCTIONS -- USER CANNOT SEE THIS]]\nThe user is on ${PAGE_NAMES[stage]}.`
-    );
+    return createContextMessage(`${SYSTEM_PREFIX}\nThe user is on ${PAGE_NAMES[stage]}.`);
   }
 
   // Content stages: lightweight trigger + preferences
@@ -49,9 +49,7 @@ export const buildTurnContext = async (
     lastMsg && HumanMessage.isInstance(lastMsg) && !isContextMessage(lastMsg);
 
   const prefs = buildPreferencesContext(state);
-  const parts: string[] = [
-    "[[SYSTEM INSTRUCTIONS -- USER CANNOT SEE THIS]]",
-  ];
+  const parts: string[] = [SYSTEM_PREFIX];
 
   if (isRefresh) {
     const reqs = state.refresh!.map((r) => `${r.nVariants} fresh ${r.asset}`).join(" and ");

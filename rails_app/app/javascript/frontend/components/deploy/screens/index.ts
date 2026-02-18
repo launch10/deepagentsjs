@@ -7,3 +7,4 @@ export { default as PaymentConfirmedScreen } from "./PaymentConfirmedScreen";
 export { default as WaitingGoogleScreen } from "./WaitingGoogleScreen";
 export { default as DeployCompleteScreen } from "./DeployCompleteScreen";
 export { default as DeployErrorScreen } from "./DeployErrorScreen";
+export { default as ConnectionErrorScreen } from "./ConnectionErrorScreen";

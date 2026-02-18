@@ -7,6 +7,7 @@ import { useChatOptions } from "@hooks/useChatOptions";
 import { useDeployInstructions } from "@hooks/useDeployInstructions";
 import { useProjectId } from "~/stores/projectStore";
 import { useDeployService } from "@api/deploys.hooks";
+import { logger } from "@lib/logger";
 
 export type DeployProps =
   InertiaProps.paths["/projects/{uuid}/deploy"]["get"]["responses"]["200"]["content"]["application/json"];
@@ -44,6 +45,12 @@ function useDeployChatOptions() {
   if (thread_id && thread_id !== resolvedDeployThreadId) {
     resolvedDeployThreadId = thread_id;
   }
+
+  const threadId = thread_id ?? resolvedDeployThreadId;
+  logger.trace("DeployChat", "threadId resolved:", threadId, {
+    fromProps: thread_id,
+    fromCache: resolvedDeployThreadId,
+  });
 
   return useChatOptions<Deploy.DeployBridgeType>({
     apiPath: "api/deploy/stream",

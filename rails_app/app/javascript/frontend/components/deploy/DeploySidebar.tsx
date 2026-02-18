@@ -2,12 +2,13 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { Card } from "@components/ui/card";
 import DeployTaskList from "./DeployTaskList";
 import { useDeployChatState } from "@hooks/useDeployChat";
+import { logger } from "@lib/logger";
 
 export default function DeploySidebar() {
   const tasks = useDeployChatState("tasks");
   const contentRef = useRef<HTMLDivElement>(null);
   const [minHeight, setMinHeight] = useState<number | undefined>();
-  console.log(tasks)
+  logger.debug("DeploySidebar", "tasks:", tasks);
 
   // Sidebar should be 3x the content height (content = 1/3, blank space = 2/3)
   useLayoutEffect(() => {

@@ -9,6 +9,7 @@ import { type UUIDType, Ads, type ThreadIDType, switchPage, refreshAssets } from
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { v7 as uuid } from "uuid";
 import { isContextMessage } from "langgraph-ai-sdk";
+import { Conversation } from "@conversation";
 
 const adsGraph = uncompiledGraph.compile({ ...graphParams, name: "ads" });
 
@@ -145,7 +146,6 @@ describe.sequential("Ads Flow", () => {
 
         expect(result.state.headlines).toBeDefined();
         expect(message).toMatch(/start building|drafted a few headlines|headlines and descriptions|compelling headlines/i);
-        console.log(message);
         expect(message).not.toContain("```json");
 
         const headlines = result.state.headlines || [];
@@ -1196,6 +1196,333 @@ describe.sequential("Ads Flow", () => {
 
       // Keywords should be unchanged (we refreshed callouts, not keywords)
       expect(refreshResult.state.keywords).toEqual(keywordsResult.state.keywords);
+    });
+  });
+
+  describe("Walking the frontend", () => {
+    /**
+     * Tag a message as CTX / AI / HUMAN for readable assertions.
+     */
+    const tag = (m: any): string => {
+      if (isContextMessage(m)) return "CTX";
+      return m._getType().toUpperCase();
+    };
+
+    /**
+     * Dump a readable message timeline. Called on every assertion failure
+     * so the developer sees exactly what the conversation looks like.
+     */
+    const dumpTimeline = (msgs: any[]): string =>
+      msgs
+        .map((m, i) => {
+          const t = tag(m);
+          const raw = typeof m.content === "string" ? m.content : "[complex]";
+          return `  [${i}] ${t}: ${raw.slice(0, 80)}`;
+        })
+        .join("\n");
+
+    /**
+     * THE core assertion: no two consecutive context messages.
+     * If this fails, context messages are bunching up instead of
+     * staying interspersed with their AI responses.
+     */
+    const assertNoBunching = (msgs: any[], label: string) => {
+      for (let i = 1; i < msgs.length; i++) {
+        if (isContextMessage(msgs[i]!) && isContextMessage(msgs[i - 1]!)) {
+          throw new Error(
+            `${label}: BUNCHING DETECTED — consecutive CTX at [${i - 1}] and [${i}].\n` +
+              `Full timeline:\n${dumpTimeline(msgs)}`
+          );
+        }
+      }
+    };
+
+    /**
+     * Assert expected message type pattern.
+     * e.g. ["CTX", "AI", "HUMAN", "CTX", "AI"]
+     */
+    const assertTypes = (msgs: any[], expected: string[], label: string) => {
+      const actual = msgs.map(tag);
+      if (actual.length !== expected.length || actual.some((t, i) => t !== expected[i])) {
+        throw new Error(
+          `${label}: Message types don't match.\n` +
+            `Expected: [${expected.join(", ")}]\n` +
+            `Actual:   [${actual.join(", ")}]\n` +
+            `Timeline:\n${dumpTimeline(msgs)}`
+        );
+      }
+    };
+
+    /**
+     * After Conversation prepareTurn (what the agent actually uses),
+     * verify order is still preserved and no bunching occurs.
+     * prepareTurn reorders [HUMAN, CTX] → [CTX, HUMAN] for the LLM.
+     */
+    const assertWindowingPreservesOrder = (msgs: any[], label: string) => {
+      const conv = new Conversation(msgs);
+      const windowed = conv.prepareTurn({ maxTurnPairs: 4, maxChars: 20_000 });
+      assertNoBunching(windowed, `${label} (windowed)`);
+    };
+
+    it("persists message history correctly across 10 graph invocations", async () => {
+      // ─── Step 1: Content auto-init ─────────────────────────────
+      const step1 = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          projectUUID,
+          threadId,
+          intent: switchPage("content"),
+        })
+        .execute();
+
+      expect(step1.state.headlines?.length).toEqual(6);
+      expect(step1.state.descriptions?.length).toEqual(4);
+
+      const msgs1 = step1.state.messages!;
+      assertTypes(msgs1, ["CTX", "AI"], "step1: content auto-init");
+      assertNoBunching(msgs1, "step1");
+
+      // ─── Step 2: User feedback on content ──────────────────────
+      const step2 = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          ...step1.state,
+          messages: [
+            ...step1.state.messages!,
+            new HumanMessage("Can you make these funnier?"),
+          ],
+        })
+        .execute();
+
+      const msgs2 = step2.state.messages!;
+      assertTypes(msgs2, ["CTX", "AI", "HUMAN", "CTX", "AI"], "step2: user feedback");
+      assertNoBunching(msgs2, "step2");
+      assertWindowingPreservesOrder(msgs2, "step2");
+
+      // ─── Step 3: Refresh headlines ─────────────────────────────
+      // Frontend pattern: user locks 2 favorites, clicks "Refresh All".
+      // createRefreshHandler marks non-locked as rejected, sends both
+      // the modified assets AND the intent in a single updateState call.
+      const step2Headlines = step2.state.headlines!;
+      const refreshHeadlines = step2Headlines.map((h, i) => ({
+        ...h,
+        locked: i < 2,                // lock first 2 as favorites
+        rejected: i >= 2,             // mark the rest as rejected
+      }));
+      const numLockedHeadlines = refreshHeadlines.filter((h) => h.locked).length;
+
+      const step3 = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          ...step2.state,
+          headlines: refreshHeadlines,
+          intent: refreshAssets("content", [
+            { asset: "headlines", nVariants: 6 - numLockedHeadlines },
+          ]),
+        })
+        .execute();
+
+      const msgs3 = step3.state.messages!;
+      assertTypes(
+        msgs3,
+        ["CTX", "AI", "HUMAN", "CTX", "AI", "CTX", "AI"],
+        "step3: refresh headlines"
+      );
+      assertNoBunching(msgs3, "step3");
+      assertWindowingPreservesOrder(msgs3, "step3");
+
+      // ─── Step 4: Switch to highlights ──────────────────────────
+      const step4 = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          ...step3.state,
+          intent: switchPage("highlights"),
+        })
+        .execute();
+
+      expect(step4.state.callouts?.length).toEqual(6);
+
+      const msgs4 = step4.state.messages!;
+      assertTypes(
+        msgs4,
+        ["CTX", "AI", "HUMAN", "CTX", "AI", "CTX", "AI", "CTX", "AI"],
+        "step4: switch to highlights"
+      );
+      assertNoBunching(msgs4, "step4");
+      assertWindowingPreservesOrder(msgs4, "step4");
+
+      // ─── Step 5: User feedback on highlights ───────────────────
+      const step5 = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          ...step4.state,
+          messages: [
+            ...step4.state.messages!,
+            new HumanMessage("Let's make these more punchy."),
+          ],
+        })
+        .execute();
+
+      const msgs5 = step5.state.messages!;
+      assertTypes(
+        msgs5,
+        ["CTX", "AI", "HUMAN", "CTX", "AI", "CTX", "AI", "CTX", "AI", "HUMAN", "CTX", "AI"],
+        "step5: user feedback on highlights"
+      );
+      assertNoBunching(msgs5, "step5");
+      assertWindowingPreservesOrder(msgs5, "step5");
+
+      // ─── Step 6: Refresh callouts ──────────────────────────────
+      // Same frontend pattern: lock 2, mark rest rejected
+      const step5Callouts = step5.state.callouts!;
+      const refreshCallouts = step5Callouts.map((c, i) => ({
+        ...c,
+        locked: i < 2,
+        rejected: i >= 2,
+      }));
+      const numLockedCallouts = refreshCallouts.filter((c) => c.locked).length;
+
+      const step6 = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          ...step5.state,
+          callouts: refreshCallouts,
+          intent: refreshAssets("highlights", [
+            { asset: "callouts", nVariants: 6 - numLockedCallouts },
+          ]),
+        })
+        .execute();
+
+      const msgs6 = step6.state.messages!;
+      // Previous 12 + CTX + AI = 14
+      assertTypes(
+        msgs6,
+        [
+          "CTX", "AI", "HUMAN", "CTX", "AI", "CTX", "AI",
+          "CTX", "AI", "HUMAN", "CTX", "AI", "CTX", "AI",
+        ],
+        "step6: refresh callouts"
+      );
+      assertNoBunching(msgs6, "step6");
+      assertWindowingPreservesOrder(msgs6, "step6");
+
+      // ─── Step 7: Switch to keywords ────────────────────────────
+      const step7 = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          ...step6.state,
+          intent: switchPage("keywords"),
+        })
+        .execute();
+
+      expect(step7.state.keywords?.length).toEqual(8);
+
+      const msgs7 = step7.state.messages!;
+      // Previous 14 + CTX + AI = 16
+      expect(msgs7.length).toEqual(16);
+      assertNoBunching(msgs7, "step7");
+      assertWindowingPreservesOrder(msgs7, "step7");
+      // Last two messages: CTX (keywords auto-init) then AI
+      expect(tag(msgs7[msgs7.length - 2]!)).toEqual("CTX");
+      expect(tag(msgs7[msgs7.length - 1]!)).toEqual("AI");
+
+      // ─── Step 8: User feedback on keywords ─────────────────────
+      const step8 = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          ...step7.state,
+          messages: [
+            ...step7.state.messages!,
+            new HumanMessage("Let's make these more punchy."),
+          ],
+        })
+        .execute();
+
+      const msgs8 = step8.state.messages!;
+      // Previous 16 + HUMAN + CTX + AI = 19
+      expect(msgs8.length).toEqual(19);
+      assertNoBunching(msgs8, "step8");
+      assertWindowingPreservesOrder(msgs8, "step8");
+      // Last three: HUMAN, CTX, AI
+      expect(tag(msgs8[msgs8.length - 3]!)).toEqual("HUMAN");
+      expect(tag(msgs8[msgs8.length - 2]!)).toEqual("CTX");
+      expect(tag(msgs8[msgs8.length - 1]!)).toEqual("AI");
+
+      // ─── Step 9: Refresh keywords ──────────────────────────────
+      // Same frontend pattern: lock 2, mark rest rejected
+      const step8Keywords = step8.state.keywords!;
+      const refreshKeywords = step8Keywords.map((k, i) => ({
+        ...k,
+        locked: i < 2,
+        rejected: i >= 2,
+      }));
+      const numLockedKeywords = refreshKeywords.filter((k) => k.locked).length;
+
+      const step9 = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          ...step8.state,
+          keywords: refreshKeywords,
+          intent: refreshAssets("keywords", [
+            { asset: "keywords", nVariants: 8 - numLockedKeywords },
+          ]),
+        })
+        .execute();
+
+      const msgs9 = step9.state.messages!;
+      // Previous 19 + CTX + AI = 21
+      expect(msgs9.length).toEqual(21);
+      assertNoBunching(msgs9, "step9");
+      assertWindowingPreservesOrder(msgs9, "step9");
+
+      // ─── Step 10: Back to content (already loaded → exits early) ──
+      const step10 = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          ...step9.state,
+          intent: switchPage("content"),
+        })
+        .execute();
+
+      const msgs10 = step10.state.messages!;
+      // Guardrails should exit early: hasStartedStep.content=true, headlines exist
+      // Messages should be UNCHANGED from step 9
+      expect(msgs10.length).toEqual(msgs9.length);
+      assertNoBunching(msgs10, "step10");
+
+      // ─── Final verification: the FULL timeline has ZERO bunching ──
+      // This is the definitive check. After 10 graph invocations spanning
+      // 3 pages, 3 user messages, 3 refreshes, and a back-navigation,
+      // context messages must NEVER bunch up.
+      const allTags = msgs10.map(tag);
+      const ctxIndices = allTags
+        .map((t, i) => (t === "CTX" ? i : -1))
+        .filter((i) => i !== -1);
+      const aiIndices = allTags
+        .map((t, i) => (t === "AI" ? i : -1))
+        .filter((i) => i !== -1);
+      const humanIndices = allTags
+        .map((t, i) => (t === "HUMAN" ? i : -1))
+        .filter((i) => i !== -1);
+
+      // 10 CTX messages: 3 auto-inits + 3 user-feedback contexts + 3 refresh contexts + 1 back-nav... actually step10 exits early so 9 CTX
+      expect(ctxIndices.length).toBeGreaterThanOrEqual(9);
+      // 9 AI responses (step10 exits early, no new AI)
+      expect(aiIndices.length).toBeGreaterThanOrEqual(9);
+      // 3 user messages
+      expect(humanIndices.length).toEqual(3);
+
+      // Every CTX is followed by either AI or HUMAN (never another CTX)
+      for (const idx of ctxIndices) {
+        if (idx < allTags.length - 1) {
+          const next = allTags[idx + 1];
+          expect(
+            next === "AI" || next === "HUMAN",
+            `CTX at [${idx}] followed by ${next} at [${idx + 1}] — expected AI or HUMAN.\n` +
+              `Timeline:\n${dumpTimeline(msgs10)}`
+          ).toBe(true);
+        }
+      }
     });
   });
 });

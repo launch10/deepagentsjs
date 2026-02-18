@@ -1007,6 +1007,7 @@ describe.sequential("Deploy Graph Tests", () => {
       expect(deployTask?.status).toBe("running");
       expect(deployTask?.jobId).toBeDefined();
     });
+
   });
 
   /**
@@ -2218,6 +2219,85 @@ describe.sequential("Deploy Graph Tests", () => {
       expect(result.state.nothingChanged).toBe(false);
       // Should have tasks created (full deploy pipeline)
       expect(result.state.tasks.length).toBeGreaterThan(0);
+    });
+  });
+
+  /**
+   * =============================================================================
+   * 10. PREMATURE COMPLETION BUG FIX TESTS
+   * =============================================================================
+   * These tests verify that deployWebsiteNode does NOT set graph-level status.
+   *
+   * BUG: When the website deploy webhook returned a result, deployWebsiteNode
+   * set `status: "completed"` on the GRAPH STATE. This caused taskExecutor to
+   * sync the deploy as "completed" to Rails BEFORE the campaign deploy finished.
+   * The frontend then showed the success screen while "Syncing Campaign" was
+   * still in progress.
+   *
+   * FIX: Only mark the TASK as completed (via withPhases), letting taskExecutor
+   * determine graph-level completion via allTasksComplete().
+   */
+  describe("deployWebsiteNode must not set graph-level status", () => {
+    it("does NOT set graph-level status when website deploy completes", async () => {
+      const { deployWebsiteNode } = await import("@nodes");
+
+      const result = await testGraph<DeployGraphState>()
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_no_premature_complete" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          instructions: { website: true, googleAds: true },
+          status: "running",
+          tasks: [
+            {
+              ...Deploy.createTask("DeployingWebsite", 888),
+              status: "running",
+              result: { deploy_url: "https://example.launch10.ai" },
+            },
+          ],
+          chatId: 1,
+        })
+        .runNode(deployWebsiteNode)
+        .execute();
+
+      // Task should be completed
+      const websiteTask = Task.findTask(result.state.tasks, "DeployingWebsite");
+      expect(websiteTask?.status).toBe("completed");
+
+      // Graph-level status must NOT be "completed" — campaign hasn't finished yet
+      expect(result.state.status).not.toBe("completed");
+    });
+
+    it("does NOT set graph-level status when website deploy fails", async () => {
+      const { deployWebsiteNode } = await import("@nodes");
+
+      const result = await testGraph<DeployGraphState>()
+        .withState({
+          jwt: "test-jwt",
+          threadId: "thread_no_premature_fail" as ThreadIDType,
+          projectId: 1,
+          websiteId: 1,
+          instructions: { website: true, googleAds: true },
+          status: "running",
+          tasks: [
+            {
+              ...Deploy.createTask("DeployingWebsite", 888),
+              status: "running",
+              error: "Upload to R2 failed",
+            },
+          ],
+          chatId: 1,
+        })
+        .runNode(deployWebsiteNode)
+        .execute();
+
+      // Task should be failed
+      const websiteTask = Task.findTask(result.state.tasks, "DeployingWebsite");
+      expect(websiteTask?.status).toBe("failed");
+
+      // Graph-level status must NOT be "failed" — taskExecutor handles that
+      expect(result.state.status).not.toBe("failed");
     });
   });
 });

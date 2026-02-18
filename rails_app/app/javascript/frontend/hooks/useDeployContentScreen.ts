@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import type { Deploy } from "@shared";
+import { logger } from "@lib/logger";
 
 export type DeployScreen =
   | "in-progress"
@@ -10,7 +11,8 @@ export type DeployScreen =
   | "payment-confirmed"
   | "waiting-google"
   | "deploy-complete"
-  | "deploy-error";
+  | "deploy-error"
+  | "connection-error";
 
 type TaskState = Deploy.DeployGraphState["tasks"] | undefined;
 type DeployStatus = Deploy.DeployGraphState["status"];
@@ -31,7 +33,8 @@ export function resolveContentScreen(
   instructions: Deploy.DeployGraphState["instructions"],
   railsDeployStatus?: string,
   railsDeployInstructions?: Record<string, boolean>,
-  pageInstructions?: Record<string, boolean>
+  pageInstructions?: Record<string, boolean>,
+  historyFailed?: boolean
 ): DeployScreen {
   // Only trust Rails deploy status when its instructions match what this page expects
   const railsInstructionsMatch =
@@ -43,10 +46,35 @@ export function resolveContentScreen(
 
   // Terminal states — check both langgraph state and Rails record
   // Rails status is the fallback for page reloads before langgraph state loads
-  if (status === "completed" || effectiveRailsStatus === "completed") return "deploy-complete";
-  if (status === "failed" || effectiveRailsStatus === "failed") return "deploy-error";
+  if (status === "completed" || effectiveRailsStatus === "completed") {
+    logger.debug("DeployScreen", "resolved: deploy-complete", {
+      graphStatus: status, railsStatus: effectiveRailsStatus,
+    });
+    return "deploy-complete";
+  }
+  if (status === "failed" || effectiveRailsStatus === "failed") {
+    logger.debug("DeployScreen", "resolved: deploy-error", {
+      graphStatus: status, railsStatus: effectiveRailsStatus,
+    });
+    return "deploy-error";
+  }
 
-  if (!tasks || tasks.length === 0) return "in-progress";
+  // Connection error — history loading exhausted retries
+  if (historyFailed && (!tasks || tasks.length === 0)) {
+    logger.debug("DeployScreen", "resolved: connection-error", {
+      graphStatus: status, railsStatus: effectiveRailsStatus,
+    });
+    return "connection-error";
+  }
+
+  if (!tasks || tasks.length === 0) {
+    logger.debug("DeployScreen", "resolved: in-progress", {
+      taskCount: tasks?.length ?? "undefined",
+      graphStatus: status,
+      railsStatus: effectiveRailsStatus,
+    });
+    return "in-progress";
+  }
 
   // Check ConnectingGoogle — OAuth required
   const connectTask = instructions.googleAds
@@ -101,7 +129,8 @@ export function useDeployContentScreen(
   state: Partial<Deploy.DeployGraphState>,
   railsDeployStatus?: string,
   railsDeployInstructions?: Record<string, boolean>,
-  pageInstructions?: Record<string, boolean>
+  pageInstructions?: Record<string, boolean>,
+  historyFailed?: boolean
 ): DeployScreen {
   return useMemo(
     () =>
@@ -111,8 +140,9 @@ export function useDeployContentScreen(
         state.instructions ?? {},
         railsDeployStatus,
         railsDeployInstructions,
-        pageInstructions
+        pageInstructions,
+        historyFailed
       ),
-    [state.tasks, state.status, state.instructions, railsDeployStatus, railsDeployInstructions, pageInstructions]
+    [state.tasks, state.status, state.instructions, railsDeployStatus, railsDeployInstructions, pageInstructions, historyFailed]
   );
 }
