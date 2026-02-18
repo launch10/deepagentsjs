@@ -80,6 +80,14 @@ RSpec.describe "Prerendering", type: :integration, slow: true do
 
       expect(routes).to eq(["/"])
     end
+
+    it "uses a static basename of '/' (not runtime path detection)" do
+      index_html = read_dist_file("index.html")
+
+      # Must use static '/' — NOT the runtime window.location.pathname hack
+      expect(index_html).to include("window.__BASENAME__ = '/';")
+      expect(index_html).not_to include("window.location.pathname")
+    end
   end
 
   describe "multi-page site" do

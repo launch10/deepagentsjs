@@ -737,6 +737,72 @@ RSpec.describe WebsiteDeploy, type: :model do
     end
   end
 
+  describe '#inject_basename!' do
+    let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
+    let(:deploy) { website_with_files.deploys.create!(environment: 'development') }
+    let(:temp_dir) { Dir.mktmpdir("launch10_basename_test") }
+
+    before do
+      website_with_files.snapshot
+      allow(deploy).to receive(:temp_dir).and_return(temp_dir)
+
+      # Write a template index.html with the default basename
+      File.write(File.join(temp_dir, "index.html"), <<~HTML)
+        <!DOCTYPE html>
+        <html>
+        <body>
+          <script>window.__BASENAME__ = '/';</script>
+          <div id="root"></div>
+        </body>
+        </html>
+      HTML
+    end
+
+    after do
+      FileUtils.rm_rf(temp_dir)
+    end
+
+    context 'when website is deployed to a subpath' do
+      before do
+        domain = create(:domain, account: account)
+        create(:website_url, website: website_with_files, domain: domain, account: account, path: '/bingo')
+        website_with_files.reload
+      end
+
+      it 'replaces basename with the subpath' do
+        deploy.send(:inject_basename!)
+
+        content = File.read(File.join(temp_dir, "index.html"))
+        expect(content).to include("window.__BASENAME__ = '/bingo';")
+        expect(content).not_to include("window.__BASENAME__ = '/';")
+      end
+    end
+
+    context 'when website is deployed to root' do
+      before do
+        domain = create(:domain, account: account)
+        create(:website_url, website: website_with_files, domain: domain, account: account, path: '/')
+        website_with_files.reload
+      end
+
+      it 'does not modify the basename (already /)' do
+        deploy.send(:inject_basename!)
+
+        content = File.read(File.join(temp_dir, "index.html"))
+        expect(content).to include("window.__BASENAME__ = '/';")
+      end
+    end
+
+    context 'when website has no URL configured' do
+      it 'does not modify the basename' do
+        deploy.send(:inject_basename!)
+
+        content = File.read(File.join(temp_dir, "index.html"))
+        expect(content).to include("window.__BASENAME__ = '/';")
+      end
+    end
+  end
+
   describe 'robots.txt and sitemap.xml generation', :sitemap do
     let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
 

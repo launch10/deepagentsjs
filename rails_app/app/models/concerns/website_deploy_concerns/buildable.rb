@@ -26,6 +26,9 @@ module WebsiteDeployConcerns
       # Inject Google Ads gtag.js script if configured
       inject_gtag_script!
 
+      # Inject correct basename for subpath deploys
+      inject_basename!
+
       # Generate robots.txt before build (goes into public/ → copied to dist/)
       generate_robots_txt!
 
@@ -79,6 +82,18 @@ module WebsiteDeployConcerns
       HTML
 
       content.sub!("</head>", "#{gtag_script}</head>")
+      File.write(index_path, content)
+    end
+
+    def inject_basename!
+      basename = website.website_url&.path || "/"
+      return if basename == "/"
+
+      index_path = File.join(temp_dir, "index.html")
+      return unless File.exist?(index_path)
+
+      content = File.read(index_path)
+      content.gsub!("window.__BASENAME__ = '/';", "window.__BASENAME__ = '#{basename}';")
       File.write(index_path, content)
     end
 
