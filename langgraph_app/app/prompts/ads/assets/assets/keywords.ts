@@ -1,11 +1,9 @@
 import { type AdsGraphState } from "@state";
-import { userPreferencesPrompt } from "../userPreferences";
 import { Ads } from "@types";
 
 export const Keywords: Partial<Ads.AssetPromptMap> = {
   keywords: {
     prompt: async (state: AdsGraphState, _config?: any) => {
-      const userPrefs = await userPreferencesPrompt(state, "keywords");
       const nVariants = Ads.getNVariantsForAsset(state.refresh, "keywords") ?? Ads.DefaultNumAssets.keywords;
 
       return `
@@ -39,8 +37,6 @@ export const Keywords: Partial<Ads.AssetPromptMap> = {
             - No special characters or punctuation
 
             Remember: Quality keywords connect your ads with people actively searching for what you offer. Focus on relevance and intent over volume.
-
-            ${userPrefs}
         `;
     },
     outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {

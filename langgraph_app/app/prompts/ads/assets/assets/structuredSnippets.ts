@@ -1,6 +1,5 @@
 import { Ads } from "@types";
 import { type AdsGraphState } from "@state";
-import { userPreferencesPrompt } from "../userPreferences";
 
 const categoryList = Ads.StructuredSnippetCategoryKeys;
 
@@ -12,7 +11,6 @@ export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
   structuredSnippets: {
     prompt: async (state: AdsGraphState, _config?: any) => {
       const snippetCategory = state?.structuredSnippets?.category;
-      const userPrefs = await userPreferencesPrompt(state, "structuredSnippets");
       const numberOfDetails =
         Ads.getNVariantsForAsset(state.refresh, "structuredSnippets") ??
         Ads.DefaultNumAssets.structuredSnippets;
@@ -39,8 +37,6 @@ export const StructuredSnippets: Partial<Ads.AssetPromptMap> = {
             - Do not generate more than ${numberOfDetails} details
             - Each detail should be ${Ads.FakeAssetLengths.structuredSnippets} characters or less
             - Be specific to this business's actual offerings
-
-            ${userPrefs}
         `;
     },
     outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {

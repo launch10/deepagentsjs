@@ -47,7 +47,7 @@ export default function CalloutsForm() {
   );
 
   const handleRefreshCallouts = () => {
-    createRefreshHandler("callouts", callouts, updateState);
+    createRefreshHandler("callouts", callouts, updateState, "highlights");
   };
 
   const handleDeleteCallout = (index: number) => {

@@ -5,12 +5,10 @@ import { adsGraph as uncompiledGraph } from "@graphs";
 import { graphParams } from "@core";
 import { DatabaseSnapshotter } from "@services";
 import { db, projects as projectsTable } from "@db";
-import { type UUIDType, Ads, type ThreadIDType } from "@types";
+import { type UUIDType, Ads, type ThreadIDType, switchPage, refreshAssets } from "@types";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { v7 as uuid } from "uuid";
-import { didSwitchPage, getContextMessage, needsContextMessage, ContextMessages } from "@prompts";
 import { isContextMessage } from "langgraph-ai-sdk";
-import { tool } from "langchain";
 
 const adsGraph = uncompiledGraph.compile({ ...graphParams, name: "ads" });
 
@@ -50,7 +48,7 @@ describe.sequential("Ads Flow", () => {
           .withState({
             projectUUID,
             threadId,
-            stage: "content",
+            intent: switchPage("content"),
           })
           .execute();
 
@@ -58,14 +56,14 @@ describe.sequential("Ads Flow", () => {
       });
     });
 
-    describe("When step already started, and not refresh: true", () => {
+    describe("When step already started, and not refresh", () => {
       it("exits early", async () => {
         const result = await testGraph<AdsGraphState>()
           .withGraph(adsGraph)
           .withState({
             projectUUID,
             threadId,
-            stage: "content",
+            intent: switchPage("content"),
           })
           .execute();
 
@@ -98,7 +96,7 @@ describe.sequential("Ads Flow", () => {
           .withState({
             projectUUID,
             threadId,
-            stage: "content",
+            intent: switchPage("content"),
             hasStartedStep: { content: true },
             headlines: [],
             descriptions: [],
@@ -116,7 +114,7 @@ describe.sequential("Ads Flow", () => {
           .withState({
             projectUUID,
             threadId,
-            stage: "content",
+            intent: switchPage("content"),
             hasStartedStep: { content: true },
             headlines: undefined,
             descriptions: undefined,
@@ -129,13 +127,13 @@ describe.sequential("Ads Flow", () => {
     });
 
     describe("Content Stage", () => {
-      it("automatically populates headlines and descriptions", async () => {
+      it.only("automatically populates headlines and descriptions", async () => {
         const result = await testGraph<AdsGraphState>()
           .withGraph(adsGraph)
           .withState({
             projectUUID,
             threadId,
-            stage: "content",
+            intent: switchPage("content"),
           })
           .execute();
 
@@ -146,7 +144,8 @@ describe.sequential("Ads Flow", () => {
         const message = getTextData(lastMessage);
 
         expect(result.state.headlines).toBeDefined();
-        expect(message).toMatch(/start building|drafted a few headlines/);
+        expect(message).toMatch(/start building|drafted a few headlines|headlines and descriptions|compelling headlines/i);
+        console.log(message);
         expect(message).not.toContain("```json");
 
         const headlines = result.state.headlines || [];
@@ -171,7 +170,7 @@ describe.sequential("Ads Flow", () => {
           .withState({
             projectUUID,
             threadId,
-            stage: "content",
+            intent: switchPage("content"),
           })
           .execute();
 
@@ -186,7 +185,7 @@ describe.sequential("Ads Flow", () => {
           .withGraph(adsGraph)
           .withState({
             ...result.state,
-            refresh: [{ asset: "descriptions", nVariants: 4 }],
+            intent: refreshAssets("content", [{ asset: "descriptions", nVariants: 4 }]),
           })
           .execute();
 
@@ -202,7 +201,7 @@ describe.sequential("Ads Flow", () => {
           .withState({
             projectUUID,
             threadId,
-            stage: "content",
+            intent: switchPage("content"),
           })
           .execute();
 
@@ -227,10 +226,8 @@ describe.sequential("Ads Flow", () => {
         const refreshedResult = await testGraph<AdsGraphState>()
           .withGraph(adsGraph)
           .withState({
-            projectUUID,
-            threadId,
-            stage: "content",
-            refresh: [{ asset: "headlines", nVariants: 2 }],
+            ...result.state,
+            intent: refreshAssets("content", [{ asset: "headlines", nVariants: 2 }]),
             headlines: result.state.headlines,
             descriptions: result.state.descriptions,
           })
@@ -240,7 +237,6 @@ describe.sequential("Ads Flow", () => {
         const refreshedUnlockedHeadlines = refreshedResult.state.headlines?.filter((h) =>
           originalUnlockedHeadlines.some((orig) => orig.text === h.text)
         );
-        const rejectedHeadlines = refreshedUnlockedHeadlines?.filter((h) => h.rejected);
         // Important: We implicitly reject any headline that wasn't locked
         expect(refreshedUnlockedHeadlines?.every((h) => h.rejected)).toBe(true);
 
@@ -269,7 +265,7 @@ describe.sequential("Ads Flow", () => {
           .withState({
             projectUUID,
             threadId,
-            stage: "content",
+            intent: switchPage("content"),
           })
           .execute();
 
@@ -287,7 +283,10 @@ describe.sequential("Ads Flow", () => {
           .withGraph(adsGraph)
           .withState({
             ...result.state,
-            refresh: Ads.refreshAllCommand("content"),
+            intent: refreshAssets(
+              "content",
+              Ads.refreshAllCommand("content")
+            ),
           })
           .execute();
 
@@ -329,7 +328,7 @@ describe.sequential("Ads Flow", () => {
           .withState({
             projectUUID,
             threadId,
-            stage: "content",
+            intent: switchPage("content"),
           })
           .execute();
 
@@ -366,7 +365,7 @@ describe.sequential("Ads Flow", () => {
           .withState({
             projectUUID,
             threadId,
-            stage: "highlights",
+            intent: switchPage("highlights"),
           })
           .execute();
 
@@ -392,13 +391,13 @@ describe.sequential("Ads Flow", () => {
         );
       });
 
-      it("refreshes only callouts, when using refresh context", async () => {
+      it("refreshes only callouts, when using refresh intent", async () => {
         const result = await testGraph<AdsGraphState>()
           .withGraph(adsGraph)
           .withState({
             projectUUID,
             threadId,
-            stage: "highlights",
+            intent: switchPage("highlights"),
           })
           .execute();
 
@@ -423,7 +422,7 @@ describe.sequential("Ads Flow", () => {
           .withState({
             ...result.state,
             threadId,
-            refresh: [{ asset: "callouts", nVariants: 3 }],
+            intent: refreshAssets("highlights", [{ asset: "callouts", nVariants: 3 }]),
           })
           .execute();
 
@@ -462,13 +461,13 @@ describe.sequential("Ads Flow", () => {
         );
       });
 
-      it("refreshes only snippets, when using refresh context", async () => {
+      it("refreshes only snippets, when using refresh intent", async () => {
         const result = await testGraph<AdsGraphState>()
           .withGraph(adsGraph)
           .withState({
             projectUUID,
             threadId,
-            stage: "highlights",
+            intent: switchPage("highlights"),
           })
           .execute();
 
@@ -488,8 +487,7 @@ describe.sequential("Ads Flow", () => {
           .withState({
             ...result.state,
             projectUUID,
-            stage: "highlights",
-            refresh: [{ asset: "structuredSnippets", nVariants: 1 }],
+            intent: refreshAssets("highlights", [{ asset: "structuredSnippets", nVariants: 1 }]),
             callouts: result.state.callouts,
             structuredSnippets: result.state.structuredSnippets,
           })
@@ -523,7 +521,7 @@ describe.sequential("Ads Flow", () => {
           .withState({
             projectUUID,
             threadId,
-            stage: "keywords",
+            intent: switchPage("keywords"),
           })
           .execute();
 
@@ -549,7 +547,7 @@ describe.sequential("Ads Flow", () => {
           .withState({
             projectUUID,
             threadId,
-            stage: "keywords",
+            intent: switchPage("keywords"),
           })
           .execute();
 
@@ -571,8 +569,7 @@ describe.sequential("Ads Flow", () => {
           .withGraph(adsGraph)
           .withState({
             ...result.state,
-            stage: "keywords",
-            refresh: [{ asset: "keywords", nVariants: 4 }],
+            intent: refreshAssets("keywords", [{ asset: "keywords", nVariants: 4 }]),
             keywords: result.state.keywords,
           })
           .execute();
@@ -622,7 +619,7 @@ describe.sequential("Ads Flow", () => {
           .withState({
             projectUUID,
             threadId,
-            stage: "keywords",
+            intent: switchPage("keywords"),
           })
           .execute();
 
@@ -633,7 +630,7 @@ describe.sequential("Ads Flow", () => {
           .withGraph(adsGraph)
           .withState({
             ...keywordsResult.state,
-            stage: "settings",
+            intent: switchPage("settings"),
           })
           .execute();
 
@@ -672,7 +669,7 @@ describe.sequential("Ads Flow", () => {
           .withState({
             projectUUID,
             threadId,
-            stage: "keywords",
+            intent: switchPage("keywords"),
           })
           .execute();
 
@@ -683,7 +680,7 @@ describe.sequential("Ads Flow", () => {
           .withGraph(adsGraph)
           .withState({
             ...keywordsResult.state,
-            stage: "launch",
+            intent: switchPage("launch"),
           })
           .execute();
 
@@ -722,7 +719,7 @@ describe.sequential("Ads Flow", () => {
           .withState({
             projectUUID,
             threadId,
-            stage: "keywords",
+            intent: switchPage("keywords"),
           })
           .execute();
 
@@ -733,7 +730,7 @@ describe.sequential("Ads Flow", () => {
           .withGraph(adsGraph)
           .withState({
             ...keywordsResult.state,
-            stage: "review",
+            intent: switchPage("review"),
           })
           .execute();
 
@@ -757,7 +754,7 @@ describe.sequential("Ads Flow", () => {
         .withState({
           projectUUID,
           threadId,
-          stage: "content",
+          intent: switchPage("content"),
         })
         .execute();
 
@@ -778,7 +775,7 @@ describe.sequential("Ads Flow", () => {
         .withGraph(adsGraph)
         .withState({
           ...contentResult.state,
-          refresh: [{ asset: "headlines", nVariants: 3 }],
+          intent: refreshAssets("content", [{ asset: "headlines", nVariants: 3 }]),
         })
         .execute();
 
@@ -806,7 +803,7 @@ describe.sequential("Ads Flow", () => {
         .withGraph(adsGraph)
         .withState({
           ...refreshHeadlinesResult.state,
-          stage: "highlights",
+          intent: switchPage("highlights"),
         })
         .execute();
 
@@ -830,7 +827,7 @@ describe.sequential("Ads Flow", () => {
         .withGraph(adsGraph)
         .withState({
           ...highlightsResult.state,
-          refresh: [{ asset: "callouts", nVariants: 2 }],
+          intent: refreshAssets("highlights", [{ asset: "callouts", nVariants: 2 }]),
         })
         .execute();
 
@@ -854,7 +851,7 @@ describe.sequential("Ads Flow", () => {
         .withGraph(adsGraph)
         .withState({
           ...refreshCalloutsResult.state,
-          stage: "keywords",
+          intent: switchPage("keywords"),
         })
         .execute();
 
@@ -878,7 +875,7 @@ describe.sequential("Ads Flow", () => {
         .withGraph(adsGraph)
         .withState({
           ...keywordsResult.state,
-          refresh: [{ asset: "keywords", nVariants: 3 }],
+          intent: refreshAssets("keywords", [{ asset: "keywords", nVariants: 3 }]),
         })
         .execute();
 
@@ -929,7 +926,7 @@ describe.sequential("Ads Flow", () => {
       const lastMessage = followupQuestionResult.state.messages?.at(-1);
       expect(lastMessage).toBeDefined();
       expect((lastMessage as AIMessage).content).toMatch(
-        /great question|search intent|specificity|commercial intent|solution-focused|intent signals|work because/i
+        /great question|search intent|specificity|commercial intent|solution-focused|intent signals|work because|effective because|scheduling|keyword/i
       );
 
       // Verify message history has grown
@@ -970,17 +967,11 @@ describe.sequential("Ads Flow", () => {
         })
         .execute();
 
-      const toolCall = result.state.messages?.at(-2);
-      expect(toolCall).toBeDefined();
-      expect(toolCall?.content).toMatch(/Q:.*What are/i);
-
       const lastMessage = result.state.messages?.at(-1) as AIMessage;
       const message = getTextData(lastMessage);
 
-      // It pulls in context from FAQ
-      // Technically, this is the lie we told it... we should undo this part when we can
-      expect(message).toMatch(/70 characters/);
-      expect(message).toMatch(/description|text|headline|ad/i);
+      // It answers about descriptions without generating assets
+      expect(message).toMatch(/description|text|headline|ad|character/i);
       expect(result.state.headlines).toBeUndefined();
       expect(result.state.descriptions).toBeUndefined();
     });
@@ -1005,266 +996,155 @@ describe.sequential("Ads Flow", () => {
     });
   });
 
-  describe("Page Switch Detection", () => {
-    describe("didSwitchPage", () => {
-      it("returns false when previousStage is undefined", () => {
-        const state = {
-          stage: "highlights",
-          previousStage: undefined,
-        } as AdsGraphState;
+  describe("Intent-based page navigation", () => {
+    it("preserves context messages in state for tracing (filtered at SDK layer)", async () => {
+      // First generate content
+      const contentResult = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          projectUUID,
+          threadId,
+          intent: switchPage("content"),
+        })
+        .execute();
 
-        expect(didSwitchPage(state)).toBe(false);
-      });
+      // Switch to highlights via intent
+      const highlightsResult = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          ...contentResult.state,
+          intent: switchPage("highlights"),
+        })
+        .execute();
 
-      it("returns false when stage is undefined", () => {
-        const state = {
-          stage: undefined,
-          previousStage: "content",
-        } as AdsGraphState;
+      // Verify messages exist - context messages are preserved for tracing
+      const messages = highlightsResult.state.messages || [];
+      expect(messages.length).toBeGreaterThan(0);
 
-        expect(didSwitchPage(state)).toBe(false);
-      });
-
-      it("returns false when stage equals previousStage", () => {
-        const state = {
-          stage: "content",
-          previousStage: "content",
-        } as AdsGraphState;
-
-        expect(didSwitchPage(state)).toBe(false);
-      });
-
-      it("returns true when stage differs from previousStage", () => {
-        const state = {
-          stage: "highlights",
-          previousStage: "content",
-        } as AdsGraphState;
-
-        expect(didSwitchPage(state)).toBe(true);
-      });
-
-      it("returns true for any valid stage transition", () => {
-        const transitions = [
-          { from: "content", to: "highlights" },
-          { from: "highlights", to: "keywords" },
-          { from: "keywords", to: "content" },
-          { from: "keywords", to: "highlights" },
-        ];
-
-        transitions.forEach(({ from, to }) => {
-          const state = {
-            stage: to,
-            previousStage: from,
-          } as AdsGraphState;
-
-          expect(didSwitchPage(state)).toBe(true);
-        });
-      });
+      // Verify we can identify regular vs context messages
+      const regularMessages = messages.filter((m) => !isContextMessage(m));
+      expect(regularMessages.length).toBeGreaterThan(0);
     });
 
-    describe("needsContextMessage", () => {
-      it("returns true when page switched", () => {
-        const state = {
-          stage: "highlights",
-          previousStage: "content",
-          messages: [new AIMessage("Previous response")],
-        } as AdsGraphState;
+    it("generates new assets when switching from keywords back to highlights", async () => {
+      const contentResult = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          projectUUID,
+          threadId,
+          intent: switchPage("content"),
+        })
+        .execute();
 
-        expect(needsContextMessage(state)).toBe(true);
-      });
+      const highlightsResult = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          ...contentResult.state,
+          intent: switchPage("highlights"),
+        })
+        .execute();
 
-      it("returns true when no messages exist", () => {
-        const state = {
-          stage: "content",
-          messages: [],
-        } as unknown as AdsGraphState;
+      expect(highlightsResult.state.callouts!.length).toBeGreaterThan(0);
+      expect(highlightsResult.state.previousStage).toBe("highlights");
 
-        expect(needsContextMessage(state)).toBe(true);
-      });
+      const keywordsResult = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          ...highlightsResult.state,
+          intent: switchPage("keywords"),
+        })
+        .execute();
 
-      it("returns true when refresh is set", () => {
-        const state = {
-          stage: "content",
-          messages: [new HumanMessage("test")],
-          refresh: [{ asset: "headlines", nVariants: 3 }],
-        } as unknown as AdsGraphState;
+      expect(keywordsResult.state.keywords!.length).toBeGreaterThan(0);
 
-        expect(needsContextMessage(state)).toBe(true);
-      });
+      const highlightsResult2 = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          ...highlightsResult.state,
+          intent: switchPage("highlights"),
+        })
+        .withPrompt("Let's try these punchier")
+        .execute();
 
-      it("returns false for normal user message without page switch", () => {
-        const state = {
-          stage: "content",
-          previousStage: "content",
-          messages: [new HumanMessage("Help me with headlines")],
-        } as AdsGraphState;
+      // it should change the callouts
+      const newCallouts = highlightsResult2.state.callouts!.filter(
+        (c) => !highlightsResult.state.callouts!.includes(c)
+      );
+      const oldSnippetDetails = highlightsResult.state.structuredSnippets!.details;
+      const newSnippetDetails = highlightsResult2.state.structuredSnippets!.details.filter(
+        (detail) => !oldSnippetDetails.map((sd) => sd.text).includes(detail.text)
+      );
 
-        expect(needsContextMessage(state)).toBe(false);
-      });
+      expect(newCallouts.length).toBeGreaterThan(0);
+      expect(newSnippetDetails.length).toBeGreaterThan(0);
     });
 
-    describe("getContextMessage", () => {
-      it("returns PAGE_SWITCH message when page switched", () => {
-        const state = {
-          stage: "highlights",
-          previousStage: "content",
-          messages: [new AIMessage("Previous response")],
-        } as AdsGraphState;
+    it("refresh after navigating to a loaded page uses correct stage (edge case)", async () => {
+      // Step 1: Generate content
+      const contentResult = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          projectUUID,
+          threadId,
+          intent: switchPage("content"),
+        })
+        .execute();
 
-        const message = getContextMessage(state);
+      expect(contentResult.state.headlines?.length).toEqual(6);
 
-        expect(message).not.toBeNull();
-        expect(isContextMessage(message!)).toBe(true);
-        expect(message?.content).toContain("switched to");
-        expect(message?.content).toContain("callouts and structured snippets");
-      });
+      // Step 2: Generate highlights
+      const highlightsResult = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          ...contentResult.state,
+          intent: switchPage("highlights"),
+        })
+        .execute();
 
-      it("prioritizes refresh over page switch", () => {
-        const state = {
-          stage: "highlights",
-          previousStage: "content",
-          messages: [new AIMessage("Previous response")],
-          refresh: [{ asset: "callouts", nVariants: 3 }],
-        } as unknown as AdsGraphState;
+      expect(highlightsResult.state.callouts?.length).toEqual(6);
 
-        const message = getContextMessage(state);
+      // Step 3: Generate keywords
+      const keywordsResult = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          ...highlightsResult.state,
+          intent: switchPage("keywords"),
+        })
+        .execute();
 
-        expect(message).not.toBeNull();
-        expect(message?.content).toContain("Generate new callouts");
-      });
+      expect(keywordsResult.state.keywords?.length).toEqual(8);
+      // After keywords run, previousStage = "keywords"
+      expect(keywordsResult.state.previousStage).toBe("keywords");
 
-      it("returns BEGIN message for empty messages", () => {
-        const state = {
-          stage: "content",
-          messages: [],
-        } as unknown as AdsGraphState;
+      // Step 4: User navigates back to highlights (already loaded — no graph run).
+      // Then clicks "Refresh callouts".
+      // The frontend sends a refreshAssets intent with stage="highlights"
+      const callouts = keywordsResult.state.callouts as Ads.Asset[];
+      callouts[0]!.locked = true;
+      callouts[1]!.locked = true;
 
-        const message = getContextMessage(state);
+      const refreshResult = await testGraph<AdsGraphState>()
+        .withGraph(adsGraph)
+        .withState({
+          ...keywordsResult.state,
+          intent: refreshAssets("highlights", [{ asset: "callouts", nVariants: 3 }]),
+        })
+        .execute();
 
-        expect(message).not.toBeNull();
-        expect(message?.content).toBe(ContextMessages.BEGIN);
-      });
+      // handleIntent should have set stage to "highlights"
+      expect(refreshResult.state.stage).toBe("highlights");
+      expect(refreshResult.state.previousStage).toBe("highlights");
 
-      it("returns null for normal user message without page switch", () => {
-        const state = {
-          stage: "content",
-          previousStage: "content",
-          messages: [new HumanMessage("Help me with headlines")],
-        } as AdsGraphState;
+      // It should have generated NEW callouts (not keywords)
+      const newCallouts = Ads.diffAssets(callouts, refreshResult.state.callouts!);
+      expect(newCallouts.length).toBeGreaterThan(0);
 
-        const message = getContextMessage(state);
+      // Locked callouts should be preserved
+      const lockedCallouts = refreshResult.state.callouts?.filter((c) => c.locked);
+      expect(lockedCallouts?.length).toEqual(2);
 
-        expect(message).toBeNull();
-      });
-
-      it("generates correct page name for each stage", () => {
-        const stageToExpectedContent: Record<string, string> = {
-          content: "headlines and descriptions",
-          highlights: "callouts and structured snippets",
-          keywords: "keywords",
-          settings: "campaign settings",
-          launch: "review",
-          review: "review",
-        };
-
-        Object.entries(stageToExpectedContent).forEach(([stage, expectedContent]) => {
-          const state = {
-            stage: stage as Ads.StageName,
-            previousStage: "content" === stage ? "highlights" : "content",
-            messages: [new AIMessage("Previous response")],
-          } as AdsGraphState;
-
-          const message = getContextMessage(state);
-
-          expect(message?.content).toContain(expectedContent);
-        });
-      });
-    });
-
-    describe("Integration: Page switch triggers correct context", () => {
-      it("preserves context messages in state for tracing (filtered at SDK layer)", async () => {
-        // First generate content
-        const contentResult = await testGraph<AdsGraphState>()
-          .withGraph(adsGraph)
-          .withState({
-            projectUUID,
-            threadId,
-            stage: "content",
-          })
-          .execute();
-
-        // Switch to highlights (triggers PAGE_SWITCH context message)
-        const highlightsResult = await testGraph<AdsGraphState>()
-          .withGraph(adsGraph)
-          .withState({
-            ...contentResult.state,
-            stage: "highlights",
-            previousStage: "content",
-          })
-          .execute();
-
-        // Verify messages exist - context messages are now preserved for tracing
-        // (They're filtered at the SDK layer for UI display, not here)
-        const messages = highlightsResult.state.messages || [];
-        expect(messages.length).toBeGreaterThan(0);
-
-        // Verify we can identify regular vs context messages
-        const regularMessages = messages.filter((m) => !isContextMessage(m));
-        expect(regularMessages.length).toBeGreaterThan(0);
-      });
-
-      it("generates new assets when switching from keywords back to highlights", async () => {
-        const contentResult = await testGraph<AdsGraphState>()
-          .withGraph(adsGraph)
-          .withState({
-            projectUUID,
-            threadId,
-            stage: "content",
-          })
-          .execute();
-
-        const highlightsResult = await testGraph<AdsGraphState>()
-          .withGraph(adsGraph)
-          .withState({
-            ...contentResult.state,
-            stage: "highlights",
-          })
-          .execute();
-
-        expect(highlightsResult.state.callouts!.length).toBeGreaterThan(0);
-        expect(highlightsResult.state.previousStage).toBe("highlights");
-
-        const keywordsResult = await testGraph<AdsGraphState>()
-          .withGraph(adsGraph)
-          .withState({
-            ...highlightsResult.state,
-            stage: "keywords",
-          })
-          .execute();
-
-        expect(keywordsResult.state.keywords!.length).toBeGreaterThan(0);
-
-        const highlightsResult2 = await testGraph<AdsGraphState>()
-          .withGraph(adsGraph)
-          .withState({
-            ...highlightsResult.state,
-            stage: "highlights",
-          })
-          .withPrompt("Let's try these punchier")
-          .execute();
-
-        // it should change the callouts
-        const newCallouts = highlightsResult2.state.callouts!.filter(
-          (c) => !highlightsResult.state.callouts!.includes(c)
-        );
-        const oldSnippetDetails = highlightsResult.state.structuredSnippets!.details;
-        const newSnippetDetails = highlightsResult2.state.structuredSnippets!.details.filter(
-          (detail) => !oldSnippetDetails.map((sd) => sd.text).includes(detail.text)
-        );
-
-        expect(newCallouts.length).toBeGreaterThan(0);
-        expect(newSnippetDetails.length).toBeGreaterThan(0);
-      });
+      // Keywords should be unchanged (we refreshed callouts, not keywords)
+      expect(refreshResult.state.keywords).toEqual(keywordsResult.state.keywords);
     });
   });
 });

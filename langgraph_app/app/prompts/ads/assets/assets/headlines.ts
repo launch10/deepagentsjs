@@ -1,11 +1,9 @@
 import { Ads } from "@types";
 import { type AdsGraphState } from "@state";
-import { userPreferencesPrompt } from "../userPreferences";
 
 export const Headlines: Partial<Ads.AssetPromptMap> = {
   headlines: {
     prompt: async (state: AdsGraphState, _config?: any): Promise<string> => {
-      const userPrefs = await userPreferencesPrompt(state, "headlines");
       const nVariants =
         Ads.getNVariantsForAsset(state.refresh, "headlines") ?? Ads.DefaultNumAssets.headlines;
 
@@ -33,8 +31,6 @@ export const Headlines: Partial<Ads.AssetPromptMap> = {
             - Make them specific to this business, not generic
 
             Remember: Google Ads shows up to 3 headlines at once, so they should work both independently and together.
-
-            ${userPrefs}
         `;
     },
     outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {

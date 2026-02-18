@@ -1,46 +1,14 @@
-import { createAgent, createMiddleware } from "langchain";
-import { AIMessage, type BaseMessage } from "@langchain/core/messages";
+import { createAgent } from "langchain";
+import { type BaseMessage } from "@langchain/core/messages";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLLM, createPromptCachingMiddleware, getLogger } from "@core";
-import { chooseAdsPrompt, getContextMessage } from "@prompts";
+import { buildSystemPrompt } from "@prompts";
 import { Conversation } from "@conversation";
 import { NodeMiddleware } from "@middleware";
 import { type AdsGraphState } from "@state";
-import z from "zod";
 import { lastAIMessage, Ads } from "@types";
 import { getTools } from "./helpers/index";
 import { AdsBridge } from "@annotation";
-
-const dynamicPromptMiddleware = createMiddleware({
-  name: "DynamicPromptMiddleware",
-  stateSchema: z
-    .object({
-      projectUUID: z.string(),
-      websiteId: z.number(),
-      brainstorm: z.any(),
-      stage: z.string(),
-      refresh: Ads.RefreshCommandSchema.optional(),
-      headlines: z.array(Ads.AssetSchema),
-      descriptions: z.array(Ads.AssetSchema),
-      uniqueFeatures: z.array(Ads.AssetSchema),
-      structuredSnippets: Ads.StructuredSnippetsSchema.optional(),
-      keywords: z.array(Ads.AssetSchema),
-      availableCommands: z.array(z.string()),
-      command: z.string(),
-      redirect: z.string(),
-    })
-    .partial(),
-  wrapModelCall: async (request, handler) => {
-    const state = request.state as unknown as AdsGraphState;
-
-    const systemPrompt = await chooseAdsPrompt(state, request.runtime as LangGraphRunnableConfig);
-
-    return await handler({
-      ...request,
-      systemPrompt,
-    });
-  },
-});
 
 export const adsAgent = NodeMiddleware.use(
   {},
@@ -51,16 +19,19 @@ export const adsAgent = NodeMiddleware.use(
     const llm = (await getLLM({})).withConfig({ tags: ["notify"] });
     const tools = getTools(state);
 
+    // 1. Stable system prompt — same string every turn, fully cached
+    const systemPrompt = buildSystemPrompt(state);
+
+    // 2. Create agent — systemPrompt passed directly, no dynamic middleware
     const agent = await createAgent({
       model: llm,
       tools,
-      middleware: [createPromptCachingMiddleware(), dynamicPromptMiddleware],
+      systemPrompt,
+      middleware: [createPromptCachingMiddleware()],
     });
 
-    // Window messages and inject ads-specific context (refresh, page switch, begin).
-    const contextMsg = getContextMessage(state);
-    const windowedMessages = new Conversation(state.messages || []).prepareTurn({
-      contextMessages: contextMsg ? [contextMsg] : [],
+    // 3. Window messages — context already committed by prepareContext node
+    const windowedMessages = new Conversation(state.messages || []).window({
       maxTurnPairs: 10,
       maxChars: 40_000,
     });
@@ -71,6 +42,7 @@ export const adsAgent = NodeMiddleware.use(
     };
 
     getLogger().info({ stage: state.stage }, "Running ads agent");
+    getLogger().info({ messages: windowedMessages }, "Windowed messages");
     const result = (await agent.invoke(
       stateWithMessages as any,
       config
@@ -82,14 +54,11 @@ export const adsAgent = NodeMiddleware.use(
     const [message, updates] = await AdsBridge.toStructuredMessage(lastMessage);
     const mergedAssets = Ads.removeRejected(Ads.mergeStructuredData(state, updates!));
 
-    // Context messages are preserved in state for tracing/analytics.
-    // They are filtered at the SDK presentation layer.
     const allMessages = result.messages.slice(0, -1).concat([message]) as BaseMessage[];
 
     return {
       ...mergedAssets,
       messages: allMessages,
-      previousStage: state.stage,
     };
   }
 );

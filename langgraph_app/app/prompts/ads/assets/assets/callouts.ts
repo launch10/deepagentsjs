@@ -1,11 +1,9 @@
 import { Ads } from "@types";
 import { type AdsGraphState } from "@state";
-import { userPreferencesPrompt } from "../userPreferences";
 
 export const Callouts: Partial<Ads.AssetPromptMap> = {
   callouts: {
     prompt: async (state: AdsGraphState, _config?: any) => {
-      const userPrefs = await userPreferencesPrompt(state, "callouts");
       const nVariants =
         Ads.getNVariantsForAsset(state.refresh, "callouts") ?? Ads.DefaultNumAssets.callouts;
 
@@ -26,8 +24,6 @@ export const Callouts: Partial<Ads.AssetPromptMap> = {
             - Focus on tangible benefits or proof points
 
             Remember: These highlights make the ad larger and give potential customers more reasons to click. Make them compelling, specific, and relevant to the business's unique value proposition.
-
-            ${userPrefs}
         `;
     },
     outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {

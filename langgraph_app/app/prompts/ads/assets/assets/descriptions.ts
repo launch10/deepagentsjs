@@ -1,11 +1,9 @@
 import { Ads } from "@types";
 import { type AdsGraphState } from "@state";
-import { userPreferencesPrompt } from "../userPreferences";
 
 export const Descriptions: Partial<Ads.AssetPromptMap> = {
   descriptions: {
     prompt: async (state: AdsGraphState, _config?: any) => {
-      const userPrefs = await userPreferencesPrompt(state, "descriptions");
       const nVariants =
         Ads.getNVariantsForAsset(state.refresh, "descriptions") ??
         Ads.DefaultNumAssets.descriptions;
@@ -34,8 +32,6 @@ export const Descriptions: Partial<Ads.AssetPromptMap> = {
             - Avoid repeating the same information across descriptions
 
             Remember: Google Ads shows up to 2 descriptions at once. They should complement the headlines and give users a reason to click.
-
-            ${userPrefs}
         `;
     },
     outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {

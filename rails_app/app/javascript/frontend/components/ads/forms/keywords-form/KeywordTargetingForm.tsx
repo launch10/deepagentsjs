@@ -79,7 +79,7 @@ export default function KeywordTargetingForm() {
   );
 
   const handleRefreshKeywords = () => {
-    createRefreshHandler("keywords", keywords, updateState);
+    createRefreshHandler("keywords", keywords, updateState, "keywords");
   };
 
   const handleDeleteKeyword = (index: number) => {

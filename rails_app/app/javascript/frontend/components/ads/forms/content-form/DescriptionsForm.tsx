@@ -47,7 +47,7 @@ export default function DescriptionsForm() {
   );
 
   const handleRefreshDescriptions = () => {
-    createRefreshHandler("descriptions", descriptions, updateState);
+    createRefreshHandler("descriptions", descriptions, updateState, "content");
   };
 
   const handleDeleteDescription = (index: number) => {

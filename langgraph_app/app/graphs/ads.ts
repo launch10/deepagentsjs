@@ -4,6 +4,8 @@ import {
   adsAgent,
   createCampaign,
   getBusinessContext,
+  handleIntentNode,
+  prepareContextNode,
   prepareRefreshNode,
   resetNode,
   guardrailsNode,
@@ -40,16 +42,19 @@ const prepareNode = async (state: AdsGraphState) => {
  */
 export const adsGraph = withCreditExhaustion(
   new StateGraph(AdsAnnotation)
+    .addNode("handleIntent", handleIntentNode)
     .addNode("prepare", prepareNode)
     .addNode("createCampaign", createCampaign)
     .addNode("beforeGenerate", beforeGenerateNode)
     .addNode("getBusinessContext", getBusinessContext)
     .addNode("prepareRefresh", prepareRefreshNode)
+    .addNode("prepareContext", prepareContextNode)
     .addNode("adsAgent", adsAgent)
     .addNode("compactConversation", createCompactConversationNode())
     .addNode("reset", resetNode)
 
-    .addEdge(START, "prepare")
+    .addEdge(START, "handleIntent")
+    .addEdge("handleIntent", "prepare")
     .addEdge("prepare", "createCampaign")
     .addConditionalEdges("createCampaign", guardrailsNode, {
       beforeGenerate: "beforeGenerate",
@@ -57,7 +62,8 @@ export const adsGraph = withCreditExhaustion(
     })
     .addEdge("beforeGenerate", "getBusinessContext")
     .addEdge("getBusinessContext", "prepareRefresh")
-    .addEdge("prepareRefresh", "adsAgent")
+    .addEdge("prepareRefresh", "prepareContext")
+    .addEdge("prepareContext", "adsAgent")
     .addEdge("adsAgent", "compactConversation")
     .addEdge("compactConversation", "reset")
     .addEdge("reset", END),

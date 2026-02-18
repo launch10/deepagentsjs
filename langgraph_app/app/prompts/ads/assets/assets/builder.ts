@@ -2,7 +2,6 @@ import { z } from "zod";
 import { type LangGraphRunnableConfig, Ads } from "@types";
 import { type AdsGraphState } from "@state";
 import { AssetPrompts } from "./config";
-import { needsIntentClassification } from "../helpers";
 import { ResponseTemplates } from "./responseTemplates";
 import { structuredOutputPrompt } from "@prompts";
 
@@ -45,40 +44,19 @@ export const getOutputPrompt = async (
     (acc, formatObj) => ({ ...acc, ...formatObj }),
     {}
   );
-  const needsIntent = needsIntentClassification(state);
   const isRefreshMode = !!state.refresh?.length;
   const stage = state.stage as Ads.StageName;
   const responseTemplate = ResponseTemplates[stage];
-  const assetResponse = `
-        ${isRefreshMode ? "Here are some fresh suggestions:" : responseTemplate}
 
-        \`\`\`json
-        ${JSON.stringify(outputFormat, null, 2)}
-        \`\`\`
+  return `
+        <example_response>
+            ${isRefreshMode ? "Here are some fresh suggestions:" : responseTemplate}
+
+            \`\`\`json
+            ${JSON.stringify(outputFormat, null, 2)}
+            \`\`\`
+        </example_response>
     `;
-
-  if (needsIntent) {
-    return `
-        <example_responses>
-            <asset_generation>
-                ## If generating assets (Happy Path):
-                ${assetResponse}
-            </asset_generation>
-
-            <help_path>
-                ## If answering questions (Help Path):
-                [2-3 sentence conversational answer - NO JSON block]
-                [IMPORTANT: If answering question: keep it brief, 2-3 sentences only. No JSON block.]
-            </help_path>
-        </example_responses>
-    `;
-  } else {
-    return `
-            <example_response>
-                ${assetResponse}
-            </example_response>
-        `;
-  }
 };
 
 export const getStructuredOutputPrompt = async (

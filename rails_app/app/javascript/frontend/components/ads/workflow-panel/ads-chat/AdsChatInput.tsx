@@ -24,8 +24,15 @@ export default function AdsChatInput() {
   const substep = useWorkflow(selectSubstep);
 
   const onRefreshSuggestions = useCallback(() => {
-    const refresh = Ads.refreshAllCommand(substep as Ads.StageName);
-    updateState({ refresh });
+    const stage = substep as Ads.StageName;
+    const assets = Ads.refreshAllCommand(stage);
+    updateState({
+      intent: {
+        type: "refresh_assets" as const,
+        payload: { stage, assets },
+        createdAt: new Date().toISOString(),
+      },
+    });
   }, [substep, updateState]);
 
   return (

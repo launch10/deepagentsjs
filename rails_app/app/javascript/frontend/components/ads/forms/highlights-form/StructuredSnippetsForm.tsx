@@ -136,12 +136,19 @@ export default function StructuredSnippetsForm() {
     }));
 
     updateState({
-      refresh: [
-        {
-          asset: "structuredSnippets",
-          nVariants: Ads.DefaultNumAssets.structuredSnippets - numLocked,
+      intent: {
+        type: "refresh_assets" as const,
+        payload: {
+          stage: "highlights",
+          assets: [
+            {
+              asset: "structuredSnippets",
+              nVariants: Ads.DefaultNumAssets.structuredSnippets - numLocked,
+            },
+          ],
         },
-      ],
+        createdAt: new Date().toISOString(),
+      },
       structuredSnippets: {
         ...structuredSnippets,
         category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,

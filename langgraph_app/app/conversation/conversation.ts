@@ -89,7 +89,7 @@ export interface CompactResult {
 }
 
 export interface PrepareTurnOptions {
-  /** New context events to inject before the last user message */
+  /** New context events to inject */
   contextMessages?: BaseMessage[];
   /** Max turn pairs to keep. Default: 10 */
   maxTurnPairs?: number;
@@ -264,6 +264,22 @@ export class Conversation {
    *
    * This is the input to the agent — not a return through the reducer.
    */
+  /**
+   * Prepare messages for an LLM turn.
+   *
+   * Automatically determines where to place new context messages:
+   *
+   * - If the last non-context message is a HumanMessage, the user just
+   *   sent something → context goes **before** that message so the
+   *   agent sees context → user question in order.
+   *
+   * - If the last non-context message is NOT a HumanMessage (AI, tool,
+   *   or empty), this is an intent-driven turn → context goes at the
+   *   **end**, because everything in the checkpoint already happened
+   *   and the context is what's new.
+   *
+   * This is the input to the agent — not a return through the reducer.
+   */
   prepareTurn(options?: PrepareTurnOptions): BaseMessage[] {
     const contextMessages = options?.contextMessages ?? [];
     const maxTurnPairs = options?.maxTurnPairs ?? 10;
@@ -271,24 +287,29 @@ export class Conversation {
 
     let allMessages = this.toMessages();
 
-    // Inject new context before the last non-context human message
     if (contextMessages.length > 0) {
-      let lastHumanIdx = -1;
-      for (let i = allMessages.length - 1; i >= 0; i--) {
-        if (allMessages[i]!._getType() === "human" && !isContextMessage(allMessages[i]!)) {
-          lastHumanIdx = i;
-          break;
-        }
-      }
+      // Auto-detect placement: is the last real message a HumanMessage?
+      const lastRealMsg = this.lastNonContextMessage();
 
-      if (lastHumanIdx >= 0) {
+      if (lastRealMsg && lastRealMsg._getType() === "human") {
+        // User-message turn: inject context before the last human message
+        // so the agent sees context → user question in the right order.
+        let lastHumanIdx = -1;
+        for (let i = allMessages.length - 1; i >= 0; i--) {
+          if (allMessages[i]!._getType() === "human" && !isContextMessage(allMessages[i]!)) {
+            lastHumanIdx = i;
+            break;
+          }
+        }
+
         allMessages = [
           ...allMessages.slice(0, lastHumanIdx),
           ...contextMessages,
           ...allMessages.slice(lastHumanIdx),
         ];
       } else {
-        // No human messages (create flow) — just append context
+        // Intent-driven turn (or empty conversation): everything in
+        // state already happened. New context goes at the end.
         allMessages = [...allMessages, ...contextMessages];
       }
     }
@@ -302,6 +323,22 @@ export class Conversation {
   /** Returns the most recent turn, or undefined if there are no turns. */
   currentTurn(): Turn | undefined {
     return this.turns[this.turns.length - 1];
+  }
+
+  /**
+   * Returns the last message that isn't a context message or summary.
+   * Used by prepareTurn to auto-detect whether this is a user-message
+   * turn (last real message is HumanMessage) or an intent-driven turn.
+   */
+  lastNonContextMessage(): BaseMessage | undefined {
+    const all = this.toMessages();
+    for (let i = all.length - 1; i >= 0; i--) {
+      const msg = all[i]!;
+      if (!isContextMessage(msg) && !isSummaryMessage(msg)) {
+        return msg;
+      }
+    }
+    return undefined;
   }
 
   // ── Digest ─────────────────────────────────────────────────

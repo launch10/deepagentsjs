@@ -61,7 +61,7 @@ export default function HeadlinesForm() {
   );
 
   const handleRefreshHeadlines = () => {
-    createRefreshHandler("headlines", headlines, updateState);
+    createRefreshHandler("headlines", headlines, updateState, "content");
   };
 
   const handleInputChange = (index: number, input: string) => {

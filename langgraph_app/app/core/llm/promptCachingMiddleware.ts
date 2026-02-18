@@ -151,12 +151,27 @@ export function createPromptCachingMiddleware(options?: {
       const Ctor = Object.getPrototypeOf(lastMessage).constructor;
 
       if (Array.isArray(lastMessage.content)) {
+        // Find the last non-empty text block to attach cache_control.
+        // Anthropic rejects cache_control on empty text blocks.
+        const lastBlock = lastMessage.content.at(-1);
+        const isEmptyTextBlock =
+          lastBlock?.type === "text" && !lastBlock?.text;
+
+        if (isEmptyTextBlock) {
+          // Skip caching the last message if its last block is empty text
+          return handler({
+            ...request,
+            systemMessage: cachedSystemMessage,
+            tools: cachedTools,
+          });
+        }
+
         const newMessage = new Ctor({
           ...lastMessage,
           content: [
             ...lastMessage.content.slice(0, -1),
             {
-              ...lastMessage.content.at(-1),
+              ...lastBlock,
               cache_control: cacheBreakpoint(ttl),
             },
           ],
@@ -170,6 +185,15 @@ export function createPromptCachingMiddleware(options?: {
       }
 
       if (typeof lastMessage.content === "string") {
+        // Skip caching empty string content
+        if (!lastMessage.content) {
+          return handler({
+            ...request,
+            systemMessage: cachedSystemMessage,
+            tools: cachedTools,
+          });
+        }
+
         const newMessage = new Ctor({
           ...lastMessage,
           content: [

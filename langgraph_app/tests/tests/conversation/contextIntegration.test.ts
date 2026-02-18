@@ -226,10 +226,10 @@ describe("context integration: prepareTurn + reducer + compact (real graph)", ()
     });
     expect(compactResult).not.toBeNull();
 
-    // Apply compaction through the graph's reducer
-    await graph.invoke(
+    // Apply compaction as a state update (not invoke — we don't want the agent node to run)
+    await graph.updateState(
+      config,
       { messages: compactResult!.toMessages() },
-      config
     );
 
     checkpoint = await graph.getState(config);
