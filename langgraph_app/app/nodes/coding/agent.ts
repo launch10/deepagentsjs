@@ -10,7 +10,7 @@ import {
   sentry,
 } from "@core";
 import { WebsiteFilesBackend } from "@services";
-import { SearchIconsTool, ChangeColorSchemeTool } from "@tools";
+import { SearchIconsTool, changeColorSchemeTool } from "@tools";
 import { buildCoderSubAgent } from "./subagents";
 import { checkpointer } from "@core";
 import {
@@ -224,9 +224,7 @@ async function buildFullCodingAgent(
     subagents,
     tools: [
       new SearchIconsTool(),
-      ...(state.websiteId && state.jwt
-        ? [new ChangeColorSchemeTool({ websiteId: state.websiteId, jwt: state.jwt })]
-        : []),
+      changeColorSchemeTool,
     ],
     middleware: middlewares as any,
   });

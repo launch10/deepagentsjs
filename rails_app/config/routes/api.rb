@@ -25,7 +25,7 @@ namespace :api, defaults: {format: :json} do
         post :validate
       end
     end
-    resources :uploads, only: [:create, :index, :show, :destroy]
+    resources :uploads, only: [:create, :index, :show, :destroy, :update]
     resources :projects, only: [:index, :destroy], param: :uuid do
       patch :restore, on: :member
     end

@@ -116,7 +116,7 @@ const createUIGuidanceSwitchMessage = (): ContextMessage => {
      - They can always customize later
 
   CRITICAL BEHAVIORS:
-  - If user says "I'm finished", "let's build", "build my site" → call finishedTool immediately (no text response)
+  - If user says "I'm finished", "let's build", "build my site" → call navigateTool with page: "website" immediately (no text response)
   - Reference specific UI elements they can see in the screenshot
   - Be brief and encouraging - don't overwhelm with options
   - Make personalization feel optional, not required

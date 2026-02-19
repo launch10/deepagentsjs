@@ -9,6 +9,12 @@ class API::V1::UploadsController < API::BaseController
       @uploads = website.uploads.order(id: :desc)
     end
 
+    # Filter by UUID if provided
+    @uploads = @uploads.where(uuid: params[:uuid]) if params[:uuid].present?
+
+    # Filter by filename (the CarrierWave file column, e.g. "d419572e-...jpg")
+    @uploads = @uploads.where(file: params[:filename]) if params[:filename].present?
+
     # Filter by specific IDs if provided
     # Rails receives array params as ids[] from query string
     ids_param = params[:ids]
@@ -45,6 +51,26 @@ class API::V1::UploadsController < API::BaseController
     render json: { errors: "invalid upload" }, status: :unprocessable_entity
   end
 
+  def update
+    @upload = policy_scope(Upload).find(params[:id])
+    authorize @upload
+
+    Upload.transaction do
+      @upload.update!(upload_update_params)
+
+      if params.dig(:upload, :website_id).present?
+        website = current_account.websites.find_by!(id: params[:upload][:website_id])
+        WebsiteUpload.find_or_create_by!(website: website, upload: @upload)
+      end
+    end
+
+    render json: @upload.reload.to_json
+  rescue ActiveRecord::RecordNotFound
+    render json: { errors: ["Upload not found"] }, status: :not_found
+  rescue => e
+    render json: { errors: [e.message] }, status: :unprocessable_entity
+  end
+
   def destroy
     @upload = policy_scope(Upload).find(params[:id])
     authorize @upload
@@ -65,5 +91,9 @@ class API::V1::UploadsController < API::BaseController
 
   def upload_params
     params.require(:upload).permit(:file, :is_logo, :website_id)
+  end
+
+  def upload_update_params
+    params.require(:upload).permit(:is_logo)
   end
 end

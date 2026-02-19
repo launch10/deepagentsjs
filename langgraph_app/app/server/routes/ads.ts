@@ -70,7 +70,7 @@ adsRoutes.get("/stream", ...readOnlyMiddleware, async (c) => {
   return await AdsAPI.loadHistory(threadId);
 });
 
-adsRoutes.patch("/state", async (c) => {
+adsRoutes.patch("/state", ...readOnlyMiddleware, async (c) => {
   const auth = c.get("auth") as AuthContext;
   const body = await c.req.json();
   const { threadId, state } = body;

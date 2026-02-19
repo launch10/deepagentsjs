@@ -5,7 +5,7 @@ import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldLis
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@components/ui/field";
-import { useAdsChatActions, useAdsChatState } from "@components/ads/hooks";
+import { useAdsChatActions, useAdsChatState, useAdsChatIsStreaming } from "@components/ads/hooks";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads, generateUUID, keyBy } from "@shared";
 import { Info, Plus } from "lucide-react";
@@ -29,7 +29,8 @@ const STRUCTURED_SNIPPET_CATEGORIES = Ads.StructuredSnippetCategoryKeys.map((key
 
 export default function StructuredSnippetsForm() {
   const structuredSnippets = useAdsChatState("structuredSnippets");
-  const { setState, updateState } = useAdsChatActions();
+  const { setState, updateState, saveState } = useAdsChatActions();
+  const isStreaming = useAdsChatIsStreaming();
 
   const category = structuredSnippets?.category;
   const details = structuredSnippets?.details;
@@ -86,18 +87,28 @@ export default function StructuredSnippetsForm() {
     }
   }, [category, methods]);
 
-  const handleCategoryChange = (value: string) => {
-    methods.setValue("category", value as Ads.StructuredSnippetCategoryKey);
-    setState({
+  const setSnippets = (partial: Partial<Ads.StructuredSnippets>) => {
+    const updated = {
       structuredSnippets: {
         ...structuredSnippets,
-        category: value as Ads.StructuredSnippetCategoryKey,
+        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
         details: structuredSnippets?.details || [],
+        ...partial,
       },
-    });
+    };
+    if (isStreaming) {
+      setState(updated);
+    } else {
+      saveState(updated);
+    }
   };
 
-  const handleLockToggle = createLockToggleHandler(
+  const handleCategoryChange = (value: string) => {
+    methods.setValue("category", value as Ads.StructuredSnippetCategoryKey);
+    setSnippets({ category: value as Ads.StructuredSnippetCategoryKey });
+  };
+
+  const baseLockToggle = createLockToggleHandler(
     "details",
     methods,
     () => filteredDetails,
@@ -113,39 +124,26 @@ export default function StructuredSnippetsForm() {
     }
   );
 
+  const handleLockToggle = (fieldName: string, index: number) => {
+    baseLockToggle(fieldName, index);
+    if (!isStreaming) saveState();
+  };
+
   const handleAddDetail = () => {
     const newDetail = { id: generateUUID(), text: "", locked: true, rejected: false };
-    setState({
-      structuredSnippets: {
-        ...structuredSnippets,
-        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
-        details: [...(details || []), newDetail],
-      },
-    });
+    setSnippets({ details: [...(details || []), newDetail] });
   };
 
   const handleDeleteDetail = (index: number) => {
     const detailId = filteredDetails[index]?.id;
     if (!detailId) return;
-    setState({
-      structuredSnippets: {
-        ...structuredSnippets,
-        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
-        details: details?.filter((d) => d.id !== detailId) || [],
-      },
-    });
+    setSnippets({ details: details?.filter((d) => d.id !== detailId) || [] });
   };
 
   const handleInputChange = (index: number, input: string) => {
     const detailId = filteredDetails[index]?.id;
     if (!detailId) return;
-    setState({
-      structuredSnippets: {
-        ...structuredSnippets,
-        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
-        details: details?.map((d) => (d.id === detailId ? { ...d, text: input } : d)) || [],
-      },
-    });
+    setSnippets({ details: details?.map((d) => (d.id === detailId ? { ...d, text: input } : d)) || [] });
   };
 
   const handleRefreshSnippets = () => {

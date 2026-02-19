@@ -91,6 +91,7 @@ export {
   type ThinkingIndicatorVariant,
 } from "./ThinkingIndicator";
 export { TodoList, type TodoListProps, type TodoItem } from "./TodoList";
+export { ToolCallIndicator, type ToolCallIndicatorProps } from "./ToolCallIndicator";
 
 // Attachment components (shared infrastructure)
 export {
@@ -118,6 +119,7 @@ import { Suggestions } from "./Suggestions";
 import { IntentButtons } from "./IntentButtons";
 import { ThinkingIndicator } from "./ThinkingIndicator";
 import { TodoList } from "./TodoList";
+import { ToolCallIndicator } from "./ToolCallIndicator";
 
 export const Chat = {
   // Provider
@@ -135,4 +137,5 @@ export const Chat = {
   IntentButtons,
   ThinkingIndicator,
   TodoList,
+  ToolCallIndicator,
 };

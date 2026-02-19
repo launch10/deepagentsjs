@@ -99,8 +99,9 @@ export function useAssetForm({
       rejected: false,
     };
     const updatedAssets = [...(allAssets || []), newAsset];
-    setState({ [assetKey]: updatedAssets });
-    if (!isStreamingRef.current) {
+    if (isStreamingRef.current) {
+      setState({ [assetKey]: updatedAssets });
+    } else {
       saveState({ [assetKey]: updatedAssets });
     }
   };
@@ -109,8 +110,9 @@ export function useAssetForm({
     const assetId = filteredAssets[index]?.id;
     if (!assetId) return;
     const updatedAssets = allAssets?.filter((a: Ads.Asset) => a.id !== assetId);
-    setState({ [assetKey]: updatedAssets });
-    if (!isStreamingRef.current) {
+    if (isStreamingRef.current) {
+      setState({ [assetKey]: updatedAssets });
+    } else {
       saveState({ [assetKey]: updatedAssets });
     }
   };
@@ -119,8 +121,9 @@ export function useAssetForm({
     const assetId = filteredAssets[index]?.id;
     if (!assetId) return;
     const updatedAssets = allAssets?.map((a: Ads.Asset) => (a.id === assetId ? { ...a, text } : a));
-    setState({ [assetKey]: updatedAssets });
-    if (!isStreamingRef.current) {
+    if (isStreamingRef.current) {
+      setState({ [assetKey]: updatedAssets });
+    } else {
       saveState({ [assetKey]: updatedAssets });
     }
   };
@@ -134,20 +137,11 @@ export function useAssetForm({
   );
 
   const lockToggle = (fieldName: string, index: number) => {
-    const asset = filteredAssets[index];
-    if (!asset) return;
-
-    // Don't persist if the base handler would reject (empty text on lock)
-    const wouldReject = !asset.locked && !asset.text;
-
     baseLockToggle(fieldName, index);
-
-    if (!wouldReject && !isStreamingRef.current) {
-      const updatedAssets = allAssets?.map((a: Ads.Asset) =>
-        a.id === asset.id ? { ...a, locked: !a.locked } : a
-      );
-      saveState({ [assetKey]: updatedAssets });
-    }
+    // baseLockToggle calls setState internally; persist to checkpoint.
+    // If baseLockToggle rejected (empty text), setState wasn't called,
+    // and saveState sends identical state (harmless, debounced).
+    if (!isStreamingRef.current) saveState();
   };
 
   const refreshAssets = () => {

@@ -2089,7 +2089,7 @@ test.describe("Brainstorm to Website Redirect", () => {
     brainstormPage = new BrainstormPage(page);
   });
 
-  test("redirects to website page when user completes brainstorm", async ({ page }) => {
+  test("redirects to website page when user completes brainstorm via chat", async ({ page }) => {
     // Start a new conversation
     await brainstormPage.goto();
 
@@ -2115,13 +2115,45 @@ test.describe("Brainstorm to Website Redirect", () => {
     await brainstormPage.clickBuildMySite();
 
     // Wait for AI to process the message and trigger redirect
-    // The AI should call finishedTool which sets redirect: "website"
+    // The AI should call navigateTool which sets agentIntents with navigate to "website"
     await brainstormPage.waitForResponse(60000);
 
     // Wait for redirect to website page
     await brainstormPage.waitForWebsiteRedirect(threadId!);
 
     // Verify we're on the website page
+    expect(page.url()).toContain(`/projects/${threadId}/website`);
+  });
+
+  test("Continue button enables at lookAndFeel and navigates to website", async ({ page }) => {
+    // Start a new conversation
+    await brainstormPage.goto();
+
+    // The Continue button should be disabled initially (not at lookAndFeel yet)
+    const continueButton = page.getByRole("button", { name: "Continue" });
+    await expect(continueButton).toBeVisible({ timeout: 5000 });
+    await expect(continueButton).toBeDisabled();
+
+    // Complete brainstorm through all topics
+    await brainstormPage.sendMessage(COMPLETE_BUSINESS_IDEA);
+    await brainstormPage.waitForResponse();
+
+    const threadId = brainstormPage.getThreadIdFromUrl();
+    expect(threadId).not.toBeNull();
+
+    await brainstormPage.sendMessage("Please do the rest for me");
+    await brainstormPage.waitForResponse();
+
+    // At lookAndFeel, the Continue button should be enabled and read "Build My Site"
+    const buildButton = page.getByRole("button", { name: "Build My Site" });
+    await expect(buildButton).toBeVisible({ timeout: 10000 });
+    await expect(buildButton).toBeEnabled();
+
+    // Click the Continue/Build My Site button (uses workflow navigation, not AI)
+    await buildButton.click();
+
+    // Should navigate to website page via workflow store
+    await brainstormPage.waitForWebsiteRedirect(threadId!);
     expect(page.url()).toContain(`/projects/${threadId}/website`);
   });
 
@@ -2152,7 +2184,7 @@ test.describe("Brainstorm to Website Redirect", () => {
     await expect(brainstormPage.buildMySiteButton).toBeVisible({ timeout: 10000 });
     await brainstormPage.clickBuildMySite();
 
-    // Wait for AI to process and trigger redirect
+    // Wait for AI to process and trigger redirect via navigateTool
     await brainstormPage.waitForResponse(60000);
 
     // Wait for redirect to website page

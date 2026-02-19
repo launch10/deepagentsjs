@@ -5187,6 +5187,8 @@ export interface paths {
                 query?: {
                     /** @description Filter by website */
                     website_id?: number;
+                    /** @description Filter by upload UUID */
+                    uuid?: string;
                     /** @description Filter by logo status (true for logos, false for product images) */
                     is_logo?: boolean;
                     /** @description Sort order (recent for created_at desc) */
@@ -5381,7 +5383,84 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        patch?: never;
+        /** Updates an upload */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Upload ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        upload?: {
+                            /** @description Mark as logo */
+                            is_logo?: boolean;
+                            /** @description Associate with website */
+                            website_id?: number;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description marks as logo and associates with website in one call */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Upload UUID */
+                            uuid: string;
+                            /** @description Full size file URL */
+                            url: string;
+                            /** @description Thumbnail URL (images only) */
+                            thumb_url?: string | null;
+                            /** @description Medium size URL (images only) */
+                            medium_url?: string | null;
+                            /** @description Favicon URL (32x32 ICO, logos only) */
+                            favicon_url?: string | null;
+                            /**
+                             * @description Media type
+                             * @enum {string}
+                             */
+                            media_type: "image" | "video" | "document";
+                            /** @description Whether this upload is a logo */
+                            is_logo: boolean;
+                            /** @description Original filename */
+                            filename: string;
+                            /**
+                             * Format: date-time
+                             * @description Creation timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Last update timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description website belongs to different account */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/websites/{id}/files/write": {

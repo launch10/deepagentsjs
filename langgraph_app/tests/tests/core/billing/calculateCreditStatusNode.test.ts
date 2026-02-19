@@ -53,6 +53,7 @@ describe.sequential("calculateCreditStatusNode", () => {
     preRunCreditsRemaining: undefined,
     creditStatus: undefined,
     intent: undefined,
+    agentIntents: undefined,
     ...overrides,
   });
 

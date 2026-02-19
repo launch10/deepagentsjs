@@ -105,13 +105,17 @@ export function BrainstormMessagesView({
           return <Chat.UserMessage key={message.id} blocks={message.blocks} />;
         }
 
-        // AI message - check if it has content
+        // AI message - check for text and tool_call blocks
         const hasContent = message.blocks.some(
           (b) => b.type === "text" && "text" in b && b.text && b.text.trim()
         );
+        const runningToolCalls = message.blocks.filter(
+          (b) => b.type === "tool_call" && "state" in b && b.state === "running"
+        );
 
-        if (!hasContent && isLastMessage && isStreaming) {
-          return <Chat.ThinkingIndicator key={message.id} text="Thinking" />;
+        // Skip empty AI messages — the bottom streaming indicator handles "thinking" state
+        if (!hasContent && runningToolCalls.length === 0) {
+          return null;
         }
 
         // Show intent buttons only on last AI message when not streaming
@@ -126,6 +130,15 @@ export function BrainstormMessagesView({
               blocks={message.blocks as BrainstormBlock[]}
               isActive={isLastMessage}
             />
+            {/* Show running tool calls so the user knows what the agent is doing */}
+            {isLastMessage &&
+              runningToolCalls.map((block) => (
+                <Chat.ToolCallIndicator
+                  key={block.id}
+                  toolName={"toolName" in block ? (block as any).toolName : ""}
+                  state="running"
+                />
+              ))}
             {/* Intent buttons appear after last AI message */}
             {showIntentButtons && (
               <Chat.IntentButtons.Root>
@@ -143,6 +156,9 @@ export function BrainstormMessagesView({
           </div>
         );
       })}
+
+      {/* Always show streaming indicator at the bottom while agent is working */}
+      {isStreaming && <Chat.ThinkingIndicator text="Thinking" />}
 
       <Chat.Messages.ScrollAnchor />
     </Chat.Messages.List>

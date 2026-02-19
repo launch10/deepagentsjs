@@ -44,9 +44,9 @@ function BrainstormConversationContent({
   // Check if any personalizations exist (reads directly from TanStack Query cache)
   const hasPersonalizations = useHasAnyPersonalizations();
 
-  // Can continue when backend signals readiness via redirect
-  const redirect = useBrainstormSelector((s) => s.state.redirect);
-  const canContinue = redirect === "website";
+  // Can continue when all conversational topics are done (lookAndFeel = last topic)
+  const currentTopic = useBrainstormSelector((s) => s.state.currentTopic);
+  const canContinue = currentTopic === "lookAndFeel";
 
   // Auto-open panel if we've reached question 5 or if any personalizations have been applied
   const shouldAutoOpen = currentQuestionNumber >= 5 || hasPersonalizations;
@@ -80,7 +80,9 @@ function BrainstormConversationContent({
       <PaginationFooter.Root layout="container" canGoBack={false} canGoForward={canContinue}>
         <div /> {/* Empty div for left side since no back button */}
         <PaginationFooter.Actions>
-          <PaginationFooter.ContinueButton disabled={!canContinue} />
+          <PaginationFooter.ContinueButton disabled={!canContinue}>
+            {canContinue ? "Build My Site" : "Continue"}
+          </PaginationFooter.ContinueButton>
         </PaginationFooter.Actions>
       </PaginationFooter.Root>
     </div>

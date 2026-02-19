@@ -1,11 +1,20 @@
 import { createAgent, createMiddleware } from "langchain";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
+import { StateSchema, ReducedValue } from "@langchain/langgraph";
 import { type BaseMessage } from "@langchain/core/messages";
 import { getLLM, createPromptCachingMiddleware } from "@core";
 import { chooseBrainstormPrompt, getBrainstormContextMessage, getBrainstormMode } from "@prompts";
 import { NodeMiddleware } from "@middleware";
-import { saveAnswersTool, finishedTool, queryUploadsTool } from "@tools";
-import { Brainstorm } from "@types";
+import {
+  saveAnswersTool,
+  navigateTool,
+  queryUploadsTool,
+  setLogoTool,
+  saveSocialLinksTool,
+  uploadProjectImagesTool,
+} from "@tools";
+import { changeColorSchemeTool } from "@tools";
+import { Brainstorm, type AgentIntent, agentIntentSchema } from "@types";
 import { type BrainstormGraphState, type BrainstormModeType } from "@state";
 import z from "zod";
 import { BrainstormNextStepsService } from "@services";
@@ -194,11 +203,31 @@ export const brainstormAgent = NodeMiddleware.use(
     };
 
     const llm = (await getLLM({ maxTier: 2 })).withConfig({ tags: ["notify"] });
-    const tools = [saveAnswersTool, finishedTool, queryUploadsTool];
+    const tools = [
+      saveAnswersTool,
+      navigateTool,
+      queryUploadsTool,
+      setLogoTool,
+      saveSocialLinksTool,
+      uploadProjectImagesTool,
+      changeColorSchemeTool,
+    ];
 
     const agent = await createAgent({
       model: llm,
       tools,
+      stateSchema: new StateSchema({
+        agentIntents: new ReducedValue(
+          z.any().optional() as any,
+          {
+            reducer: (current: AgentIntent[] | undefined, next: AgentIntent[] | undefined) => {
+              if (!next) return current;
+              if (!current) return next;
+              return [...current, ...next];
+            },
+          }
+        ),
+      }),
       middleware: [
         createPromptCachingMiddleware(),
         createBrainstormMiddleware(initialState, middlewareTracker, currentMode, config),
@@ -259,6 +288,7 @@ export const brainstormAgent = NodeMiddleware.use(
 
     return {
       redirect: result.redirect as Brainstorm.RedirectType,
+      agentIntents: result.agentIntents,
       skippedTopics: (result.skippedTopics || []) as Brainstorm.TopicName[],
       messages: messages as BaseMessage[],
       memories,

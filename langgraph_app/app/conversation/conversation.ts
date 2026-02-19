@@ -314,6 +314,9 @@ export class Conversation {
       }
     }
 
+    // Annotate image_url blocks with visible URL text so the LLM can reference them
+    allMessages = Conversation.annotateImageUrls(allMessages);
+
     // Re-parse with injected context and window
     return new Conversation(allMessages).window({ maxTurnPairs, maxChars });
   }
@@ -494,6 +497,54 @@ export class Conversation {
       id: msg.id ?? undefined,
       tool_call_id: (msg as ToolMessage).tool_call_id,
       name: (msg as any).name,
+    });
+  }
+
+  /**
+   * Annotate image_url content blocks with visible URL text.
+   *
+   * LLMs receive image_url blocks as rendered pixels — they cannot see the
+   * URL string. This method adds a text annotation after each image_url block
+   * so the agent can reference, copy, or pass the URL to tools.
+   *
+   * Only annotates blocks that don't already have an adjacent URL annotation.
+   * Only annotates HumanMessage (images the user sent, not context images).
+   */
+  static annotateImageUrls(messages: BaseMessage[]): BaseMessage[] {
+    return messages.map((msg) => {
+      if (msg._getType() !== "human") return msg;
+      if (!Array.isArray(msg.content)) return msg;
+
+      // Check if any image_url blocks exist
+      const hasImages = msg.content.some(
+        (block: any) => block?.type === "image_url" && block?.image_url?.url
+      );
+      if (!hasImages) return msg;
+
+      // Build new content with URL annotations after each image_url block
+      const contentBlocks = msg.content as any[];
+      const newContent: any[] = [];
+      for (const block of contentBlocks) {
+        newContent.push(block);
+        if (block?.type === "image_url" && block?.image_url?.url) {
+          const url = block.image_url.url as string;
+          // Skip data: URLs (base64 images have no meaningful URL to show)
+          if (!url.startsWith("data:")) {
+            newContent.push({
+              type: "text",
+              text: `[Image URL: ${url}]`,
+            });
+          }
+        }
+      }
+
+      // Return a new HumanMessage with annotated content, preserving metadata
+      return new HumanMessage({
+        content: newContent,
+        id: msg.id ?? undefined,
+        additional_kwargs: msg.additional_kwargs,
+        response_metadata: msg.response_metadata,
+      });
     });
   }
 

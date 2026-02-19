@@ -1,7 +1,9 @@
 import { useState, useRef, useCallback } from "react";
 import { Upload, X, RefreshCw, Loader2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { useProjectLogo, useUploadLogo, useDeleteUpload } from "@api/uploads.hooks";
+import { useQueryClient } from "@tanstack/react-query";
+import { useProjectLogo, useUploadLogo, useDeleteUpload, uploadsKeys } from "@api/uploads.hooks";
+import { subscribeToAgentIntent } from "@context/AgentIntentContext";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/svg+xml"];
 const ACCEPTED_EXTENSIONS = ".png,.jpg,.jpeg,.svg";
@@ -19,6 +21,12 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
   // Mutations provide their own loading state
   const uploadMutation = useUploadLogo();
   const deleteMutation = useDeleteUpload();
+
+  // Refetch when the agent sets the logo via chat
+  const queryClient = useQueryClient();
+  subscribeToAgentIntent("logo_set", () => {
+    queryClient.invalidateQueries({ queryKey: uploadsKeys.all });
+  });
 
   // Local state for UI
   const [isDragging, setIsDragging] = useState(false);

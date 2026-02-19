@@ -56,12 +56,15 @@ export const useFormRegistry = create<FormRegistryStore>((set, get) => ({
 
   validateAndSave: async (formName, saveFn) => {
     const subforms = get().formNames[formName] || [];
+    console.log(`[FormRegistry] validateAndSave "${formName}": ${subforms.length} subform(s) registered`);
 
     // Validate all subforms
     const results = await Promise.all(subforms.map((h) => h.validate()));
     const allValid = results.every(Boolean);
 
     if (!allValid) {
+      const failedIndices = results.map((v, i) => (!v ? i : -1)).filter((i) => i >= 0);
+      console.warn(`[FormRegistry] Validation failed for "${formName}": subform(s) at index ${failedIndices.join(", ")} returned false`);
       return { valid: false };
     }
 
@@ -87,6 +90,7 @@ export const useFormRegistry = create<FormRegistryStore>((set, get) => ({
       await saveFn(mergedData);
       return { valid: true };
     } catch (error) {
+      console.error(`[FormRegistry] Save failed for "${formName}":`, error);
       return { valid: false, error: error as Error };
     }
   },

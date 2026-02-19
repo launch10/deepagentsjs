@@ -112,6 +112,7 @@ const createMockSnapshot = (
     updateState: vi.fn(),
     ...overrides.actions,
   },
+  setMessages: vi.fn(),
   chat: overrides.chat ?? mockChat,
   ...overrides,
 });

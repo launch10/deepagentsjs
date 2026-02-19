@@ -1484,4 +1484,115 @@ describe("Conversation", () => {
       expect(reducedAi2.tool_calls![0]!.name).toBe("str_replace_based_edit_tool");
     });
   });
+
+  // ── annotateImageUrls ──────────────────────────────────────────
+
+  describe("annotateImageUrls", () => {
+    const IMAGE_URL = "https://dev-uploads.launch10.ai/uploads/f7a2d72f-0d69-42a5-823c-eaf7d6e191be.jpg";
+    const IMAGE_URL_2 = "https://dev-uploads.launch10.ai/uploads/4524ac00-da1d-49b5-b601-bdd015aa6d2b.png";
+
+    it("adds [Image URL: ...] text block after each image_url block", () => {
+      const messages: BaseMessage[] = [
+        new HumanMessage({
+          content: [
+            { type: "text", text: "Here's my logo" },
+            { type: "image_url", image_url: { url: IMAGE_URL } },
+          ],
+        }),
+      ];
+
+      const result = Conversation.annotateImageUrls(messages);
+      const content = result[0]!.content as any[];
+
+      expect(content).toHaveLength(3);
+      expect(content[0]).toEqual({ type: "text", text: "Here's my logo" });
+      expect(content[1]).toEqual({ type: "image_url", image_url: { url: IMAGE_URL } });
+      expect(content[2]).toEqual({ type: "text", text: `[Image URL: ${IMAGE_URL}]` });
+    });
+
+    it("annotates multiple images in a single message", () => {
+      const messages: BaseMessage[] = [
+        new HumanMessage({
+          content: [
+            { type: "text", text: "Product photos" },
+            { type: "image_url", image_url: { url: IMAGE_URL } },
+            { type: "image_url", image_url: { url: IMAGE_URL_2 } },
+          ],
+        }),
+      ];
+
+      const result = Conversation.annotateImageUrls(messages);
+      const content = result[0]!.content as any[];
+
+      // text, img1, annotation1, img2, annotation2
+      expect(content).toHaveLength(5);
+      expect(content[2]).toEqual({ type: "text", text: `[Image URL: ${IMAGE_URL}]` });
+      expect(content[4]).toEqual({ type: "text", text: `[Image URL: ${IMAGE_URL_2}]` });
+    });
+
+    it("does not annotate AI messages", () => {
+      const messages: BaseMessage[] = [
+        new AIMessage({
+          content: [
+            { type: "text", text: "Here's an image" },
+            { type: "image_url", image_url: { url: IMAGE_URL } },
+          ] as any,
+        }),
+      ];
+
+      const result = Conversation.annotateImageUrls(messages);
+      const content = result[0]!.content as any[];
+
+      // Should not be modified
+      expect(content).toHaveLength(2);
+    });
+
+    it("skips messages without image_url blocks", () => {
+      const messages: BaseMessage[] = [
+        new HumanMessage("Just text, no images"),
+        new HumanMessage({
+          content: [{ type: "text", text: "Still no images" }],
+        }),
+      ];
+
+      const result = Conversation.annotateImageUrls(messages);
+      expect(result[0]!.content).toBe("Just text, no images");
+      expect((result[1]!.content as any[])).toHaveLength(1);
+    });
+
+    it("skips data: URLs (base64 images)", () => {
+      const messages: BaseMessage[] = [
+        new HumanMessage({
+          content: [
+            { type: "text", text: "Inline image" },
+            { type: "image_url", image_url: { url: "data:image/png;base64,iVBOR..." } },
+          ],
+        }),
+      ];
+
+      const result = Conversation.annotateImageUrls(messages);
+      const content = result[0]!.content as any[];
+
+      // No annotation added for data: URLs
+      expect(content).toHaveLength(2);
+    });
+
+    it("is called during prepareTurn", () => {
+      const messages: BaseMessage[] = [
+        new HumanMessage({
+          content: [
+            { type: "text", text: "Here's my logo" },
+            { type: "image_url", image_url: { url: IMAGE_URL } },
+          ],
+        }),
+      ];
+
+      const result = new Conversation(messages).prepareTurn();
+      const content = result[0]!.content as any[];
+
+      // prepareTurn should have annotated the image URL
+      expect(content).toHaveLength(3);
+      expect(content[2]).toEqual({ type: "text", text: `[Image URL: ${IMAGE_URL}]` });
+    });
+  });
 });

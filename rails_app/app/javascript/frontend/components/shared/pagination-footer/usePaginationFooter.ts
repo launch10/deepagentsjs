@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import {
   selectBack,
   selectCanGoBack,
@@ -38,13 +39,21 @@ export function usePaginationFooter() {
   }, []);
 
   const handleContinue = async () => {
-    if (!substep || !campaignId) return;
+    if (!substep || !campaignId) {
+      console.warn("[PaginationFooter] handleContinue aborted: substep=%s, campaignId=%s", substep, campaignId);
+      return;
+    }
 
     const result = await validateAndSave(substep, async (data) => {
       await service.update(campaignId, data as UpdateCampaignRequestBody);
     });
 
+    console.log("[PaginationFooter] validateAndSave result:", result);
+
     if (!result.valid) {
+      if (result.error) {
+        toast.error(result.error.message || "Failed to save. Please try again.");
+      }
       setValidationFailed(true);
       return;
     }

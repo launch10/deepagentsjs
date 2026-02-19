@@ -81,12 +81,8 @@ describe.sequential("Ads Flow", () => {
 
     /** Helper: query Rails DB for active callouts for a campaign */
     async function queryDbCallouts(campaignId: number) {
-      const adGroup = await db.select().from(adGroups)
-        .where(and(eq(adGroups.campaignId, campaignId), sql`${adGroups.deletedAt} IS NULL`))
-        .limit(1).execute().then(r => r[0]);
-      if (!adGroup) return [];
       return db.select().from(adCallouts)
-        .where(and(eq(adCallouts.adGroupId, adGroup.id), sql`${adCallouts.deletedAt} IS NULL`))
+        .where(and(eq(adCallouts.campaignId, campaignId), sql`${adCallouts.deletedAt} IS NULL`))
         .execute();
     }
 

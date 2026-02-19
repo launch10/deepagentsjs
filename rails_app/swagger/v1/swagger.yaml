@@ -6233,6 +6233,12 @@ paths:
         description: Filter by website
         schema:
           type: integer
+      - name: uuid
+        in: query
+        required: false
+        description: Filter by upload UUID
+        schema:
+          type: string
       - name: is_logo
         in: query
         required: false
@@ -6315,6 +6321,110 @@ paths:
         '404':
           description: website not found when filtering
   "/api/v1/uploads/{id}":
+    patch:
+      summary: Updates an upload
+      tags:
+      - Uploads
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        description: Upload ID
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: marks as logo and associates with website in one call
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  uuid:
+                    type: string
+                    description: Upload UUID
+                  url:
+                    type: string
+                    description: Full size file URL
+                  thumb_url:
+                    type: string
+                    nullable: true
+                    description: Thumbnail URL (images only)
+                  medium_url:
+                    type: string
+                    nullable: true
+                    description: Medium size URL (images only)
+                  favicon_url:
+                    type: string
+                    nullable: true
+                    description: Favicon URL (32x32 ICO, logos only)
+                  media_type:
+                    type: string
+                    enum:
+                    - image
+                    - video
+                    - document
+                    description: Media type
+                  is_logo:
+                    type: boolean
+                    description: Whether this upload is a logo
+                  filename:
+                    type: string
+                    description: Original filename
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Creation timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Last update timestamp
+                required:
+                - id
+                - uuid
+                - url
+                - media_type
+                - is_logo
+                - filename
+                - created_at
+                - updated_at
+        '404':
+          description: website belongs to different account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                upload:
+                  type: object
+                  properties:
+                    is_logo:
+                      type: boolean
+                      description: Mark as logo
+                    website_id:
+                      type: integer
+                      description: Associate with website
     delete:
       summary: Deletes an upload
       tags:

@@ -6,6 +6,8 @@ import type { Simplify } from "type-fest";
  */
 export type GetUploadsRequest = {
   website_id?: number;
+  uuid?: string;
+  filename?: string;
   is_logo?: boolean;
   order?: "recent";
   limit?: number;
@@ -195,6 +197,77 @@ export class UploadsAPIService extends RailsAPIBase {
     })) as Upload[];
 
     return uploads;
+  }
+
+  /**
+   * Update an upload (set is_logo, associate with website)
+   */
+  async update(
+    uploadId: number,
+    options: { isLogo?: boolean; websiteId?: number }
+  ): Promise<Upload> {
+    const client = await this.getClient();
+    const body: Record<string, unknown> = {};
+    if (options.isLogo !== undefined) body.is_logo = options.isLogo;
+    if (options.websiteId !== undefined) body.website_id = options.websiteId;
+
+    const response = await client.PATCH("/api/v1/uploads/{id}", {
+      params: { path: { id: uploadId } },
+      body: { upload: body } as any,
+    });
+
+    if (response.response.status !== 200) {
+      throw new Error(
+        `Failed to update upload: ${response.response.status} ${response.response.statusText}`
+      );
+    }
+
+    if (response.error) {
+      throw new Error(`Failed to update upload: ${JSON.stringify(response.error)}`);
+    }
+
+    if (!response.data) {
+      throw new Error("Failed to update upload: No data returned");
+    }
+
+    return response.data as Upload;
+  }
+
+  /**
+   * Find an upload by its UUID
+   */
+  async findByUuid(uuid: string): Promise<Upload | null> {
+    const uploads = (await this.get({ uuid })) as Upload[];
+    return uploads[0] || null;
+  }
+
+  /**
+   * Find an upload by its filename (the CarrierWave file column value).
+   * Use this to look up uploads from their URL.
+   */
+  async findByFilename(filename: string): Promise<Upload | null> {
+    const uploads = (await this.get({ filename })) as Upload[];
+    return uploads[0] || null;
+  }
+
+  /**
+   * Extract UUID from an upload URL.
+   * Format: https://dev-uploads.launch10.ai/uploads/<uuid>.ext
+   */
+  static extractUuidFromUrl(url: string): string | null {
+    const match = url.match(
+      /uploads\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i
+    );
+    return match?.[1] || null;
+  }
+
+  /**
+   * Extract filename from an upload URL.
+   * Format: https://dev-uploads.launch10.ai/uploads/<uuid>.ext → "<uuid>.ext"
+   */
+  static extractFilenameFromUrl(url: string): string | null {
+    const match = url.match(/uploads\/([0-9a-f-]+\.[a-z]+)/i);
+    return match?.[1] || null;
   }
 
   /**

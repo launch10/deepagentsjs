@@ -145,13 +145,16 @@ export const saveAnswers = async (
 ): Promise<Partial<BrainstormGraphState>> => {
   // Use Rails API to update brainstorm - this triggers the TracksAgentContext callback
   // which creates brainstorm.finished events when all fields are complete
-  const api = new BrainstormAPIService({ jwt });
-  await api.update(threadId, {
-    idea: memories.idea ?? undefined,
-    audience: memories.audience ?? undefined,
-    solution: memories.solution ?? undefined,
-    social_proof: memories.socialProof ?? undefined,
-  });
+  const updates: Record<string, string> = {};
+  if (memories.idea) updates.idea = memories.idea;
+  if (memories.audience) updates.audience = memories.audience;
+  if (memories.solution) updates.solution = memories.solution;
+  if (memories.socialProof) updates.social_proof = memories.socialProof;
+
+  if (Object.keys(updates).length > 0) {
+    const api = new BrainstormAPIService({ jwt });
+    await api.update(threadId, updates);
+  }
 
   const updatedMemories = await new BrainstormNextStepsService({
     websiteId,

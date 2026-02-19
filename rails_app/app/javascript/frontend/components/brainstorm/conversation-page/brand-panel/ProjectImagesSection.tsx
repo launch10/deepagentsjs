@@ -1,7 +1,9 @@
 import { useState, useRef, useCallback } from "react";
 import { Upload, X, Loader2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { useProjectImages, useUploadProjectImage, useDeleteUpload } from "@api/uploads.hooks";
+import { useQueryClient } from "@tanstack/react-query";
+import { useProjectImages, useUploadProjectImage, useDeleteUpload, uploadsKeys } from "@api/uploads.hooks";
+import { subscribeToAgentIntent } from "@context/AgentIntentContext";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const ACCEPTED_EXTENSIONS = ".png,.jpg,.jpeg,.webp";
@@ -26,6 +28,12 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
   // Mutations
   const uploadMutation = useUploadProjectImage();
   const deleteMutation = useDeleteUpload();
+
+  // Refetch when the agent associates images via chat
+  const queryClient = useQueryClient();
+  subscribeToAgentIntent("images_associated", () => {
+    queryClient.invalidateQueries({ queryKey: uploadsKeys.all });
+  });
 
   // Local state for UI
   const [isDragging, setIsDragging] = useState(false);
