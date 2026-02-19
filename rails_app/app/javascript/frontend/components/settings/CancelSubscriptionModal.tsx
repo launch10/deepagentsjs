@@ -29,34 +29,19 @@ export function CancelSubscriptionModal({
     });
   };
 
-  const handleCancelSubscription = async () => {
+  const handleCancelSubscription = () => {
     setIsLoading(true);
     setError(null);
 
-    try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
-
-      const response = await fetch(`/subscriptions/${subscriptionPrefixId}/cancel`, {
-        method: "DELETE",
-        headers: {
-          "X-CSRF-Token": csrfToken || "",
-          Accept: "application/json",
-        },
-        credentials: "same-origin",
-      });
-
-      if (response.ok || response.redirected) {
-        onOpenChange(false);
-        router.reload();
-      } else {
-        const text = await response.text();
-        setError(text || "Failed to cancel subscription. Please try again.");
-      }
-    } catch (err) {
-      setError("An error occurred. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
+    router.delete(`/subscriptions/${subscriptionPrefixId}/cancel`, {
+      onSuccess: () => onOpenChange(false),
+      onError: (errors) =>
+        setError(
+          Object.values(errors).flat().join(", ") ||
+            "Failed to cancel subscription. Please try again."
+        ),
+      onFinish: () => setIsLoading(false),
+    });
   };
 
   return (

@@ -97,7 +97,7 @@ RSpec.describe FriendsAndFamily::InviteService do
       end
 
       it "subscribes the existing user's account" do
-        result = subject
+        subject
         account = existing_user.owned_account.reload
         expect(account.plan.name).to eq("friends_family")
       end

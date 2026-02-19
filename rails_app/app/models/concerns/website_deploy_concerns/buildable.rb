@@ -141,7 +141,7 @@ module WebsiteDeployConcerns
       end
 
       urls = routes.map do |route|
-        loc = route == "/" ? "#{base_url}/" : "#{base_url}#{route}"
+        loc = (route == "/") ? "#{base_url}/" : "#{base_url}#{route}"
         <<~URL
           <url>
             <loc>#{loc}</loc>

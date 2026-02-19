@@ -6,6 +6,7 @@ import { DeployHistory } from "@components/deploy";
 import { Button } from "@components/ui/button";
 import DevButton from "@components/shared/DevButton";
 import FullResetButton from "@components/deploy/FullResetButton";
+import { csrfFetch } from "@lib/csrfFetch";
 import { useDeployId } from "~/stores/projectStore";
 import { useDeployChatState, useDeployNewDeploy, type DeployProps } from "@hooks/useDeployChat";
 import deployImage from "@assets/deploy.png";
@@ -23,13 +24,8 @@ function RestartDeployButton() {
 
     setRestarting(true);
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
-      await fetch(`/test/deploys/${deployId}/restart`, {
+      await csrfFetch(`/test/deploys/${deployId}/restart`, {
         method: "DELETE",
-        headers: {
-          "X-CSRF-Token": csrfToken || "",
-          Accept: "application/json",
-        },
       });
       window.location.reload();
     } catch (e) {

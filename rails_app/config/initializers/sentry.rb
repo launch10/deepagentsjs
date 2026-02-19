@@ -5,6 +5,10 @@ Sentry.init do |config|
   config.sample_rate = 1.0
   config.traces_sample_rate = 0.0
   config.send_default_pii = false
-  config.release = ENV["GIT_SHA"] || `git rev-parse HEAD`.strip rescue "unknown"
+  config.release = begin
+    ENV["GIT_SHA"] || `git rev-parse HEAD`.strip
+  rescue
+    "unknown"
+  end
   config.environment = Rails.env
 end

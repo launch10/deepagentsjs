@@ -43,8 +43,6 @@ class CampaignDeploy
       # Do not re-raise — Sidekiq considers the job done, no retry
     end
 
-    private
-
     def self.fail_deploy!(deploy, job_run, error_message, backtrace = nil)
       if deploy && deploy.status != "failed"
         deploy.update!(

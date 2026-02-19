@@ -62,10 +62,7 @@ const hasWebsiteFiles = async (state: WebsiteGraphState): Promise<boolean> => {
     .select()
     .from(websiteFiles)
     .where(
-      and(
-        eq(websiteFiles.websiteId!, state.websiteId!),
-        like(websiteFiles.path, "%IndexPage.tsx")
-      )
+      and(eq(websiteFiles.websiteId!, state.websiteId!), like(websiteFiles.path, "%IndexPage.tsx"))
     )
     .limit(1);
   return rows.length > 0;
@@ -77,7 +74,9 @@ function buildExtraContext(state: WebsiteGraphState, isCreate: boolean): BaseMes
 
   if (isCreate) {
     extraContext.push(
-      createContextMessage("Create a landing page for this business", { timestamp: new Date().toISOString() })
+      createContextMessage("Create a landing page for this business", {
+        timestamp: new Date().toISOString(),
+      })
     );
   }
 
@@ -88,7 +87,9 @@ function buildExtraContext(state: WebsiteGraphState, isCreate: boolean): BaseMes
         .map((e) => `- ${e.message}${e.file ? ` (${e.file})` : ""}`)
         .join("\n");
       extraContext.push(
-        createContextMessage(`[Build Errors — fix these]\n${errorSummary}`, { timestamp: new Date().toISOString() })
+        createContextMessage(`[Build Errors — fix these]\n${errorSummary}`, {
+          timestamp: new Date().toISOString(),
+        })
       );
     }
   }
@@ -110,12 +111,15 @@ export const websiteBuilderNode = NodeMiddleware.use(
     const cacheEnabled = isCacheModeEnabled(state);
     const isCreate = await isCreateFlow(state);
 
-    getLogger().info("[websiteBuilder] isCreateFlow decision", {
-      isCreate,
-      websiteId: state.websiteId,
-      messageCount: state.messages?.length ?? 0,
-      hasAiMessage: state.messages?.some((m) => AIMessage.isInstance(m)) ?? false,
-    });
+    getLogger().info(
+      {
+        isCreate,
+        websiteId: state.websiteId,
+        messageCount: state.messages?.length ?? 0,
+        hasAiMessage: state.messages?.some((m) => AIMessage.isInstance(m)) ?? false,
+      },
+      "[websiteBuilder] isCreateFlow decision"
+    );
 
     if (cacheEnabled) {
       getLogger().info("Cache mode enabled, returning cached files");
@@ -162,7 +166,11 @@ export const websiteBuilderNode = NodeMiddleware.use(
         .where(eq(codeFiles.websiteId, state.websiteId!));
 
       const files = generatedFiles.reduce((acc, file) => {
-        acc[file.path!] = { content: file.content!, created_at: file.createdAt!, modified_at: file.updatedAt! };
+        acc[file.path!] = {
+          content: file.content!,
+          created_at: file.createdAt!,
+          modified_at: file.updatedAt!,
+        };
         return acc;
       }, {} as Website.FileMap);
 

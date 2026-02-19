@@ -21,7 +21,7 @@ module GoogleAds
       # Auth / Customer
       [:authorization_error, :USER_PERMISSION_DENIED],
       [:customer_error, :CUSTOMER_NOT_FOUND],
-      [:customer_error, :CUSTOMER_NOT_ENABLED],
+      [:customer_error, :CUSTOMER_NOT_ENABLED]
     ].freeze
 
     # Returns true if the given error contains at least one terminal error code.

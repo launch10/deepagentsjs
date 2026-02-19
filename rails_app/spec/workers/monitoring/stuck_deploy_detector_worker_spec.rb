@@ -108,6 +108,37 @@ RSpec.describe Monitoring::StuckDeployDetectorWorker, type: :worker do
       end
     end
 
+    context "with orphaned user-blocking job runs" do
+      it "fails job runs that belong to the stuck deploy" do
+        deploy = create(:deploy, :running, project: project, created_at: 20.minutes.ago)
+        oauth_job = create(:job_run, :running, deploy: deploy, account: account,
+          job_class: "GoogleOAuthConnect", created_at: 20.minutes.ago)
+        invite_job = create(:job_run, :pending, deploy: deploy, account: account,
+          job_class: "GoogleAdsInvite", created_at: 20.minutes.ago)
+
+        allow(Sentry).to receive(:capture_message).and_return(double(event_id: "event-1"))
+
+        described_class.new.perform
+
+        expect(oauth_job.reload.status).to eq("failed")
+        expect(oauth_job.error_message).to include("stuck")
+        expect(invite_job.reload.status).to eq("failed")
+        expect(invite_job.error_message).to include("stuck")
+      end
+
+      it "does not fail job runs that already completed" do
+        deploy = create(:deploy, :running, project: project, created_at: 20.minutes.ago)
+        completed_job = create(:job_run, :completed, deploy: deploy, account: account,
+          job_class: "GoogleOAuthConnect", created_at: 20.minutes.ago)
+
+        allow(Sentry).to receive(:capture_message).and_return(double(event_id: "event-1"))
+
+        described_class.new.perform
+
+        expect(completed_job.reload.status).to eq("completed")
+      end
+    end
+
     context "when support ticket creation fails" do
       it "logs error but does not raise" do
         deploy = create(:deploy, :running, project: project, created_at: 20.minutes.ago)

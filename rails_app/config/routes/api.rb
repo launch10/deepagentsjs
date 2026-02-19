@@ -75,6 +75,9 @@ namespace :api, defaults: {format: :json} do
     post "llm_usage/notify", to: "llm_usage#notify"
     post "app_events", to: "app_events#create"
     get "credits/check", to: "credits#check"
+    resources :credit_packs, only: [], param: :credit_pack_id do
+      post :checkout, to: "credit_pack_checkouts#create", on: :member
+    end
     resources :deploys, only: [:index, :create, :show, :update] do
       post :touch, on: :member
       post :rollback, on: :member

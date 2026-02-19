@@ -382,8 +382,7 @@ RSpec.describe CampaignDeploy, type: :model do
       it 'includes run result errors when step.run returns SyncResult errors' do
         error_result = double("ErrorResult",
           error?: true,
-          to_h: { resource_type: :ad_group_ad, action: :error, error: "policy_finding_error: POLICY_FINDING" }
-        )
+          to_h: { resource_type: :ad_group_ad, action: :error, error: "policy_finding_error: POLICY_FINDING" })
         allow(mock_step).to receive(:run).and_return([error_result])
 
         expect {

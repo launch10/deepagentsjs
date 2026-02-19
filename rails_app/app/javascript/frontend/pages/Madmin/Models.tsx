@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@components/ui/select";
 import { cn } from "@lib/utils";
+import { csrfFetch } from "@lib/csrfFetch";
 import { Reorder } from "framer-motion";
 import { useDebouncedCallback } from "use-debounce";
 import { AdminLayout } from "../../layouts/admin-layout";
@@ -99,13 +100,14 @@ function DraggableModelBadge({
     >
       <GripVertical className="h-3 w-3 text-muted-foreground" />
       <span className="text-xs text-muted-foreground">{index + 1}.</span>
-      <span
-        className={cn("text-sm font-mono", isDisabled && "line-through text-muted-foreground")}
-      >
+      <span className={cn("text-sm font-mono", isDisabled && "line-through text-muted-foreground")}>
         {model}
       </span>
       {isDisabled && (
-        <Badge variant="outline" className="text-[10px] px-1 py-0 ml-1 text-amber-600 border-amber-600">
+        <Badge
+          variant="outline"
+          className="text-[10px] px-1 py-0 ml-1 text-amber-600 border-amber-600"
+        >
           off
         </Badge>
       )}
@@ -154,13 +156,9 @@ function ModelsIndex({
       setConfigs((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
 
       try {
-        const response = await fetch(`/admin/models/configs/${id}`, {
+        const response = await csrfFetch(`/admin/models/configs/${id}`, {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token":
-              document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || "",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model_config: { [camelToSnake(field)]: value },
           }),
@@ -193,13 +191,9 @@ function ModelsIndex({
       setPreferences((prev) => prev.map((p) => (p.id === id ? { ...p, modelKeys } : p)));
 
       try {
-        const response = await fetch(`/admin/models/preferences/${id}`, {
+        const response = await csrfFetch(`/admin/models/preferences/${id}`, {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "X-CSRF-Token":
-              document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || "",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             model_preference: { model_keys: modelKeys },
           }),
@@ -264,13 +258,9 @@ function ModelsIndex({
     setCreateError(null);
 
     try {
-      const response = await fetch("/admin/models/configs", {
+      const response = await csrfFetch("/admin/models/configs", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token":
-            document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || "",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model_config: {
             model_key: newModelKey.trim().toLowerCase(),
@@ -285,7 +275,9 @@ function ModelsIndex({
         setCreateError(data.errors?.join(", ") || "Failed to create model");
       } else {
         const created = await response.json();
-        setConfigs((prev) => [...prev, created].sort((a, b) => a.modelKey.localeCompare(b.modelKey)));
+        setConfigs((prev) =>
+          [...prev, created].sort((a, b) => a.modelKey.localeCompare(b.modelKey))
+        );
         setNewModelKey("");
         setNewModelCard("");
       }
@@ -308,12 +300,8 @@ function ModelsIndex({
     setSavingConfigs((prev) => ({ ...prev, [id]: true }));
 
     try {
-      const response = await fetch(`/admin/models/configs/${id}`, {
+      const response = await csrfFetch(`/admin/models/configs/${id}`, {
         method: "DELETE",
-        headers: {
-          "X-CSRF-Token":
-            document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || "",
-        },
       });
 
       if (response.ok) {
@@ -416,7 +404,12 @@ function ModelsIndex({
                   )}
                 >
                   <td className="py-3 px-4">
-                    <div className={cn("font-medium capitalize", !config.enabled && "text-muted-foreground")}>
+                    <div
+                      className={cn(
+                        "font-medium capitalize",
+                        !config.enabled && "text-muted-foreground"
+                      )}
+                    >
                       {config.modelKey}
                     </div>
                     {configErrors[config.id]?.length > 0 && (

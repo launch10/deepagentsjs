@@ -163,6 +163,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/credit_packs/{credit_pack_id}/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates a Stripe checkout session for a credit pack */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    Authorization: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Credit pack ID */
+                    credit_pack_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns checkout session client secret */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Stripe checkout session client secret */
+                            client_secret: string;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description forbidden - no active subscription */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description credit pack not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description credit pack has no Stripe price */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/credits/check": {
         parameters: {
             query?: never;

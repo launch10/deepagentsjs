@@ -525,7 +525,7 @@ RSpec.describe "Uploads API", type: :request do
         let(:body) { { upload: { website_id: website1_owned.id } } }
 
         run_test! do |response|
-          data = JSON.parse(response.body)
+          JSON.parse(response.body)
           expect(existing_upload.reload.websites).to include(website1_owned)
           expect(WebsiteUpload.where(upload: existing_upload, website: website1_owned).count).to eq(1)
         end

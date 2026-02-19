@@ -20,6 +20,12 @@ module Monitoring
           needs_support: false
         )
 
+        # Fail orphaned job runs (including user-blocking ones like OAuth/Invite/Payment
+        # that the StuckJobDetectorWorker intentionally excludes)
+        deploy.job_runs.where(status: %w[pending running]).find_each do |jr|
+          jr.fail!(STUCK_ERROR)
+        end
+
         Deploys::AutoSupportTicketService.new(deploy, sentry_event_id: sentry_event_id).call
       rescue => e
         Sentry.capture_message("Failed to handle stuck deploy", extra: {

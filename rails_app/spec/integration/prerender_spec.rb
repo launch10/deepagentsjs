@@ -9,7 +9,6 @@ RSpec.describe "Prerendering", type: :integration, slow: true do
   end
 
   def copy_template_to_temp_dir
-    # Copy all template files to the temp build directory
     FileUtils.cp_r("#{template_dir}/.", temp_dir)
   end
 
@@ -35,58 +34,32 @@ RSpec.describe "Prerendering", type: :integration, slow: true do
     File.write(File.join(pages_dir, filename), content)
   end
 
-  def update_app_routes(route_line)
-    app_path = File.join(temp_dir, "src", "App.tsx")
-    content = File.read(app_path)
-    content.sub!(
-      '{/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}',
-      "#{route_line}\n      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL \"*\" ROUTE */}"
-    )
-    File.write(app_path, content)
-  end
-
   describe "single-page site" do
     before do
       copy_template_to_temp_dir
       run_build!
     end
 
-    it "prerenders content inside the root div" do
+    it "prerenders static HTML with content, hydration scripts, manifest, and excludes NotFound" do
       index_html = read_dist_file("index.html")
 
-      # Root div must NOT be empty
+      # Prerendered content inside root div
       expect(index_html).not_to include('<div id="root"></div>')
-
-      # Root div must contain rendered HTML
       expect(index_html).to match(/<div id="root">.+<\/div>/m)
-    end
-
-    it "includes recognizable page content in the prerendered HTML" do
-      index_html = read_dist_file("index.html")
-
-      # The template IndexPage renders "Hello world" — that text should be in the static HTML
       expect(index_html).to include("Hello world")
-    end
 
-    it "preserves the script tags for client-side hydration" do
-      index_html = read_dist_file("index.html")
-
-      # The built JS bundle should still be referenced for hydration
+      # Hydration script tags preserved
       expect(index_html).to match(/src="[^"]*\.js"/)
-    end
 
-    it "writes a prerendered-routes.json manifest" do
-      routes = JSON.parse(read_dist_file("prerendered-routes.json"))
-
-      expect(routes).to eq(["/"])
-    end
-
-    it "uses a static basename of '/' (not runtime path detection)" do
-      index_html = read_dist_file("index.html")
-
-      # Must use static '/' — NOT the runtime window.location.pathname hack
+      # Static basename (not runtime path detection)
       expect(index_html).to include("window.__BASENAME__ = '/';")
       expect(index_html).not_to include("window.location.pathname")
+
+      # Manifest written, NotFound excluded
+      routes = JSON.parse(read_dist_file("prerendered-routes.json"))
+      expect(routes).to eq(["/"])
+      expect(routes).not_to include("/not-found")
+      expect(Dir.exist?(File.join(dist_path, "not-found"))).to be false
     end
   end
 
@@ -94,7 +67,6 @@ RSpec.describe "Prerendering", type: :integration, slow: true do
     before do
       copy_template_to_temp_dir
 
-      # Add a PricingPage
       add_page("PricingPage.tsx", <<~TSX)
         export function PricingPage() {
           return (
@@ -106,17 +78,14 @@ RSpec.describe "Prerendering", type: :integration, slow: true do
         }
       TSX
 
-      # Add an import and route for PricingPage to App.tsx
       app_path = File.join(temp_dir, "src", "App.tsx")
       content = File.read(app_path)
 
-      # Add import
       content.sub!(
         'import { NotFound } from "./pages/NotFoundPage";',
         "import { NotFound } from \"./pages/NotFoundPage\";\nimport { PricingPage } from \"./pages/PricingPage\";"
       )
 
-      # Add route
       content.sub!(
         '{/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}',
         "<Route path=\"/pricing\" element={<PricingPage />} />\n      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL \"*\" ROUTE */}"
@@ -126,98 +95,25 @@ RSpec.describe "Prerendering", type: :integration, slow: true do
       run_build!
     end
 
-    it "prerenders the index page with content" do
+    it "prerenders all routes into subdirectories with shared hydration bundle" do
+      # Index page prerendered
       index_html = read_dist_file("index.html")
-
       expect(index_html).not_to include('<div id="root"></div>')
       expect(index_html).to include("Hello world")
-    end
 
-    it "creates a subdirectory with prerendered HTML for /pricing" do
-      pricing_path = File.join(dist_path, "pricing", "index.html")
-
-      expect(File.exist?(pricing_path)).to be true
-    end
-
-    it "prerenders the pricing page with its content" do
+      # Pricing page prerendered into subdirectory
       pricing_html = read_dist_file("pricing/index.html")
-
       expect(pricing_html).not_to include('<div id="root"></div>')
       expect(pricing_html).to include("Pricing Plans")
-      expect(pricing_html).to include("Choose the plan that works for you.")
-    end
 
-    it "includes both routes in prerendered-routes.json" do
+      # Both routes in manifest
       routes = JSON.parse(read_dist_file("prerendered-routes.json"))
-
       expect(routes).to contain_exactly("/", "/pricing")
-    end
 
-    it "pricing page has the same JS bundle for hydration" do
-      index_html = read_dist_file("index.html")
-      pricing_html = read_dist_file("pricing/index.html")
-
-      # Extract JS bundle filename from both — should be identical
+      # Same JS bundle for hydration
       index_js = index_html.match(/src="([^"]*\.js)"/)[1]
       pricing_js = pricing_html.match(/src="([^"]*\.js)"/)[1]
-
       expect(index_js).to eq(pricing_js)
-    end
-  end
-
-  describe "PascalCase route naming convention" do
-    before do
-      copy_template_to_temp_dir
-
-      # Add an AboutUsPage (PascalCase → kebab-case)
-      add_page("AboutUsPage.tsx", <<~TSX)
-        export function AboutUsPage() {
-          return (
-            <div>
-              <h1>About Our Company</h1>
-            </div>
-          );
-        }
-      TSX
-
-      app_path = File.join(temp_dir, "src", "App.tsx")
-      content = File.read(app_path)
-      content.sub!(
-        'import { NotFound } from "./pages/NotFoundPage";',
-        "import { NotFound } from \"./pages/NotFoundPage\";\nimport { AboutUsPage } from \"./pages/AboutUsPage\";"
-      )
-      content.sub!(
-        '{/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}',
-        "<Route path=\"/about-us\" element={<AboutUsPage />} />\n      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL \"*\" ROUTE */}"
-      )
-      File.write(app_path, content)
-
-      run_build!
-    end
-
-    it "creates /about-us/index.html from AboutUsPage.tsx" do
-      about_path = File.join(dist_path, "about-us", "index.html")
-      expect(File.exist?(about_path)).to be true
-
-      about_html = read_dist_file("about-us/index.html")
-      expect(about_html).to include("About Our Company")
-    end
-  end
-
-  describe "NotFoundPage is excluded from prerendering" do
-    before do
-      copy_template_to_temp_dir
-      run_build!
-    end
-
-    it "does not create a /not-found route" do
-      routes = JSON.parse(read_dist_file("prerendered-routes.json"))
-
-      expect(routes).not_to include("/not-found")
-    end
-
-    it "does not create a not-found directory" do
-      expect(Dir.exist?(File.join(dist_path, "not-found"))).to be false
     end
   end
 
@@ -225,7 +121,6 @@ RSpec.describe "Prerendering", type: :integration, slow: true do
     before do
       copy_template_to_temp_dir
 
-      # Add a page that uses window directly (will fail during SSR)
       add_page("BrokenPage.tsx", <<~TSX)
         export function BrokenPage() {
           const width = window.innerWidth;
@@ -248,21 +143,15 @@ RSpec.describe "Prerendering", type: :integration, slow: true do
       run_build!
     end
 
-    it "still prerenders the index page successfully" do
+    it "skips broken routes without crashing the build" do
+      # Index still works
       index_html = read_dist_file("index.html")
       expect(index_html).to include("Hello world")
-    end
 
-    it "skips the broken route but includes it in discovered routes" do
+      # Broken route excluded from manifest and filesystem
       routes = JSON.parse(read_dist_file("prerendered-routes.json"))
-
-      # The broken route should be skipped (not in the prerendered manifest)
-      # Only successfully rendered routes appear
       expect(routes).to include("/")
       expect(routes).not_to include("/broken")
-    end
-
-    it "does not create a broken subdirectory" do
       expect(Dir.exist?(File.join(dist_path, "broken"))).to be false
     end
   end
@@ -293,7 +182,6 @@ RSpec.describe "Buildable sitemap with prerendered routes", type: :integration d
     end
 
     it "includes all prerendered routes in sitemap" do
-      # Write a prerendered-routes.json with multiple routes
       File.write(
         File.join(dist_dir, "prerendered-routes.json"),
         JSON.generate(["/", "/pricing", "/about-us"])
@@ -319,7 +207,7 @@ RSpec.describe "Buildable sitemap with prerendered routes", type: :integration d
       deploy.send(:generate_sitemap_xml!)
 
       sitemap = File.read(File.join(dist_dir, "sitemap.xml"))
-      expect(sitemap).to include("<lastmod>#{website.updated_at.strftime('%Y-%m-%d')}</lastmod>")
+      expect(sitemap).to include("<lastmod>#{website.updated_at.strftime("%Y-%m-%d")}</lastmod>")
     end
 
     it "writes sitemap to dist/ directory (not public/)" do

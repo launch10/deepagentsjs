@@ -6,6 +6,7 @@ import { PaginationFooter } from "@components/shared/pagination-footer";
 import DevButton from "@components/shared/DevButton";
 import { useEffect, useEffectEvent, useRef, useState, useCallback } from "react";
 import { usePage } from "@inertiajs/react";
+import { csrfFetch } from "@lib/csrfFetch";
 import {
   useWebsiteChat,
   useWebsiteChatState,
@@ -70,15 +71,9 @@ function RestartChatButton() {
 
     setRestarting(true);
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
-      await fetch(`/test/websites/${website.id}/restart_chat`, {
+      await csrfFetch(`/test/websites/${website.id}/restart_chat`, {
         method: "DELETE",
-        headers: {
-          "X-CSRF-Token": csrfToken || "",
-          Accept: "application/json",
-        },
       });
-      // Full page reload to reset all chat state
       window.location.reload();
     } catch (e) {
       console.error("Failed to restart chat:", e);

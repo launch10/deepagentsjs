@@ -25,7 +25,11 @@ module UtmTracking
     referrer = params[:referrer].presence || request.referer.presence
     if referrer.present?
       attribution["referrer"] = referrer
-      attribution["referring_domain"] = params[:referring_domain].presence || (URI.parse(referrer).host rescue nil)
+      attribution["referring_domain"] = params[:referring_domain].presence || begin
+        URI.parse(referrer).host
+      rescue
+        nil
+      end
     end
 
     return if attribution.except("referrer", "referring_domain").empty? # don't set cookie for just a referrer with no UTMs

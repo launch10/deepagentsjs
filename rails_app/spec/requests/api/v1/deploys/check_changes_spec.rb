@@ -30,10 +30,23 @@ RSpec.describe "Deploys check_changes API", type: :request do
         expect(json_response["website"]).to be true
       end
 
-      it "returns website: false when files have not changed since last deploy" do
+      it "returns website: true when no previous website deploy" do
         create(:website_file, website: website, path: "/index.html", content: "hello")
         shasum = website.generate_shasum
         create(:website_deploy, website: website, status: "completed", shasum: shasum)
+
+        post "/api/v1/deploys/check_changes",
+          params: { project_id: project.id, instructions: { website: true } },
+          headers: auth_headers
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response["website"]).to be true
+      end
+
+      it "returns website: false when files have not changed since last deploy" do
+        create(:website_file, website: website, path: "/index.html", content: "hello")
+        shasum = website.generate_shasum
+        create(:website_deploy, website: website, status: "completed", shasum: shasum, version_path: "#{website.id}/#{Time.now.strftime("%Y%m%d%H%M%S")}")
 
         post "/api/v1/deploys/check_changes",
           params: { project_id: project.id, instructions: { website: true } },

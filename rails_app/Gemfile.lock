@@ -366,12 +366,11 @@ GEM
     hashdiff (1.2.0)
     hashids (1.0.6)
     hashie (5.0.0)
-    historiographer (4.4.5)
+    historiographer (4.5.0)
       activerecord (>= 6)
       activerecord-import
       activesupport
       rails (>= 6)
-      rollbar
     hotwire_combobox (0.4.0)
       platform_agent (>= 1.0.1)
       rails (>= 7.0.7.2)
@@ -672,7 +671,6 @@ GEM
       railties (>= 5.2)
     retriable (3.1.2)
     rexml (3.4.1)
-    rollbar (3.6.2)
     rotp (6.3.0)
     rqrcode (2.2.0)
       chunky_png (~> 1.0)
@@ -960,7 +958,7 @@ DEPENDENCIES
   guard
   guard-rails
   guard-rspec
-  historiographer (~> 4.4.5)
+  historiographer (~> 4.5.0)
   hotwire_combobox (~> 0.3)
   image_processing (~> 1.12)
   importmap-rails

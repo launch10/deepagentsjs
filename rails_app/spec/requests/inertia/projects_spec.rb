@@ -325,7 +325,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
 
     it 'does not leak website deploy thread_id to campaign deploy page' do
       website_deploy = create(:deploy, :website_only, project: project, status: 'completed')
-      website_thread_id = website_deploy.chat.thread_id
+      website_deploy.chat.thread_id
 
       workflow.update!(step: 'deploy', substep: nil)
       get deploy_project_path(project.uuid)

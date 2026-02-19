@@ -882,7 +882,7 @@ RSpec.describe WebsiteDeploy, type: :model do
           content = File.read(sitemap_path)
           expect(content).to include('<?xml version="1.0" encoding="UTF-8"?>')
           expect(content).to include("<loc>https://#{domain.domain}/</loc>")
-          expect(content).to include("<lastmod>#{website_with_files.updated_at.strftime('%Y-%m-%d')}</lastmod>")
+          expect(content).to include("<lastmod>#{website_with_files.updated_at.strftime("%Y-%m-%d")}</lastmod>")
         end
       end
 

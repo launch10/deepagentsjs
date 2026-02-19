@@ -32,12 +32,20 @@ async function runDeployCampaign(
 
   // 2. Task exists with result? Mark task completed (not graph-level — taskExecutor handles that)
   if (task?.status === "running" && task.result) {
-    return withPhases(state, [{ ...task, status: "completed" } as Task.Task], [TASK_NAME]);
+    return withPhases(
+      state,
+      [{ ...task, status: "completed" } as Task.Task],
+      [TASK_NAME as Deploy.PhaseName]
+    );
   }
 
   // 3. Task exists with error? Mark task failed (not graph-level — taskExecutor handles that)
   if (task?.status === "running" && task.error !== undefined) {
-    return withPhases(state, [{ ...task, status: "failed" } as Task.Task], [TASK_NAME]);
+    return withPhases(
+      state,
+      [{ ...task, status: "failed" } as Task.Task],
+      [TASK_NAME as Deploy.PhaseName]
+    );
   }
 
   // 4. Task already pending/running? Just waiting, no-op

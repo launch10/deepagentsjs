@@ -13,9 +13,9 @@ Rails.application.config.to_prepare do
 
     # Set to true to enable syncing to production Atlas from development/test
     # Usage: ALLOW_ATLAS_SYNC=true bin/rails console
-    config.allow_sync = (ENV.fetch("ALLOW_ATLAS_SYNC") do
+    config.allow_sync = ENV.fetch("ALLOW_ATLAS_SYNC") do
       Rails.application.credentials.dig(:atlas, :allow_sync)&.to_s || "false"
-    end) == "true"
+    end == "true"
   end
 
   if Rails.env.development?

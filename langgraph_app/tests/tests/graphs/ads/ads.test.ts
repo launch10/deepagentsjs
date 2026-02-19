@@ -11,7 +11,19 @@ import { type AdsGraphState } from "@state";
 import { adsGraph as uncompiledGraph } from "@graphs";
 import { graphParams } from "@core";
 import { DatabaseSnapshotter } from "@services";
-import { db, projects as projectsTable, campaigns, adGroups, ads as adsTable, adHeadlines, adDescriptions, adCallouts, eq, and, sql } from "@db";
+import {
+  db,
+  projects as projectsTable,
+  campaigns,
+  adGroups,
+  ads as adsTable,
+  adHeadlines,
+  adDescriptions,
+  adCallouts,
+  eq,
+  and,
+  sql,
+} from "@db";
 import { type UUIDType, Ads, type ThreadIDType, switchPage, refreshAssets } from "@types";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { v7 as uuid } from "uuid";
@@ -51,37 +63,59 @@ describe.sequential("Ads Flow", () => {
   describe("Chat flow", () => {
     /** Helper: query Rails DB for active (non-soft-deleted) headlines for a campaign */
     async function queryDbHeadlines(campaignId: number) {
-      const adGroup = await db.select().from(adGroups)
+      const adGroup = await db
+        .select()
+        .from(adGroups)
         .where(and(eq(adGroups.campaignId, campaignId), sql`${adGroups.deletedAt} IS NULL`))
-        .limit(1).execute().then(r => r[0]);
+        .limit(1)
+        .execute()
+        .then((r) => r[0]);
       if (!adGroup) return [];
-      const ad = await db.select().from(adsTable)
+      const ad = await db
+        .select()
+        .from(adsTable)
         .where(and(eq(adsTable.adGroupId, adGroup.id), sql`${adsTable.deletedAt} IS NULL`))
-        .limit(1).execute().then(r => r[0]);
+        .limit(1)
+        .execute()
+        .then((r) => r[0]);
       if (!ad) return [];
-      return db.select().from(adHeadlines)
+      return db
+        .select()
+        .from(adHeadlines)
         .where(and(eq(adHeadlines.adId, ad.id), sql`${adHeadlines.deletedAt} IS NULL`))
         .execute();
     }
 
     /** Helper: query Rails DB for active descriptions for a campaign */
     async function queryDbDescriptions(campaignId: number) {
-      const adGroup = await db.select().from(adGroups)
+      const adGroup = await db
+        .select()
+        .from(adGroups)
         .where(and(eq(adGroups.campaignId, campaignId), sql`${adGroups.deletedAt} IS NULL`))
-        .limit(1).execute().then(r => r[0]);
+        .limit(1)
+        .execute()
+        .then((r) => r[0]);
       if (!adGroup) return [];
-      const ad = await db.select().from(adsTable)
+      const ad = await db
+        .select()
+        .from(adsTable)
         .where(and(eq(adsTable.adGroupId, adGroup.id), sql`${adsTable.deletedAt} IS NULL`))
-        .limit(1).execute().then(r => r[0]);
+        .limit(1)
+        .execute()
+        .then((r) => r[0]);
       if (!ad) return [];
-      return db.select().from(adDescriptions)
+      return db
+        .select()
+        .from(adDescriptions)
         .where(and(eq(adDescriptions.adId, ad.id), sql`${adDescriptions.deletedAt} IS NULL`))
         .execute();
     }
 
     /** Helper: query Rails DB for active callouts for a campaign */
     async function queryDbCallouts(campaignId: number) {
-      return db.select().from(adCallouts)
+      return db
+        .select()
+        .from(adCallouts)
         .where(and(eq(adCallouts.campaignId, campaignId), sql`${adCallouts.deletedAt} IS NULL`))
         .execute();
     }
@@ -189,7 +223,9 @@ describe.sequential("Ads Flow", () => {
         const message = getTextData(lastMessage);
 
         expect(result.state.headlines).toBeDefined();
-        expect(message).toMatch(/start building|drafted a few headlines|headlines and descriptions|compelling headlines/i);
+        expect(message).toMatch(
+          /start building|drafted a few headlines|headlines and descriptions|compelling headlines/i
+        );
         expect(message).not.toContain("```json");
 
         const headlines = result.state.headlines || [];
@@ -327,10 +363,7 @@ describe.sequential("Ads Flow", () => {
           .withGraph(adsGraph)
           .withState({
             ...result.state,
-            intent: refreshAssets(
-              "content",
-              Ads.refreshAllCommand("content")
-            ),
+            intent: refreshAssets("content", Ads.refreshAllCommand("content")),
           })
           .execute();
 
@@ -476,21 +509,21 @@ describe.sequential("Ads Flow", () => {
         expect(dbHeadlines.length).toEqual(6);
 
         // Verify the headline texts match what the graph generated (non-rejected)
-        const graphHeadlineTexts = result.state.headlines!
-          .filter(h => !h.rejected)
-          .map(h => h.text)
+        const graphHeadlineTexts = result.state
+          .headlines!.filter((h) => !h.rejected)
+          .map((h) => h.text)
           .sort();
-        const dbHeadlineTexts = dbHeadlines.map(h => h.text).sort();
+        const dbHeadlineTexts = dbHeadlines.map((h) => h.text).sort();
         expect(dbHeadlineTexts).toEqual(graphHeadlineTexts);
 
         const dbDescriptions = await queryDbDescriptions(campaignId!);
         expect(dbDescriptions.length).toEqual(4);
 
-        const graphDescTexts = result.state.descriptions!
-          .filter(d => !d.rejected)
-          .map(d => d.text)
+        const graphDescTexts = result.state
+          .descriptions!.filter((d) => !d.rejected)
+          .map((d) => d.text)
           .sort();
-        const dbDescTexts = dbDescriptions.map(d => d.text).sort();
+        const dbDescTexts = dbDescriptions.map((d) => d.text).sort();
         expect(dbDescTexts).toEqual(graphDescTexts);
       });
 
@@ -540,39 +573,41 @@ describe.sequential("Ads Flow", () => {
         const updatedHeadlines = retriggeredResult.state.headlines || [];
 
         // User's locked headlines are preserved with exact text
-        const lockedHeadlines = updatedHeadlines.filter(h => h.locked);
+        const lockedHeadlines = updatedHeadlines.filter((h) => h.locked);
         expect(lockedHeadlines.length).toBeGreaterThanOrEqual(2);
-        expect(lockedHeadlines.map(h => h.text)).toContain("My Custom Headline");
-        expect(lockedHeadlines.map(h => h.text)).toContain("Another User Edit");
+        expect(lockedHeadlines.map((h) => h.text)).toContain("My Custom Headline");
+        expect(lockedHeadlines.map((h) => h.text)).toContain("Another User Edit");
 
         // User's rejected headline stays rejected
-        const rejectedHeadline = updatedHeadlines.find(h => h.id === headlines[2]!.id);
+        const rejectedHeadline = updatedHeadlines.find((h) => h.id === headlines[2]!.id);
         if (rejectedHeadline) {
           expect(rejectedHeadline.rejected).toBe(true);
         }
 
         // New headlines were generated (not locked, not rejected)
-        const newHeadlines = updatedHeadlines.filter(h => !h.locked && !h.rejected);
+        const newHeadlines = updatedHeadlines.filter((h) => !h.locked && !h.rejected);
         expect(newHeadlines.length).toBeGreaterThan(0);
 
         // User's locked description is preserved
         const updatedDescriptions = retriggeredResult.state.descriptions || [];
-        const lockedDescriptions = updatedDescriptions.filter(d => d.locked);
-        expect(lockedDescriptions.map(d => d.text)).toContain("User-written description for their product");
+        const lockedDescriptions = updatedDescriptions.filter((d) => d.locked);
+        expect(lockedDescriptions.map((d) => d.text)).toContain(
+          "User-written description for their product"
+        );
 
         // Verify Rails DB has the final state after retrigger
         const dbHeadlines = await queryDbHeadlines(campaignId);
-        const activeGraphHeadlines = updatedHeadlines.filter(h => !h.rejected);
+        const activeGraphHeadlines = updatedHeadlines.filter((h) => !h.rejected);
         expect(dbHeadlines.length).toEqual(activeGraphHeadlines.length);
 
         // DB should contain the user's custom headlines
-        const dbTexts = dbHeadlines.map(h => h.text);
+        const dbTexts = dbHeadlines.map((h) => h.text);
         expect(dbTexts).toContain("My Custom Headline");
         expect(dbTexts).toContain("Another User Edit");
 
         // DB should also contain the user's custom description
         const dbDescriptions = await queryDbDescriptions(campaignId);
-        const dbDescTexts = dbDescriptions.map(d => d.text);
+        const dbDescTexts = dbDescriptions.map((d) => d.text);
         expect(dbDescTexts).toContain("User-written description for their product");
       });
 
@@ -593,7 +628,7 @@ describe.sequential("Ads Flow", () => {
         // Step 2: User adds a custom headline and locks existing ones
         const headlines = [...(result.state.headlines as Ads.Asset[])];
         const userHeadline: Ads.Asset = {
-          id: uuid(),
+          id: uuid() as UUIDType,
           text: "User-Created Headline",
           locked: true,
           rejected: false,
@@ -604,11 +639,11 @@ describe.sequential("Ads Flow", () => {
         headlines.push(userHeadline);
 
         // Mark remaining unlocked as rejected (refresh pattern)
-        const refreshHeadlines = headlines.map(h => ({
+        const refreshHeadlines = headlines.map((h) => ({
           ...h,
           rejected: h.locked ? false : true,
         }));
-        const numLocked = refreshHeadlines.filter(h => h.locked).length;
+        const numLocked = refreshHeadlines.filter((h) => h.locked).length;
 
         // Step 3: User triggers refresh with their modifications
         const refreshedResult = await testGraph<AdsGraphState>()
@@ -616,25 +651,23 @@ describe.sequential("Ads Flow", () => {
           .withState({
             ...result.state,
             headlines: refreshHeadlines,
-            intent: refreshAssets("content", [
-              { asset: "headlines", nVariants: 6 - numLocked },
-            ]),
+            intent: refreshAssets("content", [{ asset: "headlines", nVariants: 6 - numLocked }]),
           })
           .execute();
 
         const updatedHeadlines = refreshedResult.state.headlines || [];
 
         // All 3 locked headlines are preserved (including user-created)
-        const lockedInResult = updatedHeadlines.filter(h => h.locked);
+        const lockedInResult = updatedHeadlines.filter((h) => h.locked);
         expect(lockedInResult.length).toEqual(3);
-        expect(lockedInResult.map(h => h.text)).toContain("User-Created Headline");
+        expect(lockedInResult.map((h) => h.text)).toContain("User-Created Headline");
 
         // New headlines were generated to fill the remaining slots
-        const newActiveHeadlines = updatedHeadlines.filter(h => !h.locked && !h.rejected);
+        const newActiveHeadlines = updatedHeadlines.filter((h) => !h.locked && !h.rejected);
         expect(newActiveHeadlines.length).toEqual(6 - numLocked);
 
         // Total active (non-rejected) headlines = locked + new
-        const activeHeadlines = updatedHeadlines.filter(h => !h.rejected);
+        const activeHeadlines = updatedHeadlines.filter((h) => !h.rejected);
         expect(activeHeadlines.length).toEqual(6);
 
         // Verify Rails DB reflects the final state
@@ -642,7 +675,7 @@ describe.sequential("Ads Flow", () => {
         expect(dbHeadlines.length).toEqual(6); // Only active headlines saved
 
         // DB should contain user-created headline
-        const dbTexts = dbHeadlines.map(h => h.text);
+        const dbTexts = dbHeadlines.map((h) => h.text);
         expect(dbTexts).toContain("User-Created Headline");
 
         // DB should contain the 2 locked original headlines
@@ -670,7 +703,9 @@ describe.sequential("Ads Flow", () => {
         const lastMessage = result.state.messages?.at(-1) as AIMessage;
         const message = getTextData(lastMessage);
 
-        expect(message).toMatch(/unique features|spell out|real estate|callout|snippet|compelling|stand out/i);
+        expect(message).toMatch(
+          /unique features|spell out|real estate|callout|snippet|compelling|stand out/i
+        );
         expect(message).not.toContain("```json");
 
         const callouts = result.state.callouts || [];
@@ -690,10 +725,10 @@ describe.sequential("Ads Flow", () => {
         expect(dbCallouts.length).toEqual(6);
 
         const graphCalloutTexts = callouts
-          .filter(c => !c.rejected)
-          .map(c => c.text)
+          .filter((c) => !c.rejected)
+          .map((c) => c.text)
           .sort();
-        const dbCalloutTexts = dbCallouts.map(c => c.text).sort();
+        const dbCalloutTexts = dbCallouts.map((c) => c.text).sort();
         expect(dbCalloutTexts).toEqual(graphCalloutTexts);
       });
 
@@ -1491,10 +1526,7 @@ describe.sequential("Ads Flow", () => {
         .withGraph(adsGraph)
         .withState({
           ...step1.state,
-          messages: [
-            ...step1.state.messages!,
-            new HumanMessage("Can you make these funnier?"),
-          ],
+          messages: [...step1.state.messages!, new HumanMessage("Can you make these funnier?")],
         })
         .execute();
 
@@ -1519,8 +1551,8 @@ describe.sequential("Ads Flow", () => {
       const step2Headlines = step2.state.headlines!;
       const refreshHeadlines = step2Headlines.map((h, i) => ({
         ...h,
-        locked: i < 2,                // lock first 2 as favorites
-        rejected: i >= 2,             // mark the rest as rejected
+        locked: i < 2, // lock first 2 as favorites
+        rejected: i >= 2, // mark the rest as rejected
       }));
       const numLockedHeadlines = refreshHeadlines.filter((h) => h.locked).length;
 
@@ -1569,10 +1601,7 @@ describe.sequential("Ads Flow", () => {
         .withGraph(adsGraph)
         .withState({
           ...step4.state,
-          messages: [
-            ...step4.state.messages!,
-            new HumanMessage("Let's make these more punchy."),
-          ],
+          messages: [...step4.state.messages!, new HumanMessage("Let's make these more punchy.")],
         })
         .execute();
 
@@ -1616,8 +1645,20 @@ describe.sequential("Ads Flow", () => {
       assertTypes(
         msgs6,
         [
-          "CTX", "AI", "CTX", "HUMAN", "AI", "CTX", "AI",
-          "CTX", "AI", "CTX", "HUMAN", "AI", "CTX", "AI",
+          "CTX",
+          "AI",
+          "CTX",
+          "HUMAN",
+          "AI",
+          "CTX",
+          "AI",
+          "CTX",
+          "AI",
+          "CTX",
+          "HUMAN",
+          "AI",
+          "CTX",
+          "AI",
         ],
         "step6: refresh callouts"
       );
@@ -1649,10 +1690,7 @@ describe.sequential("Ads Flow", () => {
         .withGraph(adsGraph)
         .withState({
           ...step7.state,
-          messages: [
-            ...step7.state.messages!,
-            new HumanMessage("Let's make these more punchy."),
-          ],
+          messages: [...step7.state.messages!, new HumanMessage("Let's make these more punchy.")],
         })
         .execute();
 
@@ -1718,15 +1756,9 @@ describe.sequential("Ads Flow", () => {
       // 3 pages, 3 user messages, 3 refreshes, and a back-navigation,
       // context messages must NEVER bunch up.
       const allTags = msgs10.map(tag);
-      const ctxIndices = allTags
-        .map((t, i) => (t === "CTX" ? i : -1))
-        .filter((i) => i !== -1);
-      const aiIndices = allTags
-        .map((t, i) => (t === "AI" ? i : -1))
-        .filter((i) => i !== -1);
-      const humanIndices = allTags
-        .map((t, i) => (t === "HUMAN" ? i : -1))
-        .filter((i) => i !== -1);
+      const ctxIndices = allTags.map((t, i) => (t === "CTX" ? i : -1)).filter((i) => i !== -1);
+      const aiIndices = allTags.map((t, i) => (t === "AI" ? i : -1)).filter((i) => i !== -1);
+      const humanIndices = allTags.map((t, i) => (t === "HUMAN" ? i : -1)).filter((i) => i !== -1);
 
       // 10 CTX messages: 3 auto-inits + 3 user-feedback contexts + 3 refresh contexts + 1 back-nav... actually step10 exits early so 9 CTX
       expect(ctxIndices.length).toBeGreaterThanOrEqual(9);

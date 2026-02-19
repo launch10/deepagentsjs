@@ -3,11 +3,7 @@ import { z } from "zod";
 import { HumanMessage, AIMessage, SystemMessage, ToolMessage } from "@langchain/core/messages";
 import { extractImageUrls } from "../../../../app/tools/shared/extractImageUrls";
 import { intentCommand } from "../../../../app/tools/shared/intentCommand";
-import {
-  brandIntent,
-  brandAgentIntentSchema,
-  isBrandAgentIntent,
-} from "@types";
+import { brandIntent, brandAgentIntentSchema, isBrandAgentIntent } from "@types";
 
 /**
  * Unit tests for brand tools.
@@ -46,10 +42,7 @@ describe("extractImageUrls", () => {
 
     const urls = extractImageUrls(messages);
 
-    expect(urls).toEqual([
-      "https://example.com/logo.png",
-      "https://example.com/logo2.png",
-    ]);
+    expect(urls).toEqual(["https://example.com/logo.png", "https://example.com/logo2.png"]);
   });
 
   it("skips non-human messages", () => {
@@ -269,7 +262,7 @@ describe("saveSocialLinks schema validation", () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.links).toHaveLength(2);
-      expect(result.data.links[0].platform).toBe("twitter");
+      expect(result.data.links[0]!.platform).toBe("twitter");
     }
   });
 
@@ -296,9 +289,7 @@ describe("saveSocialLinks schema validation", () => {
 
   it("rejects invalid platform type", () => {
     const input = {
-      links: [
-        { platform: "snapchat", url: "https://snapchat.com/mybrand" },
-      ],
+      links: [{ platform: "snapchat", url: "https://snapchat.com/mybrand" }],
     };
 
     const result = saveSocialLinksSchema.safeParse(input);
@@ -459,19 +450,20 @@ describe("intentCommand output format", () => {
     expect(result.update).toBeDefined();
 
     // Verify the ToolMessage in the update
-    const messages = result.update!.messages as ToolMessage[];
+    const update = result.update! as Record<string, unknown>;
+    const messages = update.messages as ToolMessage[];
     expect(messages).toHaveLength(1);
     expect(messages[0]).toBeInstanceOf(ToolMessage);
-    expect(messages[0].name).toBe("save_social_links");
-    expect(messages[0].tool_call_id).toBe("call_abc123");
+    expect(messages[0]!.name).toBe("save_social_links");
+    expect(messages[0]!.tool_call_id).toBe("call_abc123");
 
-    const parsed = JSON.parse(messages[0].content as string);
+    const parsed = JSON.parse(messages[0]!.content as string);
     expect(parsed.success).toBe(true);
     expect(parsed.message).toContain("Saved 2 social link(s)");
     expect(parsed.links).toHaveLength(2);
 
     // Verify the intents
-    const intents = result.update!.agentIntents as any[];
+    const intents = update.agentIntents as any[];
     expect(intents).toHaveLength(1);
     expect(intents[0].type).toBe("social_links_saved");
   });
@@ -488,14 +480,15 @@ describe("intentCommand output format", () => {
       intents: [brandIntent("logo_set")],
     });
 
-    const messages = result.update!.messages as ToolMessage[];
-    expect(messages[0].name).toBe("set_logo");
+    const update = result.update! as Record<string, unknown>;
+    const messages = update.messages as ToolMessage[];
+    expect(messages[0]!.name).toBe("set_logo");
 
-    const parsed = JSON.parse(messages[0].content as string);
+    const parsed = JSON.parse(messages[0]!.content as string);
     expect(parsed.success).toBe(true);
     expect(parsed.upload_id).toBe(42);
 
-    const intents = result.update!.agentIntents as any[];
+    const intents = update.agentIntents as any[];
     expect(intents[0].type).toBe("logo_set");
   });
 
@@ -514,15 +507,16 @@ describe("intentCommand output format", () => {
       intents: [brandIntent("images_associated")],
     });
 
-    const messages = result.update!.messages as ToolMessage[];
-    expect(messages[0].name).toBe("upload_project_images");
+    const update = result.update! as Record<string, unknown>;
+    const messages = update.messages as ToolMessage[];
+    expect(messages[0]!.name).toBe("upload_project_images");
 
-    const parsed = JSON.parse(messages[0].content as string);
+    const parsed = JSON.parse(messages[0]!.content as string);
     expect(parsed.success).toBe(true);
     expect(parsed.results).toHaveLength(2);
     expect(parsed.results[0].filename).toBe("1.png");
 
-    const intents = result.update!.agentIntents as any[];
+    const intents = update.agentIntents as any[];
     expect(intents[0].type).toBe("images_associated");
   });
 
@@ -536,13 +530,14 @@ describe("intentCommand output format", () => {
       },
     });
 
-    const messages = result.update!.messages as ToolMessage[];
-    const parsed = JSON.parse(messages[0].content as string);
+    const update = result.update! as Record<string, unknown>;
+    const messages = update.messages as ToolMessage[];
+    const parsed = JSON.parse(messages[0]!.content as string);
     expect(parsed.success).toBe(false);
     expect(parsed.error).toContain("Missing projectId");
 
     // No intents should be set on error
-    expect(result.update!.agentIntents).toBeUndefined();
+    expect(update.agentIntents).toBeUndefined();
   });
 
   it("creates a Command without intents when intents array is empty", () => {
@@ -553,7 +548,7 @@ describe("intentCommand output format", () => {
       intents: [],
     });
 
-    expect(result.update!.agentIntents).toBeUndefined();
+    expect((result.update! as Record<string, unknown>).agentIntents).toBeUndefined();
   });
 
   it("handles missing toolCallId gracefully", () => {
@@ -563,8 +558,8 @@ describe("intentCommand output format", () => {
       content: { success: false, error: "Missing websiteId" },
     });
 
-    const messages = result.update!.messages as ToolMessage[];
-    expect(messages[0].tool_call_id).toBe("");
+    const messages = (result.update! as Record<string, unknown>).messages as ToolMessage[];
+    expect(messages[0]!.tool_call_id).toBe("");
   });
 });
 

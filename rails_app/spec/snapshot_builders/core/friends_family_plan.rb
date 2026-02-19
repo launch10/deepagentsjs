@@ -24,7 +24,7 @@ module Core
       end
 
       # Match growth tier limits (generous access for testers)
-      growth_tier = PlanTier.find_by!(name: "growth")
+      PlanTier.find_by!(name: "growth")
       Core::TierLimits::LIMITS.each do |limit_type, tier_values|
         growth_limit = tier_values[:growth]
         TierLimit.find_or_create_by!(tier: ff_tier, limit_type: limit_type) do |tl|

@@ -1,20 +1,25 @@
 import { describe, it, expect } from "vitest";
-import { Ads } from "@types";
+import { Ads, type UUIDType } from "@types";
 
 describe("MergeReducer", () => {
   describe("text-based deduplication of locked assets", () => {
     it("removes incoming assets that have the same text as locked assets", () => {
       const current: Ads.Asset[] = [
-        { id: "locked-1", text: "End Scheduling Chaos", locked: true, rejected: false },
-        { id: "locked-2", text: "Meeting Times, Solved", locked: true, rejected: false },
+        { id: "locked-1" as UUIDType, text: "End Scheduling Chaos", locked: true, rejected: false },
+        {
+          id: "locked-2" as UUIDType,
+          text: "Meeting Times, Solved",
+          locked: true,
+          rejected: false,
+        },
       ];
 
       // Incoming assets include text-identical copies of locked items (with fresh UUIDs)
       const incoming: Ads.Asset[] = [
-        { id: "new-1", text: "End Scheduling Chaos", locked: false, rejected: false },
-        { id: "new-2", text: "Meeting Times, Solved", locked: false, rejected: false },
-        { id: "new-3", text: "Brand New Headline", locked: false, rejected: false },
-        { id: "new-4", text: "Another Fresh One", locked: false, rejected: false },
+        { id: "new-1" as UUIDType, text: "End Scheduling Chaos", locked: false, rejected: false },
+        { id: "new-2" as UUIDType, text: "Meeting Times, Solved", locked: false, rejected: false },
+        { id: "new-3" as UUIDType, text: "Brand New Headline", locked: false, rejected: false },
+        { id: "new-4" as UUIDType, text: "Another Fresh One", locked: false, rejected: false },
       ];
 
       const result = Ads.MergeReducer.headlines(incoming, current);
@@ -36,12 +41,12 @@ describe("MergeReducer", () => {
 
     it("keeps incoming assets whose text does not match any locked asset", () => {
       const current: Ads.Asset[] = [
-        { id: "locked-1", text: "Locked One", locked: true, rejected: false },
+        { id: "locked-1" as UUIDType, text: "Locked One", locked: true, rejected: false },
       ];
 
       const incoming: Ads.Asset[] = [
-        { id: "new-1", text: "Completely New", locked: false, rejected: false },
-        { id: "new-2", text: "Also New", locked: false, rejected: false },
+        { id: "new-1" as UUIDType, text: "Completely New", locked: false, rejected: false },
+        { id: "new-2" as UUIDType, text: "Also New", locked: false, rejected: false },
       ];
 
       const result = Ads.MergeReducer.headlines(incoming, current);

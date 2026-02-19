@@ -156,7 +156,7 @@ module GoogleAds
       # Protobuf returns "" for unset string fields; we store nil locally.
       # Normalize both to nil so comparisons don't false-mismatch.
       def normalize_for_comparison(value)
-        value == "" ? nil : value
+        (value == "") ? nil : value
       end
     end
   end
