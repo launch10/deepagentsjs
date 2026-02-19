@@ -24,15 +24,11 @@ export default function WebsiteSidebar({
 
   return (
     <Card className={`shadow-[0px_0px_8px_4px_rgba(167,165,161,0.08)] bg-background border-neutral-300 rounded-2xl z-0 py-0 gap-0 w-full flex flex-col ${isInitialLoading ? "h-auto" : "h-full"}`}>
-      {isInitialLoading ? (
-        <CreateFlowTodoList />
-      ) : (
-        <>
-          {showWorkflowBuddy ? <WorkflowBuddy workflowStep="website" /> : <QuickActions />}
-          <Separator className="bg-neutral-300" />
-          <WebsiteChat locked={chatLocked} />
-        </>
-      )}
+      <>
+        {showWorkflowBuddy ? <WorkflowBuddy workflowStep="website" /> : <QuickActions />}
+        <Separator className="bg-neutral-300" />
+        <WebsiteChat locked={chatLocked} />
+      </>
     </Card>
   );
 }

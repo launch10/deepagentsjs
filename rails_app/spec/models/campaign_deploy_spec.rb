@@ -391,9 +391,9 @@ RSpec.describe CampaignDeploy, type: :model do
         }.to raise_error(CampaignDeploy::StepNotFinishedError, /Run errors:.*POLICY_FINDING/)
       end
 
-      it 'includes GoogleAdsError failure details from run result' do
+      it 'raises TerminalStepError for terminal GoogleAdsError in run result' do
         google_error = mock_google_ads_error(
-          message: "A]policy was violated",
+          message: "A policy was violated",
           error_type: :policy_finding_error,
           error_value: :POLICY_FINDING
         )
@@ -402,7 +402,7 @@ RSpec.describe CampaignDeploy, type: :model do
 
         expect {
           campaign_deploy.actually_deploy(async: false)
-        }.to raise_error(CampaignDeploy::StepNotFinishedError, /Run errors:.*policy was violated/)
+        }.to raise_error(CampaignDeploy::TerminalStepError, /Terminal error in test_step.*policy was violated/)
       end
 
       it 'logs the failure to the google_ads logger' do

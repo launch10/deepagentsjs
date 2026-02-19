@@ -24,6 +24,13 @@ module GoogleAds
       action == :error
     end
 
+    def terminal?
+      return false unless error?
+      return false unless error
+
+      GoogleAds::TerminalErrors.terminal?(error)
+    end
+
     def created?
       action == :created
     end

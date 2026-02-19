@@ -10,6 +10,7 @@ import {
   type WebContainerStatus,
 } from "@lib/webcontainer";
 import { useWebsiteChatState } from "./useWebsiteChat";
+import { useChatIsStreaming } from "@components/shared/chat/ChatContext";
 import type { Website } from "@shared";
 
 type ConsoleError = Website.Errors.ConsoleError;
@@ -45,6 +46,27 @@ function getStatusFromManagerState(): WebContainerStatus {
 }
 
 /**
+ * Lightweight hook that only subscribes to console error events from WebContainerManager.
+ * Use this when you need console errors but don't need to trigger mount logic.
+ */
+export function useConsoleErrors(): ConsoleError[] {
+  const [consoleErrors, setConsoleErrors] = useState<ConsoleError[]>(
+    WebContainerManager.getConsoleErrors()
+  );
+
+  useEffect(() => {
+    const unsubscribe = WebContainerManager.subscribe((event) => {
+      if (event.type === "console-errors" && event.state) {
+        setConsoleErrors([...event.state.consoleErrors]);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  return consoleErrors;
+}
+
+/**
  * Hook that manages the WebContainer lifecycle for website preview.
  * Listens to files from langgraph state and mounts them to WebContainer.
  *
@@ -54,6 +76,7 @@ function getStatusFromManagerState(): WebContainerStatus {
  */
 export function useWebsitePreview(): UseWebsitePreviewReturn {
   const files = useWebsiteChatState("files");
+  const isStreaming = useChatIsStreaming();
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     WebContainerManager.getState().previewUrl
@@ -74,12 +97,11 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
     }
   }, [previewUrl]);
 
-  // Clean up project files when leaving the website page.
-  // This prevents stale files from a previous website showing when
-  // navigating to a different website later.
+  // Reset project load state on unmount so the next loadProject()
+  // is treated as a fresh mount (clears old files + restarts Vite).
   useEffect(() => {
     return () => {
-      WebContainerManager.clearProjectFiles();
+      WebContainerManager.resetForNewProject();
     };
   }, []);
 
@@ -105,6 +127,10 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
   }, [previewUrl]);
 
   // Mount files when they change — only mounts files whose content actually differs.
+  // During initial generation (isStreaming + no prior mount), skip mounting partial
+  // file sets. Vite's module graph breaks when files reference imports that don't
+  // exist yet, and it doesn't recover after those files arrive. Wait for streaming
+  // to end, then mount the complete set in one shot.
   useEffect(() => {
     if (!files || Object.keys(files).length === 0) {
       return;
@@ -112,6 +138,18 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
 
     const fileMapTyped = files as Website.FileMap;
     const isInitialMount = mountedFilesRef.current === null;
+
+    // Don't mount partial file sets during initial generation.
+    // The streaming-end will trigger this effect again with the complete set.
+    if (isInitialMount && isStreaming) {
+      if (import.meta.env.DEV) {
+        console.log("[useWebsitePreview] waiting for streaming to end before initial mount", {
+          fileCount: Object.keys(files).length,
+        });
+      }
+      return;
+    }
+
     const changedFiles = diffFileMap(mountedFilesRef.current, fileMapTyped);
 
     if (!changedFiles) {
@@ -191,7 +229,7 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
           console.log(`[useWebsitePreview] mount complete (${elapsed}ms)`, {
             isInitialMount,
             changedFiles: changedKeys.length,
-            totalFiles: Object.keys(files).length,
+            totalFiles: Object.keys(fileMapTyped).length,
           });
         }
       } catch (err) {
@@ -204,7 +242,7 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
     }
 
     mountFiles();
-  }, [files]);
+  }, [files, isStreaming]);
 
   return {
     previewUrl,

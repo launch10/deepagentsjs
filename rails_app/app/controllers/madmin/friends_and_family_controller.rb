@@ -26,7 +26,7 @@ module Madmin
     end
 
     def resend
-      user = ::User.find(params[:id])
+      user = ff_users.find(params[:id])
       reset_token = generate_reset_token(user)
 
       ::FriendsAndFamily::InvitationMailer.with(
@@ -40,7 +40,7 @@ module Madmin
     end
 
     def revoke
-      user = ::User.find(params[:id])
+      user = ff_users.find(params[:id])
       account = user.owned_account
 
       if account&.payment_processor&.subscribed?

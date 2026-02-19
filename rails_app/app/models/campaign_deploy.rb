@@ -31,6 +31,8 @@ class CampaignDeploy < ApplicationRecord
 
   class StepNotFinishedError < StandardError; end
 
+  class TerminalStepError < StandardError; end
+
   class DeployInProgressError < StandardError; end
 
   STATUS = WebsiteDeploy::STATUS
@@ -427,6 +429,11 @@ class CampaignDeploy < ApplicationRecord
           "[CampaignDeploy] Step #{step.class.step_name} did not complete for deploy=#{id} campaign=#{campaign_id}. " \
           "Diagnostic: #{full_diagnostic}"
         )
+
+        if terminal_error_detected?(run_result, step)
+          raise TerminalStepError, "Terminal error in #{step.class.step_name}. #{full_diagnostic}"
+        end
+
         raise StepNotFinishedError, "Step #{step.class.step_name} did not complete successfully. Diagnostic: #{full_diagnostic}"
       end
 
@@ -444,6 +451,34 @@ class CampaignDeploy < ApplicationRecord
   end
 
   private
+
+  def terminal_error_detected?(run_result, step)
+    return true if any_terminal?(run_result)
+    return true if step.respond_to?(:sync_result) && any_terminal?(step.sync_result)
+
+    false
+  rescue => e
+    Rails.logger.warn("[CampaignDeploy] Error checking terminal status: #{e.message}")
+    false
+  end
+
+  def any_terminal?(result)
+    return false if result.nil?
+
+    results = extract_sync_results(result)
+    results.any? { |r| r.respond_to?(:terminal?) && r.terminal? }
+  end
+
+  def extract_sync_results(result)
+    case result
+    when Array
+      result.flatten.flat_map { |r| extract_sync_results(r) }
+    when GoogleAds::Sync::CollectionSyncResult
+      result.results
+    else
+      [result]
+    end
+  end
 
   def format_step_diagnostic(step)
     return "no sync_result defined" unless step.respond_to?(:sync_result)

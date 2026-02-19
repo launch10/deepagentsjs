@@ -3,7 +3,7 @@ import { tool } from "langchain";
 import { getCurrentTaskInput } from "@langchain/langgraph";
 import { type BrainstormGraphState } from "@state";
 import { UploadsAPIService } from "@rails_api";
-import { intentCommand } from "../shared";
+import { extractImageUrls, intentCommand } from "../shared";
 import { brandIntent } from "@types";
 
 const uploadProjectImagesSchema = z.object({
@@ -15,29 +15,6 @@ const uploadProjectImagesSchema = z.object({
         "in the conversation. If omitted, uses all images from the most recent message."
     ),
 });
-
-/**
- * Extracts all image URLs from the most recent human message that has images.
- */
-function extractImageUrls(messages: any[]): string[] {
-  const urls: string[] = [];
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    const type = msg?._getType?.() ?? msg?.getType?.();
-    if (type !== "human") continue;
-
-    const content = msg.content ?? msg.kwargs?.content;
-    if (!Array.isArray(content)) continue;
-
-    for (const block of content) {
-      if (block?.type === "image_url" && block?.image_url?.url) {
-        urls.push(block.image_url.url);
-      }
-    }
-    if (urls.length > 0) break;
-  }
-  return urls;
-}
 
 /**
  * Tool for associating images sent in chat with the project's website.

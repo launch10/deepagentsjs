@@ -113,7 +113,7 @@ RSpec.describe CampaignDeploy::DeployWorker, type: :worker do
         end
       end
 
-      context 'when deploy raises an error' do
+      context 'when deploy raises a transient error' do
         # Note: We intentionally do NOT notify Langgraph immediately on error.
         # Sidekiq will retry, and we only notify when retries are exhausted.
         # This prevents the race condition where Langgraph sees "failed" but
@@ -152,6 +152,67 @@ RSpec.describe CampaignDeploy::DeployWorker, type: :worker do
           expect {
             described_class.new.perform(deploy.id, job_run.id)
           }.to raise_error(CampaignDeploy::StepNotFinishedError)
+        end
+      end
+
+      context 'when deploy raises a terminal error' do
+        it 'marks deploy as failed immediately' do
+          job_run.update!(status: "running", started_at: Time.current)
+          allow(CampaignDeploy).to receive(:find).with(deploy.id).and_return(deploy)
+          allow(deploy).to receive(:actually_deploy)
+            .and_raise(CampaignDeploy::TerminalStepError, "Terminal error in create_campaign. DUPLICATE_CAMPAIGN_NAME")
+
+          expect {
+            described_class.new.perform(deploy.id, job_run.id)
+          }.not_to raise_error
+
+          expect(deploy.reload.status).to eq("failed")
+          expect(deploy.reload.stacktrace).to include("Terminal error in create_campaign")
+        end
+
+        it 'fails the job_run immediately' do
+          job_run.update!(status: "running", started_at: Time.current)
+          allow(CampaignDeploy).to receive(:find).with(deploy.id).and_return(deploy)
+          allow(deploy).to receive(:actually_deploy)
+            .and_raise(CampaignDeploy::TerminalStepError, "Terminal error in create_campaign")
+
+          described_class.new.perform(deploy.id, job_run.id)
+
+          expect(job_run.reload.status).to eq("failed")
+        end
+
+        it 'notifies Langgraph of failure immediately' do
+          job_run.update!(status: "running", started_at: Time.current)
+          allow(CampaignDeploy).to receive(:find).with(deploy.id).and_return(deploy)
+          allow(deploy).to receive(:actually_deploy)
+            .and_raise(CampaignDeploy::TerminalStepError, "Terminal error in create_campaign")
+
+          expect(LanggraphCallbackWorker).to receive(:perform_async)
+            .with(job_run.id, hash_including(status: "failed", error: "Terminal error in create_campaign"))
+
+          described_class.new.perform(deploy.id, job_run.id)
+        end
+
+        it 'does not re-raise (skips Sidekiq retry)' do
+          allow(CampaignDeploy).to receive(:find).with(deploy.id).and_return(deploy)
+          allow(deploy).to receive(:actually_deploy)
+            .and_raise(CampaignDeploy::TerminalStepError, "Terminal error")
+
+          expect {
+            described_class.new.perform(deploy.id)
+          }.not_to raise_error
+        end
+
+        it 'tracks the failed deploy event' do
+          job_run.update!(status: "running", started_at: Time.current)
+          allow(CampaignDeploy).to receive(:find).with(deploy.id).and_return(deploy)
+          allow(deploy).to receive(:actually_deploy)
+            .and_raise(CampaignDeploy::TerminalStepError, "Terminal error in create_campaign")
+
+          expect(TrackEvent).to receive(:call).with("campaign_deployed",
+            hash_including(deploy_status: "failed"))
+
+          described_class.new.perform(deploy.id, job_run.id)
         end
       end
     end

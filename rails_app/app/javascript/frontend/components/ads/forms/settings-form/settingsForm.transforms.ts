@@ -125,8 +125,8 @@ export function transformScheduleFromApi(
 
   return {
     selectedDays: selectedDays.length > 0 ? selectedDays : settingsFormDefaults.selectedDays,
-    startTime: parseTimeToHHMM(schedule.start_time ?? null),
-    endTime: parseTimeToHHMM(schedule.end_time ?? null),
+    startTime: schedule.start_time ? parseTimeToHHMM(schedule.start_time) : settingsFormDefaults.startTime,
+    endTime: schedule.end_time ? parseTimeToHHMM(schedule.end_time) : settingsFormDefaults.endTime,
     timezone:
       (schedule.time_zone && REVERSE_TIMEZONE_MAP[schedule.time_zone]) ||
       settingsFormDefaults.timezone,

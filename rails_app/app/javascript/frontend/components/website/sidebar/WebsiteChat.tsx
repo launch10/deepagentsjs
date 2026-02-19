@@ -1,6 +1,6 @@
 import { CardContent, CardFooter } from "@components/ui/card";
 import { useWebsiteChatIsLoadingHistory, useWebsiteChatActions } from "@hooks/website";
-import { useWebsitePreview } from "@hooks/website";
+import { useConsoleErrors } from "@hooks/website";
 import WebsiteChatInput from "./chat/WebsiteChatInput";
 import WebsiteChatMessages from "./chat/WebsiteChatMessages";
 import { useChatIsStreaming } from "@components/shared/chat/ChatContext";
@@ -20,7 +20,7 @@ export interface WebsiteChatProps {
  * Clicking "Fix errors" sends a message to the agent with the error details.
  */
 function BuildErrorPrompt() {
-  const { consoleErrors } = useWebsitePreview();
+  const consoleErrors = useConsoleErrors();
   const { sendMessage } = useWebsiteChatActions();
   const isStreaming = useChatIsStreaming();
   const currentUser = useCurrentUser();

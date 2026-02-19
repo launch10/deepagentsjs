@@ -127,6 +127,44 @@ RSpec.describe GoogleAds::SyncResult, type: :model do
 
   before { mock_google_ads_client }
 
+  describe '#terminal?' do
+    it 'returns true for terminal GoogleAdsError' do
+      error = mock_google_ads_error(
+        message: "Duplicate campaign name",
+        error_type: :campaign_error,
+        error_value: :DUPLICATE_CAMPAIGN_NAME
+      )
+      result = described_class.error(:campaign, error)
+      expect(result.terminal?).to be true
+    end
+
+    it 'returns false for non-terminal GoogleAdsError' do
+      error = mock_google_ads_error(
+        message: "Internal error",
+        error_type: :internal_error,
+        error_value: :INTERNAL_ERROR
+      )
+      result = described_class.error(:campaign, error)
+      expect(result.terminal?).to be false
+    end
+
+    it 'returns false for non-error results' do
+      result = described_class.created(:campaign, "123")
+      expect(result.terminal?).to be false
+    end
+
+    it 'returns false for StandardError' do
+      result = described_class.error(:campaign, StandardError.new("oops"))
+      expect(result.terminal?).to be false
+    end
+
+    it 'returns false for SyncVerificationError' do
+      error = GoogleAds::SyncVerificationError.new("Mismatched fields")
+      result = described_class.error(:campaign, error)
+      expect(result.terminal?).to be false
+    end
+  end
+
   describe '#to_h error formatting' do
     it 'returns nil error when no error present' do
       result = described_class.created(:budget, "123")

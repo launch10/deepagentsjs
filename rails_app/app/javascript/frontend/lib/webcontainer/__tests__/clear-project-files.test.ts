@@ -62,10 +62,18 @@ describe("WebContainerManager.clearProjectFiles", () => {
     expect(mockFs.rm).not.toHaveBeenCalledWith("/.config", expect.anything());
   });
 
-  it("resets loadProjectCount to 0 so the next load is treated as initial", async () => {
+  it("does not reset loadProjectCount (resetForNewProject handles that)", async () => {
     manager["loadProjectCount"] = 5;
 
     await manager.clearProjectFiles();
+
+    expect(manager["loadProjectCount"]).toBe(5);
+  });
+
+  it("resetForNewProject resets loadProjectCount to 0", () => {
+    manager["loadProjectCount"] = 5;
+
+    manager.resetForNewProject();
 
     expect(manager["loadProjectCount"]).toBe(0);
   });

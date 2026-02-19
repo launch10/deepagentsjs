@@ -13,17 +13,10 @@ import { HumanMessage } from "@langchain/core/messages";
 const TASK_NAME: Deploy.TaskName = "OptimizingSEO";
 
 /**
- * Check if index.html already has sufficient SEO optimization
- * Returns true if we can skip the agent
+ * Count how many of the 7 key SEO elements are present in HTML content.
+ * Pure function — no DB access, suitable for direct testing.
  */
-async function isSEOAlreadyDone(state: DeployGraphState): Promise<boolean> {
-  const content = await getIndexHtmlContent(state.websiteId!);
-
-  if (!content) {
-    return false;
-  }
-
-  // Check for key SEO elements
+export function countSEOElements(content: string): number {
   const hasTitle = /<title>[^<]+<\/title>/.test(content);
   const hasMetaDescription =
     /<meta\s+name=["']description["'][^>]*content=["'][^"']+["']/.test(content) ||
@@ -34,8 +27,7 @@ async function isSEOAlreadyDone(state: DeployGraphState): Promise<boolean> {
   const hasTwitterCard = /name=["']twitter:card["']/.test(content);
   const hasFavicon = /rel=["']icon["']/.test(content) || /rel=["']shortcut icon["']/.test(content);
 
-  // Count how many are present
-  const checks = [
+  return [
     hasTitle,
     hasMetaDescription,
     hasOgTitle,
@@ -43,11 +35,30 @@ async function isSEOAlreadyDone(state: DeployGraphState): Promise<boolean> {
     hasOgImage,
     hasTwitterCard,
     hasFavicon,
-  ];
-  const presentCount = checks.filter(Boolean).length;
+  ].filter(Boolean).length;
+}
 
-  // Consider SEO done if at least 5 of 7 key elements are present
-  // (og:image and favicon may legitimately be missing if no images uploaded)
+/**
+ * Check HTML content for key SEO elements.
+ * Returns true if at least 5 of 7 key elements are present.
+ * Pure function — no DB access, suitable for direct testing.
+ */
+export function checkSEOElements(content: string): boolean {
+  return countSEOElements(content) >= 5;
+}
+
+/**
+ * Check if index.html already has sufficient SEO optimization
+ * Returns true if we can skip the agent
+ */
+async function isSEOAlreadyDone(state: DeployGraphState): Promise<boolean> {
+  const content = await getIndexHtmlContent(state.websiteId!);
+
+  if (!content) {
+    return false;
+  }
+
+  const presentCount = countSEOElements(content);
   const isDone = presentCount >= 5;
 
   if (isDone) {
@@ -236,7 +247,7 @@ async function runSeoOptimization(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return withPhases(state, [
-      { ...task, status: "failed", error: `Website ${state.websiteId} not found` } as Task.Task,
+      { ...task, status: "failed", error: errorMessage } as Task.Task,
     ]);
   }
 }

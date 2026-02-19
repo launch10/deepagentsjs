@@ -177,7 +177,8 @@ class WebContainerManagerClass {
 
   async loadProject(files: FileSystemTree): Promise<string> {
     const callIndex = ++this.loadProjectCount;
-    const isIncremental = this.state.viteRunning && this.loadProjectCount > 1;
+    const wasViteRunning = this.state.viteRunning;
+    const isIncremental = wasViteRunning && this.loadProjectCount > 1;
 
     this.log(`[WebContainer] loadProject called (#${callIndex}) — isIncremental: ${isIncremental}`);
 
@@ -190,6 +191,15 @@ class WebContainerManagerClass {
 
     // Clear previous errors before mounting new files
     this.clearConsoleErrors();
+
+    // On warm non-incremental loads (switching websites), clear stale files
+    // THEN mount new ones in rapid succession. Doing this here (instead of on
+    // navigation cleanup) prevents Vite's module graph from being corrupted
+    // by a long gap between file deletion and new file mounting.
+    if (wasViteRunning && !isIncremental) {
+      this.log("[WebContainer] Clearing previous project files...");
+      await this.clearProjectFiles();
+    }
 
     // Mount project files (this is fast - just file writes)
     const mountStart = performance.now();
@@ -219,12 +229,61 @@ class WebContainerManagerClass {
       this.log("[WebContainer] No missing deps");
     }
 
+    // On warm non-incremental loads, force Vite to restart so it rebuilds
+    // its module graph with the new project's files and path aliases.
+    // Without this, Vite's stale watcher just does a page reload and fails
+    // to resolve @/ aliases from the new vite.config.ts.
+    if (wasViteRunning && !isIncremental) {
+      return await this.forceViteRestart();
+    }
+
     // Return the preview URL (Vite already running)
     if (!this.state.previewUrl) {
       throw new Error("Preview URL not available");
     }
 
     return this.state.previewUrl;
+  }
+
+  /**
+   * Force Vite to restart by modifying vite.config.ts.
+   * Vite watches its config file and automatically restarts when it changes.
+   * Returns the preview URL after restart completes.
+   */
+  private async forceViteRestart(): Promise<string> {
+    if (!this.instance) throw new Error("No instance");
+
+    this.log("[WebContainer] Forcing Vite restart via config change...");
+
+    try {
+      const config = await this.instance.fs.readFile("/vite.config.ts", "utf-8");
+      const cleaned = config.replace(/\n\/\/ restart-trigger:.*$/m, "");
+      await this.instance.fs.writeFile(
+        "/vite.config.ts",
+        cleaned.trimEnd() + `\n// restart-trigger: ${Date.now()}\n`
+      );
+    } catch (e) {
+      this.log(`[WebContainer] Could not modify vite.config.ts for restart: ${e}`);
+      return this.state.previewUrl ?? "";
+    }
+
+    // Wait for Vite to signal restart is complete
+    return new Promise<string>((resolve) => {
+      const timeout = setTimeout(() => {
+        this.log("[WebContainer] Vite restart timed out, using existing URL");
+        unsubscribe();
+        resolve(this.state.previewUrl ?? "");
+      }, 15000);
+
+      const unsubscribe = this.subscribe((event) => {
+        if (event.type === "log" && event.message?.includes("server restarted")) {
+          clearTimeout(timeout);
+          unsubscribe();
+          this.log("[WebContainer] Vite restart confirmed");
+          resolve(this.state.previewUrl ?? "");
+        }
+      });
+    });
   }
 
   /**
@@ -362,9 +421,17 @@ class WebContainerManagerClass {
   }
 
   /**
+   * Reset state for a new project load. Called on navigation cleanup so
+   * the next loadProject() is treated as a fresh (non-incremental) mount.
+   */
+  resetForNewProject(): void {
+    this.loadProjectCount = 0;
+  }
+
+  /**
    * Remove user project files from the container, preserving node_modules
-   * and other snapshot infrastructure. Called on cleanup to prevent stale
-   * files from showing when switching between websites.
+   * and other snapshot infrastructure. Called within loadProject() to clear
+   * stale files right before mounting new ones.
    */
   async clearProjectFiles(): Promise<void> {
     if (!this.instance) return;
@@ -379,7 +446,6 @@ class WebContainerManagerClass {
         await this.instance.fs.rm(`/${name}`, { recursive: true, force: true });
       }
 
-      this.loadProjectCount = 0;
       this.log("[WebContainer] Project files cleared");
     } catch (e) {
       // Non-fatal — worst case is stale files on next load

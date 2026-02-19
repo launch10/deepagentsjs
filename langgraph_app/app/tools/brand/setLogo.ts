@@ -3,7 +3,7 @@ import { tool } from "langchain";
 import { getCurrentTaskInput } from "@langchain/langgraph";
 import { type BrainstormGraphState } from "@state";
 import { UploadsAPIService } from "@rails_api";
-import { intentCommand } from "../shared";
+import { extractImageUrls, intentCommand } from "../shared";
 import { brandIntent } from "@types";
 
 const setLogoSchema = z.object({
@@ -15,30 +15,6 @@ const setLogoSchema = z.object({
         "in the conversation to find the correct URL. If omitted, uses the most recent image."
     ),
 });
-
-/**
- * Extracts image URLs from message content blocks.
- * Scans human messages in reverse order to find image_url blocks.
- */
-function extractImageUrls(messages: any[]): string[] {
-  const urls: string[] = [];
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const msg = messages[i];
-    const type = msg?._getType?.() ?? msg?.getType?.();
-    if (type !== "human") continue;
-
-    const content = msg.content ?? msg.kwargs?.content;
-    if (!Array.isArray(content)) continue;
-
-    for (const block of content) {
-      if (block?.type === "image_url" && block?.image_url?.url) {
-        urls.push(block.image_url.url);
-      }
-    }
-    if (urls.length > 0) break;
-  }
-  return urls;
-}
 
 /**
  * Tool for setting a user's logo from an image they sent in chat.

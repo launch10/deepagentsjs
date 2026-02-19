@@ -21,7 +21,7 @@ const INFRA_ERROR_PATTERNS = [
   /Execution context was destroyed/i,
 ];
 
-function isInfrastructureError(message: string): boolean {
+export function isInfrastructureError(message: string): boolean {
   return INFRA_ERROR_PATTERNS.some((pattern) => pattern.test(message));
 }
 
