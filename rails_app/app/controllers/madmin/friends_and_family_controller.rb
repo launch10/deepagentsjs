@@ -40,7 +40,7 @@ module Madmin
     end
 
     def revoke
-      user = ff_users.find(params[:id])
+      user = ::User.find(params[:id])
       account = user.owned_account
 
       if account&.payment_processor&.subscribed?

@@ -871,12 +871,13 @@ RSpec.describe WebsiteDeploy, type: :model do
         before do
           create(:website_url, website: website_with_files, domain: domain, account: account)
           website_with_files.reload
+          FileUtils.mkdir_p(File.join(temp_dir, "dist"))
         end
 
         it 'writes sitemap.xml with homepage URL and lastmod' do
           deploy.send(:generate_sitemap_xml!)
 
-          sitemap_path = File.join(temp_dir, "public", "sitemap.xml")
+          sitemap_path = File.join(temp_dir, "dist", "sitemap.xml")
           expect(File.exist?(sitemap_path)).to be true
 
           content = File.read(sitemap_path)
@@ -916,7 +917,8 @@ RSpec.describe WebsiteDeploy, type: :model do
 
         allow(File).to receive(:write).and_wrap_original do |method, path, content|
           robots_written = true if path.end_with?('public/robots.txt')
-          sitemap_written = true if path.end_with?('public/sitemap.xml')
+          sitemap_written = true if path.end_with?('sitemap.xml')
+          FileUtils.mkdir_p(File.dirname(path))
           method.call(path, content)
         end
 

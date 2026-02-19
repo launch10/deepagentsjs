@@ -161,7 +161,10 @@ module WebsiteDeployConcerns
     end
 
     def website_deploy_domain_url
-      website.website_url&.full_url&.chomp("/")
+      url = website.website_url
+      return nil unless url
+
+      "https://#{url.domain_string}#{url.path}".chomp("/")
     end
 
     def validate_website_has_files

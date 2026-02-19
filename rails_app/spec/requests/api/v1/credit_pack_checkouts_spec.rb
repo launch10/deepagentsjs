@@ -34,7 +34,7 @@ RSpec.describe "Credit Pack Checkouts API", type: :request do
         before do
           # Stub Stripe checkout session creation
           checkout_double = double("checkout_session", client_secret: "cs_test_secret_123")
-          allow_any_instance_of(Pay::Customer).to receive(:checkout).and_return(checkout_double)
+          allow_any_instance_of(Pay::Stripe::Customer).to receive(:checkout).and_return(checkout_double)
         end
 
         run_test! do |response|
