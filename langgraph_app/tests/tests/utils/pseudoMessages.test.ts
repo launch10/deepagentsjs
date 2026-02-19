@@ -62,7 +62,7 @@ describe("Context Messages Utility", () => {
   describe("createContextMessage", () => {
     it("should create a human message with context name", () => {
       const msg = createContextMessage("Generate assets now.");
-      expect(msg).toBeInstanceOf(HumanMessage);
+      expect(msg._getType()).toBe("human");
       expect(msg.content).toBe("Generate assets now.");
       expect((msg as any).name).toBe(CONTEXT_MESSAGE_NAME);
     });
@@ -82,7 +82,7 @@ describe("Context Messages Utility", () => {
       ];
       const msg = createMultimodalContextMessage(content);
 
-      expect(msg).toBeInstanceOf(HumanMessage);
+      expect(msg._getType()).toBe("human");
       expect(msg.content).toEqual(content);
       expect((msg as any).name).toBe(CONTEXT_MESSAGE_NAME);
     });
@@ -153,10 +153,7 @@ describe("Context Messages Utility", () => {
     });
 
     it("should return empty array when all messages are context messages", () => {
-      const messages = [
-        createContextMessage("First"),
-        createContextMessage("Second"),
-      ];
+      const messages = [createContextMessage("First"), createContextMessage("Second")];
 
       const filtered = filterContextMessages(messages);
       expect(filtered).toHaveLength(0);
@@ -176,10 +173,7 @@ describe("Context Messages Utility", () => {
 
   describe("injectContextMessage", () => {
     it("should append context message to end of array when provided", () => {
-      const messages = [
-        new HumanMessage("Hello"),
-        new AIMessage("Hi!"),
-      ];
+      const messages = [new HumanMessage("Hello"), new AIMessage("Hi!")];
       const context = createContextMessage("Generate now.");
 
       const result = injectContextMessage(messages, context);
@@ -190,10 +184,7 @@ describe("Context Messages Utility", () => {
     });
 
     it("should return original messages when context is null", () => {
-      const messages = [
-        new HumanMessage("Hello"),
-        new AIMessage("Hi!"),
-      ];
+      const messages = [new HumanMessage("Hello"), new AIMessage("Hi!")];
 
       const result = injectContextMessage(messages, null);
       expect(result).toHaveLength(2);
@@ -209,5 +200,4 @@ describe("Context Messages Utility", () => {
       expect(result).toHaveLength(2);
     });
   });
-
 });

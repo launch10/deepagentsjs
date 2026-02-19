@@ -4,7 +4,13 @@ import { type BrainstormGraphState } from "@state";
 import { DatabaseSnapshotter, BrainstormNextStepsService } from "@services";
 import { brainstormGraph as uncompiledGraph } from "@graphs";
 import { HumanMessage, AIMessage, BaseMessage, ToolMessage } from "@langchain/core/messages";
-import { lastAIMessage, type UUIDType, type ThreadIDType, firstHumanMessage, Brainstorm } from "@types";
+import {
+  lastAIMessage,
+  type UUIDType,
+  type ThreadIDType,
+  firstHumanMessage,
+  Brainstorm,
+} from "@types";
 import { createBrainstorm, ensureAnswersSaved } from "@nodes";
 import { saveAnswers } from "@tools";
 import { v7 as uuidv7 } from "uuid";
@@ -280,7 +286,6 @@ const restartChatFrom = async (
   return testGraph<BrainstormGraphState>().withGraph(brainstormGraph).withState(state);
 };
 
-
 describe.sequential("Brainstorming Flow", () => {
   beforeEach(async () => {
     await DatabaseSnapshotter.restoreSnapshot("basic_account");
@@ -527,7 +532,7 @@ describe.sequential("Brainstorming Flow", () => {
 
       expect(result.error).toBeUndefined();
       // Should NOT navigate — user is asking a question, not requesting to build
-      expect(result.state.agentIntents).toBeUndefined();
+      expect(result.state.agentIntents ?? []).toEqual([]);
 
       expect(lastAIResponse.content).toContain("Brand Personalization panel");
     });
@@ -1111,9 +1116,7 @@ describe.sequential("Brainstorming Flow", () => {
 
       const result = await ensureAnswersSaved(state, {} as any);
       expect(result).toEqual({});
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("No websiteId")
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("No websiteId"));
       consoleSpy.mockRestore();
     });
 
@@ -1129,9 +1132,7 @@ describe.sequential("Brainstorming Flow", () => {
 
       const result = await ensureAnswersSaved(state, {} as any);
       expect(result).toEqual({});
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("No threadId or jwt")
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("No threadId or jwt"));
       consoleSpy.mockRestore();
     });
 

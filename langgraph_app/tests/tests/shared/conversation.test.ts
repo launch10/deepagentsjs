@@ -11,7 +11,11 @@
 import { describe, it, expect } from "vitest";
 import { HumanMessage, AIMessage, ToolMessage, RemoveMessage } from "@langchain/core/messages";
 import type { BaseMessage } from "@langchain/core/messages";
-import { createContextMessage, createMultimodalContextMessage, isSummaryMessage } from "langgraph-ai-sdk";
+import {
+  createContextMessage,
+  createMultimodalContextMessage,
+  isSummaryMessage,
+} from "langgraph-ai-sdk";
 import { messagesStateReducer } from "@langchain/langgraph";
 import { Conversation } from "@conversation";
 import { sanitizeMessagesForLLM } from "@nodes";
@@ -44,22 +48,26 @@ function makeSimpleTurns(count: number, startId = 1) {
 function makeTurnWithTools(turnIdx: number, toolCount = 2) {
   const msgs: any[] = [];
   msgs.push(new HumanMessage({ content: `User turn ${turnIdx}`, id: `h${turnIdx}` }));
-  msgs.push(new AIMessage({
-    content: "Working...",
-    id: `a${turnIdx}-tc`,
-    tool_calls: Array.from({ length: toolCount }, (_, j) => ({
-      id: `tc-${turnIdx}-${j}`,
-      name: `tool_${j}`,
-      args: {},
-      type: "tool_call" as const,
-    })),
-  }));
+  msgs.push(
+    new AIMessage({
+      content: "Working...",
+      id: `a${turnIdx}-tc`,
+      tool_calls: Array.from({ length: toolCount }, (_, j) => ({
+        id: `tc-${turnIdx}-${j}`,
+        name: `tool_${j}`,
+        args: {},
+        type: "tool_call" as const,
+      })),
+    })
+  );
   for (let j = 0; j < toolCount; j++) {
-    msgs.push(new ToolMessage({
-      content: `Tool result ${j}`,
-      id: `t${turnIdx}-${j}`,
-      tool_call_id: `tc-${turnIdx}-${j}`,
-    }));
+    msgs.push(
+      new ToolMessage({
+        content: `Tool result ${j}`,
+        id: `t${turnIdx}-${j}`,
+        tool_call_id: `tc-${turnIdx}-${j}`,
+      })
+    );
   }
   msgs.push(new AIMessage({ content: `Done ${turnIdx}`, id: `a${turnIdx}-final` }));
   return msgs;
@@ -165,12 +173,14 @@ describe("Conversation", () => {
       const msgs = [
         new HumanMessage({ content: "Build page", id: "h1" }),
         new AIMessage({
-          content: "Step 1", id: "a1-s1",
+          content: "Step 1",
+          id: "a1-s1",
           tool_calls: [{ id: "tc1", name: "write", args: {}, type: "tool_call" as const }],
         }),
         new ToolMessage({ content: "Wrote file", tool_call_id: "tc1", id: "t1" }),
         new AIMessage({
-          content: "Step 2", id: "a1-s2",
+          content: "Step 2",
+          id: "a1-s2",
           tool_calls: [{ id: "tc2", name: "write", args: {}, type: "tool_call" as const }],
         }),
         new ToolMessage({ content: "Wrote file 2", tool_call_id: "tc2", id: "t2" }),
@@ -236,23 +246,16 @@ describe("Conversation", () => {
       const conv = new Conversation(msgs);
       const windowed = conv.window({ maxTurnPairs: 3 });
 
-      const humanIds = windowed
-        .filter(m => m._getType() === "human")
-        .map(m => m.id);
+      const humanIds = windowed.filter((m) => m._getType() === "human").map((m) => m.id);
       expect(humanIds).toEqual(["h13", "h14", "h15"]);
     });
 
     it("drops old ephemeral context when outside the window", () => {
-      const msgs = [
-        createContextMessage("old brainstorm context"),
-        ...makeSimpleTurns(15),
-      ];
+      const msgs = [createContextMessage("old brainstorm context"), ...makeSimpleTurns(15)];
       const conv = new Conversation(msgs);
       const windowed = conv.window({ maxTurnPairs: 3 });
 
-      const contextInResult = windowed.filter(
-        m => (m as any).name === "context"
-      );
+      const contextInResult = windowed.filter((m) => (m as any).name === "context");
       // Old context from turn 1 should be dropped (outside window)
       expect(contextInResult.length).toBe(0);
     });
@@ -269,9 +272,7 @@ describe("Conversation", () => {
       const conv = new Conversation(msgs);
       const windowed = conv.window({ maxTurnPairs: 3 });
 
-      const contextInResult = windowed.filter(
-        m => (m as any).name === "context"
-      );
+      const contextInResult = windowed.filter((m) => (m as any).name === "context");
       // Context before h14 belongs to turn 14, which is in the last 3
       expect(contextInResult.length).toBe(1);
     });
@@ -300,8 +301,8 @@ describe("Conversation", () => {
       const windowed = conv.window({ maxTurnPairs: 10 });
       // All 5 turns + their context fit since 5 < 10
       const humanIds = windowed
-        .filter(m => m._getType() === "human" && (m as any).name !== "context")
-        .map(m => m.id);
+        .filter((m) => m._getType() === "human" && (m as any).name !== "context")
+        .map((m) => m.id);
       expect(humanIds.length).toBe(5);
     });
 
@@ -318,7 +319,7 @@ describe("Conversation", () => {
       const conv = new Conversation(msgs);
       const windowed = conv.window({ maxChars: 40_000 });
 
-      const resultIds = windowed.map(m => m.id);
+      const resultIds = windowed.map((m) => m.id);
       expect(resultIds).toContain("a3");
       expect(windowed.length).toBeLessThan(6);
     });
@@ -333,8 +334,8 @@ describe("Conversation", () => {
       const conv = new Conversation(msgs);
       const windowed = conv.window({ maxTurnPairs: 10 });
 
-      const contextIdx = windowed.findIndex(m => (m as any).name === "context");
-      const h6Idx = windowed.findIndex(m => m.id === "h6");
+      const contextIdx = windowed.findIndex((m) => (m as any).name === "context");
+      const h6Idx = windowed.findIndex((m) => m.id === "h6");
       // Context is right before h6
       expect(contextIdx).toBe(h6Idx - 1);
     });
@@ -342,14 +343,14 @@ describe("Conversation", () => {
     it("keeps tool groups atomic — never orphans ToolMessages", () => {
       const msgs = [
         ...makeTurnWithTools(1, 3), // Turn 1 with 3 tools (6 messages)
-        ...makeSimpleTurns(5, 2),   // Turns 2-6 (simple)
+        ...makeSimpleTurns(5, 2), // Turns 2-6 (simple)
       ];
       const conv = new Conversation(msgs);
       const windowed = conv.window({ maxTurnPairs: 3 });
 
       // Turn 1 (with tools) should be outside the window entirely
-      const toolMsgs = windowed.filter(m => m._getType() === "tool");
-      const toolAI = windowed.find(m => m.id === "a1-tc");
+      const toolMsgs = windowed.filter((m) => m._getType() === "tool");
+      const toolAI = windowed.find((m) => m.id === "a1-tc");
       // Either both present (turn was kept) or both absent (turn was dropped)
       if (toolMsgs.length > 0) {
         expect(toolAI).toBeDefined();
@@ -412,7 +413,7 @@ describe("Conversation", () => {
    */
   async function applyCompactionWithReducer(
     original: BaseMessage[],
-    compactOpts: Parameters<Conversation["compact"]>[0],
+    compactOpts: Parameters<Conversation["compact"]>[0]
   ) {
     // Initialize state through reducer (assigns IDs to all messages)
     const initialized = messagesStateReducer([], original);
@@ -466,7 +467,7 @@ describe("Conversation", () => {
 
       const result = await conv.compact({
         messageThreshold: 100, // won't trigger on turns
-        maxChars: 40_000,      // will trigger on chars
+        maxChars: 40_000, // will trigger on chars
         keepRecent: 1,
         summarizer: mockSummarizer,
       });
@@ -480,9 +481,7 @@ describe("Conversation", () => {
       const { after } = await applyCompactionWithReducer(msgs, opts);
 
       // Recent 3 turns (h6-h8) kept, older ones removed
-      const keptHumanIds = after
-        .filter(m => m._getType() === "human")
-        .map(m => m.id);
+      const keptHumanIds = after.filter((m) => m._getType() === "human").map((m) => m.id);
       expect(keptHumanIds).toContain("h6");
       expect(keptHumanIds).toContain("h7");
       expect(keptHumanIds).toContain("h8");
@@ -495,7 +494,7 @@ describe("Conversation", () => {
       const opts = { messageThreshold: 3, keepRecent: 3, summarizer: mockSummarizer };
       const { after } = await applyCompactionWithReducer(msgs, opts);
 
-      const summaries = after.filter(m => isSummaryMessage(m));
+      const summaries = after.filter((m) => isSummaryMessage(m));
       expect(summaries.length).toBe(1);
     });
 
@@ -506,7 +505,7 @@ describe("Conversation", () => {
       const { after } = await applyCompactionWithReducer(msgs, opts);
 
       // Old summary removed, new one present
-      const summaries = after.filter(m => isSummaryMessage(m));
+      const summaries = after.filter((m) => isSummaryMessage(m));
       expect(summaries.length).toBe(1);
       expect(summaries[0]!.id).not.toBe("sum-old");
 
@@ -535,8 +534,8 @@ describe("Conversation", () => {
       const opts = { messageThreshold: 3, keepRecent: 3, summarizer: mockSummarizer };
       const { after } = await applyCompactionWithReducer(msgs, opts);
 
-      const contextMsgs = after.filter(m =>
-        (m as any).name === "context" && !isSummaryMessage(m)
+      const contextMsgs = after.filter(
+        (m) => (m as any).name === "context" && !isSummaryMessage(m)
       );
 
       // Context from summarized turns (1-5) is gone
@@ -552,7 +551,8 @@ describe("Conversation", () => {
         new AIMessage({ content: "Done 1", id: "a1" }),
         new HumanMessage({ content: "Edit with tools", id: "h2" }),
         new AIMessage({
-          content: "Editing...", id: "a2-tc",
+          content: "Editing...",
+          id: "a2-tc",
           tool_calls: [{ id: "tc1", name: "write", args: {}, type: "tool_call" as const }],
         }),
         new ToolMessage({ content: "Wrote file", tool_call_id: "tc1", id: "t2" }),
@@ -570,9 +570,7 @@ describe("Conversation", () => {
       expect(result).not.toBeNull();
 
       // Check that tool pair is either both removed or both kept
-      const removedIds = new Set(
-        result!.removals.map(m => (m as any).id)
-      );
+      const removedIds = new Set(result!.removals.map((m) => (m as any).id));
       const toolAIRemoved = removedIds.has("a2-tc");
       const toolResultRemoved = removedIds.has("t2");
       expect(toolAIRemoved).toBe(toolResultRemoved);
@@ -596,7 +594,7 @@ describe("Conversation", () => {
 
       // Summarizer received the old messages (not the kept ones)
       expect(capturedMessages.length).toBeGreaterThan(0);
-      const summarizedIds = capturedMessages.map(m => m.id);
+      const summarizedIds = capturedMessages.map((m) => m.id);
       expect(summarizedIds).toContain("h1"); // old turn
       expect(summarizedIds).not.toContain("h8"); // recent turn
     });
@@ -615,8 +613,8 @@ describe("Conversation", () => {
 
       // toMessages() returns [removals..., summary]
       const output = result!.toMessages();
-      const removals = output.filter(m => m instanceof RemoveMessage);
-      const nonRemovals = output.filter(m => !(m instanceof RemoveMessage));
+      const removals = output.filter((m) => m instanceof RemoveMessage);
+      const nonRemovals = output.filter((m) => !(m instanceof RemoveMessage));
 
       expect(removals.length).toBeGreaterThan(0);
       expect(nonRemovals.length).toBe(1); // just the summary
@@ -626,7 +624,7 @@ describe("Conversation", () => {
     it("after reducer, re-parsed state is [summary] [recent turns]", async () => {
       const msgs = [
         ...makeTurnWithTools(1, 3), // Turn 1: create flow with 3 tool calls
-        ...makeSimpleTurns(7, 2),   // Turns 2-8: edits
+        ...makeSimpleTurns(7, 2), // Turns 2-8: edits
       ];
       const opts = { messageThreshold: 3, keepRecent: 3, summarizer: mockSummarizer };
       const { after } = await applyCompactionWithReducer(msgs, opts);
@@ -641,7 +639,12 @@ describe("Conversation", () => {
       expect(reparsed.humanTurnCount).toBe(3);
 
       // Old tool messages from turn 1 are gone
-      const allMsgIds = new Set(reparsed.toMessages().map(m => m.id).filter(Boolean));
+      const allMsgIds = new Set(
+        reparsed
+          .toMessages()
+          .map((m) => m.id)
+          .filter(Boolean)
+      );
       expect(allMsgIds.has("h1")).toBe(false);
       expect(allMsgIds.has("a1-tc")).toBe(false);
     });
@@ -656,11 +659,11 @@ describe("Conversation", () => {
       const { after } = await applyCompactionWithReducer(msgs, opts);
 
       // Still exactly ONE summary
-      const summaries = after.filter(m => isSummaryMessage(m));
+      const summaries = after.filter((m) => isSummaryMessage(m));
       expect(summaries.length).toBe(1);
 
       // Old summary ID is gone
-      expect(after.find(m => m.id === "sum-old")).toBeUndefined();
+      expect(after.find((m) => m.id === "sum-old")).toBeUndefined();
     });
 
     it("summary includes a timestamp for prepareTurn's event-fetching", async () => {
@@ -715,7 +718,7 @@ describe("Conversation", () => {
       const result = conv.prepareTurn({ contextMessages: ctx });
 
       // Context should appear right before h3
-      const h3Idx = result.findIndex(m => m.id === "h3");
+      const h3Idx = result.findIndex((m) => m.id === "h3");
       expect(h3Idx).toBeGreaterThan(1);
       expect((result[h3Idx - 1] as any).name).toBe("context");
       expect((result[h3Idx - 2] as any).name).toBe("context");
@@ -727,9 +730,7 @@ describe("Conversation", () => {
 
       const result = conv.prepareTurn({ maxTurnPairs: 3 });
 
-      const humanIds = result
-        .filter(m => m._getType() === "human")
-        .map(m => m.id);
+      const humanIds = result.filter((m) => m._getType() === "human").map((m) => m.id);
       expect(humanIds.length).toBe(3);
       expect(humanIds).toContain("h15");
     });
@@ -749,7 +750,7 @@ describe("Conversation", () => {
       const result = conv.prepareTurn({ maxChars: 40_000 });
 
       expect(result.length).toBeLessThan(6);
-      expect(result.map(m => m.id)).toContain("a3");
+      expect(result.map((m) => m.id)).toContain("a3");
     });
 
     it("preserves summary messages at the front", () => {
@@ -764,8 +765,11 @@ describe("Conversation", () => {
     });
 
     it("combines context injection with windowing", () => {
-      // 15 turns, window to 3, inject new context
-      const msgs = makeSimpleTurns(15);
+      // 14 complete turns + 1 pending human message (user just typed), window to 3, inject new context
+      const msgs = [
+        ...makeSimpleTurns(14),
+        new HumanMessage({ content: "User message 15", id: "h15" }),
+      ];
       const conv = new Conversation(msgs);
 
       const ctx = [createContextMessage("new event")];
@@ -776,8 +780,8 @@ describe("Conversation", () => {
 
       // Only 3 turns kept
       const humanIds = result
-        .filter(m => m._getType() === "human" && (m as any).name !== "context")
-        .map(m => m.id);
+        .filter((m) => m._getType() === "human" && (m as any).name !== "context")
+        .map((m) => m.id);
       expect(humanIds.length).toBe(3);
 
       // Context is injected before the last human message
@@ -820,14 +824,14 @@ describe("Conversation", () => {
 
     it("does not modify the original messages array", () => {
       const msgs = makeSimpleTurns(3);
-      const snapshot = JSON.stringify(msgs.map(m => ({ id: m.id, content: m.content })));
+      const snapshot = JSON.stringify(msgs.map((m) => ({ id: m.id, content: m.content })));
       const conv = new Conversation(msgs);
 
       conv.prepareTurn({
         contextMessages: [createContextMessage("injected context")],
       });
 
-      const afterSnapshot = JSON.stringify(msgs.map(m => ({ id: m.id, content: m.content })));
+      const afterSnapshot = JSON.stringify(msgs.map((m) => ({ id: m.id, content: m.content })));
       expect(afterSnapshot).toBe(snapshot);
     });
 
@@ -854,10 +858,7 @@ describe("Conversation", () => {
       const conv = new Conversation(msgs);
 
       conv.prepareTurn({
-        contextMessages: [
-          createContextMessage("ctx1"),
-          createContextMessage("ctx2"),
-        ],
+        contextMessages: [createContextMessage("ctx1"), createContextMessage("ctx2")],
       });
 
       expect(msgs.length).toBe(originalLength);
@@ -872,7 +873,8 @@ describe("Conversation", () => {
       const msgs: BaseMessage[] = [
         new HumanMessage({ content: "Build page", id: "h1" }),
         new AIMessage({
-          content: "Building...", id: "a1-tc",
+          content: "Building...",
+          id: "a1-tc",
           tool_calls: [{ id: "tc1", name: "write_file", args: {}, type: "tool_call" as const }],
         }),
         new ToolMessage({ content: largeResult, tool_call_id: "tc1", id: "t1" }),
@@ -895,7 +897,7 @@ describe("Conversation", () => {
       });
 
       // The tool result in summarizer input should be truncated
-      const toolMsg = capturedMessages.find(m => m._getType() === "tool");
+      const toolMsg = capturedMessages.find((m) => m._getType() === "tool");
       expect(toolMsg).toBeDefined();
       const content = typeof toolMsg!.content === "string" ? toolMsg!.content : "";
       expect(content.length).toBeLessThan(largeResult.length);
@@ -907,7 +909,8 @@ describe("Conversation", () => {
       const msgs: BaseMessage[] = [
         new HumanMessage({ content: "Build page", id: "h1" }),
         new AIMessage({
-          content: "Building...", id: "a1-tc",
+          content: "Building...",
+          id: "a1-tc",
           tool_calls: [{ id: "tc1", name: "write_file", args: {}, type: "tool_call" as const }],
         }),
         new ToolMessage({ content: smallResult, tool_call_id: "tc1", id: "t1" }),
@@ -930,7 +933,7 @@ describe("Conversation", () => {
       });
 
       // Small tool result should be preserved as-is
-      const toolMsg = capturedMessages.find(m => m._getType() === "tool");
+      const toolMsg = capturedMessages.find((m) => m._getType() === "tool");
       expect(toolMsg).toBeDefined();
       expect(toolMsg!.content).toBe(smallResult);
     });
@@ -940,7 +943,8 @@ describe("Conversation", () => {
       const msgs: BaseMessage[] = [
         new HumanMessage({ content: "Build page", id: "h1" }),
         new AIMessage({
-          content: "Building...", id: "a1-tc",
+          content: "Building...",
+          id: "a1-tc",
           tool_calls: [{ id: "tc1", name: "write_file", args: {}, type: "tool_call" as const }],
         }),
         new ToolMessage({ content: largeResult, tool_call_id: "tc1", id: "t1" }),
@@ -962,7 +966,7 @@ describe("Conversation", () => {
         toolResultMaxChars: 500,
       });
 
-      const toolMsg = capturedMessages.find(m => m._getType() === "tool") as ToolMessage;
+      const toolMsg = capturedMessages.find((m) => m._getType() === "tool") as ToolMessage;
       expect(toolMsg).toBeDefined();
       expect(toolMsg.tool_call_id).toBe("tc1");
     });
@@ -974,7 +978,8 @@ describe("Conversation", () => {
         // Turn 6: kept, has large tool result
         new HumanMessage({ content: "Latest edit", id: "h6" }),
         new AIMessage({
-          content: "Working...", id: "a6-tc",
+          content: "Working...",
+          id: "a6-tc",
           tool_calls: [{ id: "tc6", name: "write_file", args: {}, type: "tool_call" as const }],
         }),
         new ToolMessage({ content: largeResult, tool_call_id: "tc6", id: "t6" }),
@@ -991,7 +996,7 @@ describe("Conversation", () => {
 
       expect(result).not.toBeNull();
       // The kept turn's tool result should NOT be in removals
-      const removedIds = new Set(result!.removals.map(m => (m as any).id));
+      const removedIds = new Set(result!.removals.map((m) => (m as any).id));
       expect(removedIds.has("t6")).toBe(false);
     });
 
@@ -1001,7 +1006,8 @@ describe("Conversation", () => {
       const msgs: BaseMessage[] = [
         new HumanMessage({ content: "Build page", id: "h1" }),
         new AIMessage({
-          content: "Building...", id: "a1-tc",
+          content: "Building...",
+          id: "a1-tc",
           tool_calls: [
             { id: "tc1", name: "tool1", args: {}, type: "tool_call" as const },
             { id: "tc2", name: "tool2", args: {}, type: "tool_call" as const },
@@ -1027,15 +1033,15 @@ describe("Conversation", () => {
         // no toolResultMaxChars — should default to 500
       });
 
-      const toolMsgs = capturedMessages.filter(m => m._getType() === "tool");
+      const toolMsgs = capturedMessages.filter((m) => m._getType() === "tool");
       expect(toolMsgs.length).toBe(2);
 
       // Over 500: cleared
-      const t1 = toolMsgs.find(m => (m as ToolMessage).tool_call_id === "tc1");
+      const t1 = toolMsgs.find((m) => (m as ToolMessage).tool_call_id === "tc1");
       expect(typeof t1!.content === "string" && t1!.content.includes("cleared")).toBe(true);
 
       // Under 500: preserved
-      const t2 = toolMsgs.find(m => (m as ToolMessage).tool_call_id === "tc2");
+      const t2 = toolMsgs.find((m) => (m as ToolMessage).tool_call_id === "tc2");
       expect(t2!.content).toBe(justUnder);
     });
   });
@@ -1225,9 +1231,7 @@ describe("Conversation", () => {
     });
 
     it("returns empty array for single-turn conversation", () => {
-      const msgs: BaseMessage[] = [
-        new HumanMessage({ content: "Hello", id: "h1" }),
-      ];
+      const msgs: BaseMessage[] = [new HumanMessage({ content: "Hello", id: "h1" })];
       const conv = new Conversation(msgs);
       expect(conv.digestMessages()).toEqual([]);
     });
@@ -1252,15 +1256,32 @@ describe("Conversation", () => {
         new AIMessage({
           content: [
             { type: "text", text: "I'll update the heading using str_replace." },
-            { type: "tool_use", id: `toolu_${turnIdx}`, name: "str_replace_based_edit_tool", input: { command: "str_replace", path: "/src/Hero.tsx", old_str: "old text", new_str: "new text" } },
+            {
+              type: "tool_use",
+              id: `toolu_${turnIdx}`,
+              name: "str_replace_based_edit_tool",
+              input: {
+                command: "str_replace",
+                path: "/src/Hero.tsx",
+                old_str: "old text",
+                new_str: "new text",
+              },
+            },
           ],
           id: `a${turnIdx}-tc`,
-          tool_calls: [{
-            id: `toolu_${turnIdx}`,
-            name: "str_replace_based_edit_tool",
-            args: { command: "str_replace", path: "/src/Hero.tsx", old_str: "old text", new_str: "new text" },
-            type: "tool_call" as const,
-          }],
+          tool_calls: [
+            {
+              id: `toolu_${turnIdx}`,
+              name: "str_replace_based_edit_tool",
+              args: {
+                command: "str_replace",
+                path: "/src/Hero.tsx",
+                old_str: "old text",
+                new_str: "new text",
+              },
+              type: "tool_call" as const,
+            },
+          ],
         }),
         new ToolMessage({
           content: "Successfully replaced text at exactly one location.",
@@ -1276,8 +1297,8 @@ describe("Conversation", () => {
 
     it("preserves tool evidence through Conversation parsing", () => {
       const msgs: BaseMessage[] = [
-        ...makeSimpleTurns(2),           // 2 normal turns
-        ...makeSingleShotEditReturn(3),   // singleShotEdit turn
+        ...makeSimpleTurns(2), // 2 normal turns
+        ...makeSingleShotEditReturn(3), // singleShotEdit turn
       ];
       const conv = new Conversation(msgs);
 
@@ -1405,10 +1426,10 @@ describe("Conversation", () => {
 
     it("compaction keeps tool evidence in recent turns", async () => {
       // Create enough turns to trigger compaction, with the singleShotEdit turn in the "recent" window
-      const oldTurns = makeSimpleTurns(25);  // 25 old turns (will be summarized)
+      const oldTurns = makeSimpleTurns(25); // 25 old turns (will be summarized)
       const recentTurns = [
-        ...makeSingleShotEditReturn(30),     // singleShotEdit is in recent window
-        ...makeSimpleTurns(5, 31),           // 5 more recent turns
+        ...makeSingleShotEditReturn(30), // singleShotEdit is in recent window
+        ...makeSimpleTurns(5, 31), // 5 more recent turns
       ];
 
       const msgs: BaseMessage[] = [...oldTurns, ...recentTurns];
@@ -1439,12 +1460,14 @@ describe("Conversation", () => {
           { type: "tool_use", id: "toolu_1", name: "str_replace_based_edit_tool", input: {} },
         ],
         id: "ai-with-tools",
-        tool_calls: [{
-          id: "toolu_1",
-          name: "str_replace_based_edit_tool",
-          args: { command: "str_replace" },
-          type: "tool_call" as const,
-        }],
+        tool_calls: [
+          {
+            id: "toolu_1",
+            name: "str_replace_based_edit_tool",
+            args: { command: "str_replace" },
+            type: "tool_call" as const,
+          },
+        ],
       });
 
       const toolMsg = new ToolMessage({
@@ -1488,8 +1511,10 @@ describe("Conversation", () => {
   // ── annotateImageUrls ──────────────────────────────────────────
 
   describe("annotateImageUrls", () => {
-    const IMAGE_URL = "https://dev-uploads.launch10.ai/uploads/f7a2d72f-0d69-42a5-823c-eaf7d6e191be.jpg";
-    const IMAGE_URL_2 = "https://dev-uploads.launch10.ai/uploads/4524ac00-da1d-49b5-b601-bdd015aa6d2b.png";
+    const IMAGE_URL =
+      "https://dev-uploads.launch10.ai/uploads/f7a2d72f-0d69-42a5-823c-eaf7d6e191be.jpg";
+    const IMAGE_URL_2 =
+      "https://dev-uploads.launch10.ai/uploads/4524ac00-da1d-49b5-b601-bdd015aa6d2b.png";
 
     it("adds [Image URL: ...] text block after each image_url block", () => {
       const messages: BaseMessage[] = [
@@ -1557,7 +1582,7 @@ describe("Conversation", () => {
 
       const result = Conversation.annotateImageUrls(messages);
       expect(result[0]!.content).toBe("Just text, no images");
-      expect((result[1]!.content as any[])).toHaveLength(1);
+      expect(result[1]!.content as any[]).toHaveLength(1);
     });
 
     it("skips data: URLs (base64 images)", () => {
