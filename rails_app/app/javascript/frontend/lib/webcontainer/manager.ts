@@ -361,6 +361,32 @@ class WebContainerManagerClass {
     this.emit({ type: "console-errors", state: this.state });
   }
 
+  /**
+   * Remove user project files from the container, preserving node_modules
+   * and other snapshot infrastructure. Called on cleanup to prevent stale
+   * files from showing when switching between websites.
+   */
+  async clearProjectFiles(): Promise<void> {
+    if (!this.instance) return;
+
+    try {
+      const entries = await this.instance.fs.readdir("/", { withFileTypes: true });
+      const KEEP = new Set(["node_modules", ".npm", ".config"]);
+
+      for (const entry of entries) {
+        const name = typeof entry === "string" ? entry : entry.name;
+        if (KEEP.has(name)) continue;
+        await this.instance.fs.rm(`/${name}`, { recursive: true, force: true });
+      }
+
+      this.loadProjectCount = 0;
+      this.log("[WebContainer] Project files cleared");
+    } catch (e) {
+      // Non-fatal — worst case is stale files on next load
+      this.log(`[WebContainer] clearProjectFiles failed: ${e}`);
+    }
+  }
+
   private updateState(partial: Partial<WarmupState>) {
     this.state = { ...this.state, ...partial };
     this.emit({ type: "state-change", state: this.state });
@@ -401,7 +427,7 @@ class WebContainerManagerClass {
 let instance: WebContainerManagerClass;
 
 // Handle HMR preservation
-if (import.meta.hot) {
+if (import.meta.hot?.data) {
   instance = import.meta.hot.data.webcontainerManager ?? new WebContainerManagerClass();
   import.meta.hot.data.webcontainerManager = instance;
 } else {

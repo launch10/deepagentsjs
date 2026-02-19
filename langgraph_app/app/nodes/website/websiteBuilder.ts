@@ -8,7 +8,7 @@ import { isCacheModeEnabled } from "./cacheMode";
 import { getSchedulingToolMinorEditFiles } from "@cache";
 import type { Website } from "@types";
 import { getLogger } from "@core";
-import { db, codeFiles, websiteFiles, eq } from "@db";
+import { db, codeFiles, websiteFiles, eq, and, like } from "@db";
 
 /**
  * Get cached response for cache mode.
@@ -56,10 +56,17 @@ const isCreateFlow = async (state: WebsiteGraphState) => {
 };
 
 const hasWebsiteFiles = async (state: WebsiteGraphState): Promise<boolean> => {
+  // Check specifically for IndexPage.tsx — theme files like index.css are
+  // inserted at website creation and don't mean the AI has built the page yet.
   const rows = await db
     .select()
     .from(websiteFiles)
-    .where(eq(websiteFiles.websiteId!, state.websiteId!))
+    .where(
+      and(
+        eq(websiteFiles.websiteId!, state.websiteId!),
+        like(websiteFiles.path, "%IndexPage.tsx")
+      )
+    )
     .limit(1);
   return rows.length > 0;
 };
@@ -102,6 +109,13 @@ export const websiteBuilderNode = NodeMiddleware.use(
     // In cache mode (create only), return cached files instead of running the agent
     const cacheEnabled = isCacheModeEnabled(state);
     const isCreate = await isCreateFlow(state);
+
+    getLogger().info("[websiteBuilder] isCreateFlow decision", {
+      isCreate,
+      websiteId: state.websiteId,
+      messageCount: state.messages?.length ?? 0,
+      hasAiMessage: state.messages?.some((m) => AIMessage.isInstance(m)) ?? false,
+    });
 
     if (cacheEnabled) {
       getLogger().info("Cache mode enabled, returning cached files");

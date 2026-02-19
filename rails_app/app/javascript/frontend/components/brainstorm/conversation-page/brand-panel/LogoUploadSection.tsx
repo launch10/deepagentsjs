@@ -14,6 +14,12 @@ interface LogoUploadSectionProps {
 }
 
 export function LogoUploadSection({ className }: LogoUploadSectionProps) {
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[LogoUploadSection] render #${renderCount.current}`);
+  }
+
   // Read directly from query - no store
   const { data: existingLogos = [] } = useProjectLogo();
   const logo = existingLogos[0] ?? null;

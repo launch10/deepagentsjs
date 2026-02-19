@@ -2,6 +2,7 @@ import { StateGraph, START, END } from "@langchain/langgraph";
 import { BrainstormAnnotation } from "@annotation";
 import {
   brainstormAgent,
+  cleanup,
   createBrainstorm,
   ensureAnswersSaved,
   skipTopic,
@@ -26,11 +27,13 @@ const defaultSubgraph = new StateGraph(BrainstormAnnotation)
   .addNode("createBrainstorm", createBrainstorm)
   .addNode("brainstormAgent", brainstormAgent)
   .addNode("ensureAnswersSaved", ensureAnswersSaved)
+  .addNode("cleanup", cleanup)
   .addNode("compactConversation", createCompactConversationNode())
   .addEdge(START, "createBrainstorm")
   .addEdge("createBrainstorm", "brainstormAgent")
   .addEdge("brainstormAgent", "ensureAnswersSaved")
-  .addEdge("ensureAnswersSaved", "compactConversation")
+  .addEdge("ensureAnswersSaved", "cleanup")
+  .addEdge("cleanup", "compactConversation")
   .addEdge("compactConversation", END)
   .compile();
 
@@ -39,12 +42,14 @@ const skipTopicSubgraph = new StateGraph(BrainstormAnnotation)
   .addNode("createBrainstorm", createBrainstorm)
   .addNode("brainstormAgent", brainstormAgent)
   .addNode("ensureAnswersSaved", ensureAnswersSaved)
+  .addNode("cleanup", cleanup)
   .addNode("compactConversation", createCompactConversationNode())
   .addEdge(START, "skipTopic")
   .addEdge("skipTopic", "createBrainstorm")
   .addEdge("createBrainstorm", "brainstormAgent")
   .addEdge("brainstormAgent", "ensureAnswersSaved")
-  .addEdge("ensureAnswersSaved", "compactConversation")
+  .addEdge("ensureAnswersSaved", "cleanup")
+  .addEdge("cleanup", "compactConversation")
   .addEdge("compactConversation", END)
   .compile();
 

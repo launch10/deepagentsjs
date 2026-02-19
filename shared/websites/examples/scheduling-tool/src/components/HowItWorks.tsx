@@ -1,67 +1,84 @@
+import { Calendar, Settings, Sparkles, ArrowRight } from 'lucide-react';
+
 export function HowItWorks() {
   const steps = [
     {
       number: 1,
+      icon: Calendar,
       title: "Connect Your Calendar",
-      description: "Link your Google Calendar, Outlook, or any calendar in 30 seconds. We sync your availability in real-time."
+      description: "Link your Google Calendar or Outlook in 30 seconds. We sync your availability in real-time."
     },
     {
       number: 2,
-      title: "Set Your Preferences",
-      description: "Tell us your ideal meeting hours, buffer times, and timezone. We remember so you don't have to explain every time."
+      icon: Settings,
+      title: "Share Your Preferences",
+      description: "Set your working hours, buffer times, and meeting preferences. We respect your boundaries."
     },
     {
       number: 3,
-      title: "Share & Schedule Instantly",
-      description: "Send one link to your team. We analyze everyone's availability and suggest the perfect times. Everyone clicks yes. Done."
+      icon: Sparkles,
+      title: "Get Instant Suggestions",
+      description: "Our AI finds optimal times that work for everyone across all time zones. Your team just clicks yes."
     }
   ];
 
   return (
     <section className="bg-background py-16 md:py-20 lg:py-24">
       <div className="container mx-auto px-4 md:px-6">
-        {/* Header */}
-        <div className="text-center mb-12 md:mb-16">
+        {/* Section Header */}
+        <div className="text-center mb-12 md:mb-16 lg:mb-20">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-            Three Steps to Effortless Scheduling
+            From Chaos to Confirmed in 3 Steps
           </h2>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
-            No more timezone math. No more endless threads. Just meetings that work.
+          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
+            No more timezone math. No more endless threads. Just instant scheduling.
           </p>
         </div>
 
         {/* Steps Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 mb-12 md:mb-16">
-          {steps.map((step) => (
-            <div
-              key={step.number}
-              className="bg-card rounded-2xl shadow-md p-6 md:p-8 hover:-translate-y-1 transition-all duration-300"
-            >
-              {/* Number Badge */}
-              <div className="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 bg-primary text-primary-foreground rounded-full text-2xl md:text-3xl font-bold mb-6">
-                {step.number}
+        <div className="relative grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6 lg:gap-8 max-w-6xl mx-auto">
+          {steps.map((step, index) => (
+            <div key={step.number} className="relative">
+              {/* Step Card */}
+              <div className="relative z-10 flex flex-col items-center text-center">
+                {/* Number Badge */}
+                <div className="bg-primary text-primary-foreground w-16 h-16 rounded-full flex items-center justify-center text-3xl font-bold mb-6 shadow-lg">
+                  {step.number}
+                </div>
+
+                {/* Icon */}
+                <div className="mb-4">
+                  <step.icon className="w-12 h-12 text-primary" strokeWidth={1.5} />
+                </div>
+
+                {/* Title */}
+                <h3 className="text-xl md:text-2xl font-semibold mb-3">
+                  {step.title}
+                </h3>
+
+                {/* Description */}
+                <p className="text-muted-foreground leading-relaxed">
+                  {step.description}
+                </p>
               </div>
 
-              {/* Content */}
-              <h3 className="text-xl md:text-2xl font-semibold mb-3">
-                {step.title}
-              </h3>
-              <p className="text-muted-foreground leading-relaxed">
-                {step.description}
-              </p>
+              {/* Arrow Connector (Desktop Only) */}
+              {index < steps.length - 1 && (
+                <div className="hidden md:block absolute top-8 left-[calc(50%+2rem)] w-[calc(100%-4rem)] z-0">
+                  <div className="flex items-center justify-center h-full">
+                    <ArrowRight className="w-8 h-8 text-primary/30" strokeWidth={2} />
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
 
-        {/* Product Screenshot */}
-        <div className="max-w-5xl mx-auto">
-          <div className="bg-card rounded-2xl shadow-lg overflow-hidden">
-            <img
-              src="https://dev-uploads.launch10.ai/uploads/024dfc6c-335d-4f11-883b-f8e241f91744.png"
-              alt="Scheduling tool interface showing calendar availability"
-              className="w-full h-auto"
-            />
-          </div>
+        {/* Bottom CTA Hint */}
+        <div className="text-center mt-12 md:mt-16">
+          <p className="text-muted-foreground text-sm md:text-base">
+            Setup takes less than 2 minutes. No credit card required.
+          </p>
         </div>
       </div>
     </section>

@@ -15,6 +15,12 @@ interface ProjectImagesSectionProps {
 }
 
 export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[ProjectImagesSection] render #${renderCount.current}`);
+  }
+
   // Read directly from query - no store
   const { data: existingImages = [] } = useProjectImages();
 

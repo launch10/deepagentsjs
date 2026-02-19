@@ -1,22 +1,14 @@
-import { createContext, useContext, useEffect, useRef } from "react";
-import type { AgentIntentProcessor } from "@lib/AgentIntentProcessor";
+import { useEffect, useRef } from "react";
+import { useChatFromContext } from "@components/shared/chat/ChatContext";
+import { AgentIntentProcessor } from "@lib/AgentIntentProcessor";
 import type { AgentIntent } from "@shared";
-
-const AgentIntentCtx = createContext<AgentIntentProcessor | null>(null);
-export const AgentIntentProvider = AgentIntentCtx.Provider;
-
-/** Get the processor instance. Throws if outside Chat.Root. */
-export function useAgentIntentProcessor(): AgentIntentProcessor {
-  const processor = useContext(AgentIntentCtx);
-  if (!processor)
-    throw new Error(
-      "useAgentIntentProcessor must be used within Chat.Root",
-    );
-  return processor;
-}
 
 /**
  * Subscribe to a specific agent intent type. Handler fires exactly once per intent.
+ *
+ * Uses the chat instance's ~registerStateKeyCallback under the hood, which fires
+ * ONLY when agentIntents changes — not on every SSE token. This eliminates the
+ * re-render cascade that occurred with the previous useChatSelector approach.
  *
  * @example
  * ```tsx
@@ -30,7 +22,8 @@ export function subscribeToAgentIntent(
   type: string,
   handler: (intent: AgentIntent) => void,
 ) {
-  const processor = useAgentIntentProcessor();
+  const chat = useChatFromContext();
+  const processor = AgentIntentProcessor.forChat(chat);
 
   // Latest-ref pattern: stable subscription, always calls latest handler.
   // Callers don't need useCallback.
@@ -38,11 +31,8 @@ export function subscribeToAgentIntent(
   handlerRef.current = handler;
 
   useEffect(() => {
-    const unsub = processor.on(type, (intent) => {
+    return processor.on(type, (intent) => {
       handlerRef.current(intent);
     });
-    return () => {
-      unsub();
-    };
   }, [processor, type]);
 }

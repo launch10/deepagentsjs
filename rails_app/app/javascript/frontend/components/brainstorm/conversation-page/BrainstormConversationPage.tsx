@@ -1,34 +1,13 @@
-import { useEffect, useState, useRef, useMemo } from "react";
-import { Brainstorm } from "@shared";
+import { useEffect, useState, useRef } from "react";
 import { useBrainstormSelector } from "@components/brainstorm/hooks";
-import { useHasAnyPersonalizations } from "@components/brainstorm/hooks";
 import { BrainstormMessages } from "./chat/BrainstormMessages";
 import { BrainstormInput } from "../shared/BrainstormInput";
 import { BrandPersonalizationPanel } from "./brand-panel/BrandPersonalizationPanel";
 import { BrainstormChatSkeleton } from "./chat/BrainstormChatSkeleton";
 import { PaginationFooter } from "@components/shared/pagination-footer";
+import { useNavigateIntentHandler } from "@hooks/useNavigateIntentHandler";
 
 const SKELETON_DELAY_MS = 200;
-
-/**
- * Compute the current question number from messages.
- * Finds the last AI message with a topic and returns its question number.
- */
-function computeQuestionNumber(
-  messages: { role: string; metadata?: { currentTopic?: string } }[]
-): number {
-  // Find the last topic mentioned in AI messages (reverse search)
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const message = messages[i];
-    if (message.role !== "user") {
-      const topic = message.metadata?.currentTopic as Brainstorm.TopicName | undefined;
-      if (topic) {
-        return Brainstorm.getQuestionNumberForTopic(topic);
-      }
-    }
-  }
-  return 1; // Default to question 1
-}
 
 /**
  * Inner component for brainstorm conversation content.
@@ -36,20 +15,12 @@ function computeQuestionNumber(
  */
 function BrainstormConversationContent({
   contentVisible,
-  currentQuestionNumber,
 }: {
   contentVisible: boolean;
-  currentQuestionNumber: number;
 }) {
-  // Check if any personalizations exist (reads directly from TanStack Query cache)
-  const hasPersonalizations = useHasAnyPersonalizations();
-
   // Can continue when all conversational topics are done (lookAndFeel = last topic)
   const currentTopic = useBrainstormSelector((s) => s.state.currentTopic);
   const canContinue = currentTopic === "lookAndFeel";
-
-  // Auto-open panel if we've reached question 5 or if any personalizations have been applied
-  const shouldAutoOpen = currentQuestionNumber >= 5 || hasPersonalizations;
 
   return (
     <div
@@ -60,7 +31,7 @@ function BrainstormConversationContent({
       <div className="flex-1 min-h-0 overflow-hidden mx-auto container max-w-7xl grid grid-cols-1 lg:grid-cols-[288px_1fr] gap-8 px-8">
         {/* Left sidebar - Brand Personalization Panel */}
         <div className="hidden lg:block pt-[46px]">
-          <BrandPersonalizationPanel shouldAutoOpen={shouldAutoOpen} className="sticky top-24" />
+          <BrandPersonalizationPanel className="sticky top-24" />
         </div>
 
         {/* Main chat area */}
@@ -98,11 +69,10 @@ function BrainstormConversationContent({
  * Chat.Root is provided by parent BrainstormChat component.
  */
 export function BrainstormConversationPage() {
-  const messages = useBrainstormSelector((s) => s.messages);
-  const isLoadingHistory = useBrainstormSelector((s) => s.isLoadingHistory);
+  // Navigate intent handler — inside both Chat.Root and WorkflowProvider
+  useNavigateIntentHandler();
 
-  // Compute current question number from messages (memoized)
-  const currentQuestionNumber = useMemo(() => computeQuestionNumber(messages), [messages]);
+  const isLoadingHistory = useBrainstormSelector((s) => s.isLoadingHistory);
 
   // Determine if we're waiting for history to load
   const isLoading = isLoadingHistory;
@@ -163,7 +133,6 @@ export function BrainstormConversationPage() {
   return (
     <BrainstormConversationContent
       contentVisible={contentVisible}
-      currentQuestionNumber={currentQuestionNumber}
     />
   );
 }

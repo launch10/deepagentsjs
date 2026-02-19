@@ -1,6 +1,7 @@
 import { usePage } from "@inertiajs/react";
 import { Chat } from "@components/shared/chat/Chat";
 import { DeployErrorBoundary } from "@components/deploy/DeployErrorBoundary";
+import { useNavigateIntentHandler } from "@hooks/useNavigateIntentHandler";
 import { DeploySidebar } from "@components/deploy";
 import {
   InProgressScreen,
@@ -40,6 +41,8 @@ const SCREENS: Record<DeployScreen, React.ComponentType> = {
 };
 
 function DeployContent() {
+  useNavigateIntentHandler();
+
   const { deploy } = usePage<DeployProps>().props;
   const pollingFailed = useDeployInit();
 

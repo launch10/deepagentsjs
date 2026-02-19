@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { memo, useState, useRef } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { LogoUploadSection } from "./LogoUploadSection";
@@ -8,26 +8,21 @@ import { ProjectImagesSection } from "./ProjectImagesSection";
 
 interface BrandPersonalizationPanelProps {
   className?: string;
-  /** When true, the panel will auto-expand (e.g., on question 5 or when personalizations exist) */
-  shouldAutoOpen?: boolean;
 }
 
 /**
  * Collapsible Brand Personalization panel for brainstorm pages.
- * Allows users to optionally customize brand settings.
- * Auto-opens when shouldAutoOpen is true (on question 5 or when personalizations are applied).
+ * Starts expanded by default. Wrapped in React.memo — only prop is
+ * a static className, so it never re-renders from parent cascade.
  */
-export function BrandPersonalizationPanel({ className, shouldAutoOpen = false }: BrandPersonalizationPanelProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const hasAutoOpened = useRef(false);
+export const BrandPersonalizationPanel = memo(function BrandPersonalizationPanel({ className }: BrandPersonalizationPanelProps) {
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[BrandPanel] render #${renderCount.current}`);
+  }
 
-  // Auto-open the panel when shouldAutoOpen becomes true (only once per session)
-  useEffect(() => {
-    if (shouldAutoOpen && !hasAutoOpened.current && !isExpanded) {
-      setIsExpanded(true);
-      hasAutoOpened.current = true;
-    }
-  }, [shouldAutoOpen, isExpanded]);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   return (
     <div
@@ -65,4 +60,4 @@ export function BrandPersonalizationPanel({ className, shouldAutoOpen = false }:
       )}
     </div>
   );
-}
+});

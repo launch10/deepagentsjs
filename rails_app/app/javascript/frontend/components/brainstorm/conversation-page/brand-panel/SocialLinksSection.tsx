@@ -77,6 +77,12 @@ function linksToFormData(
 }
 
 export function SocialLinksSection({ className }: SocialLinksSectionProps) {
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[SocialLinksSection] render #${renderCount.current}`);
+  }
+
   // Fetch existing social links from API
   const { data: existingLinks = [], isLoading, isSuccess } = useSocialLinks();
 

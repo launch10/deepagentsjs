@@ -253,38 +253,38 @@ export const brainstormAgent = NodeMiddleware.use(
     };
     const finalMode = getBrainstormMode(finalState);
 
-    // Build final messages array from agent result.
-    // Context messages need to be persisted in state so future turns see them.
+    // Build new messages to return. The state uses messagesStateReducer,
+    // so we return ONLY new messages and the reducer appends them to the
+    // existing state.messages. This matches the coding agent pattern and
+    // avoids manual message reconstruction bugs (e.g. dropping ToolMessages
+    // when returnDirect tools like navigateTool are used).
     const resultMessages = (result as any).messages || [];
-    const originalMessageCount = windowedMessages.length;
-    const newMessages = resultMessages.slice(originalMessageCount);
+    const agentNewMessages = resultMessages.slice(windowedMessages.length);
 
-    // Start with original messages
-    let messages: BaseMessage[] = [...(state.messages || [])];
+    // Context messages aren't in state.messages yet — include them so
+    // the reducer appends them in the correct position.
+    const contextMessages: BaseMessage[] = [
+      ...initialContextMessages,
+      ...middlewareTracker.injectedContextMessages,
+    ];
 
-    // Add initial context (out-of-band mode switch detected before agent ran)
-    if (initialContextMessages.length > 0) {
-      messages = [...messages, ...initialContextMessages];
-    }
-
-    // Add mid-turn context (injected by middleware during tool calls, e.g. after saveAnswers)
-    if (middlewareTracker.injectedContextMessages.length > 0) {
-      messages = [...messages, ...middlewareTracker.injectedContextMessages];
-    }
-
-    // Add intermediate messages (tool calls, tool results, etc.)
-    if (newMessages.length > 1) {
-      const intermediateMessages = newMessages.slice(0, -1);
-      messages = [...(messages as any[]), ...intermediateMessages];
-    }
-
+    // Replace the last AI message with its structured version for UI rendering.
+    // Use type check (not position) — with returnDirect tools the last message
+    // may be a ToolMessage, not an AIMessage.
     if (message) {
       message.additional_kwargs = {
         ...message.additional_kwargs,
         currentTopic,
       };
-      messages = [...(messages as any[]), message];
+      for (let i = agentNewMessages.length - 1; i >= 0; i--) {
+        if (agentNewMessages[i]?._getType?.() === "ai") {
+          agentNewMessages[i] = message;
+          break;
+        }
+      }
     }
+
+    const messages = [...contextMessages, ...agentNewMessages];
 
     return {
       redirect: result.redirect as Brainstorm.RedirectType,

@@ -483,6 +483,13 @@ describe.sequential("Brainstorming Flow", () => {
       expect(result.state.agentIntents).toBeDefined();
       expect(result.state.agentIntents?.[0]?.type).toBe("navigate");
       expect(result.state.agentIntents?.[0]?.payload).toMatchObject({ page: "website" });
+
+      // navigateTool uses returnDirect: true, so the last message is a ToolMessage
+      // (not an AIMessage). Verify the ToolMessage is preserved in state — a prior
+      // bug dropped it, causing tool_use/tool_result mismatch on the next turn.
+      const navigateToolMsg = findToolMessage(result.state, "navigateTool");
+      assertDefined(navigateToolMsg, "navigateTool ToolMessage must be preserved in state");
+      expect(navigateToolMsg.content).toContain("Navigating to website");
     });
   });
 
@@ -502,6 +509,10 @@ describe.sequential("Brainstorming Flow", () => {
       expect(result.state.agentIntents).toBeDefined();
       expect(result.state.agentIntents?.[0]?.type).toBe("navigate");
       expect(result.state.agentIntents?.[0]?.payload).toMatchObject({ page: "website" });
+
+      // Verify navigateTool's ToolMessage is preserved (returnDirect: true)
+      const navigateToolMsg = findToolMessage(result.state, "navigateTool");
+      assertDefined(navigateToolMsg, "navigateTool ToolMessage must be preserved in state");
     });
 
     it("answers questions about UI", async () => {
@@ -1137,7 +1148,7 @@ describe.sequential("Brainstorming Flow", () => {
 
       const result = await ensureAnswersSaved(state, {} as any);
 
-      // Node always returns {} (fire-and-forget)
+      // Node returns {} (fire-and-forget save; intent clearing is in cleanup node)
       expect(result).toEqual({});
       // But it should have logged that it's triggering the background save
       expect(consoleSpy).toHaveBeenCalledWith(

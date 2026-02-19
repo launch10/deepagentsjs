@@ -74,6 +74,15 @@ export function useWebsitePreview(): UseWebsitePreviewReturn {
     }
   }, [previewUrl]);
 
+  // Clean up project files when leaving the website page.
+  // This prevents stale files from a previous website showing when
+  // navigating to a different website later.
+  useEffect(() => {
+    return () => {
+      WebContainerManager.clearProjectFiles();
+    };
+  }, []);
+
   // Subscribe to manager state changes for status updates
   useEffect(() => {
     const unsubscribe = WebContainerManager.subscribe((event) => {

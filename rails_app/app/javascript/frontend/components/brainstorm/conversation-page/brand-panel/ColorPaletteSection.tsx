@@ -23,6 +23,12 @@ interface ColorPaletteSectionProps {
 }
 
 export function ColorPaletteSection({ className, onThemeSelect }: ColorPaletteSectionProps) {
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[ColorPaletteSection] render #${renderCount.current}`);
+  }
+
   // Read directly from queries - no store
   const { data: themes = [], isLoading: isLoadingThemes } = useThemes();
   const { data: website, isLoading: isLoadingWebsite } = useWebsite();
@@ -30,17 +36,24 @@ export function ColorPaletteSection({ className, onThemeSelect }: ColorPaletteSe
   const updateThemeMutation = useUpdateWebsiteTheme();
   const sectionRef = useRef<HTMLDivElement>(null);
   const pendingScrollRef = useRef(false);
+  // Track the theme ID that was selected BEFORE the agent intent fired,
+  // so we know to wait for a DIFFERENT selectedThemeId before scrolling.
+  const preIntentThemeIdRef = useRef<number | null>(null);
+
+  // Selected theme comes directly from website query
+  const selectedThemeId = website?.theme_id ?? null;
+  // Keep a ref for use in subscribeToAgentIntent callback (avoids stale closure)
+  const selectedThemeIdRef = useRef(selectedThemeId);
+  selectedThemeIdRef.current = selectedThemeId;
 
   // Refetch when the agent applies a color scheme via chat
   const queryClient = useQueryClient();
   subscribeToAgentIntent("color_scheme_applied", () => {
+    preIntentThemeIdRef.current = selectedThemeIdRef.current;
     pendingScrollRef.current = true;
     queryClient.invalidateQueries({ queryKey: themeKeys.all });
     queryClient.invalidateQueries({ queryKey: websiteKeys.all });
   });
-
-  // Selected theme comes directly from website query
-  const selectedThemeId = website?.theme_id ?? null;
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
@@ -59,10 +72,13 @@ export function ColorPaletteSection({ className, onThemeSelect }: ColorPaletteSe
   }, [selectedThemeId, themes]);
 
   // Navigate to the page containing the agent-applied theme.
-  // Only clear the flag once the new theme is found in the list —
-  // the two queries (themes + website) may settle in separate renders.
+  // Waits for BOTH queries to settle: selectedThemeId must differ from what
+  // it was pre-intent, AND the new theme must exist in the themes list.
   useEffect(() => {
-    if (!pendingScrollRef.current || !selectedThemeId || themes.length === 0) return;
+    if (!pendingScrollRef.current || themes.length === 0) return;
+    // Wait for website query to resolve with the NEW theme
+    if (selectedThemeId === preIntentThemeIdRef.current) return;
+    if (selectedThemeId === null) return;
     const themeIndex = themes.findIndex((t) => t.id === selectedThemeId);
     if (themeIndex === -1) return; // theme not in list yet, wait for next render
     setCurrentPage(Math.floor(themeIndex / PALETTES_PER_PAGE));

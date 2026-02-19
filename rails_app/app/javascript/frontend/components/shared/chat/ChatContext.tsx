@@ -5,8 +5,7 @@ import { useChatSelector, ChatSelectors } from "langgraph-ai-sdk-react";
 import type { Composer, AnyMessageWithBlocks } from "langgraph-ai-sdk-types";
 import type { CreditStatus } from "@shared";
 import { useCreditStore } from "~/stores/creditStore";
-import { useAgentIntentSetup } from "@hooks/useAgentIntentSetup";
-import { AgentIntentProvider } from "@context/AgentIntentContext";
+import { AgentIntentProcessor } from "@lib/AgentIntentProcessor";
 
 /**
  * Chat context value - stores the chat INSTANCE (stable reference).
@@ -248,17 +247,17 @@ export function ChatProvider<TState extends Record<string, unknown>>({
   // Detect out-of-credits from errors and stream data
   useOutOfCreditsDetection(chat);
 
-  // Process agent intents (navigate, logo_set, social_links_saved, etc.) — no manual page wiring needed
-  const agentIntentProcessor = useAgentIntentSetup(chat);
+  // Eagerly initialize the AgentIntentProcessor so the ~registerStateKeyCallback
+  // subscription is active even before any component calls subscribeToAgentIntent.
+  // This ensures intents that arrive during early streaming are captured.
+  useMemo(() => AgentIntentProcessor.forChat(chat), [chat]);
 
   // Create a stable context value - the chat instance is stable,
   // and onSubmit should be memoized by the caller
   const value = useMemo<ChatContextValue<TState>>(() => ({ chat, onSubmit }), [chat, onSubmit]);
 
   return (
-    <AgentIntentProvider value={agentIntentProcessor}>
-      <ChatContext.Provider value={value as ChatContextValue}>{children}</ChatContext.Provider>
-    </AgentIntentProvider>
+    <ChatContext.Provider value={value as ChatContextValue}>{children}</ChatContext.Provider>
   );
 }
 
