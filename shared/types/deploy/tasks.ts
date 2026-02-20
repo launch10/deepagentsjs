@@ -62,6 +62,15 @@ export const createTasks = (instructions: Instructions): Task[] => {
   return findTasks(instructions).map((name) => createTask(name));
 }
 
+export const createTasksExcluding = (
+  instructions: Instructions,
+  excludeNames: TaskName[]
+): Task[] => {
+  return findTasks(instructions)
+    .filter((name) => !excludeNames.includes(name))
+    .map((name) => createTask(name));
+}
+
 export const findEarlierTasks = (name: TaskName, instructions: Instructions): TaskName[] => {
   const tasks = findTasksForInstructions(instructions);
   const index = tasks.indexOf(name);

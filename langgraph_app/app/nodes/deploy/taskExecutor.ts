@@ -56,6 +56,20 @@ async function findNextTask(state: DeployGraphState): Promise<NextTask | null> {
       continue;
     }
 
+    // Task not in state.tasks — check if it was excluded by initPhasesNode.
+    // If shouldSkip confirms it's done, skip silently (don't create a phantom "skipped" entry).
+    // If shouldSkip says it needs to run, let it fall through to normal processing.
+    if (!task) {
+      const shouldSkip = await runner.shouldSkip(state);
+      if (shouldSkip) {
+        log.debug(
+          { taskName },
+          "Task not in state and shouldSkip=true — excluded, skipping silently"
+        );
+        continue;
+      }
+    }
+
     // Skip completed/skipped
     if (task?.status === "completed" || task?.status === "skipped") {
       log.debug({ taskName, status: task.status }, "Task already done, continuing");

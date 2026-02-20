@@ -17,9 +17,9 @@ export async function isGoogleConnected(state: DeployGraphState): Promise<boolea
   }
 
   const googleApi = new GoogleAPIService({ jwt: state.jwt });
-  const { connected } = await googleApi.getConnectionStatus();
+  const { google_connected } = await googleApi.getGoogleStatus();
 
-  return connected;
+  return google_connected;
 }
 
 /**
@@ -73,7 +73,11 @@ export const googleConnectTaskRunner: TaskRunner = {
     //    Check if Google is already connected (OAuth callback may have missed the job)
     if (task?.status === "running" && task.jobId && !task.result?.google_email && !task.error) {
       if (await isGoogleConnected(state)) {
-        return withPhases(state, [{ ...task, status: "completed", result: { google_email: "connected" } } as Task.Task], [TASK_NAME]);
+        return withPhases(
+          state,
+          [{ ...task, status: "completed", result: { google_email: "connected" } } as Task.Task],
+          [TASK_NAME]
+        );
       }
       // Not connected yet — fall through to no-op (isBlocking will exit graph)
       return {};

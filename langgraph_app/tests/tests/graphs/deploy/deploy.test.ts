@@ -136,13 +136,15 @@ describe.sequential("Deploy Graph Tests", () => {
       mockGoogleAPIService.mockImplementation(
         () =>
           ({
-            getConnectionStatus: vi
-              .fn()
-              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-            getInviteStatus: vi
-              .fn()
-              .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
-            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: true }),
+            getGoogleStatus: vi.fn().mockResolvedValue({
+              google_connected: true,
+              google_email: "user@gmail.com",
+              invite_accepted: true,
+              invite_status: "accepted",
+              invite_email: "user@gmail.com",
+              has_payment: true,
+              billing_status: "approved",
+            }),
           }) as any
       );
 
@@ -161,13 +163,15 @@ describe.sequential("Deploy Graph Tests", () => {
         mockGoogleAPIService.mockImplementation(
           () =>
             ({
-              getConnectionStatus: vi
-                .fn()
-                .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-              getInviteStatus: vi
-                .fn()
-                .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
-              getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: true }),
+              getGoogleStatus: vi.fn().mockResolvedValue({
+                google_connected: true,
+                google_email: "user@gmail.com",
+                invite_accepted: true,
+                invite_status: "accepted",
+                invite_email: "user@gmail.com",
+                has_payment: true,
+                billing_status: "approved",
+              }),
             }) as any
         );
 
@@ -186,9 +190,13 @@ describe.sequential("Deploy Graph Tests", () => {
           })
           .execute();
 
-        // Both Google tasks should be skipped
+        // Google onboarding tasks should be excluded entirely (not in task list)
         const googleConnectTask = Task.findTask(result.state.tasks, "ConnectingGoogle");
-        expect(googleConnectTask?.status).toBe("skipped");
+        expect(googleConnectTask).toBeUndefined();
+        const verifyGoogleTask = Task.findTask(result.state.tasks, "VerifyingGoogle");
+        expect(verifyGoogleTask).toBeUndefined();
+        const checkBillingTask = Task.findTask(result.state.tasks, "CheckingBilling");
+        expect(checkBillingTask).toBeUndefined();
       });
 
       describe("When google account not already connected", () => {
@@ -197,10 +205,15 @@ describe.sequential("Deploy Graph Tests", () => {
           mockGoogleAPIService.mockImplementation(
             () =>
               ({
-                getConnectionStatus: vi.fn().mockResolvedValue({ connected: false, email: null }),
-                getInviteStatus: vi
-                  .fn()
-                  .mockResolvedValue({ accepted: false, status: "none", email: null }),
+                getGoogleStatus: vi.fn().mockResolvedValue({
+                  google_connected: false,
+                  google_email: null,
+                  invite_accepted: false,
+                  invite_status: "none",
+                  invite_email: null,
+                  has_payment: false,
+                  billing_status: "none",
+                }),
               }) as any
           );
         });
@@ -306,11 +319,15 @@ describe.sequential("Deploy Graph Tests", () => {
           mockGoogleAPIService.mockImplementation(
             () =>
               ({
-                getConnectionStatus: vi
-                  .fn()
-                  .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-                getInviteStatus: vi.fn().mockResolvedValue({ accepted: false, status: "none" }),
-                getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: true }),
+                getGoogleStatus: vi.fn().mockResolvedValue({
+                  google_connected: true,
+                  google_email: "user@gmail.com",
+                  invite_accepted: false,
+                  invite_status: "none",
+                  invite_email: null,
+                  has_payment: true,
+                  billing_status: "approved",
+                }),
               }) as any
           );
 
@@ -371,11 +388,15 @@ describe.sequential("Deploy Graph Tests", () => {
           mockGoogleAPIService.mockImplementation(
             () =>
               ({
-                getConnectionStatus: vi
-                  .fn()
-                  .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-                getInviteStatus: vi.fn().mockResolvedValue({ accepted: false, status: "none" }),
-                getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: true }),
+                getGoogleStatus: vi.fn().mockResolvedValue({
+                  google_connected: true,
+                  google_email: "user@gmail.com",
+                  invite_accepted: false,
+                  invite_status: "none",
+                  invite_email: null,
+                  has_payment: true,
+                  billing_status: "approved",
+                }),
               }) as any
           );
 
@@ -945,13 +966,15 @@ describe.sequential("Deploy Graph Tests", () => {
       mockGoogleAPIService.mockImplementation(
         () =>
           ({
-            getConnectionStatus: vi
-              .fn()
-              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-            getInviteStatus: vi
-              .fn()
-              .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
-            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: true }),
+            getGoogleStatus: vi.fn().mockResolvedValue({
+              google_connected: true,
+              google_email: "user@gmail.com",
+              invite_accepted: true,
+              invite_status: "accepted",
+              invite_email: "user@gmail.com",
+              has_payment: true,
+              billing_status: "approved",
+            }),
           }) as any
       );
 
@@ -1006,6 +1029,22 @@ describe.sequential("Deploy Graph Tests", () => {
    * These tests verify that initPhasesNode pre-creates all expected tasks
    * as "pending" so the frontend progress bar shows the full set from the start.
    *
+      // Default: nothing set up so initPhasesNode creates all tasks
+      mockGoogleAPIService.mockImplementation(
+        () =>
+          ({
+            getGoogleStatus: vi.fn().mockResolvedValue({
+              google_connected: false,
+              google_email: null,
+              invite_accepted: false,
+              invite_status: "none",
+              invite_email: null,
+              has_payment: false,
+              billing_status: "none",
+            }),
+          }) as any
+      );
+
    * The key invariants being tested:
    * - Fresh deploys (empty tasks[]) get all expected tasks pre-created as pending
    * - Pre-created pending tasks are correctly picked up by the executor
@@ -1017,6 +1056,22 @@ describe.sequential("Deploy Graph Tests", () => {
       vi.clearAllMocks();
       await DatabaseSnapshotter.restoreSnapshot("website_deploy_step");
 
+      // Default: nothing set up so initPhasesNode creates all tasks
+      mockGoogleAPIService.mockImplementation(
+        () =>
+          ({
+            getGoogleStatus: vi.fn().mockResolvedValue({
+              google_connected: false,
+              google_email: null,
+              invite_accepted: false,
+              invite_status: "none",
+              invite_email: null,
+              has_payment: false,
+              billing_status: "none",
+            }),
+          }) as any
+      );
+
       mockJobRunAPIService.mockImplementation(
         () =>
           ({
@@ -1025,7 +1080,7 @@ describe.sequential("Deploy Graph Tests", () => {
       );
     });
 
-    // Helper: wrap sync initPhasesNode as async for runNode() compatibility
+    // Helper: initPhasesNode is async, wrap for runNode() compatibility
     const asyncInitPhases = async (state: DeployGraphState) => {
       const { initPhasesNode } = await import("@nodes");
       return initPhasesNode(state);
@@ -1489,10 +1544,15 @@ describe.sequential("Deploy Graph Tests", () => {
       mockGoogleAPIService.mockImplementation(
         () =>
           ({
-            getConnectionStatus: vi
-              .fn()
-              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-            getInviteStatus: vi.fn().mockResolvedValue({ accepted: false, status: "none" }),
+            getGoogleStatus: vi.fn().mockResolvedValue({
+              google_connected: true,
+              google_email: "user@gmail.com",
+              invite_accepted: false,
+              invite_status: "none",
+              invite_email: null,
+              has_payment: false,
+              billing_status: "none",
+            }),
           }) as any
       );
 
@@ -1528,7 +1588,15 @@ describe.sequential("Deploy Graph Tests", () => {
       mockGoogleAPIService.mockImplementation(
         () =>
           ({
-            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: false }),
+            getGoogleStatus: vi.fn().mockResolvedValue({
+              google_connected: true,
+              google_email: "user@gmail.com",
+              invite_accepted: true,
+              invite_status: "accepted",
+              invite_email: "user@gmail.com",
+              has_payment: false,
+              billing_status: "none",
+            }),
           }) as any
       );
 
@@ -1622,13 +1690,15 @@ describe.sequential("Deploy Graph Tests", () => {
       mockGoogleAPIService.mockImplementation(
         () =>
           ({
-            getConnectionStatus: vi
-              .fn()
-              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-            getInviteStatus: vi
-              .fn()
-              .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
-            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: true }),
+            getGoogleStatus: vi.fn().mockResolvedValue({
+              google_connected: true,
+              google_email: "user@gmail.com",
+              invite_accepted: true,
+              invite_status: "accepted",
+              invite_email: "user@gmail.com",
+              has_payment: true,
+              billing_status: "approved",
+            }),
           }) as any
       );
 
@@ -1672,7 +1742,15 @@ describe.sequential("Deploy Graph Tests", () => {
       mockGoogleAPIService.mockImplementation(
         () =>
           ({
-            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: false }),
+            getGoogleStatus: vi.fn().mockResolvedValue({
+              google_connected: true,
+              google_email: "user@gmail.com",
+              invite_accepted: true,
+              invite_status: "accepted",
+              invite_email: "user@gmail.com",
+              has_payment: false,
+              billing_status: "none",
+            }),
           }) as any
       );
 
@@ -1716,13 +1794,15 @@ describe.sequential("Deploy Graph Tests", () => {
       mockGoogleAPIService.mockImplementation(
         () =>
           ({
-            getConnectionStatus: vi
-              .fn()
-              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-            getInviteStatus: vi
-              .fn()
-              .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
-            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: true }),
+            getGoogleStatus: vi.fn().mockResolvedValue({
+              google_connected: true,
+              google_email: "user@gmail.com",
+              invite_accepted: true,
+              invite_status: "accepted",
+              invite_email: "user@gmail.com",
+              has_payment: true,
+              billing_status: "approved",
+            }),
           }) as any
       );
 
@@ -1765,13 +1845,15 @@ describe.sequential("Deploy Graph Tests", () => {
       mockGoogleAPIService.mockImplementation(
         () =>
           ({
-            getConnectionStatus: vi
-              .fn()
-              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-            getInviteStatus: vi
-              .fn()
-              .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
-            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: false }),
+            getGoogleStatus: vi.fn().mockResolvedValue({
+              google_connected: true,
+              google_email: "user@gmail.com",
+              invite_accepted: true,
+              invite_status: "accepted",
+              invite_email: "user@gmail.com",
+              has_payment: false,
+              billing_status: "none",
+            }),
           }) as any
       );
 
@@ -1803,13 +1885,15 @@ describe.sequential("Deploy Graph Tests", () => {
       mockGoogleAPIService.mockImplementation(
         () =>
           ({
-            getConnectionStatus: vi
-              .fn()
-              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-            getInviteStatus: vi
-              .fn()
-              .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
-            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: false }),
+            getGoogleStatus: vi.fn().mockResolvedValue({
+              google_connected: true,
+              google_email: "user@gmail.com",
+              invite_accepted: true,
+              invite_status: "accepted",
+              invite_email: "user@gmail.com",
+              has_payment: false,
+              billing_status: "none",
+            }),
           }) as any
       );
 
@@ -1874,13 +1958,15 @@ describe.sequential("Deploy Graph Tests", () => {
       mockGoogleAPIService.mockImplementation(
         () =>
           ({
-            getConnectionStatus: vi
-              .fn()
-              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-            getInviteStatus: vi
-              .fn()
-              .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
-            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: false }),
+            getGoogleStatus: vi.fn().mockResolvedValue({
+              google_connected: true,
+              google_email: "user@gmail.com",
+              invite_accepted: true,
+              invite_status: "accepted",
+              invite_email: "user@gmail.com",
+              has_payment: false,
+              billing_status: "none",
+            }),
           }) as any
       );
 
@@ -2100,13 +2186,15 @@ describe.sequential("Deploy Graph Tests", () => {
       mockGoogleAPIService.mockImplementation(
         () =>
           ({
-            getConnectionStatus: vi
-              .fn()
-              .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-            getInviteStatus: vi
-              .fn()
-              .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" }),
-            getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: true }),
+            getGoogleStatus: vi.fn().mockResolvedValue({
+              google_connected: true,
+              google_email: "user@gmail.com",
+              invite_accepted: true,
+              invite_status: "accepted",
+              invite_email: "user@gmail.com",
+              has_payment: true,
+              billing_status: "approved",
+            }),
           }) as any
       );
 
@@ -2260,6 +2348,252 @@ describe.sequential("Deploy Graph Tests", () => {
     it("does NOT set graph-level status when website deploy fails", async () => {
       const { deployWebsiteNode } = await import("@nodes");
 
+      /**
+       * =============================================================================
+       * 11. DEPLOY READINESS - TASK EXCLUSION TESTS
+       * =============================================================================
+       * These tests verify that initPhasesNode excludes already-completed Google
+       * onboarding tasks based on the deploy_readiness API, so they never appear
+       * in the UI or task list.
+       */
+      describe("Deploy Readiness - Task Exclusion", () => {
+        beforeEach(async () => {
+          vi.clearAllMocks();
+          await DatabaseSnapshotter.restoreSnapshot("website_deploy_step");
+
+          mockJobRunAPIService.mockImplementation(
+            () =>
+              ({
+                create: vi.fn().mockResolvedValue({ id: 555, status: "pending" }),
+              }) as any
+          );
+        });
+
+        // Helper: initPhasesNode is async, wrap for runNode() compatibility
+        const asyncInitPhases = async (state: DeployGraphState) => {
+          const { initPhasesNode } = await import("@nodes");
+          return initPhasesNode(state);
+        };
+
+        it("excludes all onboarding tasks when all prerequisites met", async () => {
+          mockGoogleAPIService.mockImplementation(
+            () =>
+              ({
+                getGoogleStatus: vi.fn().mockResolvedValue({
+                  google_connected: true,
+                  google_email: "user@gmail.com",
+                  invite_accepted: true,
+                  invite_status: "accepted",
+                  invite_email: "user@gmail.com",
+                  has_payment: true,
+                  billing_status: "approved",
+                }),
+              }) as any
+          );
+
+          const result = await testGraph<DeployGraphState>()
+            .withState({
+              jwt: "test-jwt",
+              threadId: "thread_readiness_all" as ThreadIDType,
+              projectId: 1,
+              websiteId: 1,
+              campaignId: 1,
+              instructions: { googleAds: true },
+              tasks: [],
+              chatId: 1,
+            })
+            .runNode(asyncInitPhases)
+            .execute();
+
+          // Onboarding tasks should NOT exist (excluded, not skipped)
+          expect(Task.findTask(result.state.tasks, "ConnectingGoogle")).toBeUndefined();
+          expect(Task.findTask(result.state.tasks, "VerifyingGoogle")).toBeUndefined();
+          expect(Task.findTask(result.state.tasks, "CheckingBilling")).toBeUndefined();
+
+          // Deploy tasks should still exist
+          expect(Task.findTask(result.state.tasks, "DeployingCampaign")).toBeDefined();
+          expect(Task.findTask(result.state.tasks, "EnablingCampaign")).toBeDefined();
+          expect(result.state.tasks.length).toBe(2);
+        });
+
+        it("excludes only ConnectingGoogle when only google_connected is true", async () => {
+          mockGoogleAPIService.mockImplementation(
+            () =>
+              ({
+                getGoogleStatus: vi.fn().mockResolvedValue({
+                  google_connected: true,
+                  google_email: "user@gmail.com",
+                  invite_accepted: false,
+                  invite_status: "none",
+                  invite_email: null,
+                  has_payment: false,
+                  billing_status: "none",
+                }),
+              }) as any
+          );
+
+          const result = await testGraph<DeployGraphState>()
+            .withState({
+              jwt: "test-jwt",
+              threadId: "thread_readiness_partial" as ThreadIDType,
+              projectId: 1,
+              websiteId: 1,
+              campaignId: 1,
+              instructions: { googleAds: true },
+              tasks: [],
+              chatId: 1,
+            })
+            .runNode(asyncInitPhases)
+            .execute();
+
+          // ConnectingGoogle should be excluded
+          expect(Task.findTask(result.state.tasks, "ConnectingGoogle")).toBeUndefined();
+          // VerifyingGoogle and CheckingBilling should still exist
+          expect(Task.findTask(result.state.tasks, "VerifyingGoogle")).toBeDefined();
+          expect(Task.findTask(result.state.tasks, "CheckingBilling")).toBeDefined();
+          expect(result.state.tasks.length).toBe(4);
+        });
+
+        it("creates all tasks when no prerequisites met", async () => {
+          mockGoogleAPIService.mockImplementation(
+            () =>
+              ({
+                getGoogleStatus: vi.fn().mockResolvedValue({
+                  google_connected: false,
+                  google_email: null,
+                  invite_accepted: false,
+                  invite_status: "none",
+                  invite_email: null,
+                  has_payment: false,
+                  billing_status: "none",
+                }),
+              }) as any
+          );
+
+          const result = await testGraph<DeployGraphState>()
+            .withState({
+              jwt: "test-jwt",
+              threadId: "thread_readiness_none" as ThreadIDType,
+              projectId: 1,
+              websiteId: 1,
+              campaignId: 1,
+              instructions: { googleAds: true },
+              tasks: [],
+              chatId: 1,
+            })
+            .runNode(asyncInitPhases)
+            .execute();
+
+          // All 5 campaign tasks should exist
+          expect(Task.findTask(result.state.tasks, "ConnectingGoogle")).toBeDefined();
+          expect(Task.findTask(result.state.tasks, "VerifyingGoogle")).toBeDefined();
+          expect(Task.findTask(result.state.tasks, "CheckingBilling")).toBeDefined();
+          expect(Task.findTask(result.state.tasks, "DeployingCampaign")).toBeDefined();
+          expect(Task.findTask(result.state.tasks, "EnablingCampaign")).toBeDefined();
+          expect(result.state.tasks.length).toBe(5);
+        });
+
+        it("creates all tasks on readiness API failure (graceful degradation)", async () => {
+          mockGoogleAPIService.mockImplementation(
+            () =>
+              ({
+                getGoogleStatus: vi.fn().mockRejectedValue(new Error("Network error")),
+              }) as any
+          );
+
+          const result = await testGraph<DeployGraphState>()
+            .withState({
+              jwt: "test-jwt",
+              threadId: "thread_readiness_fail" as ThreadIDType,
+              projectId: 1,
+              websiteId: 1,
+              campaignId: 1,
+              instructions: { googleAds: true },
+              tasks: [],
+              chatId: 1,
+            })
+            .runNode(asyncInitPhases)
+            .execute();
+
+          // All tasks should exist (fallback)
+          expect(result.state.tasks.length).toBe(5);
+          expect(Task.findTask(result.state.tasks, "ConnectingGoogle")).toBeDefined();
+          expect(Task.findTask(result.state.tasks, "VerifyingGoogle")).toBeDefined();
+          expect(Task.findTask(result.state.tasks, "CheckingBilling")).toBeDefined();
+        });
+
+        it("skips readiness API for website-only deploys", async () => {
+          const getGoogleStatusMock = vi.fn();
+          mockGoogleAPIService.mockImplementation(
+            () =>
+              ({
+                getGoogleStatus: getGoogleStatusMock,
+              }) as any
+          );
+
+          const result = await testGraph<DeployGraphState>()
+            .withState({
+              jwt: "test-jwt",
+              threadId: "thread_readiness_website_only" as ThreadIDType,
+              projectId: 1,
+              websiteId: 1,
+              instructions: { website: true },
+              tasks: [],
+              chatId: 1,
+            })
+            .runNode(asyncInitPhases)
+            .execute();
+
+          // getGoogleStatus should NOT have been called
+          expect(getGoogleStatusMock).not.toHaveBeenCalled();
+          // Website tasks should exist
+          expect(result.state.tasks.length).toBe(7);
+        });
+
+        it("full campaign deploy completes without onboarding tasks ever existing", async () => {
+          await DatabaseSnapshotter.restoreSnapshot("campaign_complete");
+          const campaignId = (await db.select().from(campaigns).limit(1).execute())[0]?.id;
+
+          // All prerequisites met — all 3 onboarding tasks excluded
+          mockGoogleAPIService.mockImplementation(
+            () =>
+              ({
+                getGoogleStatus: vi.fn().mockResolvedValue({
+                  google_connected: true,
+                  google_email: "user@gmail.com",
+                  invite_accepted: true,
+                  invite_status: "accepted",
+                  invite_email: "user@gmail.com",
+                  has_payment: true,
+                  billing_status: "approved",
+                }),
+              }) as any
+          );
+
+          const result = await testGraph<DeployGraphState>()
+            .withGraph(deployGraph)
+            .withState({
+              jwt: "test-jwt",
+              threadId: "thread_readiness_full" as ThreadIDType,
+              projectId: 1,
+              websiteId: 1,
+              campaignId,
+              instructions: { googleAds: true },
+              tasks: [],
+              chatId: 1,
+            })
+            .execute();
+
+          // Onboarding tasks should never have existed
+          expect(Task.findTask(result.state.tasks, "ConnectingGoogle")).toBeUndefined();
+          expect(Task.findTask(result.state.tasks, "VerifyingGoogle")).toBeUndefined();
+          expect(Task.findTask(result.state.tasks, "CheckingBilling")).toBeUndefined();
+
+          // DeployingCampaign should exist (onboarding tasks were skipped entirely)
+          const deployCampaignTask = Task.findTask(result.state.tasks, "DeployingCampaign");
+          expect(deployCampaignTask).toBeDefined();
+        });
+      });
       const result = await testGraph<DeployGraphState>()
         .withState({
           jwt: "test-jwt",

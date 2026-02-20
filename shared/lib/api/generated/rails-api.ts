@@ -3566,14 +3566,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/google/connection_status": {
+    "/api/v1/google/status": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Returns Google OAuth connection status */
+        /** Returns unified Google onboarding status */
         get: {
             parameters: {
                 query?: never;
@@ -3587,57 +3587,29 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description returns connection status when connected */
+                /** @description returns status with pending invite and billing */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
-                };
-                /** @description unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
+                    content: {
+                        "application/json": {
+                            /** @description Whether the account has connected Google OAuth */
+                            google_connected: boolean;
+                            /** @description The connected Google email address */
+                            google_email?: string | null;
+                            /** @description Whether the Google Ads invite has been accepted */
+                            invite_accepted: boolean;
+                            /** @description Current invite status (none, pending, accepted) */
+                            invite_status: string;
+                            /** @description The invited email address */
+                            invite_email?: string | null;
+                            /** @description Whether Google Ads billing is enabled */
+                            has_payment: boolean;
+                            /** @description Current billing status (none, pending, approved) */
+                            billing_status: string;
+                        };
                     };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/google/invite_status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Returns Google Ads invite status */
-        get: {
-            parameters: {
-                query?: never;
-                header?: {
-                    Authorization?: string;
-                    "X-Signature"?: string;
-                    "X-Timestamp"?: string;
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description returns invite status when invite is accepted */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
                 };
                 /** @description unauthorized */
                 401: {
@@ -3690,7 +3662,16 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @description Whether the Google Ads invite has been accepted */
+                            accepted: boolean;
+                            /** @description Current invite status (none, pending, accepted) */
+                            status: string;
+                            /** @description The invited email address */
+                            email?: string | null;
+                        };
+                    };
                 };
                 /** @description unauthorized */
                 401: {
@@ -3701,51 +3682,6 @@ export interface paths {
                 };
             };
         };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/google/payment_status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Returns Google Ads payment/billing status */
-        get: {
-            parameters: {
-                query?: never;
-                header?: {
-                    Authorization?: string;
-                    "X-Signature"?: string;
-                    "X-Timestamp"?: string;
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description returns payment status when billing is approved */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;

@@ -4,7 +4,7 @@ import { useLanggraph, type ChatSnapshot, type LanggraphChat } from "langgraph-a
 import type { UIMessage } from "ai";
 import { Deploy, type InertiaProps } from "@shared";
 import { useChatOptions } from "@hooks/useChatOptions";
-import { useDeployInstructions } from "@hooks/useDeployInstructions";
+import { useDeployInstructions, useDeployType } from "@hooks/useDeployInstructions";
 import { useProjectId } from "~/stores/projectStore";
 import { useDeployService } from "@api/deploys.hooks";
 import { logger } from "@lib/logger";
@@ -56,7 +56,9 @@ function useDeployChatOptions() {
     apiPath: "api/deploy/stream",
     merge: Deploy.MergeReducer as any,
     getInitialThreadId: () => thread_id ?? resolvedDeployThreadId,
-    onThreadIdAvailable: (id) => { resolvedDeployThreadId = id; },
+    onThreadIdAvailable: (id) => {
+      resolvedDeployThreadId = id;
+    },
     includeAttachments: false,
   });
 }
@@ -73,9 +75,7 @@ export function useDeployChat<TSelected = DeploySnapshot>(
   selector?: (snapshot: DeploySnapshot) => TSelected
 ): TSelected {
   const options = useDeployChatOptions();
-  const snapshot = useLanggraph<Deploy.DeployBridgeType>(options);
-
-  return (selector ? selector(snapshot) : snapshot) as TSelected;
+  return useLanggraph<Deploy.DeployBridgeType, TSelected>(options, selector);
 }
 
 // Helper hooks for common selectors
@@ -113,6 +113,7 @@ export function useDeployContext() {
   const { website, campaign } = props;
   const projectId = props.project?.id;
   const instructions = useDeployInstructions();
+  const deployType = useDeployType();
 
   return useMemo(() => {
     const ctx = {
@@ -120,9 +121,10 @@ export function useDeployContext() {
       websiteId: website?.id,
       campaignId: instructions.googleAds ? campaign?.id : undefined,
       instructions,
+      deployType,
     };
     return ctx;
-  }, [projectId, website?.id, campaign?.id, instructions]);
+  }, [projectId, website?.id, campaign?.id, instructions, deployType]);
 }
 
 /**

@@ -140,7 +140,13 @@ export function isTaskDone(state: DeployGraphState, taskName: Deploy.TaskName): 
     return true;
   }
   const task = Task.findTask(state.tasks, taskName);
-  return !!task && (task.status === "completed" || task.status === "skipped");
+  // If task isn't in state.tasks, it was intentionally excluded by initPhasesNode
+  // (e.g. deploy readiness check, contentChanged filter). Treat as done so it
+  // doesn't block downstream tasks — same logic as allTasksComplete.
+  if (!task) {
+    return true;
+  }
+  return task.status === "completed" || task.status === "skipped";
 }
 
 /**

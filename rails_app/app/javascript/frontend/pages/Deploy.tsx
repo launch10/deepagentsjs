@@ -16,12 +16,7 @@ import {
   ConnectionErrorScreen,
 } from "@components/deploy/screens";
 import { PaginationFooter } from "@components/shared/pagination-footer";
-import {
-  useDeployChatInstance,
-  useDeployChatFullState,
-  useDeployChat,
-  type DeployProps,
-} from "@hooks/useDeployChat";
+import { useDeployChatInstance, useDeployChat, type DeployProps } from "@hooks/useDeployChat";
 import { useDeployInit } from "@hooks/useDeployInit";
 import { useDeployContentScreen, type DeployScreen } from "@hooks/useDeployContentScreen";
 import { useDeployInstructions } from "@hooks/useDeployInstructions";
@@ -46,10 +41,24 @@ function DeployContent() {
   const { deploy } = usePage<DeployProps>().props;
   const pollingFailed = useDeployInit();
 
-  const state = useDeployChatFullState();
-  const historyFailed = useDeployChat((s) => s.historyFailed);
+  // Select only the fields needed for screen resolution.
+  // isLoadingHistory ensures we subscribe to loading callbacks so
+  // historyFailed transitions are detected (it's a derived property).
+  const screenState = useDeployChat((s) => ({
+    tasks: s.state.tasks,
+    status: s.state.status,
+    instructions: s.state.instructions,
+    historyFailed: s.historyFailed,
+    isLoadingHistory: s.isLoadingHistory,
+  }));
   const pageInstructions = useDeployInstructions();
-  const screen = useDeployContentScreen(state, deploy?.status, deploy?.instructions, pageInstructions, historyFailed || pollingFailed);
+  const screen = useDeployContentScreen(
+    screenState,
+    deploy?.status,
+    deploy?.instructions,
+    pageInstructions,
+    screenState.historyFailed || pollingFailed
+  );
   const isComplete = screen === "deploy-complete";
 
   const DeployScreen = SCREENS[screen];

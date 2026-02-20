@@ -43,9 +43,15 @@ describe("checkPaymentNode", () => {
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getPaymentStatus: vi
-            .fn()
-            .mockResolvedValue({ has_payment: false }),
+          getGoogleStatus: vi.fn().mockResolvedValue({
+            google_connected: false,
+            google_email: null,
+            invite_accepted: false,
+            invite_status: "none",
+            invite_email: null,
+            has_payment: false,
+            billing_status: "none",
+          }),
         }) as any
     );
   });
@@ -250,17 +256,33 @@ describe("isPaymentVerified", () => {
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getPaymentStatus: vi.fn().mockResolvedValue({ has_payment: false }),
+          getGoogleStatus: vi.fn().mockResolvedValue({
+            google_connected: false,
+            google_email: null,
+            invite_accepted: false,
+            invite_status: "none",
+            invite_email: null,
+            has_payment: false,
+            billing_status: "none",
+          }),
         }) as any
     );
   });
 
   it("returns true when API says payment is verified", async () => {
-    const mockGetStatus = vi.fn().mockResolvedValue({ has_payment: true });
+    const mockGetStatus = vi.fn().mockResolvedValue({
+      google_connected: false,
+      google_email: null,
+      invite_accepted: false,
+      invite_status: "none",
+      invite_email: null,
+      has_payment: true,
+      billing_status: "approved",
+    });
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getPaymentStatus: mockGetStatus,
+          getGoogleStatus: mockGetStatus,
         }) as any
     );
 

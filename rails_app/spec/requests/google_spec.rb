@@ -13,8 +13,8 @@ RSpec.describe "Google API", type: :request do
     auth_headers_for(user)
   end
 
-  path "/api/v1/google/connection_status" do
-    get "Returns Google OAuth connection status" do
+  path "/api/v1/google/status" do
+    get "Returns unified Google onboarding status" do
       tags "Google"
       produces "application/json"
       security [bearer_auth: []]
@@ -22,7 +22,8 @@ RSpec.describe "Google API", type: :request do
       parameter name: "X-Signature", in: :header, type: :string, required: false
       parameter name: "X-Timestamp", in: :header, type: :string, required: false
 
-      response "200", "returns connection status when not connected" do
+      response "200", "returns status when nothing is set up" do
+        schema APISchemas::Google.status_response
         let(:Authorization) { auth_headers["Authorization"] }
         let(:"X-Signature") { auth_headers["X-Signature"] }
         let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
@@ -30,12 +31,48 @@ RSpec.describe "Google API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
 
-          expect(data["connected"]).to be false
-          expect(data["email"]).to be_nil
+          expect(data["google_connected"]).to be false
+          expect(data["google_email"]).to be_nil
+          expect(data["invite_accepted"]).to be false
+          expect(data["invite_status"]).to eq("none")
+          expect(data["invite_email"]).to be_nil
+          expect(data["has_payment"]).to be false
+          expect(data["billing_status"]).to eq("none")
         end
       end
 
-      response "200", "returns connection status when connected" do
+      response "200", "returns status when everything is set up" do
+        schema APISchemas::Google.status_response
+        let(:Authorization) { auth_headers["Authorization"] }
+        let(:"X-Signature") { auth_headers["X-Signature"] }
+        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+
+        before do
+          create(:connected_account, owner: user, provider: "google_oauth2", auth: { "info" => { "email" => "test@gmail.com" } })
+          ads_account = create(:ads_account, account: account, platform: "google",
+            platform_settings: { google: { customer_id: "1234567890", billing_status: "approved" } })
+          create(:ads_account_invitation,
+            ads_account: ads_account,
+            platform: "google",
+            email_address: "test@gmail.com",
+            platform_settings: { google: { status: "accepted" } })
+        end
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+
+          expect(data["google_connected"]).to be true
+          expect(data["google_email"]).to eq("test@gmail.com")
+          expect(data["invite_accepted"]).to be true
+          expect(data["invite_status"]).to eq("accepted")
+          expect(data["invite_email"]).to eq("test@gmail.com")
+          expect(data["has_payment"]).to be true
+          expect(data["billing_status"]).to eq("approved")
+        end
+      end
+
+      response "200", "returns partial status (only Google connected)" do
+        schema APISchemas::Google.status_response
         let(:Authorization) { auth_headers["Authorization"] }
         let(:"X-Signature") { auth_headers["X-Signature"] }
         let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
@@ -47,51 +84,25 @@ RSpec.describe "Google API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
 
-          expect(data["connected"]).to be true
-          expect(data["email"]).to eq("test@gmail.com")
+          expect(data["google_connected"]).to be true
+          expect(data["google_email"]).to eq("test@gmail.com")
+          expect(data["invite_accepted"]).to be false
+          expect(data["invite_status"]).to eq("none")
+          expect(data["has_payment"]).to be false
+          expect(data["billing_status"]).to eq("none")
         end
       end
 
-      response "401", "unauthorized" do
-        let(:Authorization) { nil }
-
-        run_test! do |response|
-          expect(response.code).to eq("401")
-        end
-      end
-    end
-  end
-
-  path "/api/v1/google/invite_status" do
-    get "Returns Google Ads invite status" do
-      tags "Google"
-      produces "application/json"
-      security [bearer_auth: []]
-      parameter name: :Authorization, in: :header, type: :string, required: false
-      parameter name: "X-Signature", in: :header, type: :string, required: false
-      parameter name: "X-Timestamp", in: :header, type: :string, required: false
-
-      response "200", "returns invite status when no invite exists" do
-        let(:Authorization) { auth_headers["Authorization"] }
-        let(:"X-Signature") { auth_headers["X-Signature"] }
-        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-
-          expect(data["accepted"]).to be false
-          expect(data["status"]).to eq("none")
-          expect(data["email"]).to be_nil
-        end
-      end
-
-      response "200", "returns invite status when invite is pending" do
+      response "200", "returns status with pending invite and billing" do
+        schema APISchemas::Google.status_response
         let(:Authorization) { auth_headers["Authorization"] }
         let(:"X-Signature") { auth_headers["X-Signature"] }
         let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
 
         before do
-          ads_account = create(:ads_account, account: account, platform: "google")
+          create(:connected_account, owner: user, provider: "google_oauth2", auth: { "info" => { "email" => "test@gmail.com" } })
+          ads_account = create(:ads_account, account: account, platform: "google",
+            platform_settings: { google: { customer_id: "1234567890" } })
           create(:ads_account_invitation,
             ads_account: ads_account,
             platform: "google",
@@ -102,32 +113,12 @@ RSpec.describe "Google API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
 
-          expect(data["accepted"]).to be false
-          expect(data["status"]).to eq("pending")
-          expect(data["email"]).to eq("test@gmail.com")
-        end
-      end
-
-      response "200", "returns invite status when invite is accepted" do
-        let(:Authorization) { auth_headers["Authorization"] }
-        let(:"X-Signature") { auth_headers["X-Signature"] }
-        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
-
-        before do
-          ads_account = create(:ads_account, account: account, platform: "google")
-          create(:ads_account_invitation,
-            ads_account: ads_account,
-            platform: "google",
-            email_address: "test@gmail.com",
-            platform_settings: { google: { status: "accepted" } })
-        end
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-
-          expect(data["accepted"]).to be true
-          expect(data["status"]).to eq("accepted")
-          expect(data["email"]).to eq("test@gmail.com")
+          expect(data["google_connected"]).to be true
+          expect(data["invite_accepted"]).to be false
+          expect(data["invite_status"]).to eq("pending")
+          expect(data["invite_email"]).to eq("test@gmail.com")
+          expect(data["has_payment"]).to be false
+          expect(data["billing_status"]).to eq("pending")
         end
       end
 
@@ -156,6 +147,7 @@ RSpec.describe "Google API", type: :request do
       }, required: false
 
       response "200", "returns status when no invitation exists" do
+        schema APISchemas::Google.refresh_invite_status_response
         let(:Authorization) { auth_headers["Authorization"] }
         let(:"X-Signature") { auth_headers["X-Signature"] }
         let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
@@ -168,6 +160,7 @@ RSpec.describe "Google API", type: :request do
       end
 
       response "200", "refreshes from Google and returns accepted status, completing the job run" do
+        schema APISchemas::Google.refresh_invite_status_response
         let(:Authorization) { auth_headers["Authorization"] }
         let(:"X-Signature") { auth_headers["X-Signature"] }
         let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
@@ -211,6 +204,7 @@ RSpec.describe "Google API", type: :request do
       end
 
       response "200", "enqueues PollInviteAcceptanceWorker when not yet accepted" do
+        schema APISchemas::Google.refresh_invite_status_response
         let(:Authorization) { auth_headers["Authorization"] }
         let(:"X-Signature") { auth_headers["X-Signature"] }
         let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
@@ -244,79 +238,6 @@ RSpec.describe "Google API", type: :request do
 
           expect(job_run.reload.status).to eq("running")
           expect(GoogleAds::PollInviteAcceptanceWorker.jobs.size).to eq(1)
-        end
-      end
-
-      response "401", "unauthorized" do
-        let(:Authorization) { nil }
-
-        run_test! do |response|
-          expect(response.code).to eq("401")
-        end
-      end
-    end
-  end
-
-  path "/api/v1/google/payment_status" do
-    get "Returns Google Ads payment/billing status" do
-      tags "Google"
-      produces "application/json"
-      security [bearer_auth: []]
-      parameter name: :Authorization, in: :header, type: :string, required: false
-      parameter name: "X-Signature", in: :header, type: :string, required: false
-      parameter name: "X-Timestamp", in: :header, type: :string, required: false
-
-      response "200", "returns payment status when no ads account exists" do
-        let(:Authorization) { auth_headers["Authorization"] }
-        let(:"X-Signature") { auth_headers["X-Signature"] }
-        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-
-          expect(data["has_payment"]).to be false
-          expect(data["status"]).to eq("none")
-        end
-      end
-
-      response "200", "returns payment status when ads account exists but no billing" do
-        let(:Authorization) { auth_headers["Authorization"] }
-        let(:"X-Signature") { auth_headers["X-Signature"] }
-        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
-
-        before do
-          create(:ads_account, account: account, platform: "google",
-            platform_settings: { google: { customer_id: "1234567890" } })
-        end
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-
-          expect(data["has_payment"]).to be false
-          expect(data["status"]).to eq("pending")
-        end
-      end
-
-      response "200", "returns payment status when billing is approved" do
-        let(:Authorization) { auth_headers["Authorization"] }
-        let(:"X-Signature") { auth_headers["X-Signature"] }
-        let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
-
-        before do
-          create(:ads_account, account: account, platform: "google",
-            platform_settings: {
-              google: {
-                customer_id: "1234567890",
-                billing_status: "approved"
-              }
-            })
-        end
-
-        run_test! do |response|
-          data = JSON.parse(response.body)
-
-          expect(data["has_payment"]).to be true
-          expect(data["status"]).to eq("approved")
         end
       end
 

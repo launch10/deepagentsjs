@@ -27,8 +27,16 @@ export const verifyGoogleNode = async (
   const task = Task.findTask(state.tasks, TASK_NAME);
   const ts = () => new Date().toISOString();
 
-  log.info({ taskStatus: task?.status, taskJobId: task?.jobId, taskResult: task?.result, taskError: task?.error, deployId: state.deployId },
-    `${ts()} verifyGoogleNode invoked — task snapshot`);
+  log.info(
+    {
+      taskStatus: task?.status,
+      taskJobId: task?.jobId,
+      taskResult: task?.result,
+      taskError: task?.error,
+      deployId: state.deployId,
+    },
+    `${ts()} verifyGoogleNode invoked — task snapshot`
+  );
 
   // 1. Already completed or failed? No-op (idempotent)
   if (task?.status === "completed" || task?.status === "failed") {
@@ -52,8 +60,10 @@ export const verifyGoogleNode = async (
   //    Live-refresh invite status from Google. If accepted, complete immediately.
   //    If not, Rails enqueues PollInviteAcceptanceWorker for a quick follow-up.
   if (task?.status === "running" && task.jobId && !task.result?.status && !task.error) {
-    log.info({ jobId: task.jobId, deployId: state.deployId },
-      `${ts()} self-heal path — running with jobId, no result yet. Calling Rails refreshInviteStatus...`);
+    log.info(
+      { jobId: task.jobId, deployId: state.deployId },
+      `${ts()} self-heal path — running with jobId, no result yet. Calling Rails refreshInviteStatus...`
+    );
 
     if (state.deployId) {
       DeployService.touch(state.deployId).catch(() => {});
@@ -63,12 +73,22 @@ export const verifyGoogleNode = async (
       const googleApi = new GoogleAPIService({ jwt: state.jwt });
       const refreshResult = await googleApi.refreshInviteStatus(task.jobId);
 
-      log.info({ accepted: refreshResult.accepted, status: (refreshResult as any).status, jobId: task.jobId },
-        `${ts()} refreshInviteStatus response — accepted=${refreshResult.accepted}`);
+      log.info(
+        {
+          accepted: refreshResult.accepted,
+          status: (refreshResult as any).status,
+          jobId: task.jobId,
+        },
+        `${ts()} refreshInviteStatus response — accepted=${refreshResult.accepted}`
+      );
 
       if (refreshResult.accepted) {
         log.info(`${ts()} invite ACCEPTED via self-heal — marking COMPLETED`);
-        return withPhases(state, [{ ...task, status: "completed", result: { status: "accepted" } } as Task.Task], [TASK_NAME]);
+        return withPhases(
+          state,
+          [{ ...task, status: "completed", result: { status: "accepted" } } as Task.Task],
+          [TASK_NAME]
+        );
       }
     } else {
       log.warn(`${ts()} no JWT available for self-heal refresh`);
@@ -138,9 +158,9 @@ export async function isGoogleVerified(state: DeployGraphState): Promise<boolean
   }
 
   const googleApi = new GoogleAPIService({ jwt: state.jwt });
-  const { accepted } = await googleApi.getInviteStatus();
+  const { invite_accepted } = await googleApi.getGoogleStatus();
 
-  return accepted;
+  return invite_accepted;
 }
 
 /**

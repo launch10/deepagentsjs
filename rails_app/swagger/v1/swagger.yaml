@@ -4364,9 +4364,9 @@ paths:
                     - status
         "401":
           description: unauthorized without token
-  "/api/v1/google/connection_status":
+  "/api/v1/google/status":
     get:
-      summary: Returns Google OAuth connection status
+      summary: Returns unified Google onboarding status
       tags:
         - Google
       security:
@@ -4389,35 +4389,41 @@ paths:
             type: string
       responses:
         "200":
-          description: returns connection status when connected
-        "401":
-          description: unauthorized
-  "/api/v1/google/invite_status":
-    get:
-      summary: Returns Google Ads invite status
-      tags:
-        - Google
-      security:
-        - bearer_auth: []
-      parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
-      responses:
-        "200":
-          description: returns invite status when invite is accepted
+          description: returns status with pending invite and billing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  google_connected:
+                    type: boolean
+                    description: Whether the account has connected Google OAuth
+                  google_email:
+                    type: string
+                    nullable: true
+                    description: The connected Google email address
+                  invite_accepted:
+                    type: boolean
+                    description: Whether the Google Ads invite has been accepted
+                  invite_status:
+                    type: string
+                    description: Current invite status (none, pending, accepted)
+                  invite_email:
+                    type: string
+                    nullable: true
+                    description: The invited email address
+                  has_payment:
+                    type: boolean
+                    description: Whether Google Ads billing is enabled
+                  billing_status:
+                    type: string
+                    description: Current billing status (none, pending, approved)
+                required:
+                  - google_connected
+                  - invite_accepted
+                  - has_payment
+                  - invite_status
+                  - billing_status
         "401":
           description: unauthorized
   "/api/v1/google/refresh_invite_status":
@@ -4446,6 +4452,24 @@ paths:
       responses:
         "200":
           description: enqueues PollInviteAcceptanceWorker when not yet accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accepted:
+                    type: boolean
+                    description: Whether the Google Ads invite has been accepted
+                  status:
+                    type: string
+                    description: Current invite status (none, pending, accepted)
+                  email:
+                    type: string
+                    nullable: true
+                    description: The invited email address
+                required:
+                  - accepted
+                  - status
         "401":
           description: unauthorized
       requestBody:
@@ -4456,34 +4480,6 @@ paths:
               properties:
                 job_run_id:
                   type: integer
-  "/api/v1/google/payment_status":
-    get:
-      summary: Returns Google Ads payment/billing status
-      tags:
-        - Google
-      security:
-        - bearer_auth: []
-      parameters:
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Signature
-          in: header
-          required: false
-          schema:
-            type: string
-        - name: X-Timestamp
-          in: header
-          required: false
-          schema:
-            type: string
-      responses:
-        "200":
-          description: returns payment status when billing is approved
-        "401":
-          description: unauthorized
   "/api/v1/job_runs":
     post:
       summary: Creates job run scoped to requesting account
