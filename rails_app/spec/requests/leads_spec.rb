@@ -103,7 +103,7 @@ RSpec.describe "Leads API", type: :request do
         schema APISchemas::Lead.success_response
 
         let(:token) { valid_token }
-        let(:lead_params) { { email: 'newlead@example.com', name: 'Jane Doe' } }
+        let(:lead_params) { { email: 'newlead@example.com', name: 'Jane Doe', phone: '555-1234' } }
 
         run_test! do |response|
           data = JSON.parse(response.body)
@@ -115,6 +115,7 @@ RSpec.describe "Leads API", type: :request do
           expect(lead).to be_present
           expect(lead.account_id).to eq(account.id)
           expect(lead.name).to eq('Jane Doe')
+          expect(lead.phone).to eq('555-1234')
           expect(lead.websites).to include(website)
         end
       end
@@ -326,6 +327,18 @@ RSpec.describe "Leads API", type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['errors']['name']).to include('is too long (maximum is 255 characters)')
+        end
+      end
+
+      response '422', 'phone too long returns validation error' do
+        schema APISchemas::Lead.validation_error_response
+
+        let(:token) { valid_token }
+        let(:lead_params) { { email: 'valid@example.com', phone: 'a' * 51 } }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data['errors']['phone']).to include('is too long (maximum is 50 characters)')
         end
       end
 
@@ -770,6 +783,7 @@ RSpec.describe "Leads API", type: :request do
           token: valid_token,
           email: 'args-test@example.com',
           name: 'Test Person',
+          phone: '555-1234',
           gclid: 'test-gclid',
           fbclid: 'test-fbclid'
         }
@@ -781,6 +795,7 @@ RSpec.describe "Leads API", type: :request do
           {
             'email' => 'args-test@example.com',
             'name' => 'Test Person',
+            'phone' => '555-1234',
             'gclid' => 'test-gclid',
             'fbclid' => 'test-fbclid'
           }

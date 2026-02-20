@@ -66,7 +66,7 @@ afterEach(async () => {
  * Tests are organized in workflow order matching the deploy graph flow:
  *
  * 1. Google Connect/Verify [campaign] - OAuth and invite acceptance
- * 2. Analytics [all] - L10.createLead instrumentation
+ * 2. Analytics [all] - LeadForm instrumentation
  * 3. SEO Optimization [all] - Meta tags generation
  * 4. Phase Computation - Website Deploy phases
  * 5. Website Deploy Flow - Validation loop and deployment
@@ -459,11 +459,11 @@ describe.sequential("Deploy Graph Tests", () => {
    * =============================================================================
    * 2. ANALYTICS TESTS [all]
    * =============================================================================
-   * These tests verify the instrumentation node properly adds L10.createLead()
+   * These tests verify the instrumentation node properly adds LeadForm tracking
    * to landing pages for lead capture tracking.
    *
    * USER OUTCOME: Lead capture works correctly after deployment because
-   * instrumentation adds the necessary L10.createLead() calls.
+   * instrumentation adds the necessary LeadForm tracking.
    */
   describe("AddingAnalytics", () => {
     beforeEach(async () => {
@@ -471,7 +471,7 @@ describe.sequential("Deploy Graph Tests", () => {
     });
 
     it("skips instrumentation when analytics already present", async () => {
-      // The website_deploy_step snapshot already has L10.createLead in the files
+      // The website_deploy_step snapshot already has LeadForm in the files
       // (analytics is now added during website generation). The analytics node
       // should detect this and complete without calling the coding agent.
       const filesBeforeRunning = await db
@@ -481,8 +481,8 @@ describe.sequential("Deploy Graph Tests", () => {
         .execute();
 
       // Confirm analytics is already present in the snapshot
-      const hasAnalyticsBeforeRunning = filesBeforeRunning.some(
-        (file) => file.content?.includes("L10.createLead") || file.content?.includes("createLead")
+      const hasAnalyticsBeforeRunning = filesBeforeRunning.some((file) =>
+        file.content?.includes("LeadForm")
       );
       expect(hasAnalyticsBeforeRunning).toBe(true);
 

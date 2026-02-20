@@ -377,22 +377,16 @@ function findFile(files: Map<string, string>, substring: string): string | undef
 }
 
 /**
- * Check that L10.createLead tracking was not removed from any file that had it.
+ * Check that LeadForm tracking was not removed from any file that had it.
  * Returns list of violation descriptions (empty = all good).
  */
 function checkTrackingPreserved(before: Map<string, string>, after: Map<string, string>): string[] {
   const violations: string[] = [];
   for (const [path, content] of before) {
-    if (content.includes("L10.createLead")) {
+    if (content.includes("LeadForm")) {
       const afterContent = after.get(path);
-      if (afterContent && !afterContent.includes("L10.createLead")) {
-        violations.push(`L10.createLead removed from ${path}`);
-      }
-    }
-    if (content.includes("from '@/lib/tracking'") || content.includes('from "@/lib/tracking"')) {
-      const afterContent = after.get(path);
-      if (afterContent && !afterContent.includes("tracking")) {
-        violations.push(`Tracking import removed from ${path}`);
+      if (afterContent && !afterContent.includes("LeadForm")) {
+        violations.push(`LeadForm removed from ${path}`);
       }
     }
   }
@@ -510,7 +504,7 @@ describe.skipIf(!!process.env.CI)("Single-Shot Edit Eval", () => {
   //   4. At least one file modified
   //   5. Correct file(s) modified (warns if wrong target)
   //   6. Content assertions: expected text present/absent in target files
-  //   7. Invariant: L10.createLead tracking never removed
+  //   7. Invariant: LeadForm tracking never removed
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   describe("Single-shot execution", () => {
     let ctx: Awaited<ReturnType<typeof getTestContext>>;
@@ -621,7 +615,7 @@ describe.skipIf(!!process.env.CI)("Single-Shot Edit Eval", () => {
         if (trackingViolations.length > 0) {
           console.error(`  ❌ Tracking violations: ${trackingViolations.join(", ")}`);
         }
-        expect(trackingViolations, "L10 tracking must be preserved").toHaveLength(0);
+        expect(trackingViolations, "LeadForm tracking must be preserved").toHaveLength(0);
 
         await persistRecordings();
       }, 120000);

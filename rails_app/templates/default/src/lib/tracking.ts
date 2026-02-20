@@ -248,7 +248,7 @@ export const L10 = {
    */
   async createLead(
     email: string,
-    options?: { value?: number; currency?: string; name?: string }
+    options?: { value?: number; currency?: string; name?: string; phone?: string }
   ): Promise<void> {
     const now = Date.now();
     if (email === _lastLeadCall.email && now - _lastLeadCall.ts < 500) {
@@ -275,6 +275,7 @@ export const L10 = {
         body: JSON.stringify({
           email,
           name: options?.name,
+          phone: options?.phone,
           token: signupToken,
           visitor_token: this.getVisitorToken(),
           visit_token: this.getVisitToken(),

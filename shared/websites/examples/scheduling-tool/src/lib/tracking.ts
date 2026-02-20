@@ -129,6 +129,9 @@ function getFbclid(): string | null {
 // Capture click IDs on module load
 captureClickIds();
 
+// Deduplication state for createLead (guards against onClick + onSubmit double-fire)
+let _lastLeadCall = { email: "", ts: 0 };
+
 export const L10 = {
   /**
    * Get or create a persistent visitor token (stored in localStorage).
@@ -245,8 +248,14 @@ export const L10 = {
    */
   async createLead(
     email: string,
-    options?: { value?: number; currency?: string; name?: string }
+    options?: { value?: number; currency?: string; name?: string; phone?: string }
   ): Promise<void> {
+    const now = Date.now();
+    if (email === _lastLeadCall.email && now - _lastLeadCall.ts < 500) {
+      return; // Deduplicate rapid double-fire (e.g. onClick + onSubmit)
+    }
+    _lastLeadCall = { email, ts: now };
+
     const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
     const signupToken = import.meta.env.VITE_SIGNUP_TOKEN;
     const googleAdsSendTo = import.meta.env.VITE_GOOGLE_ADS_SEND_TO;
@@ -266,6 +275,7 @@ export const L10 = {
         body: JSON.stringify({
           email,
           name: options?.name,
+          phone: options?.phone,
           token: signupToken,
           visitor_token: this.getVisitorToken(),
           visit_token: this.getVisitToken(),
@@ -304,8 +314,11 @@ export const L10 = {
   },
 };
 
-// Auto-track visit and page view on load
-if (typeof window !== "undefined" && typeof document !== "undefined") {
+// Auto-track visit and page view on load (window-level guard survives chunk duplication)
+const INIT_KEY = "__l10_tracking_initialized__";
+
+if (typeof window !== "undefined" && typeof document !== "undefined" && !(window as any)[INIT_KEY]) {
+  (window as any)[INIT_KEY] = true;
   const doc = document; // Narrow type after undefined check
   // Wait for DOM to be ready before tracking
   if (doc.readyState === "loading") {

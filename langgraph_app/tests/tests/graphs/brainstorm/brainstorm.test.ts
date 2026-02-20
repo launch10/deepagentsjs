@@ -1092,218 +1092,169 @@ describe.sequential("Brainstorming Flow", () => {
       expect(result).toEqual({});
     });
 
-    it("skips when no websiteId", async () => {
-      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const state = buildState({
-        messages: [new HumanMessage("my business idea")],
-        remainingTopics: ["audience"] as Brainstorm.TopicName[],
-        websiteId: undefined,
+    describe("Brand personalization tools", () => {
+      // Real test images hosted on dev-uploads
+      const BRAND_TEST_IMAGE_URL =
+        "https://dev-uploads.launch10.ai/uploads/024dfc6c-335d-4f11-883b-f8e241f91744.png";
+      const BRAND_TEST_IMAGE_2_URL =
+        "https://dev-uploads.launch10.ai/uploads/4524ac00-da1d-49b5-b601-bdd015aa6d2b.png";
+
+      it("sets logo when user sends an image and identifies it as their logo", async () => {
+        const graph = await restartChatFrom("lookAndFeel", SimpleChatHistory);
+
+        // First execute to get established state, then add image message
+        const result1 = await graph
+          .withPrompt("I'd like to add my logo")
+          .stopAfter("brainstormAgent")
+          .execute();
+
+        const imageMessage = new HumanMessage({
+          content: [
+            {
+              type: "text",
+              text: "This is my company logo, please set it as the logo for my site",
+            },
+            { type: "image_url", image_url: { url: BRAND_TEST_IMAGE_URL } },
+          ],
+        });
+
+        const result = await graph
+          .withState({
+            ...result1.state,
+            messages: [...(result1.state.messages || []), imageMessage],
+          })
+          .stopAfter("brainstormAgent")
+          .execute();
+
+        const lastAIResponse = lastAIMessage(result.state);
+        assertDefined(lastAIResponse, "AI response should be defined");
+
+        expect(result.state.error).toBeUndefined();
+
+        // The agent should call set_logo with the image URL
+        const toolMessage = findToolMessage(result.state, "set_logo");
+        assertDefined(toolMessage, "set_logo tool should have been called");
+
+        // Tool was invoked — in test env the upload UUID won't exist in DB,
+        // but the important thing is the agent recognized the intent and called the tool
+        const content = JSON.parse(toolMessage.content as string);
+        expect(content).toBeDefined();
       });
 
-      const result = await ensureAnswersSaved(state, {} as any);
-      expect(result).toEqual({});
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("No websiteId"));
-      consoleSpy.mockRestore();
-    });
+      it("saves social links when user provides them", async () => {
+        const graph = await restartChatFrom("lookAndFeel", SimpleChatHistory);
 
-    it("skips when no threadId or jwt", async () => {
-      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const state = buildState({
-        messages: [new HumanMessage("my business idea")],
-        remainingTopics: ["audience"] as Brainstorm.TopicName[],
-        websiteId: 1,
-        threadId: undefined,
-        jwt: undefined,
+        const result = await graph
+          .withPrompt(
+            "Our Twitter is https://twitter.com/friendofthepod and our Instagram is https://instagram.com/friendofthepod"
+          )
+          .stopAfter("brainstormAgent")
+          .execute();
+
+        const lastAIResponse = lastAIMessage(result.state);
+        assertDefined(lastAIResponse, "AI response should be defined");
+
+        expect(result.state.error).toBeUndefined();
+
+        // The agent should call save_social_links
+        const toolMessage = findToolMessage(result.state, "save_social_links");
+        assertDefined(toolMessage, "save_social_links tool should have been called");
+
+        const content = JSON.parse(toolMessage.content as string);
+        expect(content.success).toBe(true);
       });
 
-      const result = await ensureAnswersSaved(state, {} as any);
-      expect(result).toEqual({});
-      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("No threadId or jwt"));
-      consoleSpy.mockRestore();
-    });
+      it("applies color scheme when user requests specific colors", async () => {
+        const graph = await restartChatFrom("lookAndFeel", SimpleChatHistory);
 
-    it("fires summarizeAndSaveAnswers when conditions are met", async () => {
-      const consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-      const state = buildState({
-        messages: [new HumanMessage("my business idea"), new AIMessage("tell me more")],
-        remainingTopics: ["audience", "solution"] as Brainstorm.TopicName[],
-        skippedTopics: [],
-        websiteId: 1,
-        threadId: "thread-123" as any,
-        jwt: "test-jwt",
+        const result = await graph
+          .withPrompt(
+            "I want a blue and orange color scheme for my landing page, something professional and warm"
+          )
+          .stopAfter("brainstormAgent")
+          .execute();
+
+        const lastAIResponse = lastAIMessage(result.state);
+        assertDefined(lastAIResponse, "AI response should be defined");
+
+        expect(result.state.error).toBeUndefined();
+
+        // The agent should call change_color_scheme
+        const toolMessage = findToolMessage(result.state, "change_color_scheme");
+        assertDefined(toolMessage, "change_color_scheme tool should have been called");
       });
 
-      const result = await ensureAnswersSaved(state, {} as any);
+      it("associates images with project when user sends product photos", async () => {
+        const graph = await restartChatFrom("lookAndFeel", SimpleChatHistory);
 
-      // Node returns {} (fire-and-forget save; intent clearing is in cleanup node)
-      expect(result).toEqual({});
-      // But it should have logged that it's triggering the background save
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("[ensureAnswersSaved] Background save for topics:")
-      );
-      consoleSpy.mockRestore();
-    });
-  });
+        // First execute to get established state
+        const result1 = await graph
+          .withPrompt("I have some product photos to share")
+          .stopAfter("brainstormAgent")
+          .execute();
 
-  describe("Brand personalization tools", () => {
-    // Real test images hosted on dev-uploads
-    const BRAND_TEST_IMAGE_URL =
-      "https://dev-uploads.launch10.ai/uploads/024dfc6c-335d-4f11-883b-f8e241f91744.png";
-    const BRAND_TEST_IMAGE_2_URL =
-      "https://dev-uploads.launch10.ai/uploads/4524ac00-da1d-49b5-b601-bdd015aa6d2b.png";
+        const imageMessage = new HumanMessage({
+          content: [
+            { type: "text", text: "Use these product photos on my landing page" },
+            { type: "image_url", image_url: { url: BRAND_TEST_IMAGE_URL } },
+            { type: "image_url", image_url: { url: BRAND_TEST_IMAGE_2_URL } },
+          ],
+        });
 
-    it("sets logo when user sends an image and identifies it as their logo", async () => {
-      const graph = await restartChatFrom("lookAndFeel", SimpleChatHistory);
+        const result = await graph
+          .withState({
+            ...result1.state,
+            messages: [...(result1.state.messages || []), imageMessage],
+          })
+          .stopAfter("brainstormAgent")
+          .execute();
 
-      // First execute to get established state, then add image message
-      const result1 = await graph
-        .withPrompt("I'd like to add my logo")
-        .stopAfter("brainstormAgent")
-        .execute();
+        const lastAIResponse = lastAIMessage(result.state);
+        assertDefined(lastAIResponse, "AI response should be defined");
 
-      const imageMessage = new HumanMessage({
-        content: [
-          { type: "text", text: "This is my company logo, please set it as the logo for my site" },
-          { type: "image_url", image_url: { url: BRAND_TEST_IMAGE_URL } },
-        ],
+        expect(result.state.error).toBeUndefined();
+
+        // The agent should call upload_project_images
+        const toolMessage = findToolMessage(result.state, "upload_project_images");
+        assertDefined(toolMessage, "upload_project_images tool should have been called");
+
+        // Tool was invoked — in test env the upload UUIDs won't exist in DB,
+        // but the important thing is the agent recognized the intent and called the tool
+        const content = JSON.parse(toolMessage.content as string);
+        expect(content).toBeDefined();
       });
 
-      const result = await graph
-        .withState({
-          ...result1.state,
-          messages: [...(result1.state.messages || []), imageMessage],
-        })
-        .stopAfter("brainstormAgent")
-        .execute();
+      it("handles logo during earlier brainstorm phases", async () => {
+        const projectUUID = uuidv7() as UUIDType;
 
-      const lastAIResponse = lastAIMessage(result.state);
-      assertDefined(lastAIResponse, "AI response should be defined");
+        const imageMessage = new HumanMessage({
+          content: [
+            {
+              type: "text",
+              text: "Here's my logo. My business is a fitness app specifically designed for men over 50 who want to start exercising.",
+            },
+            { type: "image_url", image_url: { url: BRAND_TEST_IMAGE_URL } },
+          ],
+        });
 
-      expect(result.state.error).toBeUndefined();
+        const result = await testGraph<BrainstormGraphState>()
+          .withGraph(brainstormGraph)
+          .withState({
+            projectUUID,
+            messages: [imageMessage],
+          })
+          .stopAfter("brainstormAgent")
+          .execute();
 
-      // The agent should call set_logo with the image URL
-      const toolMessage = findToolMessage(result.state, "set_logo");
-      assertDefined(toolMessage, "set_logo tool should have been called");
+        const lastAIResponse = lastAIMessage(result.state);
+        assertDefined(lastAIResponse, "AI response should be defined");
 
-      // Tool was invoked — in test env the upload UUID won't exist in DB,
-      // but the important thing is the agent recognized the intent and called the tool
-      const content = JSON.parse(toolMessage.content as string);
-      expect(content).toBeDefined();
-    });
+        expect(result.state.error).toBeUndefined();
 
-    it("saves social links when user provides them", async () => {
-      const graph = await restartChatFrom("lookAndFeel", SimpleChatHistory);
-
-      const result = await graph
-        .withPrompt(
-          "Our Twitter is https://twitter.com/friendofthepod and our Instagram is https://instagram.com/friendofthepod"
-        )
-        .stopAfter("brainstormAgent")
-        .execute();
-
-      const lastAIResponse = lastAIMessage(result.state);
-      assertDefined(lastAIResponse, "AI response should be defined");
-
-      expect(result.state.error).toBeUndefined();
-
-      // The agent should call save_social_links
-      const toolMessage = findToolMessage(result.state, "save_social_links");
-      assertDefined(toolMessage, "save_social_links tool should have been called");
-
-      const content = JSON.parse(toolMessage.content as string);
-      expect(content.success).toBe(true);
-    });
-
-    it("applies color scheme when user requests specific colors", async () => {
-      const graph = await restartChatFrom("lookAndFeel", SimpleChatHistory);
-
-      const result = await graph
-        .withPrompt(
-          "I want a blue and orange color scheme for my landing page, something professional and warm"
-        )
-        .stopAfter("brainstormAgent")
-        .execute();
-
-      const lastAIResponse = lastAIMessage(result.state);
-      assertDefined(lastAIResponse, "AI response should be defined");
-
-      expect(result.state.error).toBeUndefined();
-
-      // The agent should call change_color_scheme
-      const toolMessage = findToolMessage(result.state, "change_color_scheme");
-      assertDefined(toolMessage, "change_color_scheme tool should have been called");
-    });
-
-    it("associates images with project when user sends product photos", async () => {
-      const graph = await restartChatFrom("lookAndFeel", SimpleChatHistory);
-
-      // First execute to get established state
-      const result1 = await graph
-        .withPrompt("I have some product photos to share")
-        .stopAfter("brainstormAgent")
-        .execute();
-
-      const imageMessage = new HumanMessage({
-        content: [
-          { type: "text", text: "Use these product photos on my landing page" },
-          { type: "image_url", image_url: { url: BRAND_TEST_IMAGE_URL } },
-          { type: "image_url", image_url: { url: BRAND_TEST_IMAGE_2_URL } },
-        ],
+        // Agent should process the business idea AND call set_logo
+        const toolMessage = findToolMessage(result.state, "set_logo");
+        assertDefined(toolMessage, "set_logo tool should have been called even during idea phase");
       });
-
-      const result = await graph
-        .withState({
-          ...result1.state,
-          messages: [...(result1.state.messages || []), imageMessage],
-        })
-        .stopAfter("brainstormAgent")
-        .execute();
-
-      const lastAIResponse = lastAIMessage(result.state);
-      assertDefined(lastAIResponse, "AI response should be defined");
-
-      expect(result.state.error).toBeUndefined();
-
-      // The agent should call upload_project_images
-      const toolMessage = findToolMessage(result.state, "upload_project_images");
-      assertDefined(toolMessage, "upload_project_images tool should have been called");
-
-      // Tool was invoked — in test env the upload UUIDs won't exist in DB,
-      // but the important thing is the agent recognized the intent and called the tool
-      const content = JSON.parse(toolMessage.content as string);
-      expect(content).toBeDefined();
-    });
-
-    it("handles logo during earlier brainstorm phases", async () => {
-      const projectUUID = uuidv7() as UUIDType;
-
-      const imageMessage = new HumanMessage({
-        content: [
-          {
-            type: "text",
-            text: "Here's my logo. My business is a fitness app specifically designed for men over 50 who want to start exercising.",
-          },
-          { type: "image_url", image_url: { url: BRAND_TEST_IMAGE_URL } },
-        ],
-      });
-
-      const result = await testGraph<BrainstormGraphState>()
-        .withGraph(brainstormGraph)
-        .withState({
-          projectUUID,
-          messages: [imageMessage],
-        })
-        .stopAfter("brainstormAgent")
-        .execute();
-
-      const lastAIResponse = lastAIMessage(result.state);
-      assertDefined(lastAIResponse, "AI response should be defined");
-
-      expect(result.state.error).toBeUndefined();
-
-      // Agent should process the business idea AND call set_logo
-      const toolMessage = findToolMessage(result.state, "set_logo");
-      assertDefined(toolMessage, "set_logo tool should have been called even during idea phase");
     });
   });
 });

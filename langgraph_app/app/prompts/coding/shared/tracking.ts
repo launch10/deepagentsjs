@@ -1,6 +1,6 @@
 /**
  * Lead capture and conversion tracking context for coding agents.
- * L10.createLead() handles both the API call and conversion tracking transparently.
+ * Uses the LeadForm compound component for all lead capture forms.
  */
 import type { CodingPromptState, CodingPromptFn } from "./types";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
@@ -11,44 +11,65 @@ export const trackingPrompt: CodingPromptFn = async (
 ): Promise<string> => `
 ## Lead Capture & Conversion Tracking
 
-EVERY landing page MUST include email capture to track leads and conversions.
+Use the \`LeadForm\` compound component for ALL lead capture forms. It handles validation, loading states, error display, and conversion tracking automatically.
 
-1. Import: import { L10 } from '@/lib/tracking'
-2. On form submit success:
-   - Simple signup: await L10.createLead(email)
-   - Tiered pricing: await L10.createLead(email, { value: selectedPrice })
-3. Show success state AFTER L10.createLead resolves
-4. Handle errors gracefully (show "Try again" message)
-
-All landing pages capture email leads via \`L10.createLead()\`. This single call handles:
-1. Submitting the email to our backend API
-2. Firing Google Ads conversion tracking on success
-
-### Scenario 1: Tiered Pricing Pages
-When the page has pricing tiers (e.g., Basic/Pro/Enterprise), pass the tier price in USD for ROAS measurement.
-
-\`\`\`tsx
-const handleTierSignup = (email: string, tierPrice: number) => {
-  L10.createLead(email, { value: tierPrice })
-    .then(() => setStatus('success'))
-    .catch((e) => setError(e.message));
-};
+\`\`\`ts
+import { LeadForm } from "@/components/ui/lead-form";
 \`\`\`
 
-### Scenario 2: Simple Waitlist/Signup
-For basic signup forms without pricing context (hero signup, footer CTA, etc.).
+### Scenario 1: Email-Only (Hero CTA, Waitlist)
+
+Use for simple signup forms — hero sections, footer CTAs, waitlists. This is the default for most forms.
 
 \`\`\`tsx
-const handleSignup = (email: string) => {
-  L10.createLead(email)
-    .then(() => setStatus('success'))
-    .catch((e) => setError(e.message));
-};
+<LeadForm className="flex gap-2">
+  <LeadForm.Email placeholder="Enter your email" className="flex-1" />
+  <LeadForm.Submit>Get Started</LeadForm.Submit>
+  <LeadForm.Success><p>Thanks! We'll be in touch.</p></LeadForm.Success>
+  <LeadForm.Error />
+</LeadForm>
 \`\`\`
 
-### Implementation Rules
-- Import: \`import { L10 } from '@/lib/tracking'\`
-- Use \`L10.createLead(email)\` for all email signups - it handles everything
-- Pass \`{ value: tierPrice }\` only when user selected a pricing tier
-- Resolves on success, rejects on error - use \`.then()/.catch()\` or try/catch
+### Scenario 2: Email + Name + Phone (Standard Signup)
+
+Use when the form collects name and/or phone — contact forms, service signups, appointment booking, local businesses.
+
+\`\`\`tsx
+<LeadForm className="flex flex-col gap-4">
+  <LeadForm.Name placeholder="Your name" />
+  <LeadForm.Email placeholder="Email address" />
+  <LeadForm.Phone placeholder="Phone number" />
+  <LeadForm.Submit className="w-full">Sign Up</LeadForm.Submit>
+  <LeadForm.Success><p>Thanks! We'll be in touch.</p></LeadForm.Success>
+  <LeadForm.Error />
+</LeadForm>
+\`\`\`
+
+### Scenario 3: Tiered Pricing
+
+Use when the page has pricing tiers. Pass the tier price via the \`value\` prop for ROAS measurement.
+
+\`\`\`tsx
+<LeadForm value={49} className="flex flex-col gap-3">
+  <LeadForm.Email placeholder="Email address" />
+  <LeadForm.Submit className="w-full">Get Started</LeadForm.Submit>
+  <LeadForm.Success><p>Thanks!</p></LeadForm.Success>
+  <LeadForm.Error />
+</LeadForm>
+\`\`\`
+
+### Rules
+
+- \`LeadForm.Email\` is always required — include it in every form
+- \`LeadForm.Name\` and \`LeadForm.Phone\` are optional — only include if the form needs them
+- Style with \`className\` — the component handles validation and error states automatically
+- Always include \`<LeadForm.Success>\` with a thank-you message and \`<LeadForm.Error />\`
+- For tiered pricing, pass \`value={price}\` to \`<LeadForm>\`
+
+### When to Use Each Pattern
+
+- **Default (email-only):** Hero signups, CTA sections, simple waitlists
+- **Email + name + phone:** When the business type suggests it (services, appointments, local businesses) or the brainstorm mentions collecting names/phones
+- **Tiered pricing:** When the page has pricing tiers with specific prices
+
 `;

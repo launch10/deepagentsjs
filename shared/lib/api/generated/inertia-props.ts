@@ -1323,6 +1323,7 @@ export interface components {
                 id: number;
                 name?: string | null;
                 email: string;
+                phone?: string | null;
                 date: string;
             }[];
             pagination: {

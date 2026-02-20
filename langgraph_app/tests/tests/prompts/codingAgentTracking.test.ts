@@ -20,7 +20,7 @@ describe("Coding Agent Tracking Prompts", () => {
 
       // Should include the tracking section
       expect(prompt).toContain("Lead Capture");
-      expect(prompt).toContain("L10.createLead");
+      expect(prompt).toContain("LeadForm");
     });
 
     it("documents tiered pricing pattern with value parameter", async () => {
@@ -28,41 +28,41 @@ describe("Coding Agent Tracking Prompts", () => {
 
       // Should explain tiered pricing pattern
       expect(prompt).toContain("Tiered Pricing");
-      expect(prompt).toContain("tierPrice");
-      expect(prompt).toMatch(/L10\.createLead.*value.*tierPrice/s);
+      expect(prompt).toContain("value={49}");
     });
 
-    it("documents simple waitlist pattern", async () => {
+    it("documents email-only pattern", async () => {
       const prompt = await buildCodingPrompt(mockState);
 
-      // Should explain simple form pattern
-      expect(prompt).toContain("Simple Waitlist");
-      expect(prompt).toContain("L10.createLead(email)");
+      // Should explain email-only form pattern
+      expect(prompt).toContain("Email-Only");
+      expect(prompt).toContain("LeadForm.Email");
     });
   });
 
   describe("trackingPrompt()", () => {
-    it("includes both conversion scenarios", async () => {
+    it("includes all three scenarios", async () => {
       const tracking = await trackingPrompt(mockState);
 
-      // Both scenarios documented
+      // All three scenarios documented
       expect(tracking).toContain("Scenario 1");
       expect(tracking).toContain("Scenario 2");
+      expect(tracking).toContain("Scenario 3");
     });
 
-    it("uses L10.createLead for lead capture", async () => {
+    it("uses LeadForm for lead capture", async () => {
       const tracking = await trackingPrompt(mockState);
 
-      // Should use createLead method
-      expect(tracking).toContain("L10.createLead");
+      // Should use LeadForm component
+      expect(tracking).toContain("LeadForm");
     });
 
     it("explains when to use each pattern", async () => {
       const tracking = await trackingPrompt(mockState);
 
       // Should explain when to use tiered vs simple
-      expect(tracking).toMatch(/pricing tier|Basic.*Pro.*Enterprise/i);
-      expect(tracking).toMatch(/basic signup|without pricing/i);
+      expect(tracking).toMatch(/pricing tier/i);
+      expect(tracking).toMatch(/Hero|CTA|waitlist/i);
     });
   });
 });

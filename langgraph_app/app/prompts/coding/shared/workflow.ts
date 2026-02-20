@@ -6,20 +6,56 @@ import type { CodingPromptState, CodingPromptFn } from "./types";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 
 const createWorkflow = `
-## Workflow
-1. **Greet**: Start with a brief, personalized message acknowledging what you're about to build. Reference the user's idea or audience from the brainstorm to show you understand their vision (1-2 sentences max).
-2. **Plan**: Break down into sections based on page needs. ALWAYS include a Header/Nav and Footer. Typical sections: Header, Hero, Features, Pricing, Social Proof, CTA, Footer. Draft compelling copy for each section based on the brainstorm context.
-3. **Track with todos**: IMMEDIATELY call write_todos to create a todo list that tracks each section as a separate task. The user needs visibility into progress across subagent work. Update todos as each subagent completes.
-4. **Assign images**: Place user-provided images appropriately
-5. **CRITICAL - Divide and conquer IN PARALLEL**:
-   - Launch ALL coder subagents in ONE SINGLE MESSAGE
-   - DO NOT wait for one component to finish before starting the next
-   - Each task() call in the SAME message runs in parallel
-   - Example: ONE message with task(Header) + task(Hero) + task(Features) + task(Pricing) + task(Footer)
-   - WRONG: Send task(Hero), wait, send task(Features), wait...
-   - This step should be ONE message with 4-6 parallel task() calls
-6. **Assemble**: Create /src/pages/IndexPage.tsx (and optionally PricingPage.tsx) to assemble the components
-7. **Track**: Implement L10.createLead() based on conversion type (tiered pricing vs. simple waitlist)
+## Workflow — Build Everything Yourself, Sequentially
+
+**You are the sole builder. Do NOT delegate sections to subagents.**
+Build each section yourself so you can see what you already built and maintain visual coherence.
+
+1. **Greet**: Brief personalized message referencing the user's idea/audience (1-2 sentences max).
+
+2. **Read the current theme**: Read \`/src/index.css\` to see the current color palette.
+   This is a starting point, not gospel. Your design vision is the higher authority.
+   If the theme colors don't serve your aesthetic direction, you WILL use \`change_color_scheme\`
+   to make the palette match your vision. Don't compromise bold design for default colors.
+
+3. **Design Brief** (MANDATORY — do NOT skip):
+   Commit to a specific aesthetic vision. You are the creative director AND the builder.
+
+   Your Design Brief MUST define:
+   a) **Aesthetic direction**: Name it concretely. Not "modern and clean" — something with real identity. "Retro broadcast studio", "editorial magazine spread", "neon-noir cyberpunk", "sun-bleached California surf", "brutalist concrete gallery". The name should instantly evoke a visual world.
+   b) **Font pairing**: Specific display font + body font from Google Fonts. The display font is the personality; the body font is the workhorse. Be specific: "Playfair Display for headlines, Source Sans 3 for body."
+   c) **The one memorable thing**: What will someone remember 10 seconds after seeing this page? A dramatic oversized hero? A diagonal split layout? An unexpected color inversion? An atmospheric background that sets a mood? Name it and commit.
+   d) **Section rhythm**: Map the background flow. Example: "Hero: bg-primary (dramatic) → Features: bg-muted (breathing room) → Testimonials: bg-background (clean) → CTA: bg-primary (bookend)."
+   e) **Color personality**: How will color be used beyond defaults? Gradients? Accent pops on key words? Atmospheric overlays? Glow effects? If the current index.css palette doesn't serve this vision, call \`change_color_scheme\` now.
+
+4. **Plan sections + copy**: Break into sections (always Header/Nav + Footer). Draft copy for each. Typical: Header, Hero, Features/Problem, Solution, Social Proof, CTA, Footer.
+
+5. **Track with todos**: IMMEDIATELY call write_todos tracking each section. Update as you complete each one.
+
+6. **Set up fonts**: Write Google Font links into /index.html <head> BEFORE building sections.
+
+7. **Assign images**: Place user-provided images appropriately.
+
+8. **Build sections sequentially — YOU, not subagents**:
+   Build each section yourself in this order. After each, you can see what you built,
+   so the next section stays visually coherent with the previous ones.
+
+   Build order:
+   a) **Hero** — establishes the visual language for the entire page
+   b) **Header/Nav** — matches the hero's energy
+   c) **Middle sections** (Features, Social Proof, etc.) — follow the rhythm from your brief
+   d) **CTA** — bookend that echoes the hero
+   e) **Footer** — clean closing
+
+   For each section: write the component file, then move to the next.
+
+9. **Assemble**: Create /src/pages/IndexPage.tsx to assemble all components.
+
+10. **Self-review**: Read back your Hero, one middle section, and the CTA.
+    Check: Are fonts consistent? Does the rhythm hold? Any drift from the Design Brief?
+    Fix anything that drifted.
+
+11. **Track**: Add lead capture using the LeadForm component.
 `;
 
 const editWorkflow = `
@@ -102,7 +138,9 @@ export const startByPrompt: CodingPromptFn = async (
   if (workflow === "BugFix") {
     return `Start by carefully reading the error messages to understand what went wrong.`;
   } else if (workflow === "Create") {
-    return `Start by greeting the user with a personalized message about their landing page (reference their idea or audience), then explore the template structure and create the sections.`;
+    return `Start by greeting the user, then read /src/index.css to see the current theme colors. Write your Design Brief — commit to a bold aesthetic. If the current colors don't serve your vision, use change_color_scheme to make them match. Your design sense is the authority.
+
+REMEMBER: Build this page YOURSELF. Do NOT delegate sections to subagents.`;
   } else {
     return `IMMEDIATELY make the requested changes. Read the relevant file(s) and use edit_file to make targeted edits. Do NOT ask questions — use your best creative judgment.`;
   }

@@ -28,6 +28,7 @@ module Leads
           website: website,
           email: options[:email],
           name: options[:name],
+          phone: options[:phone],
           visit: visit,
           visitor_token: options[:visitor_token],
           gclid: options[:gclid],

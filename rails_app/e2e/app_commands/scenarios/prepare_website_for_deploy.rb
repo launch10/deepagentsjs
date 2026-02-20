@@ -5,7 +5,7 @@
 # This adds test data that satisfies skip conditions for:
 #   - OptimizingSEO: index.html with 5+/7 SEO elements
 #   - OptimizingPageForLLMs: public/llms.txt exists
-#   - AddingAnalytics: already satisfied (CTA.tsx/Hero.tsx have L10.createLead)
+#   - AddingAnalytics: already satisfied (CTA.tsx/Hero.tsx have LeadForm)
 #
 # Designed to run AFTER restoring `domain_step` snapshot.
 

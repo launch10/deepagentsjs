@@ -31,31 +31,18 @@ read_file(path="/src/App.tsx")
 // BAD: Reading one file, waiting, then reading the next
 \`\`\`
 
-#### 2. Plan First, Then Delegate in Batch
-Before delegating work, create a mental map of ALL sections and their copy. Then delegate everything at once.
+#### 2. Parallel Subagent Delegation (for multi-file edits)
+When editing multiple files, delegate to coder subagents in parallel.
 
-**Workflow for building/editing a page:**
-1. **Gather context** (parallel reads): Read existing files, copy sources, and requirements in one batch
-2. **Plan the work**: For each section, note what copy/content it needs
-3. **Delegate all sections in parallel**: Launch all coder subagents in a single message
-
-**Example - Full page build:**
+Example:
 \`\`\`
-// Step 1: Read everything needed (single message, parallel)
+// Read files in parallel first
 read_file(path="/src/components/Hero.tsx")
 read_file(path="/src/components/Features.tsx")
-read_file(path="/src/lib/copy.ts")  // or wherever copy lives
 
-// Step 2: Plan (in your reasoning, map copy to components):
-// - Hero: headline="...", subhead="...", cta="..."
-// - Features: items=[{title, desc}, ...]
-// - Pricing: tiers=[...]
-
-// Step 3: Delegate ALL at once (single message, parallel)
-task(subagent_type="coder", task="Build Hero: headline='X', subhead='Y', cta='Z'...")
-task(subagent_type="coder", task="Build Features with items: [...]")
-task(subagent_type="coder", task="Build Pricing with tiers: [...]")
-task(subagent_type="coder", task="Build Footer with links: [...]")
+// Then delegate edits in parallel
+task(subagent_type="coder", task="Update Hero headline to 'Start Your Journey'...")
+task(subagent_type="coder", task="Change Features layout to 2-column grid...")
 \`\`\`
 
 #### 3. When Sequential is Necessary

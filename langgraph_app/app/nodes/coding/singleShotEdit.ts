@@ -119,7 +119,7 @@ Do NOT manually edit index.css for theme-wide changes.`);
 
   // Tracking — never remove tracking calls
   sections.push(`## Tracking
-NEVER remove L10.createLead() calls or tracking imports.`);
+NEVER remove LeadForm components or tracking imports.`);
 
   return sections.join("\n\n");
 }

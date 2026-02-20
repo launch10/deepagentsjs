@@ -1,6 +1,6 @@
 # Analytics Tracking
 
-Launch10 tracks visitor activity on deployed landing pages using a client-side library (`L10`) that sends events to a Rails tracking API. Visits, events, and lead conversions are stored in Ahoy tables. During deployment, the coding agent automatically injects `L10.createLead()` calls into email capture forms.
+Launch10 tracks visitor activity on deployed landing pages using a client-side library (`L10`) that sends events to a Rails tracking API. Visits, events, and lead conversions are stored in Ahoy tables. During deployment, the coding agent automatically adds `LeadForm` components to email capture forms.
 
 ## How It Works
 
@@ -18,7 +18,7 @@ POST /api/v1/tracking/visit
 POST /api/v1/tracking/event
   → enqueues Tracking::EventWorker (async)
        │
-       │ Email submit → L10.createLead(email)
+       │ Email submit → <LeadForm> (calls L10.createLead internally)
        ▼
 POST /api/v1/leads
   → creates Lead + WebsiteLead
@@ -37,7 +37,7 @@ Injected into every deployed landing page at `src/lib/tracking.ts`:
 
 ## Auto-Injection
 
-The deploy pipeline's `AddingAnalytics` task uses the coding agent to automatically inject `L10.createLead()` into components with email capture. It detects:
+The deploy pipeline's `AddingAnalytics` task uses the coding agent to automatically add `LeadForm` components to components with email capture. It detects:
 
 - `type="email"` inputs
 - `setEmail()` state handlers

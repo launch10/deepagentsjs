@@ -80,6 +80,15 @@ RSpec.describe "Leads Inertia Page", type: :request, inertia: true do
         expect(anonymous_lead[:name]).to be_nil
       end
 
+      it "returns phone in lead props" do
+        get project_leads_path(project.uuid)
+
+        leads = inertia.props[:leads]
+        leads.each do |lead|
+          expect(lead).to have_key(:phone)
+        end
+      end
+
       it "formats dates correctly" do
         get project_leads_path(project.uuid)
 

@@ -138,9 +138,7 @@ export const websiteBuilderNode = NodeMiddleware.use(
     }
 
     // Surface consoleErrors as `errors` string so the bugfix workflow prompt activates.
-    // We do NOT conditionally remove subagents here — that would change the task tool
-    // description (which lists available subagent types), breaking the prompt cache prefix.
-    // Instead, the bugfix workflow prompt instructs the agent to fix bugs directly.
+    // Bugfix workflow instructs the agent to fix bugs directly (no subagents needed).
     const hasBuildErrors = state.consoleErrors?.some((e) => e.type === "error") ?? false;
 
     const agentState = {
@@ -172,6 +170,10 @@ export const websiteBuilderNode = NodeMiddleware.use(
           messages: prepared,
           config,
           recursionLimit: isCreate ? 150 : 100,
+          // Create flow: disable coder subagent. Main agent builds all sections
+          // sequentially for visual coherence (sees what it already built).
+          // General-purpose subagent still available for user communication.
+          ...(isCreate && { subagents: [] }),
         });
       }
     );

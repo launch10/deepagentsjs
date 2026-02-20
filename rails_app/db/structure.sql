@@ -2877,7 +2877,8 @@ CREATE TABLE public.leads (
     name character varying(255),
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    account_id bigint NOT NULL
+    account_id bigint NOT NULL,
+    phone character varying(50)
 );
 
 
@@ -11833,6 +11834,7 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260220211738'),
 ('20260220184159'),
 ('20260220151951'),
 ('20260216214522'),

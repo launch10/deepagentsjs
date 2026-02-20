@@ -17,4 +17,7 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  ssr: {
+    noExternal: [/^@radix-ui\//, "sonner", "lucide-react", "class-variance-authority", "clsx", "tailwind-merge"],
+  },
 }));

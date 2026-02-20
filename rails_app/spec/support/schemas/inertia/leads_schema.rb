@@ -9,6 +9,7 @@ module InertiaSchemas
           id: InertiaSchemas.integer_field,
           name: InertiaSchemas.nullable(type: :string),
           email: InertiaSchemas.string_field,
+          phone: InertiaSchemas.nullable(type: :string),
           date: InertiaSchemas.string_field
         },
         required: %w[id email date]

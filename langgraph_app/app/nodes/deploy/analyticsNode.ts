@@ -26,7 +26,7 @@ const buildSystemPrompt = async (
     environmentPrompt(mergedState, config),
   ]);
 
-  return `You are a code instrumentation specialist. Your job is to add L10.createLead() tracking to React components that capture email addresses.
+  return `You are a code instrumentation specialist. Your job is to add lead capture tracking to React components that capture email addresses.
 
 ${trackingContext}
 
@@ -34,13 +34,13 @@ ${trackingContext}
 
 1. Read the component files listed in the user message
 2. Find form submission handlers or button click handlers that capture email
-3. Add L10.createLead() call when the email is captured following the patterns above
+3. Add tracking using the LeadForm component
 4. Save each file with your changes
 
 ## Rules
 
-- Only add L10.createLead() - don't change anything else
-- Follow the import and usage patterns from the tracking context above
+- Only add tracking — don't change anything else about the component
+- Always use the LeadForm component — follow the import and usage patterns from the tracking context above
 - If a component doesn't actually capture emails, leave it unchanged
 
 ${tools}
@@ -57,8 +57,8 @@ interface FileToInstrument {
 }
 
 /**
- * Check if a file needs L10 instrumentation.
- * Returns true if file has email/form capture patterns but no L10.createLead.
+ * Check if a file needs LeadForm instrumentation.
+ * Returns true if file has email/form capture patterns but no LeadForm.
  *
  * Detection covers: type="email" inputs, setEmail state, <form elements,
  * onSubmit/handleSubmit handlers, and useForm() hooks.
@@ -79,9 +79,9 @@ export function needsInstrumentation(content: string): boolean {
 
   const hasEmailCapture =
     hasEmailInput || hasEmailState || hasFormElement || hasSubmitHandler || hasFormHook;
-  const hasL10 = content.includes("L10.createLead");
+  const hasLeadForm = content.includes("LeadForm");
 
-  return hasEmailCapture && !hasL10;
+  return hasEmailCapture && !hasLeadForm;
 }
 
 /**
@@ -135,7 +135,7 @@ async function instrumentAnalytics(
   await createCodingAgent(
     { websiteId: state.websiteId, jwt: state.jwt, isCreateFlow: false },
     {
-      messages: [new HumanMessage(`Add L10.createLead() tracking to these files: ${filePaths}`)],
+      messages: [new HumanMessage(`Add lead capture tracking to these files: ${filePaths}`)],
       systemPrompt,
       route: "full",
       config,
@@ -149,7 +149,7 @@ async function instrumentAnalytics(
 /**
  * Analytics Task Runner
  *
- * Adds L10.createLead() tracking to landing page components that capture emails.
+ * Adds LeadForm tracking to landing page components that capture emails.
  * Uses the full coding agent to read, edit, and verify multiple files.
  */
 export const analyticsTaskRunner: TaskRunner = {

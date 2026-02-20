@@ -48,7 +48,7 @@ export function LandingPageCompletenessScorer(files: LandingPageFiles): number {
       label: "Has CTA or signup section",
       passed:
         componentPaths.some((p) => /cta|signup|waitlist/i.test(p)) ||
-        allContent.includes("createLead"),
+        allContent.includes("LeadForm"),
     },
     {
       label: "Has footer",
@@ -57,8 +57,8 @@ export function LandingPageCompletenessScorer(files: LandingPageFiles): number {
 
     // Tracking
     {
-      label: "Has L10.createLead() tracking",
-      passed: allContent.includes("L10.createLead") || allContent.includes("createLead"),
+      label: "Has LeadForm tracking",
+      passed: allContent.includes("LeadForm"),
     },
 
     // Design system usage
@@ -98,9 +98,7 @@ export function LandingPageCompletenessScorer(files: LandingPageFiles): number {
   // Log details for debugging
   const failures = checks.filter((c) => !c.passed);
   if (failures.length > 0) {
-    console.log(
-      `Completeness failures: ${failures.map((f) => f.label).join(", ")}`
-    );
+    console.log(`Completeness failures: ${failures.map((f) => f.label).join(", ")}`);
   }
 
   return passed / total;

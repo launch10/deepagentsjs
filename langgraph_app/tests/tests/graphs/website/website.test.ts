@@ -213,7 +213,7 @@ describe("Website Builder", () => {
       expect(stateFile?.content).toEqual(firstComponent?.content);
 
       // At least one file contains tracking
-      const trackingFile = generatedFiles.find((f) => f.content.match(/L10.createLead/));
+      const trackingFile = generatedFiles.find((f) => f.content.match(/LeadForm/));
       expect(trackingFile).toBeDefined();
 
       // Expect IndexPage has been edited

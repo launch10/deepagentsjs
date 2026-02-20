@@ -16,6 +16,7 @@ module ProjectConcerns
           "leads.id",
           "leads.name",
           "leads.email",
+          "leads.phone",
           "website_leads.created_at AS conversion_date"
         )
         .order("website_leads.created_at DESC")

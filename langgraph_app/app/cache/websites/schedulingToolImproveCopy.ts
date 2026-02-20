@@ -11,39 +11,10 @@ function createHeroWithCopy(
   footerNote: string
 ): Website.File.File {
   return {
-    content: `import React, { useState } from 'react';
-import { L10 } from '@/lib/tracking';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+    content: `import { LeadForm } from '@/components/ui/lead-form';
 import { CheckCircle2, ArrowRight } from 'lucide-react';
 
 export function Hero() {
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [errorMessage, setErrorMessage] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!email || !email.includes('@')) {
-      setErrorMessage('Please enter a valid email address');
-      setStatus('error');
-      return;
-    }
-
-    setStatus('loading');
-    setErrorMessage('');
-
-    try {
-      await L10.createLead(email);
-      setStatus('success');
-      setEmail('');
-    } catch (error) {
-      setStatus('error');
-      setErrorMessage(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
-    }
-  };
-
   return (
     <section
       id="signup"
@@ -70,54 +41,38 @@ export function Hero() {
             </div>
 
             {/* Email capture form */}
-            {status === 'success' ? (
-              <div className="bg-secondary/20 backdrop-blur-sm border border-secondary-foreground/20 rounded-2xl p-6 max-w-md">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="w-6 h-6 text-secondary flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h3 className="font-semibold text-lg mb-1">You're on the list!</h3>
-                    <p className="text-primary-foreground/80 text-sm">
-                      We'll send you early access details soon. Get ready to reclaim your time.
-                    </p>
+            <LeadForm className="space-y-4 max-w-md">
+              <LeadForm.Success>
+                <div className="bg-secondary/20 backdrop-blur-sm border border-secondary-foreground/20 rounded-2xl p-6">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="w-6 h-6 text-secondary flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="font-semibold text-lg mb-1">You're on the list!</h3>
+                      <p className="text-primary-foreground/80 text-sm">
+                        We'll send you early access details soon. Get ready to reclaim your time.
+                      </p>
+                    </div>
                   </div>
                 </div>
+              </LeadForm.Success>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <LeadForm.Email
+                  placeholder="Enter your email"
+                  className="flex-1 h-12 bg-background/95 backdrop-blur-sm text-foreground border-primary-foreground/20 placeholder:text-muted-foreground focus:border-secondary focus:ring-secondary"
+                />
+                <LeadForm.Submit
+                  className="h-12 px-8 bg-secondary text-secondary-foreground hover:bg-secondary/90 hover:scale-105 transition-all duration-200 font-semibold group"
+                  loadingText="Joining..."
+                >
+                  ${buttonText}
+                  <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </LeadForm.Submit>
               </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={status === 'loading'}
-                    className="flex-1 h-12 bg-background/95 backdrop-blur-sm text-foreground border-primary-foreground/20 placeholder:text-muted-foreground focus:border-secondary focus:ring-secondary"
-                  />
-                  <Button
-                    type="submit"
-                    disabled={status === 'loading'}
-                    className="h-12 px-8 bg-secondary text-secondary-foreground hover:bg-secondary/90 hover:scale-105 transition-all duration-200 font-semibold group"
-                  >
-                    {status === 'loading' ? (
-                      'Joining...'
-                    ) : (
-                      <>
-                        ${buttonText}
-                        <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                      </>
-                    )}
-                  </Button>
-                </div>
-                {status === 'error' && errorMessage && (
-                  <p className="text-sm text-red-300 bg-red-500/10 border border-red-400/20 rounded-lg px-4 py-2">
-                    {errorMessage}
-                  </p>
-                )}
-                <p className="text-xs text-primary-foreground/60">
-                  ${footerNote}
-                </p>
-              </form>
-            )}
+              <LeadForm.Error className="text-sm text-red-300 bg-red-500/10 border border-red-400/20 rounded-lg px-4 py-2" />
+              <p className="text-xs text-primary-foreground/60">
+                ${footerNote}
+              </p>
+            </LeadForm>
           </div>
 
           {/* Right column - Hero image (40%) */}

@@ -1,3 +1,16 @@
+# == Schema Information
+#
+# Table name: checkpoint_writes
+#
+#  blob          :binary           not null
+#  channel       :text             not null
+#  checkpoint_ns :text             default(""), not null, primary key
+#  idx           :integer          not null, primary key
+#  type          :text
+#  checkpoint_id :text             not null, primary key
+#  task_id       :text             not null, primary key
+#  thread_id     :text             not null, primary key
+#
 module Langgraph
   class CheckpointWrite < Langgraph::ReadonlyRecord
     self.table_name = "checkpoint_writes"

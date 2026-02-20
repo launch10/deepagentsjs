@@ -10,9 +10,9 @@ export const environmentPrompt: CodingPromptFn = async (
 ): Promise<string> => `
 ## Environment & Configuration
 
-Environment variables will be injected at build time and used by the L10 analytics library:
+Environment variables will be injected at build time and used by the LeadForm compound component:
 - API endpoints and authentication tokens are configured automatically
 - Google Ads tracking IDs are injected for conversion tracking
 
-You do NOT need to code any of these directly. As long as you use the \`L10.createLead()\` function for lead capture, it will handle all configuration automatically.
+You do NOT need to code any of these directly. As long as you use the \`LeadForm\` component, tracking is handled automatically.
 `;

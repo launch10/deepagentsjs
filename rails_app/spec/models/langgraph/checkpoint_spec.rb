@@ -1,3 +1,16 @@
+# == Schema Information
+#
+# Table name: checkpoints
+#
+#  checkpoint           :jsonb            not null
+#  checkpoint_ns        :text             default(""), not null, primary key
+#  metadata             :jsonb            not null
+#  type                 :text
+#  checkpoint_id        :text             not null, primary key
+#  parent_checkpoint_id :text
+#  run_id               :text
+#  thread_id            :text             not null, primary key
+#
 require "rails_helper"
 
 RSpec.describe Langgraph::Checkpoint do
