@@ -27,4 +27,8 @@ export const codeGuidelinesPrompt: CodingPromptFn = async (
 - **ALWAYS use named imports** matching the component file name:
   - \`import { Hero } from "./Hero"\`
   - NEVER: \`import Hero from "./Hero"\`
+- **Use double quotes for user-facing text** (headlines, descriptions, any prose that may contain apostrophes). Single quotes break on words like "we'll", "you're", "don't".
+  - CORRECT: \`description: "We'll help you find the perfect match"\`
+  - WRONG: \`description: 'We'll help you find the perfect match'\` (apostrophe breaks the string)
+  - Single quotes are fine for non-prose values: \`'idle'\`, \`'loading'\`, \`'flex'\`, import paths
 `;

@@ -46,11 +46,14 @@ If you respond without calling tools, nothing has changed and the user will see 
 const bugfixWorkflow = `
 ## Workflow
 
+CRITICAL: Fix bugs YOURSELF — do NOT delegate to subagents. You have the error context and code frame;
+a subagent would not. Read the file, fix the line, verify.
+
 1. **Introduce**: Start with a brief, friendly message to the user (1-2 sentences) describing what you're investigating. This gives the user immediate feedback.
 2. **Track with todos**: ALWAYS call write_todos to create a todo list tracking your investigation and fix steps. The user is non-technical and needs visibility into what's happening. Create todos like "Diagnose the issue", "Fix the problem", "Verify the fix".
-3. **Analyze**: Carefully read the error messages to understand what went wrong
+3. **Analyze**: Parse the error message for the EXACT file path, line number, and column number. These tell you precisely where to look. Do NOT scan the entire file — go straight to the reported line.
 4. **Locate**: Find the file(s) and line(s) where the error originates
-5. **Read**: Read the relevant code to understand the current implementation
+5. **Read**: Read the specific file mentioned in the error. Focus on the exact line number from the error — the bug is almost always within a few lines of where the error points.
 6. **Diagnose**: Identify the root cause of the bug (syntax error, missing import, incorrect logic, etc.)
 7. **Fix**: Make the minimal fix necessary to resolve the error
    - For broken links: determine if the link target is a real section that belongs on the page (e.g. #features where Features exists but is missing an id) or an invented section that was never part of the page plan (e.g. #careers, #blog, #privacy, #terms). Fix real broken links. Remove invented ones.

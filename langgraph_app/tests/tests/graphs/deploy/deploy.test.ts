@@ -278,19 +278,14 @@ describe.sequential("Deploy Graph Tests", () => {
             result: { google_email: "test@gmail.com" },
           });
 
-          const updates = (
-            await deployGraph.getState({
+          const updatedResult = await deployGraph.invoke(
+            {},
+            {
               configurable: {
                 thread_id: graph.threadId,
               },
-            })
-          ).values;
-
-          const updatedResult = await deployGraph.invoke(updates, {
-            configurable: {
-              thread_id: graph.threadId,
-            },
-          });
+            }
+          );
 
           const updatedGoogleConnectTask = Task.findTask(updatedResult.tasks, "ConnectingGoogle");
           const verifyingGoogleTask = Task.findTask(updatedResult.tasks, "VerifyingGoogle");
@@ -345,19 +340,14 @@ describe.sequential("Deploy Graph Tests", () => {
             result: { status: "accepted" },
           });
 
-          const updates = (
-            await deployGraph.getState({
+          const updatedResult = await deployGraph.invoke(
+            {},
+            {
               configurable: {
                 thread_id: graph.threadId,
               },
-            })
-          ).values;
-
-          const updatedResult = await deployGraph.invoke(updates, {
-            configurable: {
-              thread_id: graph.threadId,
-            },
-          });
+            }
+          );
 
           const updatedGoogleVerifyTask = updatedResult.tasks.find(
             (t) => t.name === "VerifyingGoogle"
@@ -421,15 +411,12 @@ describe.sequential("Deploy Graph Tests", () => {
           });
 
           // Resume graph - fetch state and re-invoke (same pattern as DeployCampaign test)
-          const updates = (
-            await deployGraph.getState({
+          const updatedResult = await deployGraph.invoke(
+            {},
+            {
               configurable: { thread_id: graph.threadId },
-            })
-          ).values;
-
-          const updatedResult = await deployGraph.invoke(updates, {
-            configurable: { thread_id: graph.threadId },
-          });
+            }
+          );
 
           const updatedGoogleVerifyTask = updatedResult.tasks.find(
             (t) => t.name === "VerifyingGoogle"
@@ -909,7 +896,10 @@ describe.sequential("Deploy Graph Tests", () => {
           ({
             validateDeploy: vi.fn().mockResolvedValue({
               valid: false,
-              errors: ["Daily budget must be greater than 0", "Keywords must have between 5-15 keywords per ad group (currently has 0)"],
+              errors: [
+                "Daily budget must be greater than 0",
+                "Keywords must have between 5-15 keywords per ad group (currently has 0)",
+              ],
             }),
           }) as any
       );
@@ -1007,7 +997,6 @@ describe.sequential("Deploy Graph Tests", () => {
       expect(deployTask?.status).toBe("running");
       expect(deployTask?.jobId).toBeDefined();
     });
-
   });
 
   /**
@@ -1854,15 +1843,12 @@ describe.sequential("Deploy Graph Tests", () => {
       });
 
       // Resume graph after callback
-      const updates = (
-        await deployGraph.getState({
+      const updatedResult = await deployGraph.invoke(
+        {},
+        {
           configurable: { thread_id: graph.threadId },
-        })
-      ).values;
-
-      const updatedResult = await deployGraph.invoke(updates, {
-        configurable: { thread_id: graph.threadId },
-      });
+        }
+      );
 
       const updatedBillingTask = updatedResult.tasks.find(
         (t: Deploy.Task) => t.name === "CheckingBilling"
@@ -1927,15 +1913,12 @@ describe.sequential("Deploy Graph Tests", () => {
       });
 
       // Resume graph after callback
-      const updates = (
-        await deployGraph.getState({
+      const updatedResult = await deployGraph.invoke(
+        {},
+        {
           configurable: { thread_id: graph.threadId },
-        })
-      ).values;
-
-      const updatedResult = await deployGraph.invoke(updates, {
-        configurable: { thread_id: graph.threadId },
-      });
+        }
+      );
 
       const updatedBillingTask = updatedResult.tasks.find(
         (t: Deploy.Task) => t.name === "CheckingBilling"
@@ -2003,15 +1986,12 @@ describe.sequential("Deploy Graph Tests", () => {
       });
 
       // Resume graph after callback
-      const updates = (
-        await deployGraph.getState({
+      const updatedResult = await deployGraph.invoke(
+        {},
+        {
           configurable: { thread_id: graph.threadId },
-        })
-      ).values;
-
-      const updatedResult = await deployGraph.invoke(updates, {
-        configurable: { thread_id: graph.threadId },
-      });
+        }
+      );
 
       // Task should be failed
       const updatedEnableTask = updatedResult.tasks.find(
@@ -2162,8 +2142,16 @@ describe.sequential("Deploy Graph Tests", () => {
       expect(result.state.contentChanged.googleAds).toBe(false);
       // Campaign tasks should not exist — they were never created
       // because contentChanged.googleAds === false filtered them out
-      const campaignTaskNames = ["ConnectingGoogle", "VerifyingGoogle", "CheckingBilling", "DeployingCampaign", "EnablingCampaign"];
-      const campaignTasks = result.state.tasks.filter((t: any) => campaignTaskNames.includes(t.name));
+      const campaignTaskNames = [
+        "ConnectingGoogle",
+        "VerifyingGoogle",
+        "CheckingBilling",
+        "DeployingCampaign",
+        "EnablingCampaign",
+      ];
+      const campaignTasks = result.state.tasks.filter((t: any) =>
+        campaignTaskNames.includes(t.name)
+      );
       expect(campaignTasks.length).toBe(0);
     });
 

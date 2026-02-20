@@ -3,9 +3,6 @@ module Core
     def seed
       puts "Seeding friends & family plan..."
 
-      ActiveRecord::Base.connection_handler.clear_all_connections!
-      ActiveRecord::Base.establish_connection
-
       # Ensure base tiers/plans exist first
       Core::PlanTiers.new.seed
       Core::TierLimits.new.seed

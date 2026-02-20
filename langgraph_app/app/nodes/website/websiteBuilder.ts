@@ -69,7 +69,7 @@ const hasWebsiteFiles = async (state: WebsiteGraphState): Promise<boolean> => {
 };
 
 /** Build extra context messages for this turn (create instructions, build errors). */
-function buildExtraContext(state: WebsiteGraphState, isCreate: boolean): BaseMessage[] {
+export function buildExtraContext(state: WebsiteGraphState, isCreate: boolean): BaseMessage[] {
   const extraContext: BaseMessage[] = [];
 
   if (isCreate) {
@@ -84,7 +84,16 @@ function buildExtraContext(state: WebsiteGraphState, isCreate: boolean): BaseMes
     const errors = state.consoleErrors.filter((e) => e.type === "error");
     if (errors.length > 0) {
       const errorSummary = errors
-        .map((e) => `- ${e.message}${e.file ? ` (${e.file})` : ""}`)
+        .map((e) => {
+          let line = `- ${e.message}${e.file ? ` (${e.file})` : ""}`;
+          if (e.frame) {
+            line += `\n  Code frame:\n${e.frame
+              .split("\n")
+              .map((l) => `    ${l}`)
+              .join("\n")}`;
+          }
+          return line;
+        })
         .join("\n");
       extraContext.push(
         createContextMessage(`[Build Errors — fix these]\n${errorSummary}`, {
@@ -126,8 +135,24 @@ export const websiteBuilderNode = NodeMiddleware.use(
       return await cachedResponse(state);
     }
 
+    // Surface consoleErrors as `errors` string so the bugfix workflow prompt activates.
+    // We do NOT conditionally remove subagents here — that would change the task tool
+    // description (which lists available subagent types), breaking the prompt cache prefix.
+    // Instead, the bugfix workflow prompt instructs the agent to fix bugs directly.
+    const hasBuildErrors = state.consoleErrors?.some((e) => e.type === "error") ?? false;
+
     const result = await createCodingAgent(
-      { ...state, isCreateFlow: isCreate },
+      {
+        ...state,
+        isCreateFlow: isCreate,
+        // Surface consoleErrors as `errors` so the bugfix workflow prompt activates
+        ...(hasBuildErrors && {
+          errors: state
+            .consoleErrors!.filter((e) => e.type === "error")
+            .map((e) => e.message)
+            .join("; "),
+        }),
+      },
       {
         messages: state.messages || [],
         extraContext: buildExtraContext(state, isCreate),
