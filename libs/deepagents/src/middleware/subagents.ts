@@ -577,6 +577,27 @@ function createTaskTool(options: {
       const subagentState = filterStateForSubagent(currentState);
       subagentState.messages = [new HumanMessage({ content: description })];
 
+      // Mark todo as in_progress when subagent starts
+      if (todo_id && streamWriter) {
+        const todos = currentState.todos as
+          | Array<{ id: string; status: string; content: string }>
+          | undefined;
+        if (todos) {
+          const inProgressTodos = todos.map((t) =>
+            t.id === todo_id ? { ...t, status: "in_progress" } : t,
+          );
+          try {
+            streamWriter({
+              id: crypto.randomUUID(),
+              event: "__state_patch__",
+              todos: inProgressTodos,
+            });
+          } catch {
+            // emit failed — subagent will still mark completed when done
+          }
+        }
+      }
+
       // Invoke the subagent
       const result = (await subagent.invoke(subagentState, config)) as Record<
         string,
