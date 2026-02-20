@@ -81,15 +81,21 @@ async function runBugFix(
       }
     );
 
+    // Reset RuntimeValidation to pending so executor re-runs validation.
+    // Reset FixingBugs to pending so it can run again if validation fails.
+    // retryCount tracks attempts; MAX_BUG_FIX_RETRIES prevents infinite loops.
     return {
       tasks: [
         {
           ...failedTask,
-          retryCount: failedTask.retryCount + 1,
+          status: "pending",
+          retryCount: (failedTask.retryCount || 0) + 1,
+          error: undefined,
+          result: undefined,
         } as Task.Task,
         {
           ...fixTask,
-          status: "completed",
+          status: "pending",
         } as Task.Task,
       ],
     };
@@ -101,7 +107,7 @@ async function runBugFix(
       tasks: [
         {
           ...failedTask,
-          retryCount: failedTask.retryCount + 1,
+          retryCount: (failedTask.retryCount || 0) + 1,
         } as Task.Task,
         {
           ...fixTask,

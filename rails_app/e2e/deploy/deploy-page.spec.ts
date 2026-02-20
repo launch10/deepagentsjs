@@ -51,10 +51,10 @@ test.describe("Deploy - Website Deploy", () => {
     await expect(page.getByText("Launching Website")).toBeVisible({ timeout: 15000 });
 
     // Footer buttons should exist but be disabled
-    await expect(deployPage.viewDashboardButton).toBeVisible();
-    await expect(deployPage.reviewPerformanceButton).toBeVisible();
-    await expect(deployPage.viewDashboardButton).toBeDisabled();
-    await expect(deployPage.reviewPerformanceButton).toBeDisabled();
+    await expect(deployPage.previousStepButton).toBeVisible();
+    await expect(deployPage.seePerformanceButton).toBeVisible();
+    await expect(deployPage.previousStepButton).toBeDisabled();
+    await expect(deployPage.seePerformanceButton).toBeDisabled();
   });
 });
 
@@ -101,9 +101,9 @@ test.describe("Deploy - Campaign Deploy", () => {
 
     await expect(page.getByText("Launching Campaign")).toBeVisible({ timeout: 15000 });
 
-    await expect(deployPage.viewDashboardButton).toBeVisible();
-    await expect(deployPage.reviewPerformanceButton).toBeVisible();
-    await expect(deployPage.viewDashboardButton).toBeDisabled();
-    await expect(deployPage.reviewPerformanceButton).toBeDisabled();
+    await expect(deployPage.previousStepButton).toBeVisible();
+    await expect(deployPage.seePerformanceButton).toBeVisible();
+    await expect(deployPage.previousStepButton).toBeDisabled();
+    await expect(deployPage.seePerformanceButton).toBeDisabled();
   });
 });

@@ -25,9 +25,27 @@ class API::V1::AppEventsController < API::BaseController
       account: project&.account || user&.accounts&.first,
       project: project,
       website: project&.website,
-      **(params[:properties]&.permit!&.to_h || {}).symbolize_keys
+      **sanitized_properties
     )
 
     head :accepted
+  end
+
+  private
+
+  # Explicit allowlist of known tracking property keys.
+  # Prevents permit! mass-assignment anti-pattern while supporting
+  # the generic properties hash from Langgraph's notifyRailsEvent.
+  ALLOWED_PROPERTY_KEYS = %i[
+    chat_type thread_id deploy_status deploy_type failed_step
+    daily_budget_cents project_uuid campaign_id website_id
+    status error_message step node
+  ].freeze
+
+  def sanitized_properties
+    raw = params[:properties]
+    return {} unless raw.is_a?(ActionController::Parameters)
+
+    raw.permit(*ALLOWED_PROPERTY_KEYS).to_h.symbolize_keys
   end
 end

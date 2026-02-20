@@ -1,4 +1,4 @@
-import { usePage } from "@inertiajs/react";
+import { router, usePage } from "@inertiajs/react";
 import { Chat } from "@components/shared/chat/Chat";
 import { DeployErrorBoundary } from "@components/deploy/DeployErrorBoundary";
 import { useNavigateIntentHandler } from "@hooks/useNavigateIntentHandler";
@@ -38,7 +38,7 @@ const SCREENS: Record<DeployScreen, React.ComponentType> = {
 function DeployContent() {
   useNavigateIntentHandler();
 
-  const { deploy } = usePage<DeployProps>().props;
+  const { deploy, project } = usePage<DeployProps>().props;
   const pollingFailed = useDeployInit();
 
   // Select only the fields needed for screen resolution.
@@ -78,7 +78,12 @@ function DeployContent() {
         <PaginationFooter.BackButton />
         <PaginationFooter.Actions>
           <FullResetButton />
-          <PaginationFooter.ContinueButton disabled={!isComplete} />
+          <PaginationFooter.ContinueButton
+            disabled={!isComplete}
+            onClick={() => router.visit(`/projects/${project.uuid}/performance`)}
+          >
+            See Performance
+          </PaginationFooter.ContinueButton>
         </PaginationFooter.Actions>
       </PaginationFooter.Root>
     </div>

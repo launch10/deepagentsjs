@@ -4,14 +4,17 @@ import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { summarizeAndSaveAnswers } from "@tools";
 import { Brainstorm } from "@types";
 import { ToolMessage } from "@langchain/core/messages";
+import { getLogger } from "@core";
+
+const log = getLogger({ component: "ensureAnswersSaved" });
 
 /**
  * Safety net node that ensures answers are extracted and saved after
  * every brainstorm agent turn.
  *
  * The model frequently forgets to call save_answers, and saved answers
- * determine which question we ask next. This node fires-and-forgets
- * the save so it doesn't block the UI from becoming ready.
+ * determine which question we ask next. This node awaits the save to
+ * prevent the next turn from reading stale data.
  *
  * Skip conditions:
  * - save_answers was already called this turn (check for ToolMessage)
@@ -44,27 +47,31 @@ export const ensureAnswersSaved = NodeMiddleware.use(
     }
 
     if (!state.websiteId) {
-      console.warn("[ensureAnswersSaved] No websiteId, cannot save answers");
+      log.warn("No websiteId, cannot save answers");
       return {};
     }
 
     if (!state.threadId || !state.jwt) {
-      console.warn("[ensureAnswersSaved] No threadId or jwt, cannot save answers");
+      log.warn("No threadId or jwt, cannot save answers");
       return {};
     }
 
-    // Fire-and-forget: trigger save but don't await.
-    // The next turn reads from DB via BrainstormNextStepsService, so state
-    // will be correct even if this completes after the graph returns.
-    console.log(
-      `[ensureAnswersSaved] Background save for topics: ${topicsNeedingAnswers.join(", ")}`
-    );
+    // Await the save to prevent the next turn from reading stale DB data.
+    // BrainstormNextStepsService reads from DB to determine the next question,
+    // so answers must be persisted before the graph returns.
+    log.info({ topics: topicsNeedingAnswers }, "Saving answers for topics");
 
-    summarizeAndSaveAnswers(
-      state.messages || [], state.websiteId, skippedTopics, state.threadId, state.jwt
-    ).catch((err) =>
-      console.error("[ensureAnswersSaved] Background save failed:", err)
-    );
+    try {
+      await summarizeAndSaveAnswers(
+        state.messages || [],
+        state.websiteId,
+        skippedTopics,
+        state.threadId,
+        state.jwt
+      );
+    } catch (err) {
+      log.error({ err }, "Save failed");
+    }
 
     return {};
   }

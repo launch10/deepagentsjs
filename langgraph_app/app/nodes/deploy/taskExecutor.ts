@@ -230,11 +230,17 @@ async function runTaskExecutor(
 ): Promise<Partial<DeployGraphState>> {
   const log = getLogger({ component: "taskExecutor" });
 
+  const taskSummary = state.tasks?.map((t) => ({
+    name: t.name,
+    status: t.status,
+    hasResult: !!t.result,
+    hasJobId: !!t.jobId,
+  }));
   log.info(
     {
       deployId: state.deployId,
       currentStatus: state.status,
-      taskSummary: state.tasks?.map((t) => ({ name: t.name, status: t.status })),
+      taskSummary,
     },
     "taskExecutor invoked"
   );

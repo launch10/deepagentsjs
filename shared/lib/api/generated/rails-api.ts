@@ -2963,7 +2963,7 @@ export interface paths {
                     page?: number;
                     /** @description Filter by status (completed, failed, running) */
                     status?: string;
-                    /** @description Filter by deploy type (website, google_ads) — matches deploys whose instructions include this key as true */
+                    /** @description Filter by deploy type (website, campaign) */
                     deploy_type?: string;
                 };
                 header?: {
@@ -2997,7 +2997,7 @@ export interface paths {
                                 /** @description Langgraph thread ID */
                                 thread_id?: string | null;
                                 /**
-                                 * @description Deploy type (website or campaign)
+                                 * @description Type of deploy (website or campaign)
                                  * @enum {string}
                                  */
                                 deploy_type: "website" | "campaign";
@@ -3117,7 +3117,7 @@ export interface paths {
                             /** @description Langgraph thread ID */
                             thread_id?: string | null;
                             /**
-                             * @description Deploy type (website or campaign)
+                             * @description Type of deploy (website or campaign)
                              * @enum {string}
                              */
                             deploy_type: "website" | "campaign";
@@ -3220,7 +3220,7 @@ export interface paths {
                             /** @description Langgraph thread ID */
                             thread_id?: string | null;
                             /**
-                             * @description Deploy type (website or campaign)
+                             * @description Type of deploy (website or campaign)
                              * @enum {string}
                              */
                             deploy_type: "website" | "campaign";
@@ -3314,7 +3314,7 @@ export interface paths {
                             /** @description Langgraph thread ID */
                             thread_id?: string | null;
                             /**
-                             * @description Deploy type (website or campaign)
+                             * @description Type of deploy (website or campaign)
                              * @enum {string}
                              */
                             deploy_type: "website" | "campaign";
@@ -3918,6 +3918,8 @@ export interface paths {
                         email: string;
                         /** @description Optional name of the person signing up */
                         name?: string | null;
+                        /** @description Optional phone number of the person signing up */
+                        phone?: string | null;
                     };
                 };
             };
@@ -3946,7 +3948,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description name too long returns validation error */
+                /** @description phone too long returns validation error */
                 422: {
                     headers: {
                         [name: string]: unknown;

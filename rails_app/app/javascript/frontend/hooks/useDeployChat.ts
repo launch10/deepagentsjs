@@ -1,5 +1,5 @@
 import { usePage } from "@inertiajs/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useLanggraph, type ChatSnapshot, type LanggraphChat } from "langgraph-ai-sdk-react";
 import type { UIMessage } from "ai";
 import { Deploy, type InertiaProps } from "@shared";
@@ -31,7 +31,15 @@ export type DeploySnapshot = ChatSnapshot<Deploy.DeployGraphState>;
 let resolvedDeployThreadId: string | undefined;
 
 function useDeployChatOptions() {
-  const { deploy, thread_id } = usePage<DeployProps>().props;
+  const { deploy, thread_id, project } = usePage<DeployProps>().props;
+
+  // Reset cache when navigating between projects via SPA to avoid
+  // briefly using a stale thread ID from a previous project.
+  const prevProjectRef = useRef(project?.uuid);
+  if (project?.uuid !== prevProjectRef.current) {
+    prevProjectRef.current = project?.uuid;
+    resolvedDeployThreadId = undefined;
+  }
 
   // Server says no active deploy → clear stale cache from previous SPA navigation.
   // The cache will be repopulated by onThreadIdAvailable once the SDK starts a new thread.

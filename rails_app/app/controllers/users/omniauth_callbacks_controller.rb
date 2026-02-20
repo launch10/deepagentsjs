@@ -33,7 +33,6 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
   private
 
   def continue_active_deploy!(connected_account)
-    puts "Signed into Google account #{connected_account.email}!!!"
     account = connected_account.owner.owned_account
     return unless account
 
@@ -72,6 +71,12 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
 
   # After connecting an OAuth account while logged in, redirect back to where they came from
   def after_connect_redirect_path(connected_account)
-    request.env["omniauth.origin"] || user_connected_accounts_path
+    origin = request.env["omniauth.origin"]
+    # Prevent open redirect — only allow relative paths
+    if origin.present? && origin.start_with?("/") && !origin.start_with?("//")
+      origin
+    else
+      user_connected_accounts_path
+    end
   end
 end

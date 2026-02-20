@@ -127,7 +127,7 @@ test.describe("Deploy Screens — In-Progress", () => {
       timeout: 15000,
     });
     await expect(deployPage.previousStepButton).toBeDisabled();
-    await expect(deployPage.continueButton).toBeDisabled();
+    await expect(deployPage.seePerformanceButton).toBeDisabled();
   });
 });
 
@@ -186,6 +186,31 @@ test.describe("Deploy Screens — Completion", () => {
       timeout: 15000,
     });
     await expect(deployPage.liveBadge).toBeVisible();
+  });
+
+  test("continue button says 'See Performance' and navigates to performance page", async ({ page }) => {
+    await appEval(`
+      project = Project.first
+      Deploy.create!(
+        project: project,
+        status: 'completed',
+        deploy_type: 'campaign'
+      )
+    `);
+
+    await page.route("**/api/deploy/stream**", mockDeployStream(DeployStates.campaignComplete()));
+    await deployPage.gotoCampaignDeploy(projectUuid);
+
+    // Wait for deploy complete screen
+    await expect(page.getByText("You've just launched your first campaign")).toBeVisible({ timeout: 15000 });
+
+    // Button should say "See Performance" and be enabled
+    await expect(deployPage.seePerformanceButton).toBeVisible();
+    await expect(deployPage.seePerformanceButton).toBeEnabled();
+
+    // Click navigates to performance page
+    await deployPage.seePerformanceButton.click();
+    await page.waitForURL(`**/projects/${projectUuid}/performance`);
   });
 });
 

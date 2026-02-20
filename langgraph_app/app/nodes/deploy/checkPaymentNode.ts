@@ -152,14 +152,21 @@ export const checkPaymentTaskRunner: TaskRunner = {
     return isTaskDone(state, "VerifyingGoogle");
   },
 
-  shouldSkip: async (state: DeployGraphState) => {
+  shouldSkip: (state: DeployGraphState) => {
     // Skip if not deploying Google Ads
     if (!Deploy.shouldDeployGoogleAds(state)) {
       return true;
     }
 
-    // Skip if already verified
-    return isPaymentVerified(state);
+    // If initPhasesNode already ran (tasks exist) but excluded this task,
+    // payment was already verified at deploy start — no API call needed.
+    const task = Task.findTask(state.tasks, TASK_NAME);
+    if (!task && state.tasks?.length > 0) return true;
+
+    // Task has result confirming payment
+    if (task?.result?.has_payment === true) return true;
+
+    return false;
   },
 
   isBlocking: (state: DeployGraphState, task: Task.Task) => {

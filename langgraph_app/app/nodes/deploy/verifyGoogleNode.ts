@@ -194,14 +194,21 @@ export const verifyGoogleTaskRunner: TaskRunner = {
     return isTaskDone(state, "ConnectingGoogle");
   },
 
-  shouldSkip: async (state: DeployGraphState) => {
+  shouldSkip: (state: DeployGraphState) => {
     // Skip if not deploying Google Ads
     if (!Deploy.shouldDeployGoogleAds(state)) {
       return true;
     }
 
-    // Skip if already verified
-    return isGoogleVerified(state);
+    // If initPhasesNode already ran (tasks exist) but excluded this task,
+    // invite was already accepted at deploy start — no API call needed.
+    const task = Task.findTask(state.tasks, TASK_NAME);
+    if (!task && state.tasks?.length > 0) return true;
+
+    // Task has result confirming acceptance
+    if (task?.result?.status === "accepted") return true;
+
+    return false;
   },
 
   isBlocking: (state: DeployGraphState, task: Task.Task) => {

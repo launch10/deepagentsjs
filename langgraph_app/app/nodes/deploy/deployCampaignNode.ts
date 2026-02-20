@@ -71,6 +71,7 @@ async function runDeployCampaign(
     jobClass: "CampaignDeploy",
     arguments: { campaign_id: state.campaignId },
     threadId: state.threadId,
+    ...(state.deployId && { deployId: state.deployId }),
   });
 
   // Return updated task with jobId — do NOT set graph-level status here.

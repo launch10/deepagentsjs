@@ -48,19 +48,32 @@ export function resolveContentScreen(
 
   const effectiveRailsStatus = railsInstructionsMatch ? railsDeployStatus : undefined;
 
-  // Terminal states — check both langgraph state and Rails record
-  // Rails status is the fallback for page reloads before langgraph state loads
-  if (status === "completed" || effectiveRailsStatus === "completed") {
-    logger.debug("DeployScreen", "resolved: deploy-complete", {
+  // Terminal states — graph status takes priority over Rails record.
+  // Rails status is only used as a fallback for page reloads before langgraph state loads.
+  if (status === "failed") {
+    logger.debug("DeployScreen", "resolved: deploy-error (graph)", {
+      graphStatus: status, railsStatus: effectiveRailsStatus,
+    });
+    return "deploy-error";
+  }
+  if (status === "completed") {
+    logger.debug("DeployScreen", "resolved: deploy-complete (graph)", {
       graphStatus: status, railsStatus: effectiveRailsStatus,
     });
     return "deploy-complete";
   }
-  if (status === "failed" || effectiveRailsStatus === "failed") {
-    logger.debug("DeployScreen", "resolved: deploy-error", {
+  // Rails fallback — only when graph status is not yet loaded
+  if (effectiveRailsStatus === "failed") {
+    logger.debug("DeployScreen", "resolved: deploy-error (rails)", {
       graphStatus: status, railsStatus: effectiveRailsStatus,
     });
     return "deploy-error";
+  }
+  if (effectiveRailsStatus === "completed") {
+    logger.debug("DeployScreen", "resolved: deploy-complete (rails)", {
+      graphStatus: status, railsStatus: effectiveRailsStatus,
+    });
+    return "deploy-complete";
   }
 
   // Connection error — history loading exhausted retries

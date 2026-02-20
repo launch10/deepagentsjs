@@ -20,6 +20,12 @@ class CampaignDeploy
       deploy = CampaignDeploy.find(deploy_id)
       job_run = job_run_id ? JobRun.find_by(id: job_run_id) : nil
 
+      # Guard: don't retry on an already-failed deploy
+      if deploy.status == "failed"
+        Rails.logger.warn "Skipping retry for already-failed campaign deploy #{deploy_id}"
+        return
+      end
+
       # Mark job_run as running on first iteration
       if job_run&.pending?
         job_run.update!(status: "running", started_at: Time.current)

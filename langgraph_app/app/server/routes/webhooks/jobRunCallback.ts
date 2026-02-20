@@ -27,6 +27,8 @@ export const jobRunCallback = async (payload: JobRunCallbackPayload): Promise<bo
   const log = getLogger({ component: "jobRunCallback" });
   const graph = getGraph();
 
+  log.info({ payload }, "jobRunCallback called");
+
   // Get current state to find the task by jobId
   const currentState = await graph.getState({
     configurable: { thread_id: payload.thread_id },
@@ -79,29 +81,37 @@ export const jobRunCallback = async (payload: JobRunCallbackPayload): Promise<bo
     { tasks: updatedTasks }
   );
 
+  log.info({ jobRunId: payload.job_run_id, taskName: task.name }, "State updated successfully");
   return true;
 };
 
 jobRunCallbackRoutes.post("/webhooks/job_run_callback", async (c) => {
+  const log = getLogger({ component: "jobRunCallback" });
   const signature = c.req.header("X-Signature");
   const body = await c.req.text();
 
+  log.info({ hasSignature: !!signature, bodyLength: body.length }, "Webhook received");
+
   if (!verifySignature(body, signature)) {
+    log.error("Signature verification failed");
     return c.json({ error: "Invalid signature" }, 401);
   }
 
   const payload: JobRunCallbackPayload = JSON.parse(body);
+  log.info({ payload }, "Webhook payload parsed");
 
   try {
     const success = await jobRunCallback(payload);
 
     if (!success) {
+      log.error({ payload }, "jobRunCallback returned false");
       return c.json({ error: "Failed to update state" }, 404);
     }
 
+    log.info({ jobRunId: payload.job_run_id }, "Webhook processed successfully");
     return c.json({ success });
   } catch (error) {
-    getLogger({ component: "jobRunCallback" }).error({ err: error }, "Failed to update state");
+    log.error({ err: error }, "Failed to update state");
     return c.json({ error: "Failed to update state" }, 500);
   }
 });

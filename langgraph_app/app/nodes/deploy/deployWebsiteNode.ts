@@ -71,6 +71,7 @@ async function runDeployWebsite(
     jobClass: "WebsiteDeploy",
     arguments: { website_id: state.websiteId },
     threadId: state.threadId,
+    ...(state.deployId && { deployId: state.deployId }),
   });
 
   return {

@@ -137,7 +137,17 @@ class API::V1::DeploysController < API::BaseController
   end
 
   def deploy_params
-    params.permit(:status, :current_step, :is_live, :stacktrace)
+    permitted = params.permit(:status, :current_step, :is_live, :stacktrace)
+
+    # is_live can only be set to true if there's a completed website deploy
+    if permitted[:is_live].present? && ActiveModel::Type::Boolean.new.cast(permitted[:is_live])
+      deploy = find_deploy
+      unless deploy.website_deploy&.status == "completed"
+        permitted.delete(:is_live)
+      end
+    end
+
+    permitted
   end
 
   def deploy_json(deploy)

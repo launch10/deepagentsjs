@@ -6,12 +6,12 @@ class PosthogSubscriber
       ActiveSupport::Notifications.subscribe(/\A#{NAMESPACE}\./) do |name, _start, _finish, _id, payload|
         event_name = name.delete_prefix("#{NAMESPACE}.")
 
-        user = payload.delete(:user)
-        account = payload.delete(:account)
-        project = payload.delete(:project)
-        campaign = payload.delete(:campaign)
-        website = payload.delete(:website)
-        properties = payload
+        user = payload[:user]
+        account = payload[:account]
+        project = payload[:project]
+        campaign = payload[:campaign]
+        website = payload[:website]
+        properties = payload.except(:user, :account, :project, :campaign, :website)
 
         write_posthog(user, event_name, properties)
         write_app_event(

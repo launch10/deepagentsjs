@@ -100,6 +100,14 @@ test.describe("Deploy Full-Flow — Campaign Happy Path", () => {
   });
 
   test("full campaign deploy — OAuth → invite → payment → campaign", async ({ page }) => {
+    // Capture DEPLOY_SCREEN_DEBUG console logs
+    page.on("console", (msg) => {
+      const text = msg.text();
+      if (text.includes("DEPLOY_SCREEN_DEBUG")) {
+        require("fs").appendFileSync("/tmp/deploy-console.log", text + "\n");
+      }
+    });
+
     // Configure mock: invite "accepted", billing "approved"
     // These return immediately when polled, so steps complete fast
     await E2EMocks.setupGoogleMock({
@@ -134,7 +142,7 @@ test.describe("Deploy Full-Flow — Campaign Happy Path", () => {
     await expect(deployPage.deployCompleteHeading).toBeVisible({
       timeout: 120000,
     });
-    await expect(deployPage.adsEnabledBadge).toBeVisible();
+    await expect(deployPage.liveBadge).toBeVisible();
   });
 
   test("skips OAuth when Google already connected", async ({ page }) => {

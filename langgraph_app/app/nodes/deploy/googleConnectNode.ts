@@ -36,14 +36,21 @@ export const googleConnectTaskRunner: TaskRunner = {
   // Always ready - first task for Google Ads flow
   readyToRun: () => true,
 
-  shouldSkip: async (state: DeployGraphState) => {
+  shouldSkip: (state: DeployGraphState) => {
     // Skip if not deploying Google Ads
     if (!Deploy.shouldDeployGoogleAds(state)) {
       return true;
     }
 
-    // Skip if already connected
-    return isGoogleConnected(state);
+    // If initPhasesNode already ran (tasks exist) but excluded this task,
+    // Google was already connected at deploy start — no API call needed.
+    const task = Task.findTask(state.tasks, TASK_NAME);
+    if (!task && state.tasks?.length > 0) return true;
+
+    // Task has result confirming connection
+    if (task?.result?.google_email) return true;
+
+    return false;
   },
 
   isBlocking: (state: DeployGraphState, task: Task.Task) => {
@@ -98,6 +105,7 @@ export const googleConnectTaskRunner: TaskRunner = {
       jobClass: "GoogleOAuthConnect",
       arguments: {},
       threadId: state.threadId,
+      ...(state.deployId && { deployId: state.deployId }),
     });
 
     // Create or update task with jobId and oauth_required result

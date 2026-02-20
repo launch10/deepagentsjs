@@ -26,12 +26,6 @@ const beforeGenerateNode = NodeMiddleware.use(
   }
 );
 
-const prepareNode = async (state: AdsGraphState) => {
-  return {
-    error: null,
-  };
-};
-
 /**
  * Ads graph for generating Google Ads campaigns.
  *
@@ -41,7 +35,6 @@ const prepareNode = async (state: AdsGraphState) => {
 export const adsGraph = withCreditExhaustion(
   new StateGraph(AdsAnnotation)
     .addNode("handleIntent", handleIntentNode)
-    .addNode("prepare", prepareNode)
     .addNode("createCampaign", createCampaign)
     .addNode("beforeGenerate", beforeGenerateNode)
     .addNode("getBusinessContext", getBusinessContext)
@@ -50,8 +43,7 @@ export const adsGraph = withCreditExhaustion(
     .addNode("reset", resetNode)
 
     .addEdge(START, "handleIntent")
-    .addEdge("handleIntent", "prepare")
-    .addEdge("prepare", "createCampaign")
+    .addEdge("handleIntent", "createCampaign")
     .addConditionalEdges("createCampaign", guardrailsNode, {
       beforeGenerate: "beforeGenerate",
       end: END,

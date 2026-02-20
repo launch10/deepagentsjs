@@ -56,7 +56,7 @@ export class DeployPage {
 
   // Footer (PaginationFooterView)
   readonly previousStepButton: Locator;
-  readonly continueButton: Locator;
+  readonly seePerformanceButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -112,7 +112,7 @@ export class DeployPage {
 
     // Footer (PaginationFooterView — the workflow navigation)
     this.previousStepButton = page.getByRole("button", { name: "Previous Step" });
-    this.continueButton = page.getByRole("button", { name: "Continue" });
+    this.seePerformanceButton = page.getByRole("button", { name: "See Performance" });
   }
 
   /**
@@ -156,8 +156,8 @@ export class DeployPage {
    */
   async areFooterButtonsDisabled(): Promise<boolean> {
     const prevDisabled = await this.previousStepButton.isDisabled();
-    const continueDisabled = await this.continueButton.isDisabled();
-    return prevDisabled && continueDisabled;
+    const seePerformanceDisabled = await this.seePerformanceButton.isDisabled();
+    return prevDisabled && seePerformanceDisabled;
   }
 
   /**

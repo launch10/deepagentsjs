@@ -31,6 +31,8 @@ export default function StructuredSnippetsForm() {
   const structuredSnippets = useAdsChatState("structuredSnippets");
   const { setState, updateState, saveState } = useAdsChatActions();
   const isStreaming = useAdsChatIsStreaming();
+  const isStreamingRef = useRef(false);
+  isStreamingRef.current = isStreaming;
 
   const category = structuredSnippets?.category;
   const details = structuredSnippets?.details;
@@ -75,7 +77,7 @@ export default function StructuredSnippetsForm() {
       methods.reset({ category, details: filteredDetails });
       prevIdsRef.current = filteredDetails.map((d) => d.id);
 
-      if (hadPrevIds) {
+      if (hadPrevIds && !isStreamingRef.current) {
         saveNowRef.current();
       }
     }

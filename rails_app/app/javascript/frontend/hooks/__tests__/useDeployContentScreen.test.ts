@@ -84,7 +84,7 @@ describe("resolveContentScreen", () => {
     expect(result).toBe("deploy-complete");
   });
 
-  it("uses graph status over Rails status", () => {
+  it("graph failed status wins over Rails completed status", () => {
     const pageInstructions = { website: true };
     const railsInstructions = { website: true };
 
@@ -97,9 +97,8 @@ describe("resolveContentScreen", () => {
       pageInstructions
     );
 
-    // Graph status wins — deploy-error, not deploy-complete
-    // (completed check comes first in priority, but failed is also terminal)
-    expect(result).toBe("deploy-complete");
+    // Graph status takes priority over Rails — graph has more recent information
+    expect(result).toBe("deploy-error");
   });
 
   it("graph failed status returns deploy-error", () => {
