@@ -2237,7 +2237,7 @@ CREATE TABLE public.deploys (
     thread_id character varying NOT NULL,
     active boolean DEFAULT true NOT NULL,
     finished_at timestamp(6) without time zone,
-    instructions jsonb DEFAULT '{}'::jsonb
+    deploy_type character varying DEFAULT 'website'::character varying NOT NULL
 );
 
 
@@ -2843,7 +2843,8 @@ CREATE TABLE public.job_runs (
     account_id bigint,
     langgraph_thread_id character varying,
     result_data jsonb DEFAULT '{}'::jsonb,
-    deploy_id bigint
+    deploy_id bigint,
+    error_type character varying
 );
 
 
@@ -8793,17 +8794,17 @@ CREATE INDEX index_deploys_on_deleted_at ON public.deploys USING btree (deleted_
 
 
 --
+-- Name: index_deploys_on_deploy_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_deploy_type ON public.deploys USING btree (deploy_type);
+
+
+--
 -- Name: index_deploys_on_finished_at; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_deploys_on_finished_at ON public.deploys USING btree (finished_at);
-
-
---
--- Name: index_deploys_on_instructions; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX index_deploys_on_instructions ON public.deploys USING gin (instructions);
 
 
 --
@@ -9098,6 +9099,13 @@ CREATE INDEX index_job_runs_on_account_id ON public.job_runs USING btree (accoun
 --
 
 CREATE INDEX index_job_runs_on_deploy_id ON public.job_runs USING btree (deploy_id);
+
+
+--
+-- Name: index_job_runs_on_error_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_job_runs_on_error_type ON public.job_runs USING btree (error_type);
 
 
 --
@@ -11825,6 +11833,8 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260220184159'),
+('20260220151951'),
 ('20260216214522'),
 ('20260216182055'),
 ('20260216180433'),

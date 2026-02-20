@@ -2,6 +2,18 @@
 
 This document describes the resilience layers in the deploy pipeline that handle timeouts, stuck jobs, error classification, and automatic support ticket creation.
 
+## Philosophy: Fail Fast, Fail Loud
+
+All deploy worker errors are treated as **non-recoverable**. When a worker encounters any error:
+1. The error is classified and logged
+2. The job_run is marked `failed` immediately
+3. Langgraph is notified immediately via webhook
+4. Generic exceptions trigger Sentry alerts
+
+There are **no Sidekiq retries** for deploy workers in normal operation. `sidekiq_options retry: N` exists only as a backstop for process crashes (OOM, kill -9) where `handle_deploy_error` never ran.
+
+**Rationale**: Deploy failures should surface to the user and engineering team instantly. A 5-minute retry loop before telling the user "something went wrong" is worse than immediate failure with a support ticket. We'd rather fail fast, hear about errors, and fix root causes.
+
 ## Architecture Overview
 
 The deploy pipeline runs as a Langgraph graph that orchestrates tasks. Each task may fire a Rails background job (Sidekiq). Langgraph waits for webhooks to learn when jobs complete, with multiple fallback layers when things go wrong.
@@ -16,7 +28,7 @@ Langgraph (taskExecutor)
   │   ├── Job failed → propagate error
   │   └── Check failed → timeout failure
   ├── At warningTimeout (e.g. 2 min for website deploy): sets warning on task
-  └── On failure: classifies error → retry-only or retry+support ticket
+  └── On failure: classifies error → needs_support ticket
 ```
 
 ### Who creates support tickets?
@@ -30,34 +42,110 @@ Langgraph (taskExecutor)
 
 Idempotency guard (`return if deploy.support_request.present?`) prevents duplicate tickets.
 
-## Layer 6: Capped Timeout Extensions
+## Unified Worker Error Handling (DeployJobHandler)
+
+All deploy-related Sidekiq workers include the `DeployJobHandler` concern, which provides consistent fail-fast error handling.
+
+### Error Classification
+
+When a worker catches an error, `DeployJobs::ErrorClassifier` maps it to a shared `ErrorType`:
+
+| Exception | ErrorType | Notes |
+|---|---|---|
+| `Google::Ads::GoogleAds::Errors::GoogleAdsError` (terminal) | `policy_violation`, `auth_failure`, or `invalid_data` | Uses `GoogleAds::TerminalErrors` |
+| `Google::Ads::GoogleAds::Errors::GoogleAdsError` (non-terminal) | `api_outage` | |
+| `Aws::S3::Errors::ServiceError` | `api_outage` | |
+| `ApplicationClient::Error` with 429 | `rate_limit` | |
+| `ApplicationClient::Error` (other) | `api_outage` | |
+| `ActiveRecord::RecordNotFound` | `not_found` | |
+| `Lockable::LockNotAcquiredError` | `api_outage` | |
+| Generic `StandardError` / `RuntimeError` | `internal` | **Fires Sentry warning** — caller should use a specific error type |
+| Timeout pattern in message | `timeout` | |
+
+All error types default to **non-recoverable** (`false`). The shared config lives in `shared/types/deploy/jobErrors.ts` and is exported to `shared/exports/jobErrors.json` for Rails consumption.
+
+### Worker Pattern
+
+Every deploy worker follows this pattern:
+
+```ruby
+class MyWorker
+  include Sidekiq::Worker
+  include DeployJobHandler
+
+  sidekiq_options queue: :default, retry: 5  # retry = crash backstop only
+
+  def perform(job_run_id)
+    job_run = JobRun.find(job_run_id)
+    job_run.start!
+    # ... do work ...
+    job_run.complete!(result_data)
+    job_run.notify_langgraph(status: "completed", result: result_data)
+  rescue => e
+    handle_deploy_error(job_run, e)  # Fails immediately, notifies Langgraph, no re-raise
+  end
+end
+```
+
+`handle_deploy_error` does:
+1. Classifies the error via `ErrorClassifier`
+2. Logs the error type + details
+3. Calls `job_run.fail!(error)` — marks job as failed
+4. Calls `job_run.notify_langgraph(status: "failed", error: ...)` — notifies Langgraph immediately
+5. Does **not** re-raise — Sidekiq considers the job done
+
+`sidekiq_retries_exhausted` is a backstop that only fires when the process crashed (the `rescue` block never ran). It marks the job_run as failed and notifies Langgraph.
+
+### Files
+
+- `rails_app/app/workers/concerns/deploy_job_handler.rb` — Shared concern
+- `rails_app/app/services/deploy_jobs/error_classifier.rb` — Exception → ErrorType mapping
+- `rails_app/lib/job_error_config.rb` — Reads shared error config from JSON
+- `shared/types/deploy/jobErrors.ts` — Error types + recoverability rules (source of truth)
+- `shared/exports/jobErrors.json` — JSON export for Rails
+
+### Workers Using This Pattern
+
+| Worker | Queue | Purpose |
+|---|---|---|
+| `WebsiteDeploy::DeployWorker` | critical | Build + upload website |
+| `CampaignDeploy::DeployWorker` | critical | 9-step Google Ads sync |
+| `GoogleAds::CampaignEnableWorker` | default | Enable campaign after billing |
+| `GoogleAds::PaymentCheckWorker` | default | Check Google Ads billing status |
+| `GoogleAds::SendInviteWorker` | default | Send Google Ads invitation |
+
+### Tests
+
+- `rails_app/spec/workers/concerns/deploy_job_handler_spec.rb` — Concern behavior
+- `rails_app/spec/services/deploy_jobs/error_classifier_spec.rb` — Classification logic
+- `rails_app/spec/lib/job_error_config_spec.rb` — Config reader
+
+## Layer 6: Blocking Timeout with Health Check
 
 ### Problem
 
-When a blocking task's timeout expires, Langgraph checks Rails for the job's status. If Rails says "still running", Langgraph resets `blockingStartedAt` to grant another interval. Without a cap, this loops indefinitely.
+When a blocking task's timeout expires, we need to check Rails for the job's actual status before failing. The webhook may have been lost even though the job completed.
 
 ### Solution
 
-A `timeoutExtensionCount` field on each task tracks how many times the timeout has been extended. Extensions are capped at `MAX_TIMEOUT_EXTENSIONS = 2`, meaning 3 total health checks.
+When `blockingTimeout` fires, Langgraph checks Rails once for the job status:
+- **Completed**: Recover the result and continue (webhook was lost)
+- **Failed**: Propagate the error immediately
+- **Still running/pending**: Fail immediately — the job is stuck
 
-For website deploys: `blockingTimeout = 3 min`, 3 checks × 3 min = **9 minutes max**.
+For website deploys: `blockingTimeout = 3 min` = **3 minutes max**.
 
 ### Flow
 
 1. Task starts blocking → `blockingStartedAt = Date.now()`
 2. 3 min passes → timeout fires → Langgraph checks Rails
-3. Rails says "still running" → `timeoutExtensionCount: 0 → 1`, `blockingStartedAt` reset
-4. Repeat up to 2 extensions (3 total checks)
-5. On 3rd check (extensions exhausted) → task fails as timeout
-
-### Why extensions, not a flat 9-minute timeout?
-
-Extensions serve as **inline health checks**. A flat 9-minute timeout means a job that crashes at minute 1 isn't detected until minute 9. With 3-minute check intervals, crashes are detected within 3 minutes. The stuck job detector is the background backstop, but extensions provide faster inline detection.
+3. Rails says "completed" → recover result, continue
+4. Rails says "failed" → propagate error
+5. Rails says "still running" → fail as timeout (job is stuck)
 
 ### Files
 
-- `shared/types/task.ts` — `timeoutExtensionCount` field on TaskSchema
-- `langgraph_app/app/nodes/deploy/taskExecutor.ts` — Extension cap logic
+- `langgraph_app/app/nodes/deploy/taskExecutor.ts` — Timeout + health check logic
 - `langgraph_app/app/nodes/deploy/taskRunner.ts` — `blockingTimeout` per runner
 - `langgraph_app/app/nodes/deploy/deployWebsiteNode.ts` — `blockingTimeout: 180_000`
 - `langgraph_app/tests/tests/deploy/taskExecutor.timeout.test.ts` — Tests
@@ -100,13 +188,17 @@ When a deploy fails and needs human investigation, we're not notified. The user 
 
 ### Solution
 
-Two paths create support tickets:
+Three paths create support tickets:
 
 1. **Langgraph-classified failures**: Errors are classified with a `needsSupport` flag. Unrecoverable failures (build crashes, unknown errors) pass `needs_support: true` to Rails, which creates a `SupportRequest` (triggers email + Slack + Notion). Transient failures (timeout, network, rate limit) just show retry.
 
 2. **Stuck job detector** (Rails backstop): When the detector finds a job stuck >10 min with an associated deploy, it creates a support ticket directly — no Langgraph dependency. This covers the case where Langgraph itself is down.
 
-### Error Classification
+3. **Rails ErrorClassifier + Sentry**: When a generic `StandardError`/`RuntimeError` reaches the ErrorClassifier, a Sentry warning is fired indicating the caller needs a more specific error type. This alerts the engineering team to classification gaps.
+
+### Langgraph Error Classification (Frontend Display)
+
+These are the **Langgraph-side** error classifications that determine what the user sees. They are separate from the Rails-side `ErrorClassifier` (which determines worker behavior).
 
 | Error Pattern | canRetry | needsSupport | Reason |
 |---|---|---|---|
@@ -120,6 +212,8 @@ Two paths create support tickets:
 | Rate limit / 429 | true | false | Transient |
 | Network / connection | true | false | Transient |
 | DEFAULT (unknown) | true | **true** | Unknown = needs investigation |
+
+Note: `canRetry` means the user can click "Retry" in the UI. All errors allow retry — the user starts a fresh deploy attempt. This is different from Sidekiq retries (which are disabled for deploy workers).
 
 ### Data Flow (Langgraph path)
 

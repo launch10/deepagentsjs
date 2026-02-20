@@ -5,6 +5,7 @@
 #  id                  :bigint           not null, primary key
 #  completed_at        :datetime
 #  error_message       :text
+#  error_type          :string
 #  job_args            :jsonb
 #  job_class           :string           not null
 #  result_data         :jsonb
@@ -20,6 +21,7 @@
 #
 #  index_job_runs_on_account_id            (account_id)
 #  index_job_runs_on_deploy_id             (deploy_id)
+#  index_job_runs_on_error_type            (error_type)
 #  index_job_runs_on_job_class             (job_class)
 #  index_job_runs_on_job_class_and_status  (job_class,status)
 #  index_job_runs_on_langgraph_thread_id   (langgraph_thread_id)
@@ -36,10 +38,6 @@ class JobRun < ApplicationRecord
   STATUSES = %w[pending running completed failed].freeze
   ALLOWED_JOBS = %w[CampaignDeploy WebsiteDeploy GoogleOAuthConnect GoogleAdsInvite GoogleAdsPaymentCheck CampaignEnable GoogleDocs::ExtractQA].freeze
 
-  # Jobs that wait on user action (OAuth consent, invite acceptance, billing setup).
-  # These may legitimately run for hours and should not be killed by the stuck detector.
-  USER_BLOCKING_JOBS = %w[GoogleOAuthConnect GoogleAdsInvite GoogleAdsPaymentCheck].freeze
-
   validates :job_class, presence: true, inclusion: { in: ALLOWED_JOBS }
   validates :status, presence: true, inclusion: { in: STATUSES }
   validates :account, presence: true
@@ -52,7 +50,6 @@ class JobRun < ApplicationRecord
   scope :recent, -> { order(created_at: :desc) }
   scope :stuck, -> {
     where(status: %w[pending running])
-      .where.not(job_class: USER_BLOCKING_JOBS)
       .where("created_at < ?", 10.minutes.ago)
   }
 

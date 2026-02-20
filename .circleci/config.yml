@@ -251,6 +251,15 @@ jobs:
           environment:
             <<: *rails-env
       - run:
+          name: Verify shared exports are up-to-date
+          command: |
+            cd ~/project/shared
+            pnpm run config:export
+            if ! git diff --exit-code exports/; then
+              echo "❌ shared/exports/ is stale. Run 'cd shared && pnpm run config:export' and commit the result."
+              exit 1
+            fi
+      - run:
           name: Run RSpec tests
           command: RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rspec
           environment:
