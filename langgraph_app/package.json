@@ -7,7 +7,7 @@
   "sideEffects": false,
   "type": "module",
   "engines": {
-    "node": ">= 24.1.0"
+    "node": ">= 20.0.0"
   },
   "scripts": {
     "dev": "tsx watch --watch-path=./app --watch-path=./server.ts --watch-path=../shared ./server.ts",
