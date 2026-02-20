@@ -27,6 +27,8 @@
 #
 
 class Chat < ApplicationRecord
+  include Langgraph::ThreadAccessible
+
   acts_as_paranoid
   acts_as_tenant :account
 
