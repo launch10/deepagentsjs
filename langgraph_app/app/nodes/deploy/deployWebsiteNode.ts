@@ -110,8 +110,8 @@ export const deployWebsiteTaskRunner: TaskRunner = {
     return task.status === "running" && !!task.jobId && !task.result && !task.error;
   },
 
-  blockingTimeout: 180_000, // 3 minutes between health checks
-  warningTimeout: 120_000, // Show "taking longer than expected" after 2 minutes
+  blockingTimeout: parseInt(process.env.DEPLOY_BLOCKING_TIMEOUT_MS || "180000", 10),
+  warningTimeout: parseInt(process.env.DEPLOY_WARNING_TIMEOUT_MS || "120000", 10),
 
   run: runDeployWebsite,
 };

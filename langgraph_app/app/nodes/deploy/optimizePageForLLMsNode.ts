@@ -95,7 +95,8 @@ IMPORTANT:
 - Keep it concise (under 10 lines total).`;
 
   const response = await llm.invoke([new HumanMessage(prompt)]);
-  const llmContent = typeof response.content === "string" ? response.content : String(response.content);
+  const llmContent =
+    typeof response.content === "string" ? response.content : String(response.content);
 
   // Programmatically append the Homepage link
   return `${llmContent.trim()}\n\n## About\n- [Homepage](${siteUrl}/)\n`;
@@ -105,9 +106,7 @@ IMPORTANT:
  * Write a file to the websiteFiles table
  */
 async function writeFile(websiteId: number, path: string, content: string): Promise<void> {
-  await db
-    .insert(websiteFiles)
-    .values(withTimestamps({ websiteId, path, content }));
+  await db.insert(websiteFiles).values(withTimestamps({ websiteId, path, content }));
 }
 
 /**
@@ -151,9 +150,7 @@ async function runOptimizePageForLLMs(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     getLogger().error({ err: error }, "llms.txt generation failed");
-    return withPhases(state, [
-      { ...task, status: "failed", error: errorMessage } as Task.Task,
-    ]);
+    return withPhases(state, [{ ...task, status: "failed", error: errorMessage } as Task.Task]);
   }
 }
 
@@ -164,7 +161,9 @@ export const optimizePageForLLMsTaskRunner: TaskRunner = {
   taskName: TASK_NAME,
 
   readyToRun: (state: DeployGraphState) => {
-    return isTaskDone(state, "RuntimeValidation");
+    // Ready after validation cycle: either RuntimeValidation passed,
+    // or FixingBugs completed (bugs were fixed, proceed with deploy)
+    return isTaskDone(state, "RuntimeValidation") || isTaskDone(state, "FixingBugs");
   },
 
   shouldSkip: (state: DeployGraphState) => {

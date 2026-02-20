@@ -26,8 +26,7 @@ import { sanitizeMessagesForLLM } from "./messageUtils";
 import { AIMessage, type BaseMessage } from "@langchain/core/messages";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { toStructuredMessages } from "langgraph-ai-sdk";
-import { prepareTurn, Conversation } from "@conversation";
-import type { SubscribableGraph } from "@conversation";
+import { Conversation } from "@conversation";
 
 export type MinimalCodingAgentState = {
   websiteId?: number;
@@ -48,14 +47,6 @@ export type CodingAgentOptions = {
   config?: LangGraphRunnableConfig;
   recursionLimit?: number;
   route?: EditRoute;
-  /** Extra context messages to inject (build errors, copy instructions, etc.) */
-  extraContext?: BaseMessage[];
-  /** Graph name for event subscriptions. When set, fetches Rails events. */
-  graphName?: SubscribableGraph;
-  /** Max turn pairs to keep in context window. Default: 10 */
-  maxTurnPairs?: number;
-  /** Max total chars in context window. Default: 40000 */
-  maxChars?: number;
   /** Override subagents passed to createDeepAgent. Pass [] to disable subagents. */
   subagents?: any[];
 };
@@ -222,10 +213,7 @@ async function buildFullCodingAgent(
     systemPrompt: finalSystemPrompt,
     backend: () => backend as any,
     subagents,
-    tools: [
-      new SearchIconsTool(),
-      changeColorSchemeTool,
-    ],
+    tools: [new SearchIconsTool(), changeColorSchemeTool],
     middleware: middlewares as any,
   });
   return { agent, backend };
@@ -295,45 +283,6 @@ async function resolveRoute(
 }
 
 /**
- * Prepare conversation for the LLM.
- *
- * When graphName + projectId + jwt are present, fetches Rails events
- * (brainstorm, images, etc.) and injects them as context. Always
- * injects any extraContext and windows to fit within limits.
- *
- * No-ops gracefully for single-turn callers that pass fresh messages.
- */
-async function prepareConversation(
-  state: MinimalCodingAgentState,
-  options: CodingAgentOptions
-): Promise<BaseMessage[]> {
-  // Full preparation: fetch events from Rails + inject context + window
-  if (options.graphName && state.projectId && state.jwt) {
-    return prepareTurn({
-      graphName: options.graphName,
-      projectId: state.projectId,
-      jwt: state.jwt,
-      messages: options.messages,
-      extraContext: options.extraContext,
-      maxTurnPairs: options.maxTurnPairs,
-      maxChars: options.maxChars,
-    });
-  }
-
-  // No event fetching, but still inject any extra context + window
-  if (options.extraContext?.length) {
-    return new Conversation(options.messages).prepareTurn({
-      contextMessages: options.extraContext,
-      maxTurnPairs: options.maxTurnPairs,
-      maxChars: options.maxChars,
-    });
-  }
-
-  // No preparation needed (single-turn, no context)
-  return options.messages;
-}
-
-/**
  * Unified entry point for all website code edits.
  *
  * Routes to the appropriate execution strategy:
@@ -395,16 +344,14 @@ async function _createCodingAgentInternal(
 }> {
   const requestedRoute = options.route ?? "auto";
 
-  // Prepare conversation: fetch events, inject context, window.
-  // Full preparation when graphName + projectId + jwt are present.
-  // Falls back to pure windowing + context injection when only extraContext is provided.
-  // No-ops for single-turn callers (bugFix, SEO) that pass fresh messages.
-  const preparedMessages = await prepareConversation(state, options);
+  // Messages arrive already prepared when called via Conversation.start()
+  // (context injected, windowed). For direct callers (deploy nodes),
+  // messages are passed through as-is.
 
   // Sanitize messages — strips orphaned tool_use (AIMessages with tool_calls
   // not followed by ToolMessages) and orphaned tool_result (ToolMessages whose AIMessage
-  // was removed by compactConversation). Both cause Claude API errors.
-  const sanitizedMessages = sanitizeMessagesForLLM(preparedMessages);
+  // was removed by compaction). Both cause Claude API errors.
+  const sanitizedMessages = sanitizeMessagesForLLM(options.messages);
 
   // Resolve route
   let resolvedRoute: "single-shot" | "full";

@@ -475,23 +475,14 @@ describe.sequential("Brainstorming Flow", () => {
 
     it("ends the chat when user says they are finished", async () => {
       const graph = await restartChatFrom("lookAndFeel", SimpleChatHistory);
-      const result = await graph
-        .withPrompt(`Let's build my page!`)
-        .stopAfter("brainstormAgent")
-        .execute();
 
-      const lastAIResponse = lastAIMessage(result.state);
-      assertDefined(lastAIResponse, "lastAIResponse is defined");
+      const result = await graph.withPrompt(`Let's build my page!`).execute();
 
       expect(result.error).toBeUndefined();
-      // navigateTool writes to agentIntents instead of redirect
-      expect(result.state.agentIntents).toBeDefined();
-      expect(result.state.agentIntents?.[0]?.type).toBe("navigate");
-      expect(result.state.agentIntents?.[0]?.payload).toMatchObject({ page: "website" });
 
-      // navigateTool uses returnDirect: true, so the last message is a ToolMessage
-      // (not an AIMessage). Verify the ToolMessage is preserved in state — a prior
-      // bug dropped it, causing tool_use/tool_result mismatch on the next turn.
+      // navigateTool ToolMessage proves the agent called navigateTool (which
+      // produces the navigate agentIntent). ToolMessages persist through
+      // cleanup, unlike ephemeral agentIntents which are cleared.
       const navigateToolMsg = findToolMessage(result.state, "navigateTool");
       assertDefined(navigateToolMsg, "navigateTool ToolMessage must be preserved in state");
       expect(navigateToolMsg.content).toContain("Navigating to website");
@@ -501,38 +492,29 @@ describe.sequential("Brainstorming Flow", () => {
   describe("After brainstorming is done...", () => {
     it("(finished | done) navigates to website when user verbally expresses that they want to move on", async () => {
       const graph = await restartChatFrom("lookAndFeel", SimpleChatHistory);
-      const result = await graph
-        .withPrompt(`That's alright, I'm finished`)
-        .stopAfter("brainstormAgent")
-        .execute();
 
-      const lastAIResponse = lastAIMessage(result.state);
-      assertDefined(lastAIResponse, "lastAIResponse is defined");
+      const result = await graph.withPrompt(`That's alright, I'm finished`).execute();
 
       expect(result.error).toBeUndefined();
-      // navigateTool writes to agentIntents instead of redirect
-      expect(result.state.agentIntents).toBeDefined();
-      expect(result.state.agentIntents?.[0]?.type).toBe("navigate");
-      expect(result.state.agentIntents?.[0]?.payload).toMatchObject({ page: "website" });
 
-      // Verify navigateTool's ToolMessage is preserved (returnDirect: true)
+      // navigateTool ToolMessage proves the navigate intent was produced
       const navigateToolMsg = findToolMessage(result.state, "navigateTool");
       assertDefined(navigateToolMsg, "navigateTool ToolMessage must be preserved in state");
+      expect(navigateToolMsg.content).toContain("Navigating to website");
     });
 
     it("answers questions about UI", async () => {
       const graph = await restartChatFrom("lookAndFeel", SimpleChatHistory);
-      const result = await graph
-        .withPrompt(`Sorry, where do I add logos?`)
-        .stopAfter("brainstormAgent")
-        .execute();
+
+      const result = await graph.withPrompt(`Sorry, where do I add logos?`).execute();
 
       const lastAIResponse = lastAIMessage(result.state);
       assertDefined(lastAIResponse, "lastAIResponse is defined");
 
       expect(result.error).toBeUndefined();
       // Should NOT navigate — user is asking a question, not requesting to build
-      expect(result.state.agentIntents ?? []).toEqual([]);
+      const navigateToolMsg = findToolMessage(result.state, "navigateTool");
+      expect(navigateToolMsg).toBeUndefined();
 
       expect(lastAIResponse.content).toContain("Brand Personalization panel");
     });
@@ -918,12 +900,16 @@ describe.sequential("Brainstorming Flow", () => {
         .stopAfter("brainstormAgent")
         .execute();
 
-      const lastAIResponse = lastAIMessage(result.state);
-      assertDefined(lastAIResponse, "AI response should be defined");
+      const agentMessages = result.state.messages.filter((msg) => AIMessage.isInstance(msg));
+      const toolMessage = result.state.messages.filter((msg) => ToolMessage.isInstance(msg)).at(0);
+      const agentAcknowledgement = agentMessages.find((msg) =>
+        JSON.stringify(msg.content).match(/logo|image|uploaded|i can see/i)
+      );
 
+      expect(agentAcknowledgement).toBeDefined();
+      expect(toolMessage).toBeDefined();
+      expect(toolMessage!.name).toEqual("set_logo"); // agent calls set_logo in the chat
       expect(result.state.error).toBeUndefined();
-      // The model should acknowledge the image and process the business idea
-      expect(lastAIResponse.content).toMatch(/logo|image|uploaded|i can see/i);
     });
 
     it("handles multiple images in a single message", async () => {

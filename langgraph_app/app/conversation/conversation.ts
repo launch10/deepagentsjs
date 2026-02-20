@@ -27,6 +27,7 @@
 import type { BaseMessage } from "@langchain/core/messages";
 import { AIMessage, HumanMessage, RemoveMessage, ToolMessage } from "@langchain/core/messages";
 import { isContextMessage, isSummaryMessage } from "langgraph-ai-sdk";
+import type { ConversationStartOptions, AgentResult } from "./start";
 
 /**
  * A Turn is a BaseMessage[] slice from one non-context HumanMessage
@@ -159,7 +160,8 @@ export class Conversation {
 
     // Include trailing messages if they fit
     const trailingChars = this.trailingMessages.reduce(
-      (sum, m) => sum + Conversation.charCount(m), 0
+      (sum, m) => sum + Conversation.charCount(m),
+      0
     );
     const includeTrailing = chars + trailingChars <= maxChars;
 
@@ -200,8 +202,8 @@ export class Conversation {
     const toolResultMaxChars = options.toolResultMaxChars ?? 500;
     const toSummarize = turnsToSummarize
       .flat()
-      .filter(m => !isContextMessage(m))
-      .map(m => Conversation.clearToolResult(m, toolResultMaxChars));
+      .filter((m) => !isContextMessage(m))
+      .map((m) => Conversation.clearToolResult(m, toolResultMaxChars));
 
     if (toSummarize.length === 0 && this.summaryMessages.length <= 1) {
       return null;
@@ -212,20 +214,20 @@ export class Conversation {
     // 1. All messages from summarized turns (including their context)
     const summarizedRemovals = turnsToSummarize
       .flat()
-      .filter(m => m.id)
-      .map(m => new RemoveMessage({ id: m.id! }));
+      .filter((m) => m.id)
+      .map((m) => new RemoveMessage({ id: m.id! }));
 
     // 2. Old summaries (consolidating into one)
     const summaryRemovals = this.summaryMessages
-      .filter(m => m.id)
-      .map(m => new RemoveMessage({ id: m.id! }));
+      .filter((m) => m.id)
+      .map((m) => new RemoveMessage({ id: m.id! }));
 
     // Context in kept turns STAYS — it's part of that turn's history.
     // prepareTurn only adds what's new since the last AI message.
 
     // Extract existing summary texts for consolidation
     const existingSummaryTexts = this.summaryMessages
-      .map(m => {
+      .map((m) => {
         const content = typeof m.content === "string" ? m.content : "";
         return content.replace(/^\[{1,3}CONVERSATION SUMMARY\]{1,3}\s*/i, "");
       })
@@ -240,10 +242,7 @@ export class Conversation {
       additional_kwargs: { timestamp: new Date().toISOString(), isSummary: true },
     });
 
-    const removals = [
-      ...summarizedRemovals,
-      ...summaryRemovals,
-    ];
+    const removals = [...summarizedRemovals, ...summaryRemovals];
 
     return {
       summary,
@@ -365,16 +364,14 @@ export class Conversation {
   digestMessages(maxTurns: number = 4): BaseMessage[] {
     // Exclude current turn — caller already has the latest user message
     const priorTurns = this.turns.slice(0, -1).slice(-maxTurns);
-    return priorTurns
-      .flat()
-      .filter((msg) => {
-        if (!HumanMessage.isInstance(msg) && !AIMessage.isInstance(msg)) return false;
-        if (isContextMessage(msg)) return false;
-        if (isSummaryMessage(msg)) return false;
-        if (typeof msg.content !== "string") return false;
-        if (msg.content.length === 0) return false;
-        return true;
-      });
+    return priorTurns.flat().filter((msg) => {
+      if (!HumanMessage.isInstance(msg) && !AIMessage.isInstance(msg)) return false;
+      if (isContextMessage(msg)) return false;
+      if (isSummaryMessage(msg)) return false;
+      if (typeof msg.content !== "string") return false;
+      if (msg.content.length === 0) return false;
+      return true;
+    });
   }
 
   // ── Reconstruction ───────────────────────────────────────────
@@ -384,11 +381,40 @@ export class Conversation {
    * Summaries at front, then turns in order, then trailing messages.
    */
   toMessages(): BaseMessage[] {
-    return [
-      ...this.summaryMessages,
-      ...this.turns.flat(),
-      ...this.trailingMessages,
-    ];
+    return [...this.summaryMessages, ...this.turns.flat(), ...this.trailingMessages];
+  }
+
+  // ── Static entry point ──────────────────────────────────────────
+
+  /**
+   * Start a full agent turn with context injection, windowing, and compaction.
+   *
+   * Canonical entry point for all agent turns. Handles:
+   * 1. Context event fetching from Rails (optional)
+   * 2. Context injection + windowing via prepareTurn()
+   * 3. Agent callback execution
+   * 4. Post-turn compaction (optional)
+   *
+   * The callback MUST return only NEW messages (not input messages).
+   *
+   * @example
+   * ```ts
+   * const result = await Conversation.start({
+   *   messages: state.messages,
+   *   extraContext: buildExtraContext(state),
+   *   compact: { summarizer: summarizeMessages },
+   * }, async (prepared) => {
+   *   return createCodingAgent(state, { messages: prepared, config });
+   * });
+   * ```
+   */
+  static async start(
+    options: ConversationStartOptions,
+    callback: (prepared: BaseMessage[]) => Promise<AgentResult>
+  ): Promise<AgentResult> {
+    // Lazy import to avoid circular dependency (start.ts imports Conversation)
+    const { startConversation } = await import("./start");
+    return startConversation(options, callback);
   }
 
   // ── Static helpers ──────────────────────────────────────────────
@@ -474,10 +500,7 @@ export class Conversation {
   static charCount(msg: BaseMessage): number {
     if (typeof msg.content === "string") return msg.content.length;
     if (Array.isArray(msg.content)) {
-      return msg.content.reduce(
-        (sum: number, block: any) => sum + (block.text?.length ?? 0),
-        0
-      );
+      return msg.content.reduce((sum: number, block: any) => sum + (block.text?.length ?? 0), 0);
     }
     return 0;
   }
@@ -547,5 +570,4 @@ export class Conversation {
       });
     });
   }
-
 }

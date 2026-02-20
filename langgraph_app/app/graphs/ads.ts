@@ -8,7 +8,6 @@ import {
   prepareRefreshNode,
   resetNode,
   guardrailsNode,
-  createCompactConversationNode,
 } from "@nodes";
 import { type AdsGraphState } from "@state";
 import { NodeMiddleware } from "@middleware";
@@ -48,7 +47,6 @@ export const adsGraph = withCreditExhaustion(
     .addNode("getBusinessContext", getBusinessContext)
     .addNode("prepareRefresh", prepareRefreshNode)
     .addNode("adsAgent", adsAgent)
-    .addNode("compactConversation", createCompactConversationNode())
     .addNode("reset", resetNode)
 
     .addEdge(START, "handleIntent")
@@ -61,8 +59,8 @@ export const adsGraph = withCreditExhaustion(
     .addEdge("beforeGenerate", "getBusinessContext")
     .addEdge("getBusinessContext", "prepareRefresh")
     .addEdge("prepareRefresh", "adsAgent")
-    .addEdge("adsAgent", "compactConversation")
-    .addEdge("compactConversation", "reset")
+    // Compaction now happens inside adsAgent via Conversation.start()
+    .addEdge("adsAgent", "reset")
     .addEdge("reset", END),
   AdsAnnotation
 );

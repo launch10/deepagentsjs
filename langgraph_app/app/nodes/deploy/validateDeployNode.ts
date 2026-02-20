@@ -79,12 +79,8 @@ export async function validateDeployNode(
     try {
       const deployAPI = new DeployAPIService({ jwt: state.jwt });
 
-      // Map instruction keys to Rails API format (googleAds → google_ads)
-      const apiInstructions: Record<string, boolean> = {};
-      if (state.instructions?.website) apiInstructions.website = true;
-      if (state.instructions?.googleAds) apiInstructions.google_ads = true;
-
-      const changes = await deployAPI.checkChanges(state.projectId as number, apiInstructions);
+      const deployType = Deploy.instructionsToDeployType(state.instructions);
+      const changes = await deployAPI.checkChanges(state.projectId as number, deployType);
       log.info({ changes }, "Change detection result");
 
       // Check if ALL values are false (nothing changed)

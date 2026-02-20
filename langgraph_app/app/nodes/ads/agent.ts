@@ -4,6 +4,7 @@ import { type LangGraphRunnableConfig } from "@langchain/langgraph";
 import { getLLM, getLogger } from "@core";
 import { buildSystemPrompt, buildTurnContext } from "@prompts";
 import { Conversation } from "@conversation";
+import { summarizeMessages } from "@nodes";
 import { NodeMiddleware } from "@middleware";
 import { type AdsGraphState } from "@state";
 import { lastAIMessage, Ads } from "@types";
@@ -30,39 +31,48 @@ export const adsAgent = NodeMiddleware.use(
       systemPrompt,
     });
 
-    // 3. Build turn context and pass through prepareTurn() so it's placed
-    //    correctly (CTX before HUMAN). Same pattern as coding/brainstorm agents.
+    // 3. Build turn context for this turn (page-specific ads context)
     const turnContext = await buildTurnContext(state, config!);
-    const contextMessages = turnContext ? [turnContext] : [];
-
-    const windowedMessages = new Conversation(state.messages || []).prepareTurn({
-      contextMessages,
-      maxTurnPairs: 4,
-      maxChars: 20_000,
-    });
-
-    const stateWithMessages = {
-      ...state,
-      messages: windowedMessages,
-    };
 
     getLogger().info({ stage: state.stage }, "Running ads agent");
-    const result = (await agent.invoke(
-      stateWithMessages as any,
-      config
-    )) as unknown as AdsGraphState;
-    const lastMessage = lastAIMessage(result);
-    if (!lastMessage) {
-      throw new Error("Agent did not return an AI message");
-    }
-    const [message, updates] = await AdsBridge.toStructuredMessage(lastMessage);
-    const mergedAssets = Ads.removeRejected(Ads.mergeStructuredData(state, updates!));
 
-    const allMessages = result.messages.slice(0, -1).concat([message]) as BaseMessage[];
+    // 4. Run through Conversation.start() — handles prepare, window, compact
+    const convResult = await Conversation.start(
+      {
+        messages: state.messages || [],
+        extraContext: turnContext ? [turnContext] : [],
+        maxTurnPairs: 4,
+        maxChars: 20_000,
+        compact: { summarizer: summarizeMessages },
+      },
+      async (prepared) => {
+        const stateWithMessages = { ...state, messages: prepared };
+        const result = (await agent.invoke(
+          stateWithMessages as any,
+          config
+        )) as unknown as AdsGraphState;
+
+        const lastMessage = lastAIMessage(result);
+        if (!lastMessage) {
+          throw new Error("Agent did not return an AI message");
+        }
+        const [message, updates] = await AdsBridge.toStructuredMessage(lastMessage);
+        const mergedAssets = Ads.removeRejected(Ads.mergeStructuredData(state, updates!));
+
+        // Slice off input, replace last AI with structured version
+        const agentNewMessages = result.messages
+          .slice(prepared.length, -1)
+          .concat([message]) as BaseMessage[];
+
+        return {
+          messages: agentNewMessages,
+          ...mergedAssets,
+        };
+      }
+    );
 
     return {
-      ...mergedAssets,
-      messages: allMessages,
+      ...convResult,
     };
   }
 );

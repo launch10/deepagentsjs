@@ -5,9 +5,11 @@ import { toStructuredMessage, createContextMessage } from "langgraph-ai-sdk";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
 import { isCacheModeEnabled } from "./cacheMode";
+import { summarizeMessages } from "./compactConversation";
 import { getSchedulingToolMinorEditFiles } from "@cache";
 import type { Website } from "@types";
 import { getLogger } from "@core";
+import { Conversation } from "@conversation";
 import { db, codeFiles, websiteFiles, eq, and, like } from "@db";
 
 /**
@@ -141,26 +143,36 @@ export const websiteBuilderNode = NodeMiddleware.use(
     // Instead, the bugfix workflow prompt instructs the agent to fix bugs directly.
     const hasBuildErrors = state.consoleErrors?.some((e) => e.type === "error") ?? false;
 
-    const result = await createCodingAgent(
-      {
-        ...state,
-        isCreateFlow: isCreate,
-        // Surface consoleErrors as `errors` so the bugfix workflow prompt activates
-        ...(hasBuildErrors && {
-          errors: state
-            .consoleErrors!.filter((e) => e.type === "error")
-            .map((e) => e.message)
-            .join("; "),
-        }),
-      },
+    const agentState = {
+      ...state,
+      isCreateFlow: isCreate,
+      // Surface consoleErrors as `errors` so the bugfix workflow prompt activates
+      ...(hasBuildErrors && {
+        errors: state
+          .consoleErrors!.filter((e) => e.type === "error")
+          .map((e) => e.message)
+          .join("; "),
+      }),
+    };
+
+    const result = await Conversation.start(
       {
         messages: state.messages || [],
-        extraContext: buildExtraContext(state, isCreate),
         graphName: "website",
+        projectId: state.projectId,
+        jwt: state.jwt,
+        extraContext: buildExtraContext(state, isCreate),
         maxTurnPairs: isCreate ? Infinity : 10,
         maxChars: isCreate ? Infinity : 40_000,
-        config,
-        recursionLimit: isCreate ? 150 : 100,
+        compact: { summarizer: summarizeMessages },
+      },
+      async (prepared) => {
+        // createCodingAgent already returns only new messages
+        return createCodingAgent(agentState, {
+          messages: prepared,
+          config,
+          recursionLimit: isCreate ? 150 : 100,
+        });
       }
     );
 

@@ -12,7 +12,7 @@ import { Deploy, Task } from "@types";
  */
 
 describe("Blocking Task Timeout", () => {
-  const DEFAULT_TIMEOUT = 180_000; // 3 minutes
+  const DEFAULT_TIMEOUT = parseInt(process.env.DEPLOY_BLOCKING_TIMEOUT_MS || "180000", 10);
 
   describe("blockingStartedAt field on TaskSchema", () => {
     it("accepts blockingStartedAt as optional number", () => {
@@ -82,7 +82,7 @@ describe("Blocking Task Timeout", () => {
       const { taskExecutorNode } = await import("app/nodes/deploy/taskExecutor");
       await import("app/nodes/deploy/index");
 
-      const recentTimestamp = Date.now() - 60_000; // 1 minute ago
+      const recentTimestamp = Date.now() - Math.floor(DEFAULT_TIMEOUT / 2); // halfway through timeout
 
       const tasks = Deploy.withTasks(
         { website: true, googleAds: false },
@@ -181,7 +181,7 @@ describe("Blocking Task Timeout", () => {
       expect(updatedTask?.result).toEqual({ url: "https://example.com" });
     });
 
-    it("extends timeout when Rails says job is still running and increments timeoutExtensionCount", async () => {
+    it("fails deploy when Rails says job is still running after timeout (no extensions)", async () => {
       const { taskExecutorNode } = await import("app/nodes/deploy/taskExecutor");
       await import("app/nodes/deploy/index");
 
@@ -200,9 +200,7 @@ describe("Blocking Task Timeout", () => {
         { DeployingWebsite: { status: "running" } },
         { after: "completed" }
       ).map((t) =>
-        t.name === "DeployingWebsite"
-          ? { ...t, jobId: 42, blockingStartedAt: expiredTimestamp, timeoutExtensionCount: 0 }
-          : t
+        t.name === "DeployingWebsite" ? { ...t, jobId: 42, blockingStartedAt: expiredTimestamp } : t
       );
 
       const state = {
@@ -215,53 +213,7 @@ describe("Blocking Task Timeout", () => {
 
       const result = (await taskExecutorNode(state, {} as any)) as Partial<DeployGraphState>;
 
-      // Should NOT fail — job is still running in Rails, timeout extended
-      expect(result.status).not.toBe("failed");
-
-      // blockingStartedAt should be reset to current time (extended)
-      const updatedTask = result.tasks?.find((t) => t.name === "DeployingWebsite");
-      expect(updatedTask?.blockingStartedAt).toBeDefined();
-      expect(updatedTask!.blockingStartedAt).toBeGreaterThan(expiredTimestamp);
-
-      // timeoutExtensionCount should be incremented
-      expect(updatedTask!.timeoutExtensionCount).toBe(1);
-    });
-
-    it("fails deploy when timeout extensions are exhausted", async () => {
-      const { taskExecutorNode } = await import("app/nodes/deploy/taskExecutor");
-      await import("app/nodes/deploy/index");
-
-      const { JobRunAPIService } = await import("@rails_api");
-      vi.spyOn(JobRunAPIService.prototype, "show").mockResolvedValueOnce({
-        id: 42,
-        status: "running",
-        result: null,
-        error: null,
-      });
-
-      const expiredTimestamp = Date.now() - DEFAULT_TIMEOUT - 60_000;
-
-      const tasks = Deploy.withTasks(
-        { website: true, googleAds: false },
-        { DeployingWebsite: { status: "running" } },
-        { after: "completed" }
-      ).map((t) =>
-        t.name === "DeployingWebsite"
-          ? { ...t, jobId: 42, blockingStartedAt: expiredTimestamp, timeoutExtensionCount: 2 }
-          : t
-      );
-
-      const state = {
-        status: "running",
-        instructions: { website: true, googleAds: false },
-        tasks,
-        jwt: "test-jwt",
-        deployId: 1,
-      } as any;
-
-      const result = (await taskExecutorNode(state, {} as any)) as Partial<DeployGraphState>;
-
-      // Should fail — extensions exhausted even though Rails says still running
+      // Should fail immediately — no extensions, job still running after timeout
       expect(result.status).toBe("failed");
       expect(result.error?.message).toMatch(/timed out/i);
     });
@@ -270,7 +222,7 @@ describe("Blocking Task Timeout", () => {
       const { taskExecutorNode } = await import("app/nodes/deploy/taskExecutor");
       await import("app/nodes/deploy/index");
 
-      const originalTimestamp = Date.now() - 120_000; // 2 minutes ago
+      const originalTimestamp = Date.now() - Math.floor(DEFAULT_TIMEOUT / 2); // halfway through timeout
 
       const tasks = Deploy.withTasks(
         { website: true, googleAds: false },
@@ -300,14 +252,14 @@ describe("Blocking Task Timeout", () => {
   });
 
   describe("Langgraph-driven stuck warnings", () => {
-    const WARNING_TIMEOUT = 120_000; // 2 minutes (matches deployWebsiteNode.warningTimeout)
+    const WARNING_TIMEOUT = parseInt(process.env.DEPLOY_WARNING_TIMEOUT_MS || "120000", 10);
 
     it("does not set warning when blocking task is under warningTimeout", async () => {
       const { taskExecutorNode } = await import("app/nodes/deploy/taskExecutor");
       await import("app/nodes/deploy/index");
 
-      // 1.5 minutes ago — under the 2-minute warningTimeout
-      const recentTimestamp = Date.now() - 90_000;
+      // Halfway through warning timeout — under the warningTimeout
+      const recentTimestamp = Date.now() - Math.floor(WARNING_TIMEOUT / 2);
 
       const tasks = Deploy.withTasks(
         { website: true, googleAds: false },
@@ -336,8 +288,9 @@ describe("Blocking Task Timeout", () => {
       const { taskExecutorNode } = await import("app/nodes/deploy/taskExecutor");
       await import("app/nodes/deploy/index");
 
-      // 2.5 minutes ago — past the 2-minute warningTimeout, within 3-minute blockingTimeout
-      const warningTimestamp = Date.now() - 150_000;
+      // Past warningTimeout but within blockingTimeout
+      const warningTimestamp =
+        Date.now() - WARNING_TIMEOUT - Math.floor((DEFAULT_TIMEOUT - WARNING_TIMEOUT) / 2);
 
       const tasks = Deploy.withTasks(
         { website: true, googleAds: false },
@@ -367,8 +320,9 @@ describe("Blocking Task Timeout", () => {
       const { taskExecutorNode } = await import("app/nodes/deploy/taskExecutor");
       await import("app/nodes/deploy/index");
 
-      // Past warningTimeout
-      const warningTimestamp = Date.now() - 150_000;
+      // Past warningTimeout but within blockingTimeout
+      const warningTimestamp =
+        Date.now() - WARNING_TIMEOUT - Math.floor((DEFAULT_TIMEOUT - WARNING_TIMEOUT) / 2);
       const existingWarning = "Deploying website is taking longer than expected";
 
       const tasks = Deploy.withTasks(

@@ -1,13 +1,6 @@
 import { StateGraph, START, END } from "@langchain/langgraph";
 import { BrainstormAnnotation } from "@annotation";
-import {
-  brainstormAgent,
-  cleanup,
-  createBrainstorm,
-  ensureAnswersSaved,
-  skipTopic,
-  createCompactConversationNode,
-} from "@nodes";
+import { brainstormAgent, cleanup, createBrainstorm, ensureAnswersSaved, skipTopic } from "@nodes";
 import { createIntentGraph } from "./shared";
 import type { BrainstormIntent } from "@types";
 
@@ -15,11 +8,12 @@ import type { BrainstormIntent } from "@types";
  * The main brainstorm graph
  *
  * Uses createIntentGraph to route by intent:
- * - default: createBrainstorm → brainstormAgent → compactConversation
+ * - default: createBrainstorm → brainstormAgent → ensureAnswersSaved → cleanup
  * - help_me: same as default (agent reads intent to pick prompt)
  * - do_the_rest: same as default (agent reads intent to pick prompt)
- * - skip_topic: skipTopic → createBrainstorm → brainstormAgent → compactConversation
+ * - skip_topic: skipTopic → createBrainstorm → brainstormAgent → ...
  *
+ * Compaction is handled inside brainstormAgent via Conversation.start().
  * Credit exhaustion is detected via createIntentGraph's withCreditExhaustion wrapper.
  */
 
@@ -28,13 +22,11 @@ const defaultSubgraph = new StateGraph(BrainstormAnnotation)
   .addNode("brainstormAgent", brainstormAgent)
   .addNode("ensureAnswersSaved", ensureAnswersSaved)
   .addNode("cleanup", cleanup)
-  .addNode("compactConversation", createCompactConversationNode())
   .addEdge(START, "createBrainstorm")
   .addEdge("createBrainstorm", "brainstormAgent")
   .addEdge("brainstormAgent", "ensureAnswersSaved")
   .addEdge("ensureAnswersSaved", "cleanup")
-  .addEdge("cleanup", "compactConversation")
-  .addEdge("compactConversation", END)
+  .addEdge("cleanup", END)
   .compile();
 
 const skipTopicSubgraph = new StateGraph(BrainstormAnnotation)
@@ -43,14 +35,12 @@ const skipTopicSubgraph = new StateGraph(BrainstormAnnotation)
   .addNode("brainstormAgent", brainstormAgent)
   .addNode("ensureAnswersSaved", ensureAnswersSaved)
   .addNode("cleanup", cleanup)
-  .addNode("compactConversation", createCompactConversationNode())
   .addEdge(START, "skipTopic")
   .addEdge("skipTopic", "createBrainstorm")
   .addEdge("createBrainstorm", "brainstormAgent")
   .addEdge("brainstormAgent", "ensureAnswersSaved")
   .addEdge("ensureAnswersSaved", "cleanup")
-  .addEdge("cleanup", "compactConversation")
-  .addEdge("compactConversation", END)
+  .addEdge("cleanup", END)
   .compile();
 
 export const brainstormGraph = createIntentGraph<BrainstormIntent["type"]>()({

@@ -23,7 +23,7 @@ test.describe("Brainstorm Flow", () => {
       await brainstormPage.goto();
 
       // Verify we're on the root URL (new brainstorm)
-      expect(page.url()).toMatch(/\/$/); // Root path
+      expect(page.url()).toMatch(/\/projects\/new$/); // Root path
 
       // Send a message
       await brainstormPage.sendMessage("I want to start a coffee subscription service");

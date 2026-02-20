@@ -9,6 +9,7 @@ import {
 import { validateThreadGraphOrError } from "../middleware/threadValidation";
 import { DeployAPI } from "@api";
 import { env, getLogger } from "@core";
+import { Deploy } from "@types";
 
 type Variables = {
   auth: AuthContext;
@@ -30,6 +31,7 @@ deployRoutes.post("/stream", ...streamMiddleware, async (c) => {
   const websiteId = body.websiteId ?? state?.websiteId;
   const campaignId = body.campaignId ?? state?.campaignId;
   const instructions = body.instructions ?? state?.instructions;
+  const deployType = body.deployType ?? state?.deployType;
 
   log.info(
     {
@@ -38,6 +40,7 @@ deployRoutes.post("/stream", ...streamMiddleware, async (c) => {
       deployId,
       websiteId,
       campaignId,
+      deployType,
       instructions,
       stateOnly: body.stateOnly,
       hasState: !!state,
@@ -63,9 +66,12 @@ deployRoutes.post("/stream", ...streamMiddleware, async (c) => {
   const validationError = await validateThreadGraphOrError(c, threadId, auth, "deploy");
   if (validationError) return validationError;
 
-  const finalInstructions = instructions ?? { website: true, googleAds: true };
+  // Derive instructions from deployType if provided, else fall back to explicit instructions, then default
+  const finalInstructions = deployType
+    ? Deploy.deployTypeToInstructions(deployType)
+    : (instructions ?? { website: true, googleAds: true });
   log.info(
-    { finalInstructions, rawInstructions: instructions, hadExplicitInstructions: !!instructions },
+    { finalInstructions, deployType, hadExplicitInstructions: !!instructions },
     "Final deploy instructions"
   );
 

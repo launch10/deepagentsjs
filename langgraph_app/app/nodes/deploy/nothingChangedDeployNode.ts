@@ -3,6 +3,7 @@ import { NodeMiddleware } from "@middleware";
 import { DeployAPIService } from "@rails_api";
 import { type DeployGraphState } from "@annotation";
 import { getLogger } from "@core";
+import { Deploy } from "@types";
 
 /**
  * Node that handles the "nothing changed" case.
@@ -35,7 +36,7 @@ export const nothingChangedDeployNode = NodeMiddleware.use(
     const deploy = await apiService.create({
       projectId: state.projectId as number,
       threadId: config.configurable.thread_id,
-      instructions: state.instructions,
+      deployType: Deploy.instructionsToDeployType(state.instructions),
     });
 
     log.info({ deployId: deploy.id }, "Created deploy for nothing-changed case");

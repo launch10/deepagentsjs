@@ -29,15 +29,10 @@ export interface CompactConversationOptions {
  * Create a compaction node for any graph that has `messages` in its state.
  * Works with website, brainstorm, ads, or any graph extending BaseAnnotation.
  */
-export function createCompactConversationNode(
-  options?: CompactConversationOptions
-) {
-  return NodeMiddleware.use(
-    {},
-    async (state: CoreGraphState) => {
-      return compactConversation(state.messages, options);
-    }
-  );
+export function createCompactConversationNode(options?: CompactConversationOptions) {
+  return NodeMiddleware.use({}, async (state: CoreGraphState) => {
+    return compactConversation(state.messages, options);
+  });
 }
 
 /** Pre-built node for the website graph (default options). */
@@ -67,7 +62,7 @@ export async function compactConversation(
 }
 
 /** LLM-based summarizer — consolidates old messages + existing summaries. */
-async function summarizeMessages(
+export async function summarizeMessages(
   messages: BaseMessage[],
   existingSummaries: string[]
 ): Promise<string> {

@@ -12,8 +12,8 @@
  * Wire it in after the circular-init issue in @core/logger is fixed.
  *
  * Context engineering lives in app/conversation/. Conversation preparation
- * (event fetching, context injection, windowing) is handled inside
- * createCodingAgent via prepareConversation().
+ * (event fetching, context injection, windowing, compaction) is handled via
+ * Conversation.start() inside each agent node.
  */
 import { createBridgeFactory } from "langgraph-ai-sdk";
 import { usageTrackingMiddleware } from "./usageTracking";

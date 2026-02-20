@@ -246,9 +246,7 @@ async function runSeoOptimization(
     return withPhases(state, [{ ...task, status: "completed" } as Task.Task]);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return withPhases(state, [
-      { ...task, status: "failed", error: errorMessage } as Task.Task,
-    ]);
+    return withPhases(state, [{ ...task, status: "failed", error: errorMessage } as Task.Task]);
   }
 }
 
@@ -259,8 +257,9 @@ export const seoOptimizationTaskRunner: TaskRunner = {
   taskName: TASK_NAME,
 
   readyToRun: (state: DeployGraphState) => {
-    // Ready after validation cycle is done (RuntimeValidation, or FixingBugs if it ran)
-    return isTaskDone(state, "RuntimeValidation");
+    // Ready after validation cycle is done: either RuntimeValidation passed,
+    // or FixingBugs completed (bugs were fixed, proceed with deploy)
+    return isTaskDone(state, "RuntimeValidation") || isTaskDone(state, "FixingBugs");
   },
 
   shouldSkip: (state: DeployGraphState) => {

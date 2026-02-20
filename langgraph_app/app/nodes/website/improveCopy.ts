@@ -2,8 +2,10 @@ import type { WebsiteGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
+import { summarizeMessages } from "./compactConversation";
 import { type ImproveCopyStyle, isImproveCopyIntent } from "@types";
 import { createContextMessage } from "langgraph-ai-sdk";
+import { Conversation } from "@conversation";
 
 /**
  * Get the prompt for the given improve_copy style.
@@ -79,16 +81,26 @@ export const improveCopyNode = NodeMiddleware.use(
 
     const prompt = getImproveCopyPrompt(style);
 
-    return await createCodingAgent(
-      { ...state, isCreateFlow: false },
+    return await Conversation.start(
       {
         messages: state.messages || [],
-        extraContext: [createContextMessage(prompt)],
         graphName: "website",
+        projectId: state.projectId,
+        jwt: state.jwt,
+        extraContext: [createContextMessage(prompt)],
         maxTurnPairs: 10,
         maxChars: 40_000,
-        config,
-        route: "full", // Always full agent — rewriting copy across all sections is multi-file
+        compact: { summarizer: summarizeMessages },
+      },
+      async (prepared) => {
+        return createCodingAgent(
+          { ...state, isCreateFlow: false },
+          {
+            messages: prepared,
+            config,
+            route: "full", // Always full agent — rewriting copy across all sections is multi-file
+          }
+        );
       }
     );
   }

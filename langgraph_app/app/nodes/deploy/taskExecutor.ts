@@ -6,8 +6,6 @@ import { NodeMiddleware } from "@middleware";
 import { getLogger } from "@core";
 import { DeployAPIService, JobRunAPIService } from "@rails_api";
 
-const MAX_TIMEOUT_EXTENSIONS = 2; // max extensions when blockingTimeout is set
-
 type NextTask = {
   taskName: Deploy.TaskName;
   blocking: boolean;
@@ -301,32 +299,11 @@ async function runTaskExecutor(
               ],
             };
           }
-          // Job still running in Rails — extend timeout if extensions remain
-          if (jobStatus.status === "running" || jobStatus.status === "pending") {
-            const extensions = task.timeoutExtensionCount ?? 0;
-            if (extensions >= MAX_TIMEOUT_EXTENSIONS) {
-              log.warn(
-                { taskName: nextTask.taskName, jobId: task.jobId, extensions },
-                "Timeout extensions exhausted — falling through to timeout failure"
-              );
-              // Fall through to timeout failure below
-            } else {
-              log.info(
-                {
-                  taskName: nextTask.taskName,
-                  jobId: task.jobId,
-                  railsStatus: jobStatus.status,
-                  extensions: extensions + 1,
-                },
-                "Job still in progress in Rails — extending timeout"
-              );
-              return {
-                tasks: [
-                  { ...task, blockingStartedAt: Date.now(), timeoutExtensionCount: extensions + 1 },
-                ],
-              };
-            }
-          }
+          // Job still running/pending in Rails — fail immediately (no extensions)
+          log.warn(
+            { taskName: nextTask.taskName, jobId: task.jobId, railsStatus: jobStatus.status },
+            "Job still in progress after timeout — failing task"
+          );
         }
       }
 
