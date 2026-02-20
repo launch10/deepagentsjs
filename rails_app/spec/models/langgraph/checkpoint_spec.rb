@@ -17,10 +17,10 @@ RSpec.describe Langgraph::Checkpoint do
 
     channel_versions.each do |channel, version|
       value = case channel
-              when "status" then '"completed"'
-              when "messages" then '[{"role":"human","content":"hello"}]'
-              when "websiteId" then "42"
-              end
+      when "status" then '"completed"'
+      when "messages" then '[{"role":"human","content":"hello"}]'
+      when "websiteId" then "42"
+      end
       blob = ActiveRecord::Base.connection.quote(value)
       ActiveRecord::Base.connection.execute(<<~SQL)
         INSERT INTO checkpoint_blobs (thread_id, checkpoint_ns, channel, version, type, blob)

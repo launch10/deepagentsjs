@@ -2,6 +2,11 @@ class Users::SessionsController < Devise::SessionsController
   include Devise::Controllers::Rememberable
   include InertiaConcerns
 
+  # WebContainer needs cross-origin isolation (SharedArrayBuffer) from the very first
+  # page load. Since sign-in is the first document load in E2E tests and often in
+  # production, set COOP/COEP here so the browser context is isolated before warmup fires.
+  before_action :set_cross_origin_isolation_headers
+
   layout "auth", only: [:new]
 
   inertia_share do
@@ -95,6 +100,11 @@ class Users::SessionsController < Devise::SessionsController
   end
 
   private
+
+  def set_cross_origin_isolation_headers
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+  end
 
   def google_oauth_enabled?
     Jumpstart::Omniauth.enabled?("google-oauth2")

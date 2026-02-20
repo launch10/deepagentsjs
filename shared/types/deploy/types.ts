@@ -3,6 +3,20 @@ export type InstructionType = (typeof InstructionTypes)[number];
 
 export type Instructions = Partial<Record<InstructionType, boolean>>;
 
+// Simple deploy type: "website" = website only, "campaign" = website + google ads
+export const DeployTypes = ["website", "campaign"] as const;
+export type DeployType = (typeof DeployTypes)[number];
+
+export function deployTypeToInstructions(deployType: DeployType): Instructions {
+  if (deployType === "campaign") return { website: true, googleAds: true };
+  return { website: true };
+}
+
+export function instructionsToDeployType(instructions: Instructions): DeployType {
+  if (instructions.googleAds) return "campaign";
+  return "website";
+}
+
 /**
  * Change detection result from validateDeployNode.
  * Records which instruction parts actually have content changes since last deploy.

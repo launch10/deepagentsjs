@@ -3748,6 +3748,12 @@ paths:
                           type: string
                           nullable: true
                           description: Langgraph thread ID
+                        deploy_type:
+                          type: string
+                          enum:
+                            - website
+                            - campaign
+                          description: Deploy type (website or campaign)
                         instructions:
                           type: object
                           additionalProperties:
@@ -3786,6 +3792,7 @@ paths:
                         - id
                         - project_id
                         - status
+                        - deploy_type
                         - is_live
                         - created_at
                         - updated_at
@@ -3889,6 +3896,12 @@ paths:
                     type: string
                     nullable: true
                     description: Langgraph thread ID
+                  deploy_type:
+                    type: string
+                    enum:
+                      - website
+                      - campaign
+                    description: Deploy type (website or campaign)
                   instructions:
                     type: object
                     additionalProperties:
@@ -3927,6 +3940,7 @@ paths:
                   - id
                   - project_id
                   - status
+                  - deploy_type
                   - is_live
                   - created_at
                   - updated_at
@@ -4009,6 +4023,12 @@ paths:
                     type: string
                     nullable: true
                     description: Langgraph thread ID
+                  deploy_type:
+                    type: string
+                    enum:
+                      - website
+                      - campaign
+                    description: Deploy type (website or campaign)
                   instructions:
                     type: object
                     additionalProperties:
@@ -4047,6 +4067,7 @@ paths:
                   - id
                   - project_id
                   - status
+                  - deploy_type
                   - is_live
                   - created_at
                   - updated_at
@@ -4102,6 +4123,12 @@ paths:
                     type: string
                     nullable: true
                     description: Langgraph thread ID
+                  deploy_type:
+                    type: string
+                    enum:
+                      - website
+                      - campaign
+                    description: Deploy type (website or campaign)
                   instructions:
                     type: object
                     additionalProperties:
@@ -4140,6 +4167,7 @@ paths:
                   - id
                   - project_id
                   - status
+                  - deploy_type
                   - is_live
                   - created_at
                   - updated_at

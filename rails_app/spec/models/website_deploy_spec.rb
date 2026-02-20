@@ -105,7 +105,7 @@ RSpec.describe WebsiteDeploy, type: :model do
 
         # Mock S3 operations
         allow(s3_client).to receive(:list_objects_v2).and_return(
-          double(contents: [double(key: 'test/file.html', size: 100)])
+          double(contents: [double(key: 'test/file.html', size: 100)], is_truncated: false)
         )
         allow(s3_client).to receive(:put_object)
         allow(s3_client).to receive(:delete_objects)
@@ -139,7 +139,7 @@ RSpec.describe WebsiteDeploy, type: :model do
         # Old live directory should be deleted before copying new files
         # Set up the mock to return files in live directory when asked
         allow(s3_client).to receive(:list_objects_v2).and_return(
-          double(contents: [double(key: "#{website_with_files.id}/live/old.html")])
+          double(contents: [double(key: "#{website_with_files.id}/live/old.html")], is_truncated: false)
         )
 
         # Expect delete_objects to be called for cleaning up
@@ -168,7 +168,8 @@ RSpec.describe WebsiteDeploy, type: :model do
       let(:deploy) { website_with_files.deploys.create!(environment: 'development') }
 
       before do
-        allow(deploy).to receive(:system).with("pnpm install").and_return(false)
+        allow(deploy).to receive(:build_exists?).and_return(false)
+        allow(deploy).to receive(:system).and_return(false)
       end
 
       it 'does not make any S3 calls' do
@@ -176,11 +177,11 @@ RSpec.describe WebsiteDeploy, type: :model do
         expect(s3_client).not_to receive(:copy_object)
         expect(s3_client).not_to receive(:delete_objects)
 
-        deploy.deploy!
+        expect { deploy.deploy! }.to raise_error(RuntimeError, /pnpm install failed/)
       end
 
       it 'marks deploy as failed' do
-        deploy.deploy!
+        expect { deploy.deploy! }.to raise_error(RuntimeError)
         expect(deploy.reload.status).to eq('failed')
       end
     end
@@ -236,7 +237,7 @@ RSpec.describe WebsiteDeploy, type: :model do
 
       before do
         allow(s3_client).to receive(:list_objects_v2).and_return(
-          double(contents: [double(key: 'test/file.html', size: 100)])
+          double(contents: [double(key: 'test/file.html', size: 100)], is_truncated: false)
         )
         allow(s3_client).to receive(:copy_object)
         allow(s3_client).to receive(:delete_objects)
@@ -271,7 +272,7 @@ RSpec.describe WebsiteDeploy, type: :model do
       it 'cleans up old live directory before copying' do
         # Set up the mock to return files in live directory when asked
         allow(s3_client).to receive(:list_objects_v2).and_return(
-          double(contents: [double(key: "#{website_with_files.id}/live/index.html")])
+          double(contents: [double(key: "#{website_with_files.id}/live/index.html")], is_truncated: false)
         )
 
         # Expect delete_objects to be called for cleaning up
@@ -328,11 +329,12 @@ RSpec.describe WebsiteDeploy, type: :model do
       allow(deploy).to receive(:system).and_return(true)
 
       allow(s3_client).to receive(:list_objects_v2).and_return(
-        double(contents: [double(key: 'test/file.html', size: 100)])
+        double(contents: [double(key: 'test/file.html', size: 100)], is_truncated: false)
       )
       allow(s3_client).to receive(:put_object)
       allow(s3_client).to receive(:delete_objects)
       allow(s3_client).to receive(:copy_object)
+      allow_any_instance_of(Website).to receive(:sync_all_to_atlas)
     end
 
     it 'uploads to preview directory instead of live' do
@@ -379,11 +381,12 @@ RSpec.describe WebsiteDeploy, type: :model do
       allow(Cloudflare.config).to receive(:deploy_env).and_return('development')
 
       allow(s3_client).to receive(:list_objects_v2).and_return(
-        double(contents: [double(key: 'test/file.html', size: 100)])
+        double(contents: [double(key: 'test/file.html', size: 100)], is_truncated: false)
       )
       allow(s3_client).to receive(:put_object)
       allow(s3_client).to receive(:delete_objects)
       allow(s3_client).to receive(:copy_object)
+      allow_any_instance_of(Website).to receive(:sync_all_to_atlas)
     end
 
     it 'uses Deploy environment to override default config environment' do
@@ -418,7 +421,7 @@ RSpec.describe WebsiteDeploy, type: :model do
 
       allow(s3_client).to receive(:list_objects_v2) do |args|
         list_prefixes << args[:prefix]
-        double(contents: [double(key: "production/#{website_with_files.id}/20240101120000/index.html", size: 100)])
+        double(contents: [double(key: "production/#{website_with_files.id}/20240101120000/index.html", size: 100)], is_truncated: false)
       end
 
       allow(s3_client).to receive(:copy_object) do |args|
@@ -508,7 +511,7 @@ RSpec.describe WebsiteDeploy, type: :model do
 
       # Mock S3 list operations
       allow(s3_client).to receive(:list_objects_v2).and_return(
-        double(contents: [double(key: 'test/file.html', size: 100)])
+        double(contents: [double(key: 'test/file.html', size: 100)], is_truncated: false)
       )
 
       # Allow delete_objects to be called (or not) - cleanup might not delete anything
@@ -976,7 +979,7 @@ RSpec.describe WebsiteDeploy, type: :model do
         allow(File).to receive(:file?).and_return(true)
         allow(File).to receive(:open).and_yield(StringIO.new('test content'))
 
-        allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')]))
+        allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')], is_truncated: false))
         allow(s3_client).to receive(:put_object)
         allow(s3_client).to receive(:copy_object)
         allow(s3_client).to receive(:delete_objects)
@@ -1017,7 +1020,7 @@ RSpec.describe WebsiteDeploy, type: :model do
         allow(File).to receive(:file?).and_return(true)
         allow(File).to receive(:open).and_yield(StringIO.new('test content'))
 
-        allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')]))
+        allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')], is_truncated: false))
         allow(s3_client).to receive(:put_object)
         allow(s3_client).to receive(:copy_object)
         allow(s3_client).to receive(:delete_objects)
@@ -1057,7 +1060,7 @@ RSpec.describe WebsiteDeploy, type: :model do
         allow(File).to receive(:file?).and_return(true)
         allow(File).to receive(:open).and_yield(StringIO.new('test content'))
 
-        allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')]))
+        allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')], is_truncated: false))
         allow(s3_client).to receive(:put_object)
         allow(s3_client).to receive(:copy_object)
         allow(s3_client).to receive(:delete_objects)
@@ -1098,7 +1101,7 @@ RSpec.describe WebsiteDeploy, type: :model do
 
       expect(TrackEvent).to receive(:call).with("website_deployed",
         hash_including(deploy_status: "failed"))
-      deploy.actually_deploy
+      expect { deploy.actually_deploy }.to raise_error(StandardError, "build failed")
     end
 
     it "does not track website_deployed for preview deploys" do

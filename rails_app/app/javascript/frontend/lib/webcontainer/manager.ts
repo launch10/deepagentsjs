@@ -78,6 +78,7 @@ class WebContainerManagerClass {
 
     try {
       // Step 1: Boot WebContainer
+      // After a page reload, boot() returns the existing instance (one per origin).
       this.log("[WebContainer] Booting...");
       this.instance = await WebContainer.boot({
         workdirName: WORK_DIR_NAME,
@@ -92,7 +93,32 @@ class WebContainerManagerClass {
       });
       this.log(`[WebContainer] Booted in ${(performance.now() - start).toFixed(0)}ms`);
 
-      // Step 2: Mount snapshot (required - contains pre-installed node_modules)
+      // Check if this is a reused instance (page reload while container was warm).
+      // WebContainer persists across page reloads — if package.json exists, the
+      // snapshot was already mounted and Vite is already running.
+      let alreadyWarm = false;
+      try {
+        await this.instance.fs.readFile("/package.json", "utf-8");
+        alreadyWarm = true;
+      } catch {
+        // Fresh container
+      }
+
+      if (alreadyWarm) {
+        this.log("[WebContainer] Reused warm instance, skipping snapshot + Vite start");
+        await this.loadSnapshotDeps();
+        this.updateState({ depsInstalled: true, viteRunning: true });
+
+        // Re-subscribe to port events to pick up the preview URL
+        this.instance.on("port", (_port, type, url) => {
+          if (type === "open") this.updateState({ previewUrl: url });
+        });
+
+        this.log(`[WebContainer] Re-attached in ${(performance.now() - start).toFixed(0)}ms`);
+        return;
+      }
+
+      // Step 2: Mount snapshot (contains pre-installed node_modules)
       const snapshotStart = performance.now();
       const snapshot = await this.fetchSnapshot();
       this.log("[WebContainer] Snapshot found, mounting...");
@@ -136,7 +162,9 @@ class WebContainerManagerClass {
             // Tag HMR events for diagnostic visibility
             if (chunk.includes("hmr update")) {
               const fileMatch = chunk.match(/hmr update\s+(.+)/);
-              this.log(`[WebContainer:HMR] hmr update detected — file: ${fileMatch?.[1] ?? "unknown"}`);
+              this.log(
+                `[WebContainer:HMR] hmr update detected — file: ${fileMatch?.[1] ?? "unknown"}`
+              );
             }
             if (chunk.includes("page reload")) {
               this.log("[WebContainer:HMR] page reload triggered");
@@ -399,7 +427,11 @@ class WebContainerManagerClass {
     this.state = { ...this.state, consoleErrors: errors };
     if (import.meta.env.DEV) {
       for (const error of errors) {
-        console.warn(`[WebContainer] Build error:`, error.message, error.file ? `(${error.file})` : "");
+        console.warn(
+          `[WebContainer] Build error:`,
+          error.message,
+          error.file ? `(${error.file})` : ""
+        );
       }
     }
     this.emit({ type: "console-errors", state: this.state });
@@ -415,7 +447,11 @@ class WebContainerManagerClass {
       consoleErrors: [...this.state.consoleErrors, error],
     };
     if (import.meta.env.DEV) {
-      console.warn(`[WebContainer] Runtime error:`, error.message, error.file ? `(${error.file})` : "");
+      console.warn(
+        `[WebContainer] Runtime error:`,
+        error.message,
+        error.file ? `(${error.file})` : ""
+      );
     }
     this.emit({ type: "console-errors", state: this.state });
   }

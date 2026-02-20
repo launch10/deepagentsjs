@@ -38,9 +38,9 @@ module Langgraph
     end
 
     # Primary entry point: Langgraph::Checkpoint.state_for(thread_id)
-    def self.state_for(thread_id, checkpoint_ns: "", **options)
+    def self.state_for(thread_id, checkpoint_ns: "", **)
       latest_for_thread(thread_id, checkpoint_ns: checkpoint_ns)
-        .first&.thread_state(**options)
+        .first&.thread_state(**)
     end
 
     private

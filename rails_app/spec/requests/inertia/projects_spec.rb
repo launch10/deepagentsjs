@@ -340,7 +340,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
       workflow.update!(step: 'website', substep: 'deploy')
       get website_deploy_project_path(project.uuid)
 
-      # full_deploy has website: true, so it matches with_instruction(:website)
+      # full_deploy (campaign type) also deploys website, so current_for(:website) matches it
       # This is expected — finding it on the website deploy page is correct
       expect(inertia.props[:thread_id]).to eq(campaign_deploy.chat.thread_id)
     end

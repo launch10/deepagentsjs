@@ -6,6 +6,7 @@ module GoogleAds
   # Payment verification is assumed to have been done by checkPaymentNode.
   class CampaignEnableWorker
     include Sidekiq::Worker
+    include ::DeployJobHandler
 
     sidekiq_options queue: :default, retry: 3
 
@@ -37,8 +38,7 @@ module GoogleAds
 
       complete_with_status(job_run, enabled: true, campaign_id: campaign.id)
     rescue => e
-      job_run.fail!(e)
-      job_run.notify_langgraph(status: "failed", error: e.message || e.class.name)
+      handle_deploy_error(job_run, e)
     end
 
     private

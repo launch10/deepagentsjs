@@ -35,7 +35,7 @@ export class DeployPage {
   readonly externalActionBadge: Locator;
 
   // Checking Payment screen
-  readonly checkingPaymentText: Locator;
+  readonly checkingPaymentHeading: Locator;
 
   // Payment Confirmed screen
   readonly paymentConfirmedText: Locator;
@@ -54,9 +54,9 @@ export class DeployPage {
   readonly deployFailedHeading: Locator;
   readonly retryDeployButton: Locator;
 
-  // Footer
-  readonly viewDashboardButton: Locator;
-  readonly reviewPerformanceButton: Locator;
+  // Footer (PaginationFooterView)
+  readonly previousStepButton: Locator;
+  readonly continueButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -69,15 +69,15 @@ export class DeployPage {
     // Content area
     this.contentArea = page.locator(".border.border-neutral-300.bg-white.rounded-2xl");
 
-    // In-progress screen
-    this.inProgressHeading = page.getByText(/Launching your (campaign|website)/);
+    // In-progress screen — "Launching your website" or "Launching your website & campaign"
+    this.inProgressHeading = page.getByText(/Launching your website/);
 
     // Google Connect screen
-    this.googleConnectHeading = page.getByText("Connect Your Google Account");
+    this.googleConnectHeading = page.getByText("Connect your Google Account");
     this.signInWithGoogleButton = page.getByText("Sign in with Google");
 
     // Invite Accept screen
-    this.inviteHeading = page.getByText("Accept Google Ads Invitation");
+    this.inviteHeading = page.getByText("Finish setting up your new Google Ads account");
     this.openGmailButton = page.getByRole("button", { name: "Open Gmail" });
     this.acceptInviteButton = page.getByRole("button", { name: "I accepted the invite" });
     this.resendInviteLink = page.getByText("Resend Invite");
@@ -89,7 +89,7 @@ export class DeployPage {
     this.externalActionBadge = page.getByText("External action needed");
 
     // Checking Payment screen
-    this.checkingPaymentText = page.getByText("Verifying your payment method");
+    this.checkingPaymentHeading = page.getByText("Google Payment Setup");
 
     // Payment Confirmed screen
     this.paymentConfirmedText = page.getByText("Payment method confirmed");
@@ -99,7 +99,9 @@ export class DeployPage {
     this.checkAgainButton = page.getByRole("button", { name: "Check Again" });
 
     // Deploy Complete screen
-    this.deployCompleteHeading = page.getByText(/(?:Campaign|Website) Launched!/);
+    this.deployCompleteHeading = page.getByText(
+      /You've just launched|Everything is already up to date/
+    );
     this.liveBadge = page.getByText("Live");
     this.adsEnabledBadge = page.getByText("Ads Enabled");
     this.deploymentHistoryTitle = page.getByText("Deployment History");
@@ -108,9 +110,9 @@ export class DeployPage {
     this.deployFailedHeading = page.getByText(/deployment failed|deployment timed out/i);
     this.retryDeployButton = page.getByRole("button", { name: "Retry Deploy" });
 
-    // Footer
-    this.viewDashboardButton = page.getByRole("button", { name: "View Dashboard" });
-    this.reviewPerformanceButton = page.getByRole("button", { name: "Review Performance" });
+    // Footer (PaginationFooterView — the workflow navigation)
+    this.previousStepButton = page.getByRole("button", { name: "Previous Step" });
+    this.continueButton = page.getByRole("button", { name: "Continue" });
   }
 
   /**
@@ -153,8 +155,79 @@ export class DeployPage {
    * Check if footer buttons are disabled
    */
   async areFooterButtonsDisabled(): Promise<boolean> {
-    const dashboardDisabled = await this.viewDashboardButton.isDisabled();
-    const performanceDisabled = await this.reviewPerformanceButton.isDisabled();
-    return dashboardDisabled && performanceDisabled;
+    const prevDisabled = await this.previousStepButton.isDisabled();
+    const continueDisabled = await this.continueButton.isDisabled();
+    return prevDisabled && continueDisabled;
+  }
+
+  /**
+   * Get a checklist item locator by its label text
+   */
+  checklistItem(label: string): Locator {
+    return this.page.locator(`[data-testid="checklist-item-${label}"]`);
+  }
+
+  /**
+   * Install a MutationObserver that records every data-status value
+   * for every checklist-item element. Call this BEFORE navigating.
+   */
+  async installStatusObserver(): Promise<void> {
+    await this.page.addInitScript(() => {
+      (window as any).__checklistStatusHistory = {} as Record<string, string[]>;
+
+      const record = (testId: string, status: string) => {
+        const h = (window as any).__checklistStatusHistory;
+        if (!h[testId]) h[testId] = [];
+        // Only record if different from the last recorded status (dedup renders)
+        const arr = h[testId];
+        if (arr.length === 0 || arr[arr.length - 1] !== status) {
+          arr.push(status);
+        }
+      };
+
+      const scan = (root: Element | Document) => {
+        root.querySelectorAll("[data-testid][data-status]").forEach((el) => {
+          record(el.getAttribute("data-testid")!, el.getAttribute("data-status")!);
+        });
+      };
+
+      const setup = () => {
+        const observer = new MutationObserver((mutations) => {
+          for (const m of mutations) {
+            if (m.type === "attributes" && m.attributeName === "data-status") {
+              const el = m.target as HTMLElement;
+              const testId = el.getAttribute("data-testid");
+              const status = el.getAttribute("data-status");
+              if (testId && status) record(testId, status);
+            }
+            if (m.type === "childList") {
+              for (const node of m.addedNodes) {
+                if (node instanceof HTMLElement) scan(node);
+              }
+            }
+          }
+        });
+        observer.observe(document.body, {
+          attributes: true,
+          childList: true,
+          subtree: true,
+          attributeFilter: ["data-status"],
+        });
+      };
+
+      if (document.body) setup();
+      else document.addEventListener("DOMContentLoaded", setup);
+    });
+  }
+
+  /**
+   * Retrieve the recorded status history for a checklist item.
+   * Returns an array of statuses in order (e.g. ["pending", "in_progress", "completed"]).
+   */
+  async getStatusHistory(label: string): Promise<string[]> {
+    return this.page.evaluate(
+      (testId) => (window as any).__checklistStatusHistory?.[testId] ?? [],
+      `checklist-item-${label}`
+    );
   }
 }

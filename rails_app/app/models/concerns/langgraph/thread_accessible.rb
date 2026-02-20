@@ -2,8 +2,8 @@ module Langgraph
   module ThreadAccessible
     extend ActiveSupport::Concern
 
-    def langgraph_state(**options)
-      Langgraph::Checkpoint.state_for(thread_id, **options)
+    def langgraph_state(**)
+      Langgraph::Checkpoint.state_for(thread_id, **)
     end
 
     def langgraph_channel(channel_name)

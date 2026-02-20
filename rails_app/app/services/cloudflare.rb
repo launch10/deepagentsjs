@@ -1,6 +1,9 @@
 class Cloudflare
   include ActiveSupport::Configurable
 
+  # E2E mock: when set, Cloudflare::R2 uses this instead of a real Aws::S3::Client
+  class_attribute :e2e_mock_s3_client, default: nil
+
   config_accessor :api_token
   config_accessor :email
   config_accessor :account_id

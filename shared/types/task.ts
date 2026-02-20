@@ -25,7 +25,6 @@ export const TaskSchema = z.object({
   error: z.string().optional(),
   retryCount: z.number().default(0),
   blockingStartedAt: z.number().optional(), // Timestamp when task first entered blocking state
-  timeoutExtensionCount: z.number().optional(), // How many times the blocking timeout has been extended (only for blocking tasks)
   warning: z.string().optional(), // Warning message set by Langgraph when task is taking long
 });
 

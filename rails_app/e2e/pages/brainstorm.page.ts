@@ -132,7 +132,7 @@ export class BrainstormPage {
    * The root route when logged in is projects#new which shows the brainstorm interface
    */
   async goto(): Promise<void> {
-    await this.page.goto("/");
+    await this.page.goto("/projects/new");
     // Wait for chat input to be ready instead of networkidle (Vite HMR keeps websocket active)
     await this.chatInput.waitFor({ state: "visible", timeout: 10000 });
   }

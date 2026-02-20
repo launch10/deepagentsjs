@@ -29,6 +29,13 @@ module WebsiteDeployConcerns
         return true
       end
 
+      # E2E test shortcut: skip build/upload when E2E S3 mock is active
+      if Cloudflare.e2e_mock_s3_client
+        Rails.logger.info "WebsiteDeploy #{id} using E2E mock — skipping build/upload"
+        update!(status: "completed", is_live: true)
+        return true
+      end
+
       dist_path = build!
       upload!(dist_path)
       website.sync_all_to_atlas
@@ -38,7 +45,7 @@ module WebsiteDeployConcerns
       Rails.logger.error "Deploy failed: #{e.message} #{e.backtrace}"
       update!(status: "failed", stacktrace: "#{e.message}\n#{e.backtrace.join("\n")}")
       track_website_deployed("failed")
-      false
+      raise e
     ensure
       if dist_path
         FileUtils.rm_rf(dist_path.gsub("/dist", ""))

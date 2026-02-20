@@ -41,9 +41,6 @@ class BasicAccount < BaseBuilder
       )
       puts "Subscription: #{subscription.processor_plan} (Status: #{subscription.status})"
 
-      # Allocate plan credits (simulates what webhook handlers do in production)
-      allocate_credits!(account, plan, subscription)
-
       # Create billing history for pagination testing
       create_billing_history!(account, subscription, plan)
     end
@@ -81,9 +78,6 @@ class BasicAccount < BaseBuilder
         current_period_end: 30.days.from_now
       )
       puts "Admin Subscription: #{subscription.processor_plan} (Status: #{subscription.status})"
-
-      # Allocate plan credits (simulates what webhook handlers do in production)
-      allocate_credits!(admin_account, plan, subscription)
     end
 
     puts "Created admin user: #{admin_user.email} (admin: #{admin_user.admin?})"
@@ -92,32 +86,6 @@ class BasicAccount < BaseBuilder
   end
 
   private
-
-  # Allocates plan credits directly (bypassing webhook flow).
-  # This mirrors what Credits::AllocationService does but simplified for snapshots.
-  def allocate_credits!(account, plan, subscription)
-    credits = plan.credits || 0
-    return if credits.zero?
-
-    account.update!(
-      plan_credits: credits,
-      pack_credits: 0
-    )
-
-    # Create audit trail transaction
-    account.credit_transactions.create!(
-      transaction_type: "allocate",
-      credit_type: "plan",
-      reason: "plan_renewal",
-      amount: credits,
-      balance_after: credits,
-      plan_balance_after: credits,
-      pack_balance_after: 0,
-      reference_type: "Pay::Subscription",
-      reference_id: subscription.id.to_s,
-      idempotency_key: "snapshot:#{account.id}:#{subscription.id}"
-    )
-  end
 
   # Creates billing history charges for pagination testing
   def create_billing_history!(account, subscription, plan)

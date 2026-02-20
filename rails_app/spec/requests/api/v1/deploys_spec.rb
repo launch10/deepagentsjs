@@ -18,46 +18,41 @@ RSpec.describe "Deploys API", type: :request do
   end
 
   describe "POST /api/v1/deploys" do
-    it "creates a deploy with instructions" do
+    it "creates a website deploy" do
       post "/api/v1/deploys",
         params: {
           project_id: project.id,
           thread_id: SecureRandom.uuid,
-          instructions: { website: true, googleAds: false }
+          deploy_type: "website"
         },
         headers: auth_headers
 
       expect(response).to have_http_status(:created)
-      expect(json_response["instructions"]).to eq({ "website" => true, "googleAds" => false })
-
-      # Verify DB stores snake_case
-      deploy = Deploy.find(json_response["id"])
-      expect(deploy.instructions).to eq({ "website" => true, "google_ads" => false })
+      expect(json_response["deploy_type"]).to eq("website")
+      expect(json_response["instructions"]).to eq({ "website" => true })
     end
 
-    it "stores instructions as snake_case in DB but returns camelCase" do
+    it "creates a campaign deploy" do
       post "/api/v1/deploys",
         params: {
           project_id: project.id,
           thread_id: SecureRandom.uuid,
-          instructions: { website: true, googleAds: true }
+          deploy_type: "campaign"
         },
         headers: auth_headers
 
       expect(response).to have_http_status(:created)
-      # API returns camelCase
+      expect(json_response["deploy_type"]).to eq("campaign")
       expect(json_response["instructions"]).to eq({ "website" => true, "googleAds" => true })
-      # DB stores snake_case
-      expect(Deploy.last.instructions).to eq({ "website" => true, "google_ads" => true })
     end
 
-    it "defaults instructions to empty hash when not provided" do
+    it "defaults deploy_type to website when not provided" do
       post "/api/v1/deploys",
         params: { project_id: project.id, thread_id: SecureRandom.uuid },
         headers: auth_headers
 
       expect(response).to have_http_status(:created)
-      expect(json_response["instructions"]).to eq({})
+      expect(json_response["deploy_type"]).to eq("website")
     end
 
     it "returns existing in-progress deploy (idempotent)" do
@@ -67,7 +62,7 @@ RSpec.describe "Deploys API", type: :request do
         params: {
           project_id: project.id,
           thread_id: SecureRandom.uuid,
-          instructions: { website: true, googleAds: false }
+          deploy_type: "website"
         },
         headers: auth_headers
 
@@ -75,15 +70,16 @@ RSpec.describe "Deploys API", type: :request do
       expect(json_response["id"]).to eq(existing.id)
     end
 
-    it "includes instructions in the response" do
+    it "includes deploy_type and instructions in the response" do
       post "/api/v1/deploys",
         params: {
           project_id: project.id,
           thread_id: SecureRandom.uuid,
-          instructions: { website: true, googleAds: true }
+          deploy_type: "campaign"
         },
         headers: auth_headers
 
+      expect(json_response).to have_key("deploy_type")
       expect(json_response).to have_key("instructions")
       expect(json_response["instructions"]["website"]).to be true
       expect(json_response["instructions"]["googleAds"]).to be true
@@ -128,40 +124,31 @@ RSpec.describe "Deploys API", type: :request do
       expect(statuses).to include("completed")
     end
 
-    describe "filtering by instructions" do
+    describe "filtering by deploy_type" do
       before do
-        create(:deploy, project: project, status: "completed",
-          instructions: { "website" => true, "googleAds" => false })
-        create(:deploy, project: project, status: "completed",
-          instructions: { "website" => true, "googleAds" => true })
-        create(:deploy, project: project, status: "completed",
-          instructions: { "website" => true, "googleAds" => true })
+        create(:deploy, :website_only, project: project, status: "completed")
+        create(:deploy, :full_deploy, project: project, status: "completed")
+        create(:deploy, :full_deploy, project: project, status: "completed")
       end
 
-      it "filters by exact instructions match" do
+      it "filters for campaign deploys" do
         get "/api/v1/deploys",
-          params: {
-            project_id: project.id,
-            instructions: { website: true, google_ads: true }
-          },
+          params: { project_id: project.id, deploy_type: "campaign" },
           headers: auth_headers
 
         expect(json_response["deploys"].length).to eq(2)
         json_response["deploys"].each do |d|
-          expect(d["instructions"]["googleAds"]).to be true
+          expect(d["deploy_type"]).to eq("campaign")
         end
       end
 
       it "filters for website-only deploys" do
         get "/api/v1/deploys",
-          params: {
-            project_id: project.id,
-            instructions: { website: true, google_ads: false }
-          },
+          params: { project_id: project.id, deploy_type: "website" },
           headers: auth_headers
 
         expect(json_response["deploys"].length).to eq(1)
-        expect(json_response["deploys"][0]["instructions"]["googleAds"]).to be false
+        expect(json_response["deploys"][0]["deploy_type"]).to eq("website")
       end
     end
 
@@ -191,33 +178,19 @@ RSpec.describe "Deploys API", type: :request do
       end
     end
 
-    describe "combined filtering (instructions + status)" do
-      it "answers 'has this project ever had a completed deploy with these instructions?'" do
-        # Website-only completed deploy
-        create(:deploy, project: project, status: "completed",
-          instructions: { "website" => true, "googleAds" => false })
-        # Full deploy but only running
-        create(:deploy, project: project, status: "running",
-          instructions: { "website" => true, "googleAds" => true })
+    describe "combined filtering (deploy_type + status)" do
+      it "answers 'has this project ever had a completed campaign deploy?'" do
+        create(:deploy, :website_only, project: project, status: "completed")
+        create(:deploy, :full_deploy, project: project, status: "running")
 
-        # Check: completed + full deploy?
         get "/api/v1/deploys",
-          params: {
-            project_id: project.id,
-            status: "completed",
-            instructions: { website: true, google_ads: true }
-          },
+          params: { project_id: project.id, status: "completed", deploy_type: "campaign" },
           headers: auth_headers
 
         expect(json_response["deploys"]).to be_empty
 
-        # Check: completed + website-only?
         get "/api/v1/deploys",
-          params: {
-            project_id: project.id,
-            status: "completed",
-            instructions: { website: true, google_ads: false }
-          },
+          params: { project_id: project.id, status: "completed", deploy_type: "website" },
           headers: auth_headers
 
         expect(json_response["deploys"].length).to eq(1)
@@ -244,13 +217,13 @@ RSpec.describe "Deploys API", type: :request do
       expect(response).to have_http_status(:not_found)
     end
 
-    it "includes instructions in each deploy record" do
+    it "includes deploy_type and instructions in each deploy record" do
       create(:deploy, :full_deploy, project: project, status: "completed")
 
       get "/api/v1/deploys", params: { project_id: project.id }, headers: auth_headers
 
       deploy = json_response["deploys"].first
-      expect(deploy).to have_key("instructions")
+      expect(deploy["deploy_type"]).to eq("campaign")
       expect(deploy["instructions"]["website"]).to be true
       expect(deploy["instructions"]["googleAds"]).to be true
     end
@@ -266,14 +239,14 @@ RSpec.describe "Deploys API", type: :request do
   end
 
   describe "GET /api/v1/deploys/:id" do
-    it "returns deploy with instructions" do
+    it "returns deploy with deploy_type and instructions" do
       deploy = create(:deploy, :website_only, project: project, status: "completed")
 
       get "/api/v1/deploys/#{deploy.id}", headers: auth_headers
 
       expect(response).to have_http_status(:ok)
+      expect(json_response["deploy_type"]).to eq("website")
       expect(json_response["instructions"]["website"]).to be true
-      expect(json_response["instructions"]["googleAds"]).to be false
     end
   end
 
@@ -366,65 +339,43 @@ RSpec.describe "Deploys API", type: :request do
     end
   end
 
-  describe "auto-trigger semantic: 'has user EVER deployed with these instructions?'" do
-    it "website-only completed deploy does not satisfy full deploy check" do
-      create(:deploy, project: project, status: "completed",
-        instructions: { "website" => true, "googleAds" => false })
+  describe "auto-trigger semantic: 'has user EVER deployed with this type?'" do
+    it "website-only completed deploy does not satisfy campaign check" do
+      create(:deploy, :website_only, project: project, status: "completed")
 
       get "/api/v1/deploys",
-        params: {
-          project_id: project.id,
-          status: "completed",
-          instructions: { website: true, google_ads: true }
-        },
+        params: { project_id: project.id, status: "completed", deploy_type: "campaign" },
         headers: auth_headers
 
-      # No completed full deploy exists
       expect(json_response["deploys"]).to be_empty
     end
 
-    it "full deploy completed does not satisfy website-only check" do
-      create(:deploy, project: project, status: "completed",
-        instructions: { "website" => true, "googleAds" => true })
+    it "campaign completed deploy does not satisfy website-only check" do
+      create(:deploy, :full_deploy, project: project, status: "completed")
 
       get "/api/v1/deploys",
-        params: {
-          project_id: project.id,
-          status: "completed",
-          instructions: { website: true, google_ads: false }
-        },
+        params: { project_id: project.id, status: "completed", deploy_type: "website" },
         headers: auth_headers
 
-      # No completed website-only deploy exists
       expect(json_response["deploys"]).to be_empty
     end
 
     it "failed deploy does not satisfy the check" do
-      create(:deploy, project: project, status: "failed",
-        instructions: { "website" => true, "googleAds" => true })
+      create(:deploy, :full_deploy, project: project, status: "failed")
 
       get "/api/v1/deploys",
-        params: {
-          project_id: project.id,
-          status: "completed",
-          instructions: { website: true, google_ads: true }
-        },
+        params: { project_id: project.id, status: "completed", deploy_type: "campaign" },
         headers: auth_headers
 
       expect(json_response["deploys"]).to be_empty
     end
 
     it "deactivated but completed deploy DOES satisfy the check" do
-      deploy = create(:deploy, project: project, status: "completed",
-        instructions: { "website" => true, "googleAds" => true })
+      deploy = create(:deploy, :full_deploy, project: project, status: "completed")
       deploy.deactivate!
 
       get "/api/v1/deploys",
-        params: {
-          project_id: project.id,
-          status: "completed",
-          instructions: { website: true, google_ads: true }
-        },
+        params: { project_id: project.id, status: "completed", deploy_type: "campaign" },
         headers: auth_headers
 
       expect(json_response["deploys"].length).to eq(1)

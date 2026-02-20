@@ -2996,6 +2996,11 @@ export interface paths {
                                 is_live: boolean;
                                 /** @description Langgraph thread ID */
                                 thread_id?: string | null;
+                                /**
+                                 * @description Deploy type (website or campaign)
+                                 * @enum {string}
+                                 */
+                                deploy_type: "website" | "campaign";
                                 /** @description Deploy instruction flags */
                                 instructions?: {
                                     [key: string]: boolean;
@@ -3111,6 +3116,11 @@ export interface paths {
                             is_live: boolean;
                             /** @description Langgraph thread ID */
                             thread_id?: string | null;
+                            /**
+                             * @description Deploy type (website or campaign)
+                             * @enum {string}
+                             */
+                            deploy_type: "website" | "campaign";
                             /** @description Deploy instruction flags */
                             instructions?: {
                                 [key: string]: boolean;
@@ -3209,6 +3219,11 @@ export interface paths {
                             is_live: boolean;
                             /** @description Langgraph thread ID */
                             thread_id?: string | null;
+                            /**
+                             * @description Deploy type (website or campaign)
+                             * @enum {string}
+                             */
+                            deploy_type: "website" | "campaign";
                             /** @description Deploy instruction flags */
                             instructions?: {
                                 [key: string]: boolean;
@@ -3298,6 +3313,11 @@ export interface paths {
                             is_live: boolean;
                             /** @description Langgraph thread ID */
                             thread_id?: string | null;
+                            /**
+                             * @description Deploy type (website or campaign)
+                             * @enum {string}
+                             */
+                            deploy_type: "website" | "campaign";
                             /** @description Deploy instruction flags */
                             instructions?: {
                                 [key: string]: boolean;

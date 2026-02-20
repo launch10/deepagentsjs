@@ -145,7 +145,8 @@ module ProjectConcerns
         id: deploy.id,
         status: deploy.status,
         current_step: deploy.current_step,
-        instructions: deploy.camelcase_instructions
+        deploy_type: deploy.deploy_type,
+        instructions: deploy.instructions
       }
     end
   end

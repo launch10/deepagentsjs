@@ -1,10 +1,6 @@
 import { useQuery, useMutation, keepPreviousData } from "@tanstack/react-query";
 import { useMemo } from "react";
-import {
-  DeployAPIService,
-  type DeploysListResponse,
-  type DeployRecord,
-} from "@rails_api_base";
+import { DeployAPIService, type DeploysListResponse, type DeployRecord } from "@rails_api_base";
 import { useJwt, useRootPath } from "~/stores/sessionStore";
 
 export type { DeployRecord, DeploysListResponse } from "@rails_api_base";
@@ -16,9 +12,8 @@ export type { DeployRecord, DeploysListResponse } from "@rails_api_base";
 export const deploysKeys = {
   all: ["deploys"] as const,
   lists: () => [...deploysKeys.all, "list"] as const,
-  list: (params: { project_id: number; page: number }) =>
-    [...deploysKeys.lists(), params] as const,
-  hasCompleted: (params: { project_id: number; deploy_type: "website" | "google_ads" }) =>
+  list: (params: { project_id: number; page: number }) => [...deploysKeys.lists(), params] as const,
+  hasCompleted: (params: { project_id: number; deploy_type: "website" | "campaign" }) =>
     [...deploysKeys.all, "hasCompleted", params] as const,
 };
 
@@ -87,10 +82,7 @@ export function useRollbackDeploy() {
 // Additional Query Hooks
 // ============================================================================
 
-export function useHasCompletedDeploy(
-  projectId: number,
-  deployType: "website" | "google_ads"
-) {
+export function useHasCompletedDeploy(projectId: number, deployType: "website" | "campaign") {
   const service = useDeployService();
   const rootPath = useRootPath();
 

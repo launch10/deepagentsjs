@@ -334,7 +334,7 @@ RSpec.describe ProjectWorkflow, type: :model do
 
       it "returns nil for website deploy page when only a campaign deploy exists" do
         workflow.update!(step: "website", substep: "deploy")
-        # full_deploy has website: true, so it WILL match with_instruction(:website)
+        # full_deploy (campaign type) also deploys website, so current_for(:website) matches it
         # This is expected — a full deploy includes website deployment
         expect(workflow.chat).to eq(campaign_deploy.chat)
       end

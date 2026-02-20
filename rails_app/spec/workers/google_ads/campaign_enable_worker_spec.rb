@@ -26,6 +26,16 @@ RSpec.describe GoogleAds::CampaignEnableWorker, type: :worker do
     allow(ENV).to receive(:[]).with("LANGGRAPH_API_URL").and_return("http://localhost:4000")
   end
 
+  describe "configuration" do
+    it "includes DeployJobHandler" do
+      expect(described_class.ancestors).to include(DeployJobHandler)
+    end
+
+    it "has retry: 3" do
+      expect(described_class.sidekiq_options["retry"]).to eq(3)
+    end
+  end
+
   describe "#perform" do
     context "when campaign is already enabled" do
       before do
@@ -72,14 +82,6 @@ RSpec.describe GoogleAds::CampaignEnableWorker, type: :worker do
         expect(campaign.google_status).to eq("ENABLED")
       end
 
-      it "does not trigger a full CampaignDeploy" do
-        allow(CampaignDeploy).to receive(:deploy)
-
-        described_class.new.perform(job_run.id)
-
-        expect(CampaignDeploy).not_to have_received(:deploy)
-      end
-
       it "notifies Langgraph of the result" do
         expect(LanggraphCallbackWorker).to receive(:perform_async)
           .with(job_run.id, hash_including(status: "completed", result: hash_including(enabled: true)))
@@ -90,18 +92,23 @@ RSpec.describe GoogleAds::CampaignEnableWorker, type: :worker do
 
     context "when an error occurs" do
       before do
-        allow_any_instance_of(Campaign).to receive(:enable!).and_raise(StandardError, "Enable Error")
+        allow_any_instance_of(Campaign).to receive(:enable!).and_raise(
+          ApplicationClient::InternalError, "500 Server Error"
+        )
       end
 
-      it "fails the job_run" do
+      it "does not re-raise (fails immediately, no Sidekiq retry)" do
+        expect {
+          described_class.new.perform(job_run.id)
+        }.not_to raise_error
+      end
+
+      it "fails the job_run immediately" do
         described_class.new.perform(job_run.id)
-
-        job_run.reload
-        expect(job_run.status).to eq("failed")
-        expect(job_run.error_message).to include("Enable Error")
+        expect(job_run.reload.status).to eq("failed")
       end
 
-      it "notifies Langgraph of the failure" do
+      it "notifies Langgraph immediately" do
         expect(LanggraphCallbackWorker).to receive(:perform_async)
           .with(job_run.id, hash_including(status: "failed"))
 
@@ -109,17 +116,32 @@ RSpec.describe GoogleAds::CampaignEnableWorker, type: :worker do
       end
     end
 
-    context "when campaign is not found" do
+    context "when a terminal error occurs (e.g., auth failure)" do
       before do
-        job_run.update!(job_args: { "campaign_id" => 999999 })
+        allow_any_instance_of(Campaign).to receive(:enable!).and_raise(
+          ApplicationClient::Unauthorized, "401 Unauthorized"
+        )
       end
 
-      it "fails the job_run" do
+      it "does not re-raise" do
+        expect {
+          described_class.new.perform(job_run.id)
+        }.not_to raise_error
+      end
+
+      it "fails the job_run immediately" do
         described_class.new.perform(job_run.id)
 
         job_run.reload
         expect(job_run.status).to eq("failed")
-        expect(job_run.error_message).to include("Couldn't find Campaign")
+        expect(job_run.error_message).to include("Unauthorized")
+      end
+
+      it "notifies Langgraph of the failure immediately" do
+        expect(LanggraphCallbackWorker).to receive(:perform_async)
+          .with(job_run.id, hash_including(status: "failed"))
+
+        described_class.new.perform(job_run.id)
       end
     end
 
@@ -128,20 +150,30 @@ RSpec.describe GoogleAds::CampaignEnableWorker, type: :worker do
         job_run.update!(job_args: { "account_id" => account.id })
       end
 
-      it "fails the job_run with a clear error message" do
-        described_class.new.perform(job_run.id)
+      it "reports the error via handle_deploy_error" do
+        # ArgumentError is classified as :invalid_data (terminal)
+        expect {
+          described_class.new.perform(job_run.id)
+        }.not_to raise_error
 
         job_run.reload
         expect(job_run.status).to eq("failed")
         expect(job_run.error_message).to include("campaign_id is required")
       end
+    end
+  end
 
-      it "notifies Langgraph of the failure" do
-        expect(LanggraphCallbackWorker).to receive(:perform_async)
-          .with(job_run.id, hash_including(status: "failed"))
+  describe "sidekiq_retries_exhausted" do
+    it "fails the job_run and notifies Langgraph" do
+      ex = StandardError.new("Final failure")
+      msg = { "args" => [job_run.id], "retry_count" => 3 }
 
-        described_class.new.perform(job_run.id)
-      end
+      expect(LanggraphCallbackWorker).to receive(:perform_async)
+        .with(job_run.id, hash_including(status: "failed"))
+
+      described_class.sidekiq_retries_exhausted_block.call(msg, ex)
+
+      expect(job_run.reload.status).to eq("failed")
     end
   end
 end

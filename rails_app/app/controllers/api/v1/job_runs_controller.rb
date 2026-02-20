@@ -25,8 +25,18 @@ class API::V1::JobRunsController < API::BaseController
     )
 
     # Dispatch job after record is committed to avoid processing non-existent job_runs
-    dispatch_job(params[:job_class], job_run, resources)
+    # Wrapped in rescue: with Sidekiq inline mode, the entire worker chain runs
+    # synchronously here. If the Langgraph callback fails (e.g. state race condition),
+    # we still want to return 201 — the job_run was created and the worker may have
+    # completed. The graph will detect completion via polling.
+    begin
+      dispatch_job(params[:job_class], job_run, resources)
+    rescue => e
+      Rails.logger.error "[JobRunsController] dispatch_job error (non-fatal): #{e.class}: #{e.message}"
+    end
 
+    # Reload to pick up any status changes from inline execution
+    job_run.reload
     render json: { id: job_run.id, status: job_run.status }, status: :created
   rescue ActiveRecord::RecordInvalid => e
     render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity

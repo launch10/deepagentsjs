@@ -47,6 +47,7 @@ export interface DeployRecord {
   current_step?: string | null;
   is_live: boolean;
   thread_id?: string | null;
+  deploy_type: "website" | "campaign";
   instructions?: Record<string, boolean>;
   support_ticket?: string | null;
   revertible?: boolean;
@@ -57,7 +58,7 @@ export interface DeployRecord {
 export interface CreateDeployParams {
   projectId: number;
   threadId: string;
-  instructions?: Record<string, boolean>;
+  deployType?: "website" | "campaign";
 }
 
 /**
@@ -93,13 +94,13 @@ export class DeployAPIService extends RailsAPIBase {
    * Creates a new deploy with a thread_id stored directly on the record.
    * Called by the deploy graph's first node (initDeploy).
    */
-  async create({ projectId, threadId, instructions }: CreateDeployParams): Promise<DeployRecord> {
+  async create({ projectId, threadId, deployType }: CreateDeployParams): Promise<DeployRecord> {
     const client = await this.getClient();
     const response = await client.POST("/api/v1/deploys", {
       body: {
         project_id: projectId,
         thread_id: threadId,
-        instructions: instructions ?? {},
+        deploy_type: deployType ?? "website",
       },
     });
 
@@ -164,13 +165,13 @@ export class DeployAPIService extends RailsAPIBase {
    */
   async checkChanges(
     projectId: number,
-    instructions: Record<string, boolean>
+    deployType: "website" | "campaign"
   ): Promise<{ website?: boolean; campaign?: boolean }> {
     const client = await this.getClient();
     const response = await client.POST("/api/v1/deploys/check_changes" as any, {
       body: {
         project_id: projectId,
-        instructions,
+        deploy_type: deployType,
       },
     });
 

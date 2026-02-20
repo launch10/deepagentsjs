@@ -2,13 +2,12 @@ class API::V1::DeploysController < API::BaseController
   DEPLOYS_PER_PAGE = 5
 
   # GET /api/v1/deploys
-  # Lists deploys for a project, paginated. Supports filtering by instructions and status.
+  # Lists deploys for a project, paginated. Supports filtering by deploy_type and status.
   def index
     project = current_account.projects.find(params[:project_id])
     scope = project.deploys.where.not(status: "pending").order(created_at: :desc)
 
-    scope = scope.with_instructions(Deploy.normalize_instructions(params[:instructions].to_unsafe_h)) if params[:instructions].present?
-    scope = scope.with_instruction(params[:deploy_type]) if params[:deploy_type].present?
+    scope = scope.where(deploy_type: params[:deploy_type]) if params[:deploy_type].present?
     scope = scope.where(status: params[:status]) if params[:status].present?
 
     @pagy, @deploys = pagy(scope, limit: DEPLOYS_PER_PAGE)
@@ -34,7 +33,7 @@ class API::V1::DeploysController < API::BaseController
     deploy = project.deploys.create!(
       status: "pending",
       thread_id: params[:thread_id],
-      instructions: params[:instructions].present? ? params[:instructions].to_unsafe_h : {}
+      deploy_type: params[:deploy_type].presence || "website"
     )
 
     render json: deploy_json(deploy), status: :created
@@ -88,14 +87,13 @@ class API::V1::DeploysController < API::BaseController
   # Checks whether website files or campaign data have changed since last deploy
   def check_changes
     project = current_account.projects.find(params[:project_id])
+    deploy_type = params[:deploy_type].presence || "website"
     result = {}
 
-    if params.dig(:instructions, :website).present?
-      website = project.website
-      result[:website] = website ? website.files_changed? : true
-    end
+    website = project.website
+    result[:website] = website ? website.files_changed? : true
 
-    if params.dig(:instructions, :google_ads).present?
+    if deploy_type == "campaign"
       campaign = project.campaigns.first
       result[:campaign] = campaign ? campaign.campaign_changed? : true
     end
@@ -152,7 +150,8 @@ class API::V1::DeploysController < API::BaseController
       current_step: deploy.current_step,
       is_live: deploy.is_live,
       thread_id: deploy.thread_id,
-      instructions: deploy.camelcase_instructions,
+      deploy_type: deploy.deploy_type,
+      instructions: deploy.instructions,
       support_ticket: deploy.support_request&.ticket_reference,
       finished_at: deploy.finished_at,
       duration: deploy.duration,

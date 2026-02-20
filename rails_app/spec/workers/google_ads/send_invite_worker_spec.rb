@@ -25,6 +25,12 @@ RSpec.describe GoogleAds::SendInviteWorker, type: :worker do
     allow(ENV).to receive(:[]).with("LANGGRAPH_API_URL").and_return("http://localhost:4000")
   end
 
+  describe "configuration" do
+    it "includes DeployJobHandler" do
+      expect(described_class.ancestors).to include(DeployJobHandler)
+    end
+  end
+
   describe "#perform" do
     context "when ads_account does not exist" do
       it "creates a new ads_account for the account" do
@@ -99,7 +105,43 @@ RSpec.describe GoogleAds::SendInviteWorker, type: :worker do
       let!(:ads_account) { create(:ads_account, :with_customer_id, account: account) }
 
       before do
-        allow_any_instance_of(AdsAccount).to receive(:google_synced?).and_raise(StandardError, "API Error")
+        allow_any_instance_of(AdsAccount).to receive(:google_synced?).and_raise(
+          ApplicationClient::InternalError, "500 Server Error"
+        )
+      end
+
+      it "does not re-raise (fails immediately, no Sidekiq retry)" do
+        expect {
+          described_class.new.perform(job_run.id)
+        }.not_to raise_error
+      end
+
+      it "fails the job_run immediately" do
+        described_class.new.perform(job_run.id)
+        expect(job_run.reload.status).to eq("failed")
+      end
+
+      it "notifies Langgraph immediately" do
+        expect(LanggraphCallbackWorker).to receive(:perform_async)
+          .with(job_run.id, hash_including(status: "failed"))
+
+        described_class.new.perform(job_run.id)
+      end
+    end
+
+    context "when a terminal error occurs" do
+      let!(:ads_account) { create(:ads_account, :with_customer_id, account: account) }
+
+      before do
+        allow_any_instance_of(AdsAccount).to receive(:google_synced?).and_raise(
+          ApplicationClient::Unauthorized, "401 Unauthorized"
+        )
+      end
+
+      it "does not re-raise" do
+        expect {
+          described_class.new.perform(job_run.id)
+        }.not_to raise_error
       end
 
       it "fails the job_run" do
@@ -107,7 +149,7 @@ RSpec.describe GoogleAds::SendInviteWorker, type: :worker do
 
         job_run.reload
         expect(job_run.status).to eq("failed")
-        expect(job_run.error_message).to include("API Error")
+        expect(job_run.error_message).to include("Unauthorized")
       end
 
       it "notifies Langgraph of the failure" do

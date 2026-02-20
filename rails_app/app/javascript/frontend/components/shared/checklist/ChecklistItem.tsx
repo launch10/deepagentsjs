@@ -22,6 +22,8 @@ export default function ChecklistItem({ icon: Icon, label, status }: ChecklistIt
 
   return (
     <div
+      data-testid={`checklist-item-${label}`}
+      data-status={status}
       className={cn(
         "flex items-center justify-between min-h-10 px-3 py-2 rounded-lg border border-neutral-300",
         isPending ? "bg-neutral-50" : "bg-white"

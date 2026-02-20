@@ -1,6 +1,7 @@
 module GoogleAds
   class SendInviteWorker
     include Sidekiq::Worker
+    include ::DeployJobHandler
 
     sidekiq_options queue: :default, retry: 3
 
@@ -17,8 +18,7 @@ module GoogleAds
       # Poll immediately for faster feedback, batch scheduler serves as backup
       GoogleAds::PollInviteAcceptanceWorker.perform_async(job_run_id)
     rescue => e
-      job_run.fail!(e)
-      job_run.notify_langgraph(status: "failed", error: e.message)
+      handle_deploy_error(job_run, e)
     end
   end
 end

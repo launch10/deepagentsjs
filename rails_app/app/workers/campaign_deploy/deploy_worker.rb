@@ -1,9 +1,11 @@
 class CampaignDeploy
   class DeployWorker
     include Sidekiq::Worker
+    include ::DeployJobHandler
 
     sidekiq_options queue: :critical, retry: 5, backtrace: true
 
+    # Override the default DeployJobHandler retries_exhausted to also update the deploy record
     sidekiq_retries_exhausted do |msg, ex|
       deploy_id, job_run_id = msg["args"]
       Rails.logger.error "Failed to deploy campaign #{deploy_id} after #{msg["retry_count"]} retries: #{ex.message}"
@@ -37,32 +39,22 @@ class CampaignDeploy
         job_run.complete!(result)
         job_run.notify_langgraph(status: "completed", result: result)
       end
-    rescue CampaignDeploy::TerminalStepError => e
-      Rails.logger.error "Terminal error deploying campaign #{deploy_id}: #{e.message}"
-      fail_deploy!(deploy, job_run, e.message, e.backtrace)
-      # Do not re-raise — Sidekiq considers the job done, no retry
+    rescue => e
+      Rails.logger.error "Error deploying campaign #{deploy_id}: #{e.message}"
+
+      # Update the deploy record regardless of error type
+      fail_deploy_record!(deploy, e.message, e.backtrace)
+
+      # Route through handle_deploy_error for classification + immediate reporting
+      if job_run
+        handle_deploy_error(job_run, e)
+      else
+        raise e
+      end
     end
 
     def self.fail_deploy!(deploy, job_run, error_message, backtrace = nil)
-      if deploy && deploy.status != "failed"
-        deploy.update!(
-          status: "failed",
-          stacktrace: "#{error_message}\n#{backtrace&.first(10)&.join("\n")}"
-        )
-
-        account = deploy.campaign&.project&.account
-        if account&.owner
-          TrackEvent.call("campaign_deployed",
-            user: account.owner,
-            account: account,
-            project: deploy.campaign.project,
-            campaign: deploy.campaign,
-            project_uuid: deploy.campaign.project.uuid,
-            deploy_status: "failed",
-            failed_step: deploy.current_step,
-            daily_budget_cents: deploy.campaign.daily_budget_cents)
-        end
-      end
+      fail_deploy_record!(deploy, error_message, backtrace)
 
       if job_run && !job_run.finished?
         job_run.fail!(error_message)
@@ -70,9 +62,35 @@ class CampaignDeploy
       end
     end
 
+    def self.fail_deploy_record!(deploy, error_message, backtrace = nil)
+      return unless deploy && deploy.status != "failed"
+
+      deploy.update!(
+        status: "failed",
+        stacktrace: "#{error_message}\n#{backtrace&.first(10)&.join("\n")}"
+      )
+
+      account = deploy.campaign&.project&.account
+      if account&.owner
+        TrackEvent.call("campaign_deployed",
+          user: account.owner,
+          account: account,
+          project: deploy.campaign.project,
+          campaign: deploy.campaign,
+          project_uuid: deploy.campaign.project.uuid,
+          deploy_status: "failed",
+          failed_step: deploy.current_step,
+          daily_budget_cents: deploy.campaign.daily_budget_cents)
+      end
+    end
+
     # Instance method delegates to class method for use in rescue block
     def fail_deploy!(deploy, job_run, error_message, backtrace = nil)
       self.class.fail_deploy!(deploy, job_run, error_message, backtrace)
+    end
+
+    def fail_deploy_record!(deploy, error_message, backtrace = nil)
+      self.class.fail_deploy_record!(deploy, error_message, backtrace)
     end
   end
 end

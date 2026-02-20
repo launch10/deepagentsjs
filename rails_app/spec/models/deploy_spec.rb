@@ -6,8 +6,8 @@
 #  active             :boolean          default(TRUE), not null
 #  current_step       :string
 #  deleted_at         :datetime
+#  deploy_type        :string           default("website"), not null
 #  finished_at        :datetime
-#  instructions       :jsonb
 #  is_live            :boolean          default(FALSE)
 #  stacktrace         :text
 #  status             :string           default("pending"), not null
@@ -24,8 +24,8 @@
 #  index_deploys_on_active_project          (project_id,active) UNIQUE WHERE ((deleted_at IS NULL) AND (active = true))
 #  index_deploys_on_campaign_deploy_id      (campaign_deploy_id)
 #  index_deploys_on_deleted_at              (deleted_at)
+#  index_deploys_on_deploy_type             (deploy_type)
 #  index_deploys_on_finished_at             (finished_at)
-#  index_deploys_on_instructions            (instructions) USING gin
 #  index_deploys_on_is_live                 (is_live)
 #  index_deploys_on_project_id              (project_id)
 #  index_deploys_on_project_id_and_is_live  (project_id,is_live)
@@ -437,118 +437,102 @@ RSpec.describe Deploy, type: :model do
     end
   end
 
-  describe "instructions" do
-    describe "normalization" do
-      it "normalizes camelCase keys to snake_case on save" do
-        deploy = create(:deploy, project: project, instructions: { "googleAds" => true, "website" => true })
-        expect(deploy.instructions).to eq({ "google_ads" => true, "website" => true })
+  describe "deploy_type" do
+    it "validates inclusion in DEPLOY_TYPES" do
+      deploy = build(:deploy, project: project, deploy_type: "invalid")
+      expect(deploy).not_to be_valid
+      expect(deploy.errors[:deploy_type]).to be_present
+    end
+
+    it "defaults to website" do
+      deploy = create(:deploy, project: project)
+      expect(deploy.deploy_type).to eq("website")
+    end
+
+    describe "#instructions" do
+      it "returns website-only instructions for website deploy type" do
+        deploy = create(:deploy, project: project, deploy_type: "website")
+        expect(deploy.instructions).to eq({ "website" => true })
       end
 
-      it "normalizes symbol keys to string snake_case" do
-        deploy = create(:deploy, project: project, instructions: { googleAds: false, website: true })
-        expect(deploy.instructions).to eq({ "google_ads" => false, "website" => true })
-      end
-
-      it "leaves already-snake_case keys alone" do
-        deploy = create(:deploy, project: project, instructions: { "google_ads" => true, "website" => true })
-        expect(deploy.instructions).to eq({ "google_ads" => true, "website" => true })
-      end
-
-      it "defaults to empty hash" do
-        deploy = create(:deploy, project: project)
-        expect(deploy.instructions).to eq({})
+      it "returns full instructions for campaign deploy type" do
+        deploy = create(:deploy, project: project, deploy_type: "campaign")
+        expect(deploy.instructions).to eq({ "website" => true, "googleAds" => true })
       end
     end
 
-    describe ".normalize_instructions" do
-      it "converts camelCase to snake_case" do
-        result = Deploy.normalize_instructions({ "googleAds" => true, "website" => false })
-        expect(result).to eq({ "google_ads" => true, "website" => false })
+    describe "#website_only?" do
+      it "returns true for website deploy type" do
+        expect(build(:deploy, deploy_type: "website").website_only?).to be true
       end
 
-      it "returns empty hash for nil" do
-        expect(Deploy.normalize_instructions(nil)).to eq({})
-      end
-
-      it "returns empty hash for blank" do
-        expect(Deploy.normalize_instructions({})).to eq({})
+      it "returns false for campaign deploy type" do
+        expect(build(:deploy, deploy_type: "campaign").website_only?).to be false
       end
     end
 
-    describe ".with_instructions scope" do
-      it "finds deploys with exact matching instructions" do
-        website_only = create(:deploy, :website_only, project: project, status: "completed")
-        full = create(:deploy, :full_deploy, project: project, status: "completed")
-
-        results = Deploy.with_instructions({ "website" => true, "google_ads" => false })
-        expect(results).to include(website_only)
-        expect(results).not_to include(full)
+    describe "#includes_campaign?" do
+      it "returns true for campaign deploy type" do
+        expect(build(:deploy, deploy_type: "campaign").includes_campaign?).to be true
       end
 
-      it "does not match partial instructions (subset)" do
-        full = create(:deploy, :full_deploy, project: project, status: "completed")
-
-        # Searching for website-only should NOT match a full deploy
-        results = Deploy.with_instructions({ "website" => true, "google_ads" => false })
-        expect(results).not_to include(full)
-      end
-
-      it "matches empty instructions" do
-        empty_deploy = create(:deploy, project: project, instructions: {})
-        results = Deploy.with_instructions({})
-        expect(results).to include(empty_deploy)
+      it "returns false for website deploy type" do
+        expect(build(:deploy, deploy_type: "website").includes_campaign?).to be false
       end
     end
 
-    describe ".ever_completed_with_instructions?" do
-      it "returns true when a completed deploy with exact instructions exists" do
+    describe ".ever_completed_with_deploy_type?" do
+      it "returns true when a completed deploy with matching type exists" do
         create(:deploy, :website_only, project: project, status: "completed")
-
-        expect(Deploy.ever_completed_with_instructions?(project, { "website" => true, "google_ads" => false })).to be true
+        expect(Deploy.ever_completed_with_deploy_type?(project, "website")).to be true
       end
 
-      it "returns false when no completed deploy with those instructions exists" do
+      it "returns false when no completed deploy with that type exists" do
         create(:deploy, :website_only, project: project, status: "completed")
-
-        expect(Deploy.ever_completed_with_instructions?(project, { "website" => true, "google_ads" => true })).to be false
+        expect(Deploy.ever_completed_with_deploy_type?(project, "campaign")).to be false
       end
 
       it "returns false when matching deploy exists but is not completed" do
         create(:deploy, :website_only, project: project, status: "running")
-
-        expect(Deploy.ever_completed_with_instructions?(project, { "website" => true, "google_ads" => false })).to be false
+        expect(Deploy.ever_completed_with_deploy_type?(project, "website")).to be false
       end
 
       it "returns false when no deploys exist at all" do
-        expect(Deploy.ever_completed_with_instructions?(project, { "website" => true, "google_ads" => false })).to be false
-      end
-
-      it "normalizes camelCase input before querying" do
-        create(:deploy, :website_only, project: project, status: "completed")
-
-        # Pass camelCase — should still match the snake_case stored value
-        expect(Deploy.ever_completed_with_instructions?(project, { "website" => true, "googleAds" => false })).to be true
+        expect(Deploy.ever_completed_with_deploy_type?(project, "website")).to be false
       end
 
       it "scopes to the given project only" do
         other_project = create(:project, account: account)
         create(:deploy, :website_only, project: other_project, status: "completed")
-
-        expect(Deploy.ever_completed_with_instructions?(project, { "website" => true, "google_ads" => false })).to be false
-      end
-
-      it "correctly distinguishes website-only from full deploys" do
-        create(:deploy, :website_only, project: project, status: "completed")
-
-        expect(Deploy.ever_completed_with_instructions?(project, { "website" => true, "google_ads" => false })).to be true
-        expect(Deploy.ever_completed_with_instructions?(project, { "website" => true, "google_ads" => true })).to be false
+        expect(Deploy.ever_completed_with_deploy_type?(project, "website")).to be false
       end
 
       it "returns true even when the deploy is deactivated" do
         deploy = create(:deploy, :website_only, project: project, status: "completed")
         deploy.deactivate!
+        expect(Deploy.ever_completed_with_deploy_type?(project, "website")).to be true
+      end
+    end
 
-        expect(Deploy.ever_completed_with_instructions?(project, { "website" => true, "google_ads" => false })).to be true
+    describe ".current_for scope" do
+      it "finds a website deploy via :website target" do
+        deploy = create(:deploy, :website_only, project: project)
+        expect(Deploy.current_for(:website).last).to eq(deploy)
+      end
+
+      it "finds a campaign deploy via :website target (campaigns include website)" do
+        deploy = create(:deploy, :full_deploy, project: project)
+        expect(Deploy.current_for(:website).last).to eq(deploy)
+      end
+
+      it "finds a campaign deploy via :google_ads target" do
+        deploy = create(:deploy, :full_deploy, project: project)
+        expect(Deploy.current_for(:google_ads).last).to eq(deploy)
+      end
+
+      it "does not find a website deploy via :google_ads target" do
+        create(:deploy, :website_only, project: project)
+        expect(Deploy.current_for(:google_ads).last).to be_nil
       end
     end
   end

@@ -6,6 +6,7 @@ module GoogleAds
   # notifies Langgraph of the result via webhook.
   class PaymentCheckWorker
     include Sidekiq::Worker
+    include ::DeployJobHandler
 
     sidekiq_options queue: :default, retry: 3
 
@@ -30,8 +31,7 @@ module GoogleAds
         has_payment: billing.has_payment?,
         status: billing.status)
     rescue => e
-      job_run.fail!(e)
-      job_run.notify_langgraph(status: "failed", error: e.message)
+      handle_deploy_error(job_run, e)
     end
 
     private

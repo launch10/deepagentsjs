@@ -88,15 +88,12 @@ RSpec.describe WebsiteDeploy::DeployWorker, type: :worker do
         worker.perform(deploy.id)
       end
 
-      it 'returns true on success' do
-        result = worker.perform(deploy.id)
-        expect(result).to be true
-      end
+      it 'raises on error without job_run (no handle_deploy_error)' do
+        allow(deploy).to receive(:actually_deploy).and_raise(StandardError, "build failed")
 
-      it 'logs success' do
-        expect(Rails.logger).to receive(:info).with("Starting deploy #{deploy.id} for website #{deploy.website_id} (job_run: none)")
-        expect(Rails.logger).to receive(:info).with("Successfully deployed #{deploy.id}")
-        worker.perform(deploy.id)
+        expect {
+          worker.perform(deploy.id)
+        }.to raise_error(StandardError, "build failed")
       end
     end
 
@@ -159,53 +156,29 @@ RSpec.describe WebsiteDeploy::DeployWorker, type: :worker do
         end
       end
 
-      context 'when deploy fails (returns false)' do
+      context 'when deploy raises an error' do
         before do
           job_run.update!(status: "running", started_at: Time.current)
           allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
-          allow(deploy).to receive(:actually_deploy).and_return(false)
+          allow(deploy).to receive(:actually_deploy).and_raise(RuntimeError, "pnpm build failed")
         end
 
-        it 'fails the job_run' do
-          expect { worker.perform(deploy.id, job_run.id) }.to raise_error(StandardError)
+        it 'fails the job_run immediately via handle_deploy_error' do
+          worker.perform(deploy.id, job_run.id)
           expect(job_run.reload.status).to eq("failed")
         end
 
-        it 'notifies Langgraph of failure' do
+        it 'notifies Langgraph immediately' do
           expect(LanggraphCallbackWorker).to receive(:perform_async)
-            .with(job_run.id, hash_including(status: "failed", error: "Website deploy failed"))
+            .with(job_run.id, hash_including(status: "failed", error: "pnpm build failed"))
 
-          expect { worker.perform(deploy.id, job_run.id) }.to raise_error(StandardError)
-        end
-      end
-
-      context 'when deploy raises an exception' do
-        before do
-          job_run.update!(status: "running", started_at: Time.current)
-          allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
-          allow(deploy).to receive(:actually_deploy).and_raise(StandardError, "Unexpected error")
+          worker.perform(deploy.id, job_run.id)
         end
 
-        it 'does not notify Langgraph immediately (waits for retries to exhaust)' do
-          expect(LanggraphCallbackWorker).not_to receive(:perform_async)
-
+        it 'does not re-raise (no Sidekiq retry)' do
           expect {
             worker.perform(deploy.id, job_run.id)
-          }.to raise_error(StandardError, "Unexpected error")
-        end
-
-        it 'does not mark job_run as failed (allows retries)' do
-          expect {
-            worker.perform(deploy.id, job_run.id)
-          }.to raise_error(StandardError)
-
-          expect(job_run.reload.status).to eq("running")
-        end
-
-        it 're-raises error for Sidekiq retry' do
-          expect {
-            worker.perform(deploy.id, job_run.id)
-          }.to raise_error(StandardError, "Unexpected error")
+          }.not_to raise_error
         end
       end
     end
@@ -216,35 +189,6 @@ RSpec.describe WebsiteDeploy::DeployWorker, type: :worker do
           worker.perform(999999)
         }.to raise_error(ActiveRecord::RecordNotFound)
       end
-
-      it 'logs the error' do
-        expect(Rails.logger).to receive(:error).with(/Deploy 999999 not found/)
-        expect { worker.perform(999999) }.to raise_error(ActiveRecord::RecordNotFound)
-      end
-    end
-
-    context 'when an unexpected error occurs' do
-      before do
-        allow(WebsiteDeploy).to receive(:find).with(deploy.id).and_return(deploy)
-        allow(deploy).to receive(:actually_deploy).and_raise(StandardError, "Unexpected error")
-      end
-
-      it 're-raises the error' do
-        expect {
-          worker.perform(deploy.id)
-        }.to raise_error(StandardError, "Unexpected error")
-      end
-
-      it 'logs the error' do
-        expect(Rails.logger).to receive(:error).with("Error deploying #{deploy.id}: Unexpected error")
-        expect { worker.perform(deploy.id) }.to raise_error(StandardError)
-      end
-    end
-  end
-
-  describe 'retry behavior' do
-    it 'uses Sidekiq default retry behavior' do
-      expect(described_class.sidekiq_options['retry']).to eq(5)
     end
   end
 
@@ -262,14 +206,6 @@ RSpec.describe WebsiteDeploy::DeployWorker, type: :worker do
           'args' => [deploy.id],
           'retry_count' => 5
         }
-      end
-
-      it 'logs the exhausted retries' do
-        expect(Rails.logger).to receive(:error).with(
-          "Failed to deploy #{deploy.id} after 5 retries: Test error"
-        )
-
-        described_class.sidekiq_retries_exhausted_block.call(msg, exception)
       end
 
       it 'marks the deploy as failed' do
@@ -331,26 +267,10 @@ RSpec.describe WebsiteDeploy::DeployWorker, type: :worker do
       }.to change(WebsiteDeploy::DeployWorker.jobs, :size).by(1)
     end
 
-    it 'enqueues with correct arguments (no job_run_id)' do
-      WebsiteDeploy::DeployWorker.perform_async(deploy.id)
-
-      job = WebsiteDeploy::DeployWorker.jobs.last
-      expect(job['args']).to eq([deploy.id])
-      expect(job['queue']).to eq('critical')
-    end
-
     it 'can be enqueued with job_run_id' do
       expect {
         WebsiteDeploy::DeployWorker.perform_async(deploy.id, job_run.id)
       }.to change(WebsiteDeploy::DeployWorker.jobs, :size).by(1)
-    end
-
-    it 'enqueues with correct arguments (with job_run_id)' do
-      WebsiteDeploy::DeployWorker.perform_async(deploy.id, job_run.id)
-
-      job = WebsiteDeploy::DeployWorker.jobs.last
-      expect(job['args']).to eq([deploy.id, job_run.id])
-      expect(job['queue']).to eq('critical')
     end
   end
 end

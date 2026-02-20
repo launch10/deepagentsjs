@@ -20,10 +20,10 @@ RSpec.describe "Deploys check_changes API", type: :request do
   end
 
   describe "POST /api/v1/deploys/check_changes" do
-    context "checking website changes" do
+    context "website deploy_type" do
       it "returns website: true when no prior deploy exists" do
         post "/api/v1/deploys/check_changes",
-          params: { project_id: project.id, instructions: { website: true } },
+          params: { project_id: project.id, deploy_type: "website" },
           headers: auth_headers
 
         expect(response).to have_http_status(:ok)
@@ -36,7 +36,7 @@ RSpec.describe "Deploys check_changes API", type: :request do
         create(:website_deploy, website: website, status: "completed", shasum: shasum)
 
         post "/api/v1/deploys/check_changes",
-          params: { project_id: project.id, instructions: { website: true } },
+          params: { project_id: project.id, deploy_type: "website" },
           headers: auth_headers
 
         expect(response).to have_http_status(:ok)
@@ -49,7 +49,7 @@ RSpec.describe "Deploys check_changes API", type: :request do
         create(:website_deploy, website: website, status: "completed", shasum: shasum, version_path: "#{website.id}/#{Time.now.strftime("%Y%m%d%H%M%S")}")
 
         post "/api/v1/deploys/check_changes",
-          params: { project_id: project.id, instructions: { website: true } },
+          params: { project_id: project.id, deploy_type: "website" },
           headers: auth_headers
 
         expect(response).to have_http_status(:ok)
@@ -64,16 +64,16 @@ RSpec.describe "Deploys check_changes API", type: :request do
         file.update!(content: "updated")
 
         post "/api/v1/deploys/check_changes",
-          params: { project_id: project.id, instructions: { website: true } },
+          params: { project_id: project.id, deploy_type: "website" },
           headers: auth_headers
 
         expect(response).to have_http_status(:ok)
         expect(json_response["website"]).to be true
       end
 
-      it "does not include campaign key when only website is requested" do
+      it "does not include campaign key for website deploy_type" do
         post "/api/v1/deploys/check_changes",
-          params: { project_id: project.id, instructions: { website: true } },
+          params: { project_id: project.id, deploy_type: "website" },
           headers: auth_headers
 
         expect(json_response).to have_key("website")
@@ -81,13 +81,22 @@ RSpec.describe "Deploys check_changes API", type: :request do
       end
     end
 
-    context "checking campaign changes" do
-      it "returns campaign: true when no prior deploy exists" do
+    context "campaign deploy_type" do
+      it "returns both website and campaign keys" do
         post "/api/v1/deploys/check_changes",
-          params: { project_id: project.id, instructions: { google_ads: true } },
+          params: { project_id: project.id, deploy_type: "campaign" },
           headers: auth_headers
 
         expect(response).to have_http_status(:ok)
+        expect(json_response).to have_key("website")
+        expect(json_response).to have_key("campaign")
+      end
+
+      it "returns campaign: true when no prior deploy exists" do
+        post "/api/v1/deploys/check_changes",
+          params: { project_id: project.id, deploy_type: "campaign" },
+          headers: auth_headers
+
         expect(json_response["campaign"]).to be true
       end
 
@@ -96,10 +105,9 @@ RSpec.describe "Deploys check_changes API", type: :request do
         create(:campaign_deploy, campaign: campaign, status: "completed", shasum: shasum)
 
         post "/api/v1/deploys/check_changes",
-          params: { project_id: project.id, instructions: { google_ads: true } },
+          params: { project_id: project.id, deploy_type: "campaign" },
           headers: auth_headers
 
-        expect(response).to have_http_status(:ok)
         expect(json_response["campaign"]).to be false
       end
 
@@ -110,43 +118,22 @@ RSpec.describe "Deploys check_changes API", type: :request do
         campaign.update!(name: "Updated Campaign")
 
         post "/api/v1/deploys/check_changes",
-          params: { project_id: project.id, instructions: { google_ads: true } },
+          params: { project_id: project.id, deploy_type: "campaign" },
           headers: auth_headers
 
-        expect(response).to have_http_status(:ok)
         expect(json_response["campaign"]).to be true
       end
-
-      it "does not include website key when only google_ads is requested" do
-        post "/api/v1/deploys/check_changes",
-          params: { project_id: project.id, instructions: { google_ads: true } },
-          headers: auth_headers
-
-        expect(json_response).to have_key("campaign")
-        expect(json_response).not_to have_key("website")
-      end
     end
 
-    context "checking both" do
-      it "returns both website and campaign keys" do
-        post "/api/v1/deploys/check_changes",
-          params: { project_id: project.id, instructions: { website: true, google_ads: true } },
-          headers: auth_headers
-
-        expect(response).to have_http_status(:ok)
-        expect(json_response).to have_key("website")
-        expect(json_response).to have_key("campaign")
-      end
-    end
-
-    context "with no instructions" do
-      it "returns an empty result" do
+    context "default (no deploy_type)" do
+      it "defaults to website and returns only website key" do
         post "/api/v1/deploys/check_changes",
           params: { project_id: project.id },
           headers: auth_headers
 
         expect(response).to have_http_status(:ok)
-        expect(json_response).to eq({})
+        expect(json_response).to have_key("website")
+        expect(json_response).not_to have_key("campaign")
       end
     end
 
@@ -156,7 +143,7 @@ RSpec.describe "Deploys check_changes API", type: :request do
         other_project = create(:project, account: other_user.owned_account)
 
         post "/api/v1/deploys/check_changes",
-          params: { project_id: other_project.id, instructions: { website: true } },
+          params: { project_id: other_project.id, deploy_type: "website" },
           headers: auth_headers
 
         expect(response).to have_http_status(:not_found)

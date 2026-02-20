@@ -92,7 +92,23 @@ class DeployUploader
   end
 
   def list_objects(prefix, **)
-    client.list_objects_v2(bucket: bucket_name, prefix: prefix, **)
+    all_contents = []
+    continuation_token = nil
+
+    loop do
+      opts = { bucket: bucket_name, prefix: prefix, ** }
+      opts[:continuation_token] = continuation_token if continuation_token
+
+      response = client.list_objects_v2(**opts)
+      all_contents.concat(response.contents)
+
+      break unless response.is_truncated
+      continuation_token = response.next_continuation_token
+      break if continuation_token.nil?
+    end
+
+    # Return an object matching the S3 response shape
+    OpenStruct.new(contents: all_contents)
   end
 
   def cleanup_old_deploys(project_id, keep_timestamps = [])

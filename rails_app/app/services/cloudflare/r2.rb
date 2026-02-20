@@ -5,14 +5,22 @@ class Cloudflare
     def initialize(bucket_name: nil, environment: nil)
       @bucket_name = bucket_name || Cloudflare.config.r3_bucket
       @environment = environment || Cloudflare.config.deploy_env
-      @client = Aws::S3::Client.new(
-        endpoint: Cloudflare.config.r2_endpoint,
-        access_key_id: Cloudflare.config.r2_access_key_id,
-        secret_access_key: Cloudflare.config.r2_secret_access_key,
-        region: Cloudflare.config.r2_region,
-        force_path_style: false,
-        ssl_ca_bundle: SslCaBundle.path
-      )
+      @client = build_client
+    end
+
+    def build_client
+      if Rails.env.test? && Cloudflare.e2e_mock_s3_client
+        Cloudflare.e2e_mock_s3_client
+      else
+        Aws::S3::Client.new(
+          endpoint: Cloudflare.config.r2_endpoint,
+          access_key_id: Cloudflare.config.r2_access_key_id,
+          secret_access_key: Cloudflare.config.r2_secret_access_key,
+          region: Cloudflare.config.r2_region,
+          force_path_style: false,
+          ssl_ca_bundle: SslCaBundle.path
+        )
+      end
     end
 
     def method_missing(method_name, *, **kwargs, &)

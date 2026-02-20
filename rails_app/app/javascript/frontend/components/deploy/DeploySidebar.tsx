@@ -8,7 +8,7 @@ export default function DeploySidebar() {
   const tasks = useDeployChatState("tasks");
   const contentRef = useRef<HTMLDivElement>(null);
   const [minHeight, setMinHeight] = useState<number | undefined>();
-  logger.debug("DeploySidebar", "tasks:", tasks);
+  logger.debug("DeploySidebar", "tasks:", JSON.stringify(tasks?.map((t) => t.name)));
 
   // Sidebar should be 3x the content height (content = 1/3, blank space = 2/3)
   useLayoutEffect(() => {

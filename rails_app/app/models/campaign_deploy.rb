@@ -169,45 +169,6 @@ class CampaignDeploy < ApplicationRecord
   # This could be done by using enqueuing sync_plans
   #
   STEPS = Steps.new([
-    # We're actually going to separate these - they're one time verifications and the frontend/Langgraph will be in charge of orchestrating them
-    #
-    # Step.define(:create_ads_account) do
-    #   def ready?
-    #     campaign.account.has_google_connected_account?
-    #   end
-
-    #   def run
-    #     campaign.account.create_google_ads_account
-    #   end
-
-    #   def finished?
-    #     sync_result&.success? || false
-    #   end
-
-    #   def sync_result
-    #     campaign.account.verify_google_ads_account
-    #   end
-    # end,
-
-    # Step.define(:send_account_invitation) do
-    #   def ready?
-    #     campaign.google_ads_account.present? && campaign.account.google_account_invitation.nil?
-    #   end
-
-    #   def run
-    #     campaign.google_ads_account.send_google_ads_invitation_email
-    #   end
-
-    #   # Will be false if user declines invitation, for example, allowing us to send another invitation
-    #   def finished?
-    #     campaign&.account&.google_account_invitation&.okay? || false
-    #   end
-
-    #   def sync_result
-    #     campaign&.account&.google_account_invitation&.google_sync_result
-    #   end
-    # end,
-
     Step.define(:sync_budget) do
       def run
         campaign.budget.google_sync

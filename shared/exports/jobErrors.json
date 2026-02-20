@@ -1,0 +1,31 @@
+{
+  "jobNames": [
+    "WebsiteDeploy",
+    "CampaignDeploy",
+    "CampaignEnable",
+    "GoogleOAuthConnect",
+    "GoogleAdsInvite",
+    "GoogleAdsPaymentCheck"
+  ],
+  "errorTypes": [
+    "api_outage",
+    "rate_limit",
+    "auth_failure",
+    "invalid_data",
+    "policy_violation",
+    "timeout",
+    "not_found",
+    "internal"
+  ],
+  "defaults": {
+    "api_outage": false,
+    "rate_limit": false,
+    "auth_failure": false,
+    "invalid_data": false,
+    "policy_violation": false,
+    "timeout": false,
+    "not_found": false,
+    "internal": false
+  },
+  "overrides": {}
+}

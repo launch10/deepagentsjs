@@ -27,7 +27,7 @@ RSpec.describe "Deploys API", type: :request do
       parameter name: :project_id, in: :query, type: :integer, required: true, description: "Project ID"
       parameter name: :page, in: :query, type: :integer, required: false, description: "Page number (default 1)"
       parameter name: :status, in: :query, type: :string, required: false, description: "Filter by status (completed, failed, running)"
-      parameter name: :deploy_type, in: :query, type: :string, required: false, description: "Filter by deploy type (website, google_ads) — matches deploys whose instructions include this key as true"
+      parameter name: :deploy_type, in: :query, type: :string, required: false, description: "Filter by deploy type (website, campaign)"
 
       response "200", "returns paginated deploys" do
         schema APISchemas::Deploy.list_response

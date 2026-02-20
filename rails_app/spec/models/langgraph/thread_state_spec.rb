@@ -25,7 +25,7 @@ RSpec.describe Langgraph::ThreadState do
            "kwargs" => {"content" => "Build me a page", "id" => "msg-1"}},
           {"lc" => 1, "type" => "constructor", "id" => ["langchain_core", "messages", "AIMessage"],
            "kwargs" => {"content" => "Sure!", "id" => "msg-2",
-                        "additional_kwargs" => {"tool_calls" => [{"name" => "write_file"}]}}},
+                        "additional_kwargs" => {"tool_calls" => [{"name" => "write_file"}]}}}
         ],
         "tasks" => [{"name" => "deploy"}],
         "error" => nil

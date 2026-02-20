@@ -173,7 +173,7 @@ RSpec.describe "Buildable sitemap with prerendered routes", type: :integration d
       FileUtils.mkdir_p(dist_dir)
       allow(deploy).to receive(:temp_dir).and_return(temp_dir)
       allow(website).to receive(:website_url).and_return(
-        double(full_url: "https://example.launch10.ai/")
+        double(domain_string: "example.launch10.ai", path: "/")
       )
     end
 
