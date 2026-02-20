@@ -1,0 +1,76 @@
+#!/usr/bin/env ruby
+# Creates the deploy_ready snapshot from domain_step + prepare_website_for_deploy.
+#
+# Usage: RAILS_ENV=test bin/rails runner bin/create-deploy-snapshot
+#
+# This restores domain_step, adds SEO/LLMs data so deploy tasks skip,
+# then saves the result as deploy_ready.sql.
+
+puts "Creating deploy_ready snapshot..."
+
+# 1. Restore domain_step as baseline
+puts "  Restoring domain_step..."
+Database::Snapshotter.restore_snapshot("domain_step")
+
+# 2. Add deploy-ready data (same logic as the e2e scenario)
+website = Website.find(1)
+
+seo_index_html = <<~HTML
+  <!DOCTYPE html>
+  <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>TimeSyncPro - Smart Meeting Scheduling for Teams</title>
+      <meta name="description" content="Stop the scheduling madness. TimeSyncPro helps teams coordinate meetings in seconds, not hours. Join 2,000+ teams." />
+      <meta property="og:title" content="TimeSyncPro - Smart Meeting Scheduling" />
+      <meta property="og:description" content="Coordinate meetings in seconds, not hours." />
+      <meta property="og:image" content="https://example.com/og-image.png" />
+      <meta property="og:url" content="https://test-site.launch10.site/" />
+      <meta property="og:type" content="website" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content="TimeSyncPro - Smart Meeting Scheduling" />
+      <meta name="twitter:description" content="Coordinate meetings in seconds, not hours." />
+      <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+      <link rel="canonical" href="https://test-site.launch10.site/" />
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" />
+    </head>
+    <body>
+      <script>window.__BASENAME__ = '/' + (window.location.pathname.split('/')[1] || '');</script>
+      <div id="root"></div>
+      <script type="module" src="/src/main.tsx"></script>
+    </body>
+  </html>
+HTML
+
+WebsiteFile.create!(
+  website_id: website.id,
+  path: "index.html",
+  content: seo_index_html
+)
+
+llms_txt = <<~TXT
+  # TimeSyncPro
+  > Smart meeting scheduling for distributed teams
+
+  ## Key Information
+  - Target Audience: Remote and hybrid teams
+  - Value Proposition: Coordinate meetings in seconds, not hours
+
+  ## About
+  - [Homepage](https://test-site.launch10.site/)
+TXT
+
+WebsiteFile.create!(
+  website_id: website.id,
+  path: "public/llms.txt",
+  content: llms_txt
+)
+
+puts "  Added SEO index.html + llms.txt"
+
+# 3. Save as deploy_ready snapshot
+puts "  Saving deploy_ready snapshot..."
+Database::Snapshotter.create_snapshot("deploy_ready")
+
+puts "Done! Snapshot saved to test/fixtures/database/snapshots/deploy_ready.sql"
