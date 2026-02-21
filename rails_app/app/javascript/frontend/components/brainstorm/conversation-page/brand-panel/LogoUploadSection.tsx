@@ -3,7 +3,7 @@ import { Upload, X, RefreshCw, Loader2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProjectLogo, useUploadLogo, useDeleteUpload, uploadsKeys } from "@api/uploads.hooks";
-import { subscribeToAgentIntent } from "@context/AgentIntentContext";
+import { subscribeToAgentIntent } from "@hooks/useAgentIntent";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/svg+xml"];
 const ACCEPTED_EXTENSIONS = ".png,.jpg,.jpeg,.svg";
@@ -14,12 +14,6 @@ interface LogoUploadSectionProps {
 }
 
 export function LogoUploadSection({ className }: LogoUploadSectionProps) {
-  const renderCount = useRef(0);
-  renderCount.current += 1;
-  if (process.env.NODE_ENV === "development") {
-    console.log(`[LogoUploadSection] render #${renderCount.current}`);
-  }
-
   // Read directly from query - no store
   const { data: existingLogos = [] } = useProjectLogo();
   const logo = existingLogos[0] ?? null;
@@ -42,7 +36,8 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
 
   const isUploading = uploadMutation.isPending;
   const isDeleting = deleteMutation.isPending;
-  const error = validationError ?? uploadMutation.error?.message ?? deleteMutation.error?.message ?? null;
+  const error =
+    validationError ?? uploadMutation.error?.message ?? deleteMutation.error?.message ?? null;
 
   const validateFile = useCallback((file: File): string | null => {
     if (!ACCEPTED_TYPES.includes(file.type)) {

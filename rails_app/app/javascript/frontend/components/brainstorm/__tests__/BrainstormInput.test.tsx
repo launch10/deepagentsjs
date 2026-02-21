@@ -21,7 +21,7 @@ vi.mock("@lib/brainstormTextarea", () => ({
 
 // Mock the langgraph-ai-sdk-react module
 vi.mock("langgraph-ai-sdk-react", async (importOriginal) => {
-  const actual = await importOriginal() as any;
+  const actual = (await importOriginal()) as any;
   return {
     ...actual,
     useChatSelector: vi.fn((chat, selector) => {
@@ -102,7 +102,9 @@ function createMockSnapshot(chat?: any): ChatSnapshot<Record<string, unknown>> {
 }
 
 // Mock chat instance for testing
-function createMockChat(overrides?: Record<string, any>): LanggraphChat<UIMessage, Record<string, unknown>> {
+function createMockChat(
+  overrides?: Record<string, any>
+): LanggraphChat<UIMessage, Record<string, unknown>> {
   return {
     threadId: "test-thread",
     isNewChat: false,
@@ -131,6 +133,7 @@ function createMockChat(overrides?: Record<string, any>): LanggraphChat<UIMessag
     onEstablished: vi.fn(() => () => {}),
     generateId: vi.fn(() => "test-id"),
     sendMessage: vi.fn(),
+    "~registerStateKeyCallback": vi.fn(() => () => {}),
     ...overrides,
   } as unknown as LanggraphChat<UIMessage, Record<string, unknown>>;
 }
@@ -138,11 +141,7 @@ function createMockChat(overrides?: Record<string, any>): LanggraphChat<UIMessag
 // Wrapper that provides Chat context
 function ChatContextWrapper({ children }: { children: ReactNode }) {
   const mockChat = createMockChat();
-  return (
-    <ChatProvider chat={mockChat}>
-      {children}
-    </ChatProvider>
-  );
+  return <ChatProvider chat={mockChat}>{children}</ChatProvider>;
 }
 
 describe("BrainstormInput", () => {

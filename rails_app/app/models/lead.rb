@@ -44,8 +44,11 @@ class Lead < ApplicationRecord
     if lead.nil?
       lead = account.leads.create!(email: normalized_email, name: name, phone: phone)
       created = true
-    else
-      lead.update!(phone: phone) if lead.phone.blank? && phone.present?
+    end
+
+    # Always backfill phone if the lead doesn't have one yet
+    if !created && lead.phone.blank? && phone.present?
+      lead.update!(phone: phone)
     end
 
     # Check if already converted on this website

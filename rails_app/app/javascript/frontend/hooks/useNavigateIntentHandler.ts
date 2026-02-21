@@ -1,6 +1,6 @@
 import { isNavigateAgentIntent, type Workflow } from "@shared";
 import { useWorkflowOptional, selectNavigate } from "@context/WorkflowProvider";
-import { subscribeToAgentIntent } from "@context/AgentIntentContext";
+import { subscribeToAgentIntent } from "./useAgentIntent";
 
 /**
  * Subscribes to "navigate" agent intents and drives workflow navigation.
@@ -13,7 +13,7 @@ export function useNavigateIntentHandler() {
     if (isNavigateAgentIntent(intent)) {
       workflowNavigate?.(
         intent.payload.page,
-        (intent.payload.substep as Workflow.SubstepName) ?? null,
+        (intent.payload.substep as Workflow.SubstepName) ?? null
       );
     }
   });

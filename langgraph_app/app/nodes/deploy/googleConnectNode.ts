@@ -36,7 +36,7 @@ export const googleConnectTaskRunner: TaskRunner = {
   // Always ready - first task for Google Ads flow
   readyToRun: () => true,
 
-  shouldSkip: (state: DeployGraphState) => {
+  shouldSkip: async (state: DeployGraphState) => {
     // Skip if not deploying Google Ads
     if (!Deploy.shouldDeployGoogleAds(state)) {
       return true;
@@ -49,6 +49,9 @@ export const googleConnectTaskRunner: TaskRunner = {
 
     // Task has result confirming connection
     if (task?.result?.google_email) return true;
+
+    // Task exists but hasn't run yet — check if Google is already connected
+    if (task?.status === "pending" && (await isGoogleConnected(state))) return true;
 
     return false;
   },

@@ -6,7 +6,7 @@ import { useThemes, useCreateTheme, themeKeys } from "@api/themes.hooks";
 import { useWebsite, useUpdateWebsiteTheme, websiteKeys } from "@api/websites.hooks";
 import { CustomColorPicker } from "./CustomColorPicker";
 import type { GetThemesResponse } from "@rails_api_base";
-import { subscribeToAgentIntent } from "@context/AgentIntentContext";
+import { subscribeToAgentIntent } from "@hooks/useAgentIntent";
 
 type Theme = GetThemesResponse[number];
 
@@ -23,12 +23,6 @@ interface ColorPaletteSectionProps {
 }
 
 export function ColorPaletteSection({ className, onThemeSelect }: ColorPaletteSectionProps) {
-  const renderCount = useRef(0);
-  renderCount.current += 1;
-  if (process.env.NODE_ENV === "development") {
-    console.log(`[ColorPaletteSection] render #${renderCount.current}`);
-  }
-
   // Read directly from queries - no store
   const { data: themes = [], isLoading: isLoadingThemes } = useThemes();
   const { data: website, isLoading: isLoadingWebsite } = useWebsite();

@@ -34,8 +34,8 @@ module WebsiteDeployConcerns
 
       # Run pnpm install and build (includes prerendering)
       unless build_exists?
-        system("pnpm install --ignore-workspace", chdir: temp_dir) or raise "pnpm install failed"
-        system("pnpm run build", chdir: temp_dir) or raise "pnpm build failed"
+        system("pnpm", "install", "--ignore-workspace", chdir: temp_dir) or raise "pnpm install failed"
+        system("pnpm", "run", "build", chdir: temp_dir) or raise "pnpm build failed"
       end
 
       dist_path = File.join(temp_dir, "dist")

@@ -2,8 +2,13 @@ import { useState, useRef, useCallback } from "react";
 import { Upload, X, Loader2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { useQueryClient } from "@tanstack/react-query";
-import { useProjectImages, useUploadProjectImage, useDeleteUpload, uploadsKeys } from "@api/uploads.hooks";
-import { subscribeToAgentIntent } from "@context/AgentIntentContext";
+import {
+  useProjectImages,
+  useUploadProjectImage,
+  useDeleteUpload,
+  uploadsKeys,
+} from "@api/uploads.hooks";
+import { subscribeToAgentIntent } from "@hooks/useAgentIntent";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/webp"];
 const ACCEPTED_EXTENSIONS = ".png,.jpg,.jpeg,.webp";
@@ -15,12 +20,6 @@ interface ProjectImagesSectionProps {
 }
 
 export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
-  const renderCount = useRef(0);
-  renderCount.current += 1;
-  if (process.env.NODE_ENV === "development") {
-    console.log(`[ProjectImagesSection] render #${renderCount.current}`);
-  }
-
   // Read directly from query - no store
   const { data: existingImages = [] } = useProjectImages();
 
@@ -177,10 +176,7 @@ export function ProjectImagesSection({ className }: ProjectImagesSectionProps) {
                   src={image.thumbUrl || image.url}
                   alt="Project image"
                   crossOrigin="anonymous"
-                  className={twMerge(
-                    "w-full h-full object-cover",
-                    isImageDeleting && "opacity-50"
-                  )}
+                  className={twMerge("w-full h-full object-cover", isImageDeleting && "opacity-50")}
                 />
                 {isImageDeleting ? (
                   <div className="absolute inset-0 flex items-center justify-center">

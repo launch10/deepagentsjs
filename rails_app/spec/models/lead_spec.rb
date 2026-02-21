@@ -158,6 +158,36 @@ RSpec.describe Lead, type: :model do
       expect(result[:lead].phone).to eq('555-0000')
     end
 
+    it 'backfills phone on already-converted lead re-submitting same website' do
+      existing_lead = create(:lead, account: account, email: 'existing@example.com', phone: nil)
+      create(:website_lead, lead: existing_lead, website: website)
+
+      result = Lead.find_or_create_for_signup(
+        account: account,
+        website: website,
+        email: 'existing@example.com',
+        phone: '555-9999'
+      )
+
+      expect(result[:already_converted]).to be true
+      expect(result[:lead].reload.phone).to eq('555-9999')
+    end
+
+    it 'does not overwrite existing phone on already-converted lead' do
+      existing_lead = create(:lead, account: account, email: 'existing2@example.com', phone: '555-0000')
+      create(:website_lead, lead: existing_lead, website: website)
+
+      result = Lead.find_or_create_for_signup(
+        account: account,
+        website: website,
+        email: 'existing2@example.com',
+        phone: '555-9999'
+      )
+
+      expect(result[:already_converted]).to be true
+      expect(result[:lead].reload.phone).to eq('555-0000')
+    end
+
     it 'stores attribution data on the website_lead' do
       visit = create(:ahoy_visit, website: website)
 

@@ -132,6 +132,7 @@ function createMockChat(overrides?: {
     onEstablished: vi.fn(() => () => {}),
     generateId: vi.fn(() => "test-id"),
     sendMessage: overrides?.sendMessage ?? vi.fn(),
+    "~registerStateKeyCallback": vi.fn(() => () => {}),
     // Internal test properties
     _testStatus: overrides?.status,
     _testComposer: composer,

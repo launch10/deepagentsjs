@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { AgentIntentProcessor } from "@lib/AgentIntentProcessor";
-import { subscribeToAgentIntent } from "../AgentIntentContext";
+import { subscribeToAgentIntent } from "../useAgentIntent";
 import type { AgentIntent } from "@shared";
 
 // Fresh mock chat per test — avoids WeakMap sharing across tests
@@ -47,9 +47,7 @@ describe("subscribeToAgentIntent", () => {
   it("unsubscribes on unmount", () => {
     const handler = vi.fn();
 
-    const { unmount } = renderHook(() =>
-      subscribeToAgentIntent("navigate", handler),
-    );
+    const { unmount } = renderHook(() => subscribeToAgentIntent("navigate", handler));
 
     unmount();
 
@@ -64,7 +62,7 @@ describe("subscribeToAgentIntent", () => {
     const { rerender } = renderHook(
       ({ version }: { version: string }) =>
         subscribeToAgentIntent("navigate", () => calls.push(version)),
-      { initialProps: { version: "v1" } },
+      { initialProps: { version: "v1" } }
     );
 
     // Rerender with a new handler
@@ -78,9 +76,7 @@ describe("subscribeToAgentIntent", () => {
   it("does not create duplicate subscriptions on rerender", () => {
     const handler = vi.fn();
 
-    const { rerender } = renderHook(() =>
-      subscribeToAgentIntent("navigate", handler),
-    );
+    const { rerender } = renderHook(() => subscribeToAgentIntent("navigate", handler));
 
     rerender();
     rerender();

@@ -48,7 +48,7 @@ RSpec.describe DeployJobs::ErrorClassifier do
       end
     end
 
-    context "with timeout-like errors" do
+    context "with timeout errors" do
       it "classifies Timeout::Error" do
         error = Timeout::Error.new("execution expired")
         expect(described_class.classify(error)).to eq(:timeout)
@@ -66,23 +66,13 @@ RSpec.describe DeployJobs::ErrorClassifier do
     end
 
     context "with network errors" do
-      it "classifies ECONNREFUSED" do
+      it "classifies Errno::ECONNREFUSED" do
         error = Errno::ECONNREFUSED.new("Connection refused")
         expect(described_class.classify(error)).to eq(:api_outage)
       end
 
-      it "classifies ECONNRESET" do
+      it "classifies Errno::ECONNRESET" do
         error = Errno::ECONNRESET.new("Connection reset by peer")
-        expect(described_class.classify(error)).to eq(:api_outage)
-      end
-
-      it "classifies Net::HTTP errors" do
-        error = Net::HTTPBadResponse.new("wrong status line")
-        expect(described_class.classify(error)).to eq(:api_outage)
-      end
-
-      it "classifies EOFError" do
-        error = EOFError.new("end of file reached")
         expect(described_class.classify(error)).to eq(:api_outage)
       end
 
@@ -91,14 +81,66 @@ RSpec.describe DeployJobs::ErrorClassifier do
         expect(described_class.classify(error)).to eq(:api_outage)
       end
 
-      it "classifies OpenSSL::SSL::SSLError" do
-        error = OpenSSL::SSL::SSLError.new("SSL_connect returned=1")
+      it "classifies Errno::EBADF" do
+        error = Errno::EBADF.new("Bad file descriptor")
+        expect(described_class.classify(error)).to eq(:api_outage)
+      end
+
+      it "classifies Errno::EHOSTUNREACH" do
+        error = Errno::EHOSTUNREACH.new("No route to host")
+        expect(described_class.classify(error)).to eq(:api_outage)
+      end
+
+      it "classifies Errno::ENETUNREACH" do
+        error = Errno::ENETUNREACH.new("Network is unreachable")
+        expect(described_class.classify(error)).to eq(:api_outage)
+      end
+
+      it "classifies Errno::EINVAL" do
+        error = Errno::EINVAL.new("Invalid argument")
+        expect(described_class.classify(error)).to eq(:api_outage)
+      end
+
+      it "classifies EOFError" do
+        error = EOFError.new("end of file reached")
         expect(described_class.classify(error)).to eq(:api_outage)
       end
 
       it "classifies IOError" do
         error = IOError.new("stream closed")
         expect(described_class.classify(error)).to eq(:api_outage)
+      end
+
+      it "classifies Net::HTTPBadResponse" do
+        error = Net::HTTPBadResponse.new("wrong status line")
+        expect(described_class.classify(error)).to eq(:api_outage)
+      end
+
+      it "classifies Net::HTTPHeaderSyntaxError" do
+        error = Net::HTTPHeaderSyntaxError.new("bad header")
+        expect(described_class.classify(error)).to eq(:api_outage)
+      end
+
+      it "classifies Net::ProtocolError" do
+        error = Net::ProtocolError.new("protocol error")
+        expect(described_class.classify(error)).to eq(:api_outage)
+      end
+
+      it "classifies OpenSSL::SSL::SSLError" do
+        error = OpenSSL::SSL::SSLError.new("SSL_connect returned=1")
+        expect(described_class.classify(error)).to eq(:api_outage)
+      end
+    end
+
+    context "with data errors" do
+      it "classifies ArgumentError as :invalid_data" do
+        error = ArgumentError.new("wrong number of arguments")
+        expect(described_class.classify(error)).to eq(:invalid_data)
+      end
+
+      it "classifies TypeError as :invalid_data" do
+        error = TypeError.new("no implicit conversion of nil into String")
+        expect(described_class.classify(error)).to eq(:invalid_data)
       end
     end
 
@@ -118,26 +160,56 @@ RSpec.describe DeployJobs::ErrorClassifier do
         expect(described_class.classify(error)).to eq(:api_outage)
       end
 
+      it "classifies blank message as :internal" do
+        error = StandardError.new("")
+        expect(described_class.classify(error)).to eq(:internal)
+      end
+
       it "classifies unknown errors as :internal" do
         error = StandardError.new("Something completely unexpected")
         expect(described_class.classify(error)).to eq(:internal)
       end
+    end
 
-      it "classifies ArgumentError as :invalid_data" do
-        error = ArgumentError.new("wrong number of arguments")
-        expect(described_class.classify(error)).to eq(:invalid_data)
+    context "with generic StandardError/RuntimeError" do
+      it "reports to Sentry for bare StandardError" do
+        error = StandardError.new("vague error")
+        expect(Sentry).to receive(:capture_message).with(
+          /Generic StandardError reached ErrorClassifier/,
+          hash_including(level: :warning)
+        )
+        described_class.classify(error)
+      end
+
+      it "reports to Sentry for bare RuntimeError" do
+        error = RuntimeError.new("something broke")
+        expect(Sentry).to receive(:capture_message).with(
+          /Generic RuntimeError reached ErrorClassifier/,
+          hash_including(level: :warning)
+        )
+        described_class.classify(error)
+      end
+
+      it "does not report subclasses of StandardError to Sentry" do
+        error = ArgumentError.new("bad arg")
+        expect(Sentry).not_to receive(:capture_message)
+        described_class.classify(error)
       end
     end
 
-    context "with Google Ads errors" do
-      # We test the classification logic by checking that terminal Google errors
-      # are properly categorized. Since we can't easily construct real Google Ads
-      # proto errors, we test the integration point by mocking TerminalErrors.
-      it "classifies terminal Google Ads errors via TerminalErrors" do
-        error = StandardError.new("Google Ads API error")
-        # Simulate a Google Ads error class
-        allow(error).to receive(:is_a?).and_call_original
-        allow(error).to receive(:is_a?).with(Google::Ads::GoogleAds::Errors::GoogleAdsError).and_return(true) if defined?(Google::Ads::GoogleAds::Errors::GoogleAdsError)
+    context "with Google Ads errors", if: defined?(Google::Ads::GoogleAds::Errors::GoogleAdsError) do
+      let(:google_error) { Google::Ads::GoogleAds::Errors::GoogleAdsError.new("API error") }
+
+      it "classifies terminal Google Ads errors as :invalid_data by default" do
+        allow(GoogleAds::TerminalErrors).to receive(:terminal?).with(google_error).and_return(true)
+        failure = double("failure", errors: [])
+        allow(google_error).to receive(:failure).and_return(failure)
+        expect(described_class.classify(google_error)).to eq(:invalid_data)
+      end
+
+      it "classifies non-terminal Google Ads errors as :api_outage" do
+        allow(GoogleAds::TerminalErrors).to receive(:terminal?).with(google_error).and_return(false)
+        expect(described_class.classify(google_error)).to eq(:api_outage)
       end
     end
   end

@@ -262,8 +262,9 @@ dev_mode() {
   export VITE_PORT
   export DB_PREFIX
   export REDIS_URL
-  # Export SIDEKIQ_INLINE if set by caller (for e2e tests)
+  # Export Sidekiq test modes if set by caller (for e2e tests)
   [[ -n "$SIDEKIQ_INLINE" ]] && export SIDEKIQ_INLINE
+  [[ -n "$SIDEKIQ_THREADED" ]] && export SIDEKIQ_THREADED
 
   # Export VITE URLs for test environment
   if [[ -n "$VITE_LANGGRAPH_API_URL" ]]; then

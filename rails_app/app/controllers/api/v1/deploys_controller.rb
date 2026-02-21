@@ -56,6 +56,14 @@ class API::V1::DeploysController < API::BaseController
   # Pass needs_support: true to auto-create a support ticket on failure.
   def update
     deploy = find_deploy
+
+    # Validate is_live separately — must have completed website deploy
+    if params[:is_live].present? && ActiveModel::Type::Boolean.new.cast(params[:is_live])
+      unless deploy.website_deploy&.status == "completed"
+        return render json: { errors: ["Cannot set is_live without a completed website deploy"] }, status: :unprocessable_entity
+      end
+    end
+
     deploy.needs_support = ActiveModel::Type::Boolean.new.cast(params[:needs_support])
     deploy.update!(deploy_params)
 
@@ -137,17 +145,7 @@ class API::V1::DeploysController < API::BaseController
   end
 
   def deploy_params
-    permitted = params.permit(:status, :current_step, :is_live, :stacktrace)
-
-    # is_live can only be set to true if there's a completed website deploy
-    if permitted[:is_live].present? && ActiveModel::Type::Boolean.new.cast(permitted[:is_live])
-      deploy = find_deploy
-      unless deploy.website_deploy&.status == "completed"
-        permitted.delete(:is_live)
-      end
-    end
-
-    permitted
+    params.permit(:status, :current_step, :is_live, :stacktrace)
   end
 
   def deploy_json(deploy)

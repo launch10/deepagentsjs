@@ -10,12 +10,6 @@ import { validateThreadGraphOrError } from "../middleware/threadValidation";
 import { DeployAPI } from "@api";
 import { env, getLogger } from "@core";
 import { Deploy } from "@types";
-import * as fs from "fs";
-
-function debugLog(msg: string, data?: any) {
-  const line = `[${new Date().toISOString()}] ${msg}${data ? " " + JSON.stringify(data) : ""}\n`;
-  fs.appendFileSync("/tmp/deploy-debug.log", line);
-}
 
 type Variables = {
   auth: AuthContext;
@@ -76,17 +70,6 @@ deployRoutes.post("/stream", ...streamMiddleware, async (c) => {
   const finalInstructions = deployType
     ? Deploy.deployTypeToInstructions(deployType)
     : (instructions ?? { website: true, googleAds: true });
-
-  debugLog("deploy stream request", {
-    deployType,
-    instructions,
-    finalInstructions,
-    projectId,
-    campaignId,
-    websiteId,
-    deployId,
-    stateOnly: body.stateOnly,
-  });
   log.info(
     { finalInstructions, deployType, hadExplicitInstructions: !!instructions },
     "Final deploy instructions"

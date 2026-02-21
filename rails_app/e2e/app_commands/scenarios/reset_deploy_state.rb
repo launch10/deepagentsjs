@@ -16,10 +16,10 @@ project.deploys.update_all(active: false)
 # Without this, the shasum from a previous deploy makes the graph think
 # "nothing changed" and exclude Google Ads tasks entirely.
 campaign = project.campaigns.first
-campaign.campaign_deploys.destroy_all if campaign
+campaign&.campaign_deploys&.destroy_all
 
 website = project.website
-website.deploys.destroy_all if website
+website&.deploys&.destroy_all
 
 # Deactivate all deploy chats for this project
 Chat.where(project_id: project.id, chat_type: "deploy").update_all(active: false)

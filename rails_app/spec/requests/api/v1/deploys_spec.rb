@@ -339,6 +339,68 @@ RSpec.describe "Deploys API", type: :request do
     end
   end
 
+  describe "PATCH /api/v1/deploys/:id" do
+    let!(:deploy) { create(:deploy, :website_only, project: project, status: "running") }
+
+    it "updates deploy status" do
+      patch "/api/v1/deploys/#{deploy.id}",
+        params: { status: "completed" },
+        headers: auth_headers
+
+      expect(response).to have_http_status(:ok)
+      expect(deploy.reload.status).to eq("completed")
+    end
+
+    context "when setting is_live without completed website deploy" do
+      it "returns 422" do
+        patch "/api/v1/deploys/#{deploy.id}",
+          params: { is_live: true },
+          headers: auth_headers
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        json = JSON.parse(response.body)
+        expect(json["errors"]).to include("Cannot set is_live without a completed website deploy")
+      end
+    end
+
+    context "when setting is_live with completed website deploy" do
+      include WebsiteFileHelpers
+
+      let(:website) do
+        site = create(:website, project: project)
+        site.website_files.create!(minimal_website_files)
+        site.snapshot
+        site
+      end
+      let(:website_deploy) { create(:website_deploy, :completed, website: website) }
+
+      before do
+        deploy.update_column(:website_deploy_id, website_deploy.id)
+      end
+
+      it "allows setting is_live to true" do
+        patch "/api/v1/deploys/#{deploy.id}",
+          params: { is_live: true, status: "completed" },
+          headers: auth_headers
+
+        expect(response).to have_http_status(:ok)
+        expect(deploy.reload.is_live).to be true
+      end
+    end
+
+    context "when is_live is not being set" do
+      it "allows other updates normally" do
+        patch "/api/v1/deploys/#{deploy.id}",
+          params: { status: "completed", current_step: "done" },
+          headers: auth_headers
+
+        expect(response).to have_http_status(:ok)
+        expect(deploy.reload.status).to eq("completed")
+        expect(deploy.current_step).to eq("done")
+      end
+    end
+  end
+
   describe "auto-trigger semantic: 'has user EVER deployed with this type?'" do
     it "website-only completed deploy does not satisfy campaign check" do
       create(:deploy, :website_only, project: project, status: "completed")

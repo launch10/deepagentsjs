@@ -12,7 +12,7 @@ import {
   useDeleteSocialLink,
   socialLinksKeys,
 } from "@api/socialLinks.hooks";
-import { subscribeToAgentIntent } from "@context/AgentIntentContext";
+import { subscribeToAgentIntent } from "@hooks/useAgentIntent";
 
 interface SocialLinksSectionProps {
   className?: string;
@@ -33,7 +33,8 @@ const PLATFORM_PATTERNS: Record<LocalSocialPlatform, { pattern: RegExp; hint: st
     hint: "@username or full URL",
   },
   youtube: {
-    pattern: /^(@?[a-zA-Z0-9_-]+|(https?:\/\/)?(www\.)?youtube\.com\/(channel\/|c\/|user\/|@)?[a-zA-Z0-9_-]+\/?)?$/i,
+    pattern:
+      /^(@?[a-zA-Z0-9_-]+|(https?:\/\/)?(www\.)?youtube\.com\/(channel\/|c\/|user\/|@)?[a-zA-Z0-9_-]+\/?)?$/i,
     hint: "@channel or full URL",
   },
 };
@@ -63,9 +64,7 @@ const SOCIAL_PLATFORMS: { platform: LocalSocialPlatform; placeholder: string }[]
 ];
 
 /** Convert API response to form data */
-function linksToFormData(
-  links: Array<{ platform?: string; url?: string }>
-): SocialLinksFormData {
+function linksToFormData(links: Array<{ platform?: string; url?: string }>): SocialLinksFormData {
   const result: SocialLinksFormData = { twitter: "", instagram: "", youtube: "" };
   links.forEach((link) => {
     const platform = link.platform as LocalSocialPlatform | undefined;
@@ -77,12 +76,6 @@ function linksToFormData(
 }
 
 export function SocialLinksSection({ className }: SocialLinksSectionProps) {
-  const renderCount = useRef(0);
-  renderCount.current += 1;
-  if (process.env.NODE_ENV === "development") {
-    console.log(`[SocialLinksSection] render #${renderCount.current}`);
-  }
-
   // Fetch existing social links from API
   const { data: existingLinks = [], isLoading, isSuccess } = useSocialLinks();
 

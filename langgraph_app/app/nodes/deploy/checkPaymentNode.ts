@@ -152,7 +152,7 @@ export const checkPaymentTaskRunner: TaskRunner = {
     return isTaskDone(state, "VerifyingGoogle");
   },
 
-  shouldSkip: (state: DeployGraphState) => {
+  shouldSkip: async (state: DeployGraphState) => {
     // Skip if not deploying Google Ads
     if (!Deploy.shouldDeployGoogleAds(state)) {
       return true;
@@ -165,6 +165,9 @@ export const checkPaymentTaskRunner: TaskRunner = {
 
     // Task has result confirming payment
     if (task?.result?.has_payment === true) return true;
+
+    // Task exists but hasn't run yet — check if payment is already verified
+    if (task?.status === "pending" && (await isPaymentVerified(state))) return true;
 
     return false;
   },

@@ -234,8 +234,11 @@ async function runTaskExecutor(
     name: t.name,
     status: t.status,
     hasResult: !!t.result,
+    result: t.result,
     hasJobId: !!t.jobId,
+    jobId: t.jobId,
   }));
+
   log.info(
     {
       deployId: state.deployId,
@@ -427,27 +430,32 @@ async function runTaskExecutor(
 
     if (anyTaskFailed(partialGraphState)) {
       const failedTask = getFailedTask(partialGraphState);
-      const runner = getTaskRunner(failedTask?.name as Deploy.TaskName);
+      const failedRunner = failedTask
+        ? getTaskRunner(failedTask.name as Deploy.TaskName)
+        : undefined;
       log.error(
         {
           taskName: nextTask.taskName,
           failedTask: failedTask?.name,
           error: failedTask?.error,
           durationMs,
-          recoverable: !!runner?.isFailureRecoverable,
+          recoverable: !!failedRunner?.isFailureRecoverable,
         },
         "Task runner returned failure"
       );
-      if (!runner?.isFailureRecoverable) {
+      if (!failedRunner?.isFailureRecoverable) {
         const errorMsg = failedTask?.error ?? "Task failed";
-        const { supportTicket } = await syncDeployStatus(state, "failed", errorMsg);
-        const failedTaskUpdate = { ...failedTask, status: "failed" } as Deploy.Task;
+        const failedNode = failedTask?.name ?? "unknown";
+        const { supportTicket } = await syncDeployStatus(state, "failed", errorMsg, failedNode);
+        const failedTaskUpdate = failedTask
+          ? ({ ...failedTask, status: "failed" } as Deploy.Task)
+          : ({ name: nextTask.taskName, status: "failed", error: errorMsg } as Deploy.Task);
         return {
           ...withPhases(state, [failedTaskUpdate]),
           status: "failed",
           error: {
             message: errorMsg,
-            node: failedTask?.name ?? "unknown",
+            node: failedNode,
           },
           supportTicket,
         };

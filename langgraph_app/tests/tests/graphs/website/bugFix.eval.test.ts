@@ -121,7 +121,7 @@ const BUG_FIX_CASES: BugFixTestCase[] = [
     targetFile: "IndexPage",
     injectBug: (content: string) => {
       // Duplicate the <Hero /> render
-      return content.replace(/(<Hero\s*\/>)/, `$1\n        <Hero />`);
+      return content.replace(/(<Hero\s*\/?>)/, `$1\n        <Hero />`);
     },
     errorDescription:
       'Warning: Each child in a list should have a unique "key" prop.\n\nMultiple <Hero /> components rendered in IndexPage.tsx. This causes a duplicate key warning and visual duplication on the page.',

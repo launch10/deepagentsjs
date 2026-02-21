@@ -275,8 +275,18 @@ RSpec.describe Deploy, type: :model do
       deploy = create(:deploy, project: project, status: "running")
       job_run = create(:job_run, deploy: deploy, account: account, status: "pending", job_class: "WebsiteDeploy")
 
-      # Force any job_run's fail! to raise, simulating a mid-transaction error
-      allow_any_instance_of(JobRun).to receive(:fail!).and_raise(StandardError, "simulated failure")
+      # Stub update! to succeed once (for the deploy status update) then raise
+      call_count = 0
+      allow(deploy).to receive(:update!).and_wrap_original do |method, *args|
+        call_count += 1
+        raise StandardError, "simulated failure" if call_count > 1
+        method.call(*args)
+      end
+
+      # Force a second update! call by giving the deploy a website_deploy in building state
+      fake_wd = double("WebsiteDeploy", status: "building")
+      allow(fake_wd).to receive(:update!).and_raise(StandardError, "simulated failure")
+      allow(deploy).to receive(:website_deploy).and_return(fake_wd)
 
       expect { deploy.cancel_in_progress! }.to raise_error(StandardError, "simulated failure")
 

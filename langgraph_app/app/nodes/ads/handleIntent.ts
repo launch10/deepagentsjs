@@ -1,10 +1,6 @@
 import { NodeMiddleware } from "@middleware";
 import type { AdsGraphState } from "@state";
-import {
-  isSwitchPageIntent,
-  isRefreshAssetsIntent,
-  type Ads,
-} from "@types";
+import { isSwitchPageIntent, isRefreshAssetsIntent, type Ads } from "@types";
 
 /**
  * handleIntent — first node in the ads graph.
@@ -21,6 +17,7 @@ export const handleIntentNode = NodeMiddleware.use(
   async (state: AdsGraphState): Promise<Partial<AdsGraphState>> => {
     const updates: Partial<AdsGraphState> = {
       intent: null, // Always clear after processing
+      error: undefined, // Clear stale errors from previous turns (was in old prepareNode)
     };
 
     const intent = state.intent;

@@ -70,6 +70,3 @@ export const brandIntent = (type: BrandIntentType): BrandAgentIntent => ({
   payload: {},
   createdAt: new Date().toISOString(),
 });
-
-// Backwards-compatible alias
-export const brandUpdated = brandIntent;

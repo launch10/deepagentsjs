@@ -43,7 +43,18 @@ export const jobRunCallback = async (payload: JobRunCallbackPayload): Promise<bo
   const task = tasks.find((t) => t.jobId === payload.job_run_id);
 
   if (!task) {
-    log.error({ jobId: payload.job_run_id }, "Task not found");
+    log.error(
+      {
+        jobId: payload.job_run_id,
+        jobIdType: typeof payload.job_run_id,
+        availableJobIds: tasks.map((t) => ({
+          name: t.name,
+          jobId: t.jobId,
+          jobIdType: typeof t.jobId,
+        })),
+      },
+      "Task not found by jobId"
+    );
     return false;
   }
 
@@ -81,7 +92,21 @@ export const jobRunCallback = async (payload: JobRunCallbackPayload): Promise<bo
     { tasks: updatedTasks }
   );
 
-  log.info({ jobRunId: payload.job_run_id, taskName: task.name }, "State updated successfully");
+  // Verify the state was actually persisted
+  const verifyState = await graph.getState({
+    configurable: { thread_id: payload.thread_id },
+  });
+  const verifyTask = verifyState?.values?.tasks?.find((t: Task.Task) => t.name === task.name);
+  log.info(
+    {
+      jobRunId: payload.job_run_id,
+      taskName: task.name,
+      verified:
+        verifyTask?.status === "running" &&
+        !!verifyTask?.result === (payload.status === "completed"),
+    },
+    "State updated successfully"
+  );
   return true;
 };
 

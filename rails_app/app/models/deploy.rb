@@ -66,7 +66,7 @@ class Deploy < ApplicationRecord
   after_create :create_deploy_chat!
   before_destroy :deactivate!
   after_save :refresh_project_status, if: :saved_change_to_is_live?
-  after_save :auto_create_support_ticket,
+  after_save_commit :auto_create_support_ticket,
     if: -> { saved_change_to_status? && status == "failed" && needs_support }
   before_save :stamp_finished_at,
     if: -> { status_changed? && status.in?(%w[completed failed]) }
@@ -135,9 +135,11 @@ class Deploy < ApplicationRecord
       update!(status: "failed", stacktrace: "Superseded by newer deploy")
 
       # Fail all pending/running job_runs so Sidekiq retries stop notifying Langgraph
-      job_runs.where(status: %w[pending running]).find_each do |jr|
-        jr.fail!("Deploy superseded by newer deploy")
-      end
+      job_runs.where(status: %w[pending running]).update_all(
+        status: "failed",
+        error_message: "Deploy superseded by newer deploy",
+        completed_at: Time.current
+      )
 
       # Skip the website_deploy if it hasn't completed
       if website_deploy&.status&.in?(%w[pending building uploading])

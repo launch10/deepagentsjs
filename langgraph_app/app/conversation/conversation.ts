@@ -536,6 +536,7 @@ export class Conversation {
   static annotateImageUrls(messages: BaseMessage[]): BaseMessage[] {
     return messages.map((msg) => {
       if (msg._getType() !== "human") return msg;
+      if (isContextMessage(msg)) return msg; // Skip context messages (image events etc.)
       if (!Array.isArray(msg.content)) return msg;
 
       // Check if any image_url blocks exist

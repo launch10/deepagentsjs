@@ -136,7 +136,7 @@ describe("Bugfix workflow", () => {
       const prompt = await workflowPrompt({ isCreateFlow: true });
 
       expect(prompt).toContain("Greet");
-      expect(prompt).toContain("Divide and conquer");
+      expect(prompt).toContain("Build Everything Yourself, Sequentially");
       expect(prompt).not.toContain("Diagnose");
     });
 

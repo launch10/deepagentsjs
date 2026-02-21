@@ -18,10 +18,7 @@ import type { AgentIntent } from "@shared";
  * });
  * ```
  */
-export function subscribeToAgentIntent(
-  type: string,
-  handler: (intent: AgentIntent) => void,
-) {
+export function subscribeToAgentIntent(type: string, handler: (intent: AgentIntent) => void) {
   const chat = useChatFromContext();
   const processor = AgentIntentProcessor.forChat(chat);
 

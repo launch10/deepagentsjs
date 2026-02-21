@@ -63,6 +63,8 @@ commands:
 
 jobs:
   langgraph-tests:
+    resource_class: large
+    parallelism: 3
     docker:
       - image: cimg/node:22.12.0
       - image: pgvector/pgvector:pg16
@@ -88,6 +90,10 @@ jobs:
             cd ~/project
             git submodule sync
             git submodule update --init packages/langgraph-ai-sdk packages/deepagentsjs
+      - restore_cache:
+          keys:
+            - git-lfs-v1-{{ .Branch }}
+            - git-lfs-v1-
       - run:
           name: Install Git LFS and pull files
           command: |
@@ -97,6 +103,10 @@ jobs:
             git lfs install
             cd ~/project
             git lfs pull
+      - save_cache:
+          key: git-lfs-v1-{{ .Branch }}-{{ epoch }}
+          paths:
+            - ~/project/.git/lfs
       - run:
           name: Install Ruby in primary container
           command: |
@@ -146,10 +156,20 @@ jobs:
             pnpm run build:packages
       - run:
           name: Run typecheck
-          command: pnpm run typecheck
+          command: |
+            if [ "$CIRCLE_NODE_INDEX" = "0" ]; then
+              pnpm run typecheck
+            else
+              echo "Skipping typecheck (runs on shard 0 only)"
+            fi
       - run:
           name: Run lint
-          command: pnpm run lint
+          command: |
+            if [ "$CIRCLE_NODE_INDEX" = "0" ]; then
+              pnpm run lint
+            else
+              echo "Skipping lint (runs on shard 0 only)"
+            fi
       - run:
           name: Install Rails dependencies
           command: |
@@ -190,9 +210,13 @@ jobs:
             <<: *langgraph-env
       - run:
           name: Run tests
-          command: pnpm run test
+          command: |
+            SHARD_INDEX=$((CIRCLE_NODE_INDEX + 1))
+            pnpm run test -- --shard=$SHARD_INDEX/$CIRCLE_NODE_TOTAL --reporter=default --reporter=junit --outputFile=test-results/results.xml
           environment:
             <<: *langgraph-env
+      - store_test_results:
+          path: test-results
 
   rails-tests:
     docker:

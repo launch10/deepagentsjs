@@ -49,7 +49,7 @@ class CampaignDeploy < ApplicationRecord
     lock_key = "campaign_deploy:#{campaign.id}"
 
     # Lock only for check + create; release before running deploy
-    campaign_deploy = with_lock(lock_key, wait_timeout: 0.5, stale_timeout: 30.seconds.to_i) do
+    campaign_deploy = with_lock(lock_key, wait_timeout: 5.0, stale_timeout: 30.seconds.to_i) do
       if campaign.campaign_deploys.in_progress.exists?
         raise DeployInProgressError, "A deploy is already in progress for campaign #{campaign.id}"
       end

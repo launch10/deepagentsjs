@@ -8,6 +8,7 @@ import { ProjectsPagination } from "@components/projects/ProjectsPagination";
 import type { DeployProps } from "@hooks/useDeployChat";
 import { Skeleton } from "@components/ui/skeleton";
 import { useDeploys, useDeployService, type DeployRecord } from "@api/deploys.hooks";
+import { toast } from "sonner";
 
 function formatTimestamp(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-US", {
@@ -43,7 +44,7 @@ function DeployHistoryItem({ deploy }: { deploy: DeployRecord }) {
       window.location.reload();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Rollback failed";
-      alert(message);
+      toast.error(message);
       setRolling(false);
     }
   }, [deploy.id, service]);

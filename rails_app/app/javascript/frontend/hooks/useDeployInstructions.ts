@@ -8,6 +8,6 @@ export function useDeployInstructions(): Deploy.Instructions {
 
 export function useDeployType(): Deploy.DeployType {
   const { url } = usePage();
-  const isWebsiteOnly = url.includes("/website/deploy");
-  return isWebsiteOnly ? "website" : "campaign";
+  const pathname = new URL(url, window.location.origin).pathname;
+  return pathname.includes("/website/deploy") ? "website" : "campaign";
 }

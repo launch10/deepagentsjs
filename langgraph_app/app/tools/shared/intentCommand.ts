@@ -15,7 +15,7 @@ import type { AgentIntent } from "@types";
  *     toolCallId: config?.toolCall.id,
  *     toolName: "set_logo",
  *     content: { success: true, message: "Logo set" },
- *     intents: [brandUpdated("logo_set")],
+ *     intents: [brandIntent("logo_set")],
  *   });
  */
 export function intentCommand(opts: {
