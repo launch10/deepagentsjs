@@ -5,105 +5,88 @@ export function Features() {
     {
       icon: Globe,
       title: "Smart timezone detection",
-      description: "Automatically detects and converts timezones. No more mental math or conversion tools."
+      description: "Automatically converts times to each participant's local timezone. No more mental math or conversion mistakes.",
     },
     {
       icon: Zap,
-      title: "Instant suggestions",
-      description: "Get optimal meeting times in seconds, not hours. Our AI finds slots that work for everyone."
+      title: "Instant availability sync",
+      description: "Real-time calendar integration means your availability is always up-to-date across all platforms.",
     },
     {
       icon: Users,
-      title: "Team availability sync",
-      description: "See everyone's availability in one view. No more asking \"are you free?\""
+      title: "Team scheduling",
+      description: "Find times that work for entire teams, not just individuals. Perfect for cross-functional meetings.",
     },
     {
       icon: Calendar,
-      title: "Calendar integration",
-      description: "Works with Google Calendar, Outlook, Apple Calendar, and more. Two-way sync included."
+      title: "Buffer time protection",
+      description: "Automatically add buffer time between meetings so you're not jumping from call to call without a break.",
     },
     {
       icon: Shield,
-      title: "Privacy-first design",
-      description: "We only see when you're busy or free—never your meeting details. Your privacy matters."
+      title: "Privacy controls",
+      description: "Share availability without exposing your entire calendar. You control what others see.",
     },
     {
       icon: Bell,
-      title: "Smart notifications",
-      description: "Get reminded in your timezone. Never miss a meeting because you forgot to convert the time."
-    }
+      title: "Smart reminders",
+      description: "Automated reminders sent at the right time in each participant's timezone. Never miss a meeting again.",
+    },
   ];
 
   return (
-    <section id="features" className="bg-background py-16 md:py-20 lg:py-24">
+    <section id="features" className="py-20 md:py-28 lg:py-32 bg-background">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="max-w-3xl mx-auto text-center mb-12 md:mb-16">
-          <div className="inline-block px-4 py-2 bg-secondary/10 text-secondary rounded-full text-sm font-semibold mb-6">
-            Features
-          </div>
-          <h2 className="font-['Outfit'] font-bold text-4xl md:text-5xl lg:text-6xl text-foreground mb-6">
+        <div className="max-w-3xl mx-auto text-center mb-16">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
             Everything you need to{" "}
-            <span className="text-primary">schedule smarter</span>
+            <span className="text-primary">coordinate globally</span>
           </h2>
           <p className="text-xl text-muted-foreground leading-relaxed">
-            Built for distributed teams who are tired of wasting time on coordination.
+            Built specifically for distributed teams who are tired of timezone chaos and calendar conflicts.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto">
-          {features.map((feature, index) => {
-            const Icon = feature.icon;
-            return (
-              <div 
-                key={index}
-                className="group bg-card border border-border rounded-2xl p-6 md:p-8 hover:shadow-2xl hover:border-primary/30 transition-all duration-300 hover:-translate-y-2"
-              >
-                <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-primary/10 text-primary mb-5 group-hover:bg-primary group-hover:text-primary-foreground transition-all group-hover:scale-110">
-                  <Icon className="w-7 h-7" />
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10 max-w-7xl mx-auto">
+          {features.map((feature, index) => (
+            <div
+              key={index}
+              className="group p-8 bg-card rounded-2xl border border-border shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-2"
+            >
+              <div className="mb-6">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                  <feature.icon className="w-7 h-7 text-primary-foreground" />
                 </div>
-                <h3 className="font-['Outfit'] font-semibold text-xl md:text-2xl text-card-foreground mb-3">
-                  {feature.title}
-                </h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  {feature.description}
-                </p>
               </div>
-            );
-          })}
+              
+              <h3 className="text-xl font-bold text-card-foreground mb-3">
+                {feature.title}
+              </h3>
+              
+              <p className="text-muted-foreground leading-relaxed">
+                {feature.description}
+              </p>
+            </div>
+          ))}
         </div>
 
-        {/* Feature highlight box */}
-        <div className="max-w-4xl mx-auto mt-16">
-          <div className="bg-gradient-to-br from-primary to-primary/80 rounded-3xl p-8 md:p-12 text-center shadow-2xl relative overflow-hidden">
-            {/* Decorative elements */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-secondary/20 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-accent/20 rounded-full blur-3xl"></div>
-            
-            <div className="relative z-10">
-              <h3 className="font-['Outfit'] font-bold text-3xl md:text-4xl text-primary-foreground mb-4">
-                Works with your existing tools
-              </h3>
-              <p className="text-xl text-primary-foreground/90 mb-8 max-w-2xl mx-auto">
-                No need to change your workflow. TimeSync integrates seamlessly with the tools you already use every day.
-              </p>
-              <div className="flex flex-wrap justify-center gap-4 md:gap-6">
-                <div className="px-6 py-3 bg-background/95 backdrop-blur-sm rounded-lg font-semibold text-foreground shadow-lg">
-                  Google Calendar
-                </div>
-                <div className="px-6 py-3 bg-background/95 backdrop-blur-sm rounded-lg font-semibold text-foreground shadow-lg">
-                  Outlook
-                </div>
-                <div className="px-6 py-3 bg-background/95 backdrop-blur-sm rounded-lg font-semibold text-foreground shadow-lg">
-                  Slack
-                </div>
-                <div className="px-6 py-3 bg-background/95 backdrop-blur-sm rounded-lg font-semibold text-foreground shadow-lg">
-                  Microsoft Teams
-                </div>
-                <div className="px-6 py-3 bg-background/95 backdrop-blur-sm rounded-lg font-semibold text-foreground shadow-lg">
-                  Zoom
-                </div>
-              </div>
-            </div>
+        {/* Bottom stats */}
+        <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-8 max-w-5xl mx-auto">
+          <div className="text-center">
+            <div className="text-4xl md:text-5xl font-bold text-primary mb-2">80%</div>
+            <div className="text-sm text-muted-foreground">Less time scheduling</div>
+          </div>
+          <div className="text-center">
+            <div className="text-4xl md:text-5xl font-bold text-primary mb-2">2min</div>
+            <div className="text-sm text-muted-foreground">Average setup time</div>
+          </div>
+          <div className="text-center">
+            <div className="text-4xl md:text-5xl font-bold text-primary mb-2">24/7</div>
+            <div className="text-sm text-muted-foreground">Automatic syncing</div>
+          </div>
+          <div className="text-center">
+            <div className="text-4xl md:text-5xl font-bold text-primary mb-2">100+</div>
+            <div className="text-sm text-muted-foreground">Timezones supported</div>
           </div>
         </div>
       </div>

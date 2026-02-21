@@ -49,9 +49,9 @@ describe("Conversation context message ordering", () => {
   describe("mixed flow: auto-init + user feedback + refresh + page switches", () => {
     it("preserves context messages interspersed with AI responses", () => {
       // This is the exact scenario from the LangSmith screenshot.
-      // Storage order: CTX comes before HUMAN — startConversation uses
-      // RemoveMessage to lift the HUMAN and re-add it after context,
-      // so the reducer stores [CTX, HUMAN, AI] in the correct order.
+      // Storage order: CTX comes before HUMAN — startConversation returns
+      // [ctx, human, ai] and the reducer's reconcileOrdering auto-repositions
+      // the existing human, storing [CTX, HUMAN, AI] in the correct order.
       const messages = [
         ctx("navigated to content"), // auto-init content
         new AIMessage("here are your headlines"), // content response

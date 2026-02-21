@@ -1,85 +1,90 @@
-import { Star, TrendingUp } from "lucide-react";
+import { Star, Quote } from "lucide-react";
 
 export function SocialProof() {
   const testimonials = [
     {
-      quote: "TimeSync saved our team 15 hours per week. We used to spend entire afternoons just trying to coordinate meetings across our US, UK, and Singapore offices. Now it's instant.",
+      quote: "TimeSync saved our team 15 hours per week. No more endless Slack threads about 'when works for everyone.' It just works.",
       author: "Sarah Chen",
-      role: "VP of Operations",
+      role: "VP of Engineering",
       company: "TechCorp",
-      rating: 5
+      rating: 5,
     },
     {
-      quote: "As a project manager juggling 4 different teams across 6 timezones, this tool is a lifesaver. I can't imagine going back to the old way of endless Slack threads.",
+      quote: "Managing meetings across SF, London, and Singapore used to be a nightmare. Now it's automatic. This tool is a game-changer for distributed teams.",
       author: "Marcus Rodriguez",
-      role: "Senior Project Manager",
+      role: "Project Manager",
       company: "Global Innovations",
-      rating: 5
+      rating: 5,
     },
     {
-      quote: "The timezone detection is brilliant. No more accidentally scheduling 3am meetings for our Tokyo team. Everyone's happy, and we're actually more productive.",
-      author: "Emma Thompson",
-      role: "Head of Remote Operations",
-      company: "DistributedCo",
-      rating: 5
-    }
+      quote: "We tried every scheduling tool out there. TimeSync is the only one that actually understands how distributed teams work. The timezone handling is flawless.",
+      author: "Emily Watson",
+      role: "Operations Director",
+      company: "RemoteFirst Co",
+      rating: 5,
+    },
   ];
 
   const stats = [
     { value: "2,000+", label: "Distributed teams" },
-    { value: "80%", label: "Less coordination time" },
-    { value: "15hrs", label: "Saved per week" },
-    { value: "50K+", label: "Meetings scheduled" }
+    { value: "80%", label: "Time saved on scheduling" },
+    { value: "15hrs", label: "Saved per team weekly" },
+    { value: "4.9/5", label: "Average rating" },
   ];
 
   return (
-    <section id="social-proof" className="bg-muted py-16 md:py-20 lg:py-24">
+    <section id="social-proof" className="py-20 md:py-28 lg:py-32 bg-muted">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="max-w-3xl mx-auto text-center mb-12 md:mb-16">
-          <div className="inline-block px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-semibold mb-6">
-            Loved by Teams Worldwide
+        {/* Stats bar */}
+        <div className="max-w-5xl mx-auto mb-20">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 p-8 bg-card rounded-2xl shadow-lg border border-border">
+            {stats.map((stat, index) => (
+              <div key={index} className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-primary mb-2">
+                  {stat.value}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {stat.label}
+                </div>
+              </div>
+            ))}
           </div>
-          <h2 className="font-['Outfit'] font-bold text-4xl md:text-5xl lg:text-6xl text-foreground mb-6">
-            Join 2,000+ teams who've{" "}
-            <span className="text-secondary">ditched the chaos</span>
+        </div>
+
+        {/* Section header */}
+        <div className="max-w-3xl mx-auto text-center mb-16">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
+            Loved by teams{" "}
+            <span className="text-secondary">around the world</span>
           </h2>
           <p className="text-xl text-muted-foreground leading-relaxed">
-            Distributed teams around the world trust TimeSync to handle their scheduling.
+            Join thousands of distributed teams who've eliminated scheduling chaos.
           </p>
         </div>
 
-        {/* Stats bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 max-w-5xl mx-auto mb-16">
-          {stats.map((stat, index) => (
-            <div key={index} className="text-center">
-              <div className="font-['Outfit'] font-bold text-4xl md:text-5xl text-primary mb-2">
-                {stat.value}
-              </div>
-              <div className="text-sm md:text-base text-muted-foreground font-medium">
-                {stat.label}
-              </div>
-            </div>
-          ))}
-        </div>
-
         {/* Testimonials */}
-        <div className="grid md:grid-cols-3 gap-6 md:gap-8 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-8 max-w-7xl mx-auto">
           {testimonials.map((testimonial, index) => (
-            <div 
+            <div
               key={index}
-              className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 flex flex-col"
+              className="group bg-card rounded-2xl p-8 shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-border relative"
             >
-              {/* Star rating */}
-              <div className="flex gap-1 mb-4">
+              {/* Quote icon */}
+              <div className="absolute -top-4 left-8 w-12 h-12 bg-secondary rounded-xl flex items-center justify-center shadow-lg">
+                <Quote className="w-6 h-6 text-secondary-foreground" />
+              </div>
+
+              {/* Rating */}
+              <div className="flex gap-1 mb-4 mt-4">
                 {[...Array(testimonial.rating)].map((_, i) => (
                   <Star key={i} className="w-5 h-5 fill-secondary text-secondary" />
                 ))}
               </div>
 
               {/* Quote */}
-              <blockquote className="text-card-foreground leading-relaxed mb-6 flex-grow">
+              <p className="text-card-foreground leading-relaxed mb-6 text-lg">
                 "{testimonial.quote}"
-              </blockquote>
+              </p>
 
               {/* Author */}
               <div className="border-t border-border pt-4">
@@ -97,18 +102,15 @@ export function SocialProof() {
           ))}
         </div>
 
-        {/* Bottom highlight */}
-        <div className="max-w-4xl mx-auto mt-16">
-          <div className="bg-card border-2 border-secondary/30 rounded-2xl p-8 md:p-10 text-center shadow-xl">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-secondary/10 text-secondary mb-6">
-              <TrendingUp className="w-8 h-8" />
-            </div>
-            <h3 className="font-['Outfit'] font-bold text-2xl md:text-3xl text-card-foreground mb-4">
-              Companies save an average of 15 hours per week
-            </h3>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              That's nearly 2 full workdays reclaimed from calendar coordination. Imagine what your team could do with that time.
-            </p>
+        {/* Trust badges */}
+        <div className="mt-20 text-center">
+          <p className="text-sm text-muted-foreground mb-6">
+            TRUSTED BY LEADING COMPANIES
+          </p>
+          <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12 opacity-60">
+            <div className="text-2xl font-bold text-foreground">TechCorp</div>
+            <div className="text-2xl font-bold text-foreground">Global Innovations</div>
+            <div className="text-2xl font-bold text-foreground">RemoteFirst Co</div>
           </div>
         </div>
       </div>

@@ -19,10 +19,6 @@ export default {
 			}
 		},
 		extend: {
-			fontFamily: {
-				sans: ['General Sans', 'system-ui', 'sans-serif'],
-				display: ['Outfit', 'system-ui', 'sans-serif'],
-			},
 			colors: {
 				// shadcn standard
 				background: 'hsl(var(--background))',

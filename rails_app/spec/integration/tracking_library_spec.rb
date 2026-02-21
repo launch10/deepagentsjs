@@ -781,8 +781,8 @@ RSpec.describe 'Tracking Library', type: :integration do
             method.call(path, content)
           end
 
-          allow(deploy).to receive(:system) do |cmd|
-            call_order << :pnpm_build if cmd.include?('build')
+          allow(deploy).to receive(:system) do |*args|
+            call_order << :pnpm_build if args.any? { |a| a.to_s.include?('build') }
             true
           end
 

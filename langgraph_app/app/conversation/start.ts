@@ -77,7 +77,20 @@ export async function startConversation(
   // 5. Build return messages: context + agent new messages
   // Context messages aren't in state.messages yet — include them so
   // the reducer appends them in the correct position.
-  let returnMessages: BaseMessage[] = [...allContext, ...agentResult.messages];
+  // When the last real message is a HUMAN with an ID and context exists,
+  // include it after context so the reducer's reconcileOrdering detects
+  // the reposition and stores [CTX, HUMAN, AI] instead of [HUMAN, CTX, AI].
+  // (reconcileOrdering in base.ts auto-creates RemoveMessages for existing
+  // messages that appear after new messages — no explicit RemoveMessage needed.)
+  const conv = new Conversation(options.messages);
+  const lastReal = conv.lastNonContextMessage();
+
+  let returnMessages: BaseMessage[];
+  if (lastReal && lastReal._getType() === "human" && lastReal.id && allContext.length > 0) {
+    returnMessages = [...allContext, lastReal, ...agentResult.messages];
+  } else {
+    returnMessages = [...allContext, ...agentResult.messages];
+  }
 
   // 6. Compact if enabled
   if (options.compact) {

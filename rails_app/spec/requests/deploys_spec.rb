@@ -351,6 +351,9 @@ RSpec.describe "Deploys API", type: :request do
         let(:Authorization) { auth_headers["Authorization"] }
         let(:"X-Signature") { auth_headers["X-Signature"] }
         let(:"X-Timestamp") { auth_headers["X-Timestamp"] }
+        let!(:website) { create(:website, project: project) }
+        let!(:website_deploy) { create(:website_deploy, :completed, website: website) }
+        let!(:deploy) { create(:deploy, project: project, status: "pending", website_deploy: website_deploy) }
         let(:id) { deploy.id }
         let(:deploy_params) { { status: "completed", is_live: true } }
 

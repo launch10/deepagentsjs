@@ -107,7 +107,7 @@ RSpec.describe CampaignDeploy, type: :model do
       it 'acquires a distributed lock with the campaign id' do
         expect(Suo::Client::Redis).to receive(:new).with(
           "campaign_deploy:#{campaign.id}",
-          hash_including(acquisition_lock: 0.5, stale_lock_expiration: 30.seconds.to_i)
+          hash_including(acquisition_lock: 5.0, stale_lock_expiration: 30.seconds.to_i)
         ).and_return(mock_suo_client)
 
         CampaignDeploy.deploy(campaign, async: false)

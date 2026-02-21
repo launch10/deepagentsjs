@@ -31,6 +31,18 @@ vi.mock("@services", async () => {
     GoogleAPIService: vi.fn(),
     JobRunAPIService,
     CampaignAPIService,
+    // Mock ErrorExporter to skip real pnpm install + Vite dev server + Playwright.
+    // These tests don't test RuntimeValidation — they test deploy flow/routing.
+    ErrorExporter: vi.fn().mockImplementation(() => ({
+      run: vi.fn().mockResolvedValue({
+        browser: [],
+        server: [],
+        viteOverlay: [],
+        hasErrors: () => false,
+        getFormattedReport: () => "No errors detected.",
+      }),
+      [Symbol.asyncDispose]: vi.fn().mockResolvedValue(undefined),
+    })),
   };
 });
 
@@ -341,7 +353,10 @@ describe.sequential("Deploy Graph Tests", () => {
               campaignId,
 
               instructions: { googleAds: true },
-              tasks: Deploy.withTasks({ googleAds: true }, { ConnectingGoogle: "completed" }),
+              tasks: Deploy.withTasks(
+                { googleAds: true },
+                { ConnectingGoogle: "completed", VerifyingGoogle: "pending" }
+              ),
               chatId: 1,
             });
 

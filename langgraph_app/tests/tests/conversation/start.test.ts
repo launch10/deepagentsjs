@@ -35,9 +35,32 @@ function lastIndexOfTag(msgs: BaseMessage[], tag: string): number {
   return -1;
 }
 
-/** Simulate the LangGraph reducer: RemoveMessages remove by id, others append. */
+/**
+ * Simulate the LangGraph reducer including reconcileOrdering.
+ *
+ * reconcileOrdering detects existing messages that appear after new messages
+ * in the update and removes them so they get re-added in the new position.
+ * This mirrors the real timestampedMessagesReducer in base.ts.
+ */
 function simulateReducer(state: BaseMessage[], updates: BaseMessage[]): BaseMessage[] {
-  let result = [...state];
+  const stateIds = new Set(state.map((m) => m.id).filter((id): id is string => !!id));
+
+  // Detect messages needing repositioning (reconcileOrdering logic)
+  let sawNew = false;
+  const toReposition = new Set<string>();
+  for (const msg of updates) {
+    if (msg instanceof RemoveMessage) continue;
+    if (!msg.id || !stateIds.has(msg.id)) {
+      sawNew = true;
+    } else if (sawNew) {
+      toReposition.add(msg.id);
+    }
+  }
+
+  // Remove repositioned messages from state
+  let result = state.filter((m) => !m.id || !toReposition.has(m.id));
+
+  // Apply updates: RemoveMessages remove, others append
   for (const msg of updates) {
     if (msg instanceof RemoveMessage) {
       result = result.filter((m) => m.id !== msg.id);
@@ -112,7 +135,7 @@ describe("startConversation", () => {
       expect(tags[tags.length - 1]).toBe("CTX");
     });
 
-    it("returns RemoveMessage + context + human + agent messages when last is human", async () => {
+    it("returns context + human + agent messages when last is human", async () => {
       const messages = [new HumanMessage({ content: "Build my page", id: "h1" })];
 
       const ctx = createContextMessage("[Build Errors] fix CSS");
@@ -127,13 +150,14 @@ describe("startConversation", () => {
         async () => ({ messages: [aiMsg] })
       );
 
-      // Return should be: [RemoveMessage(h1), context, HumanMessage(h1), aiMsg]
-      expect(result.messages.length).toBe(4);
-      expect(result.messages[0]).toBeInstanceOf(RemoveMessage);
-      expect((result.messages[0] as RemoveMessage).id).toBe("h1");
-      expect(isContextMessage(result.messages[1]!)).toBe(true);
-      expect(result.messages[2]!._getType()).toBe("human");
-      expect(result.messages[3]).toBe(aiMsg);
+      // Return should be: [context, HumanMessage(h1), aiMsg]
+      // The reducer's reconcileOrdering auto-creates RemoveMessage for h1
+      // since it appears after a new message (context).
+      expect(result.messages.length).toBe(3);
+      expect(isContextMessage(result.messages[0]!)).toBe(true);
+      expect(result.messages[1]!._getType()).toBe("human");
+      expect(result.messages[1]!.content).toBe("Build my page");
+      expect(result.messages[2]).toBe(aiMsg);
     });
 
     it("works with no context (empty extraContext)", async () => {
@@ -170,13 +194,12 @@ describe("startConversation", () => {
         async () => ({ messages: [aiMsg] })
       );
 
-      // Return should be: [RemoveMessage(h1), ctx1, ctx2, HumanMessage(h1), aiMsg]
-      expect(result.messages.length).toBe(5);
-      expect(result.messages[0]).toBeInstanceOf(RemoveMessage);
+      // Return should be: [ctx1, ctx2, HumanMessage(h1), aiMsg]
+      expect(result.messages.length).toBe(4);
+      expect(isContextMessage(result.messages[0]!)).toBe(true);
       expect(isContextMessage(result.messages[1]!)).toBe(true);
-      expect(isContextMessage(result.messages[2]!)).toBe(true);
-      expect(result.messages[3]!._getType()).toBe("human");
-      expect(result.messages[4]).toBe(aiMsg);
+      expect(result.messages[2]!._getType()).toBe("human");
+      expect(result.messages[3]).toBe(aiMsg);
     });
   });
 
@@ -478,10 +501,10 @@ describe("startConversation", () => {
         })
       );
 
-      // [RemoveMessage(h1), ctx, HumanMessage(h1), AIMessage]
-      expect(result.messages.length).toBe(4);
-      expect(result.messages[0]).toBeInstanceOf(RemoveMessage);
-      expect(isContextMessage(result.messages[1]!)).toBe(true);
+      // [ctx, HumanMessage(h1), AIMessage]
+      expect(result.messages.length).toBe(3);
+      expect(isContextMessage(result.messages[0]!)).toBe(true);
+      expect(result.messages[1]!._getType()).toBe("human");
     });
   });
 });

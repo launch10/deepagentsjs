@@ -11,7 +11,7 @@ export function IndexPage() {
   return (
     <div className="min-h-screen">
       <Header />
-      <main>
+      <main className="pt-16 md:pt-20">
         <Hero />
         <Problem />
         <HowItWorks />
