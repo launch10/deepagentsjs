@@ -66,7 +66,7 @@ jobs:
     resource_class: large
     parallelism: 3
     docker:
-      - image: cimg/node:24.1.0
+      - image: cimg/node:22.12.0
       - image: pgvector/pgvector:pg16
         environment:
           POSTGRES_USER: postgres
@@ -211,8 +211,12 @@ jobs:
       - run:
           name: Run tests
           command: |
-            SHARD_INDEX=$((CIRCLE_NODE_INDEX + 1))
-            pnpm run test -- --shard=$SHARD_INDEX/$CIRCLE_NODE_TOTAL --reporter=default --reporter=junit --outputFile=test-results/results.xml
+            # Use CircleCI native test splitting instead of vitest --shard
+            # (vitest --shard silently ignored when invoked via pnpm run -> bin/test -> pnpm vitest)
+            TEST_FILES=$(find tests/tests \( -name '*.test.ts' -o -name '*.spec.ts' \) | sort | circleci tests split --split-by=timings --timings-type=filename)
+            echo "Running $(echo "$TEST_FILES" | wc -l | tr -d ' ') test files on shard $CIRCLE_NODE_INDEX"
+            echo "$TEST_FILES"
+            pnpm exec vitest run $TEST_FILES --reporter=default --reporter=junit --outputFile=test-results/results.xml --no-file-parallelism
           environment:
             <<: *langgraph-env
       - store_test_results:
@@ -313,7 +317,7 @@ jobs:
 
   rails-frontend-tests:
     docker:
-      - image: cimg/node:24.1.0
+      - image: cimg/node:22.12.0
     working_directory: ~/project/rails_app
     steps:
       - checkout:
