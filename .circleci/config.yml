@@ -66,7 +66,7 @@ jobs:
     resource_class: large
     parallelism: 3
     docker:
-      - image: cimg/node:22.12.0
+      - image: cimg/node:24.1.0
       - image: pgvector/pgvector:pg16
         environment:
           POSTGRES_USER: postgres
@@ -313,7 +313,7 @@ jobs:
 
   rails-frontend-tests:
     docker:
-      - image: cimg/node:22.12.0
+      - image: cimg/node:24.1.0
     working_directory: ~/project/rails_app
     steps:
       - checkout:
