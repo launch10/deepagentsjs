@@ -5,6 +5,7 @@
 #  id                  :bigint           not null, primary key
 #  current_step        :string
 #  deleted_at          :datetime
+#  shasum              :string
 #  stacktrace          :text
 #  status              :string           default("pending"), not null
 #  created_at          :datetime         not null
@@ -20,6 +21,7 @@
 #  index_campaign_deploys_on_created_at              (created_at)
 #  index_campaign_deploys_on_current_step            (current_step)
 #  index_campaign_deploys_on_deleted_at              (deleted_at)
+#  index_campaign_deploys_on_shasum                  (shasum)
 #  index_campaign_deploys_on_status                  (status)
 #
 class CampaignDeploy < ApplicationRecord
@@ -29,6 +31,8 @@ class CampaignDeploy < ApplicationRecord
 
   class StepNotFinishedError < StandardError; end
 
+  class TerminalStepError < StandardError; end
+
   class DeployInProgressError < StandardError; end
 
   STATUS = WebsiteDeploy::STATUS
@@ -37,12 +41,15 @@ class CampaignDeploy < ApplicationRecord
   validates :status, presence: true, inclusion: { in: STATUS }
 
   scope :in_progress, -> { where(status: %w[pending]) }
+  scope :completed, -> { where(status: "completed") }
+
+  before_create :set_shasum
 
   def self.deploy(campaign, async: true, job_run_id: nil)
     lock_key = "campaign_deploy:#{campaign.id}"
 
     # Lock only for check + create; release before running deploy
-    campaign_deploy = with_lock(lock_key, wait_timeout: 0.5, stale_timeout: 30.seconds.to_i) do
+    campaign_deploy = with_lock(lock_key, wait_timeout: 5.0, stale_timeout: 30.seconds.to_i) do
       if campaign.campaign_deploys.in_progress.exists?
         raise DeployInProgressError, "A deploy is already in progress for campaign #{campaign.id}"
       end
@@ -162,45 +169,6 @@ class CampaignDeploy < ApplicationRecord
   # This could be done by using enqueuing sync_plans
   #
   STEPS = Steps.new([
-    # We're actually going to separate these - they're one time verifications and the frontend/Langgraph will be in charge of orchestrating them
-    #
-    # Step.define(:create_ads_account) do
-    #   def ready?
-    #     campaign.account.has_google_connected_account?
-    #   end
-
-    #   def run
-    #     campaign.account.create_google_ads_account
-    #   end
-
-    #   def finished?
-    #     sync_result&.success? || false
-    #   end
-
-    #   def sync_result
-    #     campaign.account.verify_google_ads_account
-    #   end
-    # end,
-
-    # Step.define(:send_account_invitation) do
-    #   def ready?
-    #     campaign.google_ads_account.present? && campaign.account.google_account_invitation.nil?
-    #   end
-
-    #   def run
-    #     campaign.google_ads_account.send_google_ads_invitation_email
-    #   end
-
-    #   # Will be false if user declines invitation, for example, allowing us to send another invitation
-    #   def finished?
-    #     campaign&.account&.google_account_invitation&.okay? || false
-    #   end
-
-    #   def sync_result
-    #     campaign&.account&.google_account_invitation&.google_sync_result
-    #   end
-    # end,
-
     Step.define(:sync_budget) do
       def run
         campaign.budget.google_sync
@@ -397,15 +365,40 @@ class CampaignDeploy < ApplicationRecord
 
       if step.nil?
         update!(status: "completed")
+
+        account = campaign&.account
+        TrackEvent.call("campaign_deployed",
+          user: account&.owner,
+          account: account,
+          project: campaign&.project,
+          campaign: campaign,
+          project_uuid: campaign&.project&.uuid,
+          deploy_status: "completed",
+          daily_budget_cents: campaign&.daily_budget_cents)
+
         return true  # All steps complete
       end
 
-      step.run unless step.finished?
-      update!(current_step: step.class.step_name.to_s)
+      run_result = step.finished? ? nil : step.run
 
       unless step.finished? # There was some API error that prevented us from successfully completing the task, retry
-        raise StepNotFinishedError, "Step #{step.class.step_name} did not complete successfully"
+        diagnostic = format_step_diagnostic(step)
+        run_diagnostic = format_run_result(run_result)
+        full_diagnostic = [diagnostic, run_diagnostic].compact.join(" | Run errors: ")
+
+        GoogleAds::Instrumentation.google_ads_logger.error(
+          "[CampaignDeploy] Step #{step.class.step_name} did not complete for deploy=#{id} campaign=#{campaign_id}. " \
+          "Diagnostic: #{full_diagnostic}"
+        )
+
+        if terminal_error_detected?(run_result, step)
+          raise TerminalStepError, "Terminal error in #{step.class.step_name}. #{full_diagnostic}"
+        end
+
+        raise StepNotFinishedError, "Step #{step.class.step_name} did not complete successfully. Diagnostic: #{full_diagnostic}"
       end
+
+      update!(current_step: step.class.step_name.to_s)
     end
 
     # Enqueue next step outside the lock to avoid holding it during queue operations
@@ -416,5 +409,70 @@ class CampaignDeploy < ApplicationRecord
     end
 
     false  # More steps remain (we just enqueued/recursed)
+  end
+
+  private
+
+  def terminal_error_detected?(run_result, step)
+    return true if any_terminal?(run_result)
+    return true if step.respond_to?(:sync_result) && any_terminal?(step.sync_result)
+
+    false
+  rescue => e
+    Rails.logger.warn("[CampaignDeploy] Error checking terminal status: #{e.message}")
+    false
+  end
+
+  def any_terminal?(result)
+    return false if result.nil?
+
+    results = extract_sync_results(result)
+    results.any? { |r| r.respond_to?(:terminal?) && r.terminal? }
+  end
+
+  def extract_sync_results(result)
+    case result
+    when Array
+      result.flatten.flat_map { |r| extract_sync_results(r) }
+    when GoogleAds::Sync::CollectionSyncResult
+      result.results
+    else
+      [result]
+    end
+  end
+
+  def format_step_diagnostic(step)
+    return "no sync_result defined" unless step.respond_to?(:sync_result)
+
+    results = step.sync_result
+    case results
+    when Array
+      results.map { |r| r.respond_to?(:to_h) ? r.to_h : r.inspect }.inspect
+    when nil
+      "sync_result returned nil"
+    else
+      results.respond_to?(:to_h) ? results.to_h.inspect : results.inspect
+    end
+  rescue => e
+    "diagnostic error: #{e.message}"
+  end
+
+  # Extract error details from the return value of step.run.
+  # step.run returns SyncResult(s) including any GoogleAdsError details,
+  # but these are normally discarded. This captures them.
+  def format_run_result(result)
+    return nil if result.nil?
+
+    items = result.is_a?(Array) ? result.flatten : [result]
+    errors = items.select { |r| r.respond_to?(:error?) && r.error? }
+    return nil if errors.empty?
+
+    errors.map { |r| r.respond_to?(:to_h) ? r.to_h : r.inspect }.inspect
+  rescue => e
+    "run_result error: #{e.message}"
+  end
+
+  def set_shasum
+    self.shasum = campaign.generate_shasum
   end
 end

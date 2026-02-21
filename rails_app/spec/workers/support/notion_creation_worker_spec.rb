@@ -56,5 +56,34 @@ RSpec.describe Support::NotionCreationWorker do
         described_class.new.perform(99999)
       }.to raise_error(ActiveRecord::RecordNotFound)
     end
+
+    context "when Notion env vars are not set" do
+      around do |example|
+        original_secret = ENV["SUPPORT_NOTION_SECRET"]
+        original_db_id = ENV["SUPPORT_NOTION_DATABASE_ID"]
+        ENV.delete("SUPPORT_NOTION_SECRET")
+        ENV.delete("SUPPORT_NOTION_DATABASE_ID")
+        example.run
+      ensure
+        ENV["SUPPORT_NOTION_SECRET"] = original_secret
+        ENV["SUPPORT_NOTION_DATABASE_ID"] = original_db_id
+      end
+
+      it "raises in production" do
+        allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new("production"))
+
+        expect {
+          described_class.new.perform(support_request.id)
+        }.to raise_error(RuntimeError, /SUPPORT_NOTION_SECRET and SUPPORT_NOTION_DATABASE_ID must be set/)
+      end
+
+      it "silently returns in development" do
+        allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new("development"))
+
+        expect {
+          described_class.new.perform(support_request.id)
+        }.not_to raise_error
+      end
+    end
   end
 end

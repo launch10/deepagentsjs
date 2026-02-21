@@ -199,5 +199,37 @@ RSpec.describe GoogleAds::PollActiveInvitesWorker, type: :worker do
         described_class.new.perform
       end
     end
+    context "stale job cleanup" do
+      it "fails stale GoogleAdsInvite jobs" do
+        job = create(:job_run,
+          account: account,
+          job_class: "GoogleAdsInvite",
+          status: "running",
+          started_at: 35.minutes.ago,
+          langgraph_thread_id: "thread_123")
+
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with("LANGGRAPH_API_URL").and_return("http://localhost:4000")
+
+        described_class.new.perform
+
+        job.reload
+        expect(job.status).to eq("failed")
+        expect(job.error_message).to include("timed out")
+      end
+
+      it "does not fail GoogleOAuthConnect jobs" do
+        job = create(:job_run,
+          account: account,
+          job_class: "GoogleOAuthConnect",
+          status: "running",
+          started_at: 35.minutes.ago,
+          langgraph_thread_id: "thread_456")
+
+        described_class.new.perform
+
+        expect(job.reload.status).to eq("running")
+      end
+    end
   end
 end

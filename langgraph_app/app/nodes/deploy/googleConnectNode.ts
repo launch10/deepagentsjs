@@ -17,9 +17,9 @@ export async function isGoogleConnected(state: DeployGraphState): Promise<boolea
   }
 
   const googleApi = new GoogleAPIService({ jwt: state.jwt });
-  const { connected } = await googleApi.getConnectionStatus();
+  const { google_connected } = await googleApi.getGoogleStatus();
 
-  return connected;
+  return google_connected;
 }
 
 /**
@@ -42,8 +42,18 @@ export const googleConnectTaskRunner: TaskRunner = {
       return true;
     }
 
-    // Skip if already connected
-    return isGoogleConnected(state);
+    // If initPhasesNode already ran (tasks exist) but excluded this task,
+    // Google was already connected at deploy start — no API call needed.
+    const task = Task.findTask(state.tasks, TASK_NAME);
+    if (!task && state.tasks?.length > 0) return true;
+
+    // Task has result confirming connection
+    if (task?.result?.google_email) return true;
+
+    // Task exists but hasn't run yet — check if Google is already connected
+    if (task?.status === "pending" && (await isGoogleConnected(state))) return true;
+
+    return false;
   },
 
   isBlocking: (state: DeployGraphState, task: Task.Task) => {
@@ -69,8 +79,17 @@ export const googleConnectTaskRunner: TaskRunner = {
       return withPhases(state, [{ ...task, status: "failed" } as Task.Task], [TASK_NAME]);
     }
 
-    // 4. Task running with jobId? Waiting for OAuth callback (handled by isBlocking)
-    if (task?.status === "running" && task.jobId) {
+    // 4. Self-heal: task running with jobId but no result?
+    //    Check if Google is already connected (OAuth callback may have missed the job)
+    if (task?.status === "running" && task.jobId && !task.result?.google_email && !task.error) {
+      if (await isGoogleConnected(state)) {
+        return withPhases(
+          state,
+          [{ ...task, status: "completed", result: { google_email: "connected" } } as Task.Task],
+          [TASK_NAME]
+        );
+      }
+      // Not connected yet — fall through to no-op (isBlocking will exit graph)
       return {};
     }
 
@@ -89,6 +108,7 @@ export const googleConnectTaskRunner: TaskRunner = {
       jobClass: "GoogleOAuthConnect",
       arguments: {},
       threadId: state.threadId,
+      ...(state.deployId && { deployId: state.deployId }),
     });
 
     // Create or update task with jobId and oauth_required result

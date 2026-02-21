@@ -41,18 +41,19 @@ core_data (plans, templates, themes, FAQs)
   │
   └─ brainstorm_step (project at brainstorm)
       └─ website_step (theme, uploads, domains)
-          ├─ website_generated (scheduling-tool content)
-          ├─ website_with_import_errors
-          ├─ website_with_broken_links
-          └─ website_step_finished (workflow → ad_campaign)
-              └─ campaign_content_step → highlights → keywords → settings → launch → review → complete
-                  └─ deploy_step (Google OAuth, pending deploy)
-                      └─ website_deployed (25 test leads)
-                          ├─ campaign_with_metrics (4 projects, 30-day data)
-                          ├─ analytics/healthy_account (3 projects, ~47 leads)
-                          ├─ analytics/struggling_account (0 leads, $320 spent)
-                          ├─ analytics/stalled_project (14+ days no leads)
-                          └─ analytics/new_account (3 days old)
+          └─ website_generated (scheduling-tool content)
+              └─ domain_step (domain + URL)
+                  └─ website_deploy_step (completed deploy, workflow → ads)
+                      ├─ website_with_import_errors
+                      ├─ website_with_broken_links
+                      └─ campaign_content_step → highlights → keywords → settings → launch → review → complete
+                          └─ deploy_step (Google OAuth, pending deploy)
+                              └─ website_deployed (25 test leads)
+                                  ├─ campaign_with_metrics (4 projects, 30-day data)
+                                  ├─ analytics/healthy_account (3 projects, ~47 leads)
+                                  ├─ analytics/struggling_account (0 leads, $320 spent)
+                                  ├─ analytics/stalled_project (14+ days no leads)
+                                  └─ analytics/new_account (3 days old)
 ```
 
 ## Usage in Tests
@@ -143,3 +144,17 @@ Protected by `Test::TestController` which checks `Rails.env.local?`.
 - **Never use `puts` in snapshotter**: Use `Rails.logger` to prevent EPIPE errors in Foreman/Overmind.
 - **Partition handling**: Snapshot restore ensures analytics partition tables exist before executing SQL, creating them on demand if missing.
 - **Builder order matters**: `rake db:snapshot:build_all` uses topological sort based on `builders.yml` dependencies.
+
+## Rejected: Delta Snapshot System (Feb 2026)
+
+We investigated storing only deltas (new/changed rows) between dependent snapshots instead of full dumps. The campaign chain, for example, has 10 snapshots at ~3.3 MB each but only ~7 new INSERT lines between steps.
+
+**Why we didn't do it:**
+
+- Snapshots are in **git-lfs**, so git repo bloat is already solved (pointer files, not 3.3 MB blobs)
+- Total snapshot storage is ~130 MB on disk — trivial on modern machines
+- The delta system would add ~300 lines of infrastructure (DeltaComputer service, chain resolution, extract helpers) with a new failure mode: broken chains when a base snapshot changes but children aren't rebuilt
+- LFS diff readability is already binary regardless, so deltas don't help PR review
+- LFS server storage cost is negligible (~$5/mo per 50 GB, we're well under that)
+
+**If this comes up again**, the numbers that matter: the `.git/` directory is ~12 GB (mostly non-snapshot content), and the snapshot files are a rounding error in both disk and LFS costs. The complexity cost of chain-based restore outweighs the savings.

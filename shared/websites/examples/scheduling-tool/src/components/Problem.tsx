@@ -1,56 +1,73 @@
-import { Clock, MessageSquare, CalendarX } from 'lucide-react';
+import { MessageSquare, Clock, Users, AlertCircle } from "lucide-react";
 
 export function Problem() {
-  const problems = [
-    {
-      icon: Clock,
-      title: "15 Hours Wasted Weekly",
-      description: "The average project manager spends 3 hours per day just coordinating schedules across time zones."
-    },
+  const painPoints = [
     {
       icon: MessageSquare,
-      title: "Endless Back-and-Forth",
-      description: "12+ messages per meeting. Multiply that across your team and you're drowning in coordination overhead."
+      title: "Endless Slack threads",
+      description: "\"What time works for everyone?\" followed by 47 messages and still no answer.",
     },
     {
-      icon: CalendarX,
-      title: "Meetings That Never Happen",
-      description: "23% of planned meetings get cancelled because finding a time that works becomes impossible."
-    }
+      icon: Clock,
+      title: "Timezone math nightmares",
+      description: "Is 3pm EST too early for Tokyo? Too late for London? You're tired of calculating.",
+    },
+    {
+      icon: Users,
+      title: "Calendar Tetris",
+      description: "Juggling 8 people's availability across 5 time zones feels like an impossible puzzle.",
+    },
+    {
+      icon: AlertCircle,
+      title: "Wasted productivity",
+      description: "Your team spends hours every week just trying to schedule meetings instead of having them.",
+    },
   ];
 
   return (
-    <section className="bg-muted py-16 md:py-20 lg:py-24">
+    <section className="py-20 md:py-28 lg:py-32 bg-background">
       <div className="container mx-auto px-4 md:px-6">
-        <div className="text-center mb-12 md:mb-16">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4">
-            The Real Cost of 'Finding a Time'
+        <div className="max-w-3xl mx-auto text-center mb-16">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
+            Scheduling shouldn't be{" "}
+            <span className="text-accent">this hard</span>
           </h2>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto">
-            Every week, your team loses hours to calendar coordination. It's not just annoying—it's expensive.
+          <p className="text-xl md:text-2xl text-muted-foreground leading-relaxed">
+            If you're managing a distributed team, you know the pain. Every meeting requires a coordination dance that wastes everyone's time.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-          {problems.map((problem, index) => {
-            const Icon = problem.icon;
-            return (
-              <div
-                key={index}
-                className="bg-card rounded-2xl p-8 shadow-lg hover:-translate-y-1 transition-all duration-300"
-              >
-                <div className="mb-6">
-                  <Icon size={40} className="text-primary" />
+        <div className="grid md:grid-cols-2 gap-8 lg:gap-10 max-w-5xl mx-auto">
+          {painPoints.map((point, index) => (
+            <div
+              key={index}
+              className="group p-8 bg-card rounded-2xl border border-border shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+            >
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors duration-300">
+                  <point.icon className="w-6 h-6 text-accent" />
                 </div>
-                <h3 className="text-2xl font-bold mb-4">
-                  {problem.title}
-                </h3>
-                <p className="text-muted-foreground leading-relaxed">
-                  {problem.description}
-                </p>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-card-foreground mb-2">
+                    {point.title}
+                  </h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {point.description}
+                  </p>
+                </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-16 text-center">
+          <div className="inline-flex items-center gap-3 px-6 py-4 bg-accent/10 border border-accent/20 rounded-xl">
+            <div className="text-5xl font-bold text-accent">15</div>
+            <div className="text-left">
+              <div className="text-sm text-muted-foreground">Average hours wasted</div>
+              <div className="text-base font-semibold text-foreground">per team, per week</div>
+            </div>
+          </div>
         </div>
       </div>
     </section>

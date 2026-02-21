@@ -1,4 +1,4 @@
-import { type DeployGraphState, withPhases } from "@annotation";
+import { type DeployGraphState } from "@annotation";
 import type { LangGraphRunnableConfig } from "@langchain/langgraph";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
@@ -20,10 +20,9 @@ async function runBugFix(
   state: DeployGraphState,
   config?: LangGraphRunnableConfig
 ): Promise<Partial<DeployGraphState>> {
-  // Get validation errors from runtime_validation task
-  const linksTask = Task.findTask(state.tasks, "ValidateLinks");
+  // Get validation errors from RuntimeValidation task
   const validationTask = Task.findTask(state.tasks, "RuntimeValidation");
-  const failedTask = [linksTask, validationTask].find((t) => t?.status === "failed");
+  const failedTask = validationTask?.status === "failed" ? validationTask : undefined;
 
   if (!failedTask) {
     return {};
@@ -71,25 +70,32 @@ async function runBugFix(
       {
         messages: [
           new HumanMessage(
-            `Please analyze the errors and resolve them so my site runs successfully.`
+            `Fix the runtime errors. Make the minimal viable change — target the affected file and make the fix.`
           ),
         ],
         systemPrompt,
         route: "full",
         config,
-        recursionLimit: 100,
+        recursionLimit: 30,
+        subagents: [],
       }
     );
 
+    // Reset RuntimeValidation to pending so executor re-runs validation.
+    // Reset FixingBugs to pending so it can run again if validation fails.
+    // retryCount tracks attempts; MAX_BUG_FIX_RETRIES prevents infinite loops.
     return {
       tasks: [
         {
           ...failedTask,
-          retryCount: failedTask.retryCount + 1,
+          status: "pending",
+          retryCount: (failedTask.retryCount || 0) + 1,
+          error: undefined,
+          result: undefined,
         } as Task.Task,
         {
           ...fixTask,
-          status: "completed",
+          status: "pending",
         } as Task.Task,
       ],
     };
@@ -101,7 +107,7 @@ async function runBugFix(
       tasks: [
         {
           ...failedTask,
-          retryCount: failedTask.retryCount + 1,
+          retryCount: (failedTask.retryCount || 0) + 1,
         } as Task.Task,
         {
           ...fixTask,
@@ -125,24 +131,16 @@ export const bugFixTaskRunner: TaskRunner = {
   taskName: TASK_NAME,
 
   readyToRun: (state: DeployGraphState) => {
-    // Ready when either validation task has failed
-    return isTaskFailed(state, "ValidateLinks") || isTaskFailed(state, "RuntimeValidation");
+    return isTaskFailed(state, "RuntimeValidation");
   },
 
   shouldSkip: (state: DeployGraphState) => {
-    // Skip if not deploying a website
     if (!Deploy.shouldDeployWebsite(state)) {
       return true;
     }
 
-    // Skip if validation passed (no bugs to fix)
-    // Both validation tasks must be done (completed/skipped) AND neither failed
-    const validateLinksDone = isTaskDone(state, "ValidateLinks");
-    const runtimeValidationDone = isTaskDone(state, "RuntimeValidation");
-    const noValidationFailed =
-      !isTaskFailed(state, "ValidateLinks") && !isTaskFailed(state, "RuntimeValidation");
-
-    return validateLinksDone && runtimeValidationDone && noValidationFailed;
+    // Skip if RuntimeValidation passed (no bugs to fix)
+    return isTaskDone(state, "RuntimeValidation") && !isTaskFailed(state, "RuntimeValidation");
   },
 
   // Use raw function - task runners are called by nodes already wrapped with middleware

@@ -26,4 +26,10 @@ The following components are typical for a landing page:
         /Pricing.tsx (optional)
         /SocialProof.tsx (optional)
         /CTA.tsx (optional)
+
+### Infrastructure files (DO NOT modify)
+These handle prerendering and bootstrapping deployed websites:
+- /src/main.tsx
+- /src/entry-server.tsx
+- /scripts/prerender.js
 `;

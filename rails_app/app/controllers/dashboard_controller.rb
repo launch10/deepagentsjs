@@ -5,6 +5,8 @@ class DashboardController < SubscribedController
   DEFAULT_DAYS = 30
 
   def show
+    track_dashboard_viewed
+
     # Handle regenerate_insights request
     if params[:regenerate_insights].present?
       mark_insights_stale
@@ -66,5 +68,14 @@ class DashboardController < SubscribedController
   def insights_metrics_summary
     dashboard_service = Analytics::DashboardService.new(current_account, days: DEFAULT_DAYS)
     Analytics::InsightsMetricsService.new(dashboard_service).summary
+  end
+
+  def track_dashboard_viewed
+    TrackEvent.call("dashboard_viewed",
+      user: current_user,
+      account: current_account,
+      project_count: current_account.projects.count,
+      live_project_count: current_account.projects.where(status: "live").count,
+      has_insights: current_account.dashboard_insight&.fresh? || false)
   end
 end

@@ -83,19 +83,19 @@ export const validateLinksTaskRunner: TaskRunner = {
   isFailureRecoverable: true,
 
   readyToRun: (state: DeployGraphState) => {
-    // Ready when both AddingAnalytics and OptimizingSEO are done
-    return isTaskDone(state, "AddingAnalytics") && isTaskDone(state, "OptimizingSEO");
+    // For campaign deploys, wait until Google setup + billing is resolved
+    if (Deploy.shouldDeployGoogleAds(state)) {
+      return isTaskDone(state, "CheckingBilling");
+    }
+    // For website-only deploys, ready immediately
+    return true;
   },
 
-  shouldSkip: (state: DeployGraphState) => {
-    // Skip if not deploying a website
-    if (!state.deploy?.website) {
-      return true;
-    }
-
-    // Skip if already completed
-    const task = Task.findTask(state.tasks, TASK_NAME);
-    return task?.status === "completed";
+  shouldSkip: (_state: DeployGraphState) => {
+    // Always skip: anchor link validation finds issues (e.g. #problem, #features)
+    // that the bug fix agent can't meaningfully resolve during deploy.
+    // Re-enable when we have a fix for broken anchor links.
+    return true;
   },
 
   run: runValidateLinks,

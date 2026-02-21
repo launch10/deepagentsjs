@@ -1,17 +1,27 @@
 import { createAgent, createMiddleware } from "langchain";
 import { type LangGraphRunnableConfig } from "@langchain/langgraph";
+import { StateSchema, ReducedValue } from "@langchain/langgraph";
 import { type BaseMessage } from "@langchain/core/messages";
 import { getLLM, createPromptCachingMiddleware } from "@core";
 import { chooseBrainstormPrompt, getBrainstormContextMessage, getBrainstormMode } from "@prompts";
 import { NodeMiddleware } from "@middleware";
-import { saveAnswersTool, finishedTool, queryUploadsTool } from "@tools";
-import { Brainstorm } from "@types";
+import {
+  saveAnswersTool,
+  navigateTool,
+  queryUploadsTool,
+  setLogoTool,
+  saveSocialLinksTool,
+  uploadProjectImagesTool,
+} from "@tools";
+import { changeColorSchemeTool } from "@tools";
+import { Brainstorm, type AgentIntent, agentIntentSchema } from "@types";
 import { type BrainstormGraphState, type BrainstormModeType } from "@state";
 import z from "zod";
 import { BrainstormNextStepsService } from "@services";
 import { lastAIMessage } from "@types";
-import { BrainstormBridge } from "@annotation";
+import { toStructuredMessage } from "langgraph-ai-sdk";
 import { Conversation } from "@conversation";
+import { summarizeMessages } from "@nodes";
 
 /**
  * Schema for middleware state - minimal fields needed for mode detection.
@@ -24,8 +34,8 @@ const middlewareStateSchema = z.object({
   currentTopic: z.string().optional(),
   skippedTopics: z.array(z.string()).optional(),
   redirect: z.string().optional(),
-  availableCommands: z.array(z.string()).default([]),
-  command: z.string().optional(),
+  availableIntents: z.array(z.string()).default([]),
+  intent: z.any().optional(),
   jwt: z.string().optional(),
 });
 
@@ -50,10 +60,13 @@ type MiddlewareTracker = {
 const createBrainstormMiddleware = (
   initialState: BrainstormGraphState,
   tracker: MiddlewareTracker,
+  initialMode: BrainstormModeType,
   config?: LangGraphRunnableConfig
 ) => {
-  // Initialize tracker with mode from state (persisted across turns)
-  tracker.lastSeenMode = initialState.brainstormMode;
+  // Start tracking from the current mode — the initial mode switch
+  // is already handled by prepareTurn() before the agent runs.
+  // The middleware only needs to catch MID-TURN switches (after tool calls).
+  tracker.lastSeenMode = initialMode;
   tracker.injectedContextMessages = [];
 
   return createMiddleware({
@@ -119,10 +132,11 @@ const createBrainstormMiddleware = (
  *
  * Architecture:
  * - brainstormMode is tracked in STATE (persists across turns)
- * - Middleware checks database state BEFORE EACH model call
- * - System prompt is regenerated based on current state (reflects mode changes)
- * - ContextMessage is injected when mode switches are detected
- * - This preserves the switch in traces while keeping the agent informed
+ * - Initial mode switch detected before agent, context passed via Conversation.start()
+ *   for proper CTX-before-HUMAN ordering (same pattern as coding/ads agents)
+ * - Middleware catches MID-TURN switches (after tool calls like saveAnswers)
+ * - System prompt is regenerated per model call based on current state
+ * - Compaction is handled by Conversation.start() (no separate graph node)
  */
 export const brainstormAgent = NodeMiddleware.use(
   {},
@@ -136,99 +150,169 @@ export const brainstormAgent = NodeMiddleware.use(
 
     // Get initial next steps (state at START of turn)
     const initialNextSteps = await new BrainstormNextStepsService(state).nextSteps();
+
+    // Validate intent against available intents for current topic.
+    // This prevents forced intents that don't match the topic's available actions
+    // (e.g., do_the_rest on the idea topic where only help_me is allowed).
+    const validatedIntent =
+      state.intent?.type &&
+      initialNextSteps.availableIntents?.includes(
+        state.intent.type as Brainstorm.BrainstormIntentName
+      )
+        ? state.intent
+        : undefined;
+
     const initialState: BrainstormGraphState = {
       ...state,
       ...initialNextSteps,
+      intent: validatedIntent,
     };
 
-    // Window messages to fit context limits before sending to the agent.
-    // Brainstorm middleware handles context injection during model calls,
-    // so we only need windowing here (no contextMessages to inject).
-    const windowedMessages = new Conversation(state.messages || []).prepareTurn({
-      maxTurnPairs: 10,
-      maxChars: 40_000,
-    });
+    // Detect initial mode switch (out-of-band UI interactions like helpMe,
+    // doTheRest, skip). Build context message and pass as extraContext to
+    // Conversation.start() for proper CTX-before-HUMAN ordering.
+    const previousMode = (state.brainstormMode ?? "default") as BrainstormModeType;
+    const currentMode = getBrainstormMode(initialState);
 
-    // Prepare initial state for agent
-    const stateForAgent: BrainstormGraphState = {
-      ...initialState,
-      messages: windowedMessages,
-    };
+    let initialContextMessages: BaseMessage[] = [];
+    if (previousMode !== currentMode) {
+      const ctx = await getBrainstormContextMessage(
+        initialState,
+        currentMode,
+        previousMode,
+        config
+      );
+      if (ctx) initialContextMessages.push(ctx as unknown as BaseMessage);
+    }
 
-    // Create tracker to capture context messages injected by middleware
+    // Create tracker — starts at currentMode since initial switch is
+    // already handled by Conversation.start(). Middleware only catches mid-turn
+    // switches (e.g., after saveAnswers changes brainstorm state).
     const middlewareTracker: MiddlewareTracker = {
       injectedContextMessages: [],
-      lastSeenMode: state.brainstormMode,
+      lastSeenMode: currentMode,
     };
 
-    const llm = (await getLLM({maxTier: 2})).withConfig({ tags: ["notify"] });
-    const tools = [saveAnswersTool, finishedTool, queryUploadsTool];
+    // Build agent before Conversation.start() so it's ready for the callback
+    const llm = (await getLLM({ maxTier: 2 })).withConfig({ tags: ["notify"] });
+    const tools = [
+      saveAnswersTool,
+      navigateTool,
+      queryUploadsTool,
+      setLogoTool,
+      saveSocialLinksTool,
+      uploadProjectImagesTool,
+      changeColorSchemeTool,
+    ];
 
     const agent = await createAgent({
       model: llm,
       tools,
-      middleware: [createPromptCachingMiddleware(), createBrainstormMiddleware(initialState, middlewareTracker, config)],
+      stateSchema: new StateSchema({
+        agentIntents: new ReducedValue(z.any().optional() as any, {
+          reducer: (current: AgentIntent[] | undefined, next: AgentIntent[] | undefined) => {
+            if (!next) return current;
+            if (!current) return next;
+            return [...current, ...next];
+          },
+        }),
+      }),
+      middleware: [
+        createPromptCachingMiddleware(),
+        createBrainstormMiddleware(initialState, middlewareTracker, currentMode, config),
+      ],
     });
 
-    const result = (await agent.invoke(stateForAgent as any, config)) as BrainstormGraphState;
-    const lastMessage = lastAIMessage(result);
-    if (!lastMessage) {
-      throw new Error("Agent did not return an AI message");
-    }
+    // Run through Conversation.start() — handles prepare, window, compact
+    const convResult = await Conversation.start(
+      {
+        messages: state.messages || [],
+        extraContext: initialContextMessages,
+        maxTurnPairs: 10,
+        maxChars: 40_000,
+        compact: { summarizer: summarizeMessages },
+      },
+      async (prepared) => {
+        const stateForAgent: BrainstormGraphState = {
+          ...initialState,
+          messages: prepared,
+        };
 
-    const [message, updates] = await BrainstormBridge.toStructuredMessage(lastMessage);
-    // Get updated next steps after agent processing
-    const { memories, remainingTopics, currentTopic, placeholderText, availableCommands } =
-      await new BrainstormNextStepsService(state).nextSteps();
+        const agentResult = (await agent.invoke(
+          stateForAgent as any,
+          config
+        )) as BrainstormGraphState;
+        const lastMessage = lastAIMessage(agentResult);
+        if (!lastMessage) {
+          throw new Error("Agent did not return an AI message");
+        }
 
-    // Compute the final mode to persist in state
-    const finalState: BrainstormGraphState = {
-      ...state,
-      currentTopic,
-      skippedTopics: (result.skippedTopics || []) as Brainstorm.TopicName[],
-      command: state.command, // command may have been consumed
-    };
-    const finalMode = getBrainstormMode(finalState);
+        const [structured] = await toStructuredMessage(lastMessage);
 
-    // Build final messages array from agent result
-    // Include context messages that middleware injected (they're not in result.messages)
-    const resultMessages = (result as any).messages || [];
-    const originalMessageCount = windowedMessages.length;
-    const newMessages = resultMessages.slice(originalMessageCount);
+        // Get updated next steps after agent processing
+        const nextSteps = await new BrainstormNextStepsService(state).nextSteps();
 
-    // Start with original messages
-    let messages: BaseMessage[] = [...(state.messages || [])];
+        // Compute the final mode to persist in state
+        const finalState: BrainstormGraphState = {
+          ...state,
+          currentTopic: nextSteps.currentTopic,
+          skippedTopics: (agentResult.skippedTopics || []) as Brainstorm.TopicName[],
+        };
+        const finalMode = getBrainstormMode(finalState);
 
-    // Add any context messages that were injected mid-turn
-    // These need to be added BEFORE the new messages from the agent
-    if (middlewareTracker.injectedContextMessages.length > 0) {
-      messages = [...messages, ...middlewareTracker.injectedContextMessages];
-    }
+        // Slice off input to get only new messages from the agent
+        const resultMessages = (agentResult as any).messages || [];
+        const agentNewMessages = resultMessages.slice(prepared.length);
 
-    // Add intermediate messages (tool calls, tool results, etc.)
-    if (newMessages.length > 1) {
-      const intermediateMessages = newMessages.slice(0, -1);
-      messages = [...(messages as any[]), ...intermediateMessages];
-    }
+        // Replace the last AI message with its structured version for UI rendering.
+        // Use type check (not position) — with returnDirect tools the last message
+        // may be a ToolMessage, not an AIMessage.
+        if (structured) {
+          structured.additional_kwargs = {
+            ...structured.additional_kwargs,
+            currentTopic: nextSteps.currentTopic,
+          };
+          for (let i = agentNewMessages.length - 1; i >= 0; i--) {
+            if (agentNewMessages[i]?._getType?.() === "ai") {
+              agentNewMessages[i] = structured;
+              break;
+            }
+          }
+        }
 
-    if (message) {
-      message.additional_kwargs = {
-        ...message.additional_kwargs,
-        currentTopic,
-      };
-      messages = [...(messages as any[]), message];
-    }
+        return {
+          messages: agentNewMessages,
+          redirect: agentResult.redirect as Brainstorm.RedirectType,
+          agentIntents: agentResult.agentIntents,
+          skippedTopics: (agentResult.skippedTopics || []) as Brainstorm.TopicName[],
+          memories: nextSteps.memories,
+          remainingTopics: nextSteps.remainingTopics,
+          currentTopic: nextSteps.currentTopic,
+          placeholderText: nextSteps.placeholderText,
+          availableIntents: nextSteps.availableIntents,
+          brainstormMode: finalMode,
+        };
+      }
+    );
+
+    // Add middleware-tracked mid-turn context (mode switches after saveAnswers).
+    // These are brainstorm-specific and can't be absorbed by Conversation.start().
+    const finalMessages = [
+      ...convResult.messages,
+      ...middlewareTracker.injectedContextMessages,
+    ] as BaseMessage[];
 
     return {
-      redirect: result.redirect as Brainstorm.RedirectType,
-      skippedTopics: (result.skippedTopics || []) as Brainstorm.TopicName[],
-      messages: messages as BaseMessage[],
-      memories,
-      currentTopic,
-      remainingTopics,
-      placeholderText,
-      availableCommands,
-      brainstormMode: finalMode, // Persist mode for next turn
+      redirect: convResult.redirect as Brainstorm.RedirectType,
+      agentIntents: convResult.agentIntents,
+      skippedTopics: convResult.skippedTopics as Brainstorm.TopicName[],
+      messages: finalMessages,
+      memories: convResult.memories,
+      currentTopic: convResult.currentTopic,
+      remainingTopics: convResult.remainingTopics,
+      placeholderText: convResult.placeholderText,
+      availableIntents: convResult.availableIntents,
+      brainstormMode: convResult.brainstormMode,
     };
   }
 );

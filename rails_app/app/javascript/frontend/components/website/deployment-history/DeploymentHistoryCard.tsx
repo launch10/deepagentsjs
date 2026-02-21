@@ -1,26 +1,18 @@
-import { Badge } from "@components/ui/badge";
-import { copyToClipboard } from "@helpers/copyToClipboard";
+import { Copyable } from "@components/ui/copyable";
 import {
   ArrowTopRightOnSquareIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
 } from "@heroicons/react/16/solid";
-import { DocumentDuplicateIcon } from "@heroicons/react/24/outline";
 import { cn } from "@lib/utils";
 import type { Deployment } from "./DeploymentHistory.types";
 import DeploymentHistoryBadge from "./DeploymentHistoryBadge";
 
+function deploymentHref(url: string) {
+  return url.startsWith("http") ? url : `https://${url}`;
+}
+
 export default function DeploymentHistoryCard({ deployment }: { deployment: Deployment }) {
-  const handleCopyUrl = async () => {
-    if (deployment.url) {
-      await copyToClipboard(deployment.url);
-    }
-  };
-
-  const handleOpenUrl = () => {
-    // TODO: Open URL in new tab
-  };
-
   const renderStatusIcon = () => {
     if (deployment.status === "success") {
       return <CheckCircleIcon className="size-4 text-success-700" />;
@@ -59,7 +51,9 @@ export default function DeploymentHistoryCard({ deployment }: { deployment: Depl
             <div className="flex items-center gap-2 flex-wrap">
               {deployment.isNew && <DeploymentHistoryBadge variant="new" />}
               {deployment.isLive && <DeploymentHistoryBadge variant="live" />}
-              {deployment.status === "success" && <DeploymentHistoryBadge variant="success" />}
+              {deployment.status === "success" && !deployment.isLive && (
+                <DeploymentHistoryBadge variant="success" />
+              )}
               {deployment.status === "failed" && <DeploymentHistoryBadge variant="failed" />}
             </div>
           </div>
@@ -80,23 +74,18 @@ export default function DeploymentHistoryCard({ deployment }: { deployment: Depl
 
           {/* URL row - only show for non-failed deployments */}
           {deployment.status !== "failed" && deployment.url && (
-            <div className="flex items-center gap-2 mt-1 text-base-500">
-              <span className="text-sm text-base-500">{deployment.url}</span>
-              <button
-                onClick={handleCopyUrl}
-                className="text-base-500 transition-colors hover:text-base-600"
-                aria-label="Copy URL"
-              >
-                <DocumentDuplicateIcon className="size-3.5" />
-              </button>
-              <button
-                onClick={handleOpenUrl}
-                className="text-base-500 transition-colors hover:text-base-600"
-                aria-label="Open URL in new tab"
+            <Copyable text={deploymentHref(deployment.url)} className="mt-1 gap-2">
+              <Copyable.Text className="text-sm text-base-500" />
+              <Copyable.Trigger className="text-base-500 hover:text-base-600" />
+              <a
+                href={deploymentHref(deployment.url)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center text-base-500 transition-colors hover:text-base-600"
               >
                 <ArrowTopRightOnSquareIcon className="size-3.5" />
-              </button>
-            </div>
+              </a>
+            </Copyable>
           )}
         </div>
       </div>

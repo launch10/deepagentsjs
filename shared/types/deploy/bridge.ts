@@ -2,6 +2,12 @@ import z from "zod";
 import { type BridgeType } from "langgraph-ai-sdk-types";
 import type { CoreGraphState } from "../graph";
 import type { Simplify } from "type-fest";
+import type { PrimaryKeyType } from "../core";
+import type { ConsoleError } from "../website/errors";
+import type { Instructions, ContentChanged } from "./types";
+import type { Phase } from "./phase";
+import type { Task } from "../../types/task";
+import type { Status } from "../core";
 
 // Minimal JSON schema for deploy - we don't stream structured content like Ads
 export const jsonSchema = z.object({
@@ -23,35 +29,33 @@ export const MergeReducer = {
   result: (incoming: unknown, _current: unknown) => incoming,
 };
 
-// Deploy graph state
+// Deploy graph state — must match DeployAnnotation.State in langgraph_app
 export type DeployGraphState = Simplify<
   CoreGraphState & {
-    status?: "pending" | "running" | "completed" | "failed";
-    phases?: Array<{
-      name: string;
-      label: string;
-      status: "pending" | "running" | "completed" | "failed";
-      statusLabel?: string;
-    }>;
-    tasks?: Array<{
-      name: string;
-      status: "pending" | "enqueued" | "running" | "completed" | "failed";
-      jobId?: number;
-      result?: Record<string, unknown>;
-      error?: string;
-    }>;
-    result?: Record<string, unknown>;
-    consoleErrors?: Array<{ message: string; timestamp: string }>;
-    // For polling
-    polling?: boolean;
-    // For starting deploy
-    deploy?: {
-      deployId: number;
-      websiteId?: number;
-      campaignId?: number;
-      website: boolean;
-      googleAds: boolean;
-    };
+    // Rails Deploy record ID
+    deployId: PrimaryKeyType | undefined;
+    // Deploy status
+    status: Status | undefined;
+    // Deploy result from the job
+    result: Record<string, unknown> | undefined;
+    // Boolean flags for what to deploy (website, googleAds)
+    instructions: Instructions;
+    // IDs (websiteId already in CoreGraphState)
+    campaignId: PrimaryKeyType | undefined;
+    // Console errors from runtime validation
+    consoleErrors: ConsoleError[];
+    // Support ticket reference (e.g. "SR-XXXXXXXX") — set on unrecoverable failure
+    supportTicket: string | undefined;
+    // Task tracking
+    tasks: Task[];
+    // Signal from frontend that this is a polling request
+    polling: boolean;
+    // Nothing changed — deploy skipped because no content changed since last deploy
+    nothingChanged: boolean;
+    // Per-instruction change detection result (undefined = not checked, treat as changed)
+    contentChanged: ContentChanged;
+    // Phases computed from tasks for frontend display
+    phases: Phase[];
   }
 >;
 

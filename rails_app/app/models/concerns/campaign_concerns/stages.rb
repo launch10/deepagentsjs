@@ -2,7 +2,7 @@ module CampaignConcerns
   module Stages
     extend ActiveSupport::Concern
 
-    STAGES = WorkflowConfig.substeps_for("launch", "ad_campaign")
+    STAGES = WorkflowConfig.substeps_for("launch", "ads")
 
     included do
       const_set(:STAGES, CampaignConcerns::Stages::STAGES)
@@ -62,7 +62,7 @@ module CampaignConcerns
       workflow = project&.launch_workflow
       return unless workflow
 
-      workflow.advance_to(step: "ad_campaign", substep: stage)
+      workflow.advance_to(step: "ads", substep: stage)
     end
 
     def can_go_back?
@@ -204,6 +204,24 @@ module CampaignConcerns
       end
 
       errors.empty?
+    end
+
+    def ready_to_deploy?
+      deploy_validation_errors.none?
+    end
+
+    def deploy_validation_errors
+      errs = []
+
+      %i[content highlights keywords settings launch].each do |stage_name|
+        errors.clear
+        unless send("done_#{stage_name}_stage?")
+          errs.concat(errors.full_messages)
+        end
+      end
+      errors.clear
+
+      errs.uniq
     end
 
     def deployable?

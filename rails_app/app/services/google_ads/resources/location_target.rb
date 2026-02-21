@@ -62,6 +62,18 @@ module GoogleAds
           ::GoogleAds::Sync::CollectionSyncResult.new(results: results)
         end
 
+        def sync_result(campaign)
+          results = []
+          campaign.location_targets.only_deleted.each do |lt|
+            next unless lt.google_criterion_id.present?
+            results << new(lt).sync_result
+          end
+          campaign.location_targets.without_deleted.each do |lt|
+            results << new(lt).sync_result
+          end
+          ::GoogleAds::Sync::CollectionSyncResult.new(results: results)
+        end
+
         def sync_plan(campaign)
           operations = []
 
@@ -106,6 +118,21 @@ module GoogleAds
         end
       rescue Google::Ads::GoogleAds::Errors::GoogleAdsError => e
         GoogleAds::SyncResult.error(:campaign_criterion, e)
+      end
+
+      def sync_result
+        return GoogleAds::SyncResult.not_found(:campaign_criterion) unless record.google_criterion_id.present?
+        remote = fetch
+        return GoogleAds::SyncResult.not_found(:campaign_criterion) unless remote
+        if fields_match?(remote)
+          GoogleAds::SyncResult.unchanged(:campaign_criterion, record.google_criterion_id)
+        else
+          comparison = compare_fields(remote)
+          GoogleAds::SyncResult.error(:campaign_criterion,
+            GoogleAds::SyncVerificationError.new(
+              "Location target sync verification failed. Mismatched fields: #{comparison.failures.join(", ")}"
+            ))
+        end
       end
 
       def sync_plan

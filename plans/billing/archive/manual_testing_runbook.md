@@ -380,7 +380,7 @@ bundle exec rails runner "
 
 ## Part 5: Yearly Subscriber Monthly Reset
 
-This tests `DailyReconciliationWorker` which resets yearly subscribers monthly.
+This tests `AnnualSubscriberMonthlyAllocationWorker` which resets yearly subscribers monthly.
 
 ### Step 1: Create yearly subscription
 
@@ -403,7 +403,7 @@ bundle exec rails runner "
 ### Step 3: Run daily reconciliation
 
 ```bash
-bundle exec rails runner "Credits::DailyReconciliationWorker.new.perform"
+bundle exec rails runner "Credits::AnnualSubscriberMonthlyAllocationWorker.new.perform"
 ```
 
 **Expected**:
@@ -466,15 +466,15 @@ bundle exec rails runner "
 
 ## Test Matrix Checklist
 
-| #   | Scenario                  | Stripe Event                        | Handler                           | Status |
-| --- | ------------------------- | ----------------------------------- | --------------------------------- | ------ |
-| 1   | New subscription (via UI) | `subscription.created`              | `PaySubscriptionCredits` callback | [ ]    |
-| 2   | Renewal (test clock)      | `invoice.paid` (subscription_cycle) | `RenewalHandler`                  | [ ]    |
-| 3   | Plan upgrade              | `subscription.updated`              | `PlanChangeHandler`               | [ ]    |
-| 4   | Plan downgrade            | `subscription.updated`              | `PlanChangeHandler`               | [ ]    |
-| 5   | Yearly monthly reset      | N/A (cron)                          | `DailyReconciliationWorker`       | [ ]    |
-| 6   | Duplicate webhook         | Any                                 | Idempotency check                 | [ ]    |
-| 7   | Non-credit events         | `subscription.updated`              | Ignored                           | [ ]    |
+| #   | Scenario                  | Stripe Event                        | Handler                                   | Status |
+| --- | ------------------------- | ----------------------------------- | ----------------------------------------- | ------ |
+| 1   | New subscription (via UI) | `subscription.created`              | `PaySubscriptionCredits` callback         | [ ]    |
+| 2   | Renewal (test clock)      | `invoice.paid` (subscription_cycle) | `RenewalHandler`                          | [ ]    |
+| 3   | Plan upgrade              | `subscription.updated`              | `PlanChangeHandler`                       | [ ]    |
+| 4   | Plan downgrade            | `subscription.updated`              | `PlanChangeHandler`                       | [ ]    |
+| 5   | Yearly monthly reset      | N/A (cron)                          | `AnnualSubscriberMonthlyAllocationWorker` | [ ]    |
+| 6   | Duplicate webhook         | Any                                 | Idempotency check                         | [ ]    |
+| 7   | Non-credit events         | `subscription.updated`              | Ignored                                   | [ ]    |
 
 ---
 

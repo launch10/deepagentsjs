@@ -9,6 +9,7 @@ import type {
   ThreadIDType,
   CreditStatus,
   Intent,
+  AgentIntent,
 } from "@types";
 
 /**
@@ -169,6 +170,13 @@ export const BaseAnnotation = Annotation.Root({
   // Consumed after handling (cleared by handler nodes)
   // Note: LangGraph skips state updates for undefined values, so we use null to clear
   intent: Annotation<Intent | null | undefined>({
+    default: () => undefined,
+    reducer: (_current, next) => next,
+  }),
+
+  // Agent intents: actions the agent wants the frontend to execute
+  // Replace semantics (same as intent) — each node writes the full list
+  agentIntents: Annotation<AgentIntent[] | undefined>({
     default: () => undefined,
     reducer: (_current, next) => next,
   }),

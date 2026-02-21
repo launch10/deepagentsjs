@@ -18,7 +18,7 @@ import {
 describe("workflowNavigation", () => {
   describe("PAGE_ORDER", () => {
     it("has pages in correct order", () => {
-      expect(PAGE_ORDER).toEqual(["brainstorm", "website", "ad_campaign", "deploy"]);
+      expect(PAGE_ORDER).toEqual(["brainstorm", "website", "ads", "deploy"]);
     });
   });
 
@@ -32,7 +32,7 @@ describe("workflowNavigation", () => {
     it("returns correct index for each page", () => {
       expect(getPageIndex("brainstorm")).toBe(0);
       expect(getPageIndex("website")).toBe(1);
-      expect(getPageIndex("ad_campaign")).toBe(2);
+      expect(getPageIndex("ads")).toBe(2);
       expect(getPageIndex("deploy")).toBe(3);
     });
 
@@ -50,12 +50,12 @@ describe("workflowNavigation", () => {
       expect(getNextPage("brainstorm")).toBe("website");
     });
 
-    it("returns ad_campaign after website", () => {
-      expect(getNextPage("website")).toBe("ad_campaign");
+    it("returns ads after website", () => {
+      expect(getNextPage("website")).toBe("ads");
     });
 
-    it("returns deploy after ad_campaign", () => {
-      expect(getNextPage("ad_campaign")).toBe("deploy");
+    it("returns deploy after ads", () => {
+      expect(getNextPage("ads")).toBe("deploy");
     });
 
     it("returns null after deploy (end of workflow)", () => {
@@ -76,12 +76,12 @@ describe("workflowNavigation", () => {
       expect(getPreviousPage("website")).toBe("brainstorm");
     });
 
-    it("returns website before ad_campaign", () => {
-      expect(getPreviousPage("ad_campaign")).toBe("website");
+    it("returns website before ads", () => {
+      expect(getPreviousPage("ads")).toBe("website");
     });
 
-    it("returns ad_campaign before deploy", () => {
-      expect(getPreviousPage("deploy")).toBe("ad_campaign");
+    it("returns ads before deploy", () => {
+      expect(getPreviousPage("deploy")).toBe("ads");
     });
   });
 
@@ -92,7 +92,7 @@ describe("workflowNavigation", () => {
 
     it("returns false for other pages", () => {
       expect(isFirstPage("website")).toBe(false);
-      expect(isFirstPage("ad_campaign")).toBe(false);
+      expect(isFirstPage("ads")).toBe(false);
       expect(isFirstPage("deploy")).toBe(false);
     });
 
@@ -109,7 +109,7 @@ describe("workflowNavigation", () => {
     it("returns false for other pages", () => {
       expect(isLastPage("brainstorm")).toBe(false);
       expect(isLastPage("website")).toBe(false);
-      expect(isLastPage("ad_campaign")).toBe(false);
+      expect(isLastPage("ads")).toBe(false);
     });
 
     it("returns false for null", () => {
@@ -126,8 +126,8 @@ describe("workflowNavigation", () => {
       expect(getFirstSubstep("website")).toBe("build");
     });
 
-    it("returns content for ad_campaign", () => {
-      expect(getFirstSubstep("ad_campaign")).toBe("content");
+    it("returns content for ads", () => {
+      expect(getFirstSubstep("ads")).toBe("content");
     });
 
     it("returns null for deploy (no substeps)", () => {
@@ -144,8 +144,8 @@ describe("workflowNavigation", () => {
       expect(getLastSubstep("website")).toBe("deploy");
     });
 
-    it("returns review for ad_campaign", () => {
-      expect(getLastSubstep("ad_campaign")).toBe("review");
+    it("returns review for ads", () => {
+      expect(getLastSubstep("ads")).toBe("review");
     });
 
     it("returns null for deploy (no substeps)", () => {
@@ -162,8 +162,8 @@ describe("workflowNavigation", () => {
       expect(pageHasSubsteps("website")).toBe(true);
     });
 
-    it("returns true for ad_campaign", () => {
-      expect(pageHasSubsteps("ad_campaign")).toBe(true);
+    it("returns true for ads", () => {
+      expect(pageHasSubsteps("ads")).toBe(true);
     });
 
     it("returns false for deploy", () => {
@@ -203,9 +203,9 @@ describe("workflowNavigation", () => {
         }
       });
 
-      it("moves from website/deploy to ad_campaign/content", () => {
+      it("moves from website/deploy to ads/content", () => {
         const result = continueWorkflow({ page: "website", substep: "deploy" });
-        expect(result).toEqual({ page: "ad_campaign", substep: "content" });
+        expect(result).toEqual({ page: "ads", substep: "content" });
       });
 
       it("starts at build when substep is null", () => {
@@ -214,27 +214,27 @@ describe("workflowNavigation", () => {
       });
     });
 
-    describe("from ad_campaign", () => {
-      it("moves through ad_campaign substeps in order", () => {
+    describe("from ads", () => {
+      it("moves through ads substeps in order", () => {
         const substepOrder = ["content", "highlights", "keywords", "settings", "launch", "review"];
 
         for (let i = 0; i < substepOrder.length - 1; i++) {
           const result = continueWorkflow({
-            page: "ad_campaign",
+            page: "ads",
             substep: substepOrder[i] as WorkflowPosition["substep"],
           });
-          expect(result).toEqual({ page: "ad_campaign", substep: substepOrder[i + 1] });
+          expect(result).toEqual({ page: "ads", substep: substepOrder[i + 1] });
         }
       });
 
-      it("moves from ad_campaign/review to deploy", () => {
-        const result = continueWorkflow({ page: "ad_campaign", substep: "review" });
+      it("moves from ads/review to deploy", () => {
+        const result = continueWorkflow({ page: "ads", substep: "review" });
         expect(result).toEqual({ page: "deploy", substep: null });
       });
 
       it("starts at content when substep is null", () => {
-        const result = continueWorkflow({ page: "ad_campaign", substep: null });
-        expect(result).toEqual({ page: "ad_campaign", substep: "content" });
+        const result = continueWorkflow({ page: "ads", substep: null });
+        expect(result).toEqual({ page: "ads", substep: "content" });
       });
     });
 
@@ -284,25 +284,25 @@ describe("workflowNavigation", () => {
       });
     });
 
-    describe("from ad_campaign", () => {
-      it("moves back through ad_campaign substeps", () => {
-        const result1 = backWorkflow({ page: "ad_campaign", substep: "review" });
-        expect(result1).toEqual({ page: "ad_campaign", substep: "launch" });
+    describe("from ads", () => {
+      it("moves back through ads substeps", () => {
+        const result1 = backWorkflow({ page: "ads", substep: "review" });
+        expect(result1).toEqual({ page: "ads", substep: "launch" });
 
-        const result2 = backWorkflow({ page: "ad_campaign", substep: "highlights" });
-        expect(result2).toEqual({ page: "ad_campaign", substep: "content" });
+        const result2 = backWorkflow({ page: "ads", substep: "highlights" });
+        expect(result2).toEqual({ page: "ads", substep: "content" });
       });
 
-      it("moves from ad_campaign/content to website/deploy", () => {
-        const result = backWorkflow({ page: "ad_campaign", substep: "content" });
-        expect(result).toEqual({ page: "website", substep: "deploy" });
+      it("moves from ads/content to website/build (first substep of previous boundary)", () => {
+        const result = backWorkflow({ page: "ads", substep: "content" });
+        expect(result).toEqual({ page: "website", substep: "build" });
       });
     });
 
     describe("from deploy", () => {
-      it("moves from deploy to ad_campaign/review", () => {
+      it("moves from deploy to ads/content (first substep of previous boundary)", () => {
         const result = backWorkflow({ page: "deploy", substep: null });
-        expect(result).toEqual({ page: "ad_campaign", substep: "review" });
+        expect(result).toEqual({ page: "ads", substep: "content" });
       });
     });
   });
@@ -326,12 +326,12 @@ describe("workflowNavigation", () => {
         "website/build",
         "website/domain",
         "website/deploy",
-        "ad_campaign/content",
-        "ad_campaign/highlights",
-        "ad_campaign/keywords",
-        "ad_campaign/settings",
-        "ad_campaign/launch",
-        "ad_campaign/review",
+        "ads/content",
+        "ads/highlights",
+        "ads/keywords",
+        "ads/settings",
+        "ads/launch",
+        "ads/review",
         "deploy/null",
       ]);
     });
@@ -350,14 +350,7 @@ describe("workflowNavigation", () => {
       }
 
       expect(visited).toEqual([
-        "ad_campaign/review",
-        "ad_campaign/launch",
-        "ad_campaign/settings",
-        "ad_campaign/keywords",
-        "ad_campaign/highlights",
-        "ad_campaign/content",
-        "website/deploy",
-        "website/domain",
+        "ads/content",
         "website/build",
         "brainstorm/null",
       ]);

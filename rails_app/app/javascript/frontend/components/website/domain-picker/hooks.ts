@@ -11,11 +11,7 @@ import type { WebsiteUrl } from "./DomainPicker";
 
 export function useDomainPickerData(websiteId: number | undefined) {
   // Fetch domain context from Rails (existing domains, credits, assigned URL)
-  const {
-    data: context,
-    isLoading,
-    error,
-  } = useDomainContext(websiteId);
+  const { data: context, isLoading, error } = useDomainContext(websiteId);
 
   // Get AI recommendations from website graph state
   const recommendations = useWebsiteChatState("domainRecommendations") as
@@ -91,7 +87,7 @@ export function useClaimSubdomain({
       const claimedSelection: WebsiteUrl = {
         ...pendingClaim,
         origin: "existing",
-        existingDomainId: result.id,
+        existingDomainId: result.domain.id,
       };
 
       onClaimed(claimedSelection);

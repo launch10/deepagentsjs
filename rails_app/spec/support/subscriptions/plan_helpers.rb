@@ -92,6 +92,20 @@ module PlanHelpers
         plan.plan_tier_id = plan_attrs[:plan_tier_id]
       end
     end
+
+    # Friends & Family plan (hidden, $0, no monthly credits)
+    ff_tier = PlanTier.find_or_create_by!(name: "friends_family") do |tier|
+      tier.description = "Friends & family testing access"
+      tier.details = {features: ["Full access for testing", "Gifted credits only"], credits: 0}
+    end
+
+    Plan.find_or_create_by!(name: "friends_family") do |plan|
+      plan.amount = 0
+      plan.interval = "month"
+      plan.hidden = true
+      plan.fake_processor_id = "friends_family"
+      plan.plan_tier_id = ff_tier.id
+    end
   end
 
   def ensure_plans_exist

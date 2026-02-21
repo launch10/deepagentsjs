@@ -1,13 +1,13 @@
 import { Ads } from "@types";
 import { type AdsGraphState } from "@state";
-import { userPreferencesPrompt } from "../userPreferences";
 
 export const Callouts: Partial<Ads.AssetPromptMap> = {
   callouts: {
     prompt: async (state: AdsGraphState, _config?: any) => {
-      const userPrefs = await userPreferencesPrompt(state, "callouts");
+      const lockedCount = (state.callouts || []).filter((a) => a.locked).length;
       const nVariants =
-        Ads.getNVariantsForAsset(state.refresh, "callouts") ?? Ads.DefaultNumAssets.callouts;
+        Ads.getNVariantsForAsset(state.refresh, "callouts") ??
+        Math.max(1, Ads.DefaultNumAssets.callouts - lockedCount);
 
       return `
             ## Unique Features (Callouts)
@@ -26,13 +26,13 @@ export const Callouts: Partial<Ads.AssetPromptMap> = {
             - Focus on tangible benefits or proof points
 
             Remember: These highlights make the ad larger and give potential customers more reasons to click. Make them compelling, specific, and relevant to the business's unique value proposition.
-
-            ${userPrefs}
         `;
     },
     outputFormat: async (state: AdsGraphState, _config?: any): Promise<object> => {
+      const lockedCount = (state.callouts || []).filter((a) => a.locked).length;
       const nVariants =
-        Ads.getNVariantsForAsset(state.refresh, "callouts") ?? Ads.DefaultNumAssets.callouts;
+        Ads.getNVariantsForAsset(state.refresh, "callouts") ??
+        Math.max(1, Ads.DefaultNumAssets.callouts - lockedCount);
       const callouts = Array.from({ length: nVariants }, (_, i) => `Feature ${i + 1}`);
       return { callouts };
     },

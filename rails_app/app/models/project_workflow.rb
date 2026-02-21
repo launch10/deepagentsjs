@@ -42,7 +42,8 @@ class ProjectWorkflow < ApplicationRecord
   scope :launch, -> { where(workflow_type: "launch") }
 
   def chat
-    project.chats.find_by(chat_type: step)
+    return deploy_chat if deploy_context?
+    project.chats.find_by(chat_type: step, active: true)
   end
 
   def next_step!
@@ -51,7 +52,21 @@ class ProjectWorkflow < ApplicationRecord
       complete!
       return [nil, nil]
     end
+    previous_step_val = step
+    previous_substep_val = substep
     update(step: next_step, substep: next_substep)
+
+    account = project&.account
+    TrackEvent.call("workflow_step_reached",
+      user: account&.owner,
+      account: account,
+      project: project,
+      project_uuid: project&.uuid,
+      step: next_step,
+      substep: next_substep,
+      previous_step: previous_step_val,
+      previous_substep: previous_substep_val)
+
     [next_step, next_substep]
   end
 
@@ -69,7 +84,24 @@ class ProjectWorkflow < ApplicationRecord
     end
     return false unless valid_step?(step, substep)
 
-    update(step: step, substep: substep)
+    previous_step_val = self.step
+    previous_substep_val = self.substep
+    result = update(step: step, substep: substep)
+
+    if result
+      account = project&.account
+      TrackEvent.call("workflow_step_reached",
+        user: account&.owner,
+        account: account,
+        project: project,
+        project_uuid: project&.uuid,
+        step: step,
+        substep: substep,
+        previous_step: previous_step_val,
+        previous_substep: previous_substep_val)
+    end
+
+    result
   end
 
   def completed?
@@ -105,6 +137,19 @@ class ProjectWorkflow < ApplicationRecord
   end
 
   private
+
+  # Are we on a deploy page? (website/deploy substep or top-level deploy step)
+  def deploy_context?
+    step == "deploy" || substep == "deploy"
+  end
+
+  # Resolve the correct deploy chat based on workflow position.
+  # website/deploy → find the website-only deploy
+  # deploy (top-level) → find the google_ads deploy
+  def deploy_chat
+    instruction = (substep == "deploy") ? :website : :google_ads
+    project.deploys.current_for(instruction).last&.chat
+  end
 
   def valid_step?(step, substep)
     WorkflowConfig.step_exists?(workflow_type, step) && (substep.nil? || WorkflowConfig.substep_exists?(workflow_type, step, substep))

@@ -1,5 +1,4 @@
-import { CardHeader, CardTitle, CardDescription } from "@components/ui/card";
-import CreateFlowTodoItem from "./CreateFlowTodoItem";
+import { Checklist, ChecklistItem } from "@components/shared/checklist";
 import {
   PaintBrushIcon,
   ChatBubbleBottomCenterTextIcon,
@@ -16,11 +15,7 @@ import {
 } from "@heroicons/react/24/solid";
 import type { ComponentType, SVGProps } from "react";
 import { useMemo, useEffect } from "react";
-import {
-  useWebsiteChatState,
-  useWebsiteChatIsStreaming,
-} from "@hooks/website";
-import { Spinner } from "@components/ui/spinner";
+import { useWebsiteChatState, useWebsiteChatIsStreaming } from "@hooks/website";
 import type { Todo } from "@shared";
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
@@ -41,9 +36,18 @@ const keywordIconMap: [RegExp, IconComponent][] = [
 
 /** All icons in preferred assignment order — keyword matches pull from here first. */
 const allIcons: IconComponent[] = [
-  StarIcon, PhotoIcon, ChatBubbleBottomCenterTextIcon, PaintBrushIcon,
-  RectangleGroupIcon, SparklesIcon, GlobeAltIcon, CodeBracketIcon,
-  DocumentTextIcon, CubeIcon, SwatchIcon, WrenchScrewdriverIcon,
+  StarIcon,
+  PhotoIcon,
+  ChatBubbleBottomCenterTextIcon,
+  PaintBrushIcon,
+  RectangleGroupIcon,
+  SparklesIcon,
+  GlobeAltIcon,
+  CodeBracketIcon,
+  DocumentTextIcon,
+  CubeIcon,
+  SwatchIcon,
+  WrenchScrewdriverIcon,
 ];
 
 /**
@@ -89,44 +93,24 @@ export default function CreateFlowTodoList() {
   const isStreaming = useWebsiteChatIsStreaming();
   const hasTodos = todos && todos.length > 0;
 
-  useEffect(() => {
-    if (import.meta.env.DEV) {
-      console.log("[CreateFlowTodoList]", {
-        count: todos?.length ?? 0,
-        isStreaming,
-        ids: todos?.map((t) => t.id ?? "no-id"),
-        statuses: todos?.map((t) => `${(t.id ?? "no-id").slice(0, 8)}:${t.status}`),
-      });
-    }
-  }, [todos, isStreaming]);
-
-  const icons = useMemo(
-    () => (hasTodos ? assignIcons(todos) : []),
-    [hasTodos, todos]
-  );
+  const icons = useMemo(() => (hasTodos ? assignIcons(todos) : []), [hasTodos, todos]);
 
   return (
-    <CardHeader className="px-4 py-4">
-      <CardTitle className="text-lg font-semibold font-serif">Landing Page Designer</CardTitle>
-      <CardDescription className="flex flex-col gap-2 pt-1">
-        {hasTodos ? (
-          todos.map((todo, i) => (
-            <CreateFlowTodoItem
+    <Checklist.Root title="Landing Page Designer">
+      {hasTodos ? (
+        <Checklist.Items>
+          {todos.map((todo, i) => (
+            <ChecklistItem
               key={todo.id ?? todo.content}
               icon={icons[i]}
               label={todo.content}
               status={todo.status}
             />
-          ))
-        ) : (
-          <div className="flex items-center gap-3 h-10 px-3 rounded-lg border border-neutral-300 bg-white">
-            <Spinner className="size-4" />
-            <span className="text-xs text-base-500">
-              {isStreaming ? "Planning your website..." : "Preparing..."}
-            </span>
-          </div>
-        )}
-      </CardDescription>
-    </CardHeader>
+          ))}
+        </Checklist.Items>
+      ) : (
+        <Checklist.Empty message={isStreaming ? "Planning your website..." : "Preparing..."} />
+      )}
+    </Checklist.Root>
   );
 }

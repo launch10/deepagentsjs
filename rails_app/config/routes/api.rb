@@ -25,7 +25,7 @@ namespace :api, defaults: {format: :json} do
         post :validate
       end
     end
-    resources :uploads, only: [:create, :index, :show, :destroy]
+    resources :uploads, only: [:create, :index, :show, :destroy, :update]
     resources :projects, only: [:index, :destroy], param: :uuid do
       patch :restore, on: :member
     end
@@ -40,6 +40,7 @@ namespace :api, defaults: {format: :json} do
     resources :campaigns, only: [:create, :update] do
       post :advance, on: :member
       post :back, on: :member
+      post :validate_deploy, on: :member
     end
 
     resources :geo_target_constants, only: [:index]
@@ -58,7 +59,7 @@ namespace :api, defaults: {format: :json} do
         post :search
       end
     end
-    resources :job_runs, only: [:create]
+    resources :job_runs, only: [:create, :show]
 
     # Dashboard insights for Langgraph
     resources :dashboard_insights, only: [:index, :create] do
@@ -70,18 +71,24 @@ namespace :api, defaults: {format: :json} do
     # Agent context events for Langgraph
     resources :agent_context_events, only: [:index]
 
-    # Internal service endpoints for Langgraph billing integration
+    # Internal service endpoints for Langgraph integration
     post "llm_usage/notify", to: "llm_usage#notify"
+    post "app_events", to: "app_events#create"
     get "credits/check", to: "credits#check"
-    resources :deploys, only: [:create, :show, :update] do
+    resources :credit_packs, only: [], param: :credit_pack_id do
+      post :checkout, to: "credit_pack_checkouts#create", on: :member
+    end
+    resources :deploys, only: [:index, :create, :show, :update] do
       post :touch, on: :member
+      post :rollback, on: :member
+      post :deactivate, on: :collection
+      post :check_changes, on: :collection
     end
 
     # Google status APIs for deploy flow
     scope :google do
-      get "connection_status", to: "google#connection_status"
-      get "invite_status", to: "google#invite_status"
-      get "payment_status", to: "google#payment_status"
+      get "status", to: "google#status"
+      post "refresh_invite_status", to: "google#refresh_invite_status"
     end
 
     scope "projects/:project_id" do

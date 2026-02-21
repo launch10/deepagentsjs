@@ -64,27 +64,27 @@ RSpec.describe ProjectWorkflow, type: :model do
       workflow.next_step! # deploy
 
       workflow.next_step!
-      expect(workflow.reload.step).to eq("ad_campaign")
+      expect(workflow.reload.step).to eq("ads")
       expect(workflow.reload.substep).to eq("content")
 
       workflow.next_step!
-      expect(workflow.reload.step).to eq("ad_campaign")
+      expect(workflow.reload.step).to eq("ads")
       expect(workflow.reload.substep).to eq("highlights")
 
       workflow.next_step!
-      expect(workflow.reload.step).to eq("ad_campaign")
+      expect(workflow.reload.step).to eq("ads")
       expect(workflow.reload.substep).to eq("keywords")
 
       workflow.next_step!
-      expect(workflow.reload.step).to eq("ad_campaign")
+      expect(workflow.reload.step).to eq("ads")
       expect(workflow.reload.substep).to eq("settings")
 
       workflow.next_step!
-      expect(workflow.reload.step).to eq("ad_campaign")
+      expect(workflow.reload.step).to eq("ads")
       expect(workflow.reload.substep).to eq("launch")
 
       workflow.next_step!
-      expect(workflow.reload.step).to eq("ad_campaign")
+      expect(workflow.reload.step).to eq("ads")
       expect(workflow.reload.substep).to eq("review")
 
       workflow.next_step!
@@ -108,29 +108,29 @@ RSpec.describe ProjectWorkflow, type: :model do
       end
 
       it "advances to a valid step with substep" do
-        result = workflow.advance_to(step: "ad_campaign", substep: "content")
+        result = workflow.advance_to(step: "ads", substep: "content")
 
         expect(result).to be true
-        expect(workflow.reload.step).to eq("ad_campaign")
+        expect(workflow.reload.step).to eq("ads")
         expect(workflow.substep).to eq("content")
       end
 
       it "advances through multiple substeps in order" do
-        workflow.advance_to(step: "ad_campaign", substep: "content")
+        workflow.advance_to(step: "ads", substep: "content")
         expect(workflow.substep).to eq("content")
 
-        workflow.advance_to(step: "ad_campaign", substep: "highlights")
+        workflow.advance_to(step: "ads", substep: "highlights")
         expect(workflow.reload.substep).to eq("highlights")
 
-        workflow.advance_to(step: "ad_campaign", substep: "keywords")
+        workflow.advance_to(step: "ads", substep: "keywords")
         expect(workflow.reload.substep).to eq("keywords")
       end
 
       it "defaults to first substep" do
-        result = workflow.advance_to(step: "ad_campaign")
+        result = workflow.advance_to(step: "ads")
 
         expect(result).to be true
-        expect(workflow.reload.step).to eq("ad_campaign")
+        expect(workflow.reload.step).to eq("ads")
         expect(workflow.substep).to eq("content")
       end
     end
@@ -144,10 +144,10 @@ RSpec.describe ProjectWorkflow, type: :model do
       end
 
       it "returns false for non-existent substep" do
-        result = workflow.advance_to(step: "ad_campaign", substep: "invalid_substep")
+        result = workflow.advance_to(step: "ads", substep: "invalid_substep")
 
         expect(result).to be false
-        expect(workflow.reload.step).not_to eq("ad_campaign")
+        expect(workflow.reload.step).not_to eq("ads")
       end
 
       it "does not update the workflow when advancement fails" do
@@ -172,12 +172,12 @@ RSpec.describe ProjectWorkflow, type: :model do
 
       it "returns the next step in sequence" do
         workflow.update(step: "website")
-        expect(WorkflowConfig.next_step("launch", "website")).to eq("ad_campaign")
+        expect(WorkflowConfig.next_step("launch", "website")).to eq("ads")
       end
 
-      it "returns the next step from ad_campaign" do
-        workflow.update(step: "ad_campaign", substep: "review")
-        expect(WorkflowConfig.next_step("launch", "ad_campaign")).to eq("deploy")
+      it "returns the next step from ads" do
+        workflow.update(step: "ads", substep: "review")
+        expect(WorkflowConfig.next_step("launch", "ads")).to eq("deploy")
       end
     end
 
@@ -189,8 +189,8 @@ RSpec.describe ProjectWorkflow, type: :model do
     end
 
     context "substeps handling" do
-      it "returns all substeps for ad_campaign" do
-        substeps = WorkflowConfig.substeps_for("launch", "ad_campaign")
+      it "returns all substeps for ads" do
+        substeps = WorkflowConfig.substeps_for("launch", "ads")
         expect(substeps).to eq(["content", "highlights", "keywords", "settings", "launch", "review"])
       end
 
@@ -218,7 +218,7 @@ RSpec.describe ProjectWorkflow, type: :model do
 
   describe "#as_json" do
     before do
-      workflow.update(step: "ad_campaign", substep: "content")
+      workflow.update(step: "ads", substep: "content")
     end
 
     it "returns workflow data as hash" do
@@ -226,7 +226,7 @@ RSpec.describe ProjectWorkflow, type: :model do
 
       expect(json).to be_a(Hash)
       expect(json[:workflow_type]).to eq("launch")
-      expect(json[:page]).to eq("ad_campaign")
+      expect(json[:page]).to eq("ads")
       expect(json[:substep]).to eq("content")
     end
 
@@ -240,7 +240,7 @@ RSpec.describe ProjectWorkflow, type: :model do
     it "includes available steps" do
       json = workflow.as_json
 
-      expect(json[:available_steps]).to eq(%w[brainstorm website ad_campaign deploy])
+      expect(json[:available_steps]).to eq(%w[brainstorm website ads deploy])
     end
   end
 
@@ -261,11 +261,99 @@ RSpec.describe ProjectWorkflow, type: :model do
       workflow.update(step: "website")
       expect(workflow.send(:calculate_progress)).to eq(25)
 
-      workflow.update(step: "ad_campaign")
+      workflow.update(step: "ads")
       expect(workflow.send(:calculate_progress)).to eq(50)
 
       workflow.update(step: "deploy")
       expect(workflow.send(:calculate_progress)).to eq(75)
+    end
+  end
+
+  describe "#chat" do
+    let!(:website_chat) do
+      create(:chat, project: project, account: account, chat_type: "website", thread_id: "website-thread")
+    end
+
+    it "returns the website chat when step is website/build" do
+      workflow.update!(step: "website", substep: "build")
+      expect(workflow.chat).to eq(website_chat)
+    end
+
+    it "returns the brainstorm chat when step is brainstorm" do
+      brainstorm_chat = create(:chat, project: project, account: account, chat_type: "brainstorm", thread_id: "brainstorm-thread")
+      workflow.update!(step: "brainstorm", substep: nil)
+      expect(workflow.chat).to eq(brainstorm_chat)
+    end
+
+    context "website deploy (step=website, substep=deploy)" do
+      let!(:deploy) { create(:deploy, :website_only, project: project) }
+
+      it "returns the website deploy's chat" do
+        workflow.update!(step: "website", substep: "deploy")
+        expect(workflow.chat).to eq(deploy.chat)
+      end
+
+      it "does NOT return the website chat" do
+        workflow.update!(step: "website", substep: "deploy")
+        expect(workflow.chat).not_to eq(website_chat)
+      end
+
+      it "returns nil when no website deploy exists" do
+        deploy.destroy!
+        workflow.update!(step: "website", substep: "deploy")
+        expect(workflow.chat).to be_nil
+      end
+    end
+
+    context "campaign deploy (step=deploy)" do
+      let!(:deploy) { create(:deploy, :full_deploy, project: project) }
+
+      it "returns the campaign deploy's chat" do
+        workflow.update!(step: "deploy", substep: nil)
+        expect(workflow.chat).to eq(deploy.chat)
+      end
+
+      it "returns nil when no campaign deploy exists" do
+        deploy.destroy!
+        workflow.update!(step: "deploy", substep: nil)
+        expect(workflow.chat).to be_nil
+      end
+    end
+
+    context "website deploy does NOT leak into campaign deploy" do
+      let!(:website_deploy) { create(:deploy, :website_only, project: project) }
+
+      it "returns nil for campaign deploy page when only a website deploy exists" do
+        workflow.update!(step: "deploy", substep: nil)
+        expect(workflow.chat).to be_nil
+      end
+    end
+
+    context "campaign deploy does NOT leak into website deploy" do
+      let!(:campaign_deploy) { create(:deploy, :full_deploy, project: project) }
+
+      it "returns nil for website deploy page when only a campaign deploy exists" do
+        workflow.update!(step: "website", substep: "deploy")
+        # full_deploy (campaign type) also deploys website, so current_for(:website) matches it
+        # This is expected — a full deploy includes website deployment
+        expect(workflow.chat).to eq(campaign_deploy.chat)
+      end
+    end
+  end
+
+  describe "event tracking" do
+    it "tracks workflow_step_reached on next_step!" do
+      workflow.update(step: "brainstorm", substep: nil)
+      expect(TrackEvent).to receive(:call).with("workflow_step_reached",
+        hash_including(step: "website", substep: "build", previous_step: "brainstorm"))
+      workflow.next_step!
+    end
+
+    it "tracks workflow_step_reached on advance_to" do
+      workflow.update(step: "brainstorm", substep: nil)
+      expect(TrackEvent).to receive(:call).with("workflow_step_reached",
+        hash_including(step: "website", substep: "build"))
+      workflow.advance_to(step: "website")
     end
   end
 end

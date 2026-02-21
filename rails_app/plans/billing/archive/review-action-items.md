@@ -63,7 +63,7 @@ Middleware calls `GET /api/v1/credits/check`, gets positive balance, then graph 
 
 Zustand store persists only `modalDismissedAt` and `lowCreditWarningDismissedAt` to localStorage. On full page reload, `isOutOfCredits` starts as `false` until `hydrateFromPageProps` runs. Brief window where submit button appears enabled for an exhausted user. Cosmetic but feels wrong.
 
-### 7. DailyReconciliationWorker plan join is fragile
+### 7. AnnualSubscriberMonthlyAllocationWorker plan join is fragile
 
 **Status:** TODO
 

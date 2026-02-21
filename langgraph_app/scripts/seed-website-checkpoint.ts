@@ -23,7 +23,9 @@ const websiteId = args.find((a) => a.startsWith("--website-id="))?.split("=")[1]
 const chatId = args.find((a) => a.startsWith("--chat-id="))?.split("=")[1];
 
 if (!threadId || !websiteId) {
-  console.error("Usage: seed-website-checkpoint.ts --thread-id=<uuid> --website-id=<id> [--chat-id=<id>]");
+  console.error(
+    "Usage: seed-website-checkpoint.ts --thread-id=<uuid> --website-id=<id> [--chat-id=<id>]"
+  );
   process.exit(1);
 }
 
@@ -63,8 +65,24 @@ const compiled = minimalGraph.compile({ checkpointer });
 // 4. Write checkpoint via updateState
 const config = { configurable: { thread_id: threadId } };
 
+const messageContent =
+  "I've generated your website! Take a look and let me know if you'd like any changes.";
+const message = new AIMessage({
+  content: messageContent,
+  response_metadata: {
+    parsed_blocks: [
+      {
+        type: "text",
+        index: 0,
+        id: crypto.randomUUID(),
+        sourceText: messageContent,
+      },
+    ],
+  },
+});
+
 await compiled.updateState(config, {
-  messages: [new AIMessage("I've built your landing page!")],
+  messages: [message],
   files,
   status: "completed",
   websiteId: websiteIdNum,

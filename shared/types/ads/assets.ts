@@ -12,8 +12,8 @@ export const AssetKinds = [
 export type AssetKind = (typeof AssetKinds)[number];
 
 // Ads only uses ad campaign substeps, not website substeps
-export const StageNames = Workflow.AdCampaignSubstepNames;
-export type StageName = Workflow.AdCampaignSubstepName;
+export const StageNames = Workflow.AdsSubstepNames;
+export type StageName = Workflow.AdsSubstepName;
 
 export const ContentStages = ["content", "highlights", "keywords"] as const;
 export type ContentStage = (typeof ContentStages)[number];
@@ -368,10 +368,11 @@ export type Assets = {
 
 export const stageLoadedSuccessfully = (state: Partial<Assets>, stage: StageName): boolean => {
   const assets = assetsForStage(stage);
-  return assets.every((asset) => {
+  const allAssetsLoaded = assets.every((asset) => {
     if (asset === "structuredSnippets") {
       return state[asset]?.details.length;
     }
     return state[asset]?.length;
   });
+  return allAssetsLoaded;
 };

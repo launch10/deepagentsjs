@@ -16,37 +16,38 @@ export const TaskNames = [
   "ConnectingGoogle",
   "VerifyingGoogle",
 
-  // Website Preparation (can run in parallel once Google is done)
-  "AddingAnalytics",
-  "OptimizingSEO",
+  // Billing (campaign only — resolve all external Google blockers before website prep)
+  "CheckingBilling",
 
   // Validation
   "ValidateLinks",
   "RuntimeValidation",
   "FixingBugs", // Only runs when validation fails
 
+  // Website Preparation
+  "OptimizingSEO",
+  "OptimizingPageForLLMs",
+  "AddingAnalytics",
+
   // Deploy
   "DeployingWebsite",
 
   // Campaign (only when deploying Google Ads)
   "DeployingCampaign",
-  "CheckingBilling",
   "EnablingCampaign",
 ] as const;
 export type TaskName = (typeof TaskNames)[number];
 export const TASK_ORDER = TaskNames;
 
 const TasksForInstructions: Record<InstructionType, TaskName[]> = {
-  website: ["AddingAnalytics", "OptimizingSEO", "ValidateLinks", "RuntimeValidation", "FixingBugs", "DeployingWebsite"],
-  googleAds: ["ConnectingGoogle", "VerifyingGoogle", "DeployingCampaign", "CheckingBilling", "EnablingCampaign"],
+  website: ["ValidateLinks", "RuntimeValidation", "FixingBugs", "OptimizingSEO", "OptimizingPageForLLMs", "AddingAnalytics", "DeployingWebsite"],
+  googleAds: ["ConnectingGoogle", "VerifyingGoogle", "CheckingBilling", "DeployingCampaign", "EnablingCampaign"],
 }
 
 const findTasksForInstructions = (instructions: Instructions): TaskName[] => {
-  return Object.keys(instructions).map((key) => {
-    if (instructions[key as InstructionType]) {
-      return TasksForInstructions[key as InstructionType];
-    }
-  }).flat() as TaskName[];
+  return Object.keys(instructions)
+    .filter((key) => instructions[key as InstructionType])
+    .flatMap((key) => TasksForInstructions[key as InstructionType]);
 }
 
 export const isTaskRequired = (instructions: Instructions, taskName: TaskName): boolean => {
@@ -59,6 +60,15 @@ export const findTasks = (instructions: Instructions): TaskName[] => {
 
 export const createTasks = (instructions: Instructions): Task[] => {
   return findTasks(instructions).map((name) => createTask(name));
+}
+
+export const createTasksExcluding = (
+  instructions: Instructions,
+  excludeNames: TaskName[]
+): Task[] => {
+  return findTasks(instructions)
+    .filter((name) => !excludeNames.includes(name))
+    .map((name) => createTask(name));
 }
 
 export const findEarlierTasks = (name: TaskName, instructions: Instructions): TaskName[] => {
@@ -77,6 +87,7 @@ export const TaskDescriptionMap: Record<TaskName, string> = {
   // 1:1 with phases (use phase descriptions)
   AddingAnalytics: "Adding Analytics",
   OptimizingSEO: "Optimizing SEO",
+  OptimizingPageForLLMs: "Optimizing Page for LLMs",
   FixingBugs: "Squashing Bugs",
   DeployingWebsite: "Launching Website",
   ConnectingGoogle: "Signing into Google",

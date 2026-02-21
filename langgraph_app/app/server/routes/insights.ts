@@ -6,7 +6,7 @@ import {
   readOnlyMiddleware,
   getCreditState,
 } from "@server/middleware";
-import { validateThreadOrError } from "../middleware/threadValidation";
+import { validateThreadGraphOrError } from "../middleware/threadValidation";
 import { InsightsAPI } from "@api";
 
 type Variables = {
@@ -26,6 +26,10 @@ insightsRoutes.post("/generate", ...streamMiddleware, async (c) => {
   const creditState = getCreditState(c);
   const body = await c.req.json().catch(() => ({}));
   const threadId = body.threadId ?? uuidv7();
+
+  // Validate thread ownership + graph type (new threads allowed — chat created during execution)
+  const validationError = await validateThreadGraphOrError(c, threadId, auth, "insights");
+  if (validationError) return validationError;
 
   return InsightsAPI.stream({
     messages: [],
@@ -51,8 +55,8 @@ insightsRoutes.get("/generate", ...readOnlyMiddleware, async (c) => {
     return c.json({ error: "Missing threadId" }, 400);
   }
 
-  // Validate thread ownership
-  const validationError = await validateThreadOrError(c, threadId, auth);
+  // Validate thread ownership + graph type for loading history
+  const validationError = await validateThreadGraphOrError(c, threadId, auth, "insights");
   if (validationError) return validationError;
 
   return InsightsAPI.loadHistory(threadId);

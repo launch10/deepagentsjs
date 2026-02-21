@@ -19,6 +19,12 @@ RSpec.describe GoogleAds::PaymentCheckWorker, type: :worker do
     allow(ENV).to receive(:[]).with("LANGGRAPH_API_URL").and_return("http://localhost:4000")
   end
 
+  describe "configuration" do
+    it "includes DeployJobHandler" do
+      expect(described_class.ancestors).to include(DeployJobHandler)
+    end
+  end
+
   describe "#perform" do
     context "when no ads_account exists" do
       before do
@@ -98,15 +104,49 @@ RSpec.describe GoogleAds::PaymentCheckWorker, type: :worker do
 
     context "when an error occurs" do
       before do
-        allow(GoogleAds::Resources::Billing).to receive(:new).and_raise(StandardError, "API Error")
+        allow(GoogleAds::Resources::Billing).to receive(:new).and_raise(
+          ApplicationClient::InternalError, "500 Server Error"
+        )
       end
 
-      it "fails the job_run" do
+      it "does not re-raise (fails immediately, no Sidekiq retry)" do
+        expect {
+          described_class.new.perform(job_run.id)
+        }.not_to raise_error
+      end
+
+      it "fails the job_run immediately" do
+        described_class.new.perform(job_run.id)
+        expect(job_run.reload.status).to eq("failed")
+      end
+
+      it "notifies Langgraph immediately" do
+        expect(LanggraphCallbackWorker).to receive(:perform_async)
+          .with(job_run.id, hash_including(status: "failed"))
+
+        described_class.new.perform(job_run.id)
+      end
+    end
+
+    context "when a terminal error occurs" do
+      before do
+        allow(GoogleAds::Resources::Billing).to receive(:new).and_raise(
+          ApplicationClient::Unauthorized, "401 Unauthorized"
+        )
+      end
+
+      it "does not re-raise" do
+        expect {
+          described_class.new.perform(job_run.id)
+        }.not_to raise_error
+      end
+
+      it "fails the job_run immediately" do
         described_class.new.perform(job_run.id)
 
         job_run.reload
         expect(job_run.status).to eq("failed")
-        expect(job_run.error_message).to include("API Error")
+        expect(job_run.error_message).to include("Unauthorized")
       end
 
       it "notifies Langgraph of the failure" do

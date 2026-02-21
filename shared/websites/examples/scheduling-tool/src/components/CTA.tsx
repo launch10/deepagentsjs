@@ -1,110 +1,72 @@
-import { useState } from 'react';
-import { ArrowRight, Check } from 'lucide-react';
-import { L10 } from '@/lib/tracking';
+import { ArrowRight, CheckCircle } from "lucide-react";
+import { LeadForm } from "@/components/ui/lead-form";
 
 export function CTA() {
-  const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [errorMessage, setErrorMessage] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!email || !email.includes('@')) {
-      setErrorMessage('Please enter a valid email address');
-      setStatus('error');
-      return;
-    }
-
-    setStatus('loading');
-    setErrorMessage('');
-
-    try {
-      await L10.createLead(email);
-      setStatus('success');
-      setEmail('');
-    } catch (error) {
-      setStatus('error');
-      setErrorMessage(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
-    }
-  };
+  const benefits = [
+    "14-day free trial, no credit card required",
+    "Setup in under 2 minutes",
+    "Cancel anytime, no questions asked",
+    "Join 2,000+ distributed teams",
+  ];
 
   return (
-    <section className="relative bg-primary py-20 md:py-24 lg:py-32 overflow-hidden">
-      {/* Atmospheric gradient effects */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-1/2 -left-1/4 w-96 h-96 bg-primary-foreground/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-1/2 -right-1/4 w-96 h-96 bg-primary-foreground/5 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary-foreground/3 rounded-full blur-3xl" />
-      </div>
+    <section id="cta" className="relative py-20 md:py-28 lg:py-32 bg-primary text-primary-foreground overflow-hidden">
+      {/* Atmospheric background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary to-[#1a3d47]" />
+      <div className="absolute top-20 right-10 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
+      <div className="absolute bottom-20 left-10 w-80 h-80 bg-accent/10 rounded-full blur-3xl" />
 
-      <div className="container mx-auto px-4 md:px-6 relative z-10">
-        <div className="max-w-4xl mx-auto text-center">
-          {/* Headline */}
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-primary-foreground mb-6">
-            Ready to Reclaim Your Time?
-          </h2>
+      <div className="container relative z-10 mx-auto px-4 md:px-6">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+              Ready to stop wasting time on{" "}
+              <span className="text-secondary">scheduling?</span>
+            </h2>
+            <p className="text-xl md:text-2xl text-primary-foreground/80 leading-relaxed max-w-2xl mx-auto">
+              Join thousands of distributed teams who've eliminated the back-and-forth. Start your free trial today.
+            </p>
+          </div>
 
-          {/* Subheadline */}
-          <p className="text-lg md:text-xl text-primary-foreground/90 mb-10 md:mb-12 max-w-2xl mx-auto">
-            Join 2,000+ teams who've eliminated scheduling chaos. Get early access today.
-          </p>
-
-          {/* Email capture form */}
-          {status === 'success' ? (
-            <div className="bg-primary-foreground/10 backdrop-blur-sm border border-primary-foreground/20 rounded-2xl p-8 md:p-10 max-w-md mx-auto">
-              <div className="flex justify-center mb-4">
-                <div className="w-16 h-16 bg-primary-foreground/20 rounded-full flex items-center justify-center">
-                  <Check size={32} className="text-primary-foreground" />
+          {/* Form */}
+          <div className="max-w-2xl mx-auto mb-10">
+            <LeadForm className="flex flex-col sm:flex-row gap-4">
+              <LeadForm.Email 
+                placeholder="Enter your work email" 
+                className="flex-1 h-14 px-6 text-base bg-background/95 text-foreground border-0 shadow-xl"
+              />
+              <LeadForm.Submit className="h-14 px-8 bg-secondary hover:bg-secondary/90 text-secondary-foreground font-semibold text-base shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-200 flex items-center gap-2 whitespace-nowrap">
+                Start Free Trial
+                <ArrowRight className="w-5 h-5" />
+              </LeadForm.Submit>
+              <LeadForm.Success>
+                <div className="p-6 bg-secondary/20 border border-secondary/30 rounded-xl text-center">
+                  <CheckCircle className="w-12 h-12 text-secondary mx-auto mb-3" />
+                  <p className="text-secondary font-semibold text-lg mb-2">You're all set!</p>
+                  <p className="text-primary-foreground/80">Check your email for next steps. We'll have you up and running in minutes.</p>
                 </div>
+              </LeadForm.Success>
+              <LeadForm.Error />
+            </LeadForm>
+          </div>
+
+          {/* Benefits */}
+          <div className="grid sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+            {benefits.map((benefit, index) => (
+              <div key={index} className="flex items-center gap-3 text-primary-foreground/90">
+                <CheckCircle className="w-5 h-5 text-secondary flex-shrink-0" />
+                <span className="text-sm md:text-base">{benefit}</span>
               </div>
-              <h3 className="text-2xl font-bold text-primary-foreground mb-2">
-                You're on the list!
-              </h3>
-              <p className="text-primary-foreground/80">
-                Check your inbox for next steps. We'll be in touch soon with your early access details.
-              </p>
-            </div>
-          ) : (
-            <div className="max-w-xl mx-auto">
-              <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 mb-4">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  disabled={status === 'loading'}
-                  className="flex-1 px-6 py-4 rounded-xl bg-primary-foreground text-primary placeholder:text-primary/50 text-lg focus:outline-none focus:ring-2 focus:ring-primary-foreground/50 disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-                <button
-                  type="submit"
-                  disabled={status === 'loading'}
-                  className="px-8 py-4 bg-secondary text-secondary-foreground rounded-xl font-semibold text-lg hover:scale-105 hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-2 whitespace-nowrap"
-                >
-                  {status === 'loading' ? (
-                    'Submitting...'
-                  ) : (
-                    <>
-                      Start Scheduling Smarter
-                      <ArrowRight size={20} />
-                    </>
-                  )}
-                </button>
-              </form>
+            ))}
+          </div>
 
-              {/* Error message */}
-              {status === 'error' && errorMessage && (
-                <p className="text-primary-foreground/90 text-sm mb-4 bg-primary-foreground/10 py-2 px-4 rounded-lg">
-                  {errorMessage}
-                </p>
-              )}
-
-              {/* Supporting text */}
-              <p className="text-primary-foreground/70 text-sm md:text-base">
-                No credit card required • Free for 30 days
-              </p>
-            </div>
-          )}
+          {/* Trust line */}
+          <div className="mt-12 text-center">
+            <p className="text-sm text-primary-foreground/60">
+              Trusted by teams at TechCorp, Global Innovations, and 2,000+ other companies worldwide
+            </p>
+          </div>
         </div>
       </div>
     </section>

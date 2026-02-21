@@ -570,11 +570,12 @@ RSpec.describe 'Tracking Library', type: :integration do
       end
 
       context 'core environment variables' do
-        it 'writes VITE_API_BASE_URL from Rails configuration' do
+        it 'writes VITE_API_BASE_URL using production URL for deployed sites' do
           deploy.send(:write_env_file!)
 
           env_content = File.read(File.join(temp_dir, ".env"))
-          expect(env_content).to include("VITE_API_BASE_URL=#{Rails.configuration.x.api_base_url}")
+          expected_url = ENV.fetch("DEPLOY_API_BASE_URL", "https://launch10.ai")
+          expect(env_content).to include("VITE_API_BASE_URL=#{expected_url}")
         end
 
         it 'writes VITE_SIGNUP_TOKEN from project' do
@@ -780,8 +781,8 @@ RSpec.describe 'Tracking Library', type: :integration do
             method.call(path, content)
           end
 
-          allow(deploy).to receive(:system) do |cmd|
-            call_order << :pnpm_build if cmd.include?('build')
+          allow(deploy).to receive(:system) do |*args|
+            call_order << :pnpm_build if args.any? { |a| a.to_s.include?('build') }
             true
           end
 

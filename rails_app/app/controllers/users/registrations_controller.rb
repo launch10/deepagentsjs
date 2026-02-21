@@ -31,6 +31,10 @@ class Users::RegistrationsController < Devise::RegistrationsController
     resource.save
 
     if resource.persisted?
+      persist_signup_attribution(resource)
+      resource.track_signup
+      clear_signup_attribution_cookie
+
       if resource.active_for_authentication?
         set_flash_message!(:notice, :signed_up)
         sign_up(resource_name, resource)
@@ -76,7 +80,18 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def sign_up(resource_name, resource)
     super
 
-    refer(resource) if defined? Refer
+    if defined?(Refer)
+      refer(resource)
+
+      if resource.respond_to?(:referral) && resource.referral.present?
+        TrackEvent.call("referral_signup_completed",
+          user: resource,
+          account: resource.accounts.first,
+          referrer_user_id: resource.referral.refer_code&.user_id,
+          referral_code: resource.referral.refer_code&.code,
+          referred_user_id: resource.id)
+      end
+    end
 
     if @account_invitation
       # Remove any default team accounts to make the invited account the default.
@@ -89,6 +104,13 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   private
+
+  def persist_signup_attribution(user)
+    attribution = signup_attribution
+    return unless attribution.present?
+
+    user.owned_account&.update_column(:signup_attribution, attribution)
+  end
 
   def setup_captcha_session
     session[:invisible_captcha_timestamp] = Time.zone.now.iso8601

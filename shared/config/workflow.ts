@@ -2,7 +2,7 @@ export const WorkflowTypes = ["launch"] as const;
 export type WorkflowType = typeof WorkflowTypes[number];
 
 export const StepNames = [
-  "brainstorm", "website", "ad_campaign", "deploy",
+  "brainstorm", "website", "ads", "deploy",
   "create", "content", "highlights", "plan", "keywords", "settings",
   "review", "launch",
   "build", "domain"  // Website substeps
@@ -21,21 +21,21 @@ export interface Step {
 export type Workflow = { steps: Step[] };
 export type Workflows = Record<WorkflowType, Workflow>;
 
-export const WorkflowPages = ["brainstorm", "website", "ad_campaign", "deploy"] as const;
+export const WorkflowPages = ["brainstorm", "website", "ads", "deploy"] as const;
 export type WorkflowPage = typeof WorkflowPages[number];
 
-export const AdCampaignStepNames = ["create", "plan", "launch"] as const;
-export type AdCampaignStepName = typeof AdCampaignStepNames[number];
+export const AdsStepNames = ["create", "plan", "launch"] as const;
+export type AdsStepName = typeof AdsStepNames[number];
 
-export const AdCampaignSubstepNames = ["content", "highlights", "keywords", "settings", "launch", "review"] as const;
-export type AdCampaignSubstepName = typeof AdCampaignSubstepNames[number];
+export const AdsSubstepNames = ["content", "highlights", "keywords", "settings", "launch", "review"] as const;
+export type AdsSubstepName = typeof AdsSubstepNames[number];
 
-// Website substeps (mirrors ad_campaign pattern)
+// Website substeps (mirrors ads pattern)
 export const WebsiteSubstepNames = ["build", "domain", "deploy"] as const;
 export type WebsiteSubstepName = typeof WebsiteSubstepNames[number];
 
 // All substeps across all pages
-export const SubstepNames = [...AdCampaignSubstepNames, ...WebsiteSubstepNames] as const;
+export const SubstepNames = [...AdsSubstepNames, ...WebsiteSubstepNames] as const;
 export type SubstepName = typeof SubstepNames[number];
 
 export const workflows = {
@@ -49,7 +49,7 @@ export const workflows = {
           { name: "deploy", label: "Launch", order: 3 }
         ]
       },
-      { name: "ad_campaign", label: "Ad Campaign", order: 3,
+      { name: "ads", label: "Ad Campaign", order: 3,
         steps: [
           {
             name: "create",
@@ -85,20 +85,20 @@ export const workflows = {
   }
 } as const satisfies Workflows;
 
-type AdCampaignSteps = typeof workflows.launch.steps[2]["steps"];
-type ExtractAdCampaignTabGroups<T extends readonly any[]> = {
+type AdsSteps = typeof workflows.launch.steps[2]["steps"];
+type ExtractAdsTabGroups<T extends readonly any[]> = {
   [K in T[number]["name"]]: Extract<T[number], { name: K }>["steps"] extends readonly { name: infer SN }[]
     ? SN
     : never;
 };
 
-export type TabGroupTabNames = ExtractAdCampaignTabGroups<NonNullable<AdCampaignSteps>>;
+export type TabGroupTabNames = ExtractAdsTabGroups<NonNullable<AdsSteps>>;
 export type TabGroupName = keyof TabGroupTabNames;
 
-const adCampaignSteps = workflows.launch.steps[2].steps!;
+const adsSteps = workflows.launch.steps[2].steps!;
 export const TabGroups = Object.fromEntries(
-  adCampaignSteps.map((group) => [group.name, group.steps])
-) as { [K in TabGroupName]: Extract<NonNullable<AdCampaignSteps>[number], { name: K }>["steps"] };
+  adsSteps.map((group) => [group.name, group.steps])
+) as { [K in TabGroupName]: Extract<NonNullable<AdsSteps>[number], { name: K }>["steps"] };
 
 export function findTabs<T extends TabGroupName>(groupName: T): typeof TabGroups[T] {
   return TabGroups[groupName];
@@ -109,7 +109,7 @@ export function isTabGroupName(name: string | null | undefined): name is TabGrou
   return typeof name === "string" && tabGroupNames.includes(name as TabGroupName);
 }
 
-const substepToStepMap: Partial<Record<SubstepName, AdCampaignStepName>> = {
+const substepToStepMap: Partial<Record<SubstepName, AdsStepName>> = {
   content: "create",
   highlights: "create",
   keywords: "plan",
@@ -118,7 +118,7 @@ const substepToStepMap: Partial<Record<SubstepName, AdCampaignStepName>> = {
   review: "launch",
 };
 
-export function deriveStep(substep: SubstepName | null | undefined): AdCampaignStepName | null {
+export function deriveStep(substep: SubstepName | null | undefined): AdsStepName | null {
   if (!substep) return null;
   return substepToStepMap[substep] ?? null;
 }
@@ -137,8 +137,8 @@ export function getSubstepOrder(pageName: WorkflowPage): readonly string[] {
   switch (pageName) {
     case "website":
       return WebsiteSubstepNames;
-    case "ad_campaign":
-      return AdCampaignSubstepNames;
+    case "ads":
+      return AdsSubstepNames;
     default:
       return [];
   }

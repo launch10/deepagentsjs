@@ -7,7 +7,7 @@ type ConsoleError = Website.Errors.ConsoleError;
 /**
  * Strip ANSI escape codes from terminal output.
  */
-// eslint-disable-next-line no-control-regex
+
 const ANSI_RE = /\x1B(?:\[[0-9;]*[a-zA-Z]|\].*?\x07|\[[\?]?[0-9;]*[a-zA-Z])/g;
 function stripAnsi(text: string): string {
   return text.replace(ANSI_RE, "");
@@ -75,6 +75,8 @@ const ERROR_MATCHERS: ErrorMatcher[] = [
     extract: (text) => ({
       type: "error",
       message: cleanMessage(text),
+      file: extractFilePath(text),
+      frame: extractCodeFrame(text),
     }),
   },
   // Pre-transform error
@@ -83,6 +85,8 @@ const ERROR_MATCHERS: ErrorMatcher[] = [
     extract: (text) => ({
       type: "error",
       message: cleanMessage(text),
+      file: extractFilePath(text),
+      frame: extractCodeFrame(text),
     }),
   },
   // Vite warning
@@ -110,6 +114,32 @@ function cleanMessage(text: string): string {
 }
 
 /**
+ * Extract a code frame from multi-line error output.
+ * Code frames have lines with `|` or `│` delimiters (e.g. `  18 |  const x = ...`).
+ * Also captures the `^` caret pointer line.
+ */
+function extractCodeFrame(text: string): string | undefined {
+  const lines = text.split("\n");
+  const frameLines = lines.filter(
+    (l) => /^\s*\d+\s*[│|]/.test(l) || /^\s*[│|]\s*\^/.test(l) || /^\s+\^/.test(l)
+  );
+  return frameLines.length > 0 ? frameLines.join("\n") : undefined;
+}
+
+/**
+ * Extract file path from Vite error text (e.g. `/home/project/src/components/Foo.tsx:20:68`).
+ */
+function extractFilePath(text: string): string | undefined {
+  const m = text.match(/(\/[^\s:]+\.(?:tsx?|jsx?|css|html))(?::(\d+))?/);
+  if (m?.[1]) {
+    // Clean /home/project prefix to get relative src path
+    const clean = m[1].replace(/^\/home\/project\//, "");
+    return clean;
+  }
+  return undefined;
+}
+
+/**
  * Split a chunk into individual esbuild error blocks.
  * esbuild prefixes each error with "✘ [ERROR]".
  * A single chunk from the WebContainer output stream can contain many.
@@ -131,7 +161,10 @@ const ESBUILD_NOISE = [/^The build was canceled$/i];
  */
 function parseEsbuildBlock(block: string): ConsoleError | null {
   // First line: ✘ [ERROR] <message>
-  const firstLine = block.split("\n")[0].replace(/^✘ \[ERROR\]\s*/, "").trim();
+  const firstLine = block
+    .split("\n")[0]
+    .replace(/^✘ \[ERROR\]\s*/, "")
+    .trim();
 
   // Skip transient esbuild messages (e.g. build cancellation during rapid file writes)
   if (ESBUILD_NOISE.some((p) => p.test(firstLine))) return null;
@@ -252,9 +285,7 @@ export function processViteChunk(text: string): ViteChunkResult {
  * These fire when Vite's HMR client fails during a server restart — the real
  * error (if any) will appear in Vite's build output, not as a runtime error.
  */
-const RUNTIME_NOISE_PATTERNS = [
-  /\[hmr\] Failed to reload/i,
-];
+const RUNTIME_NOISE_PATTERNS = [/\[hmr\] Failed to reload/i];
 
 /**
  * Map a WebContainer PreviewMessage to our shared ConsoleError type, or null for noise.

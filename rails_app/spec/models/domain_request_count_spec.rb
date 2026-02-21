@@ -123,7 +123,7 @@ RSpec.describe DomainRequestCount, type: :model do
     end
 
     it 'skips domains without records and logs error' do
-      allow(Rollbar).to receive(:error)
+      allow(Sentry).to receive(:capture_message)
 
       traffic_with_unknown = traffic_report.merge('unknown.com' => 75)
 
@@ -135,9 +135,9 @@ RSpec.describe DomainRequestCount, type: :model do
         )
       }.to change(DomainRequestCount, :count).by(2) # Only known domains
 
-      expect(Rollbar).to have_received(:error).with(
+      expect(Sentry).to have_received(:capture_message).with(
         "Traffic report found for domain without a domain record",
-        domain: 'www.unknown.com'
+        extra: { domain: 'www.unknown.com' }
       )
     end
   end

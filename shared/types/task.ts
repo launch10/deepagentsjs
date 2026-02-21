@@ -24,6 +24,8 @@ export const TaskSchema = z.object({
   result: z.record(z.unknown()).optional(),
   error: z.string().optional(),
   retryCount: z.number().default(0),
+  blockingStartedAt: z.number().optional(), // Timestamp when task first entered blocking state
+  warning: z.string().optional(), // Warning message set by Langgraph when task is taking long
 });
 
 export type Task = z.infer<typeof TaskSchema>;

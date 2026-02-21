@@ -11,7 +11,7 @@ module Leads
     end
 
     # Options hash keys:
-    #   email (required), name, visit_id, visitor_token, gclid,
+    #   email (required), name, visit_id, visitor_token, gclid, fbclid,
     #   conversion_value, conversion_currency,
     #   utm_source, utm_medium, utm_campaign, utm_content, utm_term
     def perform(account_id, website_id, options = {})
@@ -20,15 +20,19 @@ module Leads
       website = Website.find(website_id)
       visit = options[:visit_id].present? ? Ahoy::Visit.find_by(id: options[:visit_id]) : nil
 
+      result = nil
+
       ActiveRecord::Base.transaction do
         result = Lead.find_or_create_for_signup(
           account: account,
           website: website,
           email: options[:email],
           name: options[:name],
+          phone: options[:phone],
           visit: visit,
           visitor_token: options[:visitor_token],
           gclid: options[:gclid],
+          fbclid: options[:fbclid],
           utm_source: options[:utm_source],
           utm_medium: options[:utm_medium],
           utm_campaign: options[:utm_campaign],
@@ -55,6 +59,18 @@ module Leads
             time: Time.current
           )
         end
+      end
+
+      # Track after successful transaction for new leads
+      if result&.dig(:created)
+        TrackEvent.call("lead_received",
+          user: account.owner,
+          account: account,
+          project: website.project,
+          website: website,
+          project_uuid: website.project&.uuid,
+          has_gclid: options[:gclid].present?,
+          total_leads_for_project: website.leads.count)
       end
     end
   end

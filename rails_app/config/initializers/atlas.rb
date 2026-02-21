@@ -4,7 +4,8 @@
 Rails.application.config.to_prepare do
   Atlas.configure do |config|
     config.base_url = ENV.fetch("ATLAS_BASE_URL") do
-      Rails.env.production? ? "https://atlas-admin.your-domain.com" : "http://localhost:8788"
+      Rails.application.credentials.dig(:atlas, :base_url) ||
+        (Rails.env.production? ? "https://atlas-admin.launch10.ai" : "http://localhost:8788")
     end
 
     config.api_secret = Rails.application.credentials.dig(:atlas, :api_secret) || "development-secret"
@@ -12,7 +13,9 @@ Rails.application.config.to_prepare do
 
     # Set to true to enable syncing to production Atlas from development/test
     # Usage: ALLOW_ATLAS_SYNC=true bin/rails console
-    config.allow_sync = ENV.fetch("ALLOW_ATLAS_SYNC", "false") == "true"
+    config.allow_sync = ENV.fetch("ALLOW_ATLAS_SYNC") do
+      Rails.application.credentials.dig(:atlas, :allow_sync)&.to_s || "false"
+    end == "true"
   end
 
   if Rails.env.development?

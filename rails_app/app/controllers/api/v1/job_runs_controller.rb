@@ -1,4 +1,14 @@
 class API::V1::JobRunsController < API::BaseController
+  def show
+    job_run = current_account.job_runs.find(params[:id])
+    render json: {
+      id: job_run.id,
+      status: job_run.status,
+      result: job_run.result_data,
+      error: job_run.error_message
+    }
+  end
+
   def create
     unless JobRun::ALLOWED_JOBS.include?(params[:job_class])
       return render json: { errors: ["Invalid job type"] }, status: :unprocessable_entity
@@ -14,9 +24,16 @@ class API::V1::JobRunsController < API::BaseController
       deploy_id: find_deploy_id
     )
 
-    # Dispatch job after record is committed to avoid processing non-existent job_runs
-    dispatch_job(params[:job_class], job_run, resources)
+    begin
+      dispatch_job(params[:job_class], job_run, resources)
+    rescue => e
+      Rails.logger.error "[JobRunsController] dispatch_job error: #{e.class}: #{e.message}"
+      job_run.reload
+      return render json: { id: job_run.id, status: job_run.status, error: e.message }, status: :unprocessable_entity
+    end
 
+    # Reload to pick up any status changes from inline execution
+    job_run.reload
     render json: { id: job_run.id, status: job_run.status }, status: :created
   rescue ActiveRecord::RecordInvalid => e
     render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
@@ -28,7 +45,7 @@ class API::V1::JobRunsController < API::BaseController
 
   def validate_resources(job_type)
     case job_type
-    when "CampaignDeploy"
+    when "CampaignDeploy", "CampaignEnable"
       campaign_id = params[:arguments]&.dig(:campaign_id) || params[:arguments]&.dig("campaign_id")
       { campaign: current_account.campaigns.find(campaign_id) }
     when "WebsiteDeploy"
@@ -49,6 +66,10 @@ class API::V1::JobRunsController < API::BaseController
       # No worker dispatch - OAuth callback completes this job
     when "GoogleAdsInvite"
       GoogleAds::SendInviteWorker.perform_async(job_run.id)
+    when "GoogleAdsPaymentCheck"
+      GoogleAds::PaymentCheckWorker.perform_async(job_run.id)
+    when "CampaignEnable"
+      GoogleAds::CampaignEnableWorker.perform_async(job_run.id)
     end
   end
 
@@ -65,7 +86,7 @@ class API::V1::JobRunsController < API::BaseController
 
   def permitted_job_args
     args = case params[:job_class]
-    when "CampaignDeploy"
+    when "CampaignDeploy", "CampaignEnable"
       params.require(:arguments).permit(:campaign_id)
     when "WebsiteDeploy"
       params.require(:arguments).permit(:website_id)

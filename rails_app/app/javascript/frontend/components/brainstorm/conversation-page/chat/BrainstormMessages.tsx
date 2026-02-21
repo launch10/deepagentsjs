@@ -6,26 +6,24 @@ import { useBrainstormSelector } from "@components/brainstorm/hooks";
 import { Chat } from "@components/shared/chat/Chat";
 import { BrainstormAIMessage } from "./BrainstormAIMessage";
 import { QuestionBadge } from "./QuestionBadge";
-import { getTextareaRef } from "@lib/brainstormTextarea";
 
 // The LanggraphData type for the Brainstorm graph (used for MessageBlock generic)
 type BrainstormLanggraphData = InferBridgeData<BrainstormBridgeType>;
 type BrainstormBlock = MessageBlock<BrainstormLanggraphData>;
 
 /**
- * User-friendly labels for each command
+ * User-friendly labels for each intent
  */
-const CommandLabels: Record<Brainstorm.CommandName, string> = {
-  helpMe: "Help Me Answer",
-  skip: "Skip This",
-  doTheRest: "Do The Rest",
-  finished: "Build My Site",
+const IntentLabels: Record<Brainstorm.BrainstormIntentName, string> = {
+  help_me: "Help Me Answer",
+  skip_topic: "Skip This",
+  do_the_rest: "Do The Rest",
 };
 
 /**
- * Commands that should be styled as primary (more prominent action)
+ * Intents that should be styled as primary (more prominent action)
  */
-const PrimaryCommands: Brainstorm.CommandName[] = ["finished", "doTheRest"];
+const PrimaryIntents: Brainstorm.BrainstormIntentName[] = ["do_the_rest"];
 
 /**
  * Props for the BrainstormMessagesView presentation component.
@@ -36,27 +34,24 @@ export interface BrainstormMessagesViewProps {
   messages: AnyMessageWithBlocks[];
   /** Whether the chat is currently streaming a response */
   isStreaming: boolean;
-  /** Available command buttons to show (e.g., helpMe, skip, doTheRest, finished) */
-  availableCommands: Brainstorm.CommandName[];
-  /** Callback when user clicks an example suggestion */
-  onExampleClick: (text: string) => void;
-  /** Callback when user clicks a command button */
-  onCommandClick: (command: Brainstorm.CommandName) => void;
+  /** Available intent buttons to show */
+  availableIntents: Brainstorm.BrainstormIntentName[];
+  /** Callback when user clicks an intent button */
+  onIntentClick: (intentName: Brainstorm.BrainstormIntentName) => void;
   /** Total number of questions in the brainstorm flow */
   totalQuestions?: number;
 }
 
 /**
  * Pure presentation component for brainstorm messages.
- * Renders the message list, question badges, and command buttons.
+ * Renders the message list, question badges, and intent buttons.
  * Can be used in Storybook and unit tests without mocking hooks.
  */
 export function BrainstormMessagesView({
   messages,
   isStreaming,
-  availableCommands,
-  onExampleClick,
-  onCommandClick,
+  availableIntents,
+  onIntentClick,
   totalQuestions = Brainstorm.TotalQuestions,
 }: BrainstormMessagesViewProps) {
   // Detect topic changes to show question badge on first message of each topic
@@ -110,19 +105,22 @@ export function BrainstormMessagesView({
           return <Chat.UserMessage key={message.id} blocks={message.blocks} />;
         }
 
-        // AI message - check if it has content
+        // AI message - check for text and tool_call blocks
         const hasContent = message.blocks.some(
-          (b) =>
-            (b.type === "text" && "text" in b && b.text && b.text.trim()) || b.type === "structured"
+          (b) => b.type === "text" && "text" in b && b.text && b.text.trim()
+        );
+        const runningToolCalls = message.blocks.filter(
+          (b) => b.type === "tool_call" && "state" in b && b.state === "running"
         );
 
-        if (!hasContent && isLastMessage && isStreaming) {
-          return <Chat.ThinkingIndicator key={message.id} text="Thinking" />;
+        // Skip empty AI messages — the bottom streaming indicator handles "thinking" state
+        if (!hasContent && runningToolCalls.length === 0) {
+          return null;
         }
 
-        // Show command buttons only on last AI message when not streaming
-        const showCommandButtons =
-          isLastMessage && !isStreaming && availableCommands && availableCommands.length > 0;
+        // Show intent buttons only on last AI message when not streaming
+        const showIntentButtons =
+          isLastMessage && !isStreaming && availableIntents && availableIntents.length > 0;
 
         return (
           <div key={message.id} data-role="assistant" className="space-y-3">
@@ -131,25 +129,36 @@ export function BrainstormMessagesView({
             <BrainstormAIMessage
               blocks={message.blocks as BrainstormBlock[]}
               isActive={isLastMessage}
-              onExampleClick={onExampleClick}
             />
-            {/* Command buttons appear after last AI message */}
-            {showCommandButtons && (
-              <Chat.CommandButtons.Root>
-                {availableCommands.map((commandName) => (
-                  <Chat.CommandButtons.Button
-                    key={commandName}
-                    variant={PrimaryCommands.includes(commandName) ? "primary" : "secondary"}
-                    onClick={() => onCommandClick(commandName)}
+            {/* Show running tool calls so the user knows what the agent is doing */}
+            {isLastMessage &&
+              runningToolCalls.map((block) => (
+                <Chat.ToolCallIndicator
+                  key={block.id}
+                  toolName={"toolName" in block ? (block as any).toolName : ""}
+                  state="running"
+                />
+              ))}
+            {/* Intent buttons appear after last AI message */}
+            {showIntentButtons && (
+              <Chat.IntentButtons.Root>
+                {availableIntents.map((intentName) => (
+                  <Chat.IntentButtons.Button
+                    key={intentName}
+                    variant={PrimaryIntents.includes(intentName) ? "primary" : "secondary"}
+                    onClick={() => onIntentClick(intentName)}
                   >
-                    {CommandLabels[commandName]}
-                  </Chat.CommandButtons.Button>
+                    {IntentLabels[intentName]}
+                  </Chat.IntentButtons.Button>
                 ))}
-              </Chat.CommandButtons.Root>
+              </Chat.IntentButtons.Root>
             )}
           </div>
         );
       })}
+
+      {/* Always show streaming indicator at the bottom while agent is working */}
+      {isStreaming && <Chat.ThinkingIndicator text="Thinking" />}
 
       <Chat.Messages.ScrollAnchor />
     </Chat.Messages.List>
@@ -164,25 +173,21 @@ export function BrainstormMessagesView({
 export function BrainstormMessages() {
   const messages = useBrainstormSelector((s) => s.messages);
   const isStreaming = useBrainstormSelector(ChatSelectors.isStreaming);
-  const sendMessage = useBrainstormSelector(ChatSelectors.sendMessage)
-  const composer = useBrainstormSelector(ChatSelectors.composer)
-  const availableCommands = useBrainstormSelector((s) => s.state.availableCommands);
+  const sendMessage = useBrainstormSelector(ChatSelectors.sendMessage);
+  const availableIntents = useBrainstormSelector((s) => s.state.availableIntents);
 
-  // Handle clicking on example suggestions - memoized to prevent unnecessary re-renders
-  const handleExampleClick = useCallback(
-    (text: string) => {
-      composer.setText(text);
-      const textareaRef = getTextareaRef();
-      textareaRef.current?.focus();
-    },
-    [composer]
-  );
-
-  // Handle clicking on command buttons
-  const handleCommandClick = useCallback(
-    (commandName: Brainstorm.CommandName) => {
-      const prompt = Brainstorm.commandToPrompt(commandName);
-      sendMessage(prompt);
+  // Handle clicking on intent buttons - sends the label as message text
+  // and sets the intent in graph state
+  const handleIntentClick = useCallback(
+    (intentName: Brainstorm.BrainstormIntentName) => {
+      const label = IntentLabels[intentName];
+      sendMessage(label, {
+        intent: {
+          type: intentName,
+          payload: {},
+          createdAt: new Date().toISOString(),
+        },
+      });
     },
     [sendMessage]
   );
@@ -191,9 +196,8 @@ export function BrainstormMessages() {
     <BrainstormMessagesView
       messages={messages as any}
       isStreaming={isStreaming}
-      availableCommands={availableCommands ?? []}
-      onExampleClick={handleExampleClick}
-      onCommandClick={handleCommandClick}
+      availableIntents={availableIntents ?? []}
+      onIntentClick={handleIntentClick}
     />
   );
 }

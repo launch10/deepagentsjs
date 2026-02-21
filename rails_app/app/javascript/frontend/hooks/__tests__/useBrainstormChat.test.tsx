@@ -97,7 +97,7 @@ const createMockSnapshot = (
     memories: {},
     skippedTopics: [],
     remainingTopics: ["idea", "audience", "solution", "socialProof", "lookAndFeel"],
-    availableCommands: ["helpMe"],
+    availableIntents: ["help_me"],
     ...overrides.state,
   } as BrainstormGraphState,
   status: "idle",
@@ -112,6 +112,7 @@ const createMockSnapshot = (
     updateState: vi.fn(),
     ...overrides.actions,
   },
+  setMessages: vi.fn(),
   chat: overrides.chat ?? mockChat,
   ...overrides,
 });
@@ -185,9 +186,7 @@ describe("useBrainstormChat", () => {
 
   describe("useBrainstormSelector", () => {
     it("applies selector to snapshot", () => {
-      const { result } = renderHook(() =>
-        useBrainstormSelector((s) => s.status)
-      );
+      const { result } = renderHook(() => useBrainstormSelector((s) => s.status));
 
       expect(result.current).toBe("idle");
     });

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@components/ui/card";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { UserCircleIcon, PencilIcon, CheckIcon, LockClosedIcon } from "@heroicons/react/24/outline";
+import { csrfFetch } from "@lib/csrfFetch";
 import type { SettingsUser } from "@pages/Settings";
 
 interface ProfileSectionProps {
@@ -77,19 +78,10 @@ export function ProfileSection({ user }: ProfileSectionProps) {
     setIsSubmittingPassword(true);
 
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
-
-      const response = await fetch("/settings/update_password", {
+      const response = await csrfFetch("/settings/update_password", {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token": csrfToken || "",
-          Accept: "application/json",
-        },
-        credentials: "same-origin",
-        body: JSON.stringify({
-          user: passwordData,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user: passwordData }),
       });
 
       if (response.ok) {

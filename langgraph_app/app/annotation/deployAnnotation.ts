@@ -2,6 +2,8 @@ import { Annotation } from "@langchain/langgraph";
 import { BaseAnnotation } from "./base";
 import { Deploy } from "@types";
 import type { PrimaryKeyType, Task, ConsoleError, ShowMismatches, Expect, Equal } from "@types";
+import type { DeployGraphState } from "@state";
+export type { DeployGraphState };
 import { createAppBridge } from "@api/middleware";
 
 export const DeployAnnotation = Annotation.Root({
@@ -25,8 +27,8 @@ export const DeployAnnotation = Annotation.Root({
     reducer: (current, next) => next,
   }),
 
-  // Boolean flags for what to deploy
-  deploy: Annotation<Deploy.Instructions>({
+  // Boolean flags for what to deploy (website, googleAds)
+  instructions: Annotation<Deploy.Instructions>({
     default: () => ({}),
     reducer: (current, next) => next ?? current,
   }),
@@ -41,6 +43,12 @@ export const DeployAnnotation = Annotation.Root({
     reducer: (current, next) => next,
   }),
 
+  // Support ticket reference (e.g. "SR-XXXXXXXX") — set on unrecoverable failure
+  supportTicket: Annotation<string | undefined>({
+    default: () => undefined,
+    reducer: (current, next) => next ?? current,
+  }),
+
   // Task tracking - ALL state lives here
   tasks: Annotation<Task.Task[]>({
     default: () => [],
@@ -51,6 +59,25 @@ export const DeployAnnotation = Annotation.Root({
       }
       return Array.from(taskMap.values());
     },
+  }),
+
+  // Signal from frontend that this is a polling request (not a new deploy start)
+  polling: Annotation<boolean>({
+    default: () => false,
+    reducer: (current, next) => next ?? current,
+  }),
+
+  // Nothing changed — deploy skipped because no content changed since last deploy
+  nothingChanged: Annotation<boolean>({
+    default: () => false,
+    reducer: (current, next) => next ?? current,
+  }),
+
+  // Per-instruction change detection from validateDeployNode
+  // Empty = not checked (treat as changed). Populated = { website: true/false, googleAds: true/false }
+  contentChanged: Annotation<Deploy.ContentChanged>({
+    default: () => ({}),
+    reducer: (current, next) => (Object.keys(next).length > 0 ? next : current),
   }),
 
   // Phases - "poppa tasks" computed from child tasks for frontend display
@@ -64,7 +91,8 @@ export const DeployAnnotation = Annotation.Root({
   }),
 });
 
-export type DeployGraphState = typeof DeployAnnotation.State;
+// Ensure the bridge type (shared/types/deploy/bridge.ts) matches the annotation
+// Hover over _Mismatches to see which fields differ when this fails
 type _Mismatches = ShowMismatches<DeployGraphState, typeof DeployAnnotation.State>;
 type _Assertion = Expect<Equal<DeployGraphState, typeof DeployAnnotation.State>>;
 
@@ -105,15 +133,4 @@ export function withPhases(
   const phases = Deploy.computePhases(mergedTasks, phaseNames);
 
   return { tasks: taskUpdates, phases };
-}
-
-/**
- * Compute phases from current state without updating tasks
- * Useful when you just need to read phase status
- */
-export function getPhasesFromState(
-  state: { tasks: Task.Task[] },
-  phaseNames?: Deploy.PhaseName[]
-): Deploy.Phase[] {
-  return Deploy.computePhases(state.tasks, phaseNames);
 }

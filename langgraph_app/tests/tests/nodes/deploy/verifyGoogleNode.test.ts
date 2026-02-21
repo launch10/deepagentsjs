@@ -42,12 +42,16 @@ describe("verifyGoogleNode", () => {
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getConnectionStatus: vi
-            .fn()
-            .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-          getInviteStatus: vi
-            .fn()
-            .mockResolvedValue({ accepted: false, status: "sent", email: "user@gmail.com" }),
+          getGoogleStatus: vi.fn().mockResolvedValue({
+            google_connected: true,
+            google_email: "user@gmail.com",
+            invite_accepted: false,
+            invite_status: "sent",
+            invite_email: "user@gmail.com",
+            has_payment: false,
+            billing_status: "none",
+          }),
+          refreshInviteStatus: vi.fn().mockResolvedValue({ accepted: false, status: "pending" }),
         }) as any
     );
   });
@@ -105,6 +109,37 @@ describe("verifyGoogleNode", () => {
       // Should update task to completed
       const updatedTask = result.tasks?.find((t: Task.Task) => t.name === "VerifyingGoogle");
       expect(updatedTask?.status).toBe("completed");
+    });
+
+    /**
+     * USER OUTCOME: When user clicks "I accepted the invite" on InviteAcceptScreen,
+     * the frontend sends updateState({ tasks: [{ name: "VerifyingGoogle", result: { status: "accepted" } }] }).
+     * The MergeReducer merges this into the existing running task — same code path as webhook,
+     * but triggered by user action rather than polling. Graph trusts the user and proceeds.
+     */
+    it("marks task completed when user confirms acceptance via frontend updateState", async () => {
+      // Simulates the merged state after MergeReducer processes
+      // updateState({ tasks: [{ name: "VerifyingGoogle", result: { status: "accepted" } }] })
+      // The existing running task (with jobId) gets result merged in
+      const state: Partial<DeployGraphState> = {
+        jwt: "test-jwt",
+        threadId: "thread_123" as ThreadIDType,
+        tasks: [
+          {
+            ...Deploy.createTask("VerifyingGoogle"),
+            status: "running",
+            jobId: 123,
+            result: { status: "accepted" },
+          } as Task.Task,
+        ],
+      };
+
+      const result = await verifyGoogleNode(state as DeployGraphState);
+
+      const updatedTask = result.tasks?.find((t: Task.Task) => t.name === "VerifyingGoogle");
+      expect(updatedTask?.status).toBe("completed");
+      // Should NOT have called any external APIs — trusts the signal directly
+      expect(mockJobRunAPIService).not.toHaveBeenCalled();
     });
 
     it("marks task failed when running with error from webhook", async () => {
@@ -292,23 +327,26 @@ describe("verifyGoogleNode", () => {
       expect(result).toEqual({});
     });
 
-    it("handles result with unexpected status (not 'accepted')", async () => {
+    it("re-creates job when result has unexpected status (not 'accepted')", async () => {
       const state: Partial<DeployGraphState> = {
         jwt: "test-jwt",
         threadId: "thread_123" as ThreadIDType,
+        accountId: 1,
         tasks: [
           {
             ...Deploy.createTask("VerifyingGoogle"),
             status: "running",
             jobId: 123,
-            result: { status: "pending" }, // Not 'accepted', still waiting
+            result: { status: "pending" }, // Not 'accepted' — falls through to re-create
           } as Task.Task,
         ],
       };
 
-      // Should return empty (still waiting for 'accepted')
       const result = await verifyGoogleNode(state as DeployGraphState);
-      expect(result).toEqual({});
+      // Falls through to step 6 (create new JobRun) since result.status !== "accepted"
+      // and self-heal condition (!task.result?.status) is false
+      const updatedTask = result.tasks?.find((t: Task.Task) => t.name === "VerifyingGoogle");
+      expect(updatedTask?.jobId).toBeDefined();
     });
   });
 
@@ -357,12 +395,15 @@ describe("isGoogleVerified", () => {
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getConnectionStatus: vi
-            .fn()
-            .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-          getInviteStatus: vi
-            .fn()
-            .mockResolvedValue({ accepted: false, status: "sent", email: "user@gmail.com" }),
+          getGoogleStatus: vi.fn().mockResolvedValue({
+            google_connected: true,
+            google_email: "user@gmail.com",
+            invite_accepted: false,
+            invite_status: "sent",
+            invite_email: "user@gmail.com",
+            has_payment: false,
+            billing_status: "none",
+          }),
         }) as any
     );
   });
@@ -371,13 +412,19 @@ describe("isGoogleVerified", () => {
   // The function only checks external state (API call)
 
   it("calls GoogleAPIService to check invite status", async () => {
-    const mockGetStatus = vi
-      .fn()
-      .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" });
+    const mockGetStatus = vi.fn().mockResolvedValue({
+      google_connected: true,
+      google_email: "user@gmail.com",
+      invite_accepted: true,
+      invite_status: "accepted",
+      invite_email: "user@gmail.com",
+      has_payment: false,
+      billing_status: "none",
+    });
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getInviteStatus: mockGetStatus,
+          getGoogleStatus: mockGetStatus,
         }) as any
     );
 
@@ -394,13 +441,19 @@ describe("isGoogleVerified", () => {
   });
 
   it("returns false when API says not accepted", async () => {
-    const mockGetStatus = vi
-      .fn()
-      .mockResolvedValue({ accepted: false, status: "sent", email: "user@gmail.com" });
+    const mockGetStatus = vi.fn().mockResolvedValue({
+      google_connected: true,
+      google_email: "user@gmail.com",
+      invite_accepted: false,
+      invite_status: "sent",
+      invite_email: "user@gmail.com",
+      has_payment: false,
+      billing_status: "none",
+    });
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getInviteStatus: mockGetStatus,
+          getGoogleStatus: mockGetStatus,
         }) as any
     );
 
@@ -430,7 +483,7 @@ describe("isGoogleVerified", () => {
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getInviteStatus: mockGetStatus,
+          getGoogleStatus: mockGetStatus,
         }) as any
     );
 
@@ -443,13 +496,19 @@ describe("isGoogleVerified", () => {
   });
 
   it("checks API even when task exists but not completed", async () => {
-    const mockGetStatus = vi
-      .fn()
-      .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" });
+    const mockGetStatus = vi.fn().mockResolvedValue({
+      google_connected: true,
+      google_email: "user@gmail.com",
+      invite_accepted: true,
+      invite_status: "accepted",
+      invite_email: "user@gmail.com",
+      has_payment: false,
+      billing_status: "none",
+    });
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getInviteStatus: mockGetStatus,
+          getGoogleStatus: mockGetStatus,
         }) as any
     );
 
@@ -472,24 +531,33 @@ describe("shouldSkipGoogleVerify", () => {
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getConnectionStatus: vi
-            .fn()
-            .mockResolvedValue({ connected: true, email: "user@gmail.com" }),
-          getInviteStatus: vi
-            .fn()
-            .mockResolvedValue({ accepted: false, status: "sent", email: "user@gmail.com" }),
+          getGoogleStatus: vi.fn().mockResolvedValue({
+            google_connected: true,
+            google_email: "user@gmail.com",
+            invite_accepted: false,
+            invite_status: "sent",
+            invite_email: "user@gmail.com",
+            has_payment: false,
+            billing_status: "none",
+          }),
         }) as any
     );
   });
 
   it('returns "skipGoogleVerify" when Google is verified', async () => {
-    const mockGetStatus = vi
-      .fn()
-      .mockResolvedValue({ accepted: true, status: "accepted", email: "user@gmail.com" });
+    const mockGetStatus = vi.fn().mockResolvedValue({
+      google_connected: true,
+      google_email: "user@gmail.com",
+      invite_accepted: true,
+      invite_status: "accepted",
+      invite_email: "user@gmail.com",
+      has_payment: false,
+      billing_status: "none",
+    });
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getInviteStatus: mockGetStatus,
+          getGoogleStatus: mockGetStatus,
         }) as any
     );
 
@@ -503,13 +571,19 @@ describe("shouldSkipGoogleVerify", () => {
   });
 
   it('returns "enqueueGoogleVerify" when Google is not verified', async () => {
-    const mockGetStatus = vi
-      .fn()
-      .mockResolvedValue({ accepted: false, status: "sent", email: "user@gmail.com" });
+    const mockGetStatus = vi.fn().mockResolvedValue({
+      google_connected: true,
+      google_email: "user@gmail.com",
+      invite_accepted: false,
+      invite_status: "sent",
+      invite_email: "user@gmail.com",
+      has_payment: false,
+      billing_status: "none",
+    });
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getInviteStatus: mockGetStatus,
+          getGoogleStatus: mockGetStatus,
         }) as any
     );
 

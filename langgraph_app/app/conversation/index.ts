@@ -15,5 +15,12 @@ export {
 export { prepareTurn, fetchContextMessages, findLastAiMessageTime } from "./prepareTurn";
 export type { PrepareTurnParams } from "./prepareTurn";
 
-export { AGENT_EVENT_SUBSCRIPTIONS, getSubscribedEventTypes, type SubscribableGraph } from "./subscriptions";
+export { startConversation } from "./start";
+export type { ConversationStartOptions, AgentResult } from "./start";
+
+export {
+  AGENT_EVENT_SUBSCRIPTIONS,
+  getSubscribedEventTypes,
+  type SubscribableGraph,
+} from "./subscriptions";
 export { summarizeEvents, type SummarizedEvent } from "./summarization";

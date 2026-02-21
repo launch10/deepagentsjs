@@ -63,6 +63,8 @@ commands:
 
 jobs:
   langgraph-tests:
+    resource_class: large
+    parallelism: 3
     docker:
       - image: cimg/node:22.12.0
       - image: pgvector/pgvector:pg16
@@ -87,7 +89,11 @@ jobs:
           command: |
             cd ~/project
             git submodule sync
-            git submodule update --init --recursive
+            git submodule update --init packages/langgraph-ai-sdk packages/deepagentsjs
+      - restore_cache:
+          keys:
+            - git-lfs-v1-{{ .Branch }}
+            - git-lfs-v1-
       - run:
           name: Install Git LFS and pull files
           command: |
@@ -97,6 +103,10 @@ jobs:
             git lfs install
             cd ~/project
             git lfs pull
+      - save_cache:
+          key: git-lfs-v1-{{ .Branch }}-{{ epoch }}
+          paths:
+            - ~/project/.git/lfs
       - run:
           name: Install Ruby in primary container
           command: |
@@ -146,10 +156,20 @@ jobs:
             pnpm run build:packages
       - run:
           name: Run typecheck
-          command: pnpm run typecheck
+          command: |
+            if [ "$CIRCLE_NODE_INDEX" = "0" ]; then
+              pnpm run typecheck
+            else
+              echo "Skipping typecheck (runs on shard 0 only)"
+            fi
       - run:
           name: Run lint
-          command: pnpm run lint
+          command: |
+            if [ "$CIRCLE_NODE_INDEX" = "0" ]; then
+              pnpm run lint
+            else
+              echo "Skipping lint (runs on shard 0 only)"
+            fi
       - run:
           name: Install Rails dependencies
           command: |
@@ -190,11 +210,20 @@ jobs:
             <<: *langgraph-env
       - run:
           name: Run tests
-          command: pnpm run test
+          command: |
+            # Use CircleCI native test splitting instead of vitest --shard
+            # (vitest --shard silently ignored when invoked via pnpm run -> bin/test -> pnpm vitest)
+            TEST_FILES=$(find tests/tests \( -name '*.test.ts' -o -name '*.spec.ts' \) | sort | circleci tests split --split-by=timings --timings-type=filename)
+            echo "Running $(echo "$TEST_FILES" | wc -l | tr -d ' ') test files on shard $CIRCLE_NODE_INDEX"
+            echo "$TEST_FILES"
+            pnpm exec vitest run $TEST_FILES --reporter=default --reporter=junit --outputFile=test-results/results.xml --no-file-parallelism
           environment:
             <<: *langgraph-env
+      - store_test_results:
+          path: test-results
 
   rails-tests:
+    parallelism: 3
     docker:
       - image: cimg/ruby:3.4.4-node
       - image: pgvector/pgvector:pg16
@@ -217,7 +246,7 @@ jobs:
           command: |
             cd ~/project
             git submodule sync
-            git submodule update --init --recursive
+            git submodule update --init packages/langgraph-ai-sdk packages/deepagentsjs
       - run:
           name: Install PostgreSQL 16 client
           command: |
@@ -251,10 +280,25 @@ jobs:
           environment:
             <<: *rails-env
       - run:
+          name: Verify shared exports are up-to-date
+          command: |
+            cd ~/project/shared
+            pnpm run config:export
+            if ! git diff --exit-code exports/; then
+              echo "❌ shared/exports/ is stale. Run 'cd shared && pnpm run config:export' and commit the result."
+              exit 1
+            fi
+      - run:
           name: Run RSpec tests
-          command: RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rspec
+          command: |
+            TEST_FILES=$(circleci tests glob "spec/**/*_spec.rb" | circleci tests split --split-by=timings --timings-type=filename)
+            echo "Running $(echo "$TEST_FILES" | wc -l | tr -d ' ') spec files on shard $CIRCLE_NODE_INDEX"
+            echo "$TEST_FILES"
+            RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rspec $TEST_FILES --format progress --format RspecJunitFormatter --out test-results/results.xml
           environment:
             <<: *rails-env
+      - store_test_results:
+          path: test-results
 
   atlas-tests:
     docker:
@@ -295,7 +339,7 @@ jobs:
           command: |
             cd ~/project
             git submodule sync
-            git submodule update --init --recursive
+            git submodule update --init packages/langgraph-ai-sdk packages/deepagentsjs
       - run:
           name: Install pnpm
           command: |
@@ -347,7 +391,7 @@ jobs:
           command: |
             cd ~/project
             git submodule sync
-            git submodule update --init --recursive
+            git submodule update --init packages/langgraph-ai-sdk packages/deepagentsjs
       - run:
           name: Install Git LFS and pull files
           command: |

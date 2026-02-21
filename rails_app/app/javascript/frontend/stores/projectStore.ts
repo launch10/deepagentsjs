@@ -21,6 +21,7 @@ export interface ProjectState {
   websiteId: number | null;
   brainstormId: number | null;
   campaignId: number | null;
+  deployId: number | null;
   threadId: string | null;
 }
 
@@ -37,6 +38,7 @@ export interface ProjectActions {
     website?: { id?: number } | null;
     brainstorm?: { id?: number } | null;
     campaign?: { id?: number } | null;
+    deploy?: { id?: number } | null;
     thread_id?: string | null;
   }) => void;
 
@@ -46,6 +48,7 @@ export interface ProjectActions {
     websiteId?: number | null;
     brainstormId?: number | null;
     campaignId?: number | null;
+    deployId?: number | null;
   }) => void;
 }
 
@@ -57,6 +60,7 @@ const initialState: ProjectState = {
   websiteId: null,
   brainstormId: null,
   campaignId: null,
+  deployId: null,
   threadId: null,
 };
 
@@ -93,6 +97,9 @@ export const useProjectStore = create<ProjectStore>()(
       if (props.campaign?.id) {
         updates.campaignId = props.campaign.id;
       }
+      if (props.deploy?.id) {
+        updates.deployId = props.deploy.id;
+      }
       if (props.thread_id !== undefined) {
         updates.threadId = props.thread_id ?? null;
       }
@@ -117,6 +124,9 @@ export const useProjectStore = create<ProjectStore>()(
       if (state.campaignId !== undefined) {
         updates.campaignId = state.campaignId;
       }
+      if (state.deployId !== undefined) {
+        updates.deployId = state.deployId;
+      }
 
       if (Object.keys(updates).length > 0) {
         set((s) => ({ ...s, ...updates }));
@@ -134,6 +144,7 @@ export const selectProjectUuid = (s: ProjectStore) => s.projectUuid;
 export const selectWebsiteId = (s: ProjectStore) => s.websiteId;
 export const selectBrainstormId = (s: ProjectStore) => s.brainstormId;
 export const selectCampaignId = (s: ProjectStore) => s.campaignId;
+export const selectDeployId = (s: ProjectStore) => s.deployId;
 export const selectThreadId = (s: ProjectStore) => s.threadId;
 
 // ============================================================================
@@ -158,6 +169,10 @@ export function useBrainstormId() {
 
 export function useCampaignId() {
   return useProjectStore(selectCampaignId);
+}
+
+export function useDeployId() {
+  return useProjectStore(selectDeployId);
 }
 
 export function useThreadId() {

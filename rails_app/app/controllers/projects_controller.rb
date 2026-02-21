@@ -36,7 +36,7 @@ class ProjectsController < SubscribedController
       # Redirect to website substep (default to build)
       substep = @project.substep.presence || "build"
       redirect_to action: "website_#{substep}"
-    when "ad_campaign"
+    when "ads"
       redirect_to action: "campaigns_#{@project.substep}"
     when "deploy"
       redirect_to action: "deploy"
@@ -44,11 +44,14 @@ class ProjectsController < SubscribedController
   end
 
   def brainstorm
+    @project.current_workflow.update!(step: "brainstorm", substep: nil)
     render inertia: "Brainstorm", props: @project.to_brainstorm_json, layout: "layouts/webcontainer"
   end
 
-  # Dynamic website substep actions (build, domain, deploy)
+  # Dynamic website substep actions (build, domain)
   WorkflowConfig.substeps_for("launch", "website").each do |substep|
+    next if substep == "deploy" # deploy is handled explicitly below
+
     define_method("website_#{substep}") do
       # Advance workflow step/substep
       @project.current_workflow.update!(step: "website", substep: substep)
@@ -59,32 +62,37 @@ class ProjectsController < SubscribedController
     end
   end
 
-  WorkflowConfig.substeps_for("launch", "ad_campaign").each do |substep|
+  def website_deploy
+    @project.current_workflow.update!(step: "website", substep: "deploy")
+    @deploy = @project.deploys.current_for(:website).last
+
+    render inertia: "Website",
+      props: @project.to_website_deploy_json(@deploy),
+      layout: "layouts/webcontainer"
+  end
+
+  WorkflowConfig.substeps_for("launch", "ads").each do |substep|
     define_method("campaigns_#{substep}") do
       @campaign = @project.campaigns.first
+      @project.current_workflow.update!(step: "ads", substep: substep)
+
       if @campaign.present?
-        # If this fails, it's because the user hasn't completed the previous steps
-        # before the page they're trying to go to. We'll just stay on the same page.
-        # Don't use update! here because it will raise an exception if the update fails.
-        Campaign.transaction do
-          @campaign.update!(stage: substep)
-          @project.current_workflow.update!(substep: substep)
-        end
+        @campaign.update!(stage: substep)
 
         if @campaign.reload.stage != substep
           redirect_to action: "campaigns_#{@campaign.stage}" and return
         end
       end
 
-      render inertia: "Campaign",
-        props: @project.to_ad_campaign_json,
+      render inertia: "Ads",
+        props: @project.to_ads_json,
         layout: "layouts/webcontainer"
     end
   end
 
   def deploy
-    # Create or find existing deploy for this project
-    @deploy = @project.deploys.in_progress.first || @project.deploys.create!(status: "pending")
+    @project.current_workflow.update!(step: "deploy", substep: nil)
+    @deploy = @project.deploys.current_for(:google_ads).last
 
     render inertia: "Deploy",
       props: @project.to_deploy_json(@deploy),
@@ -104,6 +112,14 @@ class ProjectsController < SubscribedController
   end
 
   def performance
+    TrackEvent.call("project_performance_viewed",
+      user: current_user,
+      account: current_account,
+      project: @project,
+      project_uuid: @project.uuid,
+      has_leads: @project.website&.leads&.exists? || false,
+      has_traffic: @project.analytics_daily_metrics.exists?)
+
     render inertia: "ProjectPerformance", props: {
       project: @project.to_mini_json,
       metrics: all_metrics_for_date_ranges,
@@ -130,6 +146,9 @@ class ProjectsController < SubscribedController
     first_metric = @project.analytics_daily_metrics.order(:date).first
     return 30 unless first_metric
     (Date.current - first_metric.date).to_i
+  end
+
+  def find_existing_deploy
   end
 
   def set_project

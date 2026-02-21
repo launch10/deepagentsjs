@@ -24,7 +24,7 @@ class Cloudflare
               end
             end
           else
-            Rollbar.error("Failed to get zones", zones)
+            Sentry.capture_message("Failed to get zones", extra: { zones: zones })
           end
         end
       end

@@ -38,7 +38,7 @@ export const enableCampaignNode = async (
   }
 
   // 3. Task running with error from webhook? Mark failed
-  if (task?.status === "running" && task.error) {
+  if (task?.status === "running" && task.error !== undefined) {
     return withPhases(state, [{ ...task, status: "failed" } as Task.Task], [TASK_NAME]);
   }
 
@@ -108,8 +108,13 @@ export const enableCampaignTaskRunner: TaskRunner = {
 
   isBlocking: (state: DeployGraphState, task: Task.Task) => {
     // Blocking when we have a jobId but no result yet
-    return task.status === "running" && !!task.jobId && task.result?.enabled === undefined && !task.error;
+    return (
+      task.status === "running" && !!task.jobId && task.result?.enabled === undefined && !task.error
+    );
   },
+
+  blockingTimeout: 180_000, // 3 minutes between health checks
+  warningTimeout: 120_000, // Show "taking longer than expected" after 2 minutes
 
   run: enableCampaignNode,
 };

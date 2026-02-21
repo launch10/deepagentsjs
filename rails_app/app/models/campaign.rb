@@ -48,6 +48,7 @@ class Campaign < ApplicationRecord
   include CampaignConcerns::GooglePlatformSettings
   include CampaignConcerns::MetaPlatformSettings
   include CampaignConcerns::GoogleSyncable
+  include CampaignConcerns::ShasumHashable
   include ChatCreatable
 
   acts_as_paranoid
@@ -67,7 +68,7 @@ class Campaign < ApplicationRecord
   has_many :ad_schedules, dependent: :destroy
 
   def self.chat_type
-    "ad_campaign"
+    "ads"
   end
 
   # Ad creative
@@ -99,6 +100,7 @@ class Campaign < ApplicationRecord
   validates :time_zone, inclusion: { in: ActiveSupport::TimeZone::MAPPING.values }, allow_nil: true
 
   after_save :refresh_project_status, if: :saved_change_to_status?
+  after_save :track_status_change, if: :saved_change_to_status?
 
   accepts_nested_attributes_for :ad_groups, allow_destroy: true
   accepts_nested_attributes_for :callouts, allow_destroy: true
@@ -112,24 +114,18 @@ class Campaign < ApplicationRecord
     status == "paused"
   end
 
-  def enable!(async: true)
-    # Update local statuses
+  def enable!
     self.google_status = "ENABLED"
     save!
     ad_groups.each(&:enable!)
     ads.each(&:enable!)
-
-    CampaignDeploy.deploy(self, async: async)
   end
 
-  def pause!(async: true)
-    # Update local statuses
+  def pause!
     self.google_status = "PAUSED"
     save!
     ad_groups.each(&:pause!)
     ads.each(&:pause!)
-
-    CampaignDeploy.deploy(self, async: async)
   end
 
   def daily_budget_cents
@@ -170,5 +166,19 @@ class Campaign < ApplicationRecord
 
   def refresh_project_status
     project&.refresh_status!
+  end
+
+  def track_status_change
+    old_status, new_status = saved_change_to_status
+    account = self.account
+    TrackEvent.call("campaign_status_changed",
+      user: account&.owner,
+      account: account,
+      project: project,
+      campaign: self,
+      project_uuid: project&.uuid,
+      old_status: old_status,
+      new_status: new_status,
+      days_active: (old_status == "active" && created_at) ? ((Time.current - created_at) / 1.day).round : nil)
   end
 end

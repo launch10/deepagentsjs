@@ -103,6 +103,14 @@ app.get('*', async (c) => {
   const isApiRequest = strippedPathname.startsWith('/api/');
   const shouldFallbackOnMiss = !isAssetRequest && !isDotfile && !isApiRequest;
 
+  // Strip trailing slashes on inner pages so relative asset paths resolve correctly
+  // e.g., /pricing/ → /pricing (root site) or /bingo/pricing/ → /bingo/pricing (subpath site)
+  if (strippedPathname !== '/' && strippedPathname.endsWith('/') && shouldFallbackOnMiss) {
+    const redirectUrl = new URL(c.req.url);
+    redirectUrl.pathname = pathname.slice(0, -1);
+    return Response.redirect(redirectUrl.toString(), 301);
+  }
+
   // 2. Normalize the path to construct the R2 object key.
   if (strippedPathname.endsWith('/')) {
     strippedPathname = strippedPathname.concat('index.html');
@@ -170,7 +178,14 @@ app.get('*', async (c) => {
   }
   
   headers.set('content-type', contentType);
-  
+
+  // Security headers
+  headers.set('X-Frame-Options', 'DENY');
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+
   console.log(`Serving ${objectKey} with content-type: ${contentType}`);
 
   return new Response(object.body, {

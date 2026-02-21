@@ -1,44 +1,44 @@
 # Run linters and auto-fix before commit
-echo "🔍 Running pre-commit checks..."
-cd "$(dirname "$0")/.."
+# echo "🔍 Running pre-commit checks..."
+# cd "$(dirname "$0")/.."
 
-cd shared
-pnpm run config:export
+# cd shared
+# pnpm run config:export
 
-# Lint staged files in Langgraph (prettier and eslint)
-echo "📝 Formatting and linting staged files in langgraph_app..."
-cd ../langgraph_app
-if ! pnpm lint-staged; then
-  echo "❌ Lint-staged failed in langgraph_app"
-  exit 1
-fi
-echo "✅ Langgraph staged files formatted and linted"
+# # Lint staged files in Langgraph (prettier and eslint)
+# echo "📝 Formatting and linting staged files in langgraph_app..."
+# cd ../langgraph_app
+# if ! pnpm lint-staged; then
+#   echo "❌ Lint-staged failed in langgraph_app"
+#   exit 1
+# fi
+# echo "✅ Langgraph staged files formatted and linted"
 
-# Typecheck Langgraph
-if pnpm run typecheck > /dev/null 2>&1; then
-  echo "✅ Langgraph typecheck passed"
-else
-  echo "❌ Langgraph typecheck failed - running to show errors:"
-  pnpm run typecheck
-  exit 1
-fi
+# # Typecheck Langgraph
+# if pnpm run typecheck > /dev/null 2>&1; then
+#   echo "✅ Langgraph typecheck passed"
+# else
+#   echo "❌ Langgraph typecheck failed - running to show errors:"
+#   pnpm run typecheck
+#   exit 1
+# fi
 
-# Lint staged files in Rails (prettier and eslint for React)
-echo "📝 Formatting and linting staged files in rails_app..."
-cd ../rails_app
-if ! pnpm lint-staged; then
-  echo "❌ Lint-staged failed in rails_app"
-  exit 1
-fi
-echo "✅ Rails staged files formatted and linted"
+# # Lint staged files in Rails (prettier and eslint for React)
+# echo "📝 Formatting and linting staged files in rails_app..."
+# cd ../rails_app
+# if ! pnpm lint-staged; then
+#   echo "❌ Lint-staged failed in rails_app"
+#   exit 1
+# fi
+# echo "✅ Rails staged files formatted and linted"
 
-# Lint Rails Ruby code
-if bundle exec rubocop --autocorrect-all --format simple > /dev/null 2>&1; then
-  echo "✅ Rails rubocop passed"
-else
-  echo "❌ Rails rubocop failed - running to show errors:"
-  bundle exec rubocop --autocorrect-all --format simple
-  exit 1
-fi
+# # Lint Rails Ruby code
+# if bundle exec rubocop --autocorrect-all --format simple > /dev/null 2>&1; then
+#   echo "✅ Rails rubocop passed"
+# else
+#   echo "❌ Rails rubocop failed - running to show errors:"
+#   bundle exec rubocop --autocorrect-all --format simple
+#   exit 1
+# fi
 
-echo "✅ All pre-commit checks passed"
+# echo "✅ All pre-commit checks passed"

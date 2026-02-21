@@ -5,11 +5,14 @@ import { z } from "zod";
 import { Link, Check, Loader2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
 import { useDebouncedCallback } from "use-debounce";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useSocialLinks,
   useBulkUpsertSocialLinks,
   useDeleteSocialLink,
+  socialLinksKeys,
 } from "@api/socialLinks.hooks";
+import { subscribeToAgentIntent } from "@hooks/useAgentIntent";
 
 interface SocialLinksSectionProps {
   className?: string;
@@ -30,7 +33,8 @@ const PLATFORM_PATTERNS: Record<LocalSocialPlatform, { pattern: RegExp; hint: st
     hint: "@username or full URL",
   },
   youtube: {
-    pattern: /^(@?[a-zA-Z0-9_-]+|(https?:\/\/)?(www\.)?youtube\.com\/(channel\/|c\/|user\/|@)?[a-zA-Z0-9_-]+\/?)?$/i,
+    pattern:
+      /^(@?[a-zA-Z0-9_-]+|(https?:\/\/)?(www\.)?youtube\.com\/(channel\/|c\/|user\/|@)?[a-zA-Z0-9_-]+\/?)?$/i,
     hint: "@channel or full URL",
   },
 };
@@ -60,9 +64,7 @@ const SOCIAL_PLATFORMS: { platform: LocalSocialPlatform; placeholder: string }[]
 ];
 
 /** Convert API response to form data */
-function linksToFormData(
-  links: Array<{ platform?: string; url?: string }>
-): SocialLinksFormData {
+function linksToFormData(links: Array<{ platform?: string; url?: string }>): SocialLinksFormData {
   const result: SocialLinksFormData = { twitter: "", instagram: "", youtube: "" };
   links.forEach((link) => {
     const platform = link.platform as LocalSocialPlatform | undefined;
@@ -79,6 +81,15 @@ export function SocialLinksSection({ className }: SocialLinksSectionProps) {
 
   // Track hydration to prevent overwriting user input during initial load
   const hasHydratedRef = useRef(false);
+  // When true, the next query data change will re-hydrate the form
+  const agentUpdatedRef = useRef(false);
+
+  // Refetch when the agent saves social links via chat
+  const queryClient = useQueryClient();
+  subscribeToAgentIntent("social_links_saved", () => {
+    agentUpdatedRef.current = true;
+    queryClient.invalidateQueries({ queryKey: socialLinksKeys.all });
+  });
 
   // Keep a ref to existingLinks for use in debounced callback (avoids stale closure)
   const existingLinksRef = useRef(existingLinks);
@@ -102,10 +113,11 @@ export function SocialLinksSection({ className }: SocialLinksSectionProps) {
   });
   const deleteMutation = useDeleteSocialLink();
 
-  // Hydrate form exactly once after query succeeds
+  // Hydrate form after query succeeds (initial load + agent updates)
   useEffect(() => {
-    if (isSuccess && !hasHydratedRef.current) {
+    if (isSuccess && (!hasHydratedRef.current || agentUpdatedRef.current)) {
       hasHydratedRef.current = true;
+      agentUpdatedRef.current = false;
       methods.reset(linksToFormData(existingLinks));
     }
   }, [isSuccess, existingLinks, methods]);

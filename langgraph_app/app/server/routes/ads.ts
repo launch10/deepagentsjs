@@ -1,8 +1,14 @@
 import { Hono } from "hono";
-import { type AuthContext, streamMiddleware, readOnlyMiddleware, getCreditState } from "@server/middleware";
-import { validateThreadOrError } from "../middleware/threadValidation";
-import { AdsAPI } from "@api";
+import {
+  type AuthContext,
+  streamMiddleware,
+  readOnlyMiddleware,
+  getCreditState,
+} from "@server/middleware";
+import { validateThreadGraphOrError } from "../middleware/threadValidation";
+import { AdsAPI, compiledAdsGraph } from "@api";
 import { getLogger } from "@core";
+import { trackChatMessage } from "./shared";
 
 type Variables = {
   auth: AuthContext;
@@ -21,11 +27,13 @@ adsRoutes.post("/stream", ...streamMiddleware, async (c) => {
     return c.json({ error: "Missing required field: threadId" }, 400);
   }
 
-  // Validate thread ownership - chat must exist (pre-created via ChatCreatable)
-  const validationError = await validateThreadOrError(c, threadId, auth);
+  // Validate thread ownership + graph type (pre-created via ChatCreatable)
+  const validationError = await validateThreadGraphOrError(c, threadId, auth, "ads");
   if (validationError) return validationError;
 
   let stateObj = state || {};
+
+  trackChatMessage(auth, messages, threadId, "ads", stateObj);
 
   try {
     // Stream with automatic billing via middleware
@@ -54,12 +62,40 @@ adsRoutes.get("/stream", ...readOnlyMiddleware, async (c) => {
     return c.json({ error: "Missing threadId" }, 400);
   }
 
-  // Validate thread ownership - chat must exist (pre-created via ChatCreatable)
-  const validationError = await validateThreadOrError(c, threadId, auth);
+  // Validate thread ownership + graph type (pre-created via ChatCreatable)
+  const validationError = await validateThreadGraphOrError(c, threadId, auth, "ads");
   if (validationError) return validationError;
 
   // loadHistory doesn't make LLM calls - no billing needed
   return await AdsAPI.loadHistory(threadId);
+});
+
+adsRoutes.patch("/state", ...readOnlyMiddleware, async (c) => {
+  const auth = c.get("auth") as AuthContext;
+  const body = await c.req.json();
+  const { threadId, state } = body;
+
+  if (!threadId) {
+    return c.json({ error: "Missing required field: threadId" }, 400);
+  }
+
+  if (!state || typeof state !== "object") {
+    return c.json({ error: "Missing required field: state" }, 400);
+  }
+
+  const validationError = await validateThreadGraphOrError(c, threadId, auth, "ads");
+  if (validationError) return validationError;
+
+  try {
+    await compiledAdsGraph.updateState(
+      { configurable: { thread_id: threadId } },
+      state
+    );
+    return c.json({ success: true });
+  } catch (error) {
+    getLogger().error({ err: error }, "Failed to save ads state to checkpoint");
+    return c.json({ error: "Failed to save state", details: String(error) }, 500);
+  }
 });
 
 adsRoutes.get("/health", (c) => {

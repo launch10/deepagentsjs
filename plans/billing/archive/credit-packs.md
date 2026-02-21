@@ -14,16 +14,16 @@ Implement a centralized credits system that:
 
 ## Architecture Decisions
 
-| Decision                 | Choice                                                                 | Rationale                                                      |
-| ------------------------ | ---------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Decision                 | Choice                                                                                                                      | Rationale                                                            |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | Credit storage           | Transaction ledger with denormalized running balances per row (`balance_after`, `plan_balance_after`, `pack_balance_after`) | Most recent transaction IS the current state. No columns on Account. |
-| Credits source           | `PlanTier.details[:credits]` | Already implemented. Do not use TierLimit or PlanLimit. |
-| Billing cycle detection  | `after_commit` callbacks on `Pay::Subscription` + daily safety net job | Pay handles webhook complexity; we just react to model changes |
-| Credit consumption order | Plan credits first, then pack credits, then plan goes negative | Plan credits expire; pack credits NEVER go negative |
-| Negative balance         | Plan credits can go negative; pack credits NEVER negative | Debt absorbed from next month's plan allocation |
-| Upgrade handling         | Grant prorated additional credits immediately                          | User paid for them                                             |
-| Downgrade handling       | Keep current credits until next cycle                                  | Better UX, Stripe prorates payment                             |
-| Cache strategy           | Synchronous invalidation on write (not TTL-based)                      | Accurate balances during rapid usage                           |
+| Credits source           | `PlanTier.details[:credits]`                                                                                                | Already implemented. Do not use TierLimit or PlanLimit.              |
+| Billing cycle detection  | `after_commit` callbacks on `Pay::Subscription` + daily safety net job                                                      | Pay handles webhook complexity; we just react to model changes       |
+| Credit consumption order | Plan credits first, then pack credits, then plan goes negative                                                              | Plan credits expire; pack credits NEVER go negative                  |
+| Negative balance         | Plan credits can go negative; pack credits NEVER negative                                                                   | Debt absorbed from next month's plan allocation                      |
+| Upgrade handling         | Grant prorated additional credits immediately                                                                               | User paid for them                                                   |
+| Downgrade handling       | Keep current credits until next cycle                                                                                       | Better UX, Stripe prorates payment                                   |
+| Cache strategy           | Synchronous invalidation on write (not TTL-based)                                                                           | Accurate balances during rapid usage                                 |
 
 ## Pay::Subscription Callbacks
 
@@ -44,22 +44,22 @@ Pay gem internally processes Stripe webhooks and calls `update!` on the subscrip
 
 > **Naming Convention**: All credit-related Sidekiq workers use the `Credits::` namespace with a `Worker` suffix.
 
-| Event                           | Callback                   | Detection                               | Action                                             | Sidekiq Worker                    |
-| ------------------------------- | -------------------------- | --------------------------------------- | -------------------------------------------------- | --------------------------------- |
-| **New subscription (active)**   | `after_commit on: :create` | `active?`                               | Zero out old (expire) + allocate new plan credits  | `Credits::ResetPlanCreditsWorker` |
-| **New subscription (trialing)** | `after_commit on: :create` | `trialing?`                             | Zero out old (expire) + allocate new plan credits  | `Credits::ResetPlanCreditsWorker` |
-| **Trial → Paid**                | `after_commit on: :update` | status `trialing→active`                | No action (already allocated)                      | —                                 |
-| **Renewal (monthly sub)**       | `after_commit on: :update` | `current_period_end` ↑ (not from trial) | Zero out old (expire) + allocate new plan credits  | `Credits::ResetPlanCreditsWorker` |
-| **Monthly reset (yearly sub)**  | `DailyReconciliationWorker`   | No reset transaction in last month      | Zero out old (expire) + allocate new plan credits  | `Credits::ResetPlanCreditsWorker` |
-| **Upgrade**                     | `after_commit on: :update` | `processor_plan` changed + credits ↑    | Zero out old (expire) + allocate new (higher) plan | `Credits::ResetPlanCreditsWorker` |
-| **Downgrade**                   | `after_commit on: :update` | `processor_plan` changed + credits ↓    | Zero out old + allocate new (lower) plan           | `Credits::ResetPlanCreditsWorker` |
-| **Cancel scheduled**            | `after_commit on: :update` | `ends_at` set                           | No action                                          | —                                 |
-| **Subscription ended**          | `after_commit on: :update` | status → `canceled`                     | Zero out plan credits (keep purchased)             | `Credits::ResetPlanCreditsWorker` |
-| **Reactivation**                | `after_commit on: :update` | `ends_at` cleared                       | No action                                          | —                                 |
-| **Pause**                       | `after_commit on: :update` | status → `paused`                       | No action                                          | —                                 |
-| **Resume**                      | `after_commit on: :update` | status `paused→active`                  | No action                                          | —                                 |
-| **Payment failed**              | `after_commit on: :update` | status → `past_due`                     | No action                                          | —                                 |
-| **Payment recovered**           | `after_commit on: :update` | status `past_due→active`                | No action                                          | —                                 |
+| Event                           | Callback                                  | Detection                               | Action                                             | Sidekiq Worker                    |
+| ------------------------------- | ----------------------------------------- | --------------------------------------- | -------------------------------------------------- | --------------------------------- |
+| **New subscription (active)**   | `after_commit on: :create`                | `active?`                               | Zero out old (expire) + allocate new plan credits  | `Credits::ResetPlanCreditsWorker` |
+| **New subscription (trialing)** | `after_commit on: :create`                | `trialing?`                             | Zero out old (expire) + allocate new plan credits  | `Credits::ResetPlanCreditsWorker` |
+| **Trial → Paid**                | `after_commit on: :update`                | status `trialing→active`                | No action (already allocated)                      | —                                 |
+| **Renewal (monthly sub)**       | `after_commit on: :update`                | `current_period_end` ↑ (not from trial) | Zero out old (expire) + allocate new plan credits  | `Credits::ResetPlanCreditsWorker` |
+| **Monthly reset (yearly sub)**  | `AnnualSubscriberMonthlyAllocationWorker` | No reset transaction in last month      | Zero out old (expire) + allocate new plan credits  | `Credits::ResetPlanCreditsWorker` |
+| **Upgrade**                     | `after_commit on: :update`                | `processor_plan` changed + credits ↑    | Zero out old (expire) + allocate new (higher) plan | `Credits::ResetPlanCreditsWorker` |
+| **Downgrade**                   | `after_commit on: :update`                | `processor_plan` changed + credits ↓    | Zero out old + allocate new (lower) plan           | `Credits::ResetPlanCreditsWorker` |
+| **Cancel scheduled**            | `after_commit on: :update`                | `ends_at` set                           | No action                                          | —                                 |
+| **Subscription ended**          | `after_commit on: :update`                | status → `canceled`                     | Zero out plan credits (keep purchased)             | `Credits::ResetPlanCreditsWorker` |
+| **Reactivation**                | `after_commit on: :update`                | `ends_at` cleared                       | No action                                          | —                                 |
+| **Pause**                       | `after_commit on: :update`                | status → `paused`                       | No action                                          | —                                 |
+| **Resume**                      | `after_commit on: :update`                | status `paused→active`                  | No action                                          | —                                 |
+| **Payment failed**              | `after_commit on: :update`                | status → `past_due`                     | No action                                          | —                                 |
+| **Payment recovered**           | `after_commit on: :update`                | status `past_due→active`                | No action                                          | —                                 |
 
 ### Worker Architecture: Three Workers
 
@@ -98,6 +98,7 @@ Credits::ChargeRunWorker.perform_async(run_id)
 ```
 
 **Consumption order (FIFO):**
+
 1. Consume plan credits (if positive)
 2. Consume pack credits (if positive and still need more)
 3. Plan credits go negative (pack credits NEVER go negative)
@@ -123,7 +124,7 @@ Credits::FindUnprocessedRunsWorker.perform_async
 Yearly subscriptions only trigger Stripe events once per year, but credits reset monthly. We handle this with a **daily batch job**:
 
 ```
-DailyReconciliationWorker (runs daily)
+AnnualSubscriberMonthlyAllocationWorker (runs daily)
     ↓
 Query: "Which accounts need monthly reset?"
     - Active yearly subscription
@@ -255,6 +256,7 @@ date         | reason         | type     | credit_type | amount | balance_after 
 ```
 
 **Key rules:**
+
 - Plan credits consumed first (FIFO)
 - Pack credits consumed when plan is at 0
 - When pack is also at 0, plan goes negative (debt absorbed next month)
@@ -821,6 +823,7 @@ end
 ```
 
 **Note:** The actual credit logic is in `CreditAllocationService` which:
+
 1. Zeros out any existing plan credits (creates expire transaction if balance > 0)
 2. Allocates new plan credits based on current subscription state (from `PlanTier.details[:credits]`)
 3. Handles negative balance debt absorption
@@ -851,6 +854,7 @@ end
 ```
 
 **Credit consumption order (FIFO):**
+
 1. Consume from plan credits first (if positive)
 2. Consume from pack credits (if positive and still need more)
 3. If still remaining, plan goes negative (pack NEVER goes negative)
@@ -1001,19 +1005,19 @@ Credit deduction is handled by the Langgraph integration architecture. See [lang
 
 ## Critical Files Reference
 
-| File                                                    | Purpose                                  |
-| ------------------------------------------------------- | ---------------------------------------- |
-| `rails_app/config/initializers/pay.rb`                  | Extend Pay::Charge and Pay::Subscription |
-| `rails_app/app/models/account.rb`                       | Add Credits concern                      |
-| `rails_app/app/models/account_request_count.rb`         | Pattern for `with_lock` atomic ops       |
-| `rails_app/app/controllers/subscriptions_controller.rb` | Pattern for Stripe Checkout              |
-| `rails_app/spec/snapshot_builders/core/plans.rb`        | Seed plan limits                         |
-| `rails_app/app/workers/credits/reset_plan_credits_worker.rb`  | Handles all plan credit allocations      |
-| `rails_app/app/workers/credits/charge_run_worker.rb`          | Handles credit consumption for LLM runs  |
-| `rails_app/app/workers/credits/find_unprocessed_runs_worker.rb` | Backup polling for missed notifications |
-| `shared/lib/api/railsApiBase.ts`                        | Base class for API services              |
-| `shared/lib/api/services/`                              | Existing API service patterns            |
-| `langgraph_app/app/nodes/core/`                         | Node patterns for credit deduction       |
+| File                                                            | Purpose                                  |
+| --------------------------------------------------------------- | ---------------------------------------- |
+| `rails_app/config/initializers/pay.rb`                          | Extend Pay::Charge and Pay::Subscription |
+| `rails_app/app/models/account.rb`                               | Add Credits concern                      |
+| `rails_app/app/models/account_request_count.rb`                 | Pattern for `with_lock` atomic ops       |
+| `rails_app/app/controllers/subscriptions_controller.rb`         | Pattern for Stripe Checkout              |
+| `rails_app/spec/snapshot_builders/core/plans.rb`                | Seed plan limits                         |
+| `rails_app/app/workers/credits/reset_plan_credits_worker.rb`    | Handles all plan credit allocations      |
+| `rails_app/app/workers/credits/charge_run_worker.rb`            | Handles credit consumption for LLM runs  |
+| `rails_app/app/workers/credits/find_unprocessed_runs_worker.rb` | Backup polling for missed notifications  |
+| `shared/lib/api/railsApiBase.ts`                                | Base class for API services              |
+| `shared/lib/api/services/`                                      | Existing API service patterns            |
+| `langgraph_app/app/nodes/core/`                                 | Node patterns for credit deduction       |
 
 ## Verification Plan
 
@@ -1262,55 +1266,55 @@ This section documents decisions made during planning Q&A sessions.
 
 ### Data Model
 
-| Question | Decision |
-|----------|----------|
-| Where is model pricing stored? | Langgraph reads from Rails DB (`model_configs` table), can cache with short TTL |
-| How to sync Drizzle schema with Rails? | CI validation after `db:reflect` |
-| CreditPack vs CreditPackPurchase? | Two tables: `CreditPack` (type definition like Plan) + `CreditPackPurchase` (instance like Subscription) |
-| What is `is_used` flag for? | Marks fully-consumed pack purchases; drops them from usage % calculation |
+| Question                               | Decision                                                                                                 |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Where is model pricing stored?         | Langgraph reads from Rails DB (`model_configs` table), can cache with short TTL                          |
+| How to sync Drizzle schema with Rails? | CI validation after `db:reflect`                                                                         |
+| CreditPack vs CreditPackPurchase?      | Two tables: `CreditPack` (type definition like Plan) + `CreditPackPurchase` (instance like Subscription) |
+| What is `is_used` flag for?            | Marks fully-consumed pack purchases; drops them from usage % calculation                                 |
 
 ### Credit Consumption
 
-| Question | Decision |
-|----------|----------|
-| What happens when plan=negative and pack>0? | Consume from pack, plan stays negative |
-| What happens when plan=0, pack=0? | Plan goes negative (debt absorbed next month) |
-| Is there a debt limit? | No limit; Langgraph responsible for blocking at 100% if no pack credits |
-| Consumption order | FIFO: Plan → Pack → Plan goes negative |
+| Question                                    | Decision                                                                |
+| ------------------------------------------- | ----------------------------------------------------------------------- |
+| What happens when plan=negative and pack>0? | Consume from pack, plan stays negative                                  |
+| What happens when plan=0, pack=0?           | Plan goes negative (debt absorbed next month)                           |
+| Is there a debt limit?                      | No limit; Langgraph responsible for blocking at 100% if no pack credits |
+| Consumption order                           | FIFO: Plan → Pack → Plan goes negative                                  |
 
 ### Usage Percentage & Model Selection
 
-| Question | Decision |
-|----------|----------|
-| What's the denominator for usage %? | Total allocation: plan credits + sum of active pack purchases (is_used: false) |
-| Does usage % affect model selection? | Yes, based on TOTAL usage (plan + pack) |
-| Why total instead of plan-only? | Power users who buy packs deserve access to best models |
+| Question                             | Decision                                                                       |
+| ------------------------------------ | ------------------------------------------------------------------------------ |
+| What's the denominator for usage %?  | Total allocation: plan credits + sum of active pack purchases (is_used: false) |
+| Does usage % affect model selection? | Yes, based on TOTAL usage (plan + pack)                                        |
+| Why total instead of plan-only?      | Power users who buy packs deserve access to best models                        |
 
 ### Operational
 
-| Question | Decision |
-|----------|----------|
-| How are monthly credits reset for yearly subs? | Zhong/Sidekiq-Cron scheduled job (same day each month) |
-| How are partitions created? | Zhong/Sidekiq-Cron scheduled job |
-| What if pack fulfillment fails? | Sidekiq retry with exponential backoff |
-| Where is Pay::Charge extended? | `config/initializers/pay.rb` |
-| How is OpenAPI spec generated? | rswag/swagger for Rails, Langgraph uses openapi-typescript |
-| How is testCredits kept safe? | Environment check (skip in non-prod or when ENFORCE_CREDITS set) |
-| Where is admin UI? | Madmin (Jumpstart Pro's admin panel) |
-| What if Postgres write fails? | Retry with exponential backoff |
-| What about race conditions on credit balance? | Accept them - rare and negative balance allowed |
+| Question                                       | Decision                                                         |
+| ---------------------------------------------- | ---------------------------------------------------------------- |
+| How are monthly credits reset for yearly subs? | Zhong/Sidekiq-Cron scheduled job (same day each month)           |
+| How are partitions created?                    | Zhong/Sidekiq-Cron scheduled job                                 |
+| What if pack fulfillment fails?                | Sidekiq retry with exponential backoff                           |
+| Where is Pay::Charge extended?                 | `config/initializers/pay.rb`                                     |
+| How is OpenAPI spec generated?                 | rswag/swagger for Rails, Langgraph uses openapi-typescript       |
+| How is testCredits kept safe?                  | Environment check (skip in non-prod or when ENFORCE_CREDITS set) |
+| Where is admin UI?                             | Madmin (Jumpstart Pro's admin panel)                             |
+| What if Postgres write fails?                  | Retry with exponential backoff                                   |
+| What about race conditions on credit balance?  | Accept them - rare and negative balance allowed                  |
 
 ### Refunds
 
-| Question | Decision |
-|----------|----------|
-| How do refunds work? | **PUNITIVE**: Refunds DEDUCT credits if customer used them then refunded |
-| Why punitive? | We incurred the AI cost; if they refund after using, we claw back credits |
-| What transaction type? | `refund` with negative amount (debit) |
+| Question               | Decision                                                                  |
+| ---------------------- | ------------------------------------------------------------------------- |
+| How do refunds work?   | **PUNITIVE**: Refunds DEDUCT credits if customer used them then refunded  |
+| Why punitive?          | We incurred the AI cost; if they refund after using, we claw back credits |
+| What transaction type? | `refund` with negative amount (debit)                                     |
 
 ### Stale Threshold
 
-| Question | Decision |
-|----------|----------|
-| What's the 2-minute stale threshold for? | Rails processing time after Langgraph writes records |
+| Question                                         | Decision                                               |
+| ------------------------------------------------ | ------------------------------------------------------ |
+| What's the 2-minute stale threshold for?         | Rails processing time after Langgraph writes records   |
 | Does it need to account for long-running graphs? | No - records written AFTER graph completes, not during |

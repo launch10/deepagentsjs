@@ -4,9 +4,9 @@ import { Workflow } from "@shared";
 import { useWorkflow, selectStep, selectSubstep, selectPage } from "@context/WorkflowProvider";
 
 export type WorkflowBuddyViewProps = {
-  /** Current active page (brainstorm, website, ad_campaign, deploy) */
+  /** Current active page (brainstorm, website, ads, deploy) */
   activePage?: Workflow.WorkflowPage | null;
-  /** Current active step (for nested workflows like ad_campaign) */
+  /** Current active step (for nested workflows like ads) */
   activeStep?: string | null;
   /** Current active substep */
   activeSubstep?: string | null;
@@ -27,7 +27,7 @@ export function WorkflowBuddyView({
   const substeps = step.steps;
 
   // For website workflow, we show flat steps (no nested substeps)
-  // For ad_campaign, we show nested steps with substeps
+  // For ads, we show nested steps with substeps
   const isWebsiteWorkflow = activePage === "website";
 
   return (

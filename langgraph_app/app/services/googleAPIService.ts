@@ -1,35 +1,25 @@
-import { RailsAPIBase, type Options } from "@rails_api";
+import { RailsAPIBase, type Options, type paths } from "@rails_api";
 
 /**
- * Response from GET /api/v1/google/connection_status
+ * Response from GET /api/v1/google/status
+ * Unified Google onboarding status (connection, invite, billing)
  */
-export interface GoogleConnectionStatus {
-  connected: boolean;
-  email: string | null;
-}
+export type GoogleStatus = NonNullable<
+  paths["/api/v1/google/status"]["get"]["responses"][200]["content"]
+>["application/json"];
 
 /**
- * Response from GET /api/v1/google/invite_status
+ * Response from POST /api/v1/google/refresh_invite_status
  */
-export interface GoogleInviteStatus {
-  accepted: boolean;
-  status: string;
-  email: string | null;
-}
+export type GoogleRefreshInviteStatus = NonNullable<
+  paths["/api/v1/google/refresh_invite_status"]["post"]["responses"][200]["content"]
+>["application/json"];
 
 /**
- * Response from GET /api/v1/google/payment_status
- */
-export interface GooglePaymentStatus {
-  has_payment: boolean;
-  status: string;
-}
-
-/**
- * Service for checking Google OAuth and Ads invite status
+ * Service for checking Google OAuth and Ads status
  *
- * Used by the deploy graph to determine if Google connect/verify
- * steps should be skipped.
+ * Uses a single unified endpoint for all status checks.
+ * The refresh endpoint is separate because it has side effects.
  */
 export class GoogleAPIService extends RailsAPIBase {
   constructor(options: Options) {
@@ -37,53 +27,35 @@ export class GoogleAPIService extends RailsAPIBase {
   }
 
   /**
-   * Check if account has connected Google OAuth
-   * Used by shouldSkipGoogleConnect routing
+   * Get all Google onboarding statuses in a single call.
+   * Used by initPhasesNode, shouldSkip checks, and self-heal paths.
    */
-  async getConnectionStatus(): Promise<GoogleConnectionStatus> {
+  async getGoogleStatus(): Promise<GoogleStatus> {
     const client = await this.getClient();
-
-    // Use manual fetch since this endpoint isn't in generated types yet
-    const response = await client.GET("/api/v1/google/connection_status" as any, {});
+    const response = await client.GET("/api/v1/google/status", {});
 
     if (response.error) {
-      throw new Error(`Failed to get connection status: ${JSON.stringify(response.error)}`);
+      throw new Error(`Failed to get Google status: ${JSON.stringify(response.error)}`);
     }
 
-    return response.data as GoogleConnectionStatus;
+    return response.data!;
   }
 
   /**
-   * Check if Google Ads invite has been accepted
-   * Used by shouldSkipGoogleVerify routing
+   * Live-refresh invite status from Google and return result.
+   * If accepted, Rails completes the JobRun. If not, enqueues a quick follow-up poll.
    */
-  async getInviteStatus(): Promise<GoogleInviteStatus> {
+  async refreshInviteStatus(jobRunId?: number): Promise<GoogleRefreshInviteStatus> {
     const client = await this.getClient();
 
-    // Use manual fetch since this endpoint isn't in generated types yet
-    const response = await client.GET("/api/v1/google/invite_status" as any, {});
+    const response = await client.POST("/api/v1/google/refresh_invite_status", {
+      body: { job_run_id: jobRunId },
+    });
 
     if (response.error) {
-      throw new Error(`Failed to get invite status: ${JSON.stringify(response.error)}`);
+      throw new Error(`Failed to refresh invite status: ${JSON.stringify(response.error)}`);
     }
 
-    return response.data as GoogleInviteStatus;
-  }
-
-  /**
-   * Check if Google Ads has a payment method configured
-   * Used by shouldCheckPayment routing
-   */
-  async getPaymentStatus(): Promise<GooglePaymentStatus> {
-    const client = await this.getClient();
-
-    // Use manual fetch since this endpoint isn't in generated types yet
-    const response = await client.GET("/api/v1/google/payment_status" as any, {});
-
-    if (response.error) {
-      throw new Error(`Failed to get payment status: ${JSON.stringify(response.error)}`);
-    }
-
-    return response.data as GooglePaymentStatus;
+    return response.data!;
   }
 }

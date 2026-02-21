@@ -1,6 +1,6 @@
 import { type BrainstormGraphState } from "@state";
 import { Brainstorm, type LangGraphRunnableConfig, isHumanMessage } from "@types";
-import { structuredOutputPrompt, renderPrompt } from "@prompts";
+import { renderPrompt } from "@prompts";
 import {
   whereWeArePrompt,
   currentTopicPrompt,
@@ -19,9 +19,8 @@ export const defaultPrompt = async (
   }
   const topic = Brainstorm.getTopic(state.currentTopic as Brainstorm.TopicName);
 
-  const [outputInstructions, whereWeAre, currentTopic, remainingTopics, collectedAnswers, process] =
+  const [whereWeAre, currentTopic, remainingTopics, collectedAnswers, process] =
     await Promise.all([
-      structuredOutputPrompt({ schema: Brainstorm.replySchema }),
       whereWeArePrompt(state, config),
       currentTopicPrompt(state, config),
       remainingTopicsPrompt(state, config),
@@ -70,12 +69,14 @@ export const defaultPrompt = async (
                 The user's example answer has ALL THREE. Save it and move on.
             </be_generous>
 
-            <workflow>
-                1. If the user has answered any topics with a solid response, call the save_answers tool - do NOT forget to save answers when we have them! 
-                2. If the user has SKIPPED a topic, do not call save_answers for the skipped topics
-                3. Then, if:
-                   - The user has answered all topics, output finishBrainstorming
-                   - OTHERWISE, ask the next question, following the output_format_rules
+            <workflow important="follow this order exactly">
+                Your response MUST follow this exact sequence:
+
+                1. **Acknowledge first** (1-2 sentences of text): Briefly respond to what the user said — validate, encourage, or react naturally. This text is shown to the user immediately, so they know you heard them.
+                2. **Call tools** (if needed): Call save_answers if they answered a topic, or any other tools (set_logo, change_color_scheme, etc.). Do NOT call save_answers for skipped topics.
+                3. **Continue the conversation** (text): After all tool calls complete, ask the next question or finish up. If all topics are answered, output finishBrainstorming.
+
+                This ordering matters because the user sees your text in real time. If you call tools first with no text, the UI appears frozen.
             </workflow>
 
             <important>
@@ -102,18 +103,16 @@ export const defaultPrompt = async (
             </skipped_topics>
 
             <output_format_rules>
-                IMPORTANT: Your response MUST be in this exact format:
+                Respond in natural GitHub-flavored markdown. Do NOT output JSON.
 
-                {
-                  "text": "Brief intro to the question",
-                  "examples": ["Example 1", "Example 2", "Example 3"], // Optional
-                  "conclusion": "Restate what you're asking for" // Optional
-                }
+                Structure your response as:
+                1. Brief acknowledgment of what the user said (1-2 sentences) — OUTPUT THIS TEXT BEFORE any tool calls
+                2. Tool calls (if needed) — save_answers, set_logo, etc.
+                3. If helpful, include example answers as a bulleted list
+                4. End with a clear question or call to action
 
-                You MUST output valid JSON in this format.
+                Keep it conversational and concise.
             </output_format_rules>
-
-            ${outputInstructions}
         `
   );
 };

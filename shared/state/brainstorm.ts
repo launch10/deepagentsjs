@@ -16,8 +16,7 @@ export type BrainstormGraphState = Simplify<CoreGraphState & {
     currentTopic: Brainstorm.TopicName | undefined;
     skippedTopics: Brainstorm.TopicName[];
     placeholderText: string;
-    availableCommands: Brainstorm.CommandName[];
-    command: Brainstorm.CommandName | undefined;
+    availableIntents: Brainstorm.BrainstormIntentName[];
     remainingTopics: Brainstorm.TopicName[];
     redirect: Brainstorm.RedirectType | undefined;
     /**

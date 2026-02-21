@@ -472,7 +472,7 @@ Theme-specific typography recommendations included as a dynamic suffix to the pr
 
 ### Tracking
 
-`L10.createLead()` calls must NEVER be removed. This is enforced in both the full agent prompt and single-shot prompt: _"NEVER remove L10.createLead() calls or tracking imports."_
+`LeadForm` components must NEVER be removed. This is enforced in both the full agent prompt and single-shot prompt: _"NEVER remove LeadForm components or tracking imports."_
 
 ---
 

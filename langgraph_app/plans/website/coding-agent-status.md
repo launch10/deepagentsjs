@@ -29,12 +29,12 @@ START → buildContext ──┬──→ websiteBuilder → compactConversation
 
 ### Key Files
 
-| File | Purpose |
-|------|---------|
-| `app/graphs/website.ts` | Graph definition, intent routing, subgraph composition |
-| `app/annotation/websiteAnnotation.ts` | State type (messages, files, intent, theme, etc.) |
-| `app/graphs/shared/createIntentGraph.ts` | `createIntentGraph` utility |
-| `app/graphs/shared/withCreditTracking.ts` | Credit tracking wrapper |
+| File                                      | Purpose                                                |
+| ----------------------------------------- | ------------------------------------------------------ |
+| `app/graphs/website.ts`                   | Graph definition, intent routing, subgraph composition |
+| `app/annotation/websiteAnnotation.ts`     | State type (messages, files, intent, theme, etc.)      |
+| `app/graphs/shared/createIntentGraph.ts`  | `createIntentGraph` utility                            |
+| `app/graphs/shared/withCreditTracking.ts` | Credit tracking wrapper                                |
 
 ---
 
@@ -48,14 +48,14 @@ The coding agent uses a **classifier → single-shot → full agent** escalation
 
 ### Route Resolution (`agent.ts:163-196`)
 
-| Condition | Route | Why |
-|-----------|-------|-----|
-| First message (create flow) | full | Needs exploration + parallel subagents |
-| Errors present (bugfix) | full | Debugging needs tool loops |
-| Custom systemPrompt | full | Single-shot has its own prompt |
-| Classifier → "simple" | single-shot | Targeted 1-3 file edits |
-| Classifier → "complex" | full | Structural changes, multi-file refactors |
-| Classifier failure | full | Safer to overshoot |
+| Condition                   | Route       | Why                                      |
+| --------------------------- | ----------- | ---------------------------------------- |
+| First message (create flow) | full        | Needs exploration + parallel subagents   |
+| Errors present (bugfix)     | full        | Debugging needs tool loops               |
+| Custom systemPrompt         | full        | Single-shot has its own prompt           |
+| Classifier → "simple"       | single-shot | Targeted 1-3 file edits                  |
+| Classifier → "complex"      | full        | Structural changes, multi-file refactors |
+| Classifier failure          | full        | Safer to overshoot                       |
 
 ### Escalation & Retry
 
@@ -65,12 +65,12 @@ The coding agent uses a **classifier → single-shot → full agent** escalation
 
 ### Key Files
 
-| File | Purpose |
-|------|---------|
-| `app/nodes/coding/agent.ts` | Unified entry point, route resolution, full agent builder |
-| `app/nodes/coding/singleShotEdit.ts` | Single-shot edit path (Haiku + native text_editor) |
-| `app/nodes/coding/fileContext.ts` | `buildFileTree`, `preReadFiles` shared utilities |
-| `app/nodes/coding/subagents/coder.ts` | Coder subagent (only subagent, inherits parent model) |
+| File                                  | Purpose                                                   |
+| ------------------------------------- | --------------------------------------------------------- |
+| `app/nodes/coding/agent.ts`           | Unified entry point, route resolution, full agent builder |
+| `app/nodes/coding/singleShotEdit.ts`  | Single-shot edit path (Haiku + native text_editor)        |
+| `app/nodes/coding/fileContext.ts`     | `buildFileTree`, `preReadFiles` shared utilities          |
+| `app/nodes/coding/subagents/coder.ts` | Coder subagent (only subagent, inherits parent model)     |
 
 ---
 
@@ -121,23 +121,23 @@ The coding agent uses a **classifier → single-shot → full agent** escalation
 
 Built by `buildStaticContextPrompt()` in `app/prompts/coding/agent.ts`:
 
-| Component | File | Content |
-|-----------|------|---------|
-| User Goal | `shared/goal.ts` | Validate business idea via landing page |
-| Role | `shared/role.ts` | Expert landing page developer persona |
-| Context | `shared/context.ts` | Available context (brainstorm, theme, images) |
-| Tools | `shared/tools.ts` | Filesystem, subagents (task), searchIcons |
-| Links | `shared/links.ts` | Link formatting guidance |
-| Icons | `shared/icons.ts` | Icon search guidance |
-| Images | `shared/images.ts` | Image placement strategy |
-| Code Guidelines | `shared/codeGuidelines.ts` | React/TypeScript conventions |
-| Tracking | `shared/tracking.ts` | L10.createLead() analytics API |
-| Design Colors | `shared/design/themeColors.ts` | Semantic color classes |
-| Design Animations | `shared/design/animations.ts` | Hover & transition patterns |
-| Design Fonts | `shared/design/fonts.ts` | Typography sizes & spacing |
-| Design Environment | `shared/environment.ts` | Runtime environment info |
-| Design Philosophy | `shared/design/designPhilosophy.ts` | Anti-AI-slop, bold aesthetics (from SKILL.md) |
-| Design Checklist | `shared/design/designChecklist.ts` | Quality verification checklist |
+| Component          | File                                | Content                                       |
+| ------------------ | ----------------------------------- | --------------------------------------------- |
+| User Goal          | `shared/goal.ts`                    | Validate business idea via landing page       |
+| Role               | `shared/role.ts`                    | Expert landing page developer persona         |
+| Context            | `shared/context.ts`                 | Available context (brainstorm, theme, images) |
+| Tools              | `shared/tools.ts`                   | Filesystem, subagents (task), searchIcons     |
+| Links              | `shared/links.ts`                   | Link formatting guidance                      |
+| Icons              | `shared/icons.ts`                   | Icon search guidance                          |
+| Images             | `shared/images.ts`                  | Image placement strategy                      |
+| Code Guidelines    | `shared/codeGuidelines.ts`          | React/TypeScript conventions                  |
+| Tracking           | `shared/tracking.ts`                | LeadForm component for lead capture           |
+| Design Colors      | `shared/design/themeColors.ts`      | Semantic color classes                        |
+| Design Animations  | `shared/design/animations.ts`       | Hover & transition patterns                   |
+| Design Fonts       | `shared/design/fonts.ts`            | Typography sizes & spacing                    |
+| Design Environment | `shared/environment.ts`             | Runtime environment info                      |
+| Design Philosophy  | `shared/design/designPhilosophy.ts` | Anti-AI-slop, bold aesthetics (from SKILL.md) |
+| Design Checklist   | `shared/design/designChecklist.ts`  | Quality verification checklist                |
 
 **Caching**: Marked with `cache_control: { type: "ephemeral" }` → reused across requests within 5-min window at 10% of input token cost.
 
@@ -145,15 +145,16 @@ Built by `buildStaticContextPrompt()` in `app/prompts/coding/agent.ts`:
 
 Built by `buildCodingPrompt()`:
 
-| Component | File | Varies By |
-|-----------|------|-----------|
-| Workflow | `shared/workflow.ts` | Create / Edit / BugFix mode |
-| Start By | `shared/workflow.ts` | Mode-specific first action |
+| Component  | File                          | Varies By                           |
+| ---------- | ----------------------------- | ----------------------------------- |
+| Workflow   | `shared/workflow.ts`          | Create / Edit / BugFix mode         |
+| Start By   | `shared/workflow.ts`          | Mode-specific first action          |
 | Typography | `shared/design/typography.ts` | Theme-specific font recommendations |
 
 ### Single-Shot Prompt (separate path)
 
 Built by `buildSingleShotSystemMessage()` in `singleShotEdit.ts`:
+
 - Critical rules (one response, files pre-loaded, no view commands)
 - Design guidance (theme colors + CSS vars + typography + animations)
 - Design philosophy (cached)
@@ -169,11 +170,13 @@ Built by `buildSingleShotSystemMessage()` in `singleShotEdit.ts`:
 **Purpose**: Virtual filesystem bridging database ↔ agent tools
 
 **Hydration**:
+
 1. Load `code_files` from DB for the website
 2. If none exist (create flow), fall back to `template_files` for the website's template
 3. Write all files to disk at `agents/websites/<accountId>/<website_name>/`
 
 **Operations**:
+
 - `read(path)` — Raw content without line numbers (avoids agent confusion)
 - `write(path, content)` — Dual-write: filesystem + Rails API → DB. Uses RedisLock per file.
 - `edit(path, old, new)` — Dual-write with enhanced error logging (whitespace mismatch detection)
@@ -181,6 +184,7 @@ Built by `buildSingleShotSystemMessage()` in `singleShotEdit.ts`:
 - `grepRaw(pattern)` — Uses PostgreSQL full-text search (`content_tsv`) + regex line matching
 
 **Key Design Decisions**:
+
 - Raw content (no line numbers) prevents agents from including line numbers in str_replace anchors
 - RedisLock per file prevents concurrent write conflicts from parallel subagents
 - Debug logging to `/tmp/website_files_backend.log` for operation tracing
@@ -191,15 +195,16 @@ Built by `buildSingleShotSystemMessage()` in `singleShotEdit.ts`:
 
 ### 3-Layer Compaction
 
-| Layer | Trigger | Strategy | Cost | File |
-|-------|---------|----------|------|------|
-| Context window | Edit flow | Window to 10 turn pairs / 40K chars, always preserve context events | $0 | `contextWindow.ts` |
-| Conversation compaction | >12 non-context msgs OR >100K chars | Summarize old msgs with Tier 5 LLM, keep 6 recent + summary | ~$0.001 | `compactConversation.ts` |
-| Deepagents upstream | 170K token limit | Internal summarization, keep 6 messages | $0 | Built into deepagents |
+| Layer                   | Trigger                             | Strategy                                                            | Cost    | File                     |
+| ----------------------- | ----------------------------------- | ------------------------------------------------------------------- | ------- | ------------------------ |
+| Context window          | Edit flow                           | Window to 10 turn pairs / 40K chars, always preserve context events | $0      | `contextWindow.ts`       |
+| Conversation compaction | >12 non-context msgs OR >100K chars | Summarize old msgs with Tier 5 LLM, keep 6 recent + summary         | ~$0.001 | `compactConversation.ts` |
+| Deepagents upstream     | 170K token limit                    | Internal summarization, keep 6 messages                             | $0      | Built into deepagents    |
 
 ### Message Deduplication (`agent.ts:258-274`)
 
 Full agent returns many internal messages. Only first and last AI messages are returned to the caller:
+
 - First AI = personalized greeting (create) or initial response (edit)
 - Last AI = final summary of changes
 - Deduplicated if only one AI message exists
@@ -216,17 +221,17 @@ Full agent returns many internal messages. Only first and last AI messages are r
 
 From test assertions (not estimates):
 
-| Operation | Measured Cost | LLM Calls | Assertion Source |
-|-----------|--------------|-----------|-----------------|
-| Edit (total, w/ classifier) | < $0.02 | 2-4 | `website.test.ts:315,317` |
-| Single-shot edit (Haiku) | ~$0.005 | 1 | `singleShotEdit.test.ts:13` |
-| Classifier | ~$0.0001 | 1 | Tier 5 cheapest model |
-| Improve copy | ~$0.005 | 1 | Haiku single-shot |
-| Theme change | ~$0 | 0 | No LLM calls |
-| Bug fix (full agent) | $0.10-0.30 | Multi-turn | `bugFix.eval.test.ts:17` |
-| Create (full agent) | ~$0.80 | Multi-turn | `website.eval.ts:13` |
-| Compaction | ~$0.001 | 1 | Tier 5 cheapest model |
-| Domain recommendations | $0.01-0.05 | Multi-turn | Slow model, agent loop |
+| Operation                   | Measured Cost | LLM Calls  | Assertion Source            |
+| --------------------------- | ------------- | ---------- | --------------------------- |
+| Edit (total, w/ classifier) | < $0.02       | 2-4        | `website.test.ts:315,317`   |
+| Single-shot edit (Haiku)    | ~$0.005       | 1          | `singleShotEdit.test.ts:13` |
+| Classifier                  | ~$0.0001      | 1          | Tier 5 cheapest model       |
+| Improve copy                | ~$0.005       | 1          | Haiku single-shot           |
+| Theme change                | ~$0           | 0          | No LLM calls                |
+| Bug fix (full agent)        | $0.10-0.30    | Multi-turn | `bugFix.eval.test.ts:17`    |
+| Create (full agent)         | ~$0.80        | Multi-turn | `website.eval.ts:13`        |
+| Compaction                  | ~$0.001       | 1          | Tier 5 cheapest model       |
+| Domain recommendations      | $0.01-0.05    | Multi-turn | Slow model, agent loop      |
 
 ---
 
@@ -242,6 +247,7 @@ LLMService.get(skill, speed, cost, usagePercent, maxTier)
 ```
 
 **Key Settings**:
+
 - `maxTokens: 4096` (overrides LangChain default of 2048)
 - `temperature: 0` (except GPT-5/GPT-5 mini which don't support it)
 - WORKAROUND: Clear `topP`/`topK` for Anthropic models (LangChain bug)
@@ -254,23 +260,23 @@ LLMService.get(skill, speed, cost, usagePercent, maxTier)
 
 ### Models Used by the Coding Agent
 
-| Component | getLLM params | Resolves To | Purpose |
-|-----------|--------------|-------------|---------|
-| Classifier | `skill: "coding", speed: "blazing", cost: "paid", maxTier: 5` | Haiku / cheapest | Route decision |
-| Single-shot edit | `skill: "coding", speed: "blazing", cost: "paid", maxTier: 2` | Haiku | One-call file edits |
-| Full agent | `skill: "coding", speed: "slow", cost: "paid"` | Sonnet | Multi-turn generation |
-| Coder subagent | Inherited from parent | Sonnet (via deepagents) | Component implementation |
-| Compaction | `skill: "coding", speed: "blazing", cost: "paid", maxTier: 5` | Haiku / cheapest | Summarization |
+| Component        | getLLM params                                                 | Resolves To             | Purpose                  |
+| ---------------- | ------------------------------------------------------------- | ----------------------- | ------------------------ |
+| Classifier       | `skill: "coding", speed: "blazing", cost: "paid", maxTier: 5` | Haiku / cheapest        | Route decision           |
+| Single-shot edit | `skill: "coding", speed: "blazing", cost: "paid", maxTier: 2` | Haiku                   | One-call file edits      |
+| Full agent       | `skill: "coding", speed: "slow", cost: "paid"`                | Sonnet                  | Multi-turn generation    |
+| Coder subagent   | Inherited from parent                                         | Sonnet (via deepagents) | Component implementation |
+| Compaction       | `skill: "coding", speed: "blazing", cost: "paid", maxTier: 5` | Haiku / cheapest        | Summarization            |
 
 ---
 
 ## 9. Billing & Token Tracking — All Fixed
 
-| Area | Status | Evidence |
-|------|--------|----------|
-| Token double-counting | **FIXED** — Reads raw `response_metadata.usage` (not LangChain's merged/doubled values) | `tracker.ts:140,176-183` |
-| Subagent tracking | **WORKING** — `getLLM()` wraps models with `configFactories` containing `usageTracker`. Survives `bindTools()`, `withStructuredOutput()`, and deepagents model forwarding. | `llm.ts:107-124`, `coder.ts:14-21`, `usageTrackingIntegration.test.ts:459-529` |
-| Failed run persistence | **WORKING** — `usageTrackingMiddleware.onComplete()` fires regardless of success/failure | `usageTracking.ts:78-134`, `error-after-llm` test scenario |
+| Area                   | Status                                                                                                                                                                     | Evidence                                                                       |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Token double-counting  | **FIXED** — Reads raw `response_metadata.usage` (not LangChain's merged/doubled values)                                                                                    | `tracker.ts:140,176-183`                                                       |
+| Subagent tracking      | **WORKING** — `getLLM()` wraps models with `configFactories` containing `usageTracker`. Survives `bindTools()`, `withStructuredOutput()`, and deepagents model forwarding. | `llm.ts:107-124`, `coder.ts:14-21`, `usageTrackingIntegration.test.ts:459-529` |
+| Failed run persistence | **WORKING** — `usageTrackingMiddleware.onComplete()` fires regardless of success/failure                                                                                   | `usageTracking.ts:78-134`, `error-after-llm` test scenario                     |
 
 ### Historical context
 
@@ -280,11 +286,11 @@ All three bugs were documented in `plans/cost.md` (2026-02-04) and fixed on this
 
 ## 10. Prompt Caching — Working
 
-| Layer | Mechanism | Code Reference |
-|-------|-----------|----------------|
-| Custom middleware | `promptCachingMiddleware.ts` handles `StructuredOutputRunnableBinding` unwrapping via `isAnthropicModel()` | `agent.ts:44`, `isAnthropicModel.ts:28` |
-| Single-shot manual | `cache_control` on system message + tool definition | `singleShotEdit.ts:227-232` |
-| 3-tier strategy | System prompt, tools, conversation prefix all cached | `promptCachingMiddleware.ts` |
+| Layer              | Mechanism                                                                                                  | Code Reference                          |
+| ------------------ | ---------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| Custom middleware  | `promptCachingMiddleware.ts` handles `StructuredOutputRunnableBinding` unwrapping via `isAnthropicModel()` | `agent.ts:44`, `isAnthropicModel.ts:28` |
+| Single-shot manual | `cache_control` on system message + tool definition                                                        | `singleShotEdit.ts:227-232`             |
+| 3-tier strategy    | System prompt, tools, conversation prefix all cached                                                       | `promptCachingMiddleware.ts`            |
 
 ### Why the original bug is fixed
 
@@ -333,16 +339,16 @@ Claude follows this instruction and produces descriptive responses. The fallback
 
 ## 14. Test Coverage
 
-| Test File | Tests | Type | What It Tests |
-|-----------|-------|------|---------------|
-| `singleShotEdit.test.ts` | 30+ | Eval | Classifier routing (25 simple + 12 complex), single-shot execution, tracking preservation |
-| `singleShotEdit.unit.test.ts` | 7 | Unit | Error handling, retry logic, partial failure, rollbar reporting (all mocked) |
-| `textEditorTool.test.ts` | 16 | Unit | All text editor commands, edge cases, content preservation |
-| `website.eval.ts` | 8 | Eval | Quality scorers: design, completeness, persuasiveness (evalite, ~$5-8/run) |
-| `website.test.ts` | 6+ | Integration | Full create/edit pipeline, cost assertions, message trimming, theme changes |
-| `bugFix.eval.test.ts` | 5 | Eval | Bug injection → fix → verification with pre/post assertions |
-| `domainRecommendations.test.ts` | 2+ | Integration | Domain recommendation generation during creation |
-| `usageTrackingIntegration.test.ts` | — | Integration | Token tracking accuracy, subagent propagation |
+| Test File                          | Tests | Type        | What It Tests                                                                             |
+| ---------------------------------- | ----- | ----------- | ----------------------------------------------------------------------------------------- |
+| `singleShotEdit.test.ts`           | 30+   | Eval        | Classifier routing (25 simple + 12 complex), single-shot execution, tracking preservation |
+| `singleShotEdit.unit.test.ts`      | 7     | Unit        | Error handling, retry logic, partial failure, rollbar reporting (all mocked)              |
+| `textEditorTool.test.ts`           | 16    | Unit        | All text editor commands, edge cases, content preservation                                |
+| `website.eval.ts`                  | 8     | Eval        | Quality scorers: design, completeness, persuasiveness (evalite, ~$5-8/run)                |
+| `website.test.ts`                  | 6+    | Integration | Full create/edit pipeline, cost assertions, message trimming, theme changes               |
+| `bugFix.eval.test.ts`              | 5     | Eval        | Bug injection → fix → verification with pre/post assertions                               |
+| `domainRecommendations.test.ts`    | 2+    | Integration | Domain recommendation generation during creation                                          |
+| `usageTrackingIntegration.test.ts` | —     | Integration | Token tracking accuracy, subagent propagation                                             |
 
 ### Test Infrastructure
 
@@ -377,68 +383,68 @@ Full agent create has `recursionLimit: 150`. A confused agent could burn $5-7 be
 
 ### Coding Agent
 
-| File | Purpose |
-|------|---------|
-| `app/nodes/coding/agent.ts` | Unified entry point, route resolution, full agent builder |
-| `app/nodes/coding/singleShotEdit.ts` | Single-shot edit path (Haiku + native text_editor) |
-| `app/nodes/coding/fileContext.ts` | `buildFileTree`, `preReadFiles` shared utilities |
-| `app/nodes/coding/subagents/coder.ts` | Coder subagent definition |
-| `app/nodes/coding/cleanupFilesystem.ts` | No-op (cleanup disabled) |
+| File                                    | Purpose                                                   |
+| --------------------------------------- | --------------------------------------------------------- |
+| `app/nodes/coding/agent.ts`             | Unified entry point, route resolution, full agent builder |
+| `app/nodes/coding/singleShotEdit.ts`    | Single-shot edit path (Haiku + native text_editor)        |
+| `app/nodes/coding/fileContext.ts`       | `buildFileTree`, `preReadFiles` shared utilities          |
+| `app/nodes/coding/subagents/coder.ts`   | Coder subagent definition                                 |
+| `app/nodes/coding/cleanupFilesystem.ts` | No-op (cleanup disabled)                                  |
 
 ### Website Graph & Nodes
 
-| File | Purpose |
-|------|---------|
-| `app/graphs/website.ts` | Graph definition, intent routing, subgraph composition |
-| `app/nodes/website/websiteBuilder.ts` | Main orchestrator: context → coding agent → result |
-| `app/nodes/website/buildContext.ts` | Context injection (brainstorm, images) via events |
-| `app/nodes/website/improveCopy.ts` | Copy rewrite with style selection |
-| `app/nodes/website/themeHandler.ts` | Silent theme update (no AI) |
-| `app/nodes/website/compactConversation.ts` | Conversation summarization when too long |
-| `app/nodes/website/contextWindow.ts` | Edit-flow message windowing (10 turns, 40K chars) |
-| `app/nodes/website/recommendDomains.ts` | Parallel domain recommendations |
-| `app/nodes/website/syncFiles.ts` | DB → state file synchronization |
-| `app/nodes/website/validateLinks.ts` | Link validation (defined, not wired into graph) |
-| `app/nodes/website/cacheMode.ts` | Testing optimization (pre-cached responses) |
+| File                                       | Purpose                                                |
+| ------------------------------------------ | ------------------------------------------------------ |
+| `app/graphs/website.ts`                    | Graph definition, intent routing, subgraph composition |
+| `app/nodes/website/websiteBuilder.ts`      | Main orchestrator: context → coding agent → result     |
+| `app/nodes/website/buildContext.ts`        | Context injection (brainstorm, images) via events      |
+| `app/nodes/website/improveCopy.ts`         | Copy rewrite with style selection                      |
+| `app/nodes/website/themeHandler.ts`        | Silent theme update (no AI)                            |
+| `app/nodes/website/compactConversation.ts` | Conversation summarization when too long               |
+| `app/nodes/website/contextWindow.ts`       | Edit-flow message windowing (10 turns, 40K chars)      |
+| `app/nodes/website/recommendDomains.ts`    | Parallel domain recommendations                        |
+| `app/nodes/website/syncFiles.ts`           | DB → state file synchronization                        |
+| `app/nodes/website/validateLinks.ts`       | Link validation (defined, not wired into graph)        |
+| `app/nodes/website/cacheMode.ts`           | Testing optimization (pre-cached responses)            |
 
 ### LLM & Infrastructure
 
-| File | Purpose |
-|------|---------|
-| `app/core/llm/service.ts` | Model config from Rails, `createModel()`, maxTokens: 4096 |
-| `app/core/llm/llm.ts` | `getLLM()` with usage tracking, `getLLMFallbacks()` |
-| `app/core/llm/promptCachingMiddleware.ts` | 3-tier Anthropic prompt caching |
-| `app/core/llm/isAnthropicModel.ts` | Model detection through wrappers |
-| `app/core/llm/cost.ts` | Cost calculation (millicredits) |
-| `app/core/billing/tracker.ts` | Raw Anthropic usage reading |
-| `app/api/middleware/usageTracking.ts` | Usage tracking middleware |
+| File                                      | Purpose                                                   |
+| ----------------------------------------- | --------------------------------------------------------- |
+| `app/core/llm/service.ts`                 | Model config from Rails, `createModel()`, maxTokens: 4096 |
+| `app/core/llm/llm.ts`                     | `getLLM()` with usage tracking, `getLLMFallbacks()`       |
+| `app/core/llm/promptCachingMiddleware.ts` | 3-tier Anthropic prompt caching                           |
+| `app/core/llm/isAnthropicModel.ts`        | Model detection through wrappers                          |
+| `app/core/llm/cost.ts`                    | Cost calculation (millicredits)                           |
+| `app/core/billing/tracker.ts`             | Raw Anthropic usage reading                               |
+| `app/api/middleware/usageTracking.ts`     | Usage tracking middleware                                 |
 
 ### Prompts
 
-| File | Purpose |
-|------|---------|
-| `app/prompts/coding/agent.ts` | Prompt composition (static + dynamic) |
-| `app/prompts/coding/shared/workflow.ts` | Create / Edit / BugFix workflow instructions |
-| `app/prompts/coding/shared/role.ts` | Agent persona |
-| `app/prompts/coding/shared/goal.ts` | User goal context |
-| `app/prompts/coding/shared/tools.ts` | Tool documentation |
-| `app/prompts/coding/shared/design/designPhilosophy.ts` | Design philosophy (from SKILL.md) |
-| `app/prompts/coding/shared/design/themeColors.ts` | Semantic color classes |
-| `app/prompts/coding/shared/design/fonts.ts` | Typography sizes & spacing |
-| `app/prompts/coding/shared/design/animations.ts` | Hover & transition patterns |
-| `app/prompts/coding/shared/design/typography.ts` | Theme-specific font recommendations |
-| `app/prompts/coding/shared/design/designChecklist.ts` | Quality verification |
-| `app/prompts/coding/shared/design/imageStrategy.ts` | Image placement guidance |
+| File                                                   | Purpose                                      |
+| ------------------------------------------------------ | -------------------------------------------- |
+| `app/prompts/coding/agent.ts`                          | Prompt composition (static + dynamic)        |
+| `app/prompts/coding/shared/workflow.ts`                | Create / Edit / BugFix workflow instructions |
+| `app/prompts/coding/shared/role.ts`                    | Agent persona                                |
+| `app/prompts/coding/shared/goal.ts`                    | User goal context                            |
+| `app/prompts/coding/shared/tools.ts`                   | Tool documentation                           |
+| `app/prompts/coding/shared/design/designPhilosophy.ts` | Design philosophy (from SKILL.md)            |
+| `app/prompts/coding/shared/design/themeColors.ts`      | Semantic color classes                       |
+| `app/prompts/coding/shared/design/fonts.ts`            | Typography sizes & spacing                   |
+| `app/prompts/coding/shared/design/animations.ts`       | Hover & transition patterns                  |
+| `app/prompts/coding/shared/design/typography.ts`       | Theme-specific font recommendations          |
+| `app/prompts/coding/shared/design/designChecklist.ts`  | Quality verification                         |
+| `app/prompts/coding/shared/design/imageStrategy.ts`    | Image placement guidance                     |
 
 ### Tools
 
-| File | Purpose |
-|------|---------|
-| `app/tools/website/textEditorTool.ts` | Text editor command execution |
+| File                                        | Purpose                                   |
+| ------------------------------------------- | ----------------------------------------- |
+| `app/tools/website/textEditorTool.ts`       | Text editor command execution             |
 | `app/tools/website/textEditorMiddleware.ts` | Native tool injection + call interception |
 
 ### Backend
 
-| File | Purpose |
-|------|---------|
+| File                                           | Purpose                                |
+| ---------------------------------------------- | -------------------------------------- |
 | `app/services/backends/websiteFilesBackend.ts` | Virtual filesystem (DB ↔ disk ↔ agent) |

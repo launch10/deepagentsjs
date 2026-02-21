@@ -16,7 +16,9 @@ class WebsiteStep < BaseBuilder
 
     project = account.projects.first
     if project.nil?
-      data = Brainstorm.create_brainstorm!(account, name: "Test Project", thread_id: SecureRandom.uuid)
+      # thread_id must equal project UUID so the frontend URL-based thread lookup works
+      project_uuid = SecureRandom.uuid
+      data = Brainstorm.create_brainstorm!(account, name: "Test Project", thread_id: project_uuid, project_attributes: { uuid: project_uuid })
 
       brainstorm = data[:brainstorm]
       brainstorm.update!(
@@ -67,12 +69,47 @@ class WebsiteStep < BaseBuilder
     # Create domains with website_urls for testing domain picker
     create_domains_with_urls(account, website)
 
+    # Seed brainstorm checkpoints for all projects so Langgraph recognises them
+    seed_all_brainstorm_checkpoints(account)
+
     puts "Created website with brainstorm: #{brainstorm.id}"
     puts "Website ID: #{website.id}, Theme ID: #{website.theme_id}"
     puts "Total uploads for website: #{website.uploads.count}"
   end
 
   private
+
+  def seed_all_brainstorm_checkpoints(account)
+    account.projects.each do |proj|
+      bs = proj.brainstorm
+      next unless bs&.chat
+
+      seed_brainstorm_checkpoint(
+        thread_id: bs.chat.thread_id,
+        website_id: proj.website.id,
+        brainstorm_id: bs.id,
+        project_id: proj.id,
+        chat_id: bs.chat.id
+      )
+    end
+  end
+
+  def seed_brainstorm_checkpoint(thread_id:, website_id:, brainstorm_id:, project_id:, chat_id:)
+    langgraph_dir = Rails.root.join("..", "langgraph_app")
+    script = langgraph_dir.join("scripts", "seed-brainstorm-checkpoint.ts")
+
+    cmd = "cd #{langgraph_dir} && npx tsx #{script}" \
+      " --thread-id=#{thread_id}" \
+      " --website-id=#{website_id}" \
+      " --brainstorm-id=#{brainstorm_id}" \
+      " --project-id=#{project_id}" \
+      " --chat-id=#{chat_id}"
+    result = system({"NODE_ENV" => "test"}, cmd)
+
+    raise "Failed to seed brainstorm checkpoint for thread #{thread_id}" unless result
+
+    puts "Seeded brainstorm checkpoint for thread #{thread_id} (project: #{project_id})"
+  end
 
   def create_domains_with_urls(account, _main_website)
     # NOTE: We use Domain.new + save!(validate: false) to bypass the subdomain limit
@@ -84,7 +121,8 @@ class WebsiteStep < BaseBuilder
 
     # 1. Platform subdomain assigned to a DIFFERENT website (root path)
     # Useful for testing path conflicts when same domain has multiple websites
-    other_data = Brainstorm.create_brainstorm!(account, name: "Meeting Tool Project", thread_id: SecureRandom.uuid)
+    other_uuid = SecureRandom.uuid
+    other_data = Brainstorm.create_brainstorm!(account, name: "Meeting Tool Project", thread_id: other_uuid, project_attributes: { uuid: other_uuid })
     other_website = other_data[:website]
     other_website.update!(name: "Meeting Tool")
     other_data[:brainstorm].update!(
@@ -109,7 +147,8 @@ class WebsiteStep < BaseBuilder
 
     # 2. Create another website using the same domain with /landing path
     # This is useful for testing path collision detection (same domain, different path, different website)
-    landing_data = Brainstorm.create_brainstorm!(account, name: "Landing Page Project", thread_id: SecureRandom.uuid)
+    landing_uuid = SecureRandom.uuid
+    landing_data = Brainstorm.create_brainstorm!(account, name: "Landing Page Project", thread_id: landing_uuid, project_attributes: { uuid: landing_uuid })
     landing_website = landing_data[:website]
     landing_website.update!(name: "Landing Page")
     landing_data[:brainstorm].update!(

@@ -28,6 +28,7 @@ class CreditPackCheckoutsController < ApplicationController
   # Handle Stripe redirect after payment completion
   def complete
     Pay.sync(params)
+
     flash[:notice] = {
       title: "Credits purchased!",
       description: "Your credits have been added to your account."

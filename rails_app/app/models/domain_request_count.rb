@@ -116,7 +116,7 @@ class DomainRequestCount < ApplicationRecord
       # Upsert domain request count for this hour
       domain_record = domains_by_domain[domain]
       if domain_record.blank?
-        Rollbar.error("Traffic report found for domain without a domain record", domain: domain)
+        Sentry.capture_message("Traffic report found for domain without a domain record", extra: { domain: domain })
         next
       end
 

@@ -8,6 +8,7 @@ import type { SettingsSubscription } from "@pages/Settings";
 
 interface SubscriptionSectionProps {
   subscription: SettingsSubscription | null;
+  stripePortalUrl?: string;
 }
 
 function formatDate(dateString: string) {
@@ -18,7 +19,7 @@ function formatDate(dateString: string) {
   });
 }
 
-export function SubscriptionSection({ subscription }: SubscriptionSectionProps) {
+export function SubscriptionSection({ subscription, stripePortalUrl }: SubscriptionSectionProps) {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const { reactivate, isReactivating } = useReactivateSubscription({
     subscriptionPrefixId: subscription?.prefix_id,
@@ -86,7 +87,11 @@ export function SubscriptionSection({ subscription }: SubscriptionSectionProps) 
                 </Button>
                 <Button
                   onClick={() => {
-                    // TODO: Redirect to Stripe customer portal
+                    if (stripePortalUrl) {
+                      window.location.href = stripePortalUrl;
+                    } else {
+                      window.location.href = "/pricing";
+                    }
                   }}
                   className="bg-[#2E3238] hover:bg-[#1a1e22] text-white font-['Plus_Jakarta_Sans'] text-sm py-1.5 px-4 h-auto"
                 >

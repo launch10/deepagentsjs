@@ -676,7 +676,7 @@ RSpec.describe GoogleAds::Resources::Keyword do
       allow(@mock_google_ads_service).to receive(:search).and_return(keyword_response)
 
       # Instrumentation formats tags as "key=value" strings for log aggregator compatibility
-      expect(Rails.logger).to receive(:tagged).with(
+      expect(GoogleAds::Instrumentation.google_ads_logger).to receive(:tagged).with(
         "keyword_id=#{ad_keyword.id}",
         "ad_group_id=#{ad_keyword.ad_group_id}"
       ).at_least(:once).and_yield

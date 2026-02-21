@@ -50,9 +50,9 @@ export function parseUrl(): {
   // Match /projects/{uuid}/campaigns/{substep}
   const campaignsMatch = path.match(/^\/projects\/([^/]+)\/campaigns\/(\w+)$/);
   if (campaignsMatch) {
-    const substep = campaignsMatch[2] as Workflow.AdCampaignSubstepName;
-    if (Workflow.AdCampaignSubstepNames.includes(substep)) {
-      return { projectUUID: campaignsMatch[1], page: "ad_campaign", substep };
+    const substep = campaignsMatch[2] as Workflow.AdsSubstepName;
+    if (Workflow.AdsSubstepNames.includes(substep)) {
+      return { projectUUID: campaignsMatch[1], page: "ads", substep };
     }
   }
 
@@ -79,7 +79,7 @@ function buildUrl(
     case "website":
       // Website always includes substep (default to build)
       return `/projects/${projectUUID}/website/${substep ?? "build"}`;
-    case "ad_campaign":
+    case "ads":
       return `/projects/${projectUUID}/campaigns/${substep}`;
     case "deploy":
       return `/projects/${projectUUID}/deploy`;
@@ -158,9 +158,16 @@ export const createWorkflowStore = () => {
         const url = buildUrl(page, substep, uuid);
         const hasVisitedReview = substep === "review" ? true : get().hasVisitedReview;
 
-        // Cross-page navigation needs Inertia (component swap)
-        // Same-page substep navigation uses pushState
-        if (page !== currentPage) {
+        // Cross-page navigation needs Inertia (component swap).
+        // website/deploy also needs Inertia because the controller renders the
+        // Deploy component (not Website), so a pushState would skip the swap.
+        const currentSubstep = get().substep;
+        const needsInertia =
+          page !== currentPage ||
+          (page === "website" && substep === "deploy") ||
+          (page === "website" && currentSubstep === "deploy");
+
+        if (needsInertia) {
           // Update hasVisitedReview before navigation
           if (hasVisitedReview !== get().hasVisitedReview) {
             set({ hasVisitedReview });
@@ -222,7 +229,7 @@ export const createWorkflowStore = () => {
           console.error("Cannot return to review without projectUUID");
           return;
         }
-        get().navigate("ad_campaign", "review", projectUUID);
+        get().navigate("ads", "review", projectUUID);
       },
 
       setReturnToSection: (section) => {
@@ -273,7 +280,7 @@ export const selectClearReturnToSection = (s: WorkflowStore) => s.clearReturnToS
 export const selectSetSubstep = (s: WorkflowStore) => s.setSubstep;
 
 // Computed selector: derive step from substep
-export const selectStep = (s: WorkflowState): Workflow.AdCampaignStepName | null => {
+export const selectStep = (s: WorkflowState): Workflow.AdsStepName | null => {
   return Workflow.deriveStep(s.substep);
 };
 

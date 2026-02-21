@@ -39,7 +39,7 @@ module GoogleAds
         { account_id: record.id, google_customer_id: record.google_customer_id }
       end
 
-      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
+      instrument_methods :sync, :synced?, :sync_result, :sync_plan, :delete, :fetch
 
       # ═══════════════════════════════════════════════════════════════
       # INSTANCE METHODS (5 core methods + sync_plan)
@@ -62,9 +62,14 @@ module GoogleAds
         return GoogleAds::SyncResult.unchanged(:customer, customer_id) if synced?
 
         remote = fetch
-        if remote
+        if remote && remote.status != :CANCELED
           update_account(remote)
         else
+          # Clear stale customer_id if it pointed to a CANCELED account
+          if remote&.status == :CANCELED && record.google_customer_id.present?
+            record.google_customer_id = nil
+            record.save!
+          end
           create_account
         end
       rescue Google::Ads::GoogleAds::Errors::GoogleAdsError => e
@@ -196,7 +201,7 @@ module GoogleAds
         return nil unless email.present?
 
         query = <<~QUERY
-          SELECT customer_client.id, customer_client.descriptive_name
+          SELECT customer_client.id, customer_client.descriptive_name, customer_client.status
           FROM customer_client
           WHERE customer_client.descriptive_name = '#{email.gsub("'", "\\\\'")}'
         QUERY
@@ -206,14 +211,21 @@ module GoogleAds
           query: query
         )
 
-        found_id = response.first&.customer_client&.id
-        return nil unless found_id
+        # Skip CANCELED accounts — after a full reset, the old account is canceled
+        # and we need to create a new one, not re-attach to the dead one.
+        found = response
+          .map(&:customer_client)
+          .compact
+          .reject { |cc| cc.status == :CANCELED }
+          .first
+
+        return nil unless found
 
         # Backfill the ID
-        record.google_customer_id = found_id.to_s
+        record.google_customer_id = found.id.to_s
         record.save!
 
-        verify_customer(found_id)
+        verify_customer(found.id)
       end
 
       def verify_customer(cid)

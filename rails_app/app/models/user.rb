@@ -90,4 +90,39 @@ class User < ApplicationRecord
   def confirmed?
     confirmed_at.present?
   end
+
+  def track_signup
+    acct = owned_account
+    attribution = acct&.signup_attribution
+    method = connected_accounts.any? ? connected_accounts.last.provider : "email"
+    event_data = {
+      user: self,
+      account: acct,
+      method: method
+    }
+    event_data.merge!(attribution.symbolize_keys) if attribution.present?
+    TrackEvent.call("user_signed_up", **event_data)
+    PosthogTracker.identify(self, posthog_attribution_properties(attribution))
+  end
+
+  private
+
+  def posthog_attribution_properties(attribution = nil)
+    attribution ||= owned_account&.signup_attribution
+    return {} unless attribution.present?
+
+    {
+      initial_utm_source: attribution["utm_source"],
+      initial_utm_medium: attribution["utm_medium"],
+      initial_utm_campaign: attribution["utm_campaign"],
+      initial_utm_term: attribution["utm_term"],
+      initial_utm_content: attribution["utm_content"],
+      initial_icp: attribution["icp"],
+      initial_landing_page: attribution["landing_page"],
+      initial_referrer: attribution["referrer"],
+      initial_referring_domain: attribution["referring_domain"],
+      initial_gclid: attribution["gclid"],
+      initial_fbclid: attribution["fbclid"]
+    }.compact
+  end
 end

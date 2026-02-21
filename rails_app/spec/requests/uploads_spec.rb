@@ -241,6 +241,7 @@ RSpec.describe "Uploads API", type: :request do
       parameter name: 'X-Signature', in: :header, type: :string, required: false
       parameter name: 'X-Timestamp', in: :header, type: :string, required: false
       parameter name: :website_id, in: :query, type: :integer, required: false, description: 'Filter by website'
+      parameter name: :uuid, in: :query, type: :string, required: false, description: 'Filter by upload UUID'
       parameter name: :is_logo, in: :query, type: :boolean, required: false,
         description: 'Filter by logo status (true for logos, false for product images)'
       parameter name: :order, in: :query, type: :string, required: false,
@@ -267,6 +268,33 @@ RSpec.describe "Uploads API", type: :request do
           data = JSON.parse(response.body)
           expect(data.length).to eq(2)
           expect(data.map { |u| u["id"] }).to contain_exactly(upload1_owned.id, upload2_owned.id)
+        end
+      end
+
+      response "200", "returns upload filtered by uuid" do
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:uuid) { upload1_owned.uuid }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data.length).to eq(1)
+          expect(data.first["uuid"]).to eq(upload1_owned.uuid)
+        end
+      end
+
+      response "200", "returns empty array for unknown uuid" do
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:uuid) { "00000000-0000-0000-0000-000000000000" }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data.length).to eq(0)
         end
       end
 
@@ -428,6 +456,174 @@ RSpec.describe "Uploads API", type: :request do
   end
 
   path '/api/v1/uploads/{id}' do
+    patch 'Updates an upload' do
+      tags 'Uploads'
+      consumes 'application/json'
+      produces 'application/json'
+      security [bearer_auth: []]
+      parameter name: :Authorization, in: :header, type: :string, required: false
+      parameter name: 'X-Signature', in: :header, type: :string, required: false
+      parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+      parameter name: :id, in: :path, type: :integer, required: true, description: 'Upload ID'
+      parameter name: :body, in: :body, schema: {
+        type: :object,
+        properties: {
+          upload: {
+            type: :object,
+            properties: {
+              is_logo: { type: :boolean, description: 'Mark as logo' },
+              website_id: { type: :integer, description: 'Associate with website' }
+            }
+          }
+        }
+      }
+
+      let!(:existing_upload) { create(:upload, account: user1_owned_account, is_logo: false) }
+
+      before do
+        switch_account_to(user1_owned_account)
+      end
+
+      response '200', 'marks upload as logo' do
+        schema APISchemas::Upload.response
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:id) { existing_upload.id }
+        let(:body) { { upload: { is_logo: true } } }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["is_logo"]).to eq(true)
+          expect(existing_upload.reload.is_logo).to eq(true)
+        end
+      end
+
+      response '200', 'unmarks upload as logo' do
+        let!(:logo_upload) { create(:upload, account: user1_owned_account, is_logo: true) }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:id) { logo_upload.id }
+        let(:body) { { upload: { is_logo: false } } }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["is_logo"]).to eq(false)
+          expect(logo_upload.reload.is_logo).to eq(false)
+        end
+      end
+
+      response '200', 'associates upload with website' do
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:id) { existing_upload.id }
+        let(:body) { { upload: { website_id: website1_owned.id } } }
+
+        run_test! do |response|
+          JSON.parse(response.body)
+          expect(existing_upload.reload.websites).to include(website1_owned)
+          expect(WebsiteUpload.where(upload: existing_upload, website: website1_owned).count).to eq(1)
+        end
+      end
+
+      response '200', 'does not duplicate WebsiteUpload if already associated' do
+        before do
+          WebsiteUpload.create!(upload: existing_upload, website: website1_owned)
+        end
+
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:id) { existing_upload.id }
+        let(:body) { { upload: { website_id: website1_owned.id } } }
+
+        run_test! do |response|
+          expect(response.code).to eq("200")
+          expect(WebsiteUpload.where(upload: existing_upload, website: website1_owned).count).to eq(1)
+        end
+      end
+
+      response '200', 'marks as logo and associates with website in one call' do
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:id) { existing_upload.id }
+        let(:body) { { upload: { is_logo: true, website_id: website1_owned.id } } }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["is_logo"]).to eq(true)
+          expect(existing_upload.reload.websites).to include(website1_owned)
+        end
+      end
+
+      response '404', 'upload not found' do
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:id) { 999999 }
+        let(:body) { { upload: { is_logo: true } } }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"]).to include("Upload not found")
+        end
+      end
+
+      response '404', 'cannot update upload owned by another account' do
+        let!(:other_upload) { create(:upload, account: user2_owned_account, is_logo: false) }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:id) { other_upload.id }
+        let(:body) { { upload: { is_logo: true } } }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"]).to include("Upload not found")
+          expect(other_upload.reload.is_logo).to eq(false)
+        end
+      end
+
+      response '404', 'website not found' do
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:id) { existing_upload.id }
+        let(:body) { { upload: { website_id: 999999 } } }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"]).to include("Upload not found")
+        end
+      end
+
+      response '404', 'website belongs to different account' do
+        let!(:user2_website) { create(:website, account: user2_owned_account, project: create(:project, account: user2_owned_account), template: template) }
+        let(:auth_headers) { auth_headers_for(user1) }
+        let(:Authorization) { auth_headers['Authorization'] }
+        let(:"X-Signature") { auth_headers['X-Signature'] }
+        let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+        let(:id) { existing_upload.id }
+        let(:body) { { upload: { website_id: user2_website.id } } }
+
+        run_test! do |response|
+          data = JSON.parse(response.body)
+          expect(data["errors"]).to include("Upload not found")
+        end
+      end
+    end
+
     delete 'Deletes an upload' do
       tags 'Uploads'
       produces 'application/json'

@@ -97,6 +97,146 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/app_events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates an internal app event */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        /** @description Name of the event to track */
+                        event_name: string;
+                        /** @description User ID */
+                        user_id?: number | null;
+                        /** @description Project ID */
+                        project_id?: number | null;
+                        /** @description Additional event properties */
+                        properties?: {
+                            [key: string]: unknown;
+                        } | null;
+                    };
+                };
+            };
+            responses: {
+                /** @description event accepted without optional fields */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description unauthorized - missing signature */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description rejects missing event_name */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/credit_packs/{credit_pack_id}/checkout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Creates a Stripe checkout session for a credit pack */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    Authorization: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Credit pack ID */
+                    credit_pack_id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns checkout session client secret */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Stripe checkout session client secret */
+                            client_secret: string;
+                        };
+                    };
+                };
+                /** @description unauthorized - missing token */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description forbidden - no active subscription */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description credit pack not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description credit pack has no Stripe price */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/credits/check": {
         parameters: {
             query?: never;
@@ -2813,7 +2953,119 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Lists paginated deploys for a project */
+        get: {
+            parameters: {
+                query: {
+                    /** @description Project ID */
+                    project_id: number;
+                    /** @description Page number (default 1) */
+                    page?: number;
+                    /** @description Filter by status (completed, failed, running) */
+                    status?: string;
+                    /** @description Filter by deploy type (website, campaign) */
+                    deploy_type?: string;
+                };
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description filters by status */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            deploys: {
+                                /** @description Unique identifier */
+                                id: number;
+                                /** @description Unique identifier */
+                                project_id: number;
+                                /** @description Deploy status (pending, running, completed, failed) */
+                                status: string;
+                                /** @description Current deploy step */
+                                current_step?: string | null;
+                                /** @description Whether the deploy is live */
+                                is_live: boolean;
+                                /** @description Langgraph thread ID */
+                                thread_id?: string | null;
+                                /**
+                                 * @description Type of deploy (website or campaign)
+                                 * @enum {string}
+                                 */
+                                deploy_type: "website" | "campaign";
+                                /** @description Deploy instruction flags */
+                                instructions?: {
+                                    [key: string]: boolean;
+                                };
+                                /** @description Support ticket reference (SR-XXXXXXXX) */
+                                support_ticket?: string | null;
+                                /**
+                                 * Format: date-time
+                                 * @description When the deploy finished
+                                 */
+                                finished_at?: string | null;
+                                /** @description Deploy duration in seconds */
+                                duration?: number | null;
+                                /** @description Whether this deploy can be rolled back */
+                                revertible?: boolean;
+                                /** @description Status of the linked website deploy */
+                                website_deploy_status?: string | null;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                created_at: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Timestamp
+                                 */
+                                updated_at: string;
+                            }[];
+                            pagination: {
+                                /** @description Current page number */
+                                current_page: number;
+                                /** @description Total number of pages */
+                                total_pages: number;
+                                /** @description Total number of items */
+                                total_count: number;
+                                /** @description Previous page number or null */
+                                prev_page?: number | null;
+                                /** @description Next page number or null */
+                                next_page?: number | null;
+                                /** @description First item index on current page */
+                                from?: number | null;
+                                /** @description Last item index on current page */
+                                to?: number | null;
+                                /** @description Page series for pagination controls */
+                                series?: (number | string)[];
+                            };
+                        };
+                    };
+                };
+                /** @description unauthorized */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description project not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         put?: never;
         /** Creates a deploy */
         post: {
@@ -2830,17 +3082,74 @@ export interface paths {
             requestBody?: {
                 content: {
                     "application/json": {
+                        /** @description Project ID to create the deploy for */
                         project_id: number;
+                        /** @description Thread ID from Langgraph */
+                        thread_id?: string;
                     };
                 };
             };
             responses: {
+                /** @description returns existing in-progress deploy instead of creating new one */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
                 /** @description deploy created increments deploy count */
                 201: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Deploy status (pending, running, completed, failed) */
+                            status: string;
+                            /** @description Current deploy step */
+                            current_step?: string | null;
+                            /** @description Whether the deploy is live */
+                            is_live: boolean;
+                            /** @description Langgraph thread ID */
+                            thread_id?: string | null;
+                            /**
+                             * @description Type of deploy (website or campaign)
+                             * @enum {string}
+                             */
+                            deploy_type: "website" | "campaign";
+                            /** @description Deploy instruction flags */
+                            instructions?: {
+                                [key: string]: boolean;
+                            };
+                            /** @description Support ticket reference (SR-XXXXXXXX) */
+                            support_ticket?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description When the deploy finished
+                             */
+                            finished_at?: string | null;
+                            /** @description Deploy duration in seconds */
+                            duration?: number | null;
+                            /** @description Whether this deploy can be rolled back */
+                            revertible?: boolean;
+                            /** @description Status of the linked website deploy */
+                            website_deploy_status?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
                 };
                 /** @description unauthorized */
                 401: {
@@ -2896,7 +3205,54 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Deploy status (pending, running, completed, failed) */
+                            status: string;
+                            /** @description Current deploy step */
+                            current_step?: string | null;
+                            /** @description Whether the deploy is live */
+                            is_live: boolean;
+                            /** @description Langgraph thread ID */
+                            thread_id?: string | null;
+                            /**
+                             * @description Type of deploy (website or campaign)
+                             * @enum {string}
+                             */
+                            deploy_type: "website" | "campaign";
+                            /** @description Deploy instruction flags */
+                            instructions?: {
+                                [key: string]: boolean;
+                            };
+                            /** @description Support ticket reference (SR-XXXXXXXX) */
+                            support_ticket?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description When the deploy finished
+                             */
+                            finished_at?: string | null;
+                            /** @description Deploy duration in seconds */
+                            duration?: number | null;
+                            /** @description Whether this deploy can be rolled back */
+                            revertible?: boolean;
+                            /** @description Status of the linked website deploy */
+                            website_deploy_status?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
                 };
                 /** @description cannot access deploy from different account */
                 404: {
@@ -2943,10 +3299,167 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Unique identifier */
+                            project_id: number;
+                            /** @description Deploy status (pending, running, completed, failed) */
+                            status: string;
+                            /** @description Current deploy step */
+                            current_step?: string | null;
+                            /** @description Whether the deploy is live */
+                            is_live: boolean;
+                            /** @description Langgraph thread ID */
+                            thread_id?: string | null;
+                            /**
+                             * @description Type of deploy (website or campaign)
+                             * @enum {string}
+                             */
+                            deploy_type: "website" | "campaign";
+                            /** @description Deploy instruction flags */
+                            instructions?: {
+                                [key: string]: boolean;
+                            };
+                            /** @description Support ticket reference (SR-XXXXXXXX) */
+                            support_ticket?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description When the deploy finished
+                             */
+                            finished_at?: string | null;
+                            /** @description Deploy duration in seconds */
+                            duration?: number | null;
+                            /** @description Whether this deploy can be rolled back */
+                            revertible?: boolean;
+                            /** @description Status of the linked website deploy */
+                            website_deploy_status?: string | null;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/deploys/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deactivates the active deploy for a project */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        project_id: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description succeeds even with no active deploy */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            success: boolean;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/deploys/{id}/rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Deploy ID */
+                id: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rolls back a deploy */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Deploy ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description deploy rolled back */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            success: boolean;
+                        };
+                    };
+                };
+                /** @description deploy not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description non-revertible deploy */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
                 };
             };
         };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/deploys/{id}/touch": {
@@ -2983,7 +3496,15 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /**
+                             * Format: date-time
+                             * @description Timestamp
+                             */
+                            touched_at: string;
+                        };
+                    };
                 };
                 /** @description cannot touch deploy from different account */
                 404: {
@@ -3065,14 +3586,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/google/connection_status": {
+    "/api/v1/google/status": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Returns Google OAuth connection status */
+        /** Returns unified Google onboarding status */
         get: {
             parameters: {
                 query?: never;
@@ -3086,12 +3607,29 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description returns connection status when connected */
+                /** @description returns status with pending invite and billing */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @description Whether the account has connected Google OAuth */
+                            google_connected: boolean;
+                            /** @description The connected Google email address */
+                            google_email?: string | null;
+                            /** @description Whether the Google Ads invite has been accepted */
+                            invite_accepted: boolean;
+                            /** @description Current invite status (none, pending, accepted) */
+                            invite_status: string;
+                            /** @description The invited email address */
+                            invite_email?: string | null;
+                            /** @description Whether Google Ads billing is enabled */
+                            has_payment: boolean;
+                            /** @description Current billing status (none, pending, approved) */
+                            billing_status: string;
+                        };
+                    };
                 };
                 /** @description unauthorized */
                 401: {
@@ -3110,15 +3648,17 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/google/invite_status": {
+    "/api/v1/google/refresh_invite_status": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Returns Google Ads invite status */
-        get: {
+        get?: never;
+        put?: never;
+        /** Live-refreshes Google Ads invite status */
+        post: {
             parameters: {
                 query?: never;
                 header?: {
@@ -3129,14 +3669,29 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        job_run_id?: number;
+                    };
+                };
+            };
             responses: {
-                /** @description returns invite status when invite is accepted */
+                /** @description enqueues PollInviteAcceptanceWorker when not yet accepted */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": {
+                            /** @description Whether the Google Ads invite has been accepted */
+                            accepted: boolean;
+                            /** @description Current invite status (none, pending, accepted) */
+                            status: string;
+                            /** @description The invited email address */
+                            email?: string | null;
+                        };
+                    };
                 };
                 /** @description unauthorized */
                 401: {
@@ -3147,53 +3702,6 @@ export interface paths {
                 };
             };
         };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/google/payment_status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Returns Google Ads payment/billing status */
-        get: {
-            parameters: {
-                query?: never;
-                header?: {
-                    Authorization?: string;
-                    "X-Signature"?: string;
-                    "X-Timestamp"?: string;
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description returns payment status when billing is approved */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-            };
-        };
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3295,6 +3803,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/job_runs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Returns job run status and result */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description returns error for failed job run */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /**
+                             * @description Current status of the job run
+                             * @enum {string}
+                             */
+                            status: "pending" | "running" | "completed" | "failed";
+                            /** @description Result data from the completed job */
+                            result?: Record<string, never> | null;
+                            /** @description Error message if the job failed */
+                            error?: string | null;
+                        };
+                    };
+                };
+                /** @description cannot access other accounts job run */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/leads": {
         parameters: {
             query?: never;
@@ -3349,6 +3918,8 @@ export interface paths {
                         email: string;
                         /** @description Optional name of the person signing up */
                         name?: string | null;
+                        /** @description Optional phone number of the person signing up */
+                        phone?: string | null;
                     };
                 };
             };
@@ -3377,7 +3948,7 @@ export interface paths {
                         };
                     };
                 };
-                /** @description name too long returns validation error */
+                /** @description phone too long returns validation error */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -4648,6 +5219,8 @@ export interface paths {
                 query?: {
                     /** @description Filter by website */
                     website_id?: number;
+                    /** @description Filter by upload UUID */
+                    uuid?: string;
                     /** @description Filter by logo status (true for logos, false for product images) */
                     is_logo?: boolean;
                     /** @description Sort order (recent for created_at desc) */
@@ -4842,7 +5415,84 @@ export interface paths {
         };
         options?: never;
         head?: never;
-        patch?: never;
+        /** Updates an upload */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: {
+                    Authorization?: string;
+                    "X-Signature"?: string;
+                    "X-Timestamp"?: string;
+                };
+                path: {
+                    /** @description Upload ID */
+                    id: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        upload?: {
+                            /** @description Mark as logo */
+                            is_logo?: boolean;
+                            /** @description Associate with website */
+                            website_id?: number;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description marks as logo and associates with website in one call */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @description Unique identifier */
+                            id: number;
+                            /** @description Upload UUID */
+                            uuid: string;
+                            /** @description Full size file URL */
+                            url: string;
+                            /** @description Thumbnail URL (images only) */
+                            thumb_url?: string | null;
+                            /** @description Medium size URL (images only) */
+                            medium_url?: string | null;
+                            /** @description Favicon URL (32x32 ICO, logos only) */
+                            favicon_url?: string | null;
+                            /**
+                             * @description Media type
+                             * @enum {string}
+                             */
+                            media_type: "image" | "video" | "document";
+                            /** @description Whether this upload is a logo */
+                            is_logo: boolean;
+                            /** @description Original filename */
+                            filename: string;
+                            /**
+                             * Format: date-time
+                             * @description Creation timestamp
+                             */
+                            created_at: string;
+                            /**
+                             * Format: date-time
+                             * @description Last update timestamp
+                             */
+                            updated_at: string;
+                        };
+                    };
+                };
+                /** @description website belongs to different account */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/websites/{id}/files/write": {

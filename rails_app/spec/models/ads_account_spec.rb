@@ -248,10 +248,10 @@ RSpec.describe AdsAccount, type: :model do
         invitation = ads_account.invitations.last
         expect(invitation.email_address).to eq(account.google_email_address)
       end
-      it 'uses STANDARD access role by default' do
+      it 'uses ADMIN access role by default' do
         ads_account.send_google_ads_invitation_email
         invitation = ads_account.invitations.last
-        expect(invitation.google_access_role).to eq("STANDARD")
+        expect(invitation.google_access_role).to eq("ADMIN")
       end
     end
 

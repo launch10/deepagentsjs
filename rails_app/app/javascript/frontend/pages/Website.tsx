@@ -11,9 +11,8 @@ const STEPS: Record<Workflow.WebsiteSubstepName, React.ComponentType> = {
 };
 
 export default function Website() {
-  // Use workflow store for substep (like Campaign page does)
-  // This allows pushState navigation without full page reload
   const substep = useWorkflow(selectSubstep) as Workflow.WebsiteSubstepName | null;
+
   const StepComponent = substep ? STEPS[substep] : null;
   return StepComponent ? <StepComponent /> : <BuildStep />;
 }

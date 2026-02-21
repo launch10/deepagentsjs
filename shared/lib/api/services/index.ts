@@ -15,6 +15,7 @@ export * from "./websiteUrlsAPIService";
 export * from "./deployAPIService";
 export * from "./chatsAPIService";
 export * from "./creditsAPIService";
+export * from "./creditPackCheckoutAPIService";
 export * from "./dashboardInsightsAPIService";
 export * from "./projectsAPIService";
 export * from "./contextEventsAPIService";

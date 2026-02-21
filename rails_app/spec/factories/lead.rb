@@ -5,9 +5,14 @@ FactoryBot.define do
     association :account
     sequence(:email) { |n| "lead#{n}@example.com" }
     name { Faker::Name.name }
+    phone { Faker::PhoneNumber.phone_number }
 
     trait :without_name do
       name { nil }
+    end
+
+    trait :without_phone do
+      phone { nil }
     end
 
     trait :with_custom_email do

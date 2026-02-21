@@ -23,6 +23,7 @@ module Database
     EXCLUDED_SYSTEM_TABLES = %w[
       ar_internal_metadata
       schema_migrations
+      checkpoint_migrations
     ].freeze
 
     EXCLUDED_HEAVY_TABLES = %w[

@@ -64,6 +64,32 @@ export interface TaskRunner {
   isBlocking?: (state: DeployGraphState, task: Task.Task) => boolean;
 
   /**
+   * How long (ms) to wait for a blocking task before timing out.
+   *
+   * Only applies when isBlocking returns true. When exceeded, the executor
+   * checks Rails for actual job status. If the job is still running, the
+   * timeout is extended (up to MAX_TIMEOUT_EXTENSIONS).
+   *
+   * If not set, the task blocks indefinitely (no timeout). This is correct
+   * for user-managed tasks (ConnectingGoogle, VerifyingGoogle, CheckingBilling)
+   * where the user controls when the action completes.
+   *
+   * Set explicitly for automated jobs (DeployingWebsite, DeployingCampaign,
+   * EnableCampaign) where a stuck job should trigger a health check.
+   */
+  blockingTimeout?: number;
+
+  /**
+   * How long (ms) before showing a user-facing "taking longer than expected" warning.
+   *
+   * This is a concrete per-task threshold (not a percentage of blockingTimeout).
+   * Only applies when isBlocking returns true. If not set, no warning is shown.
+   *
+   * Example: Website deploy warns at 2 minutes (120_000).
+   */
+  warningTimeout?: number;
+
+  /**
    * Can we recover from this task's failure?
    *
    * Default: false (failure is fatal, stops the graph)
@@ -110,11 +136,17 @@ export const TASK_ORDER = Deploy.TASK_ORDER;
  * Used for checking if dependencies are satisfied.
  */
 export function isTaskDone(state: DeployGraphState, taskName: Deploy.TaskName): boolean {
-  if (!Deploy.isTaskRequired(state.deploy, taskName)) {
+  if (!Deploy.isTaskRequired(state.instructions, taskName)) {
     return true;
   }
   const task = Task.findTask(state.tasks, taskName);
-  return !!task && (task.status === "completed" || task.status === "skipped");
+  // If task isn't in state.tasks, it was intentionally excluded by initPhasesNode
+  // (e.g. deploy readiness check, contentChanged filter). Treat as done so it
+  // doesn't block downstream tasks — same logic as allTasksComplete.
+  if (!task) {
+    return true;
+  }
+  return task.status === "completed" || task.status === "skipped";
 }
 
 /**

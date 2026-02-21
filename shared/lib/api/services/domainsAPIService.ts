@@ -110,14 +110,17 @@ export class DomainsAPIService extends RailsAPIBase {
   /**
    * Create a new domain and assign it to a website
    */
-  async create(domain: CreateDomainRequest["domain"]): Promise<CreateDomainResponse> {
+  async create(domain: CreateDomainRequest["domain"], options?: { signal?: AbortSignal }): Promise<CreateDomainResponse> {
     const client = await this.getClient();
     const response = await client.POST("/api/v1/domains", {
       body: { domain },
+      signal: options?.signal,
     });
 
     if (response.error) {
-      throw new Error(`Failed to create domain: ${JSON.stringify(response.error)}`);
+      const err = response.error as { errors?: string[] };
+      const messages = err.errors?.map((e) => e.replace(/^Validation failed: /, "")) ?? [];
+      throw new Error(messages.length > 0 ? messages.join(". ") : "Failed to create domain");
     }
 
     if (!response.data) {

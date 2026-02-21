@@ -21,5 +21,11 @@ FactoryBot.define do
       description { "Maximum validation for teams with multiple ventures" }
       details { {features: ["20M requests/month", "3 subdomains"], credits: 15000} }
     end
+
+    trait :friends_family do
+      name { "friends_family" }
+      description { "Friends & family testing access" }
+      details { {features: ["Full access for testing", "Gifted credits only"], credits: 0} }
+    end
   end
 end

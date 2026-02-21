@@ -4,3 +4,6 @@
 [submodule "packages/deepagentsjs"]
 	path = packages/deepagentsjs
 	url = git@github.com:launch10/deepagentsjs.git
+[submodule "landing_page"]
+	path = landing_page
+	url = git@github.com:launch10/launch-10-landing.git

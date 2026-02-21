@@ -35,7 +35,7 @@ All LLM judges use structured output with chain-of-thought reasoning via `create
 
 | Scorer | Checks | Score |
 |--------|--------|-------|
-| **Landing Page Completeness** | Hero, 3+ components, CTA, footer, L10.createLead(), semantic colors, section rhythm, responsive, large headlines, padding, hover effects | passes / 12 |
+| **Landing Page Completeness** | Hero, 3+ components, CTA, footer, LeadForm, semantic colors, section rhythm, responsive, large headlines, padding, hover effects | passes / 12 |
 
 ## Running Evals
 

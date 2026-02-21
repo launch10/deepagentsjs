@@ -1,12 +1,14 @@
 import { CardContent, CardFooter } from "@components/ui/card";
 import { useWebsiteChatIsLoadingHistory, useWebsiteChatActions } from "@hooks/website";
-import { useWebsitePreview } from "@hooks/website";
+import { useConsoleErrors } from "@hooks/website";
 import WebsiteChatInput from "./chat/WebsiteChatInput";
 import WebsiteChatMessages from "./chat/WebsiteChatMessages";
 import { useChatIsStreaming } from "@components/shared/chat/ChatContext";
 import { twMerge } from "tailwind-merge";
 import { useCallback } from "react";
 import { useCurrentUser } from "@stores/sessionStore";
+import { useProjectUuid } from "@stores/projectStore";
+import { analytics } from "@lib/analytics";
 
 export interface WebsiteChatProps {
   /** When true, the chat input is disabled and shows a muted state */
@@ -18,30 +20,31 @@ export interface WebsiteChatProps {
  * Clicking "Fix errors" sends a message to the agent with the error details.
  */
 function BuildErrorPrompt() {
-  const { consoleErrors } = useWebsitePreview();
+  const consoleErrors = useConsoleErrors();
   const { sendMessage } = useWebsiteChatActions();
   const isStreaming = useChatIsStreaming();
   const currentUser = useCurrentUser();
+  const projectUuid = useProjectUuid();
 
   const errors = consoleErrors.filter((e) => e.type === "error");
 
   const handleFix = useCallback(() => {
-    sendMessage(
-      "My page isn't displaying correctly, can you fix it?",
-      { consoleErrors: errors }
-    );
-  }, [errors, sendMessage]);
+    sendMessage("My page isn't displaying correctly, can you fix it?", { consoleErrors: errors });
+    if (projectUuid)
+      analytics.trackProject("website_edited", projectUuid, { edit_type: "error_fix" });
+  }, [errors, sendMessage, projectUuid]);
 
   if (errors.length === 0 || isStreaming) return null;
 
   const isAdmin = currentUser?.admin ?? false;
 
   return (
-    <div data-testid="build-error-prompt" className="mb-2 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between gap-3 w-full">
+    <div
+      data-testid="build-error-prompt"
+      className="mb-2 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between gap-3 w-full"
+    >
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-medium text-red-700">
-          We ran into an issue building your page
-        </p>
+        <p className="text-xs font-medium text-red-700">We ran into an issue building your page</p>
         {isAdmin && (
           <p className="text-xs text-red-500 mt-0.5 truncate">
             {errors[0].message}

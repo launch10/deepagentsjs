@@ -93,6 +93,8 @@ module GoogleAds
 
       # Default comparison - can be overridden per resource
       # Compares in Google format (transformed local vs raw remote)
+      # Note: protobuf returns "" for unset string fields, while we store nil locally.
+      # Both sides are normalized (empty string → nil) before comparison.
       def compare_fields(remote)
         local_json = to_google_json
 
@@ -104,9 +106,10 @@ module GoogleAds
               next
             end
 
-            remote_val = remote_value(remote, name, apply_reverse_transform: false)
-            c.check(name, local: local_json[name], remote: remote_val) do
-              local_json[name] == remote_val
+            local_val = normalize_for_comparison(local_json[name])
+            remote_val = normalize_for_comparison(remote_value(remote, name, apply_reverse_transform: false))
+            c.check(name, local: local_val, remote: remote_val) do
+              local_val == remote_val
             end
           end
         end
@@ -148,6 +151,12 @@ module GoogleAds
         else
           value
         end
+      end
+
+      # Protobuf returns "" for unset string fields; we store nil locally.
+      # Normalize both to nil so comparisons don't false-mismatch.
+      def normalize_for_comparison(value)
+        (value == "") ? nil : value
       end
     end
   end

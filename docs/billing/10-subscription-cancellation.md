@@ -16,6 +16,7 @@ When a user cancels their subscription, they retain access to remaining credits 
 ### Pack Credits
 
 Pack credits are **never affected** by subscription status:
+
 - No expiration on cancellation
 - Remain usable even without an active subscription
 - Users with only pack credits can still use AI features
@@ -28,28 +29,31 @@ There is no single "expire credits" action. Instead, cancellation is enforced by
 
 2. **`RenewalHandler`** — Checks `subscription.active?` before allocating. Canceled subscriptions are skipped, so no new monthly credits are granted after cancellation.
 
-3. **`DailyReconciliationWorker`** — Filters `where(ends_at: nil)` to exclude subscriptions pending cancellation. This prevents yearly subscribers from receiving monthly credit resets after they cancel.
+3. **`AnnualSubscriberMonthlyAllocationWorker`** — Filters `where(ends_at: nil)` to exclude subscriptions pending cancellation. This prevents yearly subscribers from receiving monthly credit resets after they cancel.
 
 ### Edge Cases
 
 **Reactivation after cancellation**:
+
 - Within same billing period: No change (credits still available)
 - After period ends: Fresh allocation on new subscription creation
 
 **Immediate cancellation (cancel_now)**:
+
 - Same policy — credits remain in account, no new grants
 
 **Pause vs Cancel**:
+
 - Pause is not currently supported by the Stripe integration
 - Only full cancellation is available
 
 ## Key Files
 
-| File | Purpose |
-|------|---------|
-| `rails_app/app/webhooks/credits/cancellation_handler.rb` | No-op handler for `subscription.deleted` |
-| `rails_app/app/webhooks/credits/renewal_handler.rb` | Skips inactive subscriptions |
-| `rails_app/app/workers/credits/daily_reconciliation_worker.rb` | Excludes `ends_at` set subscriptions |
+| File                                                           | Purpose                                  |
+| -------------------------------------------------------------- | ---------------------------------------- |
+| `rails_app/app/webhooks/credits/cancellation_handler.rb`       | No-op handler for `subscription.deleted` |
+| `rails_app/app/webhooks/credits/renewal_handler.rb`            | Skips inactive subscriptions             |
+| `rails_app/app/workers/credits/daily_reconciliation_worker.rb` | Excludes `ends_at` set subscriptions     |
 
 ## Related Docs
 

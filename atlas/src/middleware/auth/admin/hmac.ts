@@ -47,14 +47,21 @@ export const hmacMiddleware = async (c: Context<{ Bindings: Env }>, next: Next) 
         ['sign']
       );
       
-      // Generate signature
-      const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
-      const expectedSignature = Array.from(new Uint8Array(signatureBuffer))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-      
+      // Generate expected signature
+      const expectedBuffer = await crypto.subtle.sign('HMAC', cryptoKey, messageData);
+
+      // Decode the received hex signature to bytes for constant-time comparison
+      const receivedBytes = new Uint8Array(signature.length / 2);
+      for (let i = 0; i < signature.length; i += 2) {
+        receivedBytes[i / 2] = parseInt(signature.substring(i, i + 2), 16);
+      }
+
       // Constant-time comparison to prevent timing attacks
-      if (signature !== expectedSignature) {
+      // timingSafeEqual is available in Cloudflare Workers runtime
+      const subtle = crypto.subtle as SubtleCrypto & { timingSafeEqual(a: ArrayBufferView, b: ArrayBufferView): boolean };
+      const expectedBytes = new Uint8Array(expectedBuffer);
+      if (receivedBytes.length !== expectedBytes.length ||
+          !subtle.timingSafeEqual(receivedBytes, expectedBytes)) {
         console.warn('Invalid HMAC signature received');
         return c.json({ error: 'Invalid signature' }, 401);
       }

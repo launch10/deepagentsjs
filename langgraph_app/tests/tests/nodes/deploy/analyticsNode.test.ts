@@ -69,11 +69,26 @@ export function SignupForm() {
    * =============================================================================
    */
   describe("skips files that don't need instrumentation", () => {
-    it("returns false when L10.createLead already present", () => {
+    it("returns true when only L10.createLead present (needs upgrade to LeadForm)", () => {
       const content = `import { L10 } from '@/lib/tracking';
 export function Hero() {
   const handleSubmit = () => L10.createLead(email);
   return <input type="email" />;
+}`;
+      expect(needsInstrumentation(content)).toBe(true);
+    });
+
+    it("returns false when LeadForm component already present", () => {
+      const content = `import { LeadForm } from '@/components/ui/lead-form';
+export function Hero() {
+  return (
+    <LeadForm className="flex gap-2">
+      <LeadForm.Email placeholder="Enter your email" />
+      <LeadForm.Submit>Get Started</LeadForm.Submit>
+      <LeadForm.Success><p>Thanks!</p></LeadForm.Success>
+      <LeadForm.Error />
+    </LeadForm>
+  );
 }`;
       expect(needsInstrumentation(content)).toBe(false);
     });

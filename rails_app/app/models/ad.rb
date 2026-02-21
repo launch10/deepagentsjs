@@ -92,6 +92,6 @@ class Ad < ApplicationRecord
   def final_urls
     return [] unless website&.website_url
 
-    ["https://#{website.website_url.domain.domain}#{website.website_url.path}"]
+    [website.website_url.full_url]
   end
 end

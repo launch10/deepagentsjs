@@ -29,13 +29,26 @@ export class BrowserErrorCapture {
    */
   async start(): Promise<void> {
     const log = getLogger({ component: "BrowserErrorCapture" });
-    log.info({ url: this.url }, "Starting browser");
+    const t0 = Date.now();
+    const elapsed = () => Date.now() - t0;
+
+    log.info({ url: this.url }, "start() BEGIN");
 
     // Get context from pool (waits if at capacity)
     this.context = await browserPool.getContext();
+    log.info({ elapsedMs: elapsed() }, "getContext acquired");
 
     // Create page
     this.page = await this.context.newPage();
+    log.info({ elapsedMs: elapsed() }, "page created");
+
+    // === SMOKING GUN LISTENERS: detect page/context close or crash ===
+    this.page.on("close", () => {
+      log.warn({ elapsedMs: elapsed() }, "PAGE CLOSED EVENT FIRED");
+    });
+    this.page.on("crash", () => {
+      log.error({ elapsedMs: elapsed() }, "PAGE CRASH EVENT FIRED");
+    });
 
     // Set up console listener before navigation
     this.page.on("console", (msg: ConsoleMessage) => {
@@ -72,22 +85,44 @@ export class BrowserErrorCapture {
     });
 
     // Navigate to the page
+    log.info({ elapsedMs: elapsed(), url: this.url }, "goto started");
     try {
-      await this.page.goto(this.url, {
+      const response = await this.page.goto(this.url, {
         waitUntil: "networkidle",
         timeout: 30000,
       });
-      log.info({ url: this.url }, "Page loaded");
+      log.info(
+        { elapsedMs: elapsed(), url: this.url, status: response?.status() },
+        "goto completed"
+      );
     } catch (error) {
-      log.error({ err: error, url: this.url }, "Failed to load page");
-      // Still continue to capture any errors that occurred
+      log.error({ err: error, url: this.url, elapsedMs: elapsed() }, "goto FAILED");
+      // If the page or context was closed (e.g., browser pool timeout),
+      // we can't do anything more — return with whatever errors were captured
+      if (this.page.isClosed()) {
+        log.warn(
+          { elapsedMs: elapsed() },
+          "Page was closed during navigation, skipping further checks"
+        );
+        return;
+      }
     }
 
-    // Wait a bit for any async errors
-    await this.page.waitForTimeout(3000);
+    // Wait a bit for any async errors (guard against closed page)
+    log.info({ elapsedMs: elapsed() }, "waitForTimeout(3000) started");
+    try {
+      await this.page.waitForTimeout(3000);
+      log.info({ elapsedMs: elapsed() }, "waitForTimeout(3000) completed");
+    } catch (error) {
+      log.warn({ err: error, elapsedMs: elapsed() }, "waitForTimeout FAILED, page may have closed");
+      return;
+    }
 
     // Check for Vite error overlay
+    log.info({ elapsedMs: elapsed() }, "captureViteOverlay started");
     await this.captureViteOverlayErrors();
+    log.info({ elapsedMs: elapsed() }, "captureViteOverlay completed");
+    log.info({ elapsedMs: elapsed(), errorCount: this.errors.length }, "start() END");
   }
 
   /**
@@ -142,11 +177,17 @@ export class BrowserErrorCapture {
         };
 
         this.viteOverlayErrors.push(error);
-        getLogger({ component: "BrowserErrorCapture" }).debug({ message: errorDetails.message, file: errorDetails.file || undefined }, "Vite overlay error captured");
+        getLogger({ component: "BrowserErrorCapture" }).debug(
+          { message: errorDetails.message, file: errorDetails.file || undefined },
+          "Vite overlay error captured"
+        );
       }
     } catch (error) {
       // Ignore errors when checking for overlay - it might not exist
-      getLogger({ component: "BrowserErrorCapture" }).debug({ err: error }, "Failed to check Vite overlay");
+      getLogger({ component: "BrowserErrorCapture" }).debug(
+        { err: error },
+        "Failed to check Vite overlay"
+      );
     }
   }
 
@@ -183,9 +224,15 @@ export class BrowserErrorCapture {
       };
 
       this.errors.push(error);
-      getLogger({ component: "BrowserErrorCapture" }).debug({ type, message: detailedMessage, location: error.location }, "Console error captured");
+      getLogger({ component: "BrowserErrorCapture" }).debug(
+        { type, message: detailedMessage, location: error.location },
+        "Console error captured"
+      );
     } catch (error) {
-      getLogger({ component: "BrowserErrorCapture" }).error({ err: error }, "Failed to capture console error");
+      getLogger({ component: "BrowserErrorCapture" }).error(
+        { err: error },
+        "Failed to capture console error"
+      );
     }
   }
 
@@ -271,7 +318,10 @@ export class BrowserErrorCapture {
       }
     }
 
-    getLogger({ component: "BrowserErrorCapture" }).info({ errorCount: this.errors.length }, "Browser context released");
+    getLogger({ component: "BrowserErrorCapture" }).info(
+      { errorCount: this.errors.length },
+      "Browser context released"
+    );
   }
 
   /**

@@ -106,8 +106,10 @@ describe Website do
       end
 
       it "runs the deploy process through build and upload stages" do
+        expect_any_instance_of(WebsiteDeploy).to receive(:actually_deploy).and_call_original
         expect_any_instance_of(WebsiteDeploy).to receive(:build!).and_return(dist_path.to_s)
-        expect_any_instance_of(WebsiteDeploy).to receive(:upload!).with(dist_path.to_s)
+        allow_any_instance_of(WebsiteDeploy).to receive(:upload!)
+        allow_any_instance_of(Website).to receive(:sync_all_to_atlas)
 
         website_with_files.deploy!(async: false)
       end
@@ -208,12 +210,14 @@ describe Website do
         allow_any_instance_of(WebsiteDeploy).to receive(:build!).and_raise(StandardError, "Build failed")
       end
 
-      it "returns false" do
-        expect(website_with_files.deploy!(async: false)).to be false
+      it "raises the error" do
+        expect {
+          website_with_files.deploy!(async: false)
+        }.to raise_error(StandardError, "Build failed")
       end
 
       it "does not create a successful deploy" do
-        website_with_files.deploy!
+        expect { website_with_files.deploy!(async: false) }.to raise_error(StandardError)
         expect(website_with_files.deploys.completed.count).to eq(0)
       end
     end
@@ -225,7 +229,9 @@ describe Website do
       end
 
       it "marks the deploy as failed" do
-        website_with_files.deploy!(async: false)
+        expect {
+          website_with_files.deploy!(async: false)
+        }.to raise_error(StandardError, "Upload failed")
 
         deploy = website_with_files.reload.deploys.last
         expect(deploy.status).to eq('failed')
@@ -813,7 +819,7 @@ describe Website do
   private
 
   def mock_r2_responses_for_successful_deploy
-    list_response = double('list_response', contents: [double(key: 'test/file.html', size: 100)])
+    list_response = double('list_response', contents: [double(key: 'test/file.html', size: 100)], is_truncated: false)
 
     allow(deploy_uploader).to receive(:list_objects).and_return(list_response)
     allow(deploy_uploader).to receive(:store!)

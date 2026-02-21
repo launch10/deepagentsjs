@@ -1,10 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { useThemes, useCreateTheme } from "@api/themes.hooks";
-import { useWebsite, useUpdateWebsiteTheme } from "@api/websites.hooks";
+import { useQueryClient } from "@tanstack/react-query";
+import { useThemes, useCreateTheme, themeKeys } from "@api/themes.hooks";
+import { useWebsite, useUpdateWebsiteTheme, websiteKeys } from "@api/websites.hooks";
 import { CustomColorPicker } from "./CustomColorPicker";
 import type { GetThemesResponse } from "@rails_api_base";
+import { subscribeToAgentIntent } from "@hooks/useAgentIntent";
 
 type Theme = GetThemesResponse[number];
 
@@ -26,9 +28,26 @@ export function ColorPaletteSection({ className, onThemeSelect }: ColorPaletteSe
   const { data: website, isLoading: isLoadingWebsite } = useWebsite();
   const createThemeMutation = useCreateTheme();
   const updateThemeMutation = useUpdateWebsiteTheme();
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const pendingScrollRef = useRef(false);
+  // Track the theme ID that was selected BEFORE the agent intent fired,
+  // so we know to wait for a DIFFERENT selectedThemeId before scrolling.
+  const preIntentThemeIdRef = useRef<number | null>(null);
 
   // Selected theme comes directly from website query
   const selectedThemeId = website?.theme_id ?? null;
+  // Keep a ref for use in subscribeToAgentIntent callback (avoids stale closure)
+  const selectedThemeIdRef = useRef(selectedThemeId);
+  selectedThemeIdRef.current = selectedThemeId;
+
+  // Refetch when the agent applies a color scheme via chat
+  const queryClient = useQueryClient();
+  subscribeToAgentIntent("color_scheme_applied", () => {
+    preIntentThemeIdRef.current = selectedThemeIdRef.current;
+    pendingScrollRef.current = true;
+    queryClient.invalidateQueries({ queryKey: themeKeys.all });
+    queryClient.invalidateQueries({ queryKey: websiteKeys.all });
+  });
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
@@ -44,6 +63,21 @@ export function ColorPaletteSection({ className, onThemeSelect }: ColorPaletteSe
         hasScrolledRef.current = true;
       }
     }
+  }, [selectedThemeId, themes]);
+
+  // Navigate to the page containing the agent-applied theme.
+  // Waits for BOTH queries to settle: selectedThemeId must differ from what
+  // it was pre-intent, AND the new theme must exist in the themes list.
+  useEffect(() => {
+    if (!pendingScrollRef.current || themes.length === 0) return;
+    // Wait for website query to resolve with the NEW theme
+    if (selectedThemeId === preIntentThemeIdRef.current) return;
+    if (selectedThemeId === null) return;
+    const themeIndex = themes.findIndex((t) => t.id === selectedThemeId);
+    if (themeIndex === -1) return; // theme not in list yet, wait for next render
+    setCurrentPage(Math.floor(themeIndex / PALETTES_PER_PAGE));
+    pendingScrollRef.current = false;
+    sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [selectedThemeId, themes]);
 
   const isLoading = isLoadingThemes || isLoadingWebsite;
@@ -128,7 +162,7 @@ export function ColorPaletteSection({ className, onThemeSelect }: ColorPaletteSe
   }
 
   return (
-    <div className={twMerge("space-y-2", className)}>
+    <div ref={sectionRef} className={twMerge("space-y-2", className)}>
       {/* Header with pagination */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-base-500">Colors</h3>

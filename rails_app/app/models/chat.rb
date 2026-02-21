@@ -3,6 +3,7 @@
 # Table name: chats
 #
 #  id               :bigint           not null, primary key
+#  active           :boolean          default(TRUE), not null
 #  chat_type        :string           not null
 #  contextable_type :string
 #  deleted_at       :datetime
@@ -17,15 +18,17 @@
 # Indexes
 #
 #  index_chats_on_account_id                (account_id)
+#  index_chats_on_active_chat_type_account  (chat_type,account_id) UNIQUE WHERE ((project_id IS NULL) AND (deleted_at IS NULL) AND (active = true))
+#  index_chats_on_active_chat_type_project  (chat_type,project_id) UNIQUE WHERE ((project_id IS NOT NULL) AND (deleted_at IS NULL) AND (active = true))
 #  index_chats_on_chat_type                 (chat_type)
-#  index_chats_on_chat_type_and_account_id  (chat_type,account_id) UNIQUE WHERE ((project_id IS NULL) AND (deleted_at IS NULL))
-#  index_chats_on_chat_type_and_project_id  (chat_type,project_id) UNIQUE WHERE ((project_id IS NOT NULL) AND (deleted_at IS NULL))
 #  index_chats_on_deleted_at                (deleted_at)
 #  index_chats_on_project_id                (project_id)
 #  index_chats_on_thread_id                 (thread_id)
 #
 
 class Chat < ApplicationRecord
+  include Langgraph::ThreadAccessible
+
   acts_as_paranoid
   acts_as_tenant :account
 
@@ -33,7 +36,7 @@ class Chat < ApplicationRecord
   belongs_to :contextable, polymorphic: true, optional: true
 
   # Project-level chat types (require project_id)
-  PROJECT_CHAT_TYPES = ProjectWorkflow.steps_for(:launch) # brainstorm, website, ad_campaign, etc
+  PROJECT_CHAT_TYPES = ProjectWorkflow.steps_for(:launch) # brainstorm, website, ads, deploy
 
   # Account-level chat types (no project_id)
   ACCOUNT_CHAT_TYPES = %w[insights support].freeze

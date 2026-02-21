@@ -24,6 +24,8 @@ test.describe("Real Tracking Library E2E", () => {
     // Clear any existing localStorage/sessionStorage
     await page.addInitScript(() => {
       localStorage.removeItem("l10_visitor");
+      localStorage.removeItem("l10_click_ids");
+      localStorage.removeItem("l10_click_ids_ts");
       sessionStorage.removeItem("l10_visit");
     });
 

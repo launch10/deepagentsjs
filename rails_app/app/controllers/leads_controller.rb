@@ -11,6 +11,7 @@ class LeadsController < SubscribedController
           id: l.id,
           name: l.name,
           email: l.email,
+          phone: l.phone,
           date: l.conversion_date.strftime("%b %-d, %Y")
         }
       },
@@ -22,9 +23,9 @@ class LeadsController < SubscribedController
     leads = @project.leads_with_conversion_date
 
     csv_data = CSV.generate(headers: true) do |csv|
-      csv << ["Name", "Email", "Date"]
+      csv << ["Name", "Email", "Phone", "Date"]
       leads.each do |lead|
-        csv << [lead.name || "", lead.email, lead.conversion_date.strftime("%b %-d, %Y")]
+        csv << [lead.name || "", lead.email, lead.phone || "", lead.conversion_date.strftime("%b %-d, %Y")]
       end
     end
 

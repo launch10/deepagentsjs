@@ -1,8 +1,16 @@
 import { StateGraph, END, START } from "@langchain/langgraph";
 import { DeployAnnotation, type DeployGraphState } from "@annotation";
 import { Deploy } from "@types";
-import { initPhasesNode, taskExecutorNode, taskExecutorRouter } from "@nodes";
+import {
+  createDeployNode,
+  initPhasesNode,
+  nothingChangedDeployNode,
+  taskExecutorNode,
+  taskExecutorRouter,
+  validateDeployNode,
+} from "@nodes";
 import { withCreditExhaustion } from "./shared";
+import { getLogger } from "@core";
 
 /**
  * Deploy Graph V2 - Task-Based Architecture
@@ -20,6 +28,14 @@ import { withCreditExhaustion } from "./shared";
  * │   ├──[nothing to deploy?]──► END                                         │
  * │   │                                                                      │
  * │   ▼                                                                      │
+ * │ validateDeploy (check preconditions: domain assigned, etc.)              │
+ * │   │                                                                      │
+ * │   ├──[validation failed?]──► END (with error)                            │
+ * │   │                                                                      │
+ * │   ▼                                                                      │
+ * │ createDeploy (idempotent chat creation via Rails API)                    │
+ * │   │                                                                      │
+ * │   ▼                                                                      │
  * │ initPhases                                                               │
  * │   │                                                                      │
  * │   ▼                                                                      │
@@ -32,8 +48,9 @@ import { withCreditExhaustion } from "./shared";
  * │   └──[end]──► END                                                        │
  * └──────────────────────────────────────────────────────────────────────────┘
  *
- * Chat is pre-created by Rails via ChatCreatable when Deploy record is created.
- * Thread ownership is validated by the route handler before graph execution.
+ * Chat is created by createDeploy node via Rails API.
+ * Frontend triggers the graph with a fresh thread_id; the node idempotently
+ * creates the Chat record. Thread ownership is validated by JWT auth.
  *
  * The taskExecutor processes tasks in order (defined in TASK_ORDER):
  * 1. ConnectingGoogle (campaign, skippable)
@@ -57,6 +74,21 @@ import { withCreditExhaustion } from "./shared";
 export const deployGraph = withCreditExhaustion(
   new StateGraph(DeployAnnotation)
     // --------------------------------------------------------------------------
+    // Validate Deploy: Check preconditions (domain assigned, etc.)
+    // --------------------------------------------------------------------------
+    .addNode("validateDeploy", validateDeployNode)
+
+    // --------------------------------------------------------------------------
+    // Init Deploy: Idempotent chat creation via Rails API
+    // --------------------------------------------------------------------------
+    .addNode("createDeploy", createDeployNode)
+
+    // --------------------------------------------------------------------------
+    // Nothing Changed: Skip deploy when no content changed since last deploy
+    // --------------------------------------------------------------------------
+    .addNode("nothingChangedDeploy", nothingChangedDeployNode)
+
+    // --------------------------------------------------------------------------
     // Init Phases: Compute phases from any pre-existing tasks (for tests)
     // --------------------------------------------------------------------------
     .addNode("initPhases", initPhasesNode)
@@ -70,13 +102,40 @@ export const deployGraph = withCreditExhaustion(
     // ROUTING
     // ==========================================================================
 
-    // Chat is pre-created by Rails, route from START
-    // Either end early if nothing to deploy, or initialize phases
+    // Route from START: exit early if nothing to deploy, or validate first
     .addConditionalEdges(START, (state: DeployGraphState) => {
-      // Exit early if nothing to deploy
-      if (!Deploy.shouldDeployAnything(state)) return END;
-      return "initPhases";
+      const log = getLogger({ component: "deployGraph" });
+      log.info(
+        {
+          deployId: state.deployId,
+          instructions: state.instructions,
+          taskCount: state.tasks?.length ?? 0,
+          status: state.status,
+        },
+        "Deploy graph entry — evaluating whether to deploy"
+      );
+
+      if (!Deploy.shouldDeployAnything(state)) {
+        log.info({ instructions: state.instructions }, "Nothing to deploy, exiting early");
+        return END;
+      }
+
+      log.info("Proceeding to validateDeploy");
+      return "validateDeploy";
     })
+
+    // After validation: exit on failure, skip if nothing changed, otherwise create deploy
+    .addConditionalEdges("validateDeploy", (state: DeployGraphState) => {
+      if (state.status === "failed") return END;
+      if (state.nothingChanged) return "nothingChangedDeploy";
+      return "createDeploy";
+    })
+
+    // Nothing changed → END
+    .addEdge("nothingChangedDeploy", END)
+
+    // After init deploy, initialize phases
+    .addEdge("createDeploy", "initPhases")
 
     // After init phases, proceed to task executor
     .addEdge("initPhases", "taskExecutor")

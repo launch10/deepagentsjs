@@ -52,5 +52,15 @@ FactoryBot.define do
       interval { "year" }
       association :plan_tier, :pro
     end
+
+    trait :friends_family do
+      name { "friends_family" }
+      amount { 0 }
+      interval { "month" }
+      hidden { true }
+      fake_processor_id { "friends_family" }
+      stripe_id { nil }
+      association :plan_tier, :friends_family
+    end
   end
 end

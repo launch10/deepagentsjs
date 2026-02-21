@@ -30,7 +30,7 @@ RSpec.describe 'Environment-aware deploys', type: :integration do
 
     # Mock S3 responses
     allow(s3_client).to receive(:list_objects_v2).and_return(
-      double(contents: [double(key: 'test/file.html', size: 100)])
+      double(contents: [double(key: 'test/file.html', size: 100)], is_truncated: false)
     )
     allow(s3_client).to receive(:delete_objects)
     allow(s3_client).to receive(:copy_object)

@@ -21,7 +21,7 @@ ProjectWorkflow (type: "launch", status: "active")
   │    → Code files stored in database       │
   │    → Preview via WebContainers           │
   ├──────────────────────────────────────────┤
-  │  Step 3: ad_campaign                     │
+  │  Step 3: ads                              │
   │    → Ads graph creates campaign          │
   │    → Campaign stored with ad groups/ads  │
   ├──────────────────────────────────────────┤
@@ -39,7 +39,7 @@ ProjectWorkflow (type: "launch", status: "active")
 ```ruby
 ProjectWorkflow
   ├─ workflow_type  # "launch"
-  ├─ step           # "brainstorm", "website", "ad_campaign", "deploy"
+  ├─ step           # "brainstorm", "website", "ads", "deploy"
   ├─ substep        # Granular progress within a step
   ├─ status         # "active", "completed", "archived"
   ├─ data           # JSONB for step-specific state

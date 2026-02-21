@@ -130,6 +130,7 @@ function createMockChat(overrides?: Record<string, any>): LanggraphChat<UIMessag
     onEstablished: vi.fn(() => () => {}),
     generateId: vi.fn(() => "test-id"),
     sendMessage: vi.fn(),
+    "~registerStateKeyCallback": vi.fn(() => () => {}),
     ...overrides,
   } as unknown as LanggraphChat<UIMessage, Record<string, unknown>>;
 }

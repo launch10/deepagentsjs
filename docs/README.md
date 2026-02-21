@@ -13,6 +13,7 @@ Canonical current-state reference for how Launch10 works today.
 | [Architecture Overview](architecture/overview.md) | Two-service architecture: Rails + Langgraph + Atlas |
 | [Authentication](architecture/authentication.md) | Devise + JWT + multi-tenancy across services |
 | [Async Patterns](architecture/async-patterns.md) | Fire-and-forget, webhook callbacks, streaming |
+| [Agent Intents](architecture/agent-intents.md) | Backend → frontend communication (navigate, toast, etc.) |
 
 ## Frontend
 

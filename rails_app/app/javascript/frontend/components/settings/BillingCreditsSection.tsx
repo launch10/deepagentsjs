@@ -8,6 +8,7 @@ import {
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
 import { useCreditStore } from "~/stores/creditStore";
+import { useCreditPackCheckout } from "~/api/creditPackCheckouts.hooks";
 import { BuyCreditsModal } from "./BuyCreditsModal";
 import { useReactivateSubscription } from "./hooks/useReactivateSubscription";
 import type { SettingsProps } from "@pages/Settings";
@@ -52,7 +53,7 @@ export function BillingCreditsSection({
   const { balance, periodEndsAt } = useCreditStore();
   const [currentPage, setCurrentPage] = useState(0);
   const [buyCreditsModalOpen, setBuyCreditsModalOpen] = useState(false);
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const checkoutMutation = useCreditPackCheckout();
   const { reactivate, isReactivating } = useReactivateSubscription({
     subscriptionPrefixId,
   });
@@ -75,33 +76,16 @@ export function BillingCreditsSection({
     setBuyCreditsModalOpen(true);
   };
 
-  const handleCheckout = async (packId: number) => {
-    setIsCheckingOut(true);
-    try {
-      const response = await fetch(`/credit_packs/${packId}/checkout`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRF-Token":
-            document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || "",
-        },
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to create checkout session");
-      }
-
-      const { client_secret } = await response.json();
-
-      // Redirect to embedded checkout page with the client secret
-      window.location.href = `/credit_packs/${packId}/checkout?client_secret=${client_secret}`;
-    } catch (error) {
-      console.error("Checkout error:", error);
-      alert(error instanceof Error ? error.message : "Failed to start checkout");
-    } finally {
-      setIsCheckingOut(false);
-    }
+  const handleCheckout = (packId: number) => {
+    checkoutMutation.mutate(packId, {
+      onSuccess: ({ client_secret }) => {
+        window.location.href = `/credit_packs/${packId}/checkout?client_secret=${client_secret}`;
+      },
+      onError: (error) => {
+        console.error("Checkout error:", error);
+        alert(error.message || "Failed to start checkout");
+      },
+    });
   };
 
   const handlePrevPage = () => {
@@ -327,7 +311,7 @@ export function BillingCreditsSection({
         onOpenChange={setBuyCreditsModalOpen}
         creditPacks={creditPacks}
         onPurchase={handleCheckout}
-        isLoading={isCheckingOut}
+        isLoading={checkoutMutation.isPending}
       />
     </>
   );

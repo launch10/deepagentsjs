@@ -50,5 +50,31 @@ RSpec.describe Support::SlackNotificationWorker do
         described_class.new.perform(99999)
       }.to raise_error(ActiveRecord::RecordNotFound)
     end
+
+    context "when SUPPORT_SLACK_WEBHOOK_URL is not set" do
+      around do |example|
+        original = ENV["SUPPORT_SLACK_WEBHOOK_URL"]
+        ENV.delete("SUPPORT_SLACK_WEBHOOK_URL")
+        example.run
+      ensure
+        ENV["SUPPORT_SLACK_WEBHOOK_URL"] = original
+      end
+
+      it "raises in production" do
+        allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new("production"))
+
+        expect {
+          described_class.new.perform(support_request.id)
+        }.to raise_error(RuntimeError, /SUPPORT_SLACK_WEBHOOK_URL is not set/)
+      end
+
+      it "silently returns in development" do
+        allow(Rails).to receive(:env).and_return(ActiveSupport::StringInquirer.new("development"))
+
+        expect {
+          described_class.new.perform(support_request.id)
+        }.not_to raise_error
+      end
+    end
   end
 end

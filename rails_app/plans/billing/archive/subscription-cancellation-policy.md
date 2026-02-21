@@ -25,7 +25,7 @@ When a user cancels their subscription, the following rules apply to their credi
 - Pack credits are preserved during all subscription operations
 - Renewals and plan changes properly manage credits
 - Webhook handler for `stripe.customer.subscription.deleted` (no-op for credits)
-- `DailyReconciliationWorker` excludes subscriptions with `ends_at` set (pending cancellation)
+- `AnnualSubscriberMonthlyAllocationWorker` excludes subscriptions with `ends_at` set (pending cancellation)
 - `RenewalHandler` skips inactive subscriptions (no renewal after cancellation)
 
 ## How Cancellation Protection Works
@@ -40,7 +40,7 @@ There is no single "expire credits" action. Instead, cancellation is enforced by
    Checks `subscription.active?` before allocating. Canceled subscriptions are skipped,
    so no new monthly credits are granted after cancellation.
 
-3. **`DailyReconciliationWorker`** (`app/workers/credits/daily_reconciliation_worker.rb`):
+3. **`AnnualSubscriberMonthlyAllocationWorker`** (`app/workers/credits/daily_reconciliation_worker.rb`):
    Filters `where(ends_at: nil)` to exclude subscriptions pending cancellation.
    This prevents yearly subscribers from receiving monthly credit resets after they cancel.
 
@@ -48,7 +48,7 @@ There is no single "expire credits" action. Instead, cancellation is enforced by
 
 1. **User cancels subscription**: Plan credits remain until used (no immediate expiration)
 2. **Subscription period ends (subscription.deleted)**: Credits remain, no new ones granted
-3. **Yearly subscriber cancels**: No monthly credit resets via DailyReconciliationWorker
+3. **Yearly subscriber cancels**: No monthly credit resets via AnnualSubscriberMonthlyAllocationWorker
 4. **Renewal webhook for canceled subscription**: Ignored (subscription not active)
 5. **User has pack credits**: Pack credits remain unaffected by cancellation
 6. **User with only pack credits**: Can still use AI features without active subscription

@@ -52,7 +52,7 @@ vi.mock("@core", async (importOriginal) => {
       error: vi.fn(),
       debug: vi.fn(),
     }),
-    rollbar: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
+    sentry: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
   };
 });
 
@@ -76,7 +76,7 @@ vi.mock("@services", () => ({
 // Mock tools
 vi.mock("@tools", () => ({
   SearchIconsTool: vi.fn().mockImplementation(() => ({})),
-  ChangeColorSchemeTool: vi.fn().mockImplementation(() => ({})),
+  changeColorSchemeTool: {},
   executeTextEditorCommand: vi.fn(),
 }));
 

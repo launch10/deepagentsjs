@@ -101,6 +101,21 @@ module GoogleAds
         results.first&.campaign_criterion
       end
 
+      def sync_result
+        return GoogleAds::SyncResult.not_found(:campaign_criterion) unless db_schedule.google_criterion_id
+        remote = fetch
+        return GoogleAds::SyncResult.not_found(:campaign_criterion) unless remote
+        if fields_match?(remote)
+          GoogleAds::SyncResult.unchanged(:campaign_criterion, db_schedule.google_criterion_id)
+        else
+          comparison = compare_fields(remote)
+          GoogleAds::SyncResult.error(:campaign_criterion,
+            GoogleAds::SyncVerificationError.new(
+              "Ad schedule sync verification failed. Mismatched fields: #{comparison.failures.join(", ")}"
+            ))
+        end
+      end
+
       # compare_fields provided by FieldMappable
 
       # ═══════════════════════════════════════════════════════════════
@@ -157,6 +172,18 @@ module GoogleAds
             results << new(schedule).sync
           end
 
+          ::GoogleAds::Sync::CollectionSyncResult.new(results: results)
+        end
+
+        def sync_result(campaign)
+          results = []
+          campaign.ad_schedules.only_deleted.each do |schedule|
+            next unless schedule.google_criterion_id
+            results << new(schedule).sync_result
+          end
+          campaign.ad_schedules.each do |schedule|
+            results << new(schedule).sync_result
+          end
           ::GoogleAds::Sync::CollectionSyncResult.new(results: results)
         end
 

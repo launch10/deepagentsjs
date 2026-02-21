@@ -41,6 +41,7 @@ class Project < ApplicationRecord
   validates :status, presence: true, inclusion: { in: STATUSES }
   before_validation :set_uuid, on: :create
   before_destroy :log_deletion
+  after_commit :track_project_created, on: :create
 
   has_one :website, dependent: :destroy
   has_one :ads_account, through: :account
@@ -137,7 +138,11 @@ class Project < ApplicationRecord
   #   - "draft" otherwise
   def refresh_status!
     new_status = compute_status
-    update_column(:status, new_status) if status != new_status
+    if status != new_status
+      old_status = status
+      update_column(:status, new_status)
+      track_project_status_changed(old_status, new_status)
+    end
     new_status
   end
 
@@ -154,6 +159,26 @@ class Project < ApplicationRecord
   end
 
   private
+
+  def track_project_status_changed(old_status, new_status)
+    TrackEvent.call("project_status_changed",
+      user: account&.owner,
+      account: account,
+      project: self,
+      project_uuid: uuid,
+      old_status: old_status,
+      new_status: new_status)
+  end
+
+  def track_project_created
+    TrackEvent.call("project_created",
+      user: account.owner,
+      account: account,
+      project: self,
+      project_uuid: uuid,
+      project_number: account.projects.count,
+      time_since_signup_hours: account.owner ? ((Time.current - account.owner.created_at) / 1.hour).round : nil)
+  end
 
   def compute_status
     if campaigns.where(status: "paused").exists?

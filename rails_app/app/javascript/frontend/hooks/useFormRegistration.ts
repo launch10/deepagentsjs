@@ -30,6 +30,7 @@ export function useFormRegistration(
         const isValid = await methods.trigger();
         if (!isValid) {
           normalizeArrayErrors(methods);
+          console.warn(`[FormRegistration] "${formName}" validation failed. Errors:`, JSON.parse(JSON.stringify(methods.formState.errors)));
         }
         return isValid;
       },

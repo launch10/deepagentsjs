@@ -5,6 +5,7 @@
 #  id                  :bigint           not null, primary key
 #  current_step        :string
 #  deleted_at          :datetime
+#  shasum              :string
 #  stacktrace          :text
 #  status              :string           default("pending"), not null
 #  created_at          :datetime         not null
@@ -20,6 +21,7 @@
 #  index_campaign_deploys_on_created_at              (created_at)
 #  index_campaign_deploys_on_current_step            (current_step)
 #  index_campaign_deploys_on_deleted_at              (deleted_at)
+#  index_campaign_deploys_on_shasum                  (shasum)
 #  index_campaign_deploys_on_status                  (status)
 #
 require 'rails_helper'
@@ -105,7 +107,7 @@ RSpec.describe CampaignDeploy, type: :model do
       it 'acquires a distributed lock with the campaign id' do
         expect(Suo::Client::Redis).to receive(:new).with(
           "campaign_deploy:#{campaign.id}",
-          hash_including(acquisition_lock: 0.5, stale_lock_expiration: 30.seconds.to_i)
+          hash_including(acquisition_lock: 5.0, stale_lock_expiration: 30.seconds.to_i)
         ).and_return(mock_suo_client)
 
         CampaignDeploy.deploy(campaign, async: false)
@@ -355,6 +357,66 @@ RSpec.describe CampaignDeploy, type: :model do
         expect {
           campaign_deploy.actually_deploy(async: false)
         }.to raise_error(CampaignDeploy::StepNotFinishedError)
+      end
+
+      it 'does not advance current_step so retry re-runs the same step' do
+        previous_step = campaign_deploy.current_step
+        begin
+          campaign_deploy.actually_deploy(async: false)
+        rescue CampaignDeploy::StepNotFinishedError
+          # expected
+        end
+        expect(campaign_deploy.reload.current_step).to eq(previous_step)
+      end
+
+      it 'includes diagnostic in the error message' do
+        sync_result = double("SyncResult", to_h: { entity: :ad_group_ad, status: :error, error: "GoogleAdsError: policy_finding: PROHIBITED" })
+        allow(mock_step).to receive(:respond_to?).with(:sync_result).and_return(true)
+        allow(mock_step).to receive(:sync_result).and_return(sync_result)
+
+        expect {
+          campaign_deploy.actually_deploy(async: false)
+        }.to raise_error(CampaignDeploy::StepNotFinishedError, /Diagnostic:.*PROHIBITED/)
+      end
+
+      it 'includes run result errors when step.run returns SyncResult errors' do
+        error_result = double("ErrorResult",
+          error?: true,
+          to_h: { resource_type: :ad_group_ad, action: :error, error: "policy_finding_error: POLICY_FINDING" })
+        allow(mock_step).to receive(:run).and_return([error_result])
+
+        expect {
+          campaign_deploy.actually_deploy(async: false)
+        }.to raise_error(CampaignDeploy::StepNotFinishedError, /Run errors:.*POLICY_FINDING/)
+      end
+
+      it 'raises TerminalStepError for terminal GoogleAdsError in run result' do
+        google_error = mock_google_ads_error(
+          message: "A policy was violated",
+          error_type: :policy_finding_error,
+          error_value: :POLICY_FINDING
+        )
+        error_result = GoogleAds::SyncResult.error(:ad_group_ad, google_error)
+        allow(mock_step).to receive(:run).and_return([error_result])
+
+        expect {
+          campaign_deploy.actually_deploy(async: false)
+        }.to raise_error(CampaignDeploy::TerminalStepError, /Terminal error in test_step.*policy was violated/)
+      end
+
+      it 'logs the failure to the google_ads logger' do
+        log_output = StringIO.new
+        test_logger = ActiveSupport::TaggedLogging.new(Logger.new(log_output))
+        allow(GoogleAds::Instrumentation).to receive(:google_ads_logger).and_return(test_logger)
+
+        begin
+          campaign_deploy.actually_deploy(async: false)
+        rescue CampaignDeploy::StepNotFinishedError
+          # expected
+        end
+
+        expect(log_output.string).to include("[CampaignDeploy]")
+        expect(log_output.string).to include("test_step")
       end
     end
 

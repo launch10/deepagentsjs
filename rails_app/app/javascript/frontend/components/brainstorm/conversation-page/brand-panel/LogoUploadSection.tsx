@@ -1,7 +1,9 @@
 import { useState, useRef, useCallback } from "react";
 import { Upload, X, RefreshCw, Loader2 } from "lucide-react";
 import { twMerge } from "tailwind-merge";
-import { useProjectLogo, useUploadLogo, useDeleteUpload } from "@api/uploads.hooks";
+import { useQueryClient } from "@tanstack/react-query";
+import { useProjectLogo, useUploadLogo, useDeleteUpload, uploadsKeys } from "@api/uploads.hooks";
+import { subscribeToAgentIntent } from "@hooks/useAgentIntent";
 
 const ACCEPTED_TYPES = ["image/png", "image/jpeg", "image/svg+xml"];
 const ACCEPTED_EXTENSIONS = ".png,.jpg,.jpeg,.svg";
@@ -20,6 +22,12 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
   const uploadMutation = useUploadLogo();
   const deleteMutation = useDeleteUpload();
 
+  // Refetch when the agent sets the logo via chat
+  const queryClient = useQueryClient();
+  subscribeToAgentIntent("logo_set", () => {
+    queryClient.invalidateQueries({ queryKey: uploadsKeys.all });
+  });
+
   // Local state for UI
   const [isDragging, setIsDragging] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
@@ -28,7 +36,8 @@ export function LogoUploadSection({ className }: LogoUploadSectionProps) {
 
   const isUploading = uploadMutation.isPending;
   const isDeleting = deleteMutation.isPending;
-  const error = validationError ?? uploadMutation.error?.message ?? deleteMutation.error?.message ?? null;
+  const error =
+    validationError ?? uploadMutation.error?.message ?? deleteMutation.error?.message ?? null;
 
   const validateFile = useCallback((file: File): string | null => {
     if (!ACCEPTED_TYPES.includes(file.type)) {

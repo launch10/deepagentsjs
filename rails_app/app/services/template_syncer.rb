@@ -59,8 +59,16 @@ class TemplateSyncer
       relative = src.sub("#{template_dir}/", "")
       return true if relative == ".env"
       return true if relative.start_with?(".") && !relative.include?("/")  # Skip root hidden files
+      return true if binary_file?(src)
 
       false
+    end
+
+    def binary_file?(path)
+      chunk = File.read(path, 8192) || ""
+      chunk.include?("\x00")
+    rescue ArgumentError
+      true
     end
 
     def upsert_file!(template, path, content)

@@ -25,6 +25,8 @@ export interface UseChatOptionsConfig<TBridge extends Bridge<any, any, any>> {
   getInitialThreadId?: () => string | undefined;
   /** Whether to include attachment upload config. Defaults to true. */
   includeAttachments?: boolean;
+  /** Initial state to seed the chat with (e.g., from Rails/Inertia props) */
+  initialState?: Partial<TBridge['_types']['state']>;
 }
 
 /**
@@ -65,6 +67,7 @@ export function useChatOptions<TBridge extends Bridge<any, any, any>>(
     onThreadIdAvailable,
     getInitialThreadId: customGetInitialThreadId,
     includeAttachments = true,
+    initialState,
   } = config;
 
   return useMemo(() => {
@@ -88,6 +91,10 @@ export function useChatOptions<TBridge extends Bridge<any, any, any>>(
 
     if (onThreadIdAvailable) {
       options.onThreadIdAvailable = onThreadIdAvailable;
+    }
+
+    if (initialState) {
+      options.initialState = initialState;
     }
 
     if (includeAttachments && uploadService) {
@@ -117,5 +124,6 @@ export function useChatOptions<TBridge extends Bridge<any, any, any>>(
     onThreadIdAvailable,
     customGetInitialThreadId,
     includeAttachments,
+    initialState,
   ]);
 }

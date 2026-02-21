@@ -20,7 +20,7 @@ The billing system is **~70% complete**. Core infrastructure for credit allocati
 | **Cost Calculation**       | ✅     | `Credits::CostCalculator`, `Credits::ModelNormalizer`                                       |
 | **Credit Consumption**     | ✅     | `Credits::ConsumptionService`                                                               |
 | **Charging Pipeline**      | ✅     | `ChargeRunWorker`, `FindUnprocessedRunsWorker`, `LlmUsageController#notify`                 |
-| **Yearly Reset**           | ✅     | `DailyReconciliationWorker`                                                                 |
+| **Yearly Reset**           | ✅     | `AnnualSubscriberMonthlyAllocationWorker`                                                   |
 
 ### Test Coverage
 

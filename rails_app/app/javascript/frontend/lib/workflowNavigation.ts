@@ -5,7 +5,7 @@
  * The workflow has 4 main pages:
  * 1. brainstorm (no substeps)
  * 2. website (substeps: build, domain, deploy)
- * 3. ad_campaign (substeps: content, highlights, keywords, settings, launch, review)
+ * 3. ads (substeps: content, highlights, keywords, settings, launch, review)
  * 4. deploy (no substeps - final deployment step)
  */
 import { Workflow } from "@shared";
@@ -16,7 +16,7 @@ import { Workflow } from "@shared";
 export const PAGE_ORDER: readonly Workflow.WorkflowPage[] = [
   "brainstorm",
   "website",
-  "ad_campaign",
+  "ads",
   "deploy",
 ] as const;
 
@@ -101,7 +101,7 @@ export function getFirstSubstep(page: Workflow.WorkflowPage): Workflow.SubstepNa
       return null;
     case "website":
       return "build";
-    case "ad_campaign":
+    case "ads":
       return "content";
     default:
       return null;
@@ -119,7 +119,7 @@ export function getLastSubstep(page: Workflow.WorkflowPage): Workflow.SubstepNam
       return null;
     case "website":
       return "deploy";
-    case "ad_campaign":
+    case "ads":
       return "review";
     default:
       return null;
@@ -130,7 +130,7 @@ export function getLastSubstep(page: Workflow.WorkflowPage): Workflow.SubstepNam
  * Check if a page has substeps
  */
 export function pageHasSubsteps(page: Workflow.WorkflowPage | null): boolean {
-  return page === "ad_campaign" || page === "website";
+  return page === "ads" || page === "website";
 }
 
 /**
@@ -140,8 +140,8 @@ export function pageHasSubsteps(page: Workflow.WorkflowPage | null): boolean {
  * Transitions:
  * - (null) → brainstorm
  * - brainstorm → website/build
- * - website/build → website/domain → website/deploy → ad_campaign/content
- * - ad_campaign substeps → next substep or deploy
+ * - website/build → website/domain → website/deploy → ads/content
+ * - ads substeps → next substep or deploy
  * - deploy → stay at deploy (end of workflow)
  */
 export function continueWorkflow(position: WorkflowPosition): WorkflowPosition {
@@ -163,17 +163,17 @@ export function continueWorkflow(position: WorkflowPosition): WorkflowPosition {
     if (nextSubstep) {
       return { page: "website", substep: nextSubstep };
     }
-    // End of website → go to ad_campaign/content
-    return { page: "ad_campaign", substep: "content" };
+    // End of website → go to ads/content
+    return { page: "ads", substep: "content" };
   }
 
   // Case 4: Ad campaign with substeps
-  if (page === "ad_campaign") {
-    const nextSubstep = getNextAdCampaignSubstep(substep);
+  if (page === "ads") {
+    const nextSubstep = getNextAdsSubstep(substep);
     if (nextSubstep) {
-      return { page: "ad_campaign", substep: nextSubstep };
+      return { page: "ads", substep: nextSubstep };
     }
-    // End of ad_campaign → go to deploy (no substeps)
+    // End of ads → go to deploy (no substeps)
     return { page: "deploy", substep: null };
   }
 
@@ -213,18 +213,18 @@ export function backWorkflow(position: WorkflowPosition): WorkflowPosition {
   }
 
   // Case 4: Ad campaign
-  if (page === "ad_campaign") {
-    const prevSubstep = getPrevAdCampaignSubstep(substep);
+  if (page === "ads") {
+    const prevSubstep = getPrevAdsSubstep(substep);
     if (prevSubstep) {
-      return { page: "ad_campaign", substep: prevSubstep };
+      return { page: "ads", substep: prevSubstep };
     }
-    // At first substep → go back to website/deploy
-    return { page: "website", substep: "deploy" };
+    // At first substep → go back to first substep of website
+    return { page: "website", substep: getFirstSubstep("website") };
   }
 
-  // Case 5: Deploy → go back to ad_campaign/review
+  // Case 5: Deploy → go back to first substep of ads
   if (page === "deploy") {
-    return { page: "ad_campaign", substep: "review" };
+    return { page: "ads", substep: getFirstSubstep("ads") };
   }
 
   return position;
@@ -234,7 +234,7 @@ export function backWorkflow(position: WorkflowPosition): WorkflowPosition {
 
 const WEBSITE_SUBSTEP_ORDER: Workflow.WebsiteSubstepName[] = ["build", "domain", "deploy"];
 
-const AD_CAMPAIGN_SUBSTEP_ORDER: Workflow.AdCampaignSubstepName[] = [
+const ADS_SUBSTEP_ORDER: Workflow.AdsSubstepName[] = [
   "content",
   "highlights",
   "keywords",
@@ -243,26 +243,26 @@ const AD_CAMPAIGN_SUBSTEP_ORDER: Workflow.AdCampaignSubstepName[] = [
   "review",
 ];
 
-function getNextAdCampaignSubstep(
+function getNextAdsSubstep(
   current: Workflow.SubstepName | null
-): Workflow.AdCampaignSubstepName | null {
+): Workflow.AdsSubstepName | null {
   if (!current) return "content";
-  const currentIndex = AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(current as Workflow.AdCampaignSubstepName);
-  if (currentIndex === -1 || currentIndex >= AD_CAMPAIGN_SUBSTEP_ORDER.length - 1) {
+  const currentIndex = ADS_SUBSTEP_ORDER.indexOf(current as Workflow.AdsSubstepName);
+  if (currentIndex === -1 || currentIndex >= ADS_SUBSTEP_ORDER.length - 1) {
     return null;
   }
-  return AD_CAMPAIGN_SUBSTEP_ORDER[currentIndex + 1];
+  return ADS_SUBSTEP_ORDER[currentIndex + 1];
 }
 
-function getPrevAdCampaignSubstep(
+function getPrevAdsSubstep(
   current: Workflow.SubstepName | null
-): Workflow.AdCampaignSubstepName | null {
+): Workflow.AdsSubstepName | null {
   if (!current) return null;
-  const currentIndex = AD_CAMPAIGN_SUBSTEP_ORDER.indexOf(current as Workflow.AdCampaignSubstepName);
+  const currentIndex = ADS_SUBSTEP_ORDER.indexOf(current as Workflow.AdsSubstepName);
   if (currentIndex <= 0) {
     return null;
   }
-  return AD_CAMPAIGN_SUBSTEP_ORDER[currentIndex - 1];
+  return ADS_SUBSTEP_ORDER[currentIndex - 1];
 }
 
 function getNextWebsiteSubstep(

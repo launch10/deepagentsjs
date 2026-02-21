@@ -22,7 +22,7 @@ module GoogleAds
         { campaign: record.campaign }
       end
 
-      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
+      instrument_methods :sync, :synced?, :sync_result, :sync_plan, :delete, :fetch
 
       # ═══════════════════════════════════════════════════════════════
       # CLASS METHODS: Collection Operations
@@ -57,6 +57,18 @@ module GoogleAds
             results << new(callout).sync
           end
 
+          ::GoogleAds::Sync::CollectionSyncResult.new(results: results)
+        end
+
+        def sync_result(campaign)
+          results = []
+          campaign.callouts.only_deleted.each do |callout|
+            next unless callout.google_asset_id.present?
+            results << new(callout).sync_result
+          end
+          campaign.callouts.without_deleted.each do |callout|
+            results << new(callout).sync_result
+          end
           ::GoogleAds::Sync::CollectionSyncResult.new(results: results)
         end
 
@@ -104,6 +116,21 @@ module GoogleAds
         end
       rescue Google::Ads::GoogleAds::Errors::GoogleAdsError => e
         GoogleAds::SyncResult.error(:asset, e)
+      end
+
+      def sync_result
+        return GoogleAds::SyncResult.not_found(:asset) unless record.google_asset_id.present?
+        remote = fetch
+        return GoogleAds::SyncResult.not_found(:asset) unless remote
+        if fields_match?(remote)
+          GoogleAds::SyncResult.unchanged(:asset, record.google_asset_id)
+        else
+          comparison = compare_fields(remote)
+          GoogleAds::SyncResult.error(:asset,
+            GoogleAds::SyncVerificationError.new(
+              "Callout sync verification failed. Mismatched fields: #{comparison.failures.join(", ")}"
+            ))
+        end
       end
 
       def sync_plan
@@ -185,6 +212,8 @@ module GoogleAds
           customer_id: customer_id,
           operations: [operation]
         )
+      rescue Google::Ads::GoogleAds::Errors::GoogleAdsError => e
+        raise unless resource_not_found_error?(e)
       end
 
       # ═══════════════════════════════════════════════════════════════

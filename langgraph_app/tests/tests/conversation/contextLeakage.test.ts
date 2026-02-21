@@ -232,3 +232,131 @@ describe("context message leakage across turns", () => {
     expect(freshInLastTurn).toBeDefined();
   });
 });
+
+describe("prepareTurn context placement auto-detection", () => {
+  it("places context BEFORE last HumanMessage when user just sent a message", () => {
+    // State: user sent a message — last non-context message is HumanMessage
+    const h1 = new HumanMessage({ content: "Build my page", id: "h1" });
+    const a1 = new AIMessage({ content: "Done!", id: "a1" });
+    const h2 = new HumanMessage({ content: "Change the colors", id: "h2" });
+    const state: BaseMessage[] = [h1, a1, h2];
+
+    const ctx = createContextMessage("[Build Errors] Missing import");
+    const prepared = new Conversation(state).prepareTurn({
+      contextMessages: [ctx],
+    });
+
+    // Context should appear BEFORE h2
+    const ctxIdx = prepared.findIndex(isContextMessage);
+    const h2Idx = prepared.findIndex(
+      (m) => m._getType() === "human" && m.id === "h2"
+    );
+    expect(ctxIdx).toBeGreaterThanOrEqual(0);
+    expect(ctxIdx).toBeLessThan(h2Idx);
+  });
+
+  it("places context at the END when last message is AIMessage (intent-driven turn)", () => {
+    // State: previous turn completed with AI response, no new user message.
+    // This is an intent-driven turn (e.g. switch_page, refresh_assets).
+    const h1 = new HumanMessage({ content: "Build my page", id: "h1" });
+    const a1 = new AIMessage({ content: "Done!", id: "a1" });
+    const state: BaseMessage[] = [h1, a1];
+
+    const ctx = createContextMessage(
+      "I'm on the callouts page. Generate my callouts."
+    );
+    const prepared = new Conversation(state).prepareTurn({
+      contextMessages: [ctx],
+    });
+
+    // Context should be the LAST message (appended, not inserted before h1)
+    const ctxIdx = prepared.findIndex(isContextMessage);
+    expect(ctxIdx).toBe(prepared.length - 1);
+
+    // h1 should still be before context (not scrambled)
+    const h1Idx = prepared.findIndex(
+      (m) => m._getType() === "human" && m.id === "h1"
+    );
+    expect(h1Idx).toBeLessThan(ctxIdx);
+  });
+
+  it("appends context when conversation has prior context + AI (intent after intent)", () => {
+    // Simulates: user navigated to content page (intent), AI generated,
+    // now user navigates to highlights page (another intent).
+    // The last non-context message is an AIMessage.
+    const h1 = new HumanMessage({ content: "Help me with ads", id: "h1" });
+    const oldCtx = createContextMessage("I'm on the headlines page. Generate my headlines.");
+    const a1 = new AIMessage({ content: "Here are your headlines!", id: "a1" });
+    const state: BaseMessage[] = [h1, oldCtx, a1];
+
+    const newCtx = createContextMessage(
+      "I'm on the callouts page. Generate my callouts."
+    );
+    const prepared = new Conversation(state).prepareTurn({
+      contextMessages: [newCtx],
+    });
+
+    // Both context messages should be present
+    const allContext = prepared.filter(isContextMessage);
+    expect(allContext.length).toBe(2);
+
+    // New context should be LAST (appended, not inserted before h1)
+    const newCtxIdx = prepared.findIndex(
+      (m) => typeof m.content === "string" && m.content.includes("callouts page")
+    );
+    expect(newCtxIdx).toBe(prepared.length - 1);
+
+    // h1 should still be the first non-context, non-summary message
+    const h1Idx = prepared.findIndex(
+      (m) => m._getType() === "human" && m.id === "h1"
+    );
+    expect(h1Idx).toBe(0);
+  });
+
+  it("does NOT scramble old HumanMessages when appending context (the production bug)", () => {
+    // This reproduces the exact bug: navigating to highlights after content.
+    // State has: h1, ctx_content, a1_content (content page done).
+    // Intent-driven turn: new context for highlights should go at END,
+    // NOT before h1 (which would scramble the conversation).
+    const h1 = new HumanMessage({ content: "Let's start ads", id: "h1" });
+    const contentCtx = createContextMessage("I'm on the content page.");
+    const a1 = new AIMessage({ content: "Here are headlines!", id: "a1" });
+    // Some failed attempts that baked into state
+    const failCtx1 = createContextMessage("I'm on the highlights page.");
+    const failA1 = new AIMessage({ content: "", id: "fail-a1" });
+    const failCtx2 = createContextMessage("I'm on the highlights page.");
+    const failA2 = new AIMessage({ content: "", id: "fail-a2" });
+    const state: BaseMessage[] = [h1, contentCtx, a1, failCtx1, failA1, failCtx2, failA2];
+
+    const newCtx = createContextMessage(
+      "I'm on the callouts page. Generate my callouts."
+    );
+    const prepared = new Conversation(state).prepareTurn({
+      contextMessages: [newCtx],
+    });
+
+    // New context should be at the END
+    const newCtxIdx = prepared.findIndex(
+      (m) => typeof m.content === "string" && m.content.includes("callouts page")
+    );
+    expect(newCtxIdx).toBe(prepared.length - 1);
+
+    // h1 should still be first non-summary message
+    const h1Idx = prepared.findIndex(
+      (m) => m._getType() === "human" && m.id === "h1"
+    );
+    expect(h1Idx).toBe(0);
+  });
+
+  it("handles empty conversation (no messages at all)", () => {
+    const state: BaseMessage[] = [];
+    const ctx = createContextMessage("Generate my headlines.");
+    const prepared = new Conversation(state).prepareTurn({
+      contextMessages: [ctx],
+    });
+
+    // Context is the only message
+    expect(prepared.length).toBe(1);
+    expect(isContextMessage(prepared[0]!)).toBe(true);
+  });
+});

@@ -3,8 +3,10 @@ import WebsiteSidebar from "@components/website/sidebar/WebsiteSidebar";
 import { WebsitePreview } from "@components/website/preview";
 import { Chat } from "@components/shared/chat/Chat";
 import { PaginationFooter } from "@components/shared/pagination-footer";
+import DevButton from "@components/shared/DevButton";
 import { useEffect, useEffectEvent, useRef, useState, useCallback } from "react";
 import { usePage } from "@inertiajs/react";
+import { csrfFetch } from "@lib/csrfFetch";
 import {
   useWebsiteChat,
   useWebsiteChatState,
@@ -12,6 +14,7 @@ import {
   useWebsiteChatIsStreaming,
   useWebsiteChatIsInitialLoading,
 } from "@hooks/website";
+import { analytics } from "@lib/analytics";
 
 interface WebsitePageProps {
   website?: { id?: number };
@@ -68,15 +71,9 @@ function RestartChatButton() {
 
     setRestarting(true);
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute("content");
-      await fetch(`/test/websites/${website.id}/restart_chat`, {
+      await csrfFetch(`/test/websites/${website.id}/restart_chat`, {
         method: "DELETE",
-        headers: {
-          "X-CSRF-Token": csrfToken || "",
-          Accept: "application/json",
-        },
       });
-      // Full page reload to reset all chat state
       window.location.reload();
     } catch (e) {
       console.error("Failed to restart chat:", e);
@@ -84,16 +81,10 @@ function RestartChatButton() {
     }
   }, [website?.id]);
 
-  if (!import.meta.env.DEV) return null;
-
   return (
-    <button
-      onClick={handleRestart}
-      disabled={restarting}
-      className="text-xs px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 disabled:opacity-50"
-    >
+    <DevButton onClick={handleRestart} disabled={restarting}>
       {restarting ? "Restarting…" : "Restart Chat (Dev)"}
-    </button>
+    </DevButton>
   );
 }
 
@@ -103,13 +94,23 @@ function RestartChatButton() {
 export default function BuildStep() {
   const chat = useWebsiteChat();
   const isInitialLoading = useWebsiteChatIsInitialLoading();
+  const { sendMessage } = useWebsiteChatActions();
+  const { project } = usePage<WebsitePageProps>().props;
 
   // Auto-init website generation on first load
   useWebsiteInit();
 
+  // Wrap sendMessage to track website_edited events
+  const handleSubmit = useCallback(() => {
+    if (project?.uuid) {
+      analytics.trackProject("website_edited", project.uuid, { edit_type: "chat_iteration" });
+    }
+    sendMessage();
+  }, [sendMessage, project?.uuid]);
+
   // Credit integration is automatic via ChatProvider - no manual wiring needed
   return (
-    <Chat.Root chat={chat}>
+    <Chat.Root chat={chat} onSubmit={handleSubmit}>
       <div className="h-full flex flex-col">
         {/* Main content area - no bottom padding so preview extends behind footer */}
         <main className="flex-1 min-h-0 grid grid-cols-[1fr_3fr] gap-x-[3%] px-[2.5%] pt-[2.5%]">
@@ -131,7 +132,7 @@ export default function BuildStep() {
         </main>
 
         {/* Footer - full width background, content aligned with preview */}
-        <PaginationFooter.Root layout="full-bleed" isPending={isInitialLoading} canGoBack={false}>
+        <PaginationFooter.Root layout="full-bleed" isPending={isInitialLoading}>
           <PaginationFooter.BackButton />
           <PaginationFooter.Actions>
             <RestartChatButton />

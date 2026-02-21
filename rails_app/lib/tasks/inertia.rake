@@ -17,6 +17,7 @@ namespace :inertia do
     require_relative "../../spec/support/schemas/inertia/website_schema"
     require_relative "../../spec/support/schemas/inertia/campaigns_schema"
     require_relative "../../spec/support/schemas/inertia/launch_schema"
+    require_relative "../../spec/support/schemas/inertia/deploy_schema"
     require_relative "../../spec/support/schemas/inertia/leads_schema"
     require_relative "../../spec/support/schemas/inertia/settings_schema"
     require_relative "../../spec/support/schemas/inertia/dashboard_schema"
@@ -32,6 +33,7 @@ namespace :inertia do
     generator.add_component("WebsiteProps", InertiaSchemas::Website)
     generator.add_component("CampaignsProps", InertiaSchemas::Campaigns)
     generator.add_component("LaunchProps", InertiaSchemas::Launch)
+    generator.add_component("DeployProps", InertiaSchemas::Deploy)
     generator.add_component("LeadsProps", InertiaSchemas::Leads)
     generator.add_component("SettingsProps", InertiaSchemas::Settings)
     generator.add_component("DashboardProps", InertiaSchemas::Dashboard)
@@ -90,7 +92,14 @@ namespace :inertia do
       params: [UUID_PARAM]
     )
 
-    WorkflowConfig.substeps_for("launch", "ad_campaign").each do |substep|
+    generator.add_page(
+      "/projects/{uuid}/deploy",
+      ref: "DeployProps",
+      tag: "Inertia Pages",
+      params: [UUID_PARAM]
+    )
+
+    WorkflowConfig.substeps_for("launch", "ads").each do |substep|
       generator.add_page(
         "/projects/{uuid}/campaigns/#{substep}",
         ref: "CampaignsProps",

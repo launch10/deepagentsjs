@@ -42,7 +42,7 @@ export class FAQSearchService {
       modelName: "text-embedding-3-small",
     });
 
-    if (env.COHERE_API_KEY) {
+    if (env.COHERE_API_KEY && env.COHERE_RERANK_ENABLED) {
       this.rerankService = new CohereRerankService();
     }
   }

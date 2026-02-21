@@ -43,6 +43,31 @@ module APISchemas
       }
     end
 
+    def self.show_response
+      {
+        type: :object,
+        properties: {
+          id: APISchemas.id_field,
+          status: {
+            type: :string,
+            enum: STATUSES,
+            description: 'Current status of the job run'
+          },
+          result: {
+            type: :object,
+            nullable: true,
+            description: 'Result data from the completed job'
+          },
+          error: {
+            type: :string,
+            nullable: true,
+            description: 'Error message if the job failed'
+          }
+        },
+        required: %w[id status]
+      }
+    end
+
     def self.error_response
       {
         type: :object,

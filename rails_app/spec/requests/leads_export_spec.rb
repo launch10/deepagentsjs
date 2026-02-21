@@ -28,7 +28,7 @@ RSpec.describe "Leads Export", type: :request do
         expect(response.content_type).to include("text/csv")
 
         csv = CSV.parse(response.body, headers: true)
-        expect(csv.headers).to eq(["Name", "Email", "Date"])
+        expect(csv.headers).to eq(["Name", "Email", "Phone", "Date"])
         expect(csv.count).to eq(0)
       end
 
@@ -73,11 +73,20 @@ RSpec.describe "Leads Export", type: :request do
         expect(anonymous_row["Name"]).to eq("")
       end
 
+      it "exports null phones as empty strings" do
+        lead2.update!(phone: nil)
+        get export_project_leads_path(project.uuid)
+
+        csv = CSV.parse(response.body, headers: true)
+        anonymous_row = csv.find { |row| row["Email"] == "anonymous@example.com" }
+        expect(anonymous_row["Phone"]).to eq("")
+      end
+
       it "includes correct column headers" do
         get export_project_leads_path(project.uuid)
 
         csv = CSV.parse(response.body, headers: true)
-        expect(csv.headers).to eq(["Name", "Email", "Date"])
+        expect(csv.headers).to eq(["Name", "Email", "Phone", "Date"])
       end
 
       it "formats dates correctly" do

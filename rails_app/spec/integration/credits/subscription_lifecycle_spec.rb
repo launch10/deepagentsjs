@@ -546,9 +546,9 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       next_reset = (Date.current + 1.month).change(day: [billing_day, (Date.current + 1.month).end_of_month.day].min)
 
       travel_to next_reset do
-        # DailyReconciliationWorker calls ResetPlanCreditsWorker.perform_async
+        # AnnualSubscriberMonthlyAllocationWorker calls ResetPlanCreditsWorker.perform_async
         # which runs inline due to Sidekiq::Testing.inline!
-        Credits::DailyReconciliationWorker.new.perform
+        Credits::AnnualSubscriberMonthlyAllocationWorker.new.perform
 
         account.reload
         expect(account.plan_credits).to eq(5000)  # Fresh allocation
@@ -563,7 +563,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
       initial_credits = account.plan_credits
 
       # Daily reconciliation should not affect monthly subscribers
-      Credits::DailyReconciliationWorker.new.perform
+      Credits::AnnualSubscriberMonthlyAllocationWorker.new.perform
 
       account.reload
       expect(account.plan_credits).to eq(initial_credits)
@@ -883,7 +883,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
         travel_to next_reset do
           initial_count = account.credit_transactions.count
 
-          Credits::DailyReconciliationWorker.new.perform
+          Credits::AnnualSubscriberMonthlyAllocationWorker.new.perform
 
           # Should NOT grant new credits - ends_at is set (pending cancellation)
           expect(account.credit_transactions.count).to eq(initial_count)
@@ -906,7 +906,7 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
         next_reset = (Date.current + 1.month).change(day: [billing_day, (Date.current + 1.month).end_of_month.day].min)
 
         travel_to next_reset do
-          Credits::DailyReconciliationWorker.new.perform
+          Credits::AnnualSubscriberMonthlyAllocationWorker.new.perform
 
           account.reload
           expect(account.plan_credits).to eq(5000)  # Fresh allocation
@@ -933,6 +933,61 @@ RSpec.describe "Subscription Credit Lifecycle", type: :integration do
         # No new credits allocated
         expect(account.credit_transactions.count).to eq(initial_count)
       end
+    end
+  end
+
+  describe "event tracking" do
+    it "tracks subscription_renewed on invoice.paid webhook" do
+      subscription = subscribe_to(growth_monthly)
+
+      travel 1.month do
+        advance_billing_period(subscription)
+
+        allow(TrackEvent).to receive(:call)
+        expect(TrackEvent).to receive(:call).with("subscription_renewed",
+          hash_including(plan_name: growth_monthly.name))
+
+        event = invoice_paid_event(
+          subscription_id: subscription.processor_id,
+          customer_id: subscription.customer.processor_id,
+          billing_reason: "subscription_cycle"
+        )
+        process_webhook(event)
+      end
+    end
+
+    it "tracks subscription_plan_changed on subscription.updated webhook" do
+      subscription = subscribe_to(growth_monthly)
+
+      allow(TrackEvent).to receive(:call)
+      expect(TrackEvent).to receive(:call).with("subscription_plan_changed",
+        hash_including(old_plan: growth_monthly.name, new_plan: pro_monthly.name, direction: "upgrade"))
+
+      event = subscription_plan_changed_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id,
+        old_price_id: growth_monthly.stripe_id,
+        new_price_id: pro_monthly.stripe_id,
+        old_unit_amount: growth_monthly.amount,
+        new_unit_amount: pro_monthly.amount
+      )
+      subscription.update!(processor_plan: pro_monthly.stripe_id)
+      process_webhook(event)
+    end
+
+    it "tracks subscription_cancelled on subscription.deleted webhook" do
+      subscription = subscribe_to(growth_monthly)
+
+      allow(TrackEvent).to receive(:call)
+      expect(TrackEvent).to receive(:call).with("subscription_cancelled",
+        hash_including(plan_name: growth_monthly.name, projects_live: kind_of(Integer)))
+
+      event = subscription_deleted_event(
+        subscription_id: subscription.processor_id,
+        customer_id: subscription.customer.processor_id
+      )
+      subscription.update!(status: "canceled")
+      process_webhook(event)
     end
   end
 

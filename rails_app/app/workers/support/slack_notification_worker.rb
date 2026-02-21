@@ -6,7 +6,12 @@ module Support
 
     def perform(support_request_id)
       support_request = SupportRequest.find(support_request_id)
-      webhook_url = ENV.fetch("SUPPORT_SLACK_WEBHOOK_URL")
+      webhook_url = ENV["SUPPORT_SLACK_WEBHOOK_URL"] || Rails.application.credentials.dig(:support, :slack_webhook_url)
+
+      if webhook_url.blank?
+        raise "SUPPORT_SLACK_WEBHOOK_URL is not set" if Rails.env.production?
+        return # if not production, skip
+      end
 
       payload = {
         text: "New Support Request: #{support_request.ticket_reference}",

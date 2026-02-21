@@ -31,8 +31,13 @@ module Support
 
     def perform(support_request_id)
       support_request = SupportRequest.find(support_request_id)
-      notion_secret = ENV.fetch("SUPPORT_NOTION_SECRET")
-      database_id = ENV.fetch("SUPPORT_NOTION_DATABASE_ID")
+      notion_secret = ENV["SUPPORT_NOTION_SECRET"] || Rails.application.credentials.dig(:support, :notion_secret)
+      database_id = ENV["SUPPORT_NOTION_DATABASE_ID"] || Rails.application.credentials.dig(:support, :notion_database_id)
+
+      if notion_secret.blank? || database_id.blank?
+        raise "SUPPORT_NOTION_SECRET and SUPPORT_NOTION_DATABASE_ID must be set" if Rails.env.production?
+        return # if not production, skip
+      end
 
       uri = URI("https://api.notion.com/v1/pages")
       request = Net::HTTP::Post.new(uri)

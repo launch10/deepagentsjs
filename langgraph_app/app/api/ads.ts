@@ -7,12 +7,12 @@ import { graphParams } from "@core";
 import { adsGraph } from "@graphs";
 import { AdsBridge } from "@annotation";
 
-const compiledGraph = adsGraph.compile({
+export const compiledAdsGraph = adsGraph.compile({
   ...graphParams,
   name: "ads",
 });
 
-export const AdsAPI = AdsBridge.bind(compiledGraph);
+export const AdsAPI = AdsBridge.bind(compiledAdsGraph);
 
 // Re-export bridge for nodes that need toStructuredMessage
 export { AdsBridge } from "@annotation";

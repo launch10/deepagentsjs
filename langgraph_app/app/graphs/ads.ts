@@ -4,10 +4,10 @@ import {
   adsAgent,
   createCampaign,
   getBusinessContext,
+  handleIntentNode,
   prepareRefreshNode,
   resetNode,
   guardrailsNode,
-  createCompactConversationNode,
 } from "@nodes";
 import { type AdsGraphState } from "@state";
 import { NodeMiddleware } from "@middleware";
@@ -26,12 +26,6 @@ const beforeGenerateNode = NodeMiddleware.use(
   }
 );
 
-const prepareNode = async (state: AdsGraphState) => {
-  return {
-    error: null,
-  };
-};
-
 /**
  * Ads graph for generating Google Ads campaigns.
  *
@@ -40,17 +34,16 @@ const prepareNode = async (state: AdsGraphState) => {
  */
 export const adsGraph = withCreditExhaustion(
   new StateGraph(AdsAnnotation)
-    .addNode("prepare", prepareNode)
+    .addNode("handleIntent", handleIntentNode)
     .addNode("createCampaign", createCampaign)
     .addNode("beforeGenerate", beforeGenerateNode)
     .addNode("getBusinessContext", getBusinessContext)
     .addNode("prepareRefresh", prepareRefreshNode)
     .addNode("adsAgent", adsAgent)
-    .addNode("compactConversation", createCompactConversationNode())
     .addNode("reset", resetNode)
 
-    .addEdge(START, "prepare")
-    .addEdge("prepare", "createCampaign")
+    .addEdge(START, "handleIntent")
+    .addEdge("handleIntent", "createCampaign")
     .addConditionalEdges("createCampaign", guardrailsNode, {
       beforeGenerate: "beforeGenerate",
       end: END,
@@ -58,8 +51,8 @@ export const adsGraph = withCreditExhaustion(
     .addEdge("beforeGenerate", "getBusinessContext")
     .addEdge("getBusinessContext", "prepareRefresh")
     .addEdge("prepareRefresh", "adsAgent")
-    .addEdge("adsAgent", "compactConversation")
-    .addEdge("compactConversation", "reset")
+    // Compaction now happens inside adsAgent via Conversation.start()
+    .addEdge("adsAgent", "reset")
     .addEdge("reset", END),
   AdsAnnotation
 );

@@ -28,7 +28,7 @@ module GoogleAds
         { google_customer_id: record.customer_id }
       end
 
-      instrument_methods :sync, :sync_result, :sync_plan, :delete, :fetch
+      instrument_methods :sync, :synced?, :sync_result, :sync_plan, :delete, :fetch
 
       # ═══════════════════════════════════════════════════════════════
       # PUBLIC API
@@ -57,12 +57,50 @@ module GoogleAds
         fetch_remote
       end
 
+      # Upgrades an accepted user's access role on the Google Ads subaccount.
+      # Used when a user was previously invited with STANDARD and needs ADMIN.
+      def upgrade_access_role(role = :ADMIN)
+        return not_found_result(:customer_user_access) unless customer_id.present?
+
+        user_access = fetch_user_access
+        return not_found_result(:customer_user_access) unless user_access
+
+        return already_at_role_result(user_access, role) if user_access.access_role == role
+
+        operation = client.operation.update_resource.customer_user_access(user_access) do |ua|
+          ua.access_role = role
+        end
+
+        response = client.service.customer_user_access.mutate_customer_user_access(
+          customer_id: customer_id,
+          operation: operation
+        )
+
+        record.google_access_role = role.to_s
+        record.save!
+
+        GoogleAds::Sync::SyncResult.new(
+          resource_type: :customer_user_access,
+          resource_name: response.result.resource_name,
+          action: :updated,
+          comparisons: []
+        )
+      end
+
       def refresh_status
         flush_cache(:remote_resource)
         flush_cache(:synced?)
 
+        Rails.logger.info "[VerifyGoogle::refresh_status] #{Time.current.iso8601(3)} invitation=#{record.id} customer_id=#{customer_id} email=#{record.email_address} — fetching from Google API..."
+
         remote = fetch_remote
-        return not_found_result(:customer_user_access_invitation) unless remote
+
+        unless remote
+          Rails.logger.info "[VerifyGoogle::refresh_status] #{Time.current.iso8601(3)} invitation=#{record.id} — NO remote resource found from Google"
+          return not_found_result(:customer_user_access_invitation)
+        end
+
+        Rails.logger.info "[VerifyGoogle::refresh_status] #{Time.current.iso8601(3)} invitation=#{record.id} remote_status=#{remote.status} remote_accepted=#{remote.accepted?} remote_resource_name=#{remote.resource_name}"
 
         resource_type = remote.accepted? ? :customer_user_access : :customer_user_access_invitation
 
@@ -74,7 +112,10 @@ module GoogleAds
         )
 
         # Persist status changes to the local record
-        update_record_from_sync_result(result) if result.success?
+        if result.success?
+          Rails.logger.info "[VerifyGoogle::refresh_status] #{Time.current.iso8601(3)} invitation=#{record.id} — persisting status change: action=#{result.action} resource_type=#{resource_type}"
+          update_record_from_sync_result(result)
+        end
 
         result
       end
@@ -229,6 +270,15 @@ module GoogleAds
           resource_type: resource_type,
           resource_name: nil,
           action: :not_found,
+          comparisons: []
+        )
+      end
+
+      def already_at_role_result(user_access, role)
+        GoogleAds::Sync::SyncResult.new(
+          resource_type: :customer_user_access,
+          resource_name: user_access.resource_name,
+          action: :unchanged,
           comparisons: []
         )
       end

@@ -5,7 +5,7 @@ import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldLis
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@components/ui/field";
-import { useAdsChatActions, useAdsChatState } from "@components/ads/hooks";
+import { useAdsChatActions, useAdsChatState, useAdsChatIsStreaming } from "@components/ads/hooks";
 import { useFormRegistration } from "@hooks/useFormRegistration";
 import { Ads, generateUUID, keyBy } from "@shared";
 import { Info, Plus } from "lucide-react";
@@ -29,7 +29,10 @@ const STRUCTURED_SNIPPET_CATEGORIES = Ads.StructuredSnippetCategoryKeys.map((key
 
 export default function StructuredSnippetsForm() {
   const structuredSnippets = useAdsChatState("structuredSnippets");
-  const { setState, updateState } = useAdsChatActions();
+  const { setState, updateState, saveState } = useAdsChatActions();
+  const isStreaming = useAdsChatIsStreaming();
+  const isStreamingRef = useRef(false);
+  isStreamingRef.current = isStreaming;
 
   const category = structuredSnippets?.category;
   const details = structuredSnippets?.details;
@@ -45,112 +48,7 @@ export default function StructuredSnippetsForm() {
     },
   });
 
-  useEffect(() => {
-    const currentIds = filteredDetails.map((d) => d.id).join(",");
-    const prevIds = prevIdsRef.current.join(",");
-
-    if (currentIds !== prevIds) {
-      methods.reset({ category, details: filteredDetails });
-      prevIdsRef.current = filteredDetails.map((d) => d.id);
-    }
-  }, [filteredDetails, category, methods]);
-
-  useEffect(() => {
-    if (category && methods.getValues("category") !== category) {
-      methods.setValue("category", category as Ads.StructuredSnippetCategoryKey);
-    }
-  }, [category, methods]);
-
-  const handleCategoryChange = (value: string) => {
-    methods.setValue("category", value as Ads.StructuredSnippetCategoryKey);
-    setState({
-      structuredSnippets: {
-        ...structuredSnippets,
-        category: value as Ads.StructuredSnippetCategoryKey,
-        details: structuredSnippets?.details || [],
-      },
-    });
-  };
-
-  const handleLockToggle = createLockToggleHandler(
-    "details",
-    methods,
-    () => filteredDetails,
-    () => details,
-    (updates) => {
-      setState({
-        structuredSnippets: {
-          ...structuredSnippets,
-          category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
-          details: updates.details || [],
-        },
-      });
-    }
-  );
-
-  const handleAddDetail = () => {
-    const newDetail = { id: generateUUID(), text: "", locked: false, rejected: false };
-    setState({
-      structuredSnippets: {
-        ...structuredSnippets,
-        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
-        details: [...(details || []), newDetail],
-      },
-    });
-  };
-
-  const handleDeleteDetail = (index: number) => {
-    const detailId = filteredDetails[index]?.id;
-    if (!detailId) return;
-    setState({
-      structuredSnippets: {
-        ...structuredSnippets,
-        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
-        details: details?.filter((d) => d.id !== detailId) || [],
-      },
-    });
-  };
-
-  const handleInputChange = (index: number, input: string) => {
-    const detailId = filteredDetails[index]?.id;
-    if (!detailId) return;
-    setState({
-      structuredSnippets: {
-        ...structuredSnippets,
-        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
-        details: details?.map((d) => (d.id === detailId ? { ...d, text: input } : d)) || [],
-      },
-    });
-  };
-
-  const handleRefreshSnippets = () => {
-    const currentDetails = structuredSnippets?.details || [];
-    const lockedDetails = currentDetails.filter((d) => d.locked);
-    const lockedByText = keyBy(lockedDetails, "text");
-    const numLocked = lockedDetails.length;
-
-    const updatedDetails = currentDetails.map((d) => ({
-      ...d,
-      locked: !!lockedByText[d.text],
-      rejected: !lockedByText[d.text],
-    }));
-
-    updateState({
-      refresh: [
-        {
-          asset: "structuredSnippets",
-          nVariants: Ads.DefaultNumAssets.structuredSnippets - numLocked,
-        },
-      ],
-      structuredSnippets: {
-        ...structuredSnippets,
-        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
-        details: updatedDetails,
-      },
-    });
-  };
-
-  const { getData } = useAutosaveCampaign<Ads.StructuredSnippetsOutput>({
+  const { getData, saveNow } = useAutosaveCampaign<Ads.StructuredSnippetsOutput>({
     methods,
     formId: "structured-snippets",
     transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
@@ -166,6 +64,123 @@ export default function StructuredSnippetsForm() {
       };
     },
   });
+
+  const saveNowRef = useRef(saveNow);
+  saveNowRef.current = saveNow;
+
+  useEffect(() => {
+    const currentIds = filteredDetails.map((d) => d.id).join(",");
+    const prevIds = prevIdsRef.current.join(",");
+
+    if (currentIds !== prevIds) {
+      const hadPrevIds = prevIdsRef.current.length > 0;
+      methods.reset({ category, details: filteredDetails });
+      prevIdsRef.current = filteredDetails.map((d) => d.id);
+
+      if (hadPrevIds && !isStreamingRef.current) {
+        saveNowRef.current();
+      }
+    }
+  }, [filteredDetails, category, methods]);
+
+  useEffect(() => {
+    if (category && methods.getValues("category") !== category) {
+      methods.setValue("category", category as Ads.StructuredSnippetCategoryKey);
+    }
+  }, [category, methods]);
+
+  const setSnippets = (partial: Partial<Ads.StructuredSnippets>) => {
+    const updated = {
+      structuredSnippets: {
+        ...structuredSnippets,
+        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
+        details: structuredSnippets?.details || [],
+        ...partial,
+      },
+    };
+    if (isStreaming) {
+      setState(updated);
+    } else {
+      saveState(updated);
+    }
+  };
+
+  const handleCategoryChange = (value: string) => {
+    methods.setValue("category", value as Ads.StructuredSnippetCategoryKey);
+    setSnippets({ category: value as Ads.StructuredSnippetCategoryKey });
+  };
+
+  const baseLockToggle = createLockToggleHandler(
+    "details",
+    methods,
+    () => filteredDetails,
+    () => details,
+    (updates) => {
+      setState({
+        structuredSnippets: {
+          ...structuredSnippets,
+          category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
+          details: updates.details || [],
+        },
+      });
+    }
+  );
+
+  const handleLockToggle = (fieldName: string, index: number) => {
+    baseLockToggle(fieldName, index);
+    if (!isStreaming) saveState();
+  };
+
+  const handleAddDetail = () => {
+    const newDetail = { id: generateUUID(), text: "", locked: true, rejected: false };
+    setSnippets({ details: [...(details || []), newDetail] });
+  };
+
+  const handleDeleteDetail = (index: number) => {
+    const detailId = filteredDetails[index]?.id;
+    if (!detailId) return;
+    setSnippets({ details: details?.filter((d) => d.id !== detailId) || [] });
+  };
+
+  const handleInputChange = (index: number, input: string) => {
+    const detailId = filteredDetails[index]?.id;
+    if (!detailId) return;
+    setSnippets({ details: details?.map((d) => (d.id === detailId ? { ...d, text: input } : d)) || [] });
+  };
+
+  const handleRefreshSnippets = () => {
+    const currentDetails = structuredSnippets?.details || [];
+    const lockedDetails = currentDetails.filter((d) => d.locked);
+    const lockedByText = keyBy(lockedDetails, "text");
+    const numLocked = lockedDetails.length;
+
+    const updatedDetails = currentDetails.map((d) => ({
+      ...d,
+      locked: !!lockedByText[d.text],
+      rejected: !lockedByText[d.text],
+    }));
+
+    updateState({
+      intent: {
+        type: "refresh_assets" as const,
+        payload: {
+          stage: "highlights",
+          assets: [
+            {
+              asset: "structuredSnippets",
+              nVariants: Ads.DefaultNumAssets.structuredSnippets - numLocked,
+            },
+          ],
+        },
+        createdAt: new Date().toISOString(),
+      },
+      structuredSnippets: {
+        ...structuredSnippets,
+        category: structuredSnippets?.category as Ads.StructuredSnippetCategoryKey,
+        details: updatedDetails,
+      },
+    });
+  };
 
   useFormRegistration("highlights", methods, getData);
 

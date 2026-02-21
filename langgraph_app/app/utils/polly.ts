@@ -93,6 +93,15 @@ class PollyManager {
     PollyManager.disabled = false;
   }
 
+  // Define AI/LLM provider patterns that should use node-specific recordings
+  static AI_PROVIDERS = [
+    /127\.0\.0\.1:11434/, // Ollama
+    /api\.anthropic\.com/, // Anthropic
+    /api\.openai\.com/, // OpenAI
+    /generativelanguage\.googleapis\.com/, // Google
+    /api\.groq\.com/, // Groq
+  ];
+
   // Hosts that should always be passed through (never recorded/replayed)
   static PASSTHROUGH_HOSTS = [
     "https://api.smith.langchain.com", // LangSmith tracing
@@ -192,6 +201,23 @@ class PollyManager {
       server.host(host, () => {
         server.any("/*path").passthrough();
       });
+    });
+  }
+
+  private static configureLlms() {
+    const { server } = PollyManager.polly!;
+    PollyManager.AI_PROVIDERS.forEach((providerRegex) => {
+      server
+        .any(providerRegex as any) // regex seems to be permitted, not sure why not
+        .configure({
+          matchRequestsBy: {
+            method: true,
+            headers: false, // CRITICAL: Ignore headers for LLM calls
+            body: true,
+            order: false,
+            url: true,
+          },
+        });
     });
   }
 
@@ -299,7 +325,7 @@ class PollyManager {
         },
         keepUnusedRequests: true, // CRITICAL: Keep entries from previous nodes
       },
-      recordIfMissing: !process.env.CI,
+      recordIfMissing: true,
       matchRequestsBy: {
         method: true,
         headers: false,
@@ -308,10 +334,11 @@ class PollyManager {
         order: false,
         url: true,
       },
-      recordFailedRequests: false,
+      recordFailedRequests: true,
       logLevel: "silent",
     });
     PollyManager.configurePassthroughs();
+    PollyManager.configureLlms();
     PollyManager.configureRequestLogging();
     PollyManager.configureHeaders();
 

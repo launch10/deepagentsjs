@@ -104,6 +104,103 @@ paths:
           description: cannot access another account's project
         '401':
           description: unauthorized - invalid token
+  "/api/v1/app_events":
+    post:
+      summary: Creates an internal app event
+      tags:
+      - App Events
+      parameters:
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '202':
+          description: event accepted without optional fields
+        '422':
+          description: rejects missing event_name
+        '401':
+          description: unauthorized - missing signature
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event_name:
+                  type: string
+                  description: Name of the event to track
+                user_id:
+                  type: integer
+                  description: User ID
+                  nullable: true
+                project_id:
+                  type: integer
+                  description: Project ID
+                  nullable: true
+                properties:
+                  type: object
+                  additionalProperties: true
+                  description: Additional event properties
+                  nullable: true
+              required:
+              - event_name
+  "/api/v1/credit_packs/{credit_pack_id}/checkout":
+    post:
+      summary: Creates a Stripe checkout session for a credit pack
+      tags:
+      - Credit Packs
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: credit_pack_id
+        in: path
+        required: true
+        description: Credit pack ID
+        schema:
+          type: integer
+      - name: Authorization
+        in: header
+        required: true
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: returns checkout session client secret
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  client_secret:
+                    type: string
+                    description: Stripe checkout session client secret
+                required:
+                - client_secret
+        '401':
+          description: unauthorized - missing token
+        '403':
+          description: forbidden - no active subscription
+        '404':
+          description: credit pack not found
+        '422':
+          description: credit pack has no Stripe price
   "/api/v1/credits/check":
     get:
       summary: Checks account credit balance
@@ -2745,8 +2842,6 @@ paths:
         schema:
           type: string
       responses:
-        '403':
-          description: thread exists but belongs to different account - invalid
         '200':
           description: thread exists and belongs to current account - valid
           content:
@@ -2771,6 +2866,8 @@ paths:
                 required:
                 - valid
                 - exists
+        '403':
+          description: thread exists but belongs to different account - invalid
         '422':
           description: missing thread_id
         '401':
@@ -3570,6 +3667,184 @@ paths:
         '401':
           description: unauthorized without token
   "/api/v1/deploys":
+    get:
+      summary: Lists paginated deploys for a project
+      tags:
+      - Deploys
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: project_id
+        in: query
+        required: true
+        description: Project ID
+        schema:
+          type: integer
+      - name: page
+        in: query
+        required: false
+        description: Page number (default 1)
+        schema:
+          type: integer
+      - name: status
+        in: query
+        required: false
+        description: Filter by status (completed, failed, running)
+        schema:
+          type: string
+      - name: deploy_type
+        in: query
+        required: false
+        description: Filter by deploy type (website, campaign)
+        schema:
+          type: string
+      responses:
+        '200':
+          description: filters by status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deploys:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                          description: Unique identifier
+                        project_id:
+                          type: integer
+                          description: Unique identifier
+                        status:
+                          type: string
+                          description: Deploy status (pending, running, completed,
+                            failed)
+                        current_step:
+                          type: string
+                          nullable: true
+                          description: Current deploy step
+                        is_live:
+                          type: boolean
+                          description: Whether the deploy is live
+                        thread_id:
+                          type: string
+                          nullable: true
+                          description: Langgraph thread ID
+                        deploy_type:
+                          type: string
+                          enum:
+                          - website
+                          - campaign
+                          description: Type of deploy (website or campaign)
+                        instructions:
+                          type: object
+                          additionalProperties:
+                            type: boolean
+                          description: Deploy instruction flags
+                        support_ticket:
+                          type: string
+                          nullable: true
+                          description: Support ticket reference (SR-XXXXXXXX)
+                        finished_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+                          description: When the deploy finished
+                        duration:
+                          type:
+                          - number
+                          - 'null'
+                          description: Deploy duration in seconds
+                        revertible:
+                          type: boolean
+                          description: Whether this deploy can be rolled back
+                        website_deploy_status:
+                          type: string
+                          nullable: true
+                          description: Status of the linked website deploy
+                        created_at:
+                          type: string
+                          format: date-time
+                          description: Timestamp
+                        updated_at:
+                          type: string
+                          format: date-time
+                          description: Timestamp
+                      required:
+                      - id
+                      - project_id
+                      - status
+                      - is_live
+                      - deploy_type
+                      - created_at
+                      - updated_at
+                  pagination:
+                    type: object
+                    properties:
+                      current_page:
+                        type: integer
+                        description: Current page number
+                      total_pages:
+                        type: integer
+                        description: Total number of pages
+                      total_count:
+                        type: integer
+                        description: Total number of items
+                      prev_page:
+                        type:
+                        - integer
+                        - 'null'
+                        description: Previous page number or null
+                      next_page:
+                        type:
+                        - integer
+                        - 'null'
+                        description: Next page number or null
+                      from:
+                        type:
+                        - integer
+                        - 'null'
+                        description: First item index on current page
+                      to:
+                        type:
+                        - integer
+                        - 'null'
+                        description: Last item index on current page
+                      series:
+                        type: array
+                        items:
+                          oneOf:
+                          - type: integer
+                          - type: string
+                        description: Page series for pagination controls
+                    required:
+                    - current_page
+                    - total_pages
+                    - total_count
+                required:
+                - deploys
+                - pagination
+        '401':
+          description: unauthorized
+        '404':
+          description: project not found
     post:
       summary: Creates a deploy
       tags:
@@ -3595,6 +3870,82 @@ paths:
       responses:
         '201':
           description: deploy created increments deploy count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  project_id:
+                    type: integer
+                    description: Unique identifier
+                  status:
+                    type: string
+                    description: Deploy status (pending, running, completed, failed)
+                  current_step:
+                    type: string
+                    nullable: true
+                    description: Current deploy step
+                  is_live:
+                    type: boolean
+                    description: Whether the deploy is live
+                  thread_id:
+                    type: string
+                    nullable: true
+                    description: Langgraph thread ID
+                  deploy_type:
+                    type: string
+                    enum:
+                    - website
+                    - campaign
+                    description: Type of deploy (website or campaign)
+                  instructions:
+                    type: object
+                    additionalProperties:
+                      type: boolean
+                    description: Deploy instruction flags
+                  support_ticket:
+                    type: string
+                    nullable: true
+                    description: Support ticket reference (SR-XXXXXXXX)
+                  finished_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                    description: When the deploy finished
+                  duration:
+                    type:
+                    - number
+                    - 'null'
+                    description: Deploy duration in seconds
+                  revertible:
+                    type: boolean
+                    description: Whether this deploy can be rolled back
+                  website_deploy_status:
+                    type: string
+                    nullable: true
+                    description: Status of the linked website deploy
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - project_id
+                - status
+                - is_live
+                - deploy_type
+                - created_at
+                - updated_at
+        '200':
+          description: returns existing in-progress deploy instead of creating new
+            one
         '404':
           description: project not found
         '401':
@@ -3607,6 +3958,10 @@ paths:
               properties:
                 project_id:
                   type: integer
+                  description: Project ID to create the deploy for
+                thread_id:
+                  type: string
+                  description: Thread ID from Langgraph
               required:
               - project_id
   "/api/v1/deploys/{id}":
@@ -3642,6 +3997,79 @@ paths:
       responses:
         '200':
           description: deploy found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  project_id:
+                    type: integer
+                    description: Unique identifier
+                  status:
+                    type: string
+                    description: Deploy status (pending, running, completed, failed)
+                  current_step:
+                    type: string
+                    nullable: true
+                    description: Current deploy step
+                  is_live:
+                    type: boolean
+                    description: Whether the deploy is live
+                  thread_id:
+                    type: string
+                    nullable: true
+                    description: Langgraph thread ID
+                  deploy_type:
+                    type: string
+                    enum:
+                    - website
+                    - campaign
+                    description: Type of deploy (website or campaign)
+                  instructions:
+                    type: object
+                    additionalProperties:
+                      type: boolean
+                    description: Deploy instruction flags
+                  support_ticket:
+                    type: string
+                    nullable: true
+                    description: Support ticket reference (SR-XXXXXXXX)
+                  finished_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                    description: When the deploy finished
+                  duration:
+                    type:
+                    - number
+                    - 'null'
+                    description: Deploy duration in seconds
+                  revertible:
+                    type: boolean
+                    description: Whether this deploy can be rolled back
+                  website_deploy_status:
+                    type: string
+                    nullable: true
+                    description: Status of the linked website deploy
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - project_id
+                - status
+                - is_live
+                - deploy_type
+                - created_at
+                - updated_at
         '404':
           description: cannot access deploy from different account
     patch:
@@ -3669,6 +4097,79 @@ paths:
       responses:
         '200':
           description: deploy marked as live
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  project_id:
+                    type: integer
+                    description: Unique identifier
+                  status:
+                    type: string
+                    description: Deploy status (pending, running, completed, failed)
+                  current_step:
+                    type: string
+                    nullable: true
+                    description: Current deploy step
+                  is_live:
+                    type: boolean
+                    description: Whether the deploy is live
+                  thread_id:
+                    type: string
+                    nullable: true
+                    description: Langgraph thread ID
+                  deploy_type:
+                    type: string
+                    enum:
+                    - website
+                    - campaign
+                    description: Type of deploy (website or campaign)
+                  instructions:
+                    type: object
+                    additionalProperties:
+                      type: boolean
+                    description: Deploy instruction flags
+                  support_ticket:
+                    type: string
+                    nullable: true
+                    description: Support ticket reference (SR-XXXXXXXX)
+                  finished_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                    description: When the deploy finished
+                  duration:
+                    type:
+                    - number
+                    - 'null'
+                    description: Deploy duration in seconds
+                  revertible:
+                    type: boolean
+                    description: Whether this deploy can be rolled back
+                  website_deploy_status:
+                    type: string
+                    nullable: true
+                    description: Status of the linked website deploy
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - id
+                - project_id
+                - status
+                - is_live
+                - deploy_type
+                - created_at
+                - updated_at
       requestBody:
         content:
           application/json:
@@ -3683,6 +4184,97 @@ paths:
                   type: boolean
                 langgraph_thread_id:
                   type: string
+  "/api/v1/deploys/deactivate":
+    post:
+      summary: Deactivates the active deploy for a project
+      tags:
+      - Deploys
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: succeeds even with no active deploy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required:
+                - success
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                project_id:
+                  type: integer
+              required:
+              - project_id
+  "/api/v1/deploys/{id}/rollback":
+    parameters:
+    - name: id
+      in: path
+      description: Deploy ID
+      required: true
+      schema:
+        type: integer
+    post:
+      summary: Rolls back a deploy
+      tags:
+      - Deploys
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: deploy rolled back
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required:
+                - success
+        '422':
+          description: non-revertible deploy
+        '404':
+          description: deploy not found
   "/api/v1/deploys/{id}/touch":
     parameters:
     - name: id
@@ -3716,6 +4308,17 @@ paths:
       responses:
         '200':
           description: user activity updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  touched_at:
+                    type: string
+                    format: date-time
+                    description: Timestamp
+                required:
+                - touched_at
         '404':
           description: cannot touch deploy from different account
   "/api/v1/geo_target_constants":
@@ -3788,9 +4391,9 @@ paths:
                   - status
         '401':
           description: unauthorized without token
-  "/api/v1/google/connection_status":
+  "/api/v1/google/status":
     get:
-      summary: Returns Google OAuth connection status
+      summary: Returns unified Google onboarding status
       tags:
       - Google
       security:
@@ -3813,12 +4416,46 @@ paths:
           type: string
       responses:
         '200':
-          description: returns connection status when connected
+          description: returns status with pending invite and billing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  google_connected:
+                    type: boolean
+                    description: Whether the account has connected Google OAuth
+                  google_email:
+                    type: string
+                    nullable: true
+                    description: The connected Google email address
+                  invite_accepted:
+                    type: boolean
+                    description: Whether the Google Ads invite has been accepted
+                  invite_status:
+                    type: string
+                    description: Current invite status (none, pending, accepted)
+                  invite_email:
+                    type: string
+                    nullable: true
+                    description: The invited email address
+                  has_payment:
+                    type: boolean
+                    description: Whether Google Ads billing is enabled
+                  billing_status:
+                    type: string
+                    description: Current billing status (none, pending, approved)
+                required:
+                - google_connected
+                - invite_accepted
+                - has_payment
+                - invite_status
+                - billing_status
         '401':
           description: unauthorized
-  "/api/v1/google/invite_status":
-    get:
-      summary: Returns Google Ads invite status
+  "/api/v1/google/refresh_invite_status":
+    post:
+      summary: Live-refreshes Google Ads invite status
       tags:
       - Google
       security:
@@ -3841,37 +4478,35 @@ paths:
           type: string
       responses:
         '200':
-          description: returns invite status when invite is accepted
+          description: enqueues PollInviteAcceptanceWorker when not yet accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accepted:
+                    type: boolean
+                    description: Whether the Google Ads invite has been accepted
+                  status:
+                    type: string
+                    description: Current invite status (none, pending, accepted)
+                  email:
+                    type: string
+                    nullable: true
+                    description: The invited email address
+                required:
+                - accepted
+                - status
         '401':
           description: unauthorized
-  "/api/v1/google/payment_status":
-    get:
-      summary: Returns Google Ads payment/billing status
-      tags:
-      - Google
-      security:
-      - bearer_auth: []
-      parameters:
-      - name: Authorization
-        in: header
-        required: false
-        schema:
-          type: string
-      - name: X-Signature
-        in: header
-        required: false
-        schema:
-          type: string
-      - name: X-Timestamp
-        in: header
-        required: false
-        schema:
-          type: string
-      responses:
-        '200':
-          description: returns payment status when billing is approved
-        '401':
-          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                job_run_id:
+                  type: integer
   "/api/v1/job_runs":
     post:
       summary: Creates job run scoped to requesting account
@@ -3975,6 +4610,66 @@ paths:
               - job_class
               - arguments
               - thread_id
+  "/api/v1/job_runs/{id}":
+    get:
+      summary: Returns job run status and result
+      tags:
+      - Job Runs
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: returns error for failed job run
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  status:
+                    type: string
+                    enum:
+                    - pending
+                    - running
+                    - completed
+                    - failed
+                    description: Current status of the job run
+                  result:
+                    type: object
+                    nullable: true
+                    description: Result data from the completed job
+                  error:
+                    type: string
+                    nullable: true
+                    description: Error message if the job failed
+                required:
+                - id
+                - status
+        '404':
+          description: cannot access other accounts job run
   "/api/v1/leads":
     post:
       summary: Creates a lead signup from a deployed landing page
@@ -4043,7 +4738,7 @@ paths:
                 required:
                 - error
         '422':
-          description: name too long returns validation error
+          description: phone too long returns validation error
           content:
             application/json:
               schema:
@@ -4074,6 +4769,11 @@ paths:
                   maxLength: 255
                   nullable: true
                   description: Optional name of the person signing up
+                phone:
+                  type: string
+                  maxLength: 50
+                  nullable: true
+                  description: Optional phone number of the person signing up
               required:
               - email
         description: Lead signup data
@@ -5611,6 +6311,12 @@ paths:
         description: Filter by website
         schema:
           type: integer
+      - name: uuid
+        in: query
+        required: false
+        description: Filter by upload UUID
+        schema:
+          type: string
       - name: is_logo
         in: query
         required: false
@@ -5693,6 +6399,110 @@ paths:
         '404':
           description: website not found when filtering
   "/api/v1/uploads/{id}":
+    patch:
+      summary: Updates an upload
+      tags:
+      - Uploads
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: Authorization
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Signature
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: X-Timestamp
+        in: header
+        required: false
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        description: Upload ID
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: marks as logo and associates with website in one call
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Unique identifier
+                  uuid:
+                    type: string
+                    description: Upload UUID
+                  url:
+                    type: string
+                    description: Full size file URL
+                  thumb_url:
+                    type: string
+                    nullable: true
+                    description: Thumbnail URL (images only)
+                  medium_url:
+                    type: string
+                    nullable: true
+                    description: Medium size URL (images only)
+                  favicon_url:
+                    type: string
+                    nullable: true
+                    description: Favicon URL (32x32 ICO, logos only)
+                  media_type:
+                    type: string
+                    enum:
+                    - image
+                    - video
+                    - document
+                    description: Media type
+                  is_logo:
+                    type: boolean
+                    description: Whether this upload is a logo
+                  filename:
+                    type: string
+                    description: Original filename
+                  created_at:
+                    type: string
+                    format: date-time
+                    description: Creation timestamp
+                  updated_at:
+                    type: string
+                    format: date-time
+                    description: Last update timestamp
+                required:
+                - id
+                - uuid
+                - url
+                - media_type
+                - is_logo
+                - filename
+                - created_at
+                - updated_at
+        '404':
+          description: website belongs to different account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                upload:
+                  type: object
+                  properties:
+                    is_logo:
+                      type: boolean
+                      description: Mark as logo
+                    website_id:
+                      type: integer
+                      description: Associate with website
     delete:
       summary: Deletes an upload
       tags:

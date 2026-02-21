@@ -178,15 +178,15 @@ describe("Node Core", () => {
     describe("Error Handling", () => {
       it("bubbles up errors by default", async () => {
         let nodeName: string | undefined;
-        let Rollbar = {
+        let SentryReporter = {
           log: (error: Error) => console.log(error),
           error: (error: Error) => console.warn(error),
         };
         let calls = { errorNode: 0, downStreamNode: 0 };
 
-        const rollbarSpy = vi.spyOn(Rollbar, "error");
+        const sentrySpy = vi.spyOn(SentryReporter, "error");
 
-        ErrorReporters.addReporter("console").addReporter("rollbar", Rollbar.error);
+        ErrorReporters.addReporter("console").addReporter("sentry", SentryReporter.error);
 
         const errorNode = NodeMiddleware.use(
           {},
@@ -227,24 +227,24 @@ describe("Node Core", () => {
         });
 
         // "console" reporter uses getLogger (structured logging), not console.error
-        // Verify rollbar reporter still receives the error
-        expect(rollbarSpy).toHaveBeenCalled();
-        expect(rollbarSpy).toHaveBeenCalledWith(expect.objectContaining({ message: "Test error" }));
+        // Verify sentry reporter still receives the error
+        expect(sentrySpy).toHaveBeenCalled();
+        expect(sentrySpy).toHaveBeenCalledWith(expect.objectContaining({ message: "Test error" }));
 
         expect(nodeName).toBe("errorNode");
       });
 
       it("throws when behavior is throw", async () => {
         let nodeName: string | undefined;
-        let Rollbar = {
+        let SentryReporter = {
           log: (error: Error) => console.log(error),
           error: (error: Error) => console.warn(error),
         };
         let calls = { errorNode: 0, downStreamNode: 0 };
 
-        const rollbarSpy = vi.spyOn(Rollbar, "error");
+        const sentrySpy = vi.spyOn(SentryReporter, "error");
 
-        ErrorReporters.addReporter("console").addReporter("rollbar", Rollbar.error);
+        ErrorReporters.addReporter("console").addReporter("sentry", SentryReporter.error);
 
         const errorNode = NodeMiddleware.use(
           { error: { behavior: "throw" } },
@@ -282,9 +282,9 @@ describe("Node Core", () => {
         });
 
         // "console" reporter uses getLogger (structured logging), not console.error
-        // Verify rollbar reporter still receives the error
-        expect(rollbarSpy).toHaveBeenCalled();
-        expect(rollbarSpy).toHaveBeenCalledWith(expect.objectContaining({ message: "Test error" }));
+        // Verify sentry reporter still receives the error
+        expect(sentrySpy).toHaveBeenCalled();
+        expect(sentrySpy).toHaveBeenCalledWith(expect.objectContaining({ message: "Test error" }));
 
         expect(nodeName).toBe("errorNode");
       });

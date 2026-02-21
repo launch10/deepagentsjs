@@ -1,0 +1,9 @@
+# Friend of the Pod
+> Curated podcast matchmaking that instantly pairs producers with eager, high‑quality guests.
+
+## Key Information
+- Target Audience: Podcast producers frustrated with cold‑emailing unresponsive guests
+- Value Proposition: Book relevant, engaged guests in days without any cold outreach
+
+## About
+- [Homepage](https://meeting-tool.launch10.site/)

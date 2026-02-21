@@ -1,5 +1,5 @@
 import type { ErrorHandler } from "hono";
-import { rollbar, getLogger } from "@core";
+import { sentry, getLogger } from "@core";
 import { env } from "@core";
 
 export const errorHandler: ErrorHandler = (err, c) => {
@@ -9,7 +9,7 @@ export const errorHandler: ErrorHandler = (err, c) => {
   const isProd = env.NODE_ENV === "production";
 
   if (isProd) {
-    rollbar.error(err);
+    sentry.error(err);
   }
 
   return c.json(

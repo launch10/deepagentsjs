@@ -7,7 +7,7 @@ describe("executeTextEditorCommand", () => {
   let backend: WebsiteFilesBackend;
 
   beforeEach(async () => {
-    await DatabaseSnapshotter.restoreSnapshot("website_step_finished");
+    await DatabaseSnapshotter.restoreSnapshot("website_deploy_step");
 
     const [website] = await db.select().from(websites).limit(1);
     if (!website?.name) throw new Error("No website found in snapshot");

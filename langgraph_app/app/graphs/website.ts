@@ -12,7 +12,6 @@ import { StateGraph, START, END } from "@langchain/langgraph";
 import { WebsiteAnnotation } from "@annotation";
 import {
   websiteBuilderNode,
-  compactConversationNode,
   afterAgentNode,
   improveCopyNode,
   domainRecommendationsNode,
@@ -47,12 +46,10 @@ const themeHandlerSubgraph = new StateGraph(WebsiteAnnotation)
 const improveCopySubgraph = new StateGraph(WebsiteAnnotation)
   .addNode("updateWebsite", updateWebsite)
   .addNode("improveCopy", improveCopyNode)
-  .addNode("compactConversation", compactConversationNode)
   .addNode("afterAgent", afterAgentNode)
   .addEdge(START, "updateWebsite")
   .addEdge("updateWebsite", "improveCopy")
-  .addEdge("improveCopy", "compactConversation")
-  .addEdge("compactConversation", "afterAgent")
+  .addEdge("improveCopy", "afterAgent")
   .addEdge("afterAgent", END)
   .compile();
 
@@ -62,8 +59,8 @@ const improveCopySubgraph = new StateGraph(WebsiteAnnotation)
  * - Both converge at afterAgent (or skipToEnd in cache mode)
  * - afterAgent handles: filesystem cleanup, DB sync, todos clear
  *
- * Context preparation (event fetching, injection, windowing) happens inside
- * websiteBuilder via prepareTurn — no separate context node needed.
+ * Context preparation (event fetching, injection, windowing) and compaction
+ * happen inside websiteBuilder via Conversation.start() — no separate nodes needed.
  */
 const routeFromRecommendDomains = (state: { messages?: unknown[] }): string => {
   if (isCacheModeEnabled(state)) {
@@ -75,7 +72,6 @@ const routeFromRecommendDomains = (state: { messages?: unknown[] }): string => {
 const websiteBuilderSubgraph = new StateGraph(WebsiteAnnotation)
   .addNode("updateWebsite", updateWebsite)
   .addNode("websiteBuilder", websiteBuilderNode)
-  .addNode("compactConversation", compactConversationNode)
   .addNode("recommendDomains", domainRecommendationsNode)
   .addNode("afterAgent", afterAgentNode)
   .addNode("skipToEnd", () => ({})) // No-op node for cache mode domain recs path
@@ -85,9 +81,8 @@ const websiteBuilderSubgraph = new StateGraph(WebsiteAnnotation)
   .addEdge("updateWebsite", "websiteBuilder")
   .addEdge("updateWebsite", "recommendDomains")
 
-  // websiteBuilder → compactConversation → afterAgent
-  .addEdge("websiteBuilder", "compactConversation")
-  .addEdge("compactConversation", "afterAgent")
+  // websiteBuilder → afterAgent (compaction now happens inside websiteBuilder via Conversation.start)
+  .addEdge("websiteBuilder", "afterAgent")
 
   // recommendDomains routes based on mode
   .addConditionalEdges("recommendDomains", routeFromRecommendDomains, {

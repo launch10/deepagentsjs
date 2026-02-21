@@ -23,7 +23,7 @@ vi.mock("@services", async () => {
 import {
   googleConnectNode,
   isGoogleConnected,
-  googleConnectTaskRunner as taskRunner
+  googleConnectTaskRunner as taskRunner,
 } from "@nodes";
 import { JobRunAPIService } from "@rails_api";
 import { GoogleAPIService } from "@services";
@@ -46,10 +46,15 @@ describe("googleConnectNode", () => {
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getConnectionStatus: vi.fn().mockResolvedValue({ connected: false, email: null }),
-          getInviteStatus: vi
-            .fn()
-            .mockResolvedValue({ accepted: false, status: "none", email: null }),
+          getGoogleStatus: vi.fn().mockResolvedValue({
+            google_connected: false,
+            google_email: null,
+            invite_accepted: false,
+            invite_status: "none",
+            invite_email: null,
+            has_payment: false,
+            billing_status: "none",
+          }),
         }) as any
     );
   });
@@ -342,10 +347,15 @@ describe("isGoogleConnected", () => {
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getConnectionStatus: vi.fn().mockResolvedValue({ connected: false, email: null }),
-          getInviteStatus: vi
-            .fn()
-            .mockResolvedValue({ accepted: false, status: "none", email: null }),
+          getGoogleStatus: vi.fn().mockResolvedValue({
+            google_connected: false,
+            google_email: null,
+            invite_accepted: false,
+            invite_status: "none",
+            invite_email: null,
+            has_payment: false,
+            billing_status: "none",
+          }),
         }) as any
     );
   });
@@ -354,11 +364,19 @@ describe("isGoogleConnected", () => {
   // The function only checks external state (API call)
 
   it("calls GoogleAPIService to check connection status", async () => {
-    const mockGetStatus = vi.fn().mockResolvedValue({ connected: true, email: "user@gmail.com" });
+    const mockGetStatus = vi.fn().mockResolvedValue({
+      google_connected: true,
+      google_email: "user@gmail.com",
+      invite_accepted: false,
+      invite_status: "none",
+      invite_email: null,
+      has_payment: false,
+      billing_status: "none",
+    });
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getConnectionStatus: mockGetStatus,
+          getGoogleStatus: mockGetStatus,
         }) as any
     );
 
@@ -375,11 +393,19 @@ describe("isGoogleConnected", () => {
   });
 
   it("returns false when API says not connected", async () => {
-    const mockGetStatus = vi.fn().mockResolvedValue({ connected: false, email: null });
+    const mockGetStatus = vi.fn().mockResolvedValue({
+      google_connected: false,
+      google_email: null,
+      invite_accepted: false,
+      invite_status: "none",
+      invite_email: null,
+      has_payment: false,
+      billing_status: "none",
+    });
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getConnectionStatus: mockGetStatus,
+          getGoogleStatus: mockGetStatus,
         }) as any
     );
 
@@ -409,7 +435,7 @@ describe("isGoogleConnected", () => {
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getConnectionStatus: mockGetStatus,
+          getGoogleStatus: mockGetStatus,
         }) as any
     );
 
@@ -422,11 +448,19 @@ describe("isGoogleConnected", () => {
   });
 
   it("checks API even when task exists but not completed", async () => {
-    const mockGetStatus = vi.fn().mockResolvedValue({ connected: true, email: "user@gmail.com" });
+    const mockGetStatus = vi.fn().mockResolvedValue({
+      google_connected: true,
+      google_email: "user@gmail.com",
+      invite_accepted: false,
+      invite_status: "none",
+      invite_email: null,
+      has_payment: false,
+      billing_status: "none",
+    });
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getConnectionStatus: mockGetStatus,
+          getGoogleStatus: mockGetStatus,
         }) as any
     );
 
@@ -449,20 +483,33 @@ describe("shouldSkipGoogleConnect", () => {
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getConnectionStatus: vi.fn().mockResolvedValue({ connected: false, email: null }),
-          getInviteStatus: vi
-            .fn()
-            .mockResolvedValue({ accepted: false, status: "none", email: null }),
+          getGoogleStatus: vi.fn().mockResolvedValue({
+            google_connected: false,
+            google_email: null,
+            invite_accepted: false,
+            invite_status: "none",
+            invite_email: null,
+            has_payment: false,
+            billing_status: "none",
+          }),
         }) as any
     );
   });
 
   it("returns true when Google is connected", async () => {
-    const mockGetStatus = vi.fn().mockResolvedValue({ connected: true, email: "user@gmail.com" });
+    const mockGetStatus = vi.fn().mockResolvedValue({
+      google_connected: true,
+      google_email: "user@gmail.com",
+      invite_accepted: false,
+      invite_status: "none",
+      invite_email: null,
+      has_payment: false,
+      billing_status: "none",
+    });
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getConnectionStatus: mockGetStatus,
+          getGoogleStatus: mockGetStatus,
         }) as any
     );
 
@@ -476,18 +523,26 @@ describe("shouldSkipGoogleConnect", () => {
   });
 
   it("returns false when Google is not connected", async () => {
-    const mockGetStatus = vi.fn().mockResolvedValue({ connected: false, email: null });
+    const mockGetStatus = vi.fn().mockResolvedValue({
+      google_connected: false,
+      google_email: null,
+      invite_accepted: false,
+      invite_status: "none",
+      invite_email: null,
+      has_payment: false,
+      billing_status: "none",
+    });
     mockGoogleAPIService.mockImplementation(
       () =>
         ({
-          getConnectionStatus: mockGetStatus,
+          getGoogleStatus: mockGetStatus,
         }) as any
     );
 
     const state: Partial<DeployGraphState> = {
       jwt: "test-jwt",
       tasks: [],
-      deploy: { googleAds: true }, // Must deploy Google Ads to not skip
+      instructions: { googleAds: true }, // Must deploy Google Ads to not skip
     };
 
     const result = await taskRunner.shouldSkip(state as DeployGraphState);

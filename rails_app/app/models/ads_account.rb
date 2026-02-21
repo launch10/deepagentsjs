@@ -100,7 +100,7 @@ class AdsAccount < ApplicationRecord
     invitations.where(platform: "google").order(id: :desc).first
   end
 
-  def send_google_ads_invitation_email(access_role: :STANDARD, force: false)
+  def send_google_ads_invitation_email(access_role: :ADMIN, force: false)
     raise "Google Ads account must have a google_customer_id" unless google_customer_id.present?
     raise "Account must have a connected Google account" unless account.google_email_address.present?
 

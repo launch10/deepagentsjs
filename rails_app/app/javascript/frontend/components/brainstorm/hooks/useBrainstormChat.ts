@@ -1,5 +1,5 @@
 import { usePage, router } from "@inertiajs/react";
-import { useMemo, useCallback, useEffect } from "react";
+import { useMemo, useCallback, useEffect, useRef } from "react";
 import type { UIMessage } from "ai";
 import {
   type ChatSnapshot,
@@ -142,8 +142,44 @@ export function useBrainstormChat(): LanggraphChat<UIMessage, BrainstormGraphSta
   const options = useBrainstormChatOptions();
   const chat = useLanggraph(options, (s) => s.chat);
   syncBrainstormToStore();
+  useBrainstormEmptyHistoryRecovery();
 
   return chat;
+}
+
+const BRAINSTORM_GREETING =
+  "Let's brainstorm your next big idea. Tell me about the business or product you're working on — what problem does it solve, and who is it for?";
+
+/**
+ * Self-recovery hook: when history finishes loading but yields zero messages
+ * (e.g. thread exists but has no checkpoints), inject a default AI greeting
+ * so downstream components render normally.
+ */
+function useBrainstormEmptyHistoryRecovery() {
+  const isLoadingHistory = useBrainstormSelector((s) => s.isLoadingHistory);
+  const messageCount = useBrainstormSelector((s) => s.messages.length);
+  const threadId = useBrainstormSelector((s) => s.threadId);
+  const setMessages = useBrainstormSelector((s) => s.setMessages);
+  const recoveredRef = useRef(false);
+
+  useEffect(() => {
+    if (!isLoadingHistory && messageCount === 0 && threadId && !recoveredRef.current) {
+      recoveredRef.current = true;
+      setMessages([
+        {
+          id: "brainstorm-greeting",
+          role: "assistant" as const,
+          parts: [
+            {
+              type: "data-content-block-text",
+              id: "brainstorm-greeting-text",
+              data: { text: BRAINSTORM_GREETING, index: 0 },
+            },
+          ],
+        } as any,
+      ]);
+    }
+  }, [isLoadingHistory, messageCount, threadId, setMessages]);
 }
 
 export const useBrainstormSelector = <TSelected>(

@@ -28,7 +28,7 @@ export class BrainstormNextStepsService {
       memories: memories as Brainstorm.MemoriesType,
       currentTopic: currentTopic as Brainstorm.TopicName,
       remainingTopics: remainingTopics as Brainstorm.TopicName[],
-      availableCommands: topic?.availableCommands || [],
+      availableIntents: topic?.availableIntents || [],
       placeholderText: topic?.placeholderText,
     };
   }

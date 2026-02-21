@@ -6,9 +6,9 @@
  */
 
 // Graph APIs
-export { BrainstormAPI, BrainstormBridge } from "./brainstorm";
+export { BrainstormAPI } from "./brainstorm";
 export { WebsiteAPI, WebsiteBridge } from "./website";
-export { AdsAPI, AdsBridge } from "./ads";
+export { AdsAPI, AdsBridge, compiledAdsGraph } from "./ads";
 export { DeployAPI, DeployBridge } from "./deploy";
 export { InsightsAPI } from "./insights";
 export { SupportAPI } from "./support";

@@ -5,6 +5,7 @@
 #  id                  :bigint           not null, primary key
 #  completed_at        :datetime
 #  error_message       :text
+#  error_type          :string
 #  job_args            :jsonb
 #  job_class           :string           not null
 #  result_data         :jsonb
@@ -20,6 +21,7 @@
 #
 #  index_job_runs_on_account_id            (account_id)
 #  index_job_runs_on_deploy_id             (deploy_id)
+#  index_job_runs_on_error_type            (error_type)
 #  index_job_runs_on_job_class             (job_class)
 #  index_job_runs_on_job_class_and_status  (job_class,status)
 #  index_job_runs_on_langgraph_thread_id   (langgraph_thread_id)

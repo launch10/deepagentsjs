@@ -121,15 +121,8 @@ export default function HeaderUser({ className, headerClassName }: HeaderUserPro
               <button
                 onClick={() => {
                   setOpen(false);
-                  const csrfToken = document
-                    .querySelector('meta[name="csrf-token"]')
-                    ?.getAttribute("content");
-                  fetch("/users/sign_out", {
-                    method: "DELETE",
-                    headers: { "X-CSRF-Token": csrfToken || "" },
-                    credentials: "same-origin",
-                  }).then(() => {
-                    window.location.replace("/users/sign_in");
+                  router.delete("/users/sign_out", {
+                    onFinish: () => window.location.replace("/users/sign_in"),
                   });
                 }}
                 className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm text-[#2E3238] transition-colors hover:bg-[#F0EFEE] cursor-pointer text-left"

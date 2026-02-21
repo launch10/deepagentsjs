@@ -93,6 +93,15 @@ RSpec.describe Credits::AllocatePackCreditsWorker do
       end
     end
 
+    it "tracks credit_pack_purchased" do
+      expect(TrackEvent).to receive(:call).with("credit_pack_purchased",
+        hash_including(
+          pack_credits: credit_pack.credits,
+          pack_price_cents: charge.amount
+        ))
+      worker.perform(charge.id, credit_pack.id)
+    end
+
     context "with existing pack credits" do
       before do
         # Create proper transaction history to establish balances (500 credits = 500,000 millicredits)

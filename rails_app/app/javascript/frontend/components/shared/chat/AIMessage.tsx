@@ -17,10 +17,10 @@ import type { ReactNode } from "react";
 //     <Chat.AIMessage.Content>{text}</Chat.AIMessage.Content>
 //   </Chat.AIMessage.Bubble>
 //
-// With custom content and commands:
+// With custom content and intent buttons:
 //   <Chat.AIMessage.Root>
 //     <Chat.BlockRenderer blocks={blocks} renderStructured={...} />
-//     <Chat.CommandButtons.Root>...</Chat.CommandButtons.Root>
+//     <Chat.IntentButtons.Root>...</Chat.IntentButtons.Root>
 //   </Chat.AIMessage.Root>
 // ============================================================================
 
@@ -32,11 +32,7 @@ export interface AIMessageRootProps {
 
 function Root({ children, className }: AIMessageRootProps) {
   return (
-    <div
-      data-testid="ai-message"
-      data-role="assistant"
-      className={twMerge("space-y-3", className)}
-    >
+    <div data-testid="ai-message" data-role="assistant" className={twMerge("space-y-3", className)}>
       {children}
     </div>
   );

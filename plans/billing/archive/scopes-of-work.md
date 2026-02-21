@@ -291,7 +291,7 @@ The billing system spans 5 plan documents with significant overlap. This documen
    - `after_commit on: :update` → renewal, plan change, cancel
    - Enqueue ResetPlanCreditsWorker with idempotency key
 
-3. **Credits::DailyReconciliationWorker**
+3. **Credits::AnnualSubscriberMonthlyAllocationWorker**
    - For yearly subscribers (monthly reset, no Stripe event)
    - Query accounts needing monthly reset
    - Enqueue ResetPlanCreditsWorker
@@ -533,6 +533,7 @@ Inject `usagePercent` into `getLLM()` calls before graph execution, enabling mod
 ### Current State Analysis
 
 **What's Already Done (Scope 6 Full)**:
+
 - `usageTracker.ts` ✅ - Captures clean message traces with deduplication
 - `persistTrace.ts` ✅ - Writes traces to `llm_conversation_traces`
 - `persistUsage.ts` ✅ - Writes usage to `llm_usage`
@@ -542,6 +543,7 @@ Inject `usagePercent` into `getLLM()` calls before graph execution, enabling mod
 
 **The Gap**:
 `getLLM()` accepts `usagePercent` (line 59: `const usagePercent = options.usagePercent ?? 0`) but **nothing passes it**:
+
 - All callers use default value of 0
 - No pre-graph hook fetches account balance from Rails
 - No mechanism injects usagePercent into graph state or LLM calls
@@ -550,12 +552,13 @@ Inject `usagePercent` into `getLLM()` calls before graph execution, enabling mod
 
 Two approaches were considered:
 
-| Approach | Pros | Cons |
-|----------|------|------|
-| **A: State-based** - Add `usagePercentage` to CoreGraphState, set via pre-graph hook | Explicit, visible in state | Requires updating every node that calls getLLM |
-| **B: AsyncLocalStorage-based** - Store in existing UsageContext | Transparent to nodes, no changes needed | Less visible ("magic") |
+| Approach                                                                             | Pros                                    | Cons                                           |
+| ------------------------------------------------------------------------------------ | --------------------------------------- | ---------------------------------------------- |
+| **A: State-based** - Add `usagePercentage` to CoreGraphState, set via pre-graph hook | Explicit, visible in state              | Requires updating every node that calls getLLM |
+| **B: AsyncLocalStorage-based** - Store in existing UsageContext                      | Transparent to nodes, no changes needed | Less visible ("magic")                         |
 
 **Recommended: Option B** - aligns with existing AsyncLocalStorage pattern for usage tracking. This approach:
+
 1. Extends the existing `UsageContext` to include `usagePercent`
 2. Fetches account balance in `executeWithTracking()` before graph runs
 3. Sets usagePercent in context alongside threadId and accountId
@@ -565,12 +568,12 @@ This is transparent to all nodes - they don't need to know about usage percentag
 
 ### Model Selection Thresholds
 
-| Usage % | Available Models | maxTier |
-|---------|-----------------|---------|
-| 0-50%   | Opus, Sonnet, Haiku | undefined (all) |
-| 50-80%  | Sonnet, Haiku | 2 |
-| 80-100% | Haiku only | 3+ |
-| 100%+   | Blocked (unless pack credits) | N/A |
+| Usage % | Available Models              | maxTier         |
+| ------- | ----------------------------- | --------------- |
+| 0-50%   | Opus, Sonnet, Haiku           | undefined (all) |
+| 50-80%  | Sonnet, Haiku                 | 2               |
+| 80-100% | Haiku only                    | 3+              |
+| 100%+   | Blocked (unless pack credits) | N/A             |
 
 ### Deliverables
 
@@ -578,6 +581,7 @@ This is transparent to all nodes - they don't need to know about usage percentag
    - Returns: `{ total, plan, pack, usagePercentage }`
 
 2. **checkCredits.ts** (Langgraph)
+
    ```typescript
    interface CreditBalance {
      total: number;
@@ -586,9 +590,9 @@ This is transparent to all nodes - they don't need to know about usage percentag
      usagePercentage: number;
    }
 
-   export async function checkCreditBalance(accountId: number): Promise<CreditBalance>
-   export function canStartRun(balance: CreditBalance): boolean
-   export function getMaxTierForUsage(usagePercentage: number): number
+   export async function checkCreditBalance(accountId: number): Promise<CreditBalance>;
+   export function canStartRun(balance: CreditBalance): boolean;
+   export function getMaxTierForUsage(usagePercentage: number): number;
    ```
 
 3. **UsageContext extension**
@@ -604,17 +608,21 @@ This is transparent to all nodes - they don't need to know about usage percentag
 ### Files to Create
 
 **Rails**:
+
 - `rails_app/app/controllers/api/v1/credits_controller.rb`
 
 **Langgraph**:
+
 - `langgraph_app/app/core/billing/checkCredits.ts`
 
 ### Files to Modify
 
 **Rails**:
+
 - `rails_app/config/routes.rb` - Add route
 
 **Langgraph**:
+
 - `langgraph_app/app/core/billing/usageTracker.ts` - Add usagePercent to UsageContext
 - `langgraph_app/app/core/billing/executeWithTracking.ts` - Fetch balance, set usagePercent
 - `langgraph_app/app/core/llm/llm.ts` - Read usagePercent from context if not passed

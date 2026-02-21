@@ -19,22 +19,19 @@ test.describe("Brainstorm Flow", () => {
       await brainstormPage.expectChatInputReady();
     });
 
-    test("sends first message and updates URL with thread ID", async ({
-      page,
-    }) => {
+    test("sends first message and updates URL with thread ID", async ({ page }) => {
       await brainstormPage.goto();
 
       // Verify we're on the root URL (new brainstorm)
-      expect(page.url()).toMatch(/\/$/); // Root path
+      expect(page.url()).toMatch(/\/projects\/new$/); // Root path
 
       // Send a message
       await brainstormPage.sendMessage("I want to start a coffee subscription service");
 
       // Wait for the URL to update (silent URL replacement)
-      await page.waitForFunction(
-        () => window.location.href.includes("/projects/"),
-        { timeout: 10000 }
-      );
+      await page.waitForFunction(() => window.location.href.includes("/projects/"), {
+        timeout: 10000,
+      });
 
       // Verify URL now contains a thread ID
       const hasThreadId = await brainstormPage.hasThreadIdInUrl();
@@ -83,10 +80,9 @@ test.describe("Brainstorm Flow", () => {
       await brainstormPage.sendMessage("Test message for existing conversation");
 
       // Wait for URL to update
-      await page.waitForFunction(
-        () => window.location.href.includes("/projects/"),
-        { timeout: 10000 }
-      );
+      await page.waitForFunction(() => window.location.href.includes("/projects/"), {
+        timeout: 10000,
+      });
 
       // Wait for AI response (ensures project is created in Rails DB)
       await brainstormPage.waitForResponse();
@@ -145,10 +141,9 @@ test.describe("Brainstorm Flow", () => {
       await brainstormPage.chatInput.press("Enter");
 
       // Wait for URL to update (message was sent)
-      await page.waitForFunction(
-        () => window.location.href.includes("/projects/"),
-        { timeout: 10000 }
-      );
+      await page.waitForFunction(() => window.location.href.includes("/projects/"), {
+        timeout: 10000,
+      });
 
       // Verify message was sent
       const userMessageCount = await brainstormPage.getUserMessageCount();
@@ -182,16 +177,14 @@ test.describe("Brainstorm Flow", () => {
   });
 
   test.describe("Command Buttons", () => {
-    test("shows command buttons after AI response completes", async ({
-      page,
-    }) => {
+    test("shows command buttons after AI response completes", async ({ page }) => {
       await brainstormPage.goto();
 
       await brainstormPage.sendMessage("Generate marketing headlines");
       await brainstormPage.waitForResponse();
 
-      // Command buttons should appear
-      const buttonsVisible = await brainstormPage.areCommandButtonsVisible();
+      // Intent buttons should appear
+      const buttonsVisible = await brainstormPage.areIntentButtonsVisible();
       expect(buttonsVisible).toBe(true);
     });
   });
@@ -245,7 +238,9 @@ test.describe("Brainstorm Social Links", () => {
 
     // 2. Wait for conversation to be created
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
     await brainstormPage.waitForResponse();
@@ -295,14 +290,18 @@ test.describe("Brainstorm Social Links", () => {
     await expect(twitterInputAfter).toHaveValue("https://twitter.com/testcoffee");
   });
 
-  test("create Twitter link, reload, create Instagram link, reload, both links saved", async ({ page }) => {
+  test("create Twitter link, reload, create Instagram link, reload, both links saved", async ({
+    page,
+  }) => {
     // 1. Start on root route and create a conversation
     await brainstormPage.goto();
     await brainstormPage.sendMessage("I want to start a fitness coaching business");
 
     // 2. Wait for conversation
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
     await brainstormPage.waitForResponse();
@@ -324,7 +323,9 @@ test.describe("Brainstorm Social Links", () => {
     await page.waitForTimeout(1500); // Wait for debounced save
 
     // Verify saved
-    await expect(page.locator('[data-testid="social-links"] svg.text-green-500').first()).toBeVisible({ timeout: 5000 });
+    await expect(
+      page.locator('[data-testid="social-links"] svg.text-green-500').first()
+    ).toBeVisible({ timeout: 5000 });
 
     // 4. Reload the page
     await page.reload();
@@ -372,7 +373,9 @@ test.describe("Brainstorm Social Links", () => {
     await expect(instagramInputFinal).toHaveValue("https://instagram.com/fitcoach");
   });
 
-  test("social links available immediately after navigating from Landing to Conversation", async ({ page }) => {
+  test("social links available immediately after navigating from Landing to Conversation", async ({
+    page,
+  }) => {
     // This test verifies that after the URL changes via pushState (no full page reload),
     // the social links API can still be called because projectId is synced from Langgraph
 
@@ -387,7 +390,9 @@ test.describe("Brainstorm Social Links", () => {
 
     // 3. Wait for URL to update (pushState, not full navigation)
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
 
@@ -436,13 +441,17 @@ test.describe("Brainstorm Social Links", () => {
     await expect(youtubeInputAfter).toHaveValue("https://youtube.com/@podcastpro");
   });
 
-  test("navigating between two conversations shows correct social links for each", async ({ page }) => {
+  test("navigating between two conversations shows correct social links for each", async ({
+    page,
+  }) => {
     // 1. Create first conversation with Twitter link
     await brainstormPage.goto();
     await brainstormPage.sendMessage("First project: pet grooming service");
 
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
     await brainstormPage.waitForResponse();
@@ -471,7 +480,9 @@ test.describe("Brainstorm Social Links", () => {
     await brainstormPage.sendMessage("Second project: yoga studio");
 
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
     await brainstormPage.waitForResponse();
@@ -511,7 +522,9 @@ test.describe("Brainstorm Social Links", () => {
     );
 
     // Verify first project has Twitter but NOT Instagram
-    await expect(page.getByTestId("social-link-twitter")).toHaveValue("https://twitter.com/petgrooming");
+    await expect(page.getByTestId("social-link-twitter")).toHaveValue(
+      "https://twitter.com/petgrooming"
+    );
     await expect(page.getByTestId("social-link-instagram")).toHaveValue("");
 
     // 4. Navigate to second project
@@ -530,7 +543,9 @@ test.describe("Brainstorm Social Links", () => {
 
     // Verify second project has Instagram but NOT Twitter
     await expect(page.getByTestId("social-link-twitter")).toHaveValue("");
-    await expect(page.getByTestId("social-link-instagram")).toHaveValue("https://instagram.com/yogastudio");
+    await expect(page.getByTestId("social-link-instagram")).toHaveValue(
+      "https://instagram.com/yogastudio"
+    );
   });
 });
 
@@ -577,9 +592,7 @@ test.describe("Brainstorm Accessibility", () => {
     await brainstormPage.chatInput.focus();
 
     // Verify the input is focused
-    const focusedElement = await page.evaluate(
-      () => document.activeElement?.tagName
-    );
+    const focusedElement = await page.evaluate(() => document.activeElement?.tagName);
     // Input or textarea should be focusable
     expect(["INPUT", "TEXTAREA"]).toContain(focusedElement);
 
@@ -634,10 +647,9 @@ test.describe("Brainstorm URL Handling", () => {
     await brainstormPage.sendMessage("Navigate test");
 
     // Wait for URL update
-    await page.waitForFunction(
-      () => window.location.href.includes("/projects/"),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => window.location.href.includes("/projects/"), {
+      timeout: 10000,
+    });
 
     // Go back
     await page.goBack();
@@ -655,7 +667,9 @@ test.describe("Brainstorm URL Handling", () => {
     await brainstormPage.sendMessage("I want to start a graphic design agency");
 
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
     await brainstormPage.waitForResponse();
@@ -666,10 +680,9 @@ test.describe("Brainstorm URL Handling", () => {
     await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
     await brainstormPage.openBrandPanel();
 
-    await page.waitForFunction(
-      () => !document.querySelector('[data-slot="skeleton"]'),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => !document.querySelector('[data-slot="skeleton"]'), {
+      timeout: 10000,
+    });
 
     // Select a color palette
     await brainstormPage.selectColorPalette(0);
@@ -694,10 +707,9 @@ test.describe("Brainstorm URL Handling", () => {
     await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
     await brainstormPage.openBrandPanel();
 
-    await page.waitForFunction(
-      () => !document.querySelector('[data-slot="skeleton"]'),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => !document.querySelector('[data-slot="skeleton"]'), {
+      timeout: 10000,
+    });
 
     const selectedPaletteAfter = page.getByTestId(selectedPaletteTestId!);
     await expect(selectedPaletteAfter).toHaveAttribute("data-selected", "true");
@@ -709,7 +721,9 @@ test.describe("Brainstorm URL Handling", () => {
     await brainstormPage.sendMessage("I want to start a meal prep delivery service");
 
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
     await brainstormPage.waitForResponse();
@@ -808,7 +822,9 @@ test.describe("New Project Route (/projects/new)", () => {
 
     // Wait for URL to update
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
 
@@ -817,7 +833,9 @@ test.describe("New Project Route (/projects/new)", () => {
     expect(hasThreadId).toBe(true);
   });
 
-  test("unauthenticated user gets 404 (route scoped to authenticated users)", async ({ browser }) => {
+  test("unauthenticated user gets 404 (route scoped to authenticated users)", async ({
+    browser,
+  }) => {
     // Create new context without authentication
     const context = await browser.newContext();
     const page = await context.newPage();
@@ -848,9 +866,7 @@ test.describe("Brainstorm Help Sections", () => {
     await expect(brainstormPage.learnHowItWorksButton).toBeVisible();
   });
 
-  test("expands examples panel when clicking 'See examples of answers'", async ({
-    page,
-  }) => {
+  test("expands examples panel when clicking 'See examples of answers'", async ({ page }) => {
     await brainstormPage.goto();
 
     // Panel should not be expanded initially
@@ -882,9 +898,7 @@ test.describe("Brainstorm Help Sections", () => {
     await expect(brainstormPage.examplesPanel).toHaveAttribute("data-expanded", "false");
   });
 
-  test("expands 'How it works' panel when clicking 'Learn how it works'", async ({
-    page,
-  }) => {
+  test("expands 'How it works' panel when clicking 'Learn how it works'", async ({ page }) => {
     await brainstormPage.goto();
 
     // Panel should not be expanded initially
@@ -895,12 +909,8 @@ test.describe("Brainstorm Help Sections", () => {
 
     // Panel should now be expanded with steps
     await expect(brainstormPage.howItWorksPanel).toHaveAttribute("data-expanded", "true");
-    await expect(
-      page.locator("text=You tell us your big idea")
-    ).toBeVisible();
-    await expect(
-      page.locator("text=high-performing Google Ads campaign")
-    ).toBeVisible();
+    await expect(page.locator("text=You tell us your big idea")).toBeVisible();
+    await expect(page.locator("text=high-performing Google Ads campaign")).toBeVisible();
   });
 
   test("only one panel can be expanded at a time", async ({ page }) => {
@@ -933,9 +943,7 @@ test.describe("Brainstorm Help Sections", () => {
     await expect(brainstormPage.seeExamplesButton).toHaveClass(/underline/);
 
     // How it works should not be underlined
-    await expect(brainstormPage.learnHowItWorksButton).not.toHaveClass(
-      /underline/
-    );
+    await expect(brainstormPage.learnHowItWorksButton).not.toHaveClass(/underline/);
 
     // Switch to how it works
     await brainstormPage.learnHowItWorksButton.click();
@@ -978,9 +986,7 @@ test.describe("Brainstorm Color Palette", () => {
     brainstormPage = new BrainstormPage(page);
   });
 
-  test("auto-scrolls to page containing selected palette on reload", async ({
-    page,
-  }) => {
+  test("auto-scrolls to page containing selected palette on reload", async ({ page }) => {
     // Start a conversation to get access to the brand panel
     await brainstormPage.goto();
     await brainstormPage.sendMessage("Test message for color palette test");
@@ -1008,10 +1014,9 @@ test.describe("Brainstorm Color Palette", () => {
     await brainstormPage.openBrandPanel();
 
     // Wait for color palettes to load (not skeleton)
-    await page.waitForFunction(
-      () => !document.querySelector('[data-slot="skeleton"]'),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => !document.querySelector('[data-slot="skeleton"]'), {
+      timeout: 10000,
+    });
 
     // Get the pagination label to see how many pages we have
     const paginationLabel = page.getByTestId("color-pagination-label");
@@ -1048,10 +1053,9 @@ test.describe("Brainstorm Color Palette", () => {
       await brainstormPage.openBrandPanel();
 
       // Wait for palettes to load
-      await page.waitForFunction(
-        () => !document.querySelector('[data-slot="skeleton"]'),
-        { timeout: 10000 }
-      );
+      await page.waitForFunction(() => !document.querySelector('[data-slot="skeleton"]'), {
+        timeout: 10000,
+      });
 
       // Verify we're still on page 2 (not page 1)
       await expect(paginationLabel).toHaveText(/^2\//);
@@ -1095,10 +1099,9 @@ test.describe("Brainstorm Color Palette", () => {
     await brainstormPage.openBrandPanel();
 
     // Wait for color palettes to load (not skeleton)
-    await page.waitForFunction(
-      () => !document.querySelector('[data-slot="skeleton"]'),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => !document.querySelector('[data-slot="skeleton"]'), {
+      timeout: 10000,
+    });
 
     // Create a custom theme with distinctive colors
     const customColors = ["FF5733", "33FF57", "3357FF", "F3FF33", "FF33F3"];
@@ -1108,7 +1111,9 @@ test.describe("Brainstorm Color Palette", () => {
     await page.waitForTimeout(1000);
 
     // The custom theme should now be selected (UI navigates to page 1 after creation)
-    const selectedPaletteAfterCreate = page.locator('[data-testid^="color-palette-"][data-selected="true"]');
+    const selectedPaletteAfterCreate = page.locator(
+      '[data-testid^="color-palette-"][data-selected="true"]'
+    );
     await expect(selectedPaletteAfterCreate).toBeVisible({ timeout: 5000 });
 
     // --- PART 2: Verify persistence after reload ---
@@ -1122,10 +1127,9 @@ test.describe("Brainstorm Color Palette", () => {
     await brainstormPage.openBrandPanel();
 
     // Wait for color palettes to load
-    await page.waitForFunction(
-      () => !document.querySelector('[data-slot="skeleton"]'),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => !document.querySelector('[data-slot="skeleton"]'), {
+      timeout: 10000,
+    });
 
     // Verify a palette is selected (the custom theme should auto-scroll to its page)
     const selectedPalette = page.locator('[data-testid^="color-palette-"][data-selected="true"]');
@@ -1136,7 +1140,9 @@ test.describe("Brainstorm Color Palette", () => {
     expect(hasCustomColors).toBe(true);
   });
 
-  test("color palette selection persists immediately after pushState navigation", async ({ page }) => {
+  test("color palette selection persists immediately after pushState navigation", async ({
+    page,
+  }) => {
     // This tests that websiteId is available from Langgraph state for the update mutation
     // (no page reload required - pushState navigation from landing to conversation)
 
@@ -1145,7 +1151,9 @@ test.describe("Brainstorm Color Palette", () => {
     await brainstormPage.sendMessage("I want to start a photography business");
 
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
     await brainstormPage.waitForResponse();
@@ -1154,10 +1162,9 @@ test.describe("Brainstorm Color Palette", () => {
     await brainstormPage.brandPersonalizationPanel.waitFor({ state: "visible", timeout: 10000 });
     await brainstormPage.openBrandPanel();
 
-    await page.waitForFunction(
-      () => !document.querySelector('[data-slot="skeleton"]'),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => !document.querySelector('[data-slot="skeleton"]'), {
+      timeout: 10000,
+    });
 
     // Select second palette (to test non-default selection)
     await brainstormPage.selectColorPalette(1);
@@ -1176,10 +1183,9 @@ test.describe("Brainstorm Color Palette", () => {
 
     await brainstormPage.openBrandPanel();
 
-    await page.waitForFunction(
-      () => !document.querySelector('[data-slot="skeleton"]'),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => !document.querySelector('[data-slot="skeleton"]'), {
+      timeout: 10000,
+    });
 
     const selectedPaletteAfter = page.getByTestId(selectedPaletteTestId!);
     await expect(selectedPaletteAfter).toHaveAttribute("data-selected", "true");
@@ -1236,10 +1242,9 @@ test.describe("Brand Personalization Panel Auto-Open", () => {
     await brainstormPage.openBrandPanel();
 
     // Wait for color palettes to load
-    await page.waitForFunction(
-      () => !document.querySelector('[data-slot="skeleton"]'),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => !document.querySelector('[data-slot="skeleton"]'), {
+      timeout: 10000,
+    });
 
     // Select a color palette
     await brainstormPage.selectColorPalette(0);
@@ -1377,7 +1382,7 @@ test.describe("Brand Personalization Uploads", () => {
     const logoSrcAfter = await brainstormPage.getLogoSrc();
     expect(logoSrcAfter).toBeTruthy();
     // Both should be valid image URLs (from S3/R2 or local storage)
-    expect(logoSrcAfter).toMatch(/^(https?:\/\/|\/uploads\/)/);  // http(s):// or /uploads/
+    expect(logoSrcAfter).toMatch(/^(https?:\/\/|\/uploads\/)/); // http(s):// or /uploads/
   });
 
   test("project images upload persists across page reload", async ({ page }) => {
@@ -1541,10 +1546,9 @@ test.describe("Brainstorm PDF Attachments", () => {
     await brainstormPage.sendButton.click();
 
     // Wait for URL to update (message sent)
-    await page.waitForFunction(
-      () => window.location.href.includes("/projects/"),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => window.location.href.includes("/projects/"), {
+      timeout: 10000,
+    });
 
     // Wait for the response so we know message is fully rendered
     await brainstormPage.waitForResponse();
@@ -1571,10 +1575,9 @@ test.describe("Brainstorm PDF Attachments", () => {
     await brainstormPage.sendButton.click();
 
     // Wait for URL to update (message sent)
-    await page.waitForFunction(
-      () => window.location.href.includes("/projects/"),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => window.location.href.includes("/projects/"), {
+      timeout: 10000,
+    });
 
     // Wait for the response
     await brainstormPage.waitForResponse();
@@ -1596,10 +1599,9 @@ test.describe("Brainstorm PDF Attachments", () => {
     await brainstormPage.sendButton.click();
 
     // Wait for message to be sent
-    await page.waitForFunction(
-      () => window.location.href.includes("/projects/"),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => window.location.href.includes("/projects/"), {
+      timeout: 10000,
+    });
     await brainstormPage.waitForResponse();
 
     // Verify the document link has correct attributes
@@ -1630,10 +1632,9 @@ test.describe("Brainstorm PDF Attachments", () => {
     await brainstormPage.sendButton.click();
 
     // Wait for message to be sent
-    await page.waitForFunction(
-      () => window.location.href.includes("/projects/"),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => window.location.href.includes("/projects/"), {
+      timeout: 10000,
+    });
     await brainstormPage.waitForResponse();
 
     // Verify both are displayed in the message
@@ -1655,10 +1656,9 @@ test.describe("Brainstorm PDF Attachments", () => {
     await brainstormPage.sendButton.click();
 
     // Wait for message to be sent
-    await page.waitForFunction(
-      () => window.location.href.includes("/projects/"),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => window.location.href.includes("/projects/"), {
+      timeout: 10000,
+    });
     await brainstormPage.waitForResponse();
 
     // Get the displayed filename
@@ -1747,10 +1747,9 @@ test.describe("Brainstorm Inline Chat Attachments", () => {
     await brainstormPage.sendButton.click();
 
     // Wait for URL to update (message sent)
-    await page.waitForFunction(
-      () => window.location.href.includes("/projects/"),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => window.location.href.includes("/projects/"), {
+      timeout: 10000,
+    });
 
     // Verify user message appears
     const messageCount = await brainstormPage.getUserMessageCount();
@@ -1770,10 +1769,9 @@ test.describe("Brainstorm Inline Chat Attachments", () => {
     await brainstormPage.sendMessageWithAttachments();
 
     // Wait for URL to update (message sent)
-    await page.waitForFunction(
-      () => window.location.href.includes("/projects/"),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => window.location.href.includes("/projects/"), {
+      timeout: 10000,
+    });
 
     // Verify message was sent
     const messageCount = await brainstormPage.getUserMessageCount();
@@ -1794,14 +1792,15 @@ test.describe("Brainstorm Inline Chat Attachments", () => {
     expect(attachmentCount).toBe(1);
 
     // Send the message
-    await brainstormPage.chatInput.fill("I want to make a brand to help freelancers manage their income and expenses");
+    await brainstormPage.chatInput.fill(
+      "I want to make a brand to help freelancers manage their income and expenses"
+    );
     await brainstormPage.sendButton.click();
 
     // Wait for message to be sent
-    await page.waitForFunction(
-      () => window.location.href.includes("/projects/"),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => window.location.href.includes("/projects/"), {
+      timeout: 10000,
+    });
 
     await brainstormPage.waitForResponse();
 
@@ -1824,11 +1823,10 @@ test.describe("Brainstorm Inline Chat Attachments", () => {
     await brainstormPage.waitForChatAttachmentsUploaded();
 
     // Verify status is completed
-    const status = await page.$eval(
-      '[data-testid="attachment-item"]',
-      (el) => el.getAttribute('data-status')
+    const status = await page.$eval('[data-testid="attachment-item"]', (el) =>
+      el.getAttribute("data-status")
     );
-    expect(status).toBe('completed');
+    expect(status).toBe("completed");
   });
 });
 
@@ -1869,7 +1867,9 @@ test.describe("Workflow Progress Stepper", () => {
 
     // Wait for URL to update (message was sent, thread created)
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
 
@@ -1886,7 +1886,9 @@ test.describe("Workflow Progress Stepper", () => {
 
     // Wait for URL to update
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
 
@@ -1904,7 +1906,9 @@ test.describe("Workflow Progress Stepper", () => {
 
     // Wait for URL to update
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
 
@@ -1933,7 +1937,9 @@ test.describe("Workflow Progress Stepper", () => {
 
     // Wait for URL to update
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
 
@@ -1956,7 +1962,9 @@ test.describe("Workflow Progress Stepper", () => {
 
     // Wait for URL to update
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
 
@@ -1982,7 +1990,9 @@ test.describe("Workflow Progress Stepper", () => {
 
     // Wait for URL to update and get thread ID
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
 
@@ -2022,7 +2032,9 @@ test.describe("Brainstorm Loading States", () => {
 
     // Wait for URL to update with thread ID
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
 
@@ -2055,11 +2067,6 @@ test.describe("Brainstorm Loading States", () => {
   });
 });
 
-// > Okay let's begin dreaming up things for this - currently, we have a killer snapshot builder system which
-//   interacts with our tests in useful ways - we can load from existing snapshots to get known states of the
-//   world. One good example is the loads existing conversation from URL playwright test.
-
-
 test.describe("Brainstorm to Website Redirect", () => {
   // These tests involve multiple AI responses, so need longer timeout
   test.setTimeout(120000);
@@ -2082,7 +2089,7 @@ test.describe("Brainstorm to Website Redirect", () => {
     brainstormPage = new BrainstormPage(page);
   });
 
-  test("redirects to website page when user completes brainstorm", async ({ page }) => {
+  test("redirects to website page when user completes brainstorm via chat", async ({ page }) => {
     // Start a new conversation
     await brainstormPage.goto();
 
@@ -2108,13 +2115,45 @@ test.describe("Brainstorm to Website Redirect", () => {
     await brainstormPage.clickBuildMySite();
 
     // Wait for AI to process the message and trigger redirect
-    // The AI should call finishedTool which sets redirect: "website"
+    // The AI should call navigateTool which sets agentIntents with navigate to "website"
     await brainstormPage.waitForResponse(60000);
 
     // Wait for redirect to website page
     await brainstormPage.waitForWebsiteRedirect(threadId!);
 
     // Verify we're on the website page
+    expect(page.url()).toContain(`/projects/${threadId}/website`);
+  });
+
+  test("Continue button enables at lookAndFeel and navigates to website", async ({ page }) => {
+    // Start a new conversation
+    await brainstormPage.goto();
+
+    // The Continue button should be disabled initially (not at lookAndFeel yet)
+    const continueButton = page.getByRole("button", { name: "Continue" });
+    await expect(continueButton).toBeVisible({ timeout: 5000 });
+    await expect(continueButton).toBeDisabled();
+
+    // Complete brainstorm through all topics
+    await brainstormPage.sendMessage(COMPLETE_BUSINESS_IDEA);
+    await brainstormPage.waitForResponse();
+
+    const threadId = brainstormPage.getThreadIdFromUrl();
+    expect(threadId).not.toBeNull();
+
+    await brainstormPage.sendMessage("Please do the rest for me");
+    await brainstormPage.waitForResponse();
+
+    // At lookAndFeel, the Continue button should be enabled and read "Build My Site"
+    const buildButton = page.getByRole("button", { name: "Build My Site" });
+    await expect(buildButton).toBeVisible({ timeout: 10000 });
+    await expect(buildButton).toBeEnabled();
+
+    // Click the Continue/Build My Site button (uses workflow navigation, not AI)
+    await buildButton.click();
+
+    // Should navigate to website page via workflow store
+    await brainstormPage.waitForWebsiteRedirect(threadId!);
     expect(page.url()).toContain(`/projects/${threadId}/website`);
   });
 
@@ -2145,7 +2184,7 @@ test.describe("Brainstorm to Website Redirect", () => {
     await expect(brainstormPage.buildMySiteButton).toBeVisible({ timeout: 10000 });
     await brainstormPage.clickBuildMySite();
 
-    // Wait for AI to process and trigger redirect
+    // Wait for AI to process and trigger redirect via navigateTool
     await brainstormPage.waitForResponse(60000);
 
     // Wait for redirect to website page
@@ -2182,7 +2221,9 @@ test.describe("Root Route Workflow Persistence Bugs", () => {
     brainstormPage = new BrainstormPage(page);
   });
 
-  test("theme selection persists after reload when following root route workflow", async ({ page }) => {
+  test("theme selection persists after reload when following root route workflow", async ({
+    page,
+  }) => {
     // 1. Start on page / (root route)
     await brainstormPage.goto();
 
@@ -2191,7 +2232,9 @@ test.describe("Root Route Workflow Persistence Bugs", () => {
 
     // 3. Wait for the AI to respond
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
     await brainstormPage.waitForResponse();
@@ -2201,10 +2244,9 @@ test.describe("Root Route Workflow Persistence Bugs", () => {
     await brainstormPage.openBrandPanel();
 
     // Wait for color palettes to load (not skeleton)
-    await page.waitForFunction(
-      () => !document.querySelector('[data-slot="skeleton"]'),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => !document.querySelector('[data-slot="skeleton"]'), {
+      timeout: 10000,
+    });
 
     // Navigate to page 2 of palettes and select one there (to make sure we're testing persistence properly)
     const paginationLabel = page.getByTestId("color-pagination-label");
@@ -2239,10 +2281,9 @@ test.describe("Root Route Workflow Persistence Bugs", () => {
     await brainstormPage.openBrandPanel();
 
     // Wait for palettes to load
-    await page.waitForFunction(
-      () => !document.querySelector('[data-slot="skeleton"]'),
-      { timeout: 10000 }
-    );
+    await page.waitForFunction(() => !document.querySelector('[data-slot="skeleton"]'), {
+      timeout: 10000,
+    });
 
     // Verify the palette is still selected
     const selectedPalette = page.getByTestId(selectedPaletteTestId!);
@@ -2259,7 +2300,9 @@ test.describe("Root Route Workflow Persistence Bugs", () => {
 
     // 3. Wait for the AI to respond
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
     await brainstormPage.waitForResponse();
@@ -2276,7 +2319,11 @@ test.describe("Root Route Workflow Persistence Bugs", () => {
     await expect(socialLinksSection).toBeVisible();
 
     // Add a Twitter/X link
-    const twitterInput = socialLinksSection.locator('input[placeholder*="twitter" i], input[placeholder*="x.com" i], input[aria-label*="twitter" i]').first();
+    const twitterInput = socialLinksSection
+      .locator(
+        'input[placeholder*="twitter" i], input[placeholder*="x.com" i], input[aria-label*="twitter" i]'
+      )
+      .first();
     await twitterInput.fill("https://twitter.com/testuser");
 
     // Wait for the mutation to complete (social links should auto-save on blur or after typing)
@@ -2295,11 +2342,17 @@ test.describe("Root Route Workflow Persistence Bugs", () => {
 
     // Verify the social link is still there
     const socialLinksSectionAfter = page.getByTestId("social-links");
-    const twitterInputAfter = socialLinksSectionAfter.locator('input[placeholder*="twitter" i], input[placeholder*="x.com" i], input[aria-label*="twitter" i]').first();
+    const twitterInputAfter = socialLinksSectionAfter
+      .locator(
+        'input[placeholder*="twitter" i], input[placeholder*="x.com" i], input[aria-label*="twitter" i]'
+      )
+      .first();
     await expect(twitterInputAfter).toHaveValue("https://twitter.com/testuser");
   });
 
-  test("project images persist after reload when following root route workflow", async ({ page }) => {
+  test("project images persist after reload when following root route workflow", async ({
+    page,
+  }) => {
     // 1. Start on page / (root route)
     await brainstormPage.goto();
 
@@ -2308,7 +2361,9 @@ test.describe("Root Route Workflow Persistence Bugs", () => {
 
     // 3. Wait for the AI to respond
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
     await brainstormPage.waitForResponse();
@@ -2354,7 +2409,9 @@ test.describe("Root Route Workflow Persistence Bugs", () => {
 
     // 3. Wait for the AI to respond
     await page.waitForFunction(
-      () => window.location.href.includes("/projects/") && !window.location.href.includes("/projects/new"),
+      () =>
+        window.location.href.includes("/projects/") &&
+        !window.location.href.includes("/projects/new"),
       { timeout: 10000 }
     );
     await brainstormPage.waitForResponse();
@@ -2399,4 +2456,3 @@ test.describe("Root Route Workflow Persistence Bugs", () => {
     expect(logoSrcAfter).toMatch(/^(https?:\/\/|\/uploads\/)/);
   });
 });
-

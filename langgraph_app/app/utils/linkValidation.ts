@@ -16,6 +16,9 @@ export function getLinkType(href: string): LinkType {
   if (href.startsWith("#")) return "anchor";
   if (href.startsWith("http") || href.startsWith("mailto:") || href.startsWith("tel:"))
     return "skip";
+  // Skip static asset references (e.g. /favicon.ico, ./styles.css, /logo.png)
+  const pathPart = href.split(/[?#]/)[0] || "";
+  if (/\.\w+$/.test(pathPart)) return "skip";
   return "route";
 }
 
@@ -65,7 +68,7 @@ export function validateLinks(files: { path: string; content: string }[]): Valid
         if (!anchors.has(id)) {
           errors.push({
             file: file.path,
-            message: `Broken anchor: ${href} - no element with id="${id}"`,
+            message: `Broken anchor: ${href} - no element with id="${id}". If this is a real section, add the missing id. If this is an invented section (e.g. careers, blog, privacy), remove the link.`,
           });
         }
       } else if (linkType === "route") {
@@ -74,7 +77,7 @@ export function validateLinks(files: { path: string; content: string }[]): Valid
         if (!routes.has(normalized)) {
           errors.push({
             file: file.path,
-            message: `No route for: ${href} - add <Route path="${normalized}"> to App.tsx`,
+            message: `No route for: ${href} - if this page exists, add a <Route> for it. If this is an invented page (e.g. /about, /blog, /careers), remove the link instead.`,
           });
         }
       }

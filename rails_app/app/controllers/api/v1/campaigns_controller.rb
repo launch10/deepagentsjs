@@ -72,6 +72,22 @@ class API::V1::CampaignsController < API::BaseController
     render json: campaign_json(campaign)
   end
 
+  def validate_deploy
+    campaign = current_campaign
+
+    unless campaign
+      render json: {valid: false, errors: ["Campaign not found"]}, status: :not_found and return
+    end
+
+    validation_errors = campaign.deploy_validation_errors
+
+    if validation_errors.any?
+      render json: {valid: false, errors: validation_errors}
+    else
+      render json: {valid: true, errors: []}
+    end
+  end
+
   private
 
   def current_campaign
@@ -79,7 +95,7 @@ class API::V1::CampaignsController < API::BaseController
   end
 
   def create_params
-    params.require(:campaign).permit(:name, :project_id, :website_id)
+    params.require(:campaign).permit(:name, :project_id, :website_id, :thread_id)
   end
 
   def campaign_params

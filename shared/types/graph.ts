@@ -1,4 +1,4 @@
-import { type PrimaryKeyType, type BaseMessage, type ThreadIDType, type Intent } from ".";
+import { type PrimaryKeyType, type BaseMessage, type ThreadIDType, type Intent, type AgentIntent } from ".";
 
 export interface ErrorStateType { message: string; node: string }
 
@@ -33,4 +33,6 @@ export type CoreGraphState = {
     creditStatus: CreditStatus | undefined;
     /** Intent: user action that triggered this graph invocation (consumed after handling) */
     intent: Intent | undefined;
+    /** Agent intents: actions the agent wants the frontend to execute */
+    agentIntents: AgentIntent[] | undefined;
 }

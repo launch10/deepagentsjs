@@ -28,8 +28,8 @@ export const checkPaymentNode = async (
     return {};
   }
 
-  // 2. Task running with result from webhook (has_payment)? Mark completed
-  if (task?.status === "running" && task.result?.has_payment !== undefined) {
+  // 2. Task running with result from webhook (has_payment: true)? Mark completed
+  if (task?.status === "running" && task.result?.has_payment === true) {
     return withPhases(state, [{ ...task, status: "completed" } as Task.Task], [TASK_NAME]);
   }
 
@@ -38,12 +38,25 @@ export const checkPaymentNode = async (
     return withPhases(state, [{ ...task, status: "failed" } as Task.Task], [TASK_NAME]);
   }
 
-  // 4. Task running with jobId? Waiting for worker to complete
-  //    Touch the deploy to indicate user is still active
-  if (task?.status === "running" && task.jobId) {
+  // 4. Self-heal: task running with jobId but no result?
+  //    Check if payment is already verified (webhook may have missed the job)
+  if (
+    task?.status === "running" &&
+    task.jobId &&
+    task.result?.has_payment === undefined &&
+    !task.error
+  ) {
     if (state.deployId) {
       DeployService.touch(state.deployId).catch(() => {});
     }
+    if (await isPaymentVerified(state)) {
+      return withPhases(
+        state,
+        [{ ...task, status: "completed", result: { has_payment: true } } as Task.Task],
+        [TASK_NAME]
+      );
+    }
+    // Not verified yet — fall through to no-op (isBlocking will exit graph)
     return {};
   }
 
@@ -101,7 +114,7 @@ export async function isPaymentVerified(state: DeployGraphState): Promise<boolea
   }
 
   const googleApi = new GoogleAPIService({ jwt: state.jwt });
-  const { has_payment } = await googleApi.getPaymentStatus();
+  const { has_payment } = await googleApi.getGoogleStatus();
 
   return has_payment;
 }
@@ -135,8 +148,8 @@ export const checkPaymentTaskRunner: TaskRunner = {
   taskName: TASK_NAME,
 
   readyToRun: (state: DeployGraphState) => {
-    // Ready when DeployingCampaign is done
-    return isTaskDone(state, "DeployingCampaign");
+    // Ready when VerifyingGoogle is done (billing check runs right after Google setup)
+    return isTaskDone(state, "VerifyingGoogle");
   },
 
   shouldSkip: async (state: DeployGraphState) => {
@@ -145,13 +158,25 @@ export const checkPaymentTaskRunner: TaskRunner = {
       return true;
     }
 
-    // Skip if already verified
-    return isPaymentVerified(state);
+    // If initPhasesNode already ran (tasks exist) but excluded this task,
+    // payment was already verified at deploy start — no API call needed.
+    const task = Task.findTask(state.tasks, TASK_NAME);
+    if (!task && state.tasks?.length > 0) return true;
+
+    // Task has result confirming payment
+    if (task?.result?.has_payment === true) return true;
+
+    // Task exists but hasn't run yet — check if payment is already verified
+    if (task?.status === "pending" && (await isPaymentVerified(state))) return true;
+
+    return false;
   },
 
   isBlocking: (state: DeployGraphState, task: Task.Task) => {
-    // Blocking when we have a jobId but no result yet
-    return task.status === "running" && !!task.jobId && task.result?.has_payment === undefined && !task.error;
+    // Blocking when we have a jobId but payment not yet confirmed
+    return (
+      task.status === "running" && !!task.jobId && task.result?.has_payment !== true && !task.error
+    );
   },
 
   run: checkPaymentNode,

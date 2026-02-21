@@ -245,6 +245,28 @@ RSpec.describe "Website Files API", type: :request do
     end
   end
 
+  describe "event tracking" do
+    let(:auth_headers) { auth_headers_for(user1) }
+
+    before do
+      switch_account_to(user1_owned_account)
+    end
+
+    it "tracks website_generated for first file batch" do
+      expect(TrackEvent).to receive(:call).with("website_generated",
+        hash_including(file_count: kind_of(Integer), project_uuid: kind_of(String)))
+      post "/api/v1/websites/#{website1_owned.id}/files/write",
+        params: {
+          files: [
+            { path: "/index.html", content: "<h1>Hello</h1>" },
+            { path: "/styles.css", content: "body { color: red; }" }
+          ]
+        },
+        headers: auth_headers,
+        as: :json
+    end
+  end
+
   path '/api/v1/websites/{id}/files/edit' do
     parameter name: :id, in: :path, type: :number, description: 'Website ID'
 

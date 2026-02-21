@@ -44,14 +44,15 @@ RSpec.describe Analytics::Metrics::PageViewsMetric do
 
     context "for today's live data using Ahoy::Event" do
       it "counts page_view events for today" do
-        # Create visits with page_view events for today
-        visit1 = create(:ahoy_visit, website: website, started_at: 1.hour.ago)
-        visit2 = create(:ahoy_visit, website: website, started_at: 2.hours.ago)
+        # Use noon to avoid midnight-boundary issues on CI
+        today_noon = Date.current.noon
+        visit1 = create(:ahoy_visit, website: website, started_at: today_noon - 1.hour)
+        visit2 = create(:ahoy_visit, website: website, started_at: today_noon - 2.hours)
 
         # Multiple page views per visit
-        create(:ahoy_event, :page_view, visit: visit1, time: 1.hour.ago, properties: { path: "/" })
-        create(:ahoy_event, :page_view, visit: visit1, time: 1.hour.ago, properties: { path: "/about" })
-        create(:ahoy_event, :page_view, visit: visit2, time: 2.hours.ago, properties: { path: "/" })
+        create(:ahoy_event, :page_view, visit: visit1, time: today_noon - 1.hour, properties: { path: "/" })
+        create(:ahoy_event, :page_view, visit: visit1, time: today_noon - 30.minutes, properties: { path: "/about" })
+        create(:ahoy_event, :page_view, visit: visit2, time: today_noon - 2.hours, properties: { path: "/" })
 
         result = subject.time_series
         today_data = result[:series].first[:data].last
@@ -65,9 +66,9 @@ RSpec.describe Analytics::Metrics::PageViewsMetric do
         create(:ahoy_event, :page_view, visit: yesterday_visit, time: 1.day.ago)
         create(:ahoy_event, :page_view, visit: yesterday_visit, time: 1.day.ago)
 
-        # Only today's event should count
-        today_visit = create(:ahoy_visit, website: website, started_at: 1.hour.ago)
-        create(:ahoy_event, :page_view, visit: today_visit, time: 1.hour.ago)
+        # Only today's event should count (use noon to avoid midnight boundary)
+        today_visit = create(:ahoy_visit, website: website, started_at: Date.current.noon)
+        create(:ahoy_event, :page_view, visit: today_visit, time: Date.current.noon)
 
         result = subject.time_series
         today_data = result[:series].first[:data].last
@@ -76,10 +77,10 @@ RSpec.describe Analytics::Metrics::PageViewsMetric do
       end
 
       it "only counts page_view events, not other event types" do
-        visit = create(:ahoy_visit, website: website, started_at: 1.hour.ago)
-        create(:ahoy_event, :page_view, visit: visit, time: 1.hour.ago)
-        create(:ahoy_event, name: "button_click", visit: visit, time: 1.hour.ago)
-        create(:ahoy_event, name: "form_submit", visit: visit, time: 1.hour.ago)
+        visit = create(:ahoy_visit, website: website, started_at: Date.current.noon)
+        create(:ahoy_event, :page_view, visit: visit, time: Date.current.noon)
+        create(:ahoy_event, name: "button_click", visit: visit, time: Date.current.noon)
+        create(:ahoy_event, name: "form_submit", visit: visit, time: Date.current.noon)
 
         result = subject.time_series
         today_data = result[:series].first[:data].last

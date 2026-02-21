@@ -8,6 +8,7 @@
 #  city             :string
 #  country          :string
 #  device_type      :string
+#  fbclid           :string
 #  gclid            :string
 #  ip               :string
 #  landing_page     :text
@@ -32,6 +33,7 @@
 #
 # Indexes
 #
+#  index_ahoy_visits_on_fbclid                        (fbclid)
 #  index_ahoy_visits_on_gclid                         (gclid)
 #  index_ahoy_visits_on_visit_token                   (visit_token) UNIQUE
 #  index_ahoy_visits_on_visitor_token_and_started_at  (visitor_token,started_at)

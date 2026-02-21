@@ -15,21 +15,24 @@ import { type TaskName } from "./tasks";
  */
 
 export const PhaseNames = [
-  // Website preparation (1:1)
-  "AddingAnalytics",
-  "OptimizingSEO",
+  // Google setup (campaign only, 1:1 each)
+  "ConnectingGoogle",
+  "VerifyingGoogle",
+
+  // Billing (campaign only — resolve all external Google blockers before website prep)
+  "CheckingBilling",
 
   // Validation cycle
   "CheckingForBugs", // ValidateLinks + RuntimeValidation (merged)
   "FixingBugs", // BugFix (1:1)
 
+  // Website preparation (1:1)
+  "OptimizingSEO",
+  "OptimizingPageForLLMs",
+  "AddingAnalytics",
+
   // Website deployment (1:1)
   "DeployingWebsite",
-
-  // Google setup (1:1 each)
-  "ConnectingGoogle",
-  "VerifyingGoogle",
-  "CheckingBilling",
 
   // Campaign deployment (1:1)
   "DeployingCampaign",
@@ -40,6 +43,7 @@ export type PhaseName = (typeof PhaseNames)[number];
 export const PhaseDescriptionMap: Record<PhaseName, string> = {
   AddingAnalytics: "Adding Analytics",
   OptimizingSEO: "Optimizing SEO",
+  OptimizingPageForLLMs: "Optimizing for LLMs",
   CheckingForBugs: "Checking for Bugs",
   FixingBugs: "Squashing Bugs",
   DeployingWebsite: "Launching Website",
@@ -60,6 +64,7 @@ export const PhaseTaskMap: Record<PhaseName, TaskName[]> = {
   // 1:1 phases: task name === phase name
   AddingAnalytics: ["AddingAnalytics"],
   OptimizingSEO: ["OptimizingSEO"],
+  OptimizingPageForLLMs: ["OptimizingPageForLLMs"],
   FixingBugs: ["FixingBugs"],
   DeployingWebsite: ["DeployingWebsite"],
   ConnectingGoogle: ["ConnectingGoogle"],
@@ -87,14 +92,22 @@ export const PhaseSchema = z.object({
 export type Phase = z.infer<typeof PhaseSchema>;
 
 /**
+ * Whether a task status is terminal (no more work to do)
+ */
+function isTerminalStatus(status: string): boolean {
+  return status === "completed" || status === "passed" || status === "skipped" || status === "failed";
+}
+
+/**
  * Compute the status of a phase from its child tasks
  *
  * Rules:
  * - If no tasks exist yet: "pending"
  * - If any task is "running": "running"
- * - If any task is "failed" and none running: "failed"
- * - If all tasks are "completed": "completed"
- * - Otherwise: "pending" (some tasks not started)
+ * - If all tasks are terminal (completed/passed/skipped/failed):
+ *   - If any task failed: "failed"
+ *   - Otherwise: "completed"
+ * - Otherwise: "running" (some tasks started, some pending)
  */
 export function computePhaseStatus(tasks: Task[]): Status {
   if (tasks.length === 0) return "pending";
@@ -102,27 +115,23 @@ export function computePhaseStatus(tasks: Task[]): Status {
   const hasRunning = tasks.some((t) => t.status === "running");
   if (hasRunning) return "running";
 
-  const hasFailed = tasks.some((t) => t.status === "failed");
-  const hasRunningOrPending = tasks.some((t) => t.status === "running" || t.status === "pending");
-  if (hasFailed && !hasRunningOrPending) return "failed";
-
-  const allCompleted = tasks.every((t) => t.status === "completed" || t.status === "passed");
-  if (allCompleted) return "completed";
+  if (tasks.every((t) => isTerminalStatus(t.status))) {
+    if (tasks.some((t) => t.status === "failed")) return "failed";
+    return "completed";
+  }
 
   return "running"; // Some tasks started, some pending
 }
 
 /**
- * Compute progress (0-1) for a phase based on completed tasks
+ * Compute progress (0-1) for a phase based on terminal tasks
  */
 export function computePhaseProgress(tasks: Task[], totalExpectedTasks: number): number {
   if (totalExpectedTasks === 0) return 0;
 
-  const completedCount = tasks.filter(
-    (t) => t.status === "completed" || t.status === "passed"
-  ).length;
+  const doneCount = tasks.filter((t) => isTerminalStatus(t.status)).length;
 
-  return completedCount / totalExpectedTasks;
+  return doneCount / totalExpectedTasks;
 }
 
 /**
@@ -158,7 +167,10 @@ export function createPhase(phaseName: PhaseName, allTasks: Task[]): Phase {
  */
 export function computePhases(tasks: Task[], phaseNames?: PhaseName[]): Phase[] {
   const namesToCompute = phaseNames ?? PhaseNames;
-  return namesToCompute.map((name) => createPhase(name, tasks));
+  const taskNames = new Set(tasks.map((t) => t.name));
+  return namesToCompute
+    .filter((name) => PhaseTaskMap[name].some((taskName) => taskNames.has(taskName)))
+    .map((name) => createPhase(name, tasks));
 }
 
 /**

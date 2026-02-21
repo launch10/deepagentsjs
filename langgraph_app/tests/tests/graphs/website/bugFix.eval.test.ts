@@ -74,7 +74,7 @@ const BUG_FIX_CASES: BugFixTestCase[] = [
         `$1import { Fake } from "../components/Fake";\n`
       );
       // Add <Fake /> before the closing </div> of the main wrapper
-      return withImport.replace(/(<\/div>\s*\);\s*};?\s*$)/m, `  <Fake />\n$1`);
+      return withImport.replace(/(<\/div>\s*\)\s*;?\s*};?\s*$)/m, `  <Fake />\n$1`);
     },
     errorDescription:
       "Build error:\nModule not found: Cannot find module '../components/Fake' imported from src/pages/IndexPage.tsx",
@@ -121,7 +121,7 @@ const BUG_FIX_CASES: BugFixTestCase[] = [
     targetFile: "IndexPage",
     injectBug: (content: string) => {
       // Duplicate the <Hero /> render
-      return content.replace(/(<Hero\s*\/>)/, `$1\n        <Hero />`);
+      return content.replace(/(<Hero\s*\/?>)/, `$1\n        <Hero />`);
     },
     errorDescription:
       'Warning: Each child in a list should have a unique "key" prop.\n\nMultiple <Hero /> components rendered in IndexPage.tsx. This causes a duplicate key warning and visual duplication on the page.',
@@ -220,21 +220,15 @@ function checkContentAssertions(
 }
 
 /**
- * Check that L10.createLead tracking was not removed from any file that had it.
+ * Check that LeadForm tracking was not removed from any file that had it.
  */
 function checkTrackingPreserved(before: Map<string, string>, after: Map<string, string>): string[] {
   const violations: string[] = [];
   for (const [path, content] of before) {
-    if (content.includes("L10.createLead")) {
+    if (content.includes("LeadForm")) {
       const afterContent = after.get(path);
-      if (afterContent && !afterContent.includes("L10.createLead")) {
-        violations.push(`L10.createLead removed from ${path}`);
-      }
-    }
-    if (content.includes("from '@/lib/tracking'") || content.includes('from "@/lib/tracking"')) {
-      const afterContent = after.get(path);
-      if (afterContent && !afterContent.includes("tracking")) {
-        violations.push(`Tracking import removed from ${path}`);
+      if (afterContent && !afterContent.includes("LeadForm")) {
+        violations.push(`LeadForm removed from ${path}`);
       }
     }
   }
@@ -333,7 +327,7 @@ describe.skipIf(!!process.env.CI)("Bug Fix Eval", () => {
       if (trackingViolations.length > 0) {
         console.error(`  Tracking violations: ${trackingViolations.join(", ")}`);
       }
-      expect(trackingViolations, "L10 tracking must be preserved").toHaveLength(0);
+      expect(trackingViolations, "LeadForm tracking must be preserved").toHaveLength(0);
 
       // 7. Cost summary
       const usageRecords = await db.select().from(llmUsage);

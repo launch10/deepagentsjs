@@ -31,7 +31,16 @@ module GoogleAds
       # @return The result of the block
       #
       def with_instrumentation(&)
-        GoogleAds::Instrumentation.with_context(**instrumentation_context, &)
+        if @_instrumenting
+          yield
+        else
+          @_instrumenting = true
+          begin
+            GoogleAds::Instrumentation.with_context(**instrumentation_context, &)
+          ensure
+            @_instrumenting = false
+          end
+        end
       end
 
       # Override this method in including classes to provide context

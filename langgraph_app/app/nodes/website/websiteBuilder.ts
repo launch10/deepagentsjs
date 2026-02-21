@@ -5,10 +5,12 @@ import { toStructuredMessage, createContextMessage } from "langgraph-ai-sdk";
 import { NodeMiddleware } from "@middleware";
 import { createCodingAgent } from "@nodes";
 import { isCacheModeEnabled } from "./cacheMode";
+import { summarizeMessages } from "./compactConversation";
 import { getSchedulingToolMinorEditFiles } from "@cache";
 import type { Website } from "@types";
 import { getLogger } from "@core";
-import { db, codeFiles, websiteFiles, eq } from "@db";
+import { Conversation } from "@conversation";
+import { db, codeFiles, websiteFiles, eq, and, like } from "@db";
 
 /**
  * Get cached response for cache mode.
@@ -56,21 +58,27 @@ const isCreateFlow = async (state: WebsiteGraphState) => {
 };
 
 const hasWebsiteFiles = async (state: WebsiteGraphState): Promise<boolean> => {
+  // Check specifically for IndexPage.tsx — theme files like index.css are
+  // inserted at website creation and don't mean the AI has built the page yet.
   const rows = await db
     .select()
     .from(websiteFiles)
-    .where(eq(websiteFiles.websiteId!, state.websiteId!))
+    .where(
+      and(eq(websiteFiles.websiteId!, state.websiteId!), like(websiteFiles.path, "%IndexPage.tsx"))
+    )
     .limit(1);
   return rows.length > 0;
 };
 
 /** Build extra context messages for this turn (create instructions, build errors). */
-function buildExtraContext(state: WebsiteGraphState, isCreate: boolean): BaseMessage[] {
+export function buildExtraContext(state: WebsiteGraphState, isCreate: boolean): BaseMessage[] {
   const extraContext: BaseMessage[] = [];
 
   if (isCreate) {
     extraContext.push(
-      createContextMessage("Create a landing page for this business", { timestamp: new Date().toISOString() })
+      createContextMessage("Create a landing page for this business", {
+        timestamp: new Date().toISOString(),
+      })
     );
   }
 
@@ -78,10 +86,21 @@ function buildExtraContext(state: WebsiteGraphState, isCreate: boolean): BaseMes
     const errors = state.consoleErrors.filter((e) => e.type === "error");
     if (errors.length > 0) {
       const errorSummary = errors
-        .map((e) => `- ${e.message}${e.file ? ` (${e.file})` : ""}`)
+        .map((e) => {
+          let line = `- ${e.message}${e.file ? ` (${e.file})` : ""}`;
+          if (e.frame) {
+            line += `\n  Code frame:\n${e.frame
+              .split("\n")
+              .map((l) => `    ${l}`)
+              .join("\n")}`;
+          }
+          return line;
+        })
         .join("\n");
       extraContext.push(
-        createContextMessage(`[Build Errors — fix these]\n${errorSummary}`, { timestamp: new Date().toISOString() })
+        createContextMessage(`[Build Errors — fix these]\n${errorSummary}`, {
+          timestamp: new Date().toISOString(),
+        })
       );
     }
   }
@@ -103,21 +122,59 @@ export const websiteBuilderNode = NodeMiddleware.use(
     const cacheEnabled = isCacheModeEnabled(state);
     const isCreate = await isCreateFlow(state);
 
+    getLogger().info(
+      {
+        isCreate,
+        websiteId: state.websiteId,
+        messageCount: state.messages?.length ?? 0,
+        hasAiMessage: state.messages?.some((m) => AIMessage.isInstance(m)) ?? false,
+      },
+      "[websiteBuilder] isCreateFlow decision"
+    );
+
     if (cacheEnabled) {
       getLogger().info("Cache mode enabled, returning cached files");
       return await cachedResponse(state);
     }
 
-    const result = await createCodingAgent(
-      { ...state, isCreateFlow: isCreate },
+    // Surface consoleErrors as `errors` string so the bugfix workflow prompt activates.
+    // Bugfix workflow instructs the agent to fix bugs directly (no subagents needed).
+    const hasBuildErrors = state.consoleErrors?.some((e) => e.type === "error") ?? false;
+
+    const agentState = {
+      ...state,
+      isCreateFlow: isCreate,
+      // Surface consoleErrors as `errors` so the bugfix workflow prompt activates
+      ...(hasBuildErrors && {
+        errors: state
+          .consoleErrors!.filter((e) => e.type === "error")
+          .map((e) => e.message)
+          .join("; "),
+      }),
+    };
+
+    const result = await Conversation.start(
       {
         messages: state.messages || [],
-        extraContext: buildExtraContext(state, isCreate),
         graphName: "website",
+        projectId: state.projectId,
+        jwt: state.jwt,
+        extraContext: buildExtraContext(state, isCreate),
         maxTurnPairs: isCreate ? Infinity : 10,
         maxChars: isCreate ? Infinity : 40_000,
-        config,
-        recursionLimit: isCreate ? 150 : 100,
+        compact: { summarizer: summarizeMessages },
+      },
+      async (prepared) => {
+        // createCodingAgent already returns only new messages
+        return createCodingAgent(agentState, {
+          messages: prepared,
+          config,
+          recursionLimit: isCreate ? 150 : 100,
+          // Create flow: disable coder subagent. Main agent builds all sections
+          // sequentially for visual coherence (sees what it already built).
+          // General-purpose subagent still available for user communication.
+          ...(isCreate && { subagents: [] }),
+        });
       }
     );
 
@@ -148,7 +205,11 @@ export const websiteBuilderNode = NodeMiddleware.use(
         .where(eq(codeFiles.websiteId, state.websiteId!));
 
       const files = generatedFiles.reduce((acc, file) => {
-        acc[file.path!] = { content: file.content!, created_at: file.createdAt!, modified_at: file.updatedAt! };
+        acc[file.path!] = {
+          content: file.content!,
+          created_at: file.createdAt!,
+          modified_at: file.updatedAt!,
+        };
         return acc;
       }, {} as Website.FileMap);
 

@@ -432,7 +432,8 @@ CREATE TABLE public.accounts (
     time_zone character varying DEFAULT 'America/New_York'::character varying,
     plan_millicredits bigint DEFAULT 0 NOT NULL,
     pack_millicredits bigint DEFAULT 0 NOT NULL,
-    total_millicredits bigint DEFAULT 0 NOT NULL
+    total_millicredits bigint DEFAULT 0 NOT NULL,
+    signup_attribution jsonb
 );
 
 
@@ -1231,7 +1232,8 @@ CREATE TABLE public.ahoy_visits (
     app_version character varying,
     os_version character varying,
     platform character varying,
-    started_at timestamp(6) without time zone
+    started_at timestamp(6) without time zone,
+    fbclid character varying
 );
 
 
@@ -1366,6 +1368,43 @@ ALTER SEQUENCE public.api_tokens_id_seq OWNED BY public.api_tokens.id;
 
 
 --
+-- Name: app_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.app_events (
+    id bigint NOT NULL,
+    account_id bigint,
+    user_id bigint,
+    project_id bigint,
+    campaign_id bigint,
+    website_id bigint,
+    event_name character varying NOT NULL,
+    properties jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL
+);
+
+
+--
+-- Name: app_events_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.app_events_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: app_events_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.app_events_id_seq OWNED BY public.app_events.id;
+
+
+--
 -- Name: ar_internal_metadata; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1463,7 +1502,8 @@ CREATE TABLE public.campaign_deploys (
     stacktrace text,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    deleted_at timestamp(6) without time zone
+    deleted_at timestamp(6) without time zone,
+    shasum character varying
 );
 
 
@@ -1544,7 +1584,8 @@ CREATE TABLE public.chats (
     contextable_id bigint,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    deleted_at timestamp(6) without time zone
+    deleted_at timestamp(6) without time zone,
+    active boolean DEFAULT true NOT NULL
 );
 
 
@@ -2192,7 +2233,11 @@ CREATE TABLE public.deploys (
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     user_active_at timestamp(6) without time zone,
-    deleted_at timestamp(6) without time zone
+    deleted_at timestamp(6) without time zone,
+    thread_id character varying NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    finished_at timestamp(6) without time zone,
+    deploy_type character varying DEFAULT 'website'::character varying NOT NULL
 );
 
 
@@ -2798,7 +2843,8 @@ CREATE TABLE public.job_runs (
     account_id bigint,
     langgraph_thread_id character varying,
     result_data jsonb DEFAULT '{}'::jsonb,
-    deploy_id bigint
+    deploy_id bigint,
+    error_type character varying
 );
 
 
@@ -2831,7 +2877,8 @@ CREATE TABLE public.leads (
     name character varying(255),
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    account_id bigint NOT NULL
+    account_id bigint NOT NULL,
+    phone character varying(50)
 );
 
 
@@ -3705,7 +3752,9 @@ CREATE TABLE public.support_requests (
     notion_created boolean DEFAULT false,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
-    ticket_id character varying NOT NULL
+    ticket_id character varying NOT NULL,
+    supportable_type character varying,
+    supportable_id bigint
 );
 
 
@@ -4269,7 +4318,8 @@ CREATE TABLE public.website_leads (
     utm_campaign character varying,
     utm_content character varying,
     utm_term character varying,
-    deleted_at timestamp(6) without time zone
+    deleted_at timestamp(6) without time zone,
+    fbclid character varying
 );
 
 
@@ -4864,6 +4914,13 @@ ALTER TABLE ONLY public.announcements ALTER COLUMN id SET DEFAULT nextval('publi
 --
 
 ALTER TABLE ONLY public.api_tokens ALTER COLUMN id SET DEFAULT nextval('public.api_tokens_id_seq'::regclass);
+
+
+--
+-- Name: app_events id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.app_events ALTER COLUMN id SET DEFAULT nextval('public.app_events_id_seq'::regclass);
 
 
 --
@@ -5680,6 +5737,14 @@ ALTER TABLE ONLY public.announcements
 
 ALTER TABLE ONLY public.api_tokens
     ADD CONSTRAINT api_tokens_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: app_events app_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.app_events
+    ADD CONSTRAINT app_events_pkey PRIMARY KEY (id);
 
 
 --
@@ -8086,6 +8151,13 @@ CREATE INDEX index_ahoy_events_on_visit_id ON public.ahoy_events USING btree (vi
 
 
 --
+-- Name: index_ahoy_visits_on_fbclid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_ahoy_visits_on_fbclid ON public.ahoy_visits USING btree (fbclid);
+
+
+--
 -- Name: index_ahoy_visits_on_gclid; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8139,6 +8211,62 @@ CREATE UNIQUE INDEX index_api_tokens_on_token ON public.api_tokens USING btree (
 --
 
 CREATE INDEX index_api_tokens_on_user_id ON public.api_tokens USING btree (user_id);
+
+
+--
+-- Name: index_app_events_on_account_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_app_events_on_account_id ON public.app_events USING btree (account_id);
+
+
+--
+-- Name: index_app_events_on_campaign_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_app_events_on_campaign_id ON public.app_events USING btree (campaign_id);
+
+
+--
+-- Name: index_app_events_on_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_app_events_on_created_at ON public.app_events USING btree (created_at);
+
+
+--
+-- Name: index_app_events_on_event_name; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_app_events_on_event_name ON public.app_events USING btree (event_name);
+
+
+--
+-- Name: index_app_events_on_event_name_and_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_app_events_on_event_name_and_created_at ON public.app_events USING btree (event_name, created_at);
+
+
+--
+-- Name: index_app_events_on_project_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_app_events_on_project_id ON public.app_events USING btree (project_id);
+
+
+--
+-- Name: index_app_events_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_app_events_on_user_id ON public.app_events USING btree (user_id);
+
+
+--
+-- Name: index_app_events_on_website_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_app_events_on_website_id ON public.app_events USING btree (website_id);
 
 
 --
@@ -8209,6 +8337,13 @@ CREATE INDEX index_campaign_deploys_on_current_step ON public.campaign_deploys U
 --
 
 CREATE INDEX index_campaign_deploys_on_deleted_at ON public.campaign_deploys USING btree (deleted_at);
+
+
+--
+-- Name: index_campaign_deploys_on_shasum; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_campaign_deploys_on_shasum ON public.campaign_deploys USING btree (shasum);
 
 
 --
@@ -8345,24 +8480,24 @@ CREATE INDEX index_chats_on_account_id ON public.chats USING btree (account_id);
 
 
 --
+-- Name: index_chats_on_active_chat_type_account; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_chats_on_active_chat_type_account ON public.chats USING btree (chat_type, account_id) WHERE ((project_id IS NULL) AND (deleted_at IS NULL) AND (active = true));
+
+
+--
+-- Name: index_chats_on_active_chat_type_project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_chats_on_active_chat_type_project ON public.chats USING btree (chat_type, project_id) WHERE ((project_id IS NOT NULL) AND (deleted_at IS NULL) AND (active = true));
+
+
+--
 -- Name: index_chats_on_chat_type; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX index_chats_on_chat_type ON public.chats USING btree (chat_type);
-
-
---
--- Name: index_chats_on_chat_type_and_account_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_chats_on_chat_type_and_account_id ON public.chats USING btree (chat_type, account_id) WHERE ((project_id IS NULL) AND (deleted_at IS NULL));
-
-
---
--- Name: index_chats_on_chat_type_and_project_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX index_chats_on_chat_type_and_project_id ON public.chats USING btree (chat_type, project_id) WHERE ((project_id IS NOT NULL) AND (deleted_at IS NULL));
 
 
 --
@@ -8639,6 +8774,13 @@ CREATE INDEX index_deploy_files_on_website_file_id ON public.deploy_files USING 
 
 
 --
+-- Name: index_deploys_on_active_project; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_deploys_on_active_project ON public.deploys USING btree (project_id, active) WHERE ((deleted_at IS NULL) AND (active = true));
+
+
+--
 -- Name: index_deploys_on_campaign_deploy_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8650,6 +8792,20 @@ CREATE INDEX index_deploys_on_campaign_deploy_id ON public.deploys USING btree (
 --
 
 CREATE INDEX index_deploys_on_deleted_at ON public.deploys USING btree (deleted_at);
+
+
+--
+-- Name: index_deploys_on_deploy_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_deploy_type ON public.deploys USING btree (deploy_type);
+
+
+--
+-- Name: index_deploys_on_finished_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_finished_at ON public.deploys USING btree (finished_at);
 
 
 --
@@ -8685,6 +8841,13 @@ CREATE INDEX index_deploys_on_project_id_and_status ON public.deploys USING btre
 --
 
 CREATE INDEX index_deploys_on_status ON public.deploys USING btree (status);
+
+
+--
+-- Name: index_deploys_on_thread_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_deploys_on_thread_id ON public.deploys USING btree (thread_id);
 
 
 --
@@ -8937,6 +9100,13 @@ CREATE INDEX index_job_runs_on_account_id ON public.job_runs USING btree (accoun
 --
 
 CREATE INDEX index_job_runs_on_deploy_id ON public.job_runs USING btree (deploy_id);
+
+
+--
+-- Name: index_job_runs_on_error_type; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_job_runs_on_error_type ON public.job_runs USING btree (error_type);
 
 
 --
@@ -9343,6 +9513,13 @@ CREATE UNIQUE INDEX index_social_links_on_project_id_and_platform ON public.soci
 --
 
 CREATE INDEX index_support_requests_on_account_id ON public.support_requests USING btree (account_id);
+
+
+--
+-- Name: index_support_requests_on_supportable; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_support_requests_on_supportable ON public.support_requests USING btree (supportable_type, supportable_id);
 
 
 --
@@ -9966,6 +10143,13 @@ CREATE INDEX index_website_histories_on_website_id ON public.website_histories U
 --
 
 CREATE INDEX index_website_leads_on_deleted_at ON public.website_leads USING btree (deleted_at);
+
+
+--
+-- Name: index_website_leads_on_fbclid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_website_leads_on_fbclid ON public.website_leads USING btree (fbclid);
 
 
 --
@@ -11650,6 +11834,23 @@ ALTER TABLE ONLY public.job_runs
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260221001835'),
+('20260220211738'),
+('20260220184159'),
+('20260220151951'),
+('20260216214522'),
+('20260216182055'),
+('20260216180433'),
+('20260216145338'),
+('20260215170847'),
+('20260214233252'),
+('20260214233149'),
+('20260214201721'),
+('20260214182238'),
+('20260214175050'),
+('20260213230932'),
+('20260213225309'),
+('20260213214137'),
 ('20260204152455'),
 ('20260204124042'),
 ('20260204014903'),

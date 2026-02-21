@@ -1,82 +1,27 @@
-import { useEffect, useRef } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Badge } from "@components/ui/badge";
 import { Field, FieldGroup } from "@components/ui/field";
 import AdCampaignFieldList from "@components/ads/forms/shared/AdCampaignFieldList";
-import { useAdsChatState, useAdsChatActions, useAutosaveCampaign, defaultAssetTransform } from "@components/ads/hooks";
-import { useFormRegistration } from "@hooks/useFormRegistration";
+import { useAssetForm } from "@components/ads/hooks/useAssetForm";
+import { defaultAssetTransform } from "@components/ads/hooks";
 import { Ads } from "@shared";
-import { createRefreshHandler } from "../../utils/refreshAssets";
 import { Info } from "lucide-react";
-import { createLockToggleHandler } from "@helpers/handleLockToggle";
-import type { UpdateCampaignRequestBody } from "@rails_api_base";
 import RefreshSuggestionsButton from "../shared/RefreshSuggestionsButton";
+import type { UpdateCampaignRequestBody } from "@rails_api_base";
 
 export default function DescriptionsForm() {
-  const descriptions = useAdsChatState("descriptions");
-  const { setState, updateState } = useAdsChatActions();
-
-  const filteredDescriptions = (descriptions || []).filter((d) => !d.rejected);
-  const prevIdsRef = useRef<string[]>([]);
-
-  const methods = useForm<Ads.DescriptionsOutput>({
-    resolver: zodResolver(Ads.DescriptionsOutputSchema) as any,
-    mode: "onChange",
-    defaultValues: {
-      descriptions: filteredDescriptions,
-    },
-  });
-
-  useEffect(() => {
-    const currentIds = filteredDescriptions.map((d) => d.id).join(",");
-    const prevIds = prevIdsRef.current.join(",");
-
-    if (currentIds !== prevIds) {
-      methods.reset({ descriptions: filteredDescriptions });
-      prevIdsRef.current = filteredDescriptions.map((d) => d.id);
-    }
-  }, [filteredDescriptions, methods]);
-
-  const handleLockToggle = createLockToggleHandler(
-    "descriptions",
-    methods,
-    () => filteredDescriptions,
-    () => descriptions,
-    setState
-  );
-
-  const handleRefreshDescriptions = () => {
-    createRefreshHandler("descriptions", descriptions, updateState);
-  };
-
-  const handleDeleteDescription = (index: number) => {
-    const descId = filteredDescriptions[index]?.id;
-    if (!descId) return;
-    setState({ descriptions: descriptions?.filter((d) => d.id !== descId) });
-  };
-
-  const handleInputChange = (index: number, input: string) => {
-    const descId = filteredDescriptions[index]?.id;
-    if (!descId) return;
-    setState({
-      descriptions: descriptions?.map((d) => (d.id === descId ? { ...d, text: input } : d)),
+  const { removeAsset, updateAsset, lockToggle, refreshAssets, fields, methods, control } =
+    useAssetForm({
+      assetKey: "descriptions",
+      formId: "descriptions",
+      formGroup: "content",
+      schema: Ads.DescriptionsOutputSchema,
+      transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
+        const transformed = defaultAssetTransform(data.descriptions);
+        if (transformed.length === 0) return null;
+        return { descriptions: transformed };
+      },
+      refreshStage: "content",
     });
-  };
-
-  const { getData } = useAutosaveCampaign<Ads.DescriptionsOutput>({
-    methods,
-    formId: "descriptions",
-    transformFn: (data): Partial<UpdateCampaignRequestBody> | null => {
-      const transformed = defaultAssetTransform(data.descriptions);
-      if (transformed.length === 0) return null;
-      return { descriptions: transformed };
-    },
-  });
-
-  useFormRegistration("content", methods, getData);
-
-  const fields = filteredDescriptions.map((d) => ({ ...d, id: d.id }));
 
   return (
     <FieldGroup className="gap-3">
@@ -88,19 +33,19 @@ export default function DescriptionsForm() {
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="secondary">Select 2-4</Badge>
-            <RefreshSuggestionsButton onClick={handleRefreshDescriptions} />
+            <RefreshSuggestionsButton onClick={refreshAssets} />
           </div>
         </div>
       </Field>
       <AdCampaignFieldList
         fieldName="descriptions"
         fields={fields as any}
-        onLockToggle={handleLockToggle}
-        onDelete={handleDeleteDescription}
-        control={methods.control as any}
+        onLockToggle={lockToggle}
+        onDelete={removeAsset}
+        control={control as any}
         placeholder="Description Option"
         maxLength={90}
-        onInputChange={handleInputChange}
+        onInputChange={updateAsset}
       />
     </FieldGroup>
   );

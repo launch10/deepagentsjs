@@ -9,7 +9,7 @@ module APISchemas
         properties: {
           id: APISchemas.id_field,
           thread_id: APISchemas.uuid_field,
-          chat_type: {type: :string, description: 'Type of chat (brainstorm, website, ad_campaign, deploy)'},
+          chat_type: {type: :string, description: 'Type of chat (brainstorm, website, ads, deploy)'},
           project_id: APISchemas.id_field,
           account_id: APISchemas.id_field,
           name: {type: :string, nullable: true, description: 'Chat name'},
@@ -33,7 +33,7 @@ module APISchemas
               },
               chat_type: {
                 type: :string,
-                enum: %w[brainstorm website ad_campaign deploy],
+                enum: %w[brainstorm website ads deploy],
                 description: 'Type of chat'
               },
               project_id: {

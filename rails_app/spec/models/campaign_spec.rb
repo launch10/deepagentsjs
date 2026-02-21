@@ -248,7 +248,7 @@ RSpec.describe Campaign, type: :model do
       campaign, ad_group, ad = create_campaign(account)
       chat = Chat.find_by(
         project_id: campaign.project_id,
-        chat_type: "ad_campaign",
+        chat_type: "ads",
         contextable: campaign
       )
 
@@ -501,6 +501,22 @@ RSpec.describe Campaign, type: :model do
         campaign.update_column(:status, status)
         expect(campaign.is_paused?).to be false
       end
+    end
+  end
+
+  describe "event tracking" do
+    it "tracks campaign_status_changed when status changes" do
+      campaign, _, _ = create_campaign(account)
+      campaign.update_column(:status, "draft")
+      expect(TrackEvent).to receive(:call).with("campaign_status_changed",
+        hash_including(old_status: "draft", new_status: "active"))
+      campaign.update!(status: "active")
+    end
+
+    it "does not track when status stays the same" do
+      campaign, _, _ = create_campaign(account)
+      expect(TrackEvent).not_to receive(:call).with("campaign_status_changed", anything)
+      campaign.update!(name: "Updated Name")
     end
   end
 

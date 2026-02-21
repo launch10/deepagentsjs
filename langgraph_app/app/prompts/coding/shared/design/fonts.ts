@@ -24,7 +24,7 @@ In \`index.html\`, add the font link in the \`<head>\`:
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
   <!-- Load distinctive fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=General+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
 \`\`\`
 
@@ -32,10 +32,9 @@ In \`index.html\`, add the font link in the \`<head>\`:
 
 | Style | Headline Font | Body Font |
 |-------|---------------|-----------|
-| Modern Tech | Space Grotesk | DM Sans |
+| Modern Tech | Outfit | General Sans |
 | Editorial | Playfair Display | Source Sans 3 |
-| Clean SaaS | Sora | Inter |
 | Bold Startup | Plus Jakarta Sans | Plus Jakarta Sans |
-| Elegant | DM Serif Display | DM Sans |
+| Elegant | Instrument Serif | General Sans |
 | Playful | Fraunces | IBM Plex Sans |
 `;

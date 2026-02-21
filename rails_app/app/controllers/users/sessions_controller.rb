@@ -2,6 +2,11 @@ class Users::SessionsController < Devise::SessionsController
   include Devise::Controllers::Rememberable
   include InertiaConcerns
 
+  # WebContainer needs cross-origin isolation (SharedArrayBuffer) from the very first
+  # page load. Since sign-in is the first document load in E2E tests and often in
+  # production, set COOP/COEP here so the browser context is isolated before warmup fires.
+  before_action :set_cross_origin_isolation_headers
+
   layout "auth", only: [:new]
 
   inertia_share do
@@ -29,6 +34,13 @@ class Users::SessionsController < Devise::SessionsController
     if resource
       set_flash_message!(:notice, :signed_in)
       sign_in(resource_name, resource)
+      TrackEvent.call("user_signed_in",
+        user: resource,
+        account: resource.accounts.first,
+        method: "email",
+        days_since_signup: ((Time.current - resource.created_at) / 1.day).round,
+        has_projects: resource.accounts.first&.projects&.exists? || false,
+        project_count: resource.accounts.first&.projects&.count || 0)
       inertia_location after_sign_in_path_for(resource)
     else
       render inertia: "Auth/SignIn",
@@ -69,6 +81,13 @@ class Users::SessionsController < Devise::SessionsController
       remember_me(resource) if session.delete(:remember_me)
       set_flash_message!(:notice, :signed_in)
       sign_in(resource, event: :authentication)
+      TrackEvent.call("user_signed_in",
+        user: resource,
+        account: resource.accounts.first,
+        method: "otp",
+        days_since_signup: ((Time.current - resource.created_at) / 1.day).round,
+        has_projects: resource.accounts.first&.projects&.exists? || false,
+        project_count: resource.accounts.first&.projects&.count || 0)
       inertia_location after_sign_in_path_for(resource)
     else
       flash.now[:alert] = t(".incorrect_verification_code")
@@ -81,6 +100,11 @@ class Users::SessionsController < Devise::SessionsController
   end
 
   private
+
+  def set_cross_origin_isolation_headers
+    response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+  end
 
   def google_oauth_enabled?
     Jumpstart::Omniauth.enabled?("google-oauth2")

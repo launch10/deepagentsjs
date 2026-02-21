@@ -1,6 +1,6 @@
 import { type BrainstormGraphState } from "@state";
 import { Brainstorm, type LangGraphRunnableConfig, isHumanMessage } from "@types";
-import { structuredOutputPrompt, renderPrompt } from "@prompts";
+import { renderPrompt } from "@prompts";
 import { lastHumanMessage } from "@types";
 import {
   whereWeArePrompt,
@@ -25,7 +25,6 @@ export const helpMePrompt = async (
   }
 
   const [
-    outputInstructions,
     whereWeAre,
     currentTopic,
     remainingTopics,
@@ -33,7 +32,6 @@ export const helpMePrompt = async (
     background,
     topicSpecificHelp,
   ] = await Promise.all([
-    structuredOutputPrompt({ schema: Brainstorm.helpMeSchema }),
     whereWeArePrompt(state, config),
     currentTopicPrompt(state, config),
     remainingTopicsPrompt(state, config),
@@ -121,19 +119,15 @@ export const helpMePrompt = async (
             </task>
 
             <output_format_rules>
-                IMPORTANT: Your response MUST be in this exact format:
+                Respond in natural GitHub-flavored markdown. Do NOT output JSON.
 
-                {
-                  "type": "helpMe",
-                  "text": "Brief acknowledgement",
-                  "template": "Structured template or framework",
-                  "examples": ["Example 1", "Example 2", "Example 3"],
-                }
+                Structure your response as:
+                1. Brief acknowledgment (1 sentence)
+                2. A fill-in-the-blank template using **[brackets]** for placeholders
+                3. A concrete example showing the template filled out
 
-                You MUST output valid JSON in this format.
+                Keep it conversational and concise.
             </output_format_rules>
-
-            ${outputInstructions}
         `
   );
 };

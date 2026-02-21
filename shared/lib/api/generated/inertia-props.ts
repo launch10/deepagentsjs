@@ -376,6 +376,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{uuid}/deploy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Deploy page props */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Project UUID */
+                    uuid: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Deploy page props */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DeployProps"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{uuid}/campaigns/content": {
         parameters: {
             query?: never;
@@ -1083,6 +1122,152 @@ export interface components {
                 status?: string;
             } | null;
         };
+        DeployProps: {
+            /** @description Base URL of the application */
+            root_path: string;
+            /** @description URL of the Langgraph service */
+            langgraph_path: string;
+            /** @description JWT token for API authentication */
+            jwt: string;
+            /** @description Validation errors from session */
+            errors?: {
+                [key: string]: string[];
+            };
+            /** @description Flash messages */
+            flash?: {
+                /** @enum {string} */
+                type: "success" | "error" | "info";
+                message: string;
+            }[];
+            /** @description Currently authenticated user */
+            current_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Original admin user when impersonating */
+            true_user?: {
+                id: number;
+                name: string;
+                email: string;
+            } | null;
+            /** @description Whether admin is currently impersonating another user */
+            impersonating?: boolean;
+            /** @description Credit balance for the current account */
+            credits?: {
+                plan_credits: number;
+                pack_credits: number;
+                total_credits: number;
+                plan_credits_allocated: number;
+                period_ends_at?: string | null;
+            } | null;
+            /** @description Langgraph thread ID for the conversation */
+            thread_id?: string | null;
+            project?: {
+                id?: number;
+                /** @description Project UUID */
+                uuid?: string;
+                name?: string;
+                account_id?: number;
+            } | null;
+            /** @description Always null on deploy page */
+            chat?: null;
+            workflow?: {
+                id?: number;
+                step?: string | null;
+                /** @description Current workflow substep */
+                substep?: string | null;
+            } | null;
+            brainstorm?: {
+                id?: number;
+                name?: string;
+            } | null;
+            website?: {
+                id?: number;
+            } | null;
+            ads_account?: {
+                id?: number;
+                platform?: string;
+                platform_settings?: {
+                    google?: {
+                        customer_id?: string | null;
+                        billing_status?: string | null;
+                    } | null;
+                } | null;
+            } | null;
+            campaign?: {
+                /** @description Campaign ID */
+                id?: number;
+                name?: string;
+                daily_budget_cents?: number | null;
+            } | null;
+            ad_group?: {
+                id?: number;
+            } | null;
+            ad?: {
+                id?: number;
+            } | null;
+            headlines?: {
+                id?: number;
+                text?: string;
+            }[] | null;
+            descriptions?: {
+                id?: number;
+                text?: string;
+            }[] | null;
+            languages?: Record<string, never>[] | null;
+            keywords?: {
+                id?: number;
+                text?: string;
+            }[] | null;
+            location_targets?: {
+                criteria_id?: number | null;
+                name?: string | null;
+                target_type?: string | null;
+                country_code?: string | null;
+                targeted?: boolean;
+                ad_location_target_type?: string | null;
+                address_line_1?: string | null;
+                city?: string | null;
+                state?: string | null;
+                postal_code?: string | null;
+                radius?: number | null;
+                radius_units?: string | null;
+                latitude?: number | null;
+                longitude?: number | null;
+            }[] | null;
+            callouts?: {
+                id?: number;
+                text?: string;
+            }[] | null;
+            structured_snippet?: {
+                category?: string;
+                values?: string[];
+            } | null;
+            ad_schedule?: {
+                always_on?: boolean;
+                day_of_week?: string[];
+                start_time?: string | null;
+                end_time?: string | null;
+                time_zone?: string;
+            } | null;
+            deploy?: {
+                /** @description Deploy ID */
+                id?: number;
+                /** @description Deploy status */
+                status?: string;
+                /** @description Current deploy step */
+                current_step?: string | null;
+                /** @description Deploy instruction flags */
+                instructions?: {
+                    [key: string]: boolean;
+                };
+            } | null;
+            /** @description Published website URL */
+            website_url?: string | null;
+            /** @description Deploy environment override (non-production only) */
+            deploy_environment?: string | null;
+        };
         LeadsProps: {
             /** @description Base URL of the application */
             root_path: string;
@@ -1138,6 +1323,7 @@ export interface components {
                 id: number;
                 name?: string | null;
                 email: string;
+                phone?: string | null;
                 date: string;
             }[];
             pagination: {

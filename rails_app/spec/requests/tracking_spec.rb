@@ -38,7 +38,8 @@ RSpec.describe "Tracking API", type: :request do
         utm_campaign: "summer_sale",
         utm_content: "headline_a",
         utm_term: "buy shoes",
-        gclid: "test-gclid-123"
+        gclid: "test-gclid-123",
+        fbclid: "test-fbclid-456"
       }
     end
 
@@ -70,12 +71,26 @@ RSpec.describe "Tracking API", type: :request do
         expect(visit.gclid).to eq("test-gclid-123")
       end
 
+      it "stores fbclid for attribution" do
+        post "/api/v1/tracking/visit", params: valid_params, as: :json
+
+        visit = Ahoy::Visit.last
+        expect(visit.fbclid).to eq("test-fbclid-456")
+      end
+
       it "stores referrer and landing page" do
         post "/api/v1/tracking/visit", params: valid_params, as: :json
 
         visit = Ahoy::Visit.last
         expect(visit.referrer).to eq("https://google.com")
         expect(visit.landing_page).to eq("https://my-landing.launch10.site/?utm_source=google")
+      end
+
+      it "stores referring_domain extracted from referrer" do
+        post "/api/v1/tracking/visit", params: valid_params, as: :json
+
+        visit = Ahoy::Visit.last
+        expect(visit.referring_domain).to eq("google.com")
       end
 
       it "associates visit with website" do
@@ -151,6 +166,46 @@ RSpec.describe "Tracking API", type: :request do
         }.to change(Ahoy::Visit, :count).by(1)
 
         expect(response).to have_http_status(:ok)
+      end
+
+      it "handles missing referrer gracefully" do
+        minimal_params = {
+          token: project.signup_token,
+          visitor_token: SecureRandom.uuid,
+          visit_token: SecureRandom.uuid
+        }
+
+        post "/api/v1/tracking/visit", params: minimal_params, as: :json
+
+        visit = Ahoy::Visit.last
+        expect(visit.referrer).to be_nil
+        expect(visit.referring_domain).to be_nil
+      end
+
+      it "extracts referring_domain from complex referrer URL" do
+        post "/api/v1/tracking/visit", params: {
+          token: project.signup_token,
+          visitor_token: SecureRandom.uuid,
+          visit_token: SecureRandom.uuid,
+          referrer: "https://www.google.com/search?q=test+query&hl=en"
+        }, as: :json
+
+        visit = Ahoy::Visit.last
+        expect(visit.referring_domain).to eq("www.google.com")
+      end
+
+      it "handles malformed referrer URL gracefully" do
+        post "/api/v1/tracking/visit", params: {
+          token: project.signup_token,
+          visitor_token: SecureRandom.uuid,
+          visit_token: SecureRandom.uuid,
+          referrer: "not-a-valid-url"
+        }, as: :json
+
+        expect(response).to have_http_status(:ok)
+        visit = Ahoy::Visit.last
+        expect(visit.referrer).to eq("not-a-valid-url")
+        expect(visit.referring_domain).to be_nil
       end
     end
   end

@@ -26,16 +26,23 @@ module WebsiteDeployConcerns
       # Inject Google Ads gtag.js script if configured
       inject_gtag_script!
 
-      # Run pnpm install and build
+      # Inject correct basename for subpath deploys
+      inject_basename!
+
+      # Generate robots.txt before build (goes into public/ → copied to dist/)
+      generate_robots_txt!
+
+      # Run pnpm install and build (includes prerendering)
       unless build_exists?
-        Dir.chdir(temp_dir) do
-          system("pnpm install --ignore-workspace") or raise "pnpm install failed"
-          system("pnpm run build") or raise "pnpm build failed"
-        end
+        system("pnpm", "install", "--ignore-workspace", chdir: temp_dir) or raise "pnpm install failed"
+        system("pnpm", "run", "build", chdir: temp_dir) or raise "pnpm build failed"
       end
 
       dist_path = File.join(temp_dir, "dist")
       raise "Build failed: dist directory not found" unless Dir.exist?(dist_path)
+
+      # Generate sitemap after build so we can include prerendered routes
+      generate_sitemap_xml!
 
       dist_path
     end
@@ -49,7 +56,7 @@ module WebsiteDeployConcerns
     def write_env_file!
       env_vars = {
         "VITE_SIGNUP_TOKEN" => website.project.signup_token,
-        "VITE_API_BASE_URL" => Rails.configuration.x.api_base_url,
+        "VITE_API_BASE_URL" => ENV.fetch("DEPLOY_API_BASE_URL", "https://launch10.ai"),
         "VITE_GOOGLE_ADS_SEND_TO" => google_send_to
       }
       File.write(File.join(temp_dir, ".env"), env_vars.compact.map { |k, v| "#{k}=#{v}" }.join("\n"))
@@ -78,6 +85,18 @@ module WebsiteDeployConcerns
       File.write(index_path, content)
     end
 
+    def inject_basename!
+      basename = website.website_url&.path || "/"
+      return if basename == "/"
+
+      index_path = File.join(temp_dir, "index.html")
+      return unless File.exist?(index_path)
+
+      content = File.read(index_path)
+      content.gsub!("window.__BASENAME__ = '/';", "window.__BASENAME__ = '#{basename}';")
+      File.write(index_path, content)
+    end
+
     def google_conversion_id
       ads_account&.google_conversion_id
     end
@@ -88,6 +107,64 @@ module WebsiteDeployConcerns
 
     def ads_account
       @ads_account ||= website.project.account.ads_accounts.find_by(platform: "google")
+    end
+
+    def generate_robots_txt!
+      base_url = website_deploy_domain_url
+      return unless base_url
+
+      public_dir = File.join(temp_dir, "public")
+      FileUtils.mkdir_p(public_dir)
+
+      content = <<~TXT
+        User-agent: *
+        Allow: /
+
+        Sitemap: #{base_url}/sitemap.xml
+      TXT
+
+      File.write(File.join(public_dir, "robots.txt"), content)
+    end
+
+    def generate_sitemap_xml!
+      base_url = website_deploy_domain_url
+      return unless base_url
+
+      dist_path = File.join(temp_dir, "dist")
+      lastmod = website.updated_at.strftime("%Y-%m-%d")
+
+      # Read prerendered routes if available, otherwise fall back to just "/"
+      routes = ["/"]
+      routes_file = File.join(dist_path, "prerendered-routes.json")
+      if File.exist?(routes_file)
+        routes = JSON.parse(File.read(routes_file))
+      end
+
+      urls = routes.map do |route|
+        loc = (route == "/") ? "#{base_url}/" : "#{base_url}#{route}"
+        <<~URL
+          <url>
+            <loc>#{loc}</loc>
+            <lastmod>#{lastmod}</lastmod>
+          </url>
+        URL
+      end.join
+
+      content = <<~XML
+        <?xml version="1.0" encoding="UTF-8"?>
+        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+        #{urls.strip}
+        </urlset>
+      XML
+
+      File.write(File.join(dist_path, "sitemap.xml"), content)
+    end
+
+    def website_deploy_domain_url
+      url = website.website_url
+      return nil unless url
+
+      "https://#{url.domain_string}#{url.path}".chomp("/")
     end
 
     def validate_website_has_files

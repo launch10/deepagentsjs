@@ -15,6 +15,8 @@ export * as Graphs from "./graphs";
 export * from "./message";
 export * from "./helpers";
 export * from "./graph";
+export * from "./agentIntent";
+export * as AgentIntentNS from "./agentIntent";
 export * as Ads from "./ads";
 export * as Workflow from "./workflow";
 export * as Deploy from "./deploy";

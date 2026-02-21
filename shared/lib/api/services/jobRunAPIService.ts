@@ -38,6 +38,31 @@ export class JobRunAPIService extends RailsAPIBase {
   }
 
   /**
+   * Fetches the current status of a job run.
+   * Used as a fallback when the webhook callback hasn't arrived.
+   *
+   * Uses raw fetch since this endpoint may not be in the OpenAPI spec yet.
+   */
+  async show(
+    id: number
+  ): Promise<{ id: number; status: string; result: Record<string, unknown> | null; error: string | null }> {
+    const client = await this.getClient();
+
+    // Use the typed client's GET with a cast since the endpoint may not be in the OpenAPI spec
+    const response = await (client as any).GET(`/api/v1/job_runs/${id}`);
+
+    if (response.error) {
+      throw new Error(`Failed to fetch job run ${id}: ${JSON.stringify(response.error)}`);
+    }
+
+    if (!response.data) {
+      throw new Error(`Failed to fetch job run ${id}: No data returned`);
+    }
+
+    return response.data as { id: number; status: string; result: Record<string, unknown> | null; error: string | null };
+  }
+
+  /**
    * Creates a new job run
    * Accepts either the simple camelCase params or the full API request format
    */

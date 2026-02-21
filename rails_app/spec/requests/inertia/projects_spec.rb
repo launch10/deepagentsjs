@@ -50,7 +50,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
   let!(:project) { create(:project, account: account) }
   let!(:website) { create(:website, account: account, project: project, template: template) }
   let!(:brainstorm) { create(:brainstorm, website: website, project: project) }
-  let!(:workflow) { create(:project_workflow, project: project, workflow_type: 'launch', step: 'ad_campaign', substep: 'content') }
+  let!(:workflow) { create(:project_workflow, project: project, workflow_type: 'launch', step: 'ads', substep: 'content') }
 
   describe 'GET /projects (index) with projects' do
     it 'props conform to Projects schema' do
@@ -111,10 +111,10 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
     let!(:ad_group) { create(:ad_group, campaign: campaign) }
     let!(:ad) { create(:ad, ad_group: ad_group) }
 
-    WorkflowConfig.substeps_for('launch', 'ad_campaign').each do |substep|
+    WorkflowConfig.substeps_for('launch', 'ads').each do |substep|
       describe "GET /projects/:uuid/campaigns/#{substep}" do
         before do
-          workflow.update!(step: 'ad_campaign', substep: substep)
+          workflow.update!(step: 'ads', substep: substep)
           # Set the campaign stage directly to avoid validation that requires previous stages to be complete
           campaign.update_column(:stage, substep)
         end
@@ -123,7 +123,7 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
           get send("campaigns_#{substep}_project_path", project.uuid)
 
           expect(response).to have_http_status(:ok)
-          expect(inertia.component).to eq("Campaign")
+          expect(inertia.component).to eq("Ads")
         end
 
         it "props conform to Campaigns::#{substep.camelize} schema" do
@@ -161,6 +161,299 @@ RSpec.describe 'Projects Inertia Pages', type: :request, inertia: true do
           expect_inertia_props_to_match_schema(schema_module.props_schema)
         end
       end
+    end
+  end
+
+  describe 'workflow step tracking across page transitions' do
+    # Regression tests: every controller action must update workflow.step to match the page,
+    # so that current_chat returns the correct chat (and thus the correct thread_id in props).
+    # Without this, navigating from e.g. website → campaigns would leave step="website",
+    # causing the campaign page to load the website chat's messages.
+
+    let!(:campaign) { create(:campaign, account: account, project: project, website: website) }
+    let!(:ad_group) { create(:ad_group, campaign: campaign) }
+    let!(:ad) { create(:ad, ad_group: ad_group) }
+
+    # Ensure each step has its own chat with a distinct thread_id
+    let!(:brainstorm_chat) { project.chats.find_by(chat_type: 'brainstorm') }
+    let!(:website_chat) { create(:chat, project: project, account: account, chat_type: 'website', thread_id: 'website-thread') }
+    let!(:ads_chat) { project.chats.find_by(chat_type: 'ads') }
+
+    shared_examples 'updates workflow step' do |expected_step, expected_substep|
+      it "sets workflow step to #{expected_step.inspect} and substep to #{expected_substep.inspect}" do
+        make_request
+        workflow.reload
+        expect(workflow.step).to eq(expected_step)
+        expect(workflow.substep).to eq(expected_substep)
+      end
+    end
+
+    shared_examples 'returns correct thread_id for step' do |expected_chat_type|
+      it "returns the #{expected_chat_type} chat's thread_id in props" do
+        make_request
+        expected_chat = project.chats.find_by(chat_type: expected_chat_type)
+        expect(inertia.props[:thread_id]).to eq(expected_chat&.thread_id)
+      end
+    end
+
+    # ── Forward transitions ──
+
+    context 'website → brainstorm (navigating back)' do
+      before { workflow.update!(step: 'website', substep: 'build') }
+      let(:make_request) { get brainstorm_project_path(project.uuid) }
+
+      include_examples 'updates workflow step', 'brainstorm', nil
+      include_examples 'returns correct thread_id for step', 'brainstorm'
+    end
+
+    context 'brainstorm → website/build' do
+      before { workflow.update!(step: 'brainstorm', substep: nil) }
+      let(:make_request) { get website_build_project_path(project.uuid) }
+
+      include_examples 'updates workflow step', 'website', 'build'
+      include_examples 'returns correct thread_id for step', 'website'
+    end
+
+    context 'website/build → website/deploy' do
+      before { workflow.update!(step: 'website', substep: 'build') }
+      let(:make_request) { get website_deploy_project_path(project.uuid) }
+
+      include_examples 'updates workflow step', 'website', 'deploy'
+    end
+
+    context 'website/deploy → deploy' do
+      before { workflow.update!(step: 'website', substep: 'deploy') }
+      let(:make_request) { get deploy_project_path(project.uuid) }
+
+      include_examples 'updates workflow step', 'deploy', nil
+    end
+
+    context 'deploy → campaigns/content' do
+      before { workflow.update!(step: 'deploy', substep: nil) }
+      let(:make_request) { get campaigns_content_project_path(project.uuid) }
+
+      include_examples 'updates workflow step', 'ads', 'content'
+      include_examples 'returns correct thread_id for step', 'ads'
+    end
+
+    context 'website → campaigns/content (skipping deploy)' do
+      before { workflow.update!(step: 'website', substep: 'build') }
+      let(:make_request) { get campaigns_content_project_path(project.uuid) }
+
+      include_examples 'updates workflow step', 'ads', 'content'
+      include_examples 'returns correct thread_id for step', 'ads'
+    end
+
+    # ── Backward transitions ──
+
+    context 'campaigns/content → website/build (navigating back)' do
+      before { workflow.update!(step: 'ads', substep: 'content') }
+      let(:make_request) { get website_build_project_path(project.uuid) }
+
+      include_examples 'updates workflow step', 'website', 'build'
+      include_examples 'returns correct thread_id for step', 'website'
+    end
+
+    context 'campaigns/content → brainstorm (navigating back)' do
+      before { workflow.update!(step: 'ads', substep: 'content') }
+      let(:make_request) { get brainstorm_project_path(project.uuid) }
+
+      include_examples 'updates workflow step', 'brainstorm', nil
+      include_examples 'returns correct thread_id for step', 'brainstorm'
+    end
+
+    context 'deploy → website/deploy (navigating back)' do
+      before { workflow.update!(step: 'deploy', substep: nil) }
+      let(:make_request) { get website_deploy_project_path(project.uuid) }
+
+      include_examples 'updates workflow step', 'website', 'deploy'
+    end
+
+    # ── Within-page substep transitions ──
+
+    context 'campaigns/content → campaigns/keywords (same page)' do
+      before do
+        workflow.update!(step: 'ads', substep: 'content')
+        # Bypass campaign stage validation (requires previous stages complete)
+        campaign.update_column(:stage, 'keywords')
+      end
+      let(:make_request) { get campaigns_keywords_project_path(project.uuid) }
+
+      include_examples 'updates workflow step', 'ads', 'keywords'
+      include_examples 'returns correct thread_id for step', 'ads'
+    end
+  end
+
+  describe 'deploy page with existing deploys' do
+    # Regression: after a redeploy, the deploy page must still pass a thread_id
+    # (via core_json from the deploy's Chat) so the frontend doesn't auto-start a new deploy.
+
+    context 'website deploy' do
+      let!(:first_deploy) { create(:deploy, :website_only, project: project, status: 'completed') }
+      let!(:second_deploy) { create(:deploy, :website_only, project: project, status: 'completed') }
+
+      before { workflow.update!(step: 'website', substep: 'deploy') }
+
+      it 'passes thread_id from the deploy chat' do
+        get website_deploy_project_path(project.uuid)
+
+        expect(inertia.props[:thread_id]).to be_present
+        expect(inertia.props[:deploy]).to be_present
+        expect(inertia.props[:deploy]).not_to have_key(:langgraph_thread_id)
+      end
+    end
+
+    context 'campaign deploy' do
+      let!(:first_deploy) { create(:deploy, :full_deploy, project: project, status: 'completed') }
+      let!(:second_deploy) { create(:deploy, :full_deploy, project: project, status: 'completed') }
+
+      before { workflow.update!(step: 'deploy', substep: nil) }
+
+      it 'passes thread_id from the deploy chat' do
+        get deploy_project_path(project.uuid)
+
+        expect(inertia.props[:thread_id]).to be_present
+        expect(inertia.props[:deploy]).to be_present
+        expect(inertia.props[:deploy]).not_to have_key(:langgraph_thread_id)
+      end
+    end
+  end
+
+  describe 'deploy thread_id isolation' do
+    # Regression: website deploy thread_id must NOT leak into campaign deploy page.
+    # ProjectWorkflow#chat resolves the correct deploy via instruction type.
+
+    it 'does not leak website deploy thread_id to campaign deploy page' do
+      website_deploy = create(:deploy, :website_only, project: project, status: 'completed')
+      website_deploy.chat.thread_id
+
+      workflow.update!(step: 'deploy', substep: nil)
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:thread_id]).to be_nil
+      expect(inertia.props[:deploy]).to be_nil
+    end
+
+    it 'does not leak campaign deploy thread_id to website deploy page' do
+      campaign_deploy = create(:deploy, :full_deploy, project: project, status: 'completed')
+
+      workflow.update!(step: 'website', substep: 'deploy')
+      get website_deploy_project_path(project.uuid)
+
+      # full_deploy (campaign type) also deploys website, so current_for(:website) matches it
+      # This is expected — finding it on the website deploy page is correct
+      expect(inertia.props[:thread_id]).to eq(campaign_deploy.chat.thread_id)
+    end
+
+    it 'returns nil thread_id when no matching deploy exists' do
+      workflow.update!(step: 'deploy', substep: nil)
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:thread_id]).to be_nil
+      expect(inertia.props[:deploy]).to be_nil
+    end
+  end
+
+  describe 'deploy page props contract (useDeployInit relies on these)' do
+    # The frontend useDeployInit hook decides what to do based solely on
+    # the deploy prop returned by the backend:
+    #   - deploy with pending/running status → resume
+    #   - deploy with completed/failed status → show terminal state
+    #   - deploy is nil → start fresh deploy
+    #
+    # These tests verify the backend returns the correct deploy prop
+    # for each scenario, especially after redeploy (deactivation).
+
+    before { workflow.update!(step: 'deploy', substep: nil) }
+
+    it 'returns deploy: nil when no deploy exists (first visit)' do
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:deploy]).to be_nil
+    end
+
+    it 'returns the active pending deploy' do
+      deploy = create(:deploy, :full_deploy, project: project, status: 'pending')
+
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:deploy]).to be_present
+      expect(inertia.props[:deploy][:id]).to eq(deploy.id)
+      expect(inertia.props[:deploy][:status]).to eq('pending')
+    end
+
+    it 'returns the active running deploy' do
+      deploy = create(:deploy, :full_deploy, project: project, status: 'running')
+
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:deploy]).to be_present
+      expect(inertia.props[:deploy][:id]).to eq(deploy.id)
+      expect(inertia.props[:deploy][:status]).to eq('running')
+    end
+
+    it 'returns the active completed deploy' do
+      deploy = create(:deploy, :full_deploy, project: project, status: 'completed')
+
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:deploy]).to be_present
+      expect(inertia.props[:deploy][:id]).to eq(deploy.id)
+      expect(inertia.props[:deploy][:status]).to eq('completed')
+    end
+
+    it 'returns the active failed deploy' do
+      deploy = create(:deploy, :full_deploy, project: project, status: 'failed')
+
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:deploy]).to be_present
+      expect(inertia.props[:deploy][:id]).to eq(deploy.id)
+      expect(inertia.props[:deploy][:status]).to eq('failed')
+    end
+
+    it 'returns deploy: nil after redeploy deactivates the old deploy' do
+      # Simulate the redeploy flow:
+      # 1. A completed deploy exists
+      deploy = create(:deploy, :full_deploy, project: project, status: 'completed')
+
+      # 2. User clicks "Redeploy" → frontend calls deactivate
+      deploy.deactivate!
+
+      # 3. Page reloads → backend should return deploy: nil
+      #    so useDeployInit takes the "start fresh" path
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:deploy]).to be_nil
+    end
+
+    it 'returns deploy: nil after redeploy deactivates a failed deploy' do
+      deploy = create(:deploy, :full_deploy, project: project, status: 'failed')
+      deploy.deactivate!
+
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:deploy]).to be_nil
+    end
+
+    it 'returns the most recent active deploy when multiple exist' do
+      old_deploy = create(:deploy, :full_deploy, project: project, status: 'completed')
+      old_deploy.deactivate!
+      new_deploy = create(:deploy, :full_deploy, project: project, status: 'running')
+
+      get deploy_project_path(project.uuid)
+
+      expect(inertia.props[:deploy]).to be_present
+      expect(inertia.props[:deploy][:id]).to eq(new_deploy.id)
+      expect(inertia.props[:deploy][:status]).to eq('running')
+    end
+  end
+
+  describe 'GET /projects/:uuid/performance' do
+    it 'tracks project_performance_viewed' do
+      expect(TrackEvent).to receive(:call).with("project_performance_viewed",
+        hash_including(project_uuid: project.uuid, has_leads: kind_of(FalseClass)))
+      get performance_project_path(project.uuid)
     end
   end
 

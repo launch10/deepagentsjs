@@ -5,6 +5,7 @@
 #  id         :bigint           not null, primary key
 #  email      :string(255)      not null
 #  name       :string(255)
+#  phone      :string(50)
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
 #  account_id :bigint           not null
@@ -28,11 +29,12 @@ class Lead < ApplicationRecord
     format: { with: URI::MailTo::EMAIL_REGEXP },
     uniqueness: { scope: :account_id, case_sensitive: false }
   validates :name, length: { maximum: 255 }, allow_blank: true
+  validates :phone, length: { maximum: 50 }, allow_blank: true
 
   before_validation :normalize_email
 
   # Find or create a lead for a signup, returning the lead and website_lead
-  def self.find_or_create_for_signup(account:, website:, email:, name: nil, visit: nil, visitor_token: nil, gclid: nil,
+  def self.find_or_create_for_signup(account:, website:, email:, name: nil, phone: nil, visit: nil, visitor_token: nil, gclid: nil, fbclid: nil,
     utm_source: nil, utm_medium: nil, utm_campaign: nil, utm_content: nil, utm_term: nil)
     normalized_email = normalize_email(email)
 
@@ -40,8 +42,13 @@ class Lead < ApplicationRecord
     created = false
 
     if lead.nil?
-      lead = account.leads.create!(email: normalized_email, name: name)
+      lead = account.leads.create!(email: normalized_email, name: name, phone: phone)
       created = true
+    end
+
+    # Always backfill phone if the lead doesn't have one yet
+    if !created && lead.phone.blank? && phone.present?
+      lead.update!(phone: phone)
     end
 
     # Check if already converted on this website
@@ -56,6 +63,7 @@ class Lead < ApplicationRecord
       visit: visit,
       visitor_token: visitor_token,
       gclid: gclid || visit&.gclid,
+      fbclid: fbclid || visit&.fbclid,
       utm_source: utm_source || visit&.utm_source,
       utm_medium: utm_medium || visit&.utm_medium,
       utm_campaign: utm_campaign || visit&.utm_campaign,

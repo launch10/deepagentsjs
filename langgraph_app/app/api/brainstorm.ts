@@ -13,6 +13,3 @@ const compiledGraph = brainstormGraph.compile({
 });
 
 export const BrainstormAPI = BrainstormBridge.bind(compiledGraph);
-
-// Re-export bridge for nodes that need toStructuredMessage
-export { BrainstormBridge } from "@annotation";

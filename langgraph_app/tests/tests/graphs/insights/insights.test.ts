@@ -306,13 +306,13 @@ describe("Insights Generation", () => {
         await DatabaseSnapshotter.restoreSnapshot("analytics/healthy_account");
       }, 30000);
 
-      // Since we're not passing metrics, the graph will fetch them from Rails
-      // This test verifies the graph can handle the data correctly
+      // Pass metrics directly to skip the Rails API call (which has no Polly recording)
       it("fetches metrics from rails and generates insights", async () => {
         const result = await testGraph<InsightsGraphState>()
           .withGraph(insightsGraph)
           .withState({
             jwt: "test-jwt",
+            metrics: HEALTHY_ACCOUNT_METRICS,
           })
           .execute();
 

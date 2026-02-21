@@ -26,6 +26,14 @@ module Credits
         pay_charge: charge,
         idempotency_key: "pack_purchase:#{charge.id}"
       )
+
+      TrackEvent.call("credit_pack_purchased",
+        user: account.owner,
+        account: account,
+        pack_credits: credit_pack.credits,
+        pack_price_cents: charge.amount,
+        current_balance: account.reload.total_millicredits,
+        plan_name: account.plan&.name)
     end
   end
 end

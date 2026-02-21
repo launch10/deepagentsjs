@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { HumanMessage, ToolMessage } from "@langchain/core/messages";
-import { isContextMessage, createMultimodalContextMessage, CONTEXT_MESSAGE_NAME } from "langgraph-ai-sdk";
+import {
+  isContextMessage,
+  createMultimodalContextMessage,
+  CONTEXT_MESSAGE_NAME,
+} from "langgraph-ai-sdk";
 import { UploadsAPIService } from "@rails_api";
 
 /**
@@ -17,8 +21,20 @@ describe("queryUploads tool utilities", () => {
   describe("UploadsAPIService.formatForModel", () => {
     it("should format uploads as image_url content blocks", () => {
       const uploads = [
-        { id: 1, url: "https://example.com/image1.jpg", filename: "logo.jpg", is_logo: true, created_at: "2024-01-01" },
-        { id: 2, url: "https://example.com/image2.png", filename: "product.png", is_logo: false, created_at: "2024-01-02" },
+        {
+          id: 1,
+          url: "https://example.com/image1.jpg",
+          filename: "logo.jpg",
+          is_logo: true,
+          created_at: "2024-01-01",
+        },
+        {
+          id: 2,
+          url: "https://example.com/image2.png",
+          filename: "product.png",
+          is_logo: false,
+          created_at: "2024-01-02",
+        },
       ];
 
       const result = UploadsAPIService.formatForModel(uploads as any);
@@ -43,7 +59,13 @@ describe("queryUploads tool utilities", () => {
   describe("context message creation for images", () => {
     it("should create a context message with image content blocks", () => {
       const imageBlocks = UploadsAPIService.formatForModel([
-        { id: 1, url: "https://example.com/image.jpg", filename: "test.jpg", is_logo: false, created_at: "2024-01-01" },
+        {
+          id: 1,
+          url: "https://example.com/image.jpg",
+          filename: "test.jpg",
+          is_logo: false,
+          created_at: "2024-01-01",
+        },
       ] as any);
 
       const content = [
@@ -53,7 +75,7 @@ describe("queryUploads tool utilities", () => {
 
       const contextMsg = createMultimodalContextMessage(content);
 
-      expect(contextMsg).toBeInstanceOf(HumanMessage);
+      expect(contextMsg._getType()).toBe("human");
       expect(isContextMessage(contextMsg)).toBe(true);
       expect((contextMsg as any).name).toBe(CONTEXT_MESSAGE_NAME);
 
@@ -66,9 +88,27 @@ describe("queryUploads tool utilities", () => {
 
     it("should create context message with multiple images", () => {
       const imageBlocks = UploadsAPIService.formatForModel([
-        { id: 1, url: "https://example.com/1.jpg", filename: "1.jpg", is_logo: false, created_at: "2024-01-01" },
-        { id: 2, url: "https://example.com/2.jpg", filename: "2.jpg", is_logo: false, created_at: "2024-01-02" },
-        { id: 3, url: "https://example.com/3.jpg", filename: "3.jpg", is_logo: true, created_at: "2024-01-03" },
+        {
+          id: 1,
+          url: "https://example.com/1.jpg",
+          filename: "1.jpg",
+          is_logo: false,
+          created_at: "2024-01-01",
+        },
+        {
+          id: 2,
+          url: "https://example.com/2.jpg",
+          filename: "2.jpg",
+          is_logo: false,
+          created_at: "2024-01-02",
+        },
+        {
+          id: 3,
+          url: "https://example.com/3.jpg",
+          filename: "3.jpg",
+          is_logo: true,
+          created_at: "2024-01-03",
+        },
       ] as any);
 
       const content = [
@@ -93,8 +133,18 @@ describe("queryUploads tool utilities", () => {
         success: true,
         count: 2,
         images: [
-          { url: "https://example.com/1.jpg", filename: "logo.jpg", is_logo: true, created_at: "2024-01-01" },
-          { url: "https://example.com/2.jpg", filename: "product.jpg", is_logo: false, created_at: "2024-01-02" },
+          {
+            url: "https://example.com/1.jpg",
+            filename: "logo.jpg",
+            is_logo: true,
+            created_at: "2024-01-01",
+          },
+          {
+            url: "https://example.com/2.jpg",
+            filename: "product.jpg",
+            is_logo: false,
+            created_at: "2024-01-02",
+          },
         ],
       };
 

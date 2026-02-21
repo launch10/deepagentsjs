@@ -4,13 +4,20 @@ import { env, isFrontend, isBackend } from "./env";
 
 let jwt: typeof import('jsonwebtoken') | null = null;
 let crypto: typeof import('crypto') | null = null;
+let backendModulesPromise: Promise<void> | null = null;
 
 async function loadBackendModules() {
-  if (isBackend() && !jwt) {
-    const jwtModule = await import('jsonwebtoken');
-    jwt = jwtModule.default || jwtModule;
-    crypto = await import('crypto');
+  if (!isBackend()) return;
+
+  if (!backendModulesPromise) {
+    backendModulesPromise = (async () => {
+      const jwtModule = await import('jsonwebtoken');
+      jwt = jwtModule.default || jwtModule;
+      crypto = await import('crypto');
+    })();
   }
+
+  return backendModulesPromise;
 }
 
 /** Default timeout for Rails API requests (10 seconds) */

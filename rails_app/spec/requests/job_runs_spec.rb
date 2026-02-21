@@ -241,6 +241,161 @@ RSpec.describe "Job Runs API", type: :request do
     end
   end
 
+  # Show endpoint (used by Langgraph for status check fallback)
+  describe 'Show job run' do
+    let!(:job_run) do
+      create(:job_run,
+        account: account,
+        job_class: "WebsiteDeploy",
+        status: "completed",
+        result_data: { "url" => "https://example.com" },
+        langgraph_thread_id: "thread_show123")
+    end
+
+    path '/api/v1/job_runs/{id}' do
+      get 'Returns job run status and result' do
+        tags 'Job Runs'
+        produces 'application/json'
+        security [bearer_auth: []]
+        parameter name: :Authorization, in: :header, type: :string, required: false
+        parameter name: 'X-Signature', in: :header, type: :string, required: false
+        parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+        parameter name: :id, in: :path, type: :integer, required: true
+
+        response '200', 'returns job run with status and result' do
+          schema APISchemas::JobRun.show_response
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:id) { job_run.id }
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data['id']).to eq(job_run.id)
+            expect(data['status']).to eq('completed')
+            expect(data['result']).to eq({ "url" => "https://example.com" })
+            expect(data['error']).to be_nil
+          end
+        end
+
+        response '200', 'returns error for failed job run' do
+          schema APISchemas::JobRun.show_response
+          let!(:failed_job_run) do
+            create(:job_run,
+              account: account,
+              job_class: "WebsiteDeploy",
+              status: "failed",
+              error_message: "Deploy failed: timeout",
+              langgraph_thread_id: "thread_fail123")
+          end
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:id) { failed_job_run.id }
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data['status']).to eq('failed')
+            expect(data['error']).to eq('Deploy failed: timeout')
+          end
+        end
+
+        response '404', 'cannot access other accounts job run' do
+          let!(:other_user) { create(:user) }
+          let!(:other_account) { other_user.owned_account }
+          let!(:other_job_run) do
+            create(:job_run,
+              account: other_account,
+              job_class: "WebsiteDeploy",
+              status: "completed",
+              langgraph_thread_id: "thread_other123")
+          end
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:id) { other_job_run.id }
+
+          run_test! do |response|
+            expect(response.code).to eq("404")
+          end
+        end
+      end
+    end
+  end
+
+  # WebsiteDeploy job type tests
+  describe 'WebsiteDeploy job' do
+    let!(:project) { create(:project, account: account) }
+    let!(:deploy_website) { create(:website, account: account, project: project) }
+
+    path '/api/v1/job_runs' do
+      post 'Creates a WebsiteDeploy job run' do
+        tags 'Job Runs'
+        consumes 'application/json'
+        produces 'application/json'
+        security [bearer_auth: []]
+        parameter name: :Authorization, in: :header, type: :string, required: false
+        parameter name: 'X-Signature', in: :header, type: :string, required: false
+        parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+        parameter name: :job_run_params, in: :body, schema: APISchemas::JobRun.params_schema
+
+        response '201', 'creates job run and dispatches deploy_async on website' do
+          schema APISchemas::JobRun.response
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:job_run_params) do
+            {
+              job_class: "WebsiteDeploy",
+              arguments: { website_id: deploy_website.id },
+              thread_id: "thread_deploy123"
+            }
+          end
+
+          before do
+            allow_any_instance_of(Website).to receive(:deploy_async)
+          end
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data['id']).to be_present
+            expect(data['status']).to eq('pending')
+
+            job_run = JobRun.find(data['id'])
+            expect(job_run.job_class).to eq("WebsiteDeploy")
+            expect(job_run.langgraph_thread_id).to eq("thread_deploy123")
+            expect(job_run.job_args["website_id"]).to eq(deploy_website.id)
+            expect(job_run.job_args["account_id"]).to eq(account.id)
+          end
+        end
+
+        response '404', 'website not found' do
+          schema APISchemas::JobRun.error_response
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:job_run_params) do
+            {
+              job_class: "WebsiteDeploy",
+              arguments: { website_id: 999999 },
+              thread_id: "thread_deploy123"
+            }
+          end
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data['errors']).to be_present
+          end
+        end
+      end
+    end
+  end
+
   # GoogleOAuthConnect job type tests
   describe 'GoogleOAuthConnect job' do
     path '/api/v1/job_runs' do
@@ -353,6 +508,96 @@ RSpec.describe "Job Runs API", type: :request do
             data = JSON.parse(response.body)
             job_run = JobRun.find(data['id'])
             expect(job_run.deploy_id).to eq(deploy.id)
+          end
+        end
+      end
+    end
+  end
+
+  # CampaignEnable job type tests
+  describe 'CampaignEnable job' do
+    path '/api/v1/job_runs' do
+      post 'Creates a CampaignEnable job run' do
+        tags 'Job Runs'
+        consumes 'application/json'
+        produces 'application/json'
+        security [bearer_auth: []]
+        parameter name: :Authorization, in: :header, type: :string, required: false
+        parameter name: 'X-Signature', in: :header, type: :string, required: false
+        parameter name: 'X-Timestamp', in: :header, type: :string, required: false
+        parameter name: :job_run_params, in: :body, schema: APISchemas::JobRun.params_schema
+
+        response '201', 'creates job run and preserves campaign_id in job_args' do
+          schema APISchemas::JobRun.response
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:job_run_params) do
+            {
+              job_class: "CampaignEnable",
+              arguments: { campaign_id: campaign.id },
+              thread_id: "thread_enable123"
+            }
+          end
+
+          before do
+            allow(GoogleAds::CampaignEnableWorker).to receive(:perform_async)
+          end
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data['id']).to be_present
+            expect(data['status']).to eq('pending')
+
+            job_run = JobRun.find(data['id'])
+            expect(job_run.job_class).to eq("CampaignEnable")
+            expect(job_run.langgraph_thread_id).to eq("thread_enable123")
+            expect(job_run.job_args["campaign_id"]).to eq(campaign.id)
+            expect(job_run.job_args["account_id"]).to eq(account.id)
+
+            expect(GoogleAds::CampaignEnableWorker).to have_received(:perform_async)
+              .with(job_run.id)
+          end
+        end
+
+        response '404', 'campaign not found' do
+          schema APISchemas::JobRun.error_response
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:job_run_params) do
+            {
+              job_class: "CampaignEnable",
+              arguments: { campaign_id: 999999 },
+              thread_id: "thread_enable123"
+            }
+          end
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data['errors']).to be_present
+          end
+        end
+
+        response '404', 'campaign_id is nil' do
+          schema APISchemas::JobRun.error_response
+          let(:auth_headers) { auth_headers_for(user) }
+          let(:Authorization) { auth_headers['Authorization'] }
+          let(:"X-Signature") { auth_headers['X-Signature'] }
+          let(:"X-Timestamp") { auth_headers['X-Timestamp'] }
+          let(:job_run_params) do
+            {
+              job_class: "CampaignEnable",
+              arguments: {},
+              thread_id: "thread_enable123"
+            }
+          end
+
+          run_test! do |response|
+            data = JSON.parse(response.body)
+            expect(data['errors']).to be_present
           end
         end
       end

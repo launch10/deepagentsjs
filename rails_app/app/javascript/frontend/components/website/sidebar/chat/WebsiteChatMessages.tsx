@@ -54,11 +54,6 @@ export function WebsiteChatMessagesView({
           const textBlocks = message.blocks.filter((b) => b.type === "text" && b.text?.trim());
           const hasContent = textBlocks.length > 0;
 
-          // Show thinking indicator for last message while streaming with no content
-          if (isLastMessage && isStreaming) {
-            return <Chat.ThinkingIndicator key={message.id} text="Thinking" className="text-xs" />;
-          }
-
           // Skip messages with no text content
           if (!hasContent) return null;
 
@@ -83,6 +78,7 @@ export function WebsiteChatMessagesView({
       {isStreaming && todos && todos.length > 0 && (
         <Chat.TodoList todos={todos} className="text-xs" />
       )}
+      {isStreaming && <Chat.ThinkingIndicator text="Thinking" className="text-xs" />}
       <Chat.Messages.ScrollAnchor />
     </Chat.Messages.List>
   );

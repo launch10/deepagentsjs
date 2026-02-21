@@ -4,18 +4,19 @@ This directory contains all feature plans and architectural decisions for Launch
 
 ## Quick Navigation
 
-| Feature | Description | Plans |
-|---------|-------------|-------|
-| [Architecture](./architecture/) | System-wide architecture & implementation order | 2 |
-| [Coding Agent](./coding-agent/) | Landing page generation AI | 5 |
-| [Deploy](./deploy/) | Deployment orchestration & build infrastructure | 8 |
-| [Analytics](./analytics/) | Tracking, analytics & lead capture | 3 |
-| [Themes](./themes/) | Theme system & design tokens | 2 |
-| [Google Ads](./google-ads/) | Ads platform integration | 2 |
-| [Billing](./billing/) | Credits & subscription billing | 1 |
-| [SDK](./sdk/) | Langgraph SDK enhancements | 1 |
-| [Infrastructure](./infrastructure/) | Background jobs & system infrastructure | 1 |
-| [Archive](./_archive/) | Completed plans | 1 |
+| Feature | Description |
+|---------|-------------|
+| [Next Steps](./NEXT_STEPS.md) | Active priorities (Cost Reconciliation, Agent Memory) |
+| [Architecture](./architecture/) | System-wide architecture & implementation order |
+| [Coding Agent](./coding-agent/) | Landing page generation AI |
+| [Deploy](./deploy/) | Deployment orchestration & build infrastructure |
+| [Themes](./themes/) | Theme system & design tokens |
+| [Google Ads](./google-ads/) | Ads platform integration |
+| [Billing](./billing/) | Credits & subscription billing |
+| [SDK](./sdk/) | Langgraph SDK enhancements |
+| [Infrastructure](./infrastructure/) | Background jobs & system infrastructure |
+| [Agents](./agents/) | Agent architecture (future) |
+| [Archive](./archive/) | Completed plans (analytics, context-engineering, website, etc.) |
 
 ## How to Use
 

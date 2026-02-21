@@ -15,7 +15,7 @@ class API::V1::LeadsController < ActionController::API
     # Validate email format synchronously - users need immediate feedback
     # Skip uniqueness check since we want idempotent behavior (accept existing emails)
     email = Lead.normalize_email(lead_params[:email])
-    validation_lead = Lead.new(account: account, email: email, name: lead_params[:name])
+    validation_lead = Lead.new(account: account, email: email, name: lead_params[:name], phone: lead_params[:phone])
     validation_lead.validate
     # Only report format/presence errors, not uniqueness (that's handled by the worker)
     format_errors = validation_lead.errors.reject { |e| e.type == :taken }
@@ -36,9 +36,11 @@ class API::V1::LeadsController < ActionController::API
       {
         email: email,
         name: lead_params[:name],
+        phone: lead_params[:phone],
         visit_id: visit&.id,
         visitor_token: params[:visitor_token],
         gclid: params[:gclid],
+        fbclid: params[:fbclid],
         conversion_value: params[:conversion_value]&.to_f,
         conversion_currency: params[:conversion_currency],
         utm_source: params[:utm_source],
@@ -58,7 +60,7 @@ class API::V1::LeadsController < ActionController::API
   private
 
   def lead_params
-    params.permit(:email, :name)
+    params.permit(:email, :name, :phone)
   end
 
   def find_or_create_visit(website)
@@ -80,6 +82,7 @@ class API::V1::LeadsController < ActionController::API
       visitor_token: params[:visitor_token],
       visit_token: params[:visit_token],
       gclid: params[:gclid],
+      fbclid: params[:fbclid],
       user_agent: request.user_agent,
       ip: request.remote_ip,
       started_at: Time.current

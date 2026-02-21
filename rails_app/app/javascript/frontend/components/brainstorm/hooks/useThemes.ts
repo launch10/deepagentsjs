@@ -63,7 +63,7 @@ export function useThemes(options?: ThemesQueryOptions) {
 
   return useQuery({
     queryKey: themeKeys.lists(),
-    queryFn: () => service.get(),
+    queryFn: () => service.list(),
     staleTime: 5 * 60 * 1000, // 5 minutes
     ...options,
   });

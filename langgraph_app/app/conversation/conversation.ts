@@ -27,6 +27,7 @@
 import type { BaseMessage } from "@langchain/core/messages";
 import { AIMessage, HumanMessage, RemoveMessage, ToolMessage } from "@langchain/core/messages";
 import { isContextMessage, isSummaryMessage } from "langgraph-ai-sdk";
+import type { ConversationStartOptions, AgentResult } from "./start";
 
 /**
  * A Turn is a BaseMessage[] slice from one non-context HumanMessage
@@ -89,7 +90,7 @@ export interface CompactResult {
 }
 
 export interface PrepareTurnOptions {
-  /** New context events to inject before the last user message */
+  /** New context events to inject */
   contextMessages?: BaseMessage[];
   /** Max turn pairs to keep. Default: 10 */
   maxTurnPairs?: number;
@@ -159,7 +160,8 @@ export class Conversation {
 
     // Include trailing messages if they fit
     const trailingChars = this.trailingMessages.reduce(
-      (sum, m) => sum + Conversation.charCount(m), 0
+      (sum, m) => sum + Conversation.charCount(m),
+      0
     );
     const includeTrailing = chars + trailingChars <= maxChars;
 
@@ -200,8 +202,8 @@ export class Conversation {
     const toolResultMaxChars = options.toolResultMaxChars ?? 500;
     const toSummarize = turnsToSummarize
       .flat()
-      .filter(m => !isContextMessage(m))
-      .map(m => Conversation.clearToolResult(m, toolResultMaxChars));
+      .filter((m) => !isContextMessage(m))
+      .map((m) => Conversation.clearToolResult(m, toolResultMaxChars));
 
     if (toSummarize.length === 0 && this.summaryMessages.length <= 1) {
       return null;
@@ -212,20 +214,20 @@ export class Conversation {
     // 1. All messages from summarized turns (including their context)
     const summarizedRemovals = turnsToSummarize
       .flat()
-      .filter(m => m.id)
-      .map(m => new RemoveMessage({ id: m.id! }));
+      .filter((m) => m.id)
+      .map((m) => new RemoveMessage({ id: m.id! }));
 
     // 2. Old summaries (consolidating into one)
     const summaryRemovals = this.summaryMessages
-      .filter(m => m.id)
-      .map(m => new RemoveMessage({ id: m.id! }));
+      .filter((m) => m.id)
+      .map((m) => new RemoveMessage({ id: m.id! }));
 
     // Context in kept turns STAYS — it's part of that turn's history.
     // prepareTurn only adds what's new since the last AI message.
 
     // Extract existing summary texts for consolidation
     const existingSummaryTexts = this.summaryMessages
-      .map(m => {
+      .map((m) => {
         const content = typeof m.content === "string" ? m.content : "";
         return content.replace(/^\[{1,3}CONVERSATION SUMMARY\]{1,3}\s*/i, "");
       })
@@ -240,10 +242,7 @@ export class Conversation {
       additional_kwargs: { timestamp: new Date().toISOString(), isSummary: true },
     });
 
-    const removals = [
-      ...summarizedRemovals,
-      ...summaryRemovals,
-    ];
+    const removals = [...summarizedRemovals, ...summaryRemovals];
 
     return {
       summary,
@@ -264,6 +263,22 @@ export class Conversation {
    *
    * This is the input to the agent — not a return through the reducer.
    */
+  /**
+   * Prepare messages for an LLM turn.
+   *
+   * Automatically determines where to place new context messages:
+   *
+   * - If the last non-context message is a HumanMessage, the user just
+   *   sent something → context goes **before** that message so the
+   *   agent sees context → user question in order.
+   *
+   * - If the last non-context message is NOT a HumanMessage (AI, tool,
+   *   or empty), this is an intent-driven turn → context goes at the
+   *   **end**, because everything in the checkpoint already happened
+   *   and the context is what's new.
+   *
+   * This is the input to the agent — not a return through the reducer.
+   */
   prepareTurn(options?: PrepareTurnOptions): BaseMessage[] {
     const contextMessages = options?.contextMessages ?? [];
     const maxTurnPairs = options?.maxTurnPairs ?? 10;
@@ -271,27 +286,35 @@ export class Conversation {
 
     let allMessages = this.toMessages();
 
-    // Inject new context before the last non-context human message
     if (contextMessages.length > 0) {
-      let lastHumanIdx = -1;
-      for (let i = allMessages.length - 1; i >= 0; i--) {
-        if (allMessages[i]!._getType() === "human" && !isContextMessage(allMessages[i]!)) {
-          lastHumanIdx = i;
-          break;
-        }
-      }
+      // Auto-detect placement: is the last real message a HumanMessage?
+      const lastRealMsg = this.lastNonContextMessage();
 
-      if (lastHumanIdx >= 0) {
+      if (lastRealMsg && lastRealMsg._getType() === "human") {
+        // User-message turn: inject context before the last human message
+        // so the agent sees context → user question in the right order.
+        let lastHumanIdx = -1;
+        for (let i = allMessages.length - 1; i >= 0; i--) {
+          if (allMessages[i]!._getType() === "human" && !isContextMessage(allMessages[i]!)) {
+            lastHumanIdx = i;
+            break;
+          }
+        }
+
         allMessages = [
           ...allMessages.slice(0, lastHumanIdx),
           ...contextMessages,
           ...allMessages.slice(lastHumanIdx),
         ];
       } else {
-        // No human messages (create flow) — just append context
+        // Intent-driven turn (or empty conversation): everything in
+        // state already happened. New context goes at the end.
         allMessages = [...allMessages, ...contextMessages];
       }
     }
+
+    // Annotate image_url blocks with visible URL text so the LLM can reference them
+    allMessages = Conversation.annotateImageUrls(allMessages);
 
     // Re-parse with injected context and window
     return new Conversation(allMessages).window({ maxTurnPairs, maxChars });
@@ -302,6 +325,22 @@ export class Conversation {
   /** Returns the most recent turn, or undefined if there are no turns. */
   currentTurn(): Turn | undefined {
     return this.turns[this.turns.length - 1];
+  }
+
+  /**
+   * Returns the last message that isn't a context message or summary.
+   * Used by prepareTurn to auto-detect whether this is a user-message
+   * turn (last real message is HumanMessage) or an intent-driven turn.
+   */
+  lastNonContextMessage(): BaseMessage | undefined {
+    const all = this.toMessages();
+    for (let i = all.length - 1; i >= 0; i--) {
+      const msg = all[i]!;
+      if (!isContextMessage(msg) && !isSummaryMessage(msg)) {
+        return msg;
+      }
+    }
+    return undefined;
   }
 
   // ── Digest ─────────────────────────────────────────────────
@@ -325,16 +364,14 @@ export class Conversation {
   digestMessages(maxTurns: number = 4): BaseMessage[] {
     // Exclude current turn — caller already has the latest user message
     const priorTurns = this.turns.slice(0, -1).slice(-maxTurns);
-    return priorTurns
-      .flat()
-      .filter((msg) => {
-        if (!HumanMessage.isInstance(msg) && !AIMessage.isInstance(msg)) return false;
-        if (isContextMessage(msg)) return false;
-        if (isSummaryMessage(msg)) return false;
-        if (typeof msg.content !== "string") return false;
-        if (msg.content.length === 0) return false;
-        return true;
-      });
+    return priorTurns.flat().filter((msg) => {
+      if (!HumanMessage.isInstance(msg) && !AIMessage.isInstance(msg)) return false;
+      if (isContextMessage(msg)) return false;
+      if (isSummaryMessage(msg)) return false;
+      if (typeof msg.content !== "string") return false;
+      if (msg.content.length === 0) return false;
+      return true;
+    });
   }
 
   // ── Reconstruction ───────────────────────────────────────────
@@ -344,11 +381,40 @@ export class Conversation {
    * Summaries at front, then turns in order, then trailing messages.
    */
   toMessages(): BaseMessage[] {
-    return [
-      ...this.summaryMessages,
-      ...this.turns.flat(),
-      ...this.trailingMessages,
-    ];
+    return [...this.summaryMessages, ...this.turns.flat(), ...this.trailingMessages];
+  }
+
+  // ── Static entry point ──────────────────────────────────────────
+
+  /**
+   * Start a full agent turn with context injection, windowing, and compaction.
+   *
+   * Canonical entry point for all agent turns. Handles:
+   * 1. Context event fetching from Rails (optional)
+   * 2. Context injection + windowing via prepareTurn()
+   * 3. Agent callback execution
+   * 4. Post-turn compaction (optional)
+   *
+   * The callback MUST return only NEW messages (not input messages).
+   *
+   * @example
+   * ```ts
+   * const result = await Conversation.start({
+   *   messages: state.messages,
+   *   extraContext: buildExtraContext(state),
+   *   compact: { summarizer: summarizeMessages },
+   * }, async (prepared) => {
+   *   return createCodingAgent(state, { messages: prepared, config });
+   * });
+   * ```
+   */
+  static async start(
+    options: ConversationStartOptions,
+    callback: (prepared: BaseMessage[]) => Promise<AgentResult>
+  ): Promise<AgentResult> {
+    // Lazy import to avoid circular dependency (start.ts imports Conversation)
+    const { startConversation } = await import("./start");
+    return startConversation(options, callback);
   }
 
   // ── Static helpers ──────────────────────────────────────────────
@@ -357,9 +423,15 @@ export class Conversation {
    * Parse a flat message array into structured conversation data.
    *
    * A turn starts when we encounter a non-context HumanMessage.
-   * Everything from that point until the next non-context HumanMessage
-   * belongs to that turn — including any preceding context messages
-   * that accumulated since the previous turn ended.
+   *
+   * Context messages are buffered in `pendingContext`:
+   * - When a HumanMessage arrives: pending context is absorbed into the
+   *   new turn (context placed before the human message by prepareTurn).
+   * - When an AI/tool message arrives and a turn exists: pending context
+   *   is flushed into the current turn first, preserving ctx → ai pairing.
+   *   This prevents context messages from being separated from their
+   *   AI responses and bunching up at the end.
+   * - When no turn exists (orphaned AI before any human): stays in pending.
    */
   static parse(messages: BaseMessage[]): {
     summaryMessages: BaseMessage[];
@@ -382,8 +454,9 @@ export class Conversation {
     let currentTurnMsgs: BaseMessage[] | null = null;
 
     for (const msg of remaining) {
-      // Context messages accumulate — they'll attach to the next human turn
       if (isContextMessage(msg)) {
+        // Always buffer context — it'll be placed correctly when the
+        // next non-context message arrives.
         pendingContext.push(msg);
         continue;
       }
@@ -399,11 +472,17 @@ export class Conversation {
         continue;
       }
 
-      // AI or tool: part of the current turn
+      // AI or tool message
       if (currentTurnMsgs !== null) {
+        // Flush pending context into the current turn, then append AI/tool.
+        // This keeps ctx → ai pairs together and prevents bunching.
+        if (pendingContext.length > 0) {
+          currentTurnMsgs.push(...pendingContext);
+          pendingContext = [];
+        }
         currentTurnMsgs.push(msg);
       } else {
-        // Orphaned AI/tool before any human — treat as trailing
+        // Orphaned AI/tool before any human — keep in pending
         pendingContext.push(msg);
       }
     }
@@ -421,10 +500,7 @@ export class Conversation {
   static charCount(msg: BaseMessage): number {
     if (typeof msg.content === "string") return msg.content.length;
     if (Array.isArray(msg.content)) {
-      return msg.content.reduce(
-        (sum: number, block: any) => sum + (block.text?.length ?? 0),
-        0
-      );
+      return msg.content.reduce((sum: number, block: any) => sum + (block.text?.length ?? 0), 0);
     }
     return 0;
   }
@@ -444,6 +520,55 @@ export class Conversation {
       id: msg.id ?? undefined,
       tool_call_id: (msg as ToolMessage).tool_call_id,
       name: (msg as any).name,
+    });
+  }
+
+  /**
+   * Annotate image_url content blocks with visible URL text.
+   *
+   * LLMs receive image_url blocks as rendered pixels — they cannot see the
+   * URL string. This method adds a text annotation after each image_url block
+   * so the agent can reference, copy, or pass the URL to tools.
+   *
+   * Only annotates blocks that don't already have an adjacent URL annotation.
+   * Only annotates HumanMessage (images the user sent, not context images).
+   */
+  static annotateImageUrls(messages: BaseMessage[]): BaseMessage[] {
+    return messages.map((msg) => {
+      if (msg._getType() !== "human") return msg;
+      if (isContextMessage(msg)) return msg; // Skip context messages (image events etc.)
+      if (!Array.isArray(msg.content)) return msg;
+
+      // Check if any image_url blocks exist
+      const hasImages = msg.content.some(
+        (block: any) => block?.type === "image_url" && block?.image_url?.url
+      );
+      if (!hasImages) return msg;
+
+      // Build new content with URL annotations after each image_url block
+      const contentBlocks = msg.content as any[];
+      const newContent: any[] = [];
+      for (const block of contentBlocks) {
+        newContent.push(block);
+        if (block?.type === "image_url" && block?.image_url?.url) {
+          const url = block.image_url.url as string;
+          // Skip data: URLs (base64 images have no meaningful URL to show)
+          if (!url.startsWith("data:")) {
+            newContent.push({
+              type: "text",
+              text: `[Image URL: ${url}]`,
+            });
+          }
+        }
+      }
+
+      // Return a new HumanMessage with annotated content, preserving metadata
+      return new HumanMessage({
+        content: newContent,
+        id: msg.id ?? undefined,
+        additional_kwargs: msg.additional_kwargs,
+        response_metadata: msg.response_metadata,
+      });
     });
   }
 }

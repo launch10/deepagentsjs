@@ -16,7 +16,7 @@ export default function WebsiteLoader({ className }: { className?: string }) {
       return { steps: fallbackSteps, currentStep: 0, subtitle: undefined as string | undefined };
     }
 
-    const inProgress = todos.filter((t) => t.status === "in_progress");
+    const inProgress = todos.filter((t) => t.status === "in_progress" || t.status === "pending");
     const completedCount = todos.filter((t) => t.status === "completed").length;
 
     let label: string | undefined;

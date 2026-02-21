@@ -25,10 +25,17 @@ module GoogleAds
     private
 
     def poll_active_invites
-      active_deploys_with_pending_invites.find_each do |deploy|
-        job_run = deploy.job_runs.running.find_by(job_class: "GoogleAdsInvite")
-        next unless job_run
+      deploys = active_deploys_with_pending_invites.to_a
+      Rails.logger.info "[VerifyGoogle::PollActiveInvites] #{Time.current.iso8601(3)} found #{deploys.size} active deploys with pending invites"
 
+      deploys.each do |deploy|
+        job_run = deploy.job_runs.running.find_by(job_class: "GoogleAdsInvite")
+        unless job_run
+          Rails.logger.info "[VerifyGoogle::PollActiveInvites] #{Time.current.iso8601(3)} deploy=#{deploy.id} — no running GoogleAdsInvite job_run, skipping"
+          next
+        end
+
+        Rails.logger.info "[VerifyGoogle::PollActiveInvites] #{Time.current.iso8601(3)} deploy=#{deploy.id} job_run=#{job_run.id} user_active_at=#{deploy.user_active_at&.iso8601(3)} deploy_status=#{deploy.status} — enqueuing PollInviteAcceptanceWorker"
         GoogleAds::PollInviteAcceptanceWorker.perform_async(job_run.id)
       end
     end
@@ -37,7 +44,7 @@ module GoogleAds
       # Find all deploy-related jobs that have been running too long
       stale_jobs = JobRun
         .running
-        .where(job_class: %w[GoogleOAuthConnect GoogleAdsInvite])
+        .where(job_class: %w[GoogleAdsInvite])
         .where(started_at: ...TIMEOUT_DURATION.ago)
 
       stale_jobs.find_each do |job_run|

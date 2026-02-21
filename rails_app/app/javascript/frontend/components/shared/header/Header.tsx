@@ -4,8 +4,9 @@ import HeaderProgressStepper from "./HeaderProgressStepper";
 import ImpersonationBanner from "../ImpersonationBanner";
 
 export default function Header() {
-  const { url } = usePage();
-  const isHomepage = url === "/" || url.startsWith("/?");
+  const { url, component, props } = usePage();
+  const isBrainstormLanding = component === "Brainstorm" && !(props as any).thread_id;
+  const isHomepage = url === "/" || url.startsWith("/?") || isBrainstormLanding;
 
   return (
     <>

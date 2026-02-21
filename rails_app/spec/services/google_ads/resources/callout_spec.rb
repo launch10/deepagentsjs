@@ -299,6 +299,107 @@ RSpec.describe GoogleAds::Resources::Callout do
     end
   end
 
+  # ═══════════════════════════════════════════════════════════════
+  # SYNC RESULT (instance + class + campaign wrapper)
+  # ═══════════════════════════════════════════════════════════════
+
+  describe "#sync_result" do
+    context "when no google_asset_id" do
+      it "returns not_found" do
+        result = callout_syncer.sync_result
+        expect(result.not_found?).to be true
+      end
+    end
+
+    context "when google_asset_id exists but remote not found" do
+      before do
+        callout.platform_settings["google"]["asset_id"] = "88888"
+        callout.save!
+      end
+
+      it "returns not_found" do
+        allow(@mock_google_ads_service).to receive(:search).and_return(mock_empty_search_response)
+        result = callout_syncer.sync_result
+        expect(result.not_found?).to be true
+      end
+    end
+
+    context "when remote matches" do
+      before do
+        callout.platform_settings["google"]["asset_id"] = "88888"
+        callout.save!
+      end
+
+      it "returns unchanged" do
+        asset_response = mock_search_response_with_callout_asset(
+          asset_id: 88888,
+          customer_id: 1234567890,
+          callout_text: "Free Shipping"
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(asset_response)
+
+        result = callout_syncer.sync_result
+        expect(result.unchanged?).to be true
+        expect(result.resource_name).to eq("88888")
+      end
+    end
+
+    context "when remote does not match" do
+      before do
+        callout.platform_settings["google"]["asset_id"] = "88888"
+        callout.save!
+      end
+
+      it "returns error with SyncVerificationError" do
+        asset_response = mock_search_response_with_callout_asset(
+          asset_id: 88888,
+          customer_id: 1234567890,
+          callout_text: "Different Text"
+        )
+        allow(@mock_google_ads_service).to receive(:search).and_return(asset_response)
+
+        result = callout_syncer.sync_result
+        expect(result.error?).to be true
+        expect(result.error).to be_a(GoogleAds::SyncVerificationError)
+        expect(result.error.message).to include("Callout sync verification failed")
+      end
+    end
+  end
+
+  describe ".sync_result" do
+    it "returns a CollectionSyncResult" do
+      callout.platform_settings["google"]["asset_id"] = "88888"
+      callout.save!
+
+      asset_response = mock_search_response_with_callout_asset(
+        asset_id: 88888,
+        customer_id: 1234567890,
+        callout_text: "Free Shipping"
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(asset_response)
+
+      result = described_class.sync_result(campaign)
+      expect(result).to be_a(GoogleAds::Sync::CollectionSyncResult)
+    end
+  end
+
+  describe "Campaign#callouts_sync_result" do
+    it "delegates to the resource class" do
+      callout.platform_settings["google"]["asset_id"] = "88888"
+      callout.save!
+
+      asset_response = mock_search_response_with_callout_asset(
+        asset_id: 88888,
+        customer_id: 1234567890,
+        callout_text: "Free Shipping"
+      )
+      allow(@mock_google_ads_service).to receive(:search).and_return(asset_response)
+
+      result = campaign.callouts_sync_result
+      expect(result).to be_a(GoogleAds::Sync::CollectionSyncResult)
+    end
+  end
+
   describe '#delete' do
     context 'when asset ID is not present' do
       before do

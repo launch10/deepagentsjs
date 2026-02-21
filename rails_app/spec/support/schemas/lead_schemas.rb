@@ -66,6 +66,12 @@ module APISchemas
             maxLength: 255,
             nullable: true,
             description: 'Optional name of the person signing up'
+          },
+          phone: {
+            type: :string,
+            maxLength: 50,
+            nullable: true,
+            description: 'Optional phone number of the person signing up'
           }
         },
         required: ['email']

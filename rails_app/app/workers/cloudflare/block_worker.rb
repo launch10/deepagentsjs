@@ -17,7 +17,7 @@ class Cloudflare::BlockWorker
     if rule
       rule.mark_failed!("Maximum retries exceeded after 5 attempts")
 
-      Rollbar.error("Cloudflare blocking failed after max retries", {
+      Sentry.capture_message("Cloudflare blocking failed after max retries", extra: {
         firewall_rule_id: rule.id,
         domain: rule.domain,
         error: msg["error_message"]

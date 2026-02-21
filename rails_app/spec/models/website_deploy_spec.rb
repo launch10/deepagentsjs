@@ -105,7 +105,7 @@ RSpec.describe WebsiteDeploy, type: :model do
 
         # Mock S3 operations
         allow(s3_client).to receive(:list_objects_v2).and_return(
-          double(contents: [double(key: 'test/file.html', size: 100)])
+          double(contents: [double(key: 'test/file.html', size: 100)], is_truncated: false)
         )
         allow(s3_client).to receive(:put_object)
         allow(s3_client).to receive(:delete_objects)
@@ -139,7 +139,7 @@ RSpec.describe WebsiteDeploy, type: :model do
         # Old live directory should be deleted before copying new files
         # Set up the mock to return files in live directory when asked
         allow(s3_client).to receive(:list_objects_v2).and_return(
-          double(contents: [double(key: "#{website_with_files.id}/live/old.html")])
+          double(contents: [double(key: "#{website_with_files.id}/live/old.html")], is_truncated: false)
         )
 
         # Expect delete_objects to be called for cleaning up
@@ -168,7 +168,8 @@ RSpec.describe WebsiteDeploy, type: :model do
       let(:deploy) { website_with_files.deploys.create!(environment: 'development') }
 
       before do
-        allow(deploy).to receive(:system).with("pnpm install").and_return(false)
+        allow(deploy).to receive(:build_exists?).and_return(false)
+        allow(deploy).to receive(:system).and_return(false)
       end
 
       it 'does not make any S3 calls' do
@@ -176,11 +177,11 @@ RSpec.describe WebsiteDeploy, type: :model do
         expect(s3_client).not_to receive(:copy_object)
         expect(s3_client).not_to receive(:delete_objects)
 
-        deploy.deploy!
+        expect { deploy.deploy! }.to raise_error(RuntimeError, /pnpm install failed/)
       end
 
       it 'marks deploy as failed' do
-        deploy.deploy!
+        expect { deploy.deploy! }.to raise_error(RuntimeError)
         expect(deploy.reload.status).to eq('failed')
       end
     end
@@ -236,7 +237,7 @@ RSpec.describe WebsiteDeploy, type: :model do
 
       before do
         allow(s3_client).to receive(:list_objects_v2).and_return(
-          double(contents: [double(key: 'test/file.html', size: 100)])
+          double(contents: [double(key: 'test/file.html', size: 100)], is_truncated: false)
         )
         allow(s3_client).to receive(:copy_object)
         allow(s3_client).to receive(:delete_objects)
@@ -271,7 +272,7 @@ RSpec.describe WebsiteDeploy, type: :model do
       it 'cleans up old live directory before copying' do
         # Set up the mock to return files in live directory when asked
         allow(s3_client).to receive(:list_objects_v2).and_return(
-          double(contents: [double(key: "#{website_with_files.id}/live/index.html")])
+          double(contents: [double(key: "#{website_with_files.id}/live/index.html")], is_truncated: false)
         )
 
         # Expect delete_objects to be called for cleaning up
@@ -328,11 +329,12 @@ RSpec.describe WebsiteDeploy, type: :model do
       allow(deploy).to receive(:system).and_return(true)
 
       allow(s3_client).to receive(:list_objects_v2).and_return(
-        double(contents: [double(key: 'test/file.html', size: 100)])
+        double(contents: [double(key: 'test/file.html', size: 100)], is_truncated: false)
       )
       allow(s3_client).to receive(:put_object)
       allow(s3_client).to receive(:delete_objects)
       allow(s3_client).to receive(:copy_object)
+      allow_any_instance_of(Website).to receive(:sync_all_to_atlas)
     end
 
     it 'uploads to preview directory instead of live' do
@@ -379,11 +381,12 @@ RSpec.describe WebsiteDeploy, type: :model do
       allow(Cloudflare.config).to receive(:deploy_env).and_return('development')
 
       allow(s3_client).to receive(:list_objects_v2).and_return(
-        double(contents: [double(key: 'test/file.html', size: 100)])
+        double(contents: [double(key: 'test/file.html', size: 100)], is_truncated: false)
       )
       allow(s3_client).to receive(:put_object)
       allow(s3_client).to receive(:delete_objects)
       allow(s3_client).to receive(:copy_object)
+      allow_any_instance_of(Website).to receive(:sync_all_to_atlas)
     end
 
     it 'uses Deploy environment to override default config environment' do
@@ -418,7 +421,7 @@ RSpec.describe WebsiteDeploy, type: :model do
 
       allow(s3_client).to receive(:list_objects_v2) do |args|
         list_prefixes << args[:prefix]
-        double(contents: [double(key: "production/#{website_with_files.id}/20240101120000/index.html", size: 100)])
+        double(contents: [double(key: "production/#{website_with_files.id}/20240101120000/index.html", size: 100)], is_truncated: false)
       end
 
       allow(s3_client).to receive(:copy_object) do |args|
@@ -508,7 +511,7 @@ RSpec.describe WebsiteDeploy, type: :model do
 
       # Mock S3 list operations
       allow(s3_client).to receive(:list_objects_v2).and_return(
-        double(contents: [double(key: 'test/file.html', size: 100)])
+        double(contents: [double(key: 'test/file.html', size: 100)], is_truncated: false)
       )
 
       # Allow delete_objects to be called (or not) - cleanup might not delete anything
@@ -557,7 +560,8 @@ RSpec.describe WebsiteDeploy, type: :model do
       context 'when files have not changed' do
         let!(:existing_deploy) do
           deploy = website_with_files.deploys.create!(environment: 'development')
-          deploy.update!(status: 'completed', shasum: website_with_files.generate_shasum)
+          deploy.update!(status: 'completed', shasum: website_with_files.generate_shasum,
+            version_path: "#{website_with_files.id}/20240101000000")
           deploy
         end
 
@@ -610,7 +614,8 @@ RSpec.describe WebsiteDeploy, type: :model do
     describe 'rebuild detection' do
       let!(:completed_deploy) do
         deploy = website_with_files.deploys.create!(environment: 'development')
-        deploy.update!(status: 'completed', shasum: website_with_files.generate_shasum)
+        deploy.update!(status: 'completed', shasum: website_with_files.generate_shasum,
+          version_path: "#{website_with_files.id}/20240101000000")
         deploy
       end
 
@@ -683,14 +688,11 @@ RSpec.describe WebsiteDeploy, type: :model do
         expect(env_content).to include("VITE_SIGNUP_TOKEN=#{expected_token}")
       end
 
-      it 'writes .env file with VITE_API_BASE_URL' do
+      it 'writes .env file with VITE_API_BASE_URL using production URL for deployed sites' do
         deploy.send(:write_env_file!)
 
         env_content = File.read(File.join(temp_dir, ".env"))
-        expect(env_content).to include("VITE_API_BASE_URL=")
-
-        # Verify it matches Rails config
-        expected_url = Rails.configuration.x.api_base_url
+        expected_url = ENV.fetch("DEPLOY_API_BASE_URL", "https://launch10.ai")
         expect(env_content).to include("VITE_API_BASE_URL=#{expected_url}")
       end
 
@@ -734,6 +736,199 @@ RSpec.describe WebsiteDeploy, type: :model do
         expect(env_file_written).to be true
         expect(env_content).to include("VITE_SIGNUP_TOKEN=")
         expect(env_content).to include("VITE_API_BASE_URL=")
+      end
+    end
+  end
+
+  describe '#inject_basename!' do
+    let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
+    let(:deploy) { website_with_files.deploys.create!(environment: 'development') }
+    let(:temp_dir) { Dir.mktmpdir("launch10_basename_test") }
+
+    before do
+      website_with_files.snapshot
+      allow(deploy).to receive(:temp_dir).and_return(temp_dir)
+
+      # Write a template index.html with the default basename
+      File.write(File.join(temp_dir, "index.html"), <<~HTML)
+        <!DOCTYPE html>
+        <html>
+        <body>
+          <script>window.__BASENAME__ = '/';</script>
+          <div id="root"></div>
+        </body>
+        </html>
+      HTML
+    end
+
+    after do
+      FileUtils.rm_rf(temp_dir)
+    end
+
+    context 'when website is deployed to a subpath' do
+      before do
+        domain = create(:domain, account: account)
+        create(:website_url, website: website_with_files, domain: domain, account: account, path: '/bingo')
+        website_with_files.reload
+      end
+
+      it 'replaces basename with the subpath' do
+        deploy.send(:inject_basename!)
+
+        content = File.read(File.join(temp_dir, "index.html"))
+        expect(content).to include("window.__BASENAME__ = '/bingo';")
+        expect(content).not_to include("window.__BASENAME__ = '/';")
+      end
+    end
+
+    context 'when website is deployed to root' do
+      before do
+        domain = create(:domain, account: account)
+        create(:website_url, website: website_with_files, domain: domain, account: account, path: '/')
+        website_with_files.reload
+      end
+
+      it 'does not modify the basename (already /)' do
+        deploy.send(:inject_basename!)
+
+        content = File.read(File.join(temp_dir, "index.html"))
+        expect(content).to include("window.__BASENAME__ = '/';")
+      end
+    end
+
+    context 'when website has no URL configured' do
+      it 'does not modify the basename' do
+        deploy.send(:inject_basename!)
+
+        content = File.read(File.join(temp_dir, "index.html"))
+        expect(content).to include("window.__BASENAME__ = '/';")
+      end
+    end
+  end
+
+  describe 'robots.txt and sitemap.xml generation', :sitemap do
+    let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
+
+    before do
+      website_with_files.snapshot
+    end
+
+    describe '#generate_robots_txt!' do
+      let(:deploy) { website_with_files.deploys.create!(environment: 'development') }
+      let(:temp_dir) { Dir.mktmpdir("launch10_deploy_test") }
+
+      before do
+        allow(deploy).to receive(:temp_dir).and_return(temp_dir)
+      end
+
+      after do
+        FileUtils.rm_rf(temp_dir)
+      end
+
+      context 'when website has a domain' do
+        let(:domain) { create(:domain, account: account) }
+
+        before do
+          create(:website_url, website: website_with_files, domain: domain, account: account)
+          website_with_files.reload
+        end
+
+        it 'writes robots.txt with sitemap reference' do
+          deploy.send(:generate_robots_txt!)
+
+          robots_path = File.join(temp_dir, "public", "robots.txt")
+          expect(File.exist?(robots_path)).to be true
+
+          content = File.read(robots_path)
+          expect(content).to include("User-agent: *")
+          expect(content).to include("Allow: /")
+          expect(content).to include("Sitemap: https://#{domain.domain}/sitemap.xml")
+        end
+      end
+
+      context 'when website has no domain' do
+        it 'skips writing robots.txt' do
+          deploy.send(:generate_robots_txt!)
+
+          robots_path = File.join(temp_dir, "public", "robots.txt")
+          expect(File.exist?(robots_path)).to be false
+        end
+      end
+    end
+
+    describe '#generate_sitemap_xml!' do
+      let(:deploy) { website_with_files.deploys.create!(environment: 'development') }
+      let(:temp_dir) { Dir.mktmpdir("launch10_deploy_test") }
+
+      before do
+        allow(deploy).to receive(:temp_dir).and_return(temp_dir)
+      end
+
+      after do
+        FileUtils.rm_rf(temp_dir)
+      end
+
+      context 'when website has a domain' do
+        let(:domain) { create(:domain, account: account) }
+
+        before do
+          create(:website_url, website: website_with_files, domain: domain, account: account)
+          website_with_files.reload
+          FileUtils.mkdir_p(File.join(temp_dir, "dist"))
+        end
+
+        it 'writes sitemap.xml with homepage URL and lastmod' do
+          deploy.send(:generate_sitemap_xml!)
+
+          sitemap_path = File.join(temp_dir, "dist", "sitemap.xml")
+          expect(File.exist?(sitemap_path)).to be true
+
+          content = File.read(sitemap_path)
+          expect(content).to include('<?xml version="1.0" encoding="UTF-8"?>')
+          expect(content).to include("<loc>https://#{domain.domain}/</loc>")
+          expect(content).to include("<lastmod>#{website_with_files.updated_at.strftime("%Y-%m-%d")}</lastmod>")
+        end
+      end
+
+      context 'when website has no domain' do
+        it 'skips writing sitemap.xml' do
+          deploy.send(:generate_sitemap_xml!)
+
+          sitemap_path = File.join(temp_dir, "public", "sitemap.xml")
+          expect(File.exist?(sitemap_path)).to be false
+        end
+      end
+    end
+
+    describe 'build! includes robots.txt and sitemap.xml' do
+      let(:deploy) { website_with_files.deploys.create!(environment: 'development') }
+      let(:domain) { create(:domain, account: account) }
+
+      before do
+        create(:website_url, website: website_with_files, domain: domain, account: account)
+        website_with_files.reload
+
+        allow(FileUtils).to receive(:mkdir_p).and_call_original
+        allow(File).to receive(:write).and_call_original
+        allow(Dir).to receive(:exist?).and_return(true)
+        allow(deploy).to receive(:system).and_return(true)
+      end
+
+      it 'writes both files during build' do
+        robots_written = false
+        sitemap_written = false
+
+        allow(File).to receive(:write).and_wrap_original do |method, path, content|
+          robots_written = true if path.end_with?('public/robots.txt')
+          sitemap_written = true if path.end_with?('sitemap.xml')
+          FileUtils.mkdir_p(File.dirname(path))
+          method.call(path, content)
+        end
+
+        deploy.build!
+
+        expect(robots_written).to be true
+        expect(sitemap_written).to be true
       end
     end
   end
@@ -784,7 +979,7 @@ RSpec.describe WebsiteDeploy, type: :model do
         allow(File).to receive(:file?).and_return(true)
         allow(File).to receive(:open).and_yield(StringIO.new('test content'))
 
-        allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')]))
+        allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')], is_truncated: false))
         allow(s3_client).to receive(:put_object)
         allow(s3_client).to receive(:copy_object)
         allow(s3_client).to receive(:delete_objects)
@@ -825,7 +1020,7 @@ RSpec.describe WebsiteDeploy, type: :model do
         allow(File).to receive(:file?).and_return(true)
         allow(File).to receive(:open).and_yield(StringIO.new('test content'))
 
-        allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')]))
+        allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')], is_truncated: false))
         allow(s3_client).to receive(:put_object)
         allow(s3_client).to receive(:copy_object)
         allow(s3_client).to receive(:delete_objects)
@@ -865,7 +1060,7 @@ RSpec.describe WebsiteDeploy, type: :model do
         allow(File).to receive(:file?).and_return(true)
         allow(File).to receive(:open).and_yield(StringIO.new('test content'))
 
-        allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')]))
+        allow(s3_client).to receive(:list_objects_v2).and_return(double(contents: [double(key: 'test/file.html')], is_truncated: false))
         allow(s3_client).to receive(:put_object)
         allow(s3_client).to receive(:copy_object)
         allow(s3_client).to receive(:delete_objects)
@@ -878,6 +1073,58 @@ RSpec.describe WebsiteDeploy, type: :model do
         early_deploy.deploy!
         expect(early_deploy.reload.status).to eq('skipped')
       end
+    end
+  end
+
+  describe "event tracking" do
+    let(:website_with_files) { create_website_with_files(account: account, project: project, files: minimal_website_files) }
+    let(:deploy) { website_with_files.deploys.create!(environment: "development") }
+
+    before do
+      website_with_files.snapshot
+    end
+
+    it "tracks website_deployed with completed on successful actually_deploy" do
+      allow(deploy).to receive(:build!).and_return("/tmp/dist")
+      allow(deploy).to receive(:upload!)
+      allow(website_with_files).to receive(:sync_all_to_atlas)
+      allow(FileUtils).to receive(:rm_rf)
+
+      expect(TrackEvent).to receive(:call).with("website_deployed",
+        hash_including(deploy_status: "completed", project_uuid: kind_of(String)))
+      deploy.actually_deploy
+    end
+
+    it "tracks website_deployed with failed when actually_deploy fails" do
+      allow(deploy).to receive(:build!).and_raise(StandardError, "build failed")
+      allow(FileUtils).to receive(:rm_rf)
+
+      expect(TrackEvent).to receive(:call).with("website_deployed",
+        hash_including(deploy_status: "failed"))
+      expect { deploy.actually_deploy }.to raise_error(StandardError, "build failed")
+    end
+
+    it "does not track website_deployed for preview deploys" do
+      preview_deploy = website_with_files.deploys.create!(environment: "development", is_preview: true)
+      allow(preview_deploy).to receive(:build!).and_return("/tmp/dist")
+      allow(preview_deploy).to receive(:upload!)
+      allow(website_with_files).to receive(:sync_all_to_atlas)
+      allow(FileUtils).to receive(:rm_rf)
+
+      expect(TrackEvent).not_to receive(:call).with("website_deployed", anything)
+      preview_deploy.actually_deploy
+    end
+
+    it "tracks website_rollback on successful actually_rollback" do
+      # Set up a completed, revertible, non-live deploy
+      deploy.update_columns(status: "completed", is_live: false, revertible: true, version_path: "72/20260101120000")
+      uploader = instance_double(DeployUploader)
+      allow(DeployUploader).to receive(:new).and_return(uploader)
+      allow(uploader).to receive(:hotswap_live)
+
+      expect(TrackEvent).to receive(:call).with("website_rollback",
+        hash_including(project_uuid: kind_of(String), rollback_to_version: "72/20260101120000"))
+      deploy.actually_rollback
     end
   end
 end
