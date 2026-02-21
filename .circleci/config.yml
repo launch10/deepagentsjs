@@ -223,6 +223,7 @@ jobs:
           path: test-results
 
   rails-tests:
+    parallelism: 3
     docker:
       - image: cimg/ruby:3.4.4-node
       - image: pgvector/pgvector:pg16
@@ -289,9 +290,15 @@ jobs:
             fi
       - run:
           name: Run RSpec tests
-          command: RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rspec
+          command: |
+            TEST_FILES=$(circleci tests glob "spec/**/*_spec.rb" | circleci tests split --split-by=timings --timings-type=filename)
+            echo "Running $(echo "$TEST_FILES" | wc -l | tr -d ' ') spec files on shard $CIRCLE_NODE_INDEX"
+            echo "$TEST_FILES"
+            RAILS_MASTER_KEY=$(cat config/credentials/test.key) bundle exec rspec $TEST_FILES --format progress --format RspecJunitFormatter --out test-results/results.xml
           environment:
             <<: *rails-env
+      - store_test_results:
+          path: test-results
 
   atlas-tests:
     docker:
