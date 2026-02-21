@@ -120,13 +120,14 @@ const CAMPAIGN_PHASE_NAMES: string[] = [
 
 interface DeployTaskListProps {
   tasks?: Deploy.DeployGraphState["tasks"];
+  railsDeployStatus?: string;
 }
 
 /**
  * Deploy task checklist for the sidebar. Uses the shared Checklist compound component.
  * Renders phases derived from whatever tasks the backend put in state.
  */
-export default function DeployTaskList({ tasks }: DeployTaskListProps) {
+export default function DeployTaskList({ tasks, railsDeployStatus }: DeployTaskListProps) {
   // Compute phases from current tasks (lightweight graph state tasks)
   const { phases, hasCampaignPhases } = useMemo(() => {
     const graphTasks = tasks ?? [];
@@ -170,6 +171,10 @@ export default function DeployTaskList({ tasks }: DeployTaskListProps) {
               status={toChecklistStatus(phase.status)}
             />
           ))}
+        </Checklist.Items>
+      ) : railsDeployStatus === "completed" ? (
+        <Checklist.Items>
+          <ChecklistItem icon={RocketLaunchIcon} label="Deploy complete" status="completed" />
         </Checklist.Items>
       ) : (
         <Checklist.Empty message="Preparing deployment..." />

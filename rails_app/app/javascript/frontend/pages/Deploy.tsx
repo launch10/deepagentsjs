@@ -19,7 +19,7 @@ import { PaginationFooter } from "@components/shared/pagination-footer";
 import { useDeployChatInstance, useDeployChat, type DeployProps } from "@hooks/useDeployChat";
 import { useDeployInit } from "@hooks/useDeployInit";
 import { useDeployContentScreen, type DeployScreen } from "@hooks/useDeployContentScreen";
-import { useDeployInstructions } from "@hooks/useDeployInstructions";
+import { useDeployInstructions, useDeployType } from "@hooks/useDeployInstructions";
 import FullResetButton from "@components/deploy/FullResetButton";
 
 const SCREENS: Record<DeployScreen, React.ComponentType> = {
@@ -52,6 +52,8 @@ function DeployContent() {
     isLoadingHistory: s.isLoadingHistory,
   }));
   const pageInstructions = useDeployInstructions();
+  const deployType = useDeployType();
+  const isCampaignDeploy = deployType === "campaign";
   const screen = useDeployContentScreen(
     screenState,
     deploy?.status,
@@ -80,9 +82,13 @@ function DeployContent() {
           <FullResetButton />
           <PaginationFooter.ContinueButton
             disabled={!isComplete}
-            onClick={() => router.visit(`/projects/${project.uuid}/performance`)}
+            onClick={
+              isCampaignDeploy
+                ? () => router.visit(`/projects/${project!.uuid}/performance`)
+                : undefined // Fallback behavior uses regular continue logic
+            }
           >
-            See Performance
+            {isCampaignDeploy ? "See Performance" : "Continue"}
           </PaginationFooter.ContinueButton>
         </PaginationFooter.Actions>
       </PaginationFooter.Root>

@@ -1,11 +1,13 @@
 import { useLayoutEffect, useRef, useState } from "react";
+import { usePage } from "@inertiajs/react";
 import { Card } from "@components/ui/card";
 import DeployTaskList from "./DeployTaskList";
-import { useDeployChatState } from "@hooks/useDeployChat";
+import { useDeployChatState, type DeployProps } from "@hooks/useDeployChat";
 import { logger } from "@lib/logger";
 
 export default function DeploySidebar() {
   const tasks = useDeployChatState("tasks");
+  const { deploy } = usePage<DeployProps>().props;
   const contentRef = useRef<HTMLDivElement>(null);
   const [minHeight, setMinHeight] = useState<number | undefined>();
   logger.debug("DeploySidebar", "tasks:", JSON.stringify(tasks?.map((t) => t.name)));
@@ -23,7 +25,7 @@ export default function DeploySidebar() {
       style={minHeight ? { minHeight } : undefined}
     >
       <div ref={contentRef}>
-        <DeployTaskList tasks={tasks} />
+        <DeployTaskList tasks={tasks} railsDeployStatus={deploy?.status} />
       </div>
     </Card>
   );

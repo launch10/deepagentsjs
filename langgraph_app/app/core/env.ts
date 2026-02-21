@@ -44,6 +44,10 @@ export const envSchema = z.object({
     .string()
     .transform((val) => val === "true" || val === "1")
     .default("false"),
+  COHERE_RERANK_ENABLED: z
+    .string()
+    .transform((val) => val === "true" || val === "1")
+    .default("false"),
 });
 
 export const testEnvSchema = envSchema.extend({

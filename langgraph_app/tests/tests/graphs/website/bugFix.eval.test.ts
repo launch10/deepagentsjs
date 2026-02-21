@@ -74,7 +74,7 @@ const BUG_FIX_CASES: BugFixTestCase[] = [
         `$1import { Fake } from "../components/Fake";\n`
       );
       // Add <Fake /> before the closing </div> of the main wrapper
-      return withImport.replace(/(<\/div>\s*\)\s*};?\s*$)/m, `  <Fake />\n$1`);
+      return withImport.replace(/(<\/div>\s*\)\s*;?\s*};?\s*$)/m, `  <Fake />\n$1`);
     },
     errorDescription:
       "Build error:\nModule not found: Cannot find module '../components/Fake' imported from src/pages/IndexPage.tsx",

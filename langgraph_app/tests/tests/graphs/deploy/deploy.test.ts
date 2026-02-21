@@ -551,6 +551,11 @@ describe.sequential("Deploy Graph Tests", () => {
 <body><div id="root"></div></body>
 </html>`;
 
+      // Delete any existing index.html first (may exist from prior test runs)
+      await db
+        .delete(websiteFiles)
+        .where(and(eq(websiteFiles.websiteId, 1), eq(websiteFiles.path, "index.html")));
+
       await db
         .insert(websiteFiles)
         .values({

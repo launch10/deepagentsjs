@@ -120,7 +120,7 @@ export class PostgresEmbeddingsService {
       },
     });
 
-    if (enableRerank && env.COHERE_API_KEY) {
+    if (enableRerank && env.COHERE_API_KEY && env.COHERE_RERANK_ENABLED) {
       this.rerankService = new CohereRerankService();
     }
   }
@@ -483,7 +483,10 @@ export class PostgresEmbeddingsService {
       }
       return existingKeys;
     } catch (error) {
-      getLogger().error({ err: error, table: this.tableName }, "Error fetching existing document IDs");
+      getLogger().error(
+        { err: error, table: this.tableName },
+        "Error fetching existing document IDs"
+      );
       throw error;
     }
   }

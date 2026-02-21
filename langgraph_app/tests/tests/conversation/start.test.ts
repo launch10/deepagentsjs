@@ -35,6 +35,19 @@ function lastIndexOfTag(msgs: BaseMessage[], tag: string): number {
   return -1;
 }
 
+/** Simulate the LangGraph reducer: RemoveMessages remove by id, others append. */
+function simulateReducer(state: BaseMessage[], updates: BaseMessage[]): BaseMessage[] {
+  let result = [...state];
+  for (const msg of updates) {
+    if (msg instanceof RemoveMessage) {
+      result = result.filter((m) => m.id !== msg.id);
+    } else {
+      result.push(msg);
+    }
+  }
+  return result;
+}
+
 // ============================================================================
 // TESTS
 // ============================================================================
@@ -99,7 +112,7 @@ describe("startConversation", () => {
       expect(tags[tags.length - 1]).toBe("CTX");
     });
 
-    it("returns context + agent new messages in result", async () => {
+    it("returns RemoveMessage + context + human + agent messages when last is human", async () => {
       const messages = [new HumanMessage({ content: "Build my page", id: "h1" })];
 
       const ctx = createContextMessage("[Build Errors] fix CSS");
@@ -114,10 +127,13 @@ describe("startConversation", () => {
         async () => ({ messages: [aiMsg] })
       );
 
-      // Return should be: [context, aiMsg]
-      expect(result.messages.length).toBe(2);
-      expect(isContextMessage(result.messages[0]!)).toBe(true);
-      expect(result.messages[1]).toBe(aiMsg);
+      // Return should be: [RemoveMessage(h1), context, HumanMessage(h1), aiMsg]
+      expect(result.messages.length).toBe(4);
+      expect(result.messages[0]).toBeInstanceOf(RemoveMessage);
+      expect((result.messages[0] as RemoveMessage).id).toBe("h1");
+      expect(isContextMessage(result.messages[1]!)).toBe(true);
+      expect(result.messages[2]!._getType()).toBe("human");
+      expect(result.messages[3]).toBe(aiMsg);
     });
 
     it("works with no context (empty extraContext)", async () => {
@@ -154,11 +170,13 @@ describe("startConversation", () => {
         async () => ({ messages: [aiMsg] })
       );
 
-      // Return should be: [ctx1, ctx2, aiMsg]
-      expect(result.messages.length).toBe(3);
-      expect(isContextMessage(result.messages[0]!)).toBe(true);
+      // Return should be: [RemoveMessage(h1), ctx1, ctx2, HumanMessage(h1), aiMsg]
+      expect(result.messages.length).toBe(5);
+      expect(result.messages[0]).toBeInstanceOf(RemoveMessage);
       expect(isContextMessage(result.messages[1]!)).toBe(true);
-      expect(result.messages[2]).toBe(aiMsg);
+      expect(isContextMessage(result.messages[2]!)).toBe(true);
+      expect(result.messages[3]!._getType()).toBe("human");
+      expect(result.messages[4]).toBe(aiMsg);
     });
   });
 
@@ -376,10 +394,10 @@ describe("startConversation", () => {
         })
       );
 
-      // Simulate reducer: append returned messages to state
-      stateMessages = [...stateMessages, ...turn1Result.messages];
+      // Simulate reducer: RemoveMessages remove by id, others append
+      stateMessages = simulateReducer(stateMessages, turn1Result.messages);
 
-      // Turn 1 context should be in the conversation
+      // Turn 1 context should be in the conversation (CTX before HUMAN)
       let conv = new Conversation(stateMessages);
       expect(conv.turns.length).toBe(1);
       const turn1Ctx = conv.turns[0]!.filter(isContextMessage);
@@ -399,7 +417,7 @@ describe("startConversation", () => {
         })
       );
 
-      stateMessages = [...stateMessages, ...turn2Result.messages];
+      stateMessages = simulateReducer(stateMessages, turn2Result.messages);
       conv = new Conversation(stateMessages);
 
       expect(conv.turns.length).toBe(2);
@@ -460,8 +478,10 @@ describe("startConversation", () => {
         })
       );
 
-      expect(result.messages.length).toBe(2);
-      expect(isContextMessage(result.messages[0]!)).toBe(true);
+      // [RemoveMessage(h1), ctx, HumanMessage(h1), AIMessage]
+      expect(result.messages.length).toBe(4);
+      expect(result.messages[0]).toBeInstanceOf(RemoveMessage);
+      expect(isContextMessage(result.messages[1]!)).toBe(true);
     });
   });
 });

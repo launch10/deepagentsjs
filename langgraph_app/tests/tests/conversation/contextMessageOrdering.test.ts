@@ -48,18 +48,21 @@ describe("Conversation context message ordering", () => {
 
   describe("mixed flow: auto-init + user feedback + refresh + page switches", () => {
     it("preserves context messages interspersed with AI responses", () => {
-      // This is the exact scenario from the LangSmith screenshot
+      // This is the exact scenario from the LangSmith screenshot.
+      // Storage order: CTX comes before HUMAN — startConversation uses
+      // RemoveMessage to lift the HUMAN and re-add it after context,
+      // so the reducer stores [CTX, HUMAN, AI] in the correct order.
       const messages = [
-        ctx("navigated to content"),                // auto-init content
-        new AIMessage("here are your headlines"),    // content response
-        new HumanMessage("make it eco-friendly"),    // user feedback
-        ctx("user sent feedback on content"),        // context for feedback turn
+        ctx("navigated to content"), // auto-init content
+        new AIMessage("here are your headlines"), // content response
+        ctx("user sent feedback on content"), // context for feedback turn (before human)
+        new HumanMessage("make it eco-friendly"), // user feedback
         new AIMessage("updated eco-friendly heads"), // feedback response
-        ctx("refresh 4 headlines"),                  // refresh
-        new AIMessage("refreshed headlines"),         // refresh response
-        ctx("navigated to highlights"),              // page switch
-        new AIMessage("here are callouts"),          // highlights response
-        ctx("navigated to keywords"),                // page switch
+        ctx("refresh 4 headlines"), // refresh
+        new AIMessage("refreshed headlines"), // refresh response
+        ctx("navigated to highlights"), // page switch
+        new AIMessage("here are callouts"), // highlights response
+        ctx("navigated to keywords"), // page switch
       ];
 
       const conv = new Conversation(messages);
@@ -67,14 +70,11 @@ describe("Conversation context message ordering", () => {
 
       // CRITICAL: Context messages must NOT bunch up at the end.
       // They must stay with their respective AI responses.
-      // Storage order: HUMAN comes before its CTX (the agent returns
-      // CTX in its messages, which the reducer appends after HUMAN).
-      // prepareTurn() handles placing CTX before HUMAN for the LLM.
       assertOrder(windowed, [
         "CTX:navigated to content",
         "AI:here are your headlines",
-        "HUMAN:make it eco-friendly",
         "CTX:user sent feedback on content",
+        "HUMAN:make it eco-friendly",
         "AI:updated eco-friendly heads",
         "CTX:refresh 4 headlines",
         "AI:refreshed headlines",
@@ -143,10 +143,7 @@ describe("Conversation context message ordering", () => {
 
     it("appends context at end for intent-driven turns (no trailing human)", () => {
       // State has: [CTX, AI] — auto-init, now switching pages
-      const messages = [
-        ctx("navigated to content"),
-        new AIMessage("here are your headlines"),
-      ];
+      const messages = [ctx("navigated to content"), new AIMessage("here are your headlines")];
 
       const turnCtx = ctx("navigated to highlights");
 
@@ -184,12 +181,12 @@ describe("Conversation context message ordering", () => {
 
       // At minimum, the most recent messages should be in order
       // and no consecutive context messages
-      const types = windowed.map((m) =>
-        isContextMessage(m) ? "CTX" : m._getType().toUpperCase()
-      );
+      const types = windowed.map((m) => (isContextMessage(m) ? "CTX" : m._getType().toUpperCase()));
 
       // Should contain the keywords turn
-      expect(windowed.some((m) => !isContextMessage(m) && (m.content as string).includes("keywords"))).toBe(true);
+      expect(
+        windowed.some((m) => !isContextMessage(m) && (m.content as string).includes("keywords"))
+      ).toBe(true);
 
       // No consecutive CTX messages
       for (let i = 1; i < types.length; i++) {
