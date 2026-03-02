@@ -289,7 +289,7 @@ export function DomainPicker({ selection, onSelectionChange }: DomainPickerProps
               {isShowingDnsCheck ? (
                 <div className="flex items-center gap-1 text-xs text-amber-600">
                   <Spinner className="size-3.5" />
-                  <span>Checking if your site is directing users to launch10.ai...</span>
+                  <span>Checking if your site is directing users to launch10.com...</span>
                 </div>
               ) : isDnsVerified ? (
                 <div className="flex items-center gap-1 text-xs text-success-500">

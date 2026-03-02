@@ -4,7 +4,7 @@ Step-by-step interactive verification of all Google Ads API integrations.
 
 ## Prerequisites
 
-1. Log into https://ads.google.com with a **@launch10.ai** account
+1. Log into https://ads.google.com with a **@launch10.com** account
 2. Select **Launch10 MCC Test Account (124-895-7009)**
 
 ---

@@ -6,16 +6,16 @@
 # 3. Completes it and notifies Langgraph
 #
 # Usage:
-#   await appScenario('complete_oauth', { email: "test_user@launch10.ai" })
+#   await appScenario('complete_oauth', { email: "test_user@launch10.com" })
 #
 # Options:
 #   email:        string - User's email to find account (required)
-#   google_email: string - Google account email (default: "test@launch10.ai")
+#   google_email: string - Google account email (default: "test@launch10.com")
 
 email = command_options["email"] || command_options[:email]
 raise "email is required" unless email.present?
 
-google_email = command_options["google_email"] || command_options[:google_email] || "test@launch10.ai"
+google_email = command_options["google_email"] || command_options[:google_email] || "test@launch10.com"
 
 user = User.find_by!(email: email)
 account = user.owned_account

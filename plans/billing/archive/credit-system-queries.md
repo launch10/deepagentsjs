@@ -336,7 +336,7 @@ CreditTransaction.create!(
   plan_balance_after: 1950,
   pack_balance_after: 100,
   reference: nil,
-  metadata: { support_ticket: "TICK-1234", agent: "brett@launch10.ai" }
+  metadata: { support_ticket: "TICK-1234", agent: "brett@launch10.com" }
 )
 ```
 

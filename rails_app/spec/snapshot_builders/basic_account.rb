@@ -14,7 +14,7 @@ class BasicAccount < BaseBuilder
 
   def create_basic_user
     # Create basic test user
-    user = User.find_or_initialize_by(email: "test_user@launch10.ai")
+    user = User.find_or_initialize_by(email: "test_user@launch10.com")
     user.assign_attributes(
       password: "Launch10TestPass!",
       password_confirmation: "Launch10TestPass!",
@@ -55,7 +55,7 @@ class BasicAccount < BaseBuilder
 
   def create_admin_user
     # Create admin user
-    admin_user = User.find_or_initialize_by(email: "brett@launch10.ai")
+    admin_user = User.find_or_initialize_by(email: "brett@launch10.com")
     admin_user.assign_attributes(
       password: "Launch10TestPass!",
       password_confirmation: "Launch10TestPass!",

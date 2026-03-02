@@ -146,7 +146,7 @@ rails_app/e2e/
 ## Gotchas
 
 - **No networkidle waits**: Vite HMR keeps a WebSocket open forever. Use `domcontentloaded` + specific element waits instead of `waitForLoadState("networkidle")`.
-- **Test user credentials**: `test_user@launch10.ai` / `Launch10TestPass!` — created by the `basic_account` snapshot builder.
+- **Test user credentials**: `test_user@launch10.com` / `Launch10TestPass!` — created by the `basic_account` snapshot builder.
 - **Services must be running**: Playwright config has no webServer — start services externally via `bin/dev-test`.
 - **Port isolation**: Base URL reads from `RAILS_PORT` env var, supporting multi-instance clones (launch1: 3101, launch3: 3301).
 - **AI response waits**: For AI-generated content, wait for the thinking indicator to appear then disappear, with generous timeouts (30s+).

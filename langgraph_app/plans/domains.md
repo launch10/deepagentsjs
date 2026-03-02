@@ -434,7 +434,7 @@ Based on Figma design:
   <CNAMEInstructions
     recordName="CNAME"
     host="www"
-    pointsTo="cname.launch10.ai"
+    pointsTo="cname.launch10.com"
   />
 
   <DNSProviderGuides providers={["Cloudflare", "GoDaddy", "Namecheap", "AWS Route 53"]} />

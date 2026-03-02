@@ -29,7 +29,7 @@ Atlas::Syncable → sync to Cloudflare (domain + website_url)
 | Type | Example | Verification | Limit |
 |------|---------|-------------|-------|
 | Platform subdomain | `mybiz.launch10.site` | Auto-verified | Plan-based (e.g., 3 for Growth) |
-| Custom domain | `www.mybiz.com` | CNAME → `cname.launch10.ai` | Unlimited |
+| Custom domain | `www.mybiz.com` | CNAME → `cname.launch10.com` | Unlimited |
 
 ## Domain → Website Connection
 
@@ -47,7 +47,7 @@ Domain (e.g., "mybiz.launch10.site")
 ## DNS Verification (Custom Domains)
 
 1. User adds custom domain in DomainPicker
-2. UI shows CNAME setup instructions: point domain to `cname.launch10.ai`
+2. UI shows CNAME setup instructions: point domain to `cname.launch10.com`
 3. User clicks "Verify DNS" → `POST /api/v1/domains/:id/verify_dns`
 4. `DnsVerificationService` does CNAME lookup via Ruby `Resolv::DNS`
 5. Tries domain as-is, then `www.#{domain}`
@@ -92,4 +92,4 @@ The DomainPicker UI has two input fields:
 - **Global uniqueness**: Domain names are unique across all accounts. A domain claimed by one account cannot be claimed by another.
 - **Soft delete vs hard delete**: Normal deletion is soft (`acts_as_paranoid`). `domain.release!` does a hard delete (`really_destroy!`) — used for stale unverified domains.
 - **Platform subdomain credits**: Checked against `account.plan.limit_for("platform_subdomains")`. The limit is plan-tier dependent.
-- **Restricted domains**: A hardcoded blocklist prevents claiming system domains like `uploads.launch10.ai`, `staging.launch10.ai`.
+- **Restricted domains**: A hardcoded blocklist prevents claiming system domains like `uploads.launch10.com`, `staging.launch10.com`.

@@ -34,4 +34,4 @@ export const DNS_PROVIDERS: DnsProvider[] = [
   },
 ];
 
-export const CNAME_TARGET = "cname.launch10.ai";
+export const CNAME_TARGET = "cname.launch10.com";

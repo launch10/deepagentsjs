@@ -17,7 +17,7 @@ export interface AuthState {
  * Database setup is handled automatically by DatabaseSnapshotter in beforeEach hooks.
  */
 export const testUser = {
-  email: "test_user@launch10.ai",
+  email: "test_user@launch10.com",
   password: "Launch10TestPass!",
 };
 

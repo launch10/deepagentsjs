@@ -16,7 +16,7 @@ account = user.owned_account
 raise "Account not found for user: #{email}" unless account
 
 # Find or create a test admin for the audit trail
-admin = User.find_by(admin: true) || User.find_by(email: "brett@launch10.ai")
+admin = User.find_by(admin: true) || User.find_by(email: "brett@launch10.com")
 
 Credits::AllocationService.new(account).adjust_credits!(
   plan_millicredits: plan,

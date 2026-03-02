@@ -146,7 +146,7 @@ The AI chat is hidden by default and toggled by a button. This keeps the FAQ lib
 │ Contact Form (always visible)                 │
 │ [Category] [Subject] [Description] [Submit]   │
 ├──────────────────────────────────────────────┤
-│ Email us at support@launch10.ai               │
+│ Email us at support@launch10.com               │
 └──────────────────────────────────────────────┘
 ```
 

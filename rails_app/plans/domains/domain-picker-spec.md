@@ -264,7 +264,7 @@ Source: `spec/snapshot_builders/core/tier_limits.rb:5`
 
 1. User enters custom domain (e.g., `mybusiness.com`)
 2. Rails creates Domain record with `dns_verification_status: "pending"`
-3. User configures DNS at their registrar (CNAME pointing to `cname.launch10.ai`)
+3. User configures DNS at their registrar (CNAME pointing to `cname.launch10.com`)
 4. Frontend calls this endpoint to check status
 5. Rails performs DNS lookup to verify CNAME record
 6. If verified, domain is synced to Atlas worker
@@ -278,8 +278,8 @@ Source: `spec/snapshot_builders/core/tier_limits.rb:5`
   "domain_id": 124,
   "domain": "mybusiness.com",
   "verification_status": "verified",
-  "expected_cname": "cname.launch10.ai",
-  "actual_cname": "cname.launch10.ai",
+  "expected_cname": "cname.launch10.com",
+  "actual_cname": "cname.launch10.com",
   "last_checked_at": "2026-02-01T10:30:00Z",
   "error_message": null
 }
@@ -288,7 +288,7 @@ Source: `spec/snapshot_builders/core/tier_limits.rb:5`
 **Verification statuses**:
 
 - `pending`: DNS not yet configured or propagating
-- `verified`: CNAME correctly points to `cname.launch10.ai`
+- `verified`: CNAME correctly points to `cname.launch10.com`
 - `failed`: Wrong CNAME value or DNS error
 
 **Auto-polling**:
@@ -432,7 +432,7 @@ What you need to configure:
 
 Record Type: CNAME
 Host:        www (or @ for root)
-Points to:   cname.launch10.ai
+Points to:   cname.launch10.com
 ```
 
 **Step 3: Provider Guides**
@@ -487,7 +487,7 @@ Link to setup guides for common providers:
 
 ### How Custom Domains Work
 
-1. **User DNS**: Points domain to Cloudflare (CNAME to `cname.launch10.ai`)
+1. **User DNS**: Points domain to Cloudflare (CNAME to `cname.launch10.com`)
 2. **Cloudflare Zone**: Must be configured for the custom domain
 3. **Rails → Atlas Sync**: After DNS verification, sync Domain record to Atlas KV
 4. **Worker handles**: Same path matching logic applies
@@ -545,7 +545,7 @@ Required: DNS verification before deploy
 | Path exists on domain    | "This path already exists on [domain]"                                  | Show available paths or different domain |
 | Out of subdomain credits | "You've hit the limit of X subdomains on your plan"                     | Upgrade CTA or use existing              |
 | DNS pending              | "DNS not yet configured - propagation can take up to 48 hours"          | Show instructions + check button         |
-| DNS failed               | "CNAME record not found. Expected: cname.launch10.ai"                   | Re-show setup instructions               |
+| DNS failed               | "CNAME record not found. Expected: cname.launch10.com"                   | Re-show setup instructions               |
 | Invalid subdomain format | "Site name can only contain letters, numbers, and hyphens"              | Inline field error                       |
 | Invalid path format      | "Path must start with / and contain only letters, numbers, and hyphens" | Inline field error                       |
 | Custom domain on Starter | "Custom domains require Growth or Pro plan"                             | Upgrade CTA                              |

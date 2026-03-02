@@ -33,7 +33,7 @@ Rails build! (buildable.rb)
 
 **Values by environment:**
 - Development: `http://localhost:3000`
-- Production: `https://app.launch10.ai`
+- Production: `https://app.launch10.com`
 
 ---
 
@@ -48,7 +48,7 @@ config.x.api_base_url = ENV.fetch("API_BASE_URL", "http://localhost:3000")
 
 ```ruby
 # config/environments/production.rb
-config.x.api_base_url = "https://app.launch10.ai"
+config.x.api_base_url = "https://app.launch10.com"
 ```
 
 ### Step 2: Add signup_token to Project

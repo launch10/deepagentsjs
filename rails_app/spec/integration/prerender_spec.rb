@@ -173,7 +173,7 @@ RSpec.describe "Buildable sitemap with prerendered routes", type: :integration d
       FileUtils.mkdir_p(dist_dir)
       allow(deploy).to receive(:temp_dir).and_return(temp_dir)
       allow(website).to receive(:website_url).and_return(
-        double(domain_string: "example.launch10.ai", path: "/")
+        double(domain_string: "example.launch10.com", path: "/")
       )
     end
 
@@ -190,16 +190,16 @@ RSpec.describe "Buildable sitemap with prerendered routes", type: :integration d
       deploy.send(:generate_sitemap_xml!)
 
       sitemap = File.read(File.join(dist_dir, "sitemap.xml"))
-      expect(sitemap).to include("<loc>https://example.launch10.ai/</loc>")
-      expect(sitemap).to include("<loc>https://example.launch10.ai/pricing</loc>")
-      expect(sitemap).to include("<loc>https://example.launch10.ai/about-us</loc>")
+      expect(sitemap).to include("<loc>https://example.launch10.com/</loc>")
+      expect(sitemap).to include("<loc>https://example.launch10.com/pricing</loc>")
+      expect(sitemap).to include("<loc>https://example.launch10.com/about-us</loc>")
     end
 
     it "falls back to just / when prerendered-routes.json is missing" do
       deploy.send(:generate_sitemap_xml!)
 
       sitemap = File.read(File.join(dist_dir, "sitemap.xml"))
-      expect(sitemap).to include("<loc>https://example.launch10.ai/</loc>")
+      expect(sitemap).to include("<loc>https://example.launch10.com/</loc>")
       expect(sitemap).not_to include("/pricing")
     end
 

@@ -166,7 +166,7 @@ CLOUDFLARE_DEPLOY_ENV
 
 ```bash
 # In production .env:
-VITE_WEBCONTAINER_SNAPSHOT_URL=https://uploads.launch10.ai/production/snapshots/webcontainer-snapshot-abc123.bin
+VITE_WEBCONTAINER_SNAPSHOT_URL=https://uploads.launch10.com/production/snapshots/webcontainer-snapshot-abc123.bin
 ```
 
 In development, leave empty to use local `/webcontainer-snapshot.bin`.
@@ -288,7 +288,7 @@ Add these secrets to the repository settings (Settings → Secrets and variables
 | `CLOUDFLARE_R2_ACCESS_KEY_ID`     | R2 access key   | From Cloudflare dashboard                       |
 | `CLOUDFLARE_R2_SECRET_ACCESS_KEY` | R2 secret key   | From Cloudflare dashboard                       |
 | `CLOUDFLARE_UPLOADS_BUCKET`       | Bucket name     | `uploads`                                       |
-| `CLOUDFLARE_ASSET_HOST`           | Public CDN URL  | `https://uploads.launch10.ai`                   |
+| `CLOUDFLARE_ASSET_HOST`           | Public CDN URL  | `https://uploads.launch10.com`                   |
 
 ### 2. Merge to Main
 
@@ -305,14 +305,14 @@ After the workflow completes:
 
 1. Go to Actions → WebContainer Snapshot → Latest run
 2. Check the "Output snapshot URL" step or download the manifest artifact
-3. Copy the URL from the manifest (looks like `https://uploads.launch10.ai/production/snapshots/webcontainer-snapshot-abc123def456.bin`)
+3. Copy the URL from the manifest (looks like `https://uploads.launch10.com/production/snapshots/webcontainer-snapshot-abc123def456.bin`)
 
 ### 4. Update Production Environment
 
 Add to your production environment variables:
 
 ```bash
-VITE_WEBCONTAINER_SNAPSHOT_URL=https://uploads.launch10.ai/production/snapshots/webcontainer-snapshot-abc123def456.bin
+VITE_WEBCONTAINER_SNAPSHOT_URL=https://uploads.launch10.com/production/snapshots/webcontainer-snapshot-abc123def456.bin
 ```
 
 ### 5. Deploy

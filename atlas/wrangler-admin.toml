@@ -7,7 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 observability = { enabled = true }
 
 routes = [
-  { pattern = "atlas-admin.launch10.ai/*", zone_name = "launch10.ai" }
+  { pattern = "atlas-admin.launch10.com/*", zone_name = "launch10.com" }
 ]
 
 [[kv_namespaces]]

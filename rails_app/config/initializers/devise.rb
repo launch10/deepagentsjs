@@ -67,7 +67,7 @@ Devise.setup do |config|
       provider: "developer",
       uid: "test-uid-123",
       info: {
-        email: "test_user@launch10.ai",
+        email: "test_user@launch10.com",
         name: "Test User"
       },
       credentials: {

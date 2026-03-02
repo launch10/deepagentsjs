@@ -132,7 +132,7 @@ The tooltip content (from earlier screenshot) explains:
 
 - `SiteNameDropdown.tsx` - Conditional suffix display
 
-**Screenshot reference**: Interaction note "Also '.launch10.ai' should only appear at the end of the input after a user selects into it"
+**Screenshot reference**: Interaction note "Also '.launch10.com' should only appear at the end of the input after a user selects into it"
 
 ---
 
@@ -189,7 +189,7 @@ The tooltip content (from earlier screenshot) explains:
 **Design**: Shows full availability status:
 
 - Red: "Selected website is currently unavailable"
-- Green: "Available: myphotos.launch10.ai/pets"
+- Green: "Available: myphotos.launch10.com/pets"
 
 **Files to modify**:
 
@@ -199,7 +199,7 @@ The tooltip content (from earlier screenshot) explains:
 **Screenshot references**:
 
 - "Selected website is currently unavailable" (red text)
-- "Available: myphotos.launch10.ai/pets" (green with checkmark)
+- "Available: myphotos.launch10.com/pets" (green with checkmark)
 
 ---
 

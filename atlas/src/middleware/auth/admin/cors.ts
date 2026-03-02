@@ -10,8 +10,8 @@ export const corsMiddleware = cors({
       const allowedOrigins = [
         `http://localhost:${railsPort}`,
         `http://127.0.0.1:${railsPort}`,
-        'https://launch10.ai',
-        'https://www.launch10.ai'
+        'https://launch10.com',
+        'https://www.launch10.com'
       ];
 
       return allowedOrigins.includes(origin) ? origin : null;

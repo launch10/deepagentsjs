@@ -205,7 +205,7 @@ RSpec.describe Domains::DnsVerificationBatchWorker do
         # Mock successful DNS verification
         allow_any_instance_of(Domains::DnsVerificationService)
           .to receive(:lookup_cname)
-          .and_return("cname.launch10.ai")
+          .and_return("cname.launch10.com")
 
         expect {
           worker.perform

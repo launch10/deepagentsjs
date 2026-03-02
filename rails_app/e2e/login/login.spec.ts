@@ -198,14 +198,14 @@ test.describe("Login Flow", () => {
      *
      * NOTE: This test uses OmniAuth's developer provider in test mode.
      * The mock is configured in config/initializers/devise.rb with email
-     * matching testUser.email (test_user@launch10.ai).
+     * matching testUser.email (test_user@launch10.com).
      */
     test("user signed up with email can sign in via OAuth (accounts are linked)", async ({
       page,
     }) => {
       const loginPage = new LoginPage(page);
 
-      // Use basic_account snapshot - has a subscribed user with email test_user@launch10.ai
+      // Use basic_account snapshot - has a subscribed user with email test_user@launch10.com
       await DatabaseSnapshotter.restoreSnapshot("basic_account");
 
       // Verify the user exists and can sign in with email first
@@ -219,7 +219,7 @@ test.describe("Login Flow", () => {
       await loginPage.signOut();
 
       // Now sign in via OAuth (developer provider simulates Google OAuth in test mode)
-      // The mock uses email: "test_user@launch10.ai" - matching the existing subscribed user
+      // The mock uses email: "test_user@launch10.com" - matching the existing subscribed user
       await loginPage.signInViaOAuthAndWaitFor(/\/projects\/new/);
 
       // Should see the BrainstormLanding page with chat input

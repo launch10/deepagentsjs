@@ -19,7 +19,7 @@ Only setup this once for all environments - do not create a separate API client 
 
 3. Add authorized redirect URI: http://localhost:3000
 
-4. Add authorized redirect URI: https://launch10.ai
+4. Add authorized redirect URI: https://launch10.com
 
 5. Add authorized redirect URI: https://developers.google.com/oauthplayground/
 

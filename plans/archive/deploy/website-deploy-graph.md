@@ -157,7 +157,7 @@ deployGoogleAds: boolean; // default: false - deploy campaign to Google Ads
   status: "completed",
   result: {
     versionPath: "v1234",
-    url: "https://example.launch10.ai",
+    url: "https://example.launch10.com",
     deployId: 567
   }
 }

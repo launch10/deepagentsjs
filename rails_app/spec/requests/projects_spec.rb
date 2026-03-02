@@ -94,7 +94,7 @@ RSpec.describe "Projects", type: :request, inertia: true do
       # 3. User's browser reloads page at /projects/:uuid/brainstorm
       # 4. Page should find the project
 
-      let!(:test_user) { create(:user, email: "test_user@launch10.ai") }
+      let!(:test_user) { create(:user, email: "test_user@launch10.com") }
       let!(:test_account) { test_user.owned_account }
       let(:new_thread_id) { SecureRandom.uuid }
       let(:new_project_uuid) { UUID7.generate }

@@ -25,7 +25,7 @@ app.use("*", prettyJSON());
 const railsPort = env.RAILS_PORT || "3000";
 const defaultOrigins =
   env.NODE_ENV === "production"
-    ? ["https://launch10.ai"]
+    ? ["https://launch10.com"]
     : [`http://localhost:${railsPort}`, `http://127.0.0.1:${railsPort}`];
 const allowedOrigins = env.ALLOWED_ORIGINS
   ? [...env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()), ...defaultOrigins]

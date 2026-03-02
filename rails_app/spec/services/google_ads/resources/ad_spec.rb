@@ -6,7 +6,7 @@ RSpec.describe GoogleAds::Resources::Ad do
   let(:account) { create(:account) }
   let(:project) { create(:project, account: account) }
   let(:website) { create(:website, account: account, project: project) }
-  let!(:domain) { create(:domain, account: account, domain: "test-site.launch10.ai") }
+  let!(:domain) { create(:domain, account: account, domain: "test-site.launch10.com") }
   let!(:website_url) { create(:website_url, domain: domain, website: website, account: account) }
   let(:campaign) { create(:campaign, account: account, project: project, website: website) }
   let(:ad_group) { create(:ad_group, campaign: campaign) }
@@ -212,7 +212,7 @@ RSpec.describe GoogleAds::Resources::Ad do
           ad_group_id: 999,
           customer_id: 1234567890,
           status: :PAUSED,
-          final_urls: ["https://test-site.launch10.ai"],
+          final_urls: ["https://test-site.launch10.com"],
           path1: "Shop",
           path2: "Now"
         )
@@ -280,7 +280,7 @@ RSpec.describe GoogleAds::Resources::Ad do
         ad_group_id: 999,
         customer_id: 1234567890,
         status: :PAUSED,
-        final_urls: ["https://test-site.launch10.ai"],
+        final_urls: ["https://test-site.launch10.com"],
         path1: "Shop",
         path2: "Now"
       )
@@ -296,7 +296,7 @@ RSpec.describe GoogleAds::Resources::Ad do
         ad_group_id: 999,
         customer_id: 1234567890,
         status: :PAUSED,
-        final_urls: ["https://test-site.launch10.ai"],
+        final_urls: ["https://test-site.launch10.com"],
         path1: "Shop",
         path2: "Now"
       )
@@ -344,7 +344,7 @@ RSpec.describe GoogleAds::Resources::Ad do
           ad_group_id: 999,
           customer_id: 1234567890,
           status: :REMOVED,
-          final_urls: ["https://test-site.launch10.ai"],
+          final_urls: ["https://test-site.launch10.com"],
           path1: "Shop",
           path2: "Now"
         )
@@ -368,7 +368,7 @@ RSpec.describe GoogleAds::Resources::Ad do
           ad_group_id: 999,
           customer_id: 1234567890,
           status: :PAUSED,
-          final_urls: ["https://test-site.launch10.ai"],
+          final_urls: ["https://test-site.launch10.com"],
           path1: "Shop",
           path2: "Now"
         )
@@ -394,7 +394,7 @@ RSpec.describe GoogleAds::Resources::Ad do
           ad_group_id: 999,
           customer_id: 1234567890,
           status: :PAUSED,
-          final_urls: ["https://test-site.launch10.ai"],
+          final_urls: ["https://test-site.launch10.com"],
           path1: "Shop",
           path2: "Now"
         )
@@ -428,7 +428,7 @@ RSpec.describe GoogleAds::Resources::Ad do
           ad_group_id: 999,
           customer_id: 1234567890,
           status: :PAUSED,
-          final_urls: ["https://test-site.launch10.ai"],
+          final_urls: ["https://test-site.launch10.com"],
           path1: "Shop",
           path2: "Now"
         )
@@ -453,7 +453,7 @@ RSpec.describe GoogleAds::Resources::Ad do
           ad_group_id: 999,
           customer_id: 1234567890,
           status: :PAUSED,
-          final_urls: ["https://test-site.launch10.ai"],
+          final_urls: ["https://test-site.launch10.com"],
           path1: "Shop",
           path2: "Now"
         )
@@ -522,7 +522,7 @@ RSpec.describe GoogleAds::Resources::Ad do
           ad_group_id: 999,
           customer_id: 1234567890,
           status: :PAUSED,
-          final_urls: ["https://test-site.launch10.ai"],
+          final_urls: ["https://test-site.launch10.com"],
           path1: "Shop",
           path2: "Now"
         )
@@ -531,7 +531,7 @@ RSpec.describe GoogleAds::Resources::Ad do
           ad_group_id: 999,
           customer_id: 1234567890,
           status: :ENABLED,
-          final_urls: ["https://test-site.launch10.ai"],
+          final_urls: ["https://test-site.launch10.com"],
           path1: "Shop",
           path2: "Now"
         )
@@ -585,7 +585,7 @@ RSpec.describe GoogleAds::Resources::Ad do
           ad_group_id: 999,
           customer_id: 1234567890,
           status: :PAUSED,
-          final_urls: ["https://test-site.launch10.ai"],
+          final_urls: ["https://test-site.launch10.com"],
           path1: "Shop",
           path2: "Now"
         )
@@ -612,7 +612,7 @@ RSpec.describe GoogleAds::Resources::Ad do
           ad_group_id: 999,
           customer_id: 1234567890,
           status: :PAUSED,
-          final_urls: ["https://test-site.launch10.ai"],
+          final_urls: ["https://test-site.launch10.com"],
           path1: "Shop",
           path2: "Now"
         )
@@ -639,7 +639,7 @@ RSpec.describe GoogleAds::Resources::Ad do
           ad_group_id: 999,
           customer_id: 1234567890,
           status: :PAUSED,
-          final_urls: ["https://test-site.launch10.ai"],
+          final_urls: ["https://test-site.launch10.com"],
           path1: "Shop",
           path2: "Now"
         )
@@ -672,7 +672,7 @@ RSpec.describe GoogleAds::Resources::Ad do
           ad_group_id: 999,
           customer_id: 1234567890,
           status: :PAUSED,
-          final_urls: ["https://test-site.launch10.ai"],
+          final_urls: ["https://test-site.launch10.com"],
           path1: "Shop",
           path2: "Now"
         )
@@ -689,7 +689,7 @@ RSpec.describe GoogleAds::Resources::Ad do
           ad_group_id: 999,
           customer_id: 1234567890,
           status: :PAUSED,
-          final_urls: ["https://test-site.launch10.ai"],
+          final_urls: ["https://test-site.launch10.com"],
           path1: "Shop",
           path2: "Now"
         )

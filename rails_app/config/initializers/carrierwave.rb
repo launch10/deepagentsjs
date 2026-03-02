@@ -16,7 +16,7 @@ CarrierWave.configure do |config|
       rails_port = ENV.fetch("RAILS_PORT", 3001)
       config.asset_host = "http://localhost:#{rails_port}"
     else
-      config.asset_host = "https://dev-uploads.launch10.ai"
+      config.asset_host = "https://dev-uploads.launch10.com"
     end
   else
     config.storage = :aws
@@ -25,7 +25,7 @@ CarrierWave.configure do |config|
     end
     config.aws_acl = "public-read"
     config.asset_host = ENV.fetch("CLOUDFLARE_ASSET_HOST") do
-      Rails.env.production? ? "https://uploads.launch10.ai" : "https://dev-uploads.launch10.ai"
+      Rails.env.production? ? "https://uploads.launch10.com" : "https://dev-uploads.launch10.com"
     end
 
     config.aws_credentials = {

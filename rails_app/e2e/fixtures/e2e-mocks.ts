@@ -45,7 +45,7 @@ export const E2EMocks = {
       job_run_id: number | null;
     }>("complete_oauth", {
       email,
-      google_email: googleEmail ?? "test@launch10.ai",
+      google_email: googleEmail ?? "test@launch10.com",
     });
   },
 
@@ -95,7 +95,7 @@ export const E2EMocks = {
   async createGoogleAccount(email: string, googleEmail?: string) {
     return appScenario("create_google_connected_account", {
       email,
-      google_email: googleEmail ?? "test@launch10.ai",
+      google_email: googleEmail ?? "test@launch10.com",
     });
   },
 

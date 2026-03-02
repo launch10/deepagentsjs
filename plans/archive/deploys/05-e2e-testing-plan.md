@@ -29,7 +29,7 @@ Factory methods that return OpenStruct objects matching the Google Ads API respo
 ```ruby
 module Testing
   module GoogleAdsResponses
-    def self.invitation_row(status:, email: "test@launch10.ai")
+    def self.invitation_row(status:, email: "test@launch10.com")
       OpenStruct.new(
         customer_user_access_invitation: OpenStruct.new(
           resource_name: "customers/123/customerUserAccessInvitations/456",
@@ -42,7 +42,7 @@ module Testing
       )
     end
 
-    def self.user_access_row(email: "test@launch10.ai")
+    def self.user_access_row(email: "test@launch10.com")
       OpenStruct.new(
         customer_user_access: OpenStruct.new(
           resource_name: "customers/123/customerUserAccess/789",
@@ -268,7 +268,7 @@ class DeployStep < BaseBuilder
       refresh_token: "mock_refresh",
       expires_at: 1.day.from_now
     )
-    user.update!(google_email: "test@launch10.ai")
+    user.update!(google_email: "test@launch10.com")
 
     website.deploys.create!(status: "pending", deploy_type: "full")
   end

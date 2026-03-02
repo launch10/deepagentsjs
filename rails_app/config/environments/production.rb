@@ -98,5 +98,5 @@ Rails.application.configure do
   }
 
   # API base URL for deployed websites (used by lead capture forms)
-  config.x.api_base_url = ENV.fetch("API_BASE_URL", "https://launch10.ai")
+  config.x.api_base_url = ENV.fetch("API_BASE_URL", "https://launch10.com")
 end

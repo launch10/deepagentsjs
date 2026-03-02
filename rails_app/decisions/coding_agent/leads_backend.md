@@ -200,10 +200,10 @@ resources :leads, only: [:create]  # POST /api/v1/leads
 
 | Caller                        | API Endpoint               | Same Origin?     | CORS Needed? |
 | ----------------------------- | -------------------------- | ---------------- | ------------ |
-| `launch10.ai` React frontend  | `launch10.ai/api/v1/*`     | ✓ Yes            | No           |
-| Langgraph service (server)    | `launch10.ai/api/v1/*`     | N/A (no browser) | No           |
-| `cool-startup.launch10.dev`   | `launch10.ai/api/v1/leads` | ✗ No             | **Yes**      |
-| `my-idea.com` (custom domain) | `launch10.ai/api/v1/leads` | ✗ No             | **Yes**      |
+| `launch10.com` React frontend  | `launch10.com/api/v1/*`     | ✓ Yes            | No           |
+| Langgraph service (server)    | `launch10.com/api/v1/*`     | N/A (no browser) | No           |
+| `cool-startup.launch10.dev`   | `launch10.com/api/v1/leads` | ✗ No             | **Yes**      |
+| `my-idea.com` (custom domain) | `launch10.com/api/v1/leads` | ✗ No             | **Yes**      |
 
 Our existing APIs are called from the same origin (our React frontend) or server-to-server (Langgraph). The leads endpoint is unique - it's called from deployed landing pages on different domains.
 

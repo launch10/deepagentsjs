@@ -96,3 +96,5 @@ storybook-static
 
 # WebContainer snapshot temp directory (generated during snapshot creation)
 /.snapshot-temp/
+
+/config/credentials/production.key

@@ -2,7 +2,7 @@ require "resolv"
 
 module Domains
   class DnsVerificationService
-    EXPECTED_CNAME = "cname.launch10.ai".freeze
+    EXPECTED_CNAME = "cname.launch10.com".freeze
 
     def initialize(domain)
       @domain = domain

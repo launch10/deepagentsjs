@@ -165,7 +165,7 @@ test.describe("Domain Picker", () => {
 
       // Should show CNAME instructions when custom domain is selected
       await expect(page.locator('text="CNAME"')).toBeVisible({ timeout: 5000 });
-      await expect(page.locator('text="cname.launch10.ai"')).toBeVisible({ timeout: 5000 });
+      await expect(page.locator('text="cname.launch10.com"')).toBeVisible({ timeout: 5000 });
     });
 
     test("shows DNS verification status for custom domains", async ({ page }) => {

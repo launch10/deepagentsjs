@@ -13,7 +13,7 @@ class NonSubscribedAccount < BaseBuilder
 
   def create_non_subscribed_user
     # Create test user without a subscription
-    user = User.find_or_initialize_by(email: "test_user@launch10.ai")
+    user = User.find_or_initialize_by(email: "test_user@launch10.com")
     user.assign_attributes(
       password: "Launch10TestPass!",
       password_confirmation: "Launch10TestPass!",

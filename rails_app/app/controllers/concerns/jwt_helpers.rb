@@ -62,7 +62,7 @@ module JwtHelpers
 
   def test_jwt_user
     return unless test_jwt_valid?
-    User.find_by(email: "test_user@launch10.ai") # TODO: Update, this is only for Langgraph testing
+    User.find_by(email: "test_user@launch10.com") # TODO: Update, this is only for Langgraph testing
   end
 
   def test_jwt_account

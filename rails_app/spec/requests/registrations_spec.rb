@@ -103,10 +103,10 @@ RSpec.describe "Registrations", type: :request do
     it "includes referrer in attribution" do
       get new_user_registration_path,
         params: { utm_source: "google" },
-        headers: { "HTTP_REFERER" => "https://launch10.ai/pricing" }
+        headers: { "HTTP_REFERER" => "https://launch10.com/pricing" }
 
       attribution = JSON.parse(cookies[:signup_attribution])
-      expect(attribution["referrer"]).to eq("https://launch10.ai/pricing")
+      expect(attribution["referrer"]).to eq("https://launch10.com/pricing")
     end
 
     it "includes referring_domain extracted from referrer" do

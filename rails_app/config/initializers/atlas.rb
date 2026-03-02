@@ -5,7 +5,7 @@ Rails.application.config.to_prepare do
   Atlas.configure do |config|
     config.base_url = ENV.fetch("ATLAS_BASE_URL") do
       Rails.application.credentials.dig(:atlas, :base_url) ||
-        (Rails.env.production? ? "https://atlas-admin.launch10.ai" : "http://localhost:8788")
+        (Rails.env.production? ? "https://atlas-admin.launch10.com" : "http://localhost:8788")
     end
 
     config.api_secret = Rails.application.credentials.dig(:atlas, :api_secret) || "development-secret"

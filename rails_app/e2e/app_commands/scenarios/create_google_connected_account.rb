@@ -1,16 +1,16 @@
 # Creates a Google OAuth ConnectedAccount so the OAuth step is skipped during deploy.
 #
 # Usage:
-#   await appScenario('create_google_connected_account', { email: "test_user@launch10.ai" })
+#   await appScenario('create_google_connected_account', { email: "test_user@launch10.com" })
 #
 # Options:
 #   email:        string - User's email (required)
-#   google_email: string - Google account email (default: "test@launch10.ai")
+#   google_email: string - Google account email (default: "test@launch10.com")
 
 email = command_options["email"] || command_options[:email]
 raise "email is required" unless email.present?
 
-google_email = command_options["google_email"] || command_options[:google_email] || "test@launch10.ai"
+google_email = command_options["google_email"] || command_options[:google_email] || "test@launch10.com"
 
 user = User.find_by!(email: email)
 

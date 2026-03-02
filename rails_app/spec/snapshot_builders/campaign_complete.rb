@@ -25,7 +25,7 @@ class CampaignComplete < BaseBuilder
 
     create(:connected_account, :google, owner: user, auth: {
       "info" => {
-        "email" => "brett@launch10.ai",
+        "email" => "brett@launch10.com",
         "name" => user.name
       }
     })

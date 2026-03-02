@@ -29,7 +29,7 @@ RSpec.describe Domains::DnsVerificationService do
         before do
           allow_any_instance_of(described_class).to receive(:lookup_cname)
             .with("www.mybusiness.com")
-            .and_return("cname.launch10.ai")
+            .and_return("cname.launch10.com")
         end
 
         it "returns verified status" do
@@ -37,7 +37,7 @@ RSpec.describe Domains::DnsVerificationService do
           result = service.verify
 
           expect(result[:status]).to eq("verified")
-          expect(result[:actual_cname]).to eq("cname.launch10.ai")
+          expect(result[:actual_cname]).to eq("cname.launch10.com")
           expect(result[:error]).to be_nil
         end
 
@@ -65,7 +65,7 @@ RSpec.describe Domains::DnsVerificationService do
 
           expect(result[:status]).to eq("pending")
           expect(result[:actual_cname]).to eq("wrong.target.com")
-          expect(result[:error]).to include("Expected cname.launch10.ai")
+          expect(result[:error]).to include("Expected cname.launch10.com")
         end
 
         it "updates domain to pending with error message" do
@@ -156,7 +156,7 @@ RSpec.describe Domains::DnsVerificationService do
         before do
           allow_any_instance_of(described_class).to receive(:lookup_cname)
             .with("www.mybusiness.com")
-            .and_return("cname.launch10.ai.")
+            .and_return("cname.launch10.com.")
         end
 
         it "treats it as verified (handles DNS trailing dot)" do
@@ -185,8 +185,8 @@ RSpec.describe Domains::DnsVerificationService do
   end
 
   describe "EXPECTED_CNAME constant" do
-    it "is set to cname.launch10.ai" do
-      expect(described_class::EXPECTED_CNAME).to eq("cname.launch10.ai")
+    it "is set to cname.launch10.com" do
+      expect(described_class::EXPECTED_CNAME).to eq("cname.launch10.com")
     end
   end
 end

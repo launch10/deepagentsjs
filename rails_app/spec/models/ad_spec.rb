@@ -58,23 +58,23 @@ RSpec.describe Ad, type: :model do
   describe '#final_urls' do
     context 'when website has a website_url with root path' do
       before do
-        domain = create(:domain, account: account, domain: "example.launch10.ai")
+        domain = create(:domain, account: account, domain: "example.launch10.com")
         create(:website_url, website: website, account: account, domain: domain, path: "/")
       end
 
       it 'returns the full URL array with cloudEnv in non-production' do
-        expect(ad.final_urls).to eq(["https://example.launch10.ai/?cloudEnv=#{Cloudflare.deploy_env}"])
+        expect(ad.final_urls).to eq(["https://example.launch10.com/?cloudEnv=#{Cloudflare.deploy_env}"])
       end
     end
 
     context 'when website has a website_url with a path' do
       before do
-        domain = create(:domain, account: account, domain: "example.launch10.ai")
+        domain = create(:domain, account: account, domain: "example.launch10.com")
         create(:website_url, website: website, account: account, domain: domain, path: "/campaign")
       end
 
       it 'returns the full URL with path and cloudEnv in non-production' do
-        expect(ad.final_urls).to eq(["https://example.launch10.ai/campaign?cloudEnv=#{Cloudflare.deploy_env}"])
+        expect(ad.final_urls).to eq(["https://example.launch10.com/campaign?cloudEnv=#{Cloudflare.deploy_env}"])
       end
     end
 

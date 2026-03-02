@@ -692,7 +692,7 @@ RSpec.describe WebsiteDeploy, type: :model do
         deploy.send(:write_env_file!)
 
         env_content = File.read(File.join(temp_dir, ".env"))
-        expected_url = ENV.fetch("DEPLOY_API_BASE_URL", "https://launch10.ai")
+        expected_url = ENV.fetch("DEPLOY_API_BASE_URL", "https://launch10.com")
         expect(env_content).to include("VITE_API_BASE_URL=#{expected_url}")
       end
 

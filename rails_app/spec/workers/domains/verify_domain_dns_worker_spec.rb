@@ -20,7 +20,7 @@ RSpec.describe Domains::VerifyDomainDnsWorker do
         before do
           allow_any_instance_of(Domains::DnsVerificationService)
             .to receive(:lookup_cname)
-            .and_return("cname.launch10.ai")
+            .and_return("cname.launch10.com")
         end
 
         it "updates domain to verified" do
@@ -218,7 +218,7 @@ RSpec.describe Domains::VerifyDomainDnsWorker do
     before do
       allow_any_instance_of(Domains::DnsVerificationService)
         .to receive(:lookup_cname)
-        .and_return("cname.launch10.ai")
+        .and_return("cname.launch10.com")
     end
 
     it "can be safely run multiple times" do

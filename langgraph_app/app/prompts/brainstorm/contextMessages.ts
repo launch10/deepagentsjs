@@ -86,7 +86,7 @@ export const getBrainstormContextMessage = async (
  * This helps the agent understand exactly what the user sees.
  */
 const BRAINSTORM_UI_SCREENSHOT_URL =
-  "https://uploads.launch10.ai/uploads/agent_support/brainstorm/brainstorm_ui.png";
+  "https://uploads.launch10.com/uploads/agent_support/brainstorm/brainstorm_ui.png";
 
 /**
  * Context message for switching to UI guidance mode.

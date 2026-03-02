@@ -305,15 +305,15 @@ RSpec.describe "Domains API", type: :request do
 
         before do
           allow_any_instance_of(Domains::DnsVerificationService).to receive(:lookup_cname)
-            .and_return("cname.launch10.ai")
+            .and_return("cname.launch10.com")
         end
 
         run_test! do |response|
           json = JSON.parse(response.body)
           expect(json["domain_id"]).to eq(domain.id)
           expect(json["verification_status"]).to eq("verified")
-          expect(json["expected_cname"]).to eq("cname.launch10.ai")
-          expect(json["actual_cname"]).to eq("cname.launch10.ai")
+          expect(json["expected_cname"]).to eq("cname.launch10.com")
+          expect(json["actual_cname"]).to eq("cname.launch10.com")
           expect(json["last_checked_at"]).to be_present
         end
       end
@@ -332,7 +332,7 @@ RSpec.describe "Domains API", type: :request do
         run_test! do |response|
           json = JSON.parse(response.body)
           expect(json["verification_status"]).to eq("pending")
-          expect(json["error_message"]).to include("Expected cname.launch10.ai")
+          expect(json["error_message"]).to include("Expected cname.launch10.com")
         end
       end
 
@@ -500,7 +500,7 @@ RSpec.describe "Domains API", type: :request do
 
       response "422", "rejects restricted domains" do
         let!(:website) { create(:website, account: account, project: project) }
-        let(:body) { {domain: {domain: "uploads.launch10.ai", website_id: website.id}} }
+        let(:body) { {domain: {domain: "uploads.launch10.com", website_id: website.id}} }
 
         run_test! do |response|
           json = JSON.parse(response.body)
@@ -682,14 +682,14 @@ RSpec.describe "Domains API", type: :request do
         let!(:other_website) { create(:website, account: account, project: other_project) }
         let!(:existing_url) { create(:website_url, domain: existing_domain, website: other_website, account: account, path: "/pets") }
 
-        # Now user wants to use a custom domain for their website (pets.launch10.ai already has subdomain, no www added)
-        let(:body) { {domain: {domain: "pets.launch10.ai", website_id: website.id, is_platform_subdomain: false}} }
+        # Now user wants to use a custom domain for their website (pets.launch10.com already has subdomain, no www added)
+        let(:body) { {domain: {domain: "pets.launch10.com", website_id: website.id, is_platform_subdomain: false}} }
 
         run_test! do |response|
           json = JSON.parse(response.body)
 
           # Custom domain should be created (subdomain domains don't get www prefix)
-          expect(json["domain"]["domain"]).to eq("pets.launch10.ai")
+          expect(json["domain"]["domain"]).to eq("pets.launch10.com")
           expect(json["domain"]["is_platform_subdomain"]).to eq(false)
 
           # WebsiteUrl should be created for the new domain
@@ -698,7 +698,7 @@ RSpec.describe "Domains API", type: :request do
 
           # Website should have exactly one website_url (the new one)
           expect(website.reload.website_url).to be_present
-          expect(website.website_url.domain.domain).to eq("pets.launch10.ai")
+          expect(website.website_url.domain.domain).to eq("pets.launch10.com")
 
           # Old domain should still exist (owned by account)
           old_domain = Domain.find_by(domain: "xyz.launch10.site")

@@ -3,12 +3,12 @@ import { DatabaseSnapshotter } from "./fixtures/database";
 import { BrainstormPage } from "./pages/brainstorm.page";
 
 const adminUser = {
-  email: "brett@launch10.ai",
+  email: "brett@launch10.com",
   password: "Launch10TestPass!",
 };
 
 const testUser = {
-  email: "test_user@launch10.ai",
+  email: "test_user@launch10.com",
   password: "Launch10TestPass!",
 };
 

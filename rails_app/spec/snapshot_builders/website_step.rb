@@ -44,7 +44,7 @@ class WebsiteStep < BaseBuilder
     end
 
     # Create uploads (logo + images) and associate with website
-    # Use actual CDN URLs that OpenAI can access (files already exist on dev-uploads.launch10.ai)
+    # Use actual CDN URLs that OpenAI can access (files already exist on dev-uploads.launch10.com)
     cdn_images = [
       { file: "21b36cfc-f657-471f-8256-d36bea9689fc.png", is_logo: true },
       { file: "024dfc6c-335d-4f11-883b-f8e241f91744.png", is_logo: false }

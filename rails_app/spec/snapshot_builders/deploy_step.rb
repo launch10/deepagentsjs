@@ -27,7 +27,7 @@ class DeployStep < BaseBuilder
       expires_at: 1.day.from_now,
       auth: {
         "info" => {
-          "email" => "test@launch10.ai",
+          "email" => "test@launch10.com",
           "name" => "Test User"
         }
       }

@@ -7,15 +7,15 @@ Users can deploy their own websites via our Cloudflare account.
 ```ruby
 website.create!(name: "Test Website", thread_id: "thread_id", template_id: 1)
 website.website_files.create(path: "/index.html", content: "<h1>Test Website</h1>")
-website.domains.create(domain: "example.launch10.ai", account: Account.first)
+website.domains.create(domain: "example.launch10.com", account: Account.first)
 website.deploy! # Deploys to r2 bucket deploys/production/<website_id>/live
-# Can now be visited from https://example.launch10.ai
+# Can now be visited from https://example.launch10.com
 
 website.deploy!(environment: "development") # Deploys to r2 bucket deploys/development/<website_id>
-# Can now be visited from https://example.launch10.ai?cloudEnv=development # Intended for DEVELOPERS
+# Can now be visited from https://example.launch10.com?cloudEnv=development # Intended for DEVELOPERS
 
 website.preview! # Deploys to r2 bucket deploys/production/<website_id>/preview
-# Can now be visited from https://preview.example.launch10.ai # Intended for END USERS
+# Can now be visited from https://preview.example.launch10.com # Intended for END USERS
 ```
 
 ## Background
@@ -35,7 +35,7 @@ rails credentials:edit --environment=development
 
 # Set
 atlas:
-    base_url: "https://development.admin.launch10.ai"
+    base_url: "https://development.admin.launch10.com"
     api_key: "development_api_key"
 ```
 
@@ -54,7 +54,7 @@ website = Website.create(
 ) # In reality, thread_id comes from Langchain
 plan = Plan.create(name: "Test Plan", price: 10)
 subscribe_user(u, plan) # Use helpers from spec/support/subscription_helpers.rb
-domain = Domain.create(domain: "example.launch10.ai", account: u.owned_account, website: website) # Domain must be in the launch10.ai zone
+domain = Domain.create(domain: "example.launch10.com", account: u.owned_account, website: website) # Domain must be in the launch10.com zone
 ```
 
 If any of this fails, or you forgot to run Sidekiq, you can run the Rake task to sync the models to Cloudflare's KV store
@@ -80,5 +80,5 @@ You should now see the files in the R2 bucket for the website
 6. Visit the website
 
 ```bash
-https://example.launch10.ai
+https://example.launch10.com
 ```

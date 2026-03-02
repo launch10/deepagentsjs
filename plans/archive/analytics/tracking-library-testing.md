@@ -169,7 +169,7 @@ cat shared/websites/examples/scheduling-tool/.env
 **Expected output:**
 
 ```
-VITE_API_BASE_URL=https://api.launch10.ai
+VITE_API_BASE_URL=https://api.launch10.com
 VITE_SIGNUP_TOKEN=abc123...
 VITE_GOOGLE_ADS_SEND_TO=AW-123456789/xyz789
 ```
@@ -202,7 +202,7 @@ test("submits lead with gclid to correct endpoint", async ({ page }) => {
   const request = await page.waitForRequest((r) => r.url().includes("/api/v1/leads"));
   const body = JSON.parse(request.postData());
 
-  expect(request.url()).toContain("api.launch10.ai");
+  expect(request.url()).toContain("api.launch10.com");
   expect(body.token).toBeDefined();
   expect(body.gclid).toBe("test123");
 });

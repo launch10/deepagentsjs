@@ -7,7 +7,7 @@
 ## Current State
 
 - **File Storage:** Cloudflare R2 with separate buckets per environment (`uploads` for prod, `dev-uploads` for dev)
-- **Asset Host:** `https://uploads.launch10.ai` (prod), `https://dev-uploads.launch10.ai` (dev)
+- **Asset Host:** `https://uploads.launch10.com` (prod), `https://dev-uploads.launch10.com` (dev)
 - **CORS:** R2 buckets configured with `AllowedOrigins: *`
 - **CORP Header:** Cloudflare Transform Rule adds `Cross-Origin-Resource-Policy: cross-origin` to all R2 responses
 - **WebContainer Compatibility:** Images from R2 load correctly in WebContainer previews
@@ -18,13 +18,13 @@
 
 ### 2025-01-20: Add CORP header via Cloudflare Transform Rule for WebContainer images
 
-**Context:** Images uploaded to R2 and served via `dev-uploads.launch10.ai` / `uploads.launch10.ai` were not displaying in WebContainer previews. WebContainers run on `*.webcontainer-api.io` and enforce strict COEP (`Cross-Origin-Embedder-Policy: require-corp`). Cross-origin resources must explicitly opt-in via the `Cross-Origin-Resource-Policy` header.
+**Context:** Images uploaded to R2 and served via `dev-uploads.launch10.com` / `uploads.launch10.com` were not displaying in WebContainer previews. WebContainers run on `*.webcontainer-api.io` and enforce strict COEP (`Cross-Origin-Embedder-Policy: require-corp`). Cross-origin resources must explicitly opt-in via the `Cross-Origin-Resource-Policy` header.
 
 **Decision:** Add a Cloudflare Response Header Transform Rule that sets `Cross-Origin-Resource-Policy: cross-origin` on all responses from the uploads subdomains.
 
 **Configuration:**
 - Rule name: "CORP Header for WebContainer Images (WebPreview)"
-- Match: `(http.host wildcard r"dev-uploads.launch10.ai*") or (http.host wildcard r"uploads.launch10.ai*")`
+- Match: `(http.host wildcard r"dev-uploads.launch10.com*") or (http.host wildcard r"uploads.launch10.com*")`
 - Action: Set static header `Cross-Origin-Resource-Policy` = `cross-origin`
 
 **Why:**

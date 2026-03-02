@@ -309,7 +309,7 @@ test.describe("Project Performance Page", () => {
   test.describe("Multi-tenant Isolation", () => {
     // Admin user credentials (created by basic_account snapshot builder)
     const adminUser = {
-      email: "brett@launch10.ai",
+      email: "brett@launch10.com",
       password: "Launch10TestPass!",
     };
 
@@ -327,7 +327,7 @@ test.describe("Project Performance Page", () => {
 
       const emailInput = page.getByPlaceholder("Email");
       await emailInput.waitFor({ state: "visible", timeout: 10000 });
-      await emailInput.fill("test_user@launch10.ai");
+      await emailInput.fill("test_user@launch10.com");
       await page.getByPlaceholder("Password").fill("Launch10TestPass!");
       await page.getByRole("button", { name: "Sign In", exact: true }).click();
 

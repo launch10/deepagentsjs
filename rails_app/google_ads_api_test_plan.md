@@ -146,7 +146,7 @@ client.service.campaign_asset.mutate_campaign_assets(
 ## UI Verification Steps
 
 ### Account Creation
-1. Log into Google Ads with @launch10.ai account
+1. Log into Google Ads with @launch10.com account
 2. Select "Launch10 MCC Test Account" (124-895-7009)
 3. Look for newly created customer account in the account list
 4. Verify account name matches expected value
@@ -243,7 +243,7 @@ This verifies all Create/Update/Delete operations work correctly without hitting
 ### Verifying Changes in Google Ads UI
 
 After running E2E tests, verify in Test MCC Account (124-895-7009):
-1. Log into Google Ads with @launch10.ai account
+1. Log into Google Ads with @launch10.com account
 2. Select "Launch10 MCC Test Account"
 3. Navigate to the customer account created
 4. Verify all entities (budget, campaign, ad groups, ads, keywords, etc.)

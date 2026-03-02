@@ -107,7 +107,7 @@ Rails syncs data to Atlas via service classes in `rails_app/app/services/atlas/`
 | `atlas/src/utils/cloudflare/r2.ts` | R2 storage utility |
 | `atlas/src/utils/cloudflare/kv.ts` | KV storage utility |
 | `atlas/wrangler-public.toml` | Public worker config (routes: `*.launch10.site/*`) |
-| `atlas/wrangler-admin.toml` | Admin worker config (routes: `atlas-admin.launch10.ai/*`) |
+| `atlas/wrangler-admin.toml` | Admin worker config (routes: `atlas-admin.launch10.com/*`) |
 | `rails_app/app/services/atlas/base_service.rb` | Rails HTTP client with HMAC signing |
 | `rails_app/config/initializers/atlas.rb` | Atlas configuration (base URL, secret, sync toggle) |
 

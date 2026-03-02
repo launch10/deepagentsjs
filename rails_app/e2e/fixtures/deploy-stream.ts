@@ -163,7 +163,7 @@ export const DeployStates = {
     tasks: withTaskOverrides(CAMPAIGN_TASKS, {
       ConnectingGoogle: {
         status: "completed",
-        result: { google_email: "test@launch10.ai" },
+        result: { google_email: "test@launch10.com" },
       },
       VerifyingGoogle: { status: "running" },
     }),

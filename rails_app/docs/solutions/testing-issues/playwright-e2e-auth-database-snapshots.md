@@ -41,7 +41,7 @@ Playwright E2E tests were failing because users weren't being authenticated. Tes
 Checked if the test user existed in the database snapshot:
 ```bash
 grep -i "test_user@launch10" test/fixtures/database/snapshots/basic_account.sql
-# Found: INSERT INTO public.users ... 'test_user@launch10.ai' ...
+# Found: INSERT INTO public.users ... 'test_user@launch10.com' ...
 ```
 
 ### Step 2: Verify Password Hash
